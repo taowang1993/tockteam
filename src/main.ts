@@ -1,24 +1,30 @@
 import { randomBytes } from 'node:crypto'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import {
   app,
   BrowserWindow,
   clipboard,
   dialog,
+  globalShortcut,
   ipcMain,
   Menu,
   nativeTheme,
+  net,
   screen,
   session,
+  safeStorage,
   shell,
   systemPreferences,
+  Tray,
   type MenuItemConstructorOptions,
   type Session,
   type WebContents,
 } from 'electron'
-import { createWriteStream, existsSync, mkdirSync, statSync, type WriteStream } from 'node:fs'
+import { createWriteStream, existsSync, lstatSync, mkdirSync, realpathSync, statSync, writeFileSync, type WriteStream } from 'node:fs'
 import { lstat, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PluginMarketplaceManager } from '../plugins/plugin-marketplace/src/host/transaction-manager.ts'
 import {
@@ -55,7 +61,7 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
-import { isTockTutorProtocol, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
+import { isTockTutorProtocol, parseSingleInstanceProtocolUrls, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
 import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
@@ -74,6 +80,112 @@ import {
   type BundledRuntimePaths,
 } from './runtime-paths.ts'
 import { resolveProductVersion } from './version.ts'
+import {
+  LAUNCHER_ROLE,
+  LAUNCHER_SESSION_PARTITION,
+  applyLauncherSessionPolicy,
+  createLauncherIpcGuard,
+  createLauncherUrlPolicy,
+  createLauncherWebPreferences,
+  type LauncherUrlPolicy,
+} from './launcher-security.ts'
+import { LauncherActionStore, type LauncherActionOwner } from './launcher-actions.ts'
+import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
+import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
+import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
+import { createLauncherFileSearchScanners } from './launcher-file-search-scanners.ts'
+import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
+import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
+import { createLauncherTerminal, type LauncherTerminalLaunchRequest, type LauncherTerminalPlatform } from './launcher-terminal.ts'
+import { createLauncherWorkflow, type LauncherWorkflowConfirmation } from './launcher-workflow.ts'
+import {
+  revalidateTrustedWorkflowWindowsExecutable,
+  resolveTrustedWorkflowWindowsExecutable,
+  runBoundedWorkflowCommand,
+  type LauncherTrustedWindowsSystemExecutable,
+} from './launcher-workflow-process.ts'
+import {
+  launchDetachedTerminalInvocation,
+  resolveTerminalInvocation,
+  resolveTrustedWindowsTerminalExecutable,
+  revalidateTrustedWindowsTerminalExecutable,
+} from './launcher-terminal-process.ts'
+import { createLauncherProviderInvalidator } from './launcher-provider-lifecycle.ts'
+import {
+  resolveAppearanceInvocation,
+  resolveSystemCommandInvocation,
+  resolveWindowsControlPanelInvocation,
+  resolveWindowsControlPanelScanInvocation,
+  parseWindowsControlPanelItems,
+} from './launcher-os-process.ts'
+import { MACOS_SYSTEM_SETTINGS, WINDOWS_SYSTEM_SETTINGS } from './launcher-os-catalog.ts'
+import {
+  launchDetachedLauncherExecutable,
+  revalidateLauncherExecutable,
+  revalidateLauncherPath,
+  revalidateLauncherUrl,
+  revalidateLauncherVscodeUri,
+  launcherPathIdentity,
+  resolveLinuxDesktopEntryInvocation,
+  resolveWindowsApplicationElevationInvocation,
+  revalidateLauncherWindowsStoreId,
+  statLauncherPathIdentity,
+} from './launcher-discovery-process.ts'
+import { LauncherPersistenceRepository, createLauncherSecretCodec } from './launcher-persistence.ts'
+import { LauncherCustomBrowserController } from './launcher-custom-browser.ts'
+import { resolveLauncherSettingDefault } from './launcher-settings-defaults.ts'
+import { createLauncherSettingsOperations } from './launcher-settings-operations.ts'
+import { launcherSettingRequiresProviderRescan } from './launcher-setting-keys.ts'
+import { assertNoLauncherIpcArguments } from './launcher-window-contract.ts'
+import { createLauncherCoreSearch } from './launcher-core-search.ts'
+import { createLauncherLocalExtensions, resolveLauncherEnabledExtensionIds } from './launcher-local-extensions.ts'
+import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
+import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
+import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
+import { LAUNCHER_COMPOSITION, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
+import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
+import {
+  executeTockTeamDestination,
+  createTockTeamDestinationResults,
+} from './launcher-specialists.ts'
+import { LauncherOverlayController } from './launcher-window-controller.ts'
+import {
+  registerLauncherWindowIpcHandlers,
+  registerWorkbenchLauncherIpcHandlers,
+} from './launcher-window-ipc.ts'
+import { LauncherWindowRegistry, type LauncherRegistryWindow } from './launcher-window-registry.ts'
+import {
+  createLauncherWorkbenchCommandDelivery,
+  createLauncherWorkbenchRouteDelivery,
+  dispatchLauncherRouteToWorkbench,
+} from './launcher-workbench-navigation.ts'
+import {
+  LAUNCHER_WORKBENCH_ROUTE_CHANNEL,
+  parseLauncherDestination,
+  parseLauncherWorkbenchRoute,
+  type LauncherWorkbenchRoute,
+  type TockTeamDestination,
+} from './launcher-navigation.ts'
+import {
+  attemptSecureRelaunchWithRecovery,
+  LauncherLifecycleController,
+  LauncherToggleIntentQueue,
+  SingleOwnedTray,
+  readLaunchOnStart,
+  setLaunchOnStart,
+} from './launcher-lifecycle.ts'
+import { createLauncherThemeProjector } from './launcher-theme.ts'
+import {
+  DESKTOP_APP_UPDATE_CHANNELS,
+  parseDesktopAppUpdateActionResult,
+  parseDesktopAppUpdateState,
+} from './desktop-app-update.ts'
+import { createDesktopAppUpdater, type DesktopAppUpdater } from './app-update.ts'
+import { RuntimeStartCancelledError, RuntimeStartGate } from './runtime-start-gate.ts'
+import {
+  handleUnexpectedRuntimeExit,
+  stopLiveRuntimeForMarketplace,
+} from './runtime-lifecycle.ts'
 
 const PRODUCT_NAME = 'TockTeam Desktop'
 const DATA_DIRECTORY = 'TockTeam-Desktop'
@@ -82,6 +194,312 @@ const currentDir = dirname(fileURLToPath(import.meta.url))
 const PRODUCT_VERSION = resolveProductVersion(join(currentDir, '..'))
 const splashPath = join(currentDir, 'splash.html')
 const preloadPath = join(currentDir, 'preload.cjs')
+const launcherHtmlPath = join(currentDir, 'launcher.html')
+// Package/installed evidence may fail closed for secure storage because ad-hoc
+// CI bundle identities can block macOS Keychain prompts. Both flags are
+// explicit test-only controls and require a packaged app.
+const launcherPackagedSmokeEnabled = app.isPackaged
+  && (
+    process.argv.includes('--tockteam-launcher-packaged-smoke')
+      && process.env.TOCKTEAM_PACKAGED_SMOKE === '1'
+    || process.argv.includes('--tockteam-launcher-installed-smoke')
+      && process.env.TOCKTEAM_INSTALLED_SMOKE === '1'
+  )
+const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
+const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
+const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
+const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
+const configuredLauncherWorkflowFixtureActionTtlMs = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS !== undefined
+  ? Number(process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS)
+  : undefined
+const launcherWorkflowFixtureActionTtlMs = configuredLauncherWorkflowFixtureActionTtlMs !== undefined
+  && Number.isSafeInteger(configuredLauncherWorkflowFixtureActionTtlMs)
+  && configuredLauncherWorkflowFixtureActionTtlMs > 0
+  && configuredLauncherWorkflowFixtureActionTtlMs <= 60_000
+  ? configuredLauncherWorkflowFixtureActionTtlMs
+  : undefined
+const launcherWorkflowFixtureSlowHistoryEnabled = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_SLOW_HISTORY === '1'
+const launcherBrowserFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_BROWSER_FIXTURE === '1'
+const launcherDiscoveryFixtureRoot = !app.isPackaged ? process.env.TOCKTEAM_DISCOVERY_FIXTURE_ROOT : undefined
+const launcherFileSearchFixturePath = !app.isPackaged ? process.env.TOCKTEAM_FILE_SEARCH_FIXTURE_PATH : undefined
+
+type LauncherBrowserFixtureMarker = {
+  custom: { count: number; urls: string[] }
+  default: { count: number; urls: string[] }
+  forbiddenEffects: number
+  marker: 'tockteam-browser-fixture-v1'
+  picker: number
+  revoked: number
+  selected: number
+}
+
+let launcherBrowserFixtureMarker: LauncherBrowserFixtureMarker = {
+  custom: { count: 0, urls: [] },
+  default: { count: 0, urls: [] },
+  forbiddenEffects: 0,
+  marker: 'tockteam-browser-fixture-v1',
+  picker: 0,
+  revoked: 0,
+  selected: 0,
+}
+
+function launcherBrowserFixtureMarkerPath(): string {
+  return join(app.getPath('userData'), 'launcher', 'browser-fixture-marker.json')
+}
+
+function writeLauncherBrowserFixtureMarker(): void {
+  if (!launcherBrowserFixtureEnabled) return
+  const filePath = launcherBrowserFixtureMarkerPath()
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify(launcherBrowserFixtureMarker, null, 2), { encoding: 'utf8', mode: 0o600 })
+}
+
+function resetLauncherBrowserFixtureMarker(): void {
+  if (!launcherBrowserFixtureEnabled) return
+  launcherBrowserFixtureMarker = {
+    custom: { count: 0, urls: [] },
+    default: { count: 0, urls: [] },
+    forbiddenEffects: 0,
+    marker: 'tockteam-browser-fixture-v1',
+    picker: 0,
+    revoked: 0,
+    selected: 0,
+  }
+  writeLauncherBrowserFixtureMarker()
+}
+
+function launcherBrowserFixturePath(): string {
+  const target = join(app.getPath('userData'), 'launcher', 'fixtures', 'TockTeam Fixture Browser.app')
+  if (launcherBrowserFixtureEnabled) mkdirSync(target, { mode: 0o700, recursive: true })
+  return target
+}
+
+function recordLauncherBrowserFixtureSelection(operation: 'select' | 'revoke'): void {
+  if (!launcherBrowserFixtureEnabled) return
+  if (operation === 'select') launcherBrowserFixtureMarker.selected += 1
+  else launcherBrowserFixtureMarker.revoked += 1
+  writeLauncherBrowserFixtureMarker()
+}
+
+function recordLauncherBrowserFixtureOpen(mode: 'custom' | 'default', url: string): void {
+  if (!launcherBrowserFixtureEnabled) return
+  const entry = launcherBrowserFixtureMarker[mode]
+  launcherBrowserFixtureMarker[mode] = { count: entry.count + 1, urls: [...entry.urls, url].slice(-8) }
+  writeLauncherBrowserFixtureMarker()
+}
+
+function rejectLauncherBrowserFixtureEffect(effect: string): never {
+  if (launcherBrowserFixtureEnabled) {
+    launcherBrowserFixtureMarker.forbiddenEffects += 1
+    writeLauncherBrowserFixtureMarker()
+  }
+  throw new Error(`Unexpected browser fixture effect: ${effect}`)
+}
+
+type LauncherTerminalFixtureMarker = {
+  accepted: { commandLength: number; commandSha256: string; count: number }
+  canceled: number
+  declined: number
+  forbiddenEffects: number
+  marker: 'tockteam-terminal-fixture-v1'
+}
+
+let launcherTerminalFixtureMarker: LauncherTerminalFixtureMarker = {
+  accepted: { commandLength: 0, commandSha256: '', count: 0 },
+  canceled: 0,
+  declined: 0,
+  forbiddenEffects: 0,
+  marker: 'tockteam-terminal-fixture-v1',
+}
+
+function launcherTerminalFixtureMarkerPath(): string {
+  return join(app.getPath('userData'), 'launcher', 'terminal-fixture-marker.json')
+}
+
+function writeLauncherTerminalFixtureMarker(): void {
+  if (!launcherTerminalFixtureEnabled) return
+  const filePath = launcherTerminalFixtureMarkerPath()
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify(launcherTerminalFixtureMarker, null, 2), { encoding: 'utf8', mode: 0o600 })
+}
+
+function resetLauncherTerminalFixtureMarker(): void {
+  if (!launcherTerminalFixtureEnabled) return
+  launcherTerminalFixtureMarker = {
+    accepted: { commandLength: 0, commandSha256: '', count: 0 },
+    canceled: 0,
+    declined: 0,
+    forbiddenEffects: 0,
+    marker: 'tockteam-terminal-fixture-v1',
+  }
+  writeLauncherTerminalFixtureMarker()
+}
+
+function recordLauncherTerminalFixtureAudit(record: { commandLength: number; commandSha256: string; outcome: 'denied' | 'failed' | 'launched' }): void {
+  if (!launcherTerminalFixtureEnabled) return
+  if (record.outcome === 'launched') launcherTerminalFixtureMarker.accepted = { commandLength: record.commandLength, commandSha256: record.commandSha256, count: launcherTerminalFixtureMarker.accepted.count + 1 }
+  else if (record.outcome === 'denied') launcherTerminalFixtureMarker.declined += 1
+  else launcherTerminalFixtureMarker.forbiddenEffects += 1
+  writeLauncherTerminalFixtureMarker()
+}
+
+function recordLauncherTerminalFixtureCanceled(): void {
+  if (!launcherTerminalFixtureEnabled) return
+  launcherTerminalFixtureMarker.canceled += 1
+  writeLauncherTerminalFixtureMarker()
+}
+
+type LauncherWorkflowFixtureMarker = {
+  accepted: number
+  canceled: number
+  confirmationAccepted: number
+  confirmationCanceled: number
+  confirmationDeclined: number
+  declined: number
+  forbiddenEffects: number
+  marker: 'tockteam-workflow-fixture-v1'
+  order: string[]
+}
+
+let launcherWorkflowFixtureMarker: LauncherWorkflowFixtureMarker = {
+  accepted: 0,
+  canceled: 0,
+  confirmationAccepted: 0,
+  confirmationCanceled: 0,
+  confirmationDeclined: 0,
+  declined: 0,
+  forbiddenEffects: 0,
+  marker: 'tockteam-workflow-fixture-v1',
+  order: [],
+}
+
+function launcherWorkflowFixtureMarkerPath(): string {
+  return join(app.getPath('userData'), 'launcher', 'workflow-fixture-marker.json')
+}
+
+function writeLauncherWorkflowFixtureMarker(): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  const filePath = launcherWorkflowFixtureMarkerPath()
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify(launcherWorkflowFixtureMarker, null, 2), { encoding: 'utf8', mode: 0o600 })
+}
+
+function resetLauncherWorkflowFixtureMarker(): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  launcherWorkflowFixtureMarker = { accepted: 0, canceled: 0, confirmationAccepted: 0, confirmationCanceled: 0, confirmationDeclined: 0, declined: 0, forbiddenEffects: 0, marker: 'tockteam-workflow-fixture-v1', order: [] }
+  writeLauncherWorkflowFixtureMarker()
+}
+
+function recordLauncherWorkflowFixtureAudit(outcome: 'cancelled' | 'completed' | 'denied' | 'failed'): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  if (outcome === 'completed') launcherWorkflowFixtureMarker.accepted += 1
+  else if (outcome === 'denied') launcherWorkflowFixtureMarker.declined += 1
+  else if (outcome === 'cancelled') launcherWorkflowFixtureMarker.canceled += 1
+  else launcherWorkflowFixtureMarker.forbiddenEffects += 1
+  writeLauncherWorkflowFixtureMarker()
+}
+
+function recordLauncherWorkflowFixtureConfirmation(outcome: 'accepted' | 'canceled' | 'declined'): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  if (outcome === 'accepted') launcherWorkflowFixtureMarker.confirmationAccepted += 1
+  else if (outcome === 'canceled') launcherWorkflowFixtureMarker.confirmationCanceled += 1
+  else launcherWorkflowFixtureMarker.confirmationDeclined += 1
+  writeLauncherWorkflowFixtureMarker()
+}
+
+function recordLauncherWorkflowFixtureEffect(kind: 'OpenFile' | 'OpenUrl' | 'OpenTerminal' | 'ExecuteCommand'): void {
+  if (!launcherWorkflowFixtureEnabled) return
+  launcherWorkflowFixtureMarker.order = [...launcherWorkflowFixtureMarker.order, kind].slice(-64)
+  writeLauncherWorkflowFixtureMarker()
+}
+
+function rejectLauncherWorkflowFixtureEffect(kind: string): never {
+  if (launcherWorkflowFixtureEnabled) {
+    launcherWorkflowFixtureMarker.forbiddenEffects += 1
+    writeLauncherWorkflowFixtureMarker()
+  }
+  throw new Error(`Unexpected workflow fixture effect: ${kind}`)
+}
+
+type LauncherOsFixtureMarker = {
+  marker: 'tockteam-os-fixture-v1'
+  acceptedEffects: { lock: number }
+  canceledConfirmations: { shutdown: number }
+  declinedConfirmations: { controlPanel: number; quit: number; systemCommand: number }
+  forbiddenEffects: number
+}
+
+let launcherOsFixtureMarker: LauncherOsFixtureMarker = {
+  acceptedEffects: { lock: 0 },
+  canceledConfirmations: { shutdown: 0 },
+  declinedConfirmations: { controlPanel: 0, quit: 0, systemCommand: 0 },
+  forbiddenEffects: 0,
+  marker: 'tockteam-os-fixture-v1',
+}
+
+function launcherOsFixtureMarkerPath(): string {
+  return join(app.getPath('userData'), 'launcher', 'os-fixture-marker.json')
+}
+
+function writeLauncherOsFixtureMarker(): void {
+  if (!launcherOsFixtureEnabled) return
+  const filePath = launcherOsFixtureMarkerPath()
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify(launcherOsFixtureMarker, null, 2), { encoding: 'utf8', mode: 0o600 })
+}
+
+function resetLauncherOsFixtureMarker(): void {
+  if (!launcherOsFixtureEnabled) return
+  launcherOsFixtureMarker = {
+    acceptedEffects: { lock: 0 },
+    canceledConfirmations: { shutdown: 0 },
+    declinedConfirmations: { controlPanel: 0, quit: 0, systemCommand: 0 },
+    forbiddenEffects: 0,
+    marker: 'tockteam-os-fixture-v1',
+  }
+  writeLauncherOsFixtureMarker()
+}
+
+function recordLauncherOsFixtureConfirmation(kind: 'controlPanel' | 'quit' | 'shutdown' | 'systemCommand', outcome: 'canceled' | 'declined'): void {
+  if (!launcherOsFixtureEnabled) return
+  if (outcome === 'canceled' && kind === 'shutdown') launcherOsFixtureMarker.canceledConfirmations.shutdown += 1
+  else if (outcome === 'declined' && kind === 'controlPanel') launcherOsFixtureMarker.declinedConfirmations.controlPanel += 1
+  else if (outcome === 'declined' && kind === 'quit') launcherOsFixtureMarker.declinedConfirmations.quit += 1
+  else if (outcome === 'declined' && kind === 'systemCommand') launcherOsFixtureMarker.declinedConfirmations.systemCommand += 1
+  writeLauncherOsFixtureMarker()
+}
+
+function recordLauncherOsFixtureAcceptedLock(): void {
+  if (!launcherOsFixtureEnabled) return
+  launcherOsFixtureMarker.acceptedEffects.lock += 1
+  writeLauncherOsFixtureMarker()
+}
+
+function rejectLauncherOsFixtureEffect(effect: string): never {
+  launcherOsFixtureMarker.forbiddenEffects += 1
+  writeLauncherOsFixtureMarker()
+  throw new Error(`Unexpected fixture effect: ${effect}`)
+}
+
+function launcherNetworkFixtureResponse(body: unknown, init: ResponseInit = {}): Response {
+  return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' }, status: 200, ...init })
+}
+
+async function launcherNetworkFixtureFetch(url: string, init?: RequestInit): Promise<Response> {
+  const parsed = new URL(url)
+  if (parsed.origin === 'https://cdn.jsdelivr.net' && parsed.pathname.startsWith('/npm/@fawazahmed0/currency-api@latest/v1/currencies/')) {
+    const currency = parsed.pathname.split('/').pop()?.replace(/\.json$/u, '') ?? 'usd'
+    return launcherNetworkFixtureResponse({ [currency]: { eur: currency === 'usd' ? 0.9 : 1, usd: currency === 'eur' ? 1.1 : 1, chf: 0.8 } })
+  }
+  if (parsed.origin === 'https://api-free.deepl.com' && parsed.pathname === '/v2/translate' && init?.method === 'POST') {
+    return launcherNetworkFixtureResponse({ translations: [{ text: 'Fixture translation' }] })
+  }
+  if (parsed.origin === 'https://www.google.com' && parsed.pathname === '/complete/search') {
+    if (parsed.searchParams.get('q') === 'error') return launcherNetworkFixtureResponse({ error: 'fixture' }, { status: 503 })
+    return launcherNetworkFixtureResponse(['fixture', ['fixture latest']])
+  }
+  throw new Error('Unexpected launcher network fixture URL')
+}
 
 let mainWindow: BrowserWindow | undefined
 let runtime: DshRuntimeSupervisor | undefined
@@ -100,6 +518,175 @@ let transitioning = false
 let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
+let launcherController: LauncherOverlayController | undefined
+let launcherLifecycle: LauncherLifecycleController | undefined
+let launcherUpdater: DesktopAppUpdater | undefined
+let launcherIpcDisposer: (() => void) | undefined
+let workbenchLauncherIpcDisposer: (() => void) | undefined
+let secureTeardownPromise: Promise<void> | undefined
+let launcherUpdaterRuntimeWasActive = false
+let launcherRescan: ((owner?: LauncherActionOwner, preserveSignal?: AbortSignal, reason?: string) => Promise<unknown>) | undefined
+let launcherCoreFlush: (() => Promise<void>) | undefined
+let launcherPersistence: LauncherPersistenceRepository | undefined
+let launcherCustomBrowser: LauncherCustomBrowserController | undefined
+let launcherLocal: ReturnType<typeof createLauncherLocalExtensions> | undefined
+let launcherDiscovery: ReturnType<typeof createLauncherDiscoveryExtensions> | undefined
+let launcherFileSearch: ReturnType<typeof createLauncherFileSearchExtensions> | undefined
+let launcherNetwork: ReturnType<typeof createLauncherNetworkExtensions> | undefined
+let launcherOs: ReturnType<typeof createLauncherOsExtensions> | undefined
+let launcherTerminal: ReturnType<typeof createLauncherTerminal> | undefined
+let launcherWorkflow: ReturnType<typeof createLauncherWorkflow> | undefined
+let launcherCore: ReturnType<typeof createLauncherCoreSearch> | undefined
+let launcherProviderInvalidator: ReturnType<typeof createLauncherProviderInvalidator> | undefined
+let launcherInvalidationController = new AbortController()
+let launcherPersistentSetsSync: (() => void) | undefined
+let launcherActions: LauncherActionStore | undefined
+let launcherOwnerReady: Promise<void> = Promise.resolve()
+let launcherOwnerGeneration = 0
+let launcherLocale: LauncherLocale = 'en-US'
+const launcherSettingsOperations = createLauncherSettingsOperations({ isUnavailable: () => quitting })
+const runtimeStartGate = new RuntimeStartGate<void>()
+const launcherWindowRegistry = new LauncherWindowRegistry()
+const execFileAsync = promisify(execFile)
+const launcherToggleQueue = new LauncherToggleIntentQueue()
+
+async function launchTrustedLauncherTerminal(
+  platform: LauncherTerminalPlatform,
+  request: LauncherTerminalLaunchRequest,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (signal?.aborted) throw launcherAbortError(signal)
+  const invocation = resolveTerminalInvocation(platform, request)
+  if (invocation.waitForExit) {
+    await execFileAsync(invocation.executable, [...invocation.args], {
+      cwd: invocation.cwd,
+      maxBuffer: 1_048_576,
+      shell: false,
+      ...(signal === undefined ? {} : { signal }),
+      timeout: 15_000,
+    })
+  } else if (platform === 'Windows') {
+    const trusted = await resolveTrustedWindowsTerminalExecutable(request.terminalId)
+    if (!await revalidateTrustedWindowsTerminalExecutable(trusted)) throw new Error('Windows terminal executable changed before launch')
+    await launchDetachedTerminalInvocation({ ...invocation, executable: trusted.executable }, {
+      ...(signal === undefined ? {} : { signal }),
+      timeoutMs: 5_000,
+    })
+  } else {
+    await launchDetachedTerminalInvocation(invocation, {
+      ...(signal === undefined ? {} : { signal }),
+      timeoutMs: 5_000,
+    })
+  }
+  if (signal?.aborted) throw launcherAbortError(signal)
+}
+let launcherTrayOwner: SingleOwnedTray<Tray> | undefined
+
+function launcherAbortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new Error('TockLauncher operation canceled')
+}
+
+function assertLauncherSignal(signal?: AbortSignal): void {
+  if (signal?.aborted) throw launcherAbortError(signal)
+}
+
+function captureLauncherHomeIdentitySync(target: string): ReturnType<typeof launcherPathIdentity> {
+  try {
+    const selected = lstatSync(target, { bigint: true })
+    if (!selected.isDirectory() || selected.isSymbolicLink()) return undefined
+    const canonical = realpathSync(target)
+    const current = lstatSync(canonical, { bigint: true })
+    return current.isDirectory() && !current.isSymbolicLink() ? launcherPathIdentity(current) : undefined
+  } catch { return undefined }
+}
+
+async function captureLauncherHomeIdentity(target: string): Promise<ReturnType<typeof launcherPathIdentity>> {
+  try {
+    const selected = await lstat(target, { bigint: true })
+    if (!selected.isDirectory() || selected.isSymbolicLink()) return undefined
+    const canonical = await realpath(target)
+    const current = await lstat(canonical, { bigint: true })
+    return current.isDirectory() && !current.isSymbolicLink() ? launcherPathIdentity(current) : undefined
+  } catch { return undefined }
+}
+
+async function launcherAwaitAbortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  const pending = Promise.resolve(operation)
+  void pending.catch(() => undefined)
+  if (signal.aborted) throw launcherAbortError(signal)
+  let onAbort!: () => void
+  const canceled = new Promise<never>((_resolve, reject) => {
+    onAbort = () => { reject(launcherAbortError(signal)) }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+  try { return await Promise.race([pending, canceled]) }
+  finally { signal.removeEventListener('abort', onAbort) }
+}
+
+async function launcherAwaitAbortableWithTimeout<T>(operation: Promise<T>, signal: AbortSignal, timeoutMs: number, label: string): Promise<T> {
+  const pending = Promise.resolve(operation)
+  void pending.catch(error => { appendLog('desktop', `${label} rejected: ${error instanceof Error ? error.name : 'unknown'}`) })
+  if (signal.aborted) throw launcherAbortError(signal)
+  let onAbort!: () => void
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const canceled = new Promise<never>((_resolve, reject) => {
+    onAbort = () => { reject(launcherAbortError(signal)) }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+  const timedOut = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs)
+  })
+  try { return await Promise.race([pending, canceled, timedOut]) }
+  finally {
+    if (timer !== undefined) clearTimeout(timer)
+    signal.removeEventListener('abort', onAbort)
+  }
+}
+
+function invalidateAllLauncherProviders(reason: string, owner?: LauncherActionOwner, preserveSignal?: AbortSignal): AbortSignal {
+  launcherInvalidationController.abort(new Error(reason))
+  launcherInvalidationController = new AbortController()
+  launcherProviderInvalidator?.invalidateAllLauncherProviders(reason, owner, preserveSignal)
+  return launcherInvalidationController.signal
+}
+
+async function waitForLauncherProvidersIdle(): Promise<void> {
+  await Promise.allSettled([
+    launcherDiscovery?.waitForIdle() ?? Promise.resolve(),
+    launcherFileSearch?.waitForIdle() ?? Promise.resolve(),
+    launcherNetwork?.waitForIdle() ?? Promise.resolve(),
+    launcherOs?.waitForIdle() ?? Promise.resolve(),
+    launcherTerminal?.waitForIdle() ?? Promise.resolve(),
+    launcherWorkflow?.waitForIdle() ?? Promise.resolve(),
+    launcherCustomBrowser?.waitForIdle() ?? Promise.resolve(),
+    launcherLocal?.waitForIdle() ?? Promise.resolve(),
+  ])
+}
+
+async function waitForLauncherProvidersIdleBounded(timeoutMs = 1_000): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      waitForLauncherProvidersIdle(),
+      new Promise<void>(resolve => { timer = setTimeout(resolve, timeoutMs) }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
+const launcherThemeProjector = createLauncherThemeProjector()
+const workbenchRouteDelivery = createLauncherWorkbenchRouteDelivery<BrowserWindow>((window: BrowserWindow, route: LauncherWorkbenchRoute) => {
+  window.webContents.send(LAUNCHER_WORKBENCH_ROUTE_CHANNEL, route)
+})
+const workbenchCommandDelivery = createLauncherWorkbenchCommandDelivery<BrowserWindow, DesktopCommand>((window, command) => {
+  window.webContents.send('desktop:command', command)
+})
+const commandsBeforeWorkbenchWindow: DesktopCommand[] = []
+let routeBeforeWorkbenchWindow: LauncherWorkbenchRoute | undefined
+let currentWorkbenchDestination: TockTeamDestination = 'tockcoder'
+let workbenchGeneration = 0
+let workbenchReadyGeneration = -1
 const logTail: string[] = []
 const desktopCallerAuthorizations = new DesktopCallerAuthorizations()
 const webClipFrames = new WebClipFrameAuthorizations()
@@ -133,6 +720,18 @@ function readBoundedDesktopClipboard(): string | null {
     return text.length <= 4_096 ? text : null
   } catch {
     return null
+  }
+}
+
+function canonicalDesktopProtocolPath(path: string): string {
+  try {
+    return realpathSync.native(path)
+  } catch {
+    try {
+      return join(realpathSync.native(dirname(path)), basename(path))
+    } catch {
+      return resolve(path)
+    }
   }
 }
 
@@ -321,8 +920,13 @@ function initializeDesktopPicker(): void {
         const snapshot = desktopPickerOwner.nativeVaultSnapshot()
         return record.id === snapshot.id && record.generation === snapshot.generation
       })
-      return resolveTockTutorProtocolRequest(request, records, active,
-        request.clipboard === true ? readBoundedDesktopClipboard() : undefined)
+      return resolveTockTutorProtocolRequest(
+        request,
+        records,
+        active,
+        request.clipboard === true ? readBoundedDesktopClipboard() : undefined,
+        canonicalDesktopProtocolPath,
+      )
     },
     onDeliveryExpired: (operationId, consumerId) => {
       const lease = mainDispatchLeases.get(operationId)
@@ -704,6 +1308,1453 @@ function windowIconPath(): string | undefined {
   return existsSync(development) ? development : undefined
 }
 
+function launcherPlatform(): 'Linux' | 'macOS' | 'Windows' {
+  if (process.platform === 'darwin') return 'macOS'
+  if (process.platform === 'win32') return 'Windows'
+  if (process.platform === 'linux') return 'Linux'
+  throw new Error('Unsupported TockLauncher platform')
+}
+
+function launcherDefaultContext(): Readonly<{
+  appDataPath: string
+  environment: Readonly<Record<string, string | undefined>>
+  homePath: string
+  locale: string
+  platform: 'Linux' | 'macOS' | 'Windows'
+}> {
+  return Object.freeze({
+    appDataPath: app.getPath('userData'),
+    environment: process.env,
+    homePath: app.getPath('home'),
+    locale: app.getLocale?.() ?? 'en-US',
+    platform: launcherPlatform(),
+  })
+}
+
+function launcherSecureStorageAvailable(): boolean {
+  if (launcherPackagedSmokeEnabled) return false
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return false
+    if (process.platform === 'linux') {
+      const backend = safeStorage.getSelectedStorageBackend()
+      if (backend === 'basic_text' || backend === 'unknown') return false
+    }
+    return true
+  } catch { return false }
+}
+
+function createMainLauncherSecretCodec() {
+  return createLauncherSecretCodec({
+    isAvailable: launcherSecureStorageAvailable,
+    encrypt: plaintext => {
+      if (!launcherSecureStorageAvailable()) throw new Error('TockLauncher secure storage is unavailable')
+      return safeStorage.encryptString(plaintext).toString('base64')
+    },
+    decrypt: ciphertext => {
+      if (!launcherSecureStorageAvailable()) throw new Error('TockLauncher secure storage is unavailable')
+      return safeStorage.decryptString(Buffer.from(ciphertext, 'base64'))
+    },
+  })
+}
+
+function requireLauncherPersistence(): LauncherPersistenceRepository {
+  if (launcherPersistence === undefined) throw new Error('TockLauncher persistence is unavailable')
+  return launcherPersistence
+}
+
+function runLauncherSettingsOperation<T>(
+  operation: () => Promise<T>,
+  options: Readonly<{ blockMutationsAfterSuccess?: boolean; mutation?: boolean }> = {},
+): Promise<T> {
+  return launcherSettingsOperations.run(operation, options)
+}
+
+async function runLauncherMutation<T>(
+  reason: string,
+  operation: (signal: AbortSignal) => Promise<T>,
+  options: Readonly<{ invalidate?: boolean; rescan?: boolean }> = {},
+): Promise<T> {
+  const invalidate = options.invalidate !== false
+  const rescan = options.rescan !== false && invalidate
+  const signal = invalidate ? invalidateAllLauncherProviders(reason) : launcherInvalidationController.signal
+  try {
+    const result = await operation(signal)
+    assertLauncherSignal(signal)
+    if (rescan && !quitting) await launcherRescan?.(undefined, undefined, reason)
+    return result
+  } catch (error) {
+    if (launcherPackagedSmokeEnabled) appendLog('desktop', `TockLauncher ${reason} failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
+    if (invalidate && !quitting && !signal.aborted) {
+      invalidateAllLauncherProviders(`${reason}-rollback`)
+      try { await launcherRescan?.() } catch { /* retain the original mutation error */ }
+    }
+    throw error
+  }
+}
+
+async function closeLauncherSettingsOperations(): Promise<void> {
+  await launcherSettingsOperations.close()
+}
+
+function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['snapshot']> {
+  const repository = requireLauncherPersistence()
+  const snapshot = repository.snapshot()
+  const context = launcherDefaultContext()
+  const values = { ...snapshot.values }
+  const dynamicKeys = context.platform === 'Linux'
+    ? ['extension[ApplicationSearch].linuxFolders']
+    : context.platform === 'Windows'
+      ? ['extension[ApplicationSearch].windowsFolders']
+      : ['extension[ApplicationSearch].macOsFolders']
+  for (const key of [...dynamicKeys, 'extension[VSCode].command']) {
+    if (Object.hasOwn(values, key)) continue
+    const fallback = resolveLauncherSettingDefault(key, context)
+    if (fallback !== undefined) values[key] = fallback
+  }
+  const customBrowserStatus = launcherCustomBrowser?.snapshot().status ?? 'none'
+  return Object.freeze({
+    ...snapshot,
+    customBrowserStatus,
+    externalWriteAvailable: repository.externalWriteAvailable,
+    secureStorageAvailable: repository.secureStorageAvailable,
+    values: Object.freeze(values),
+  })
+}
+
+function launcherLocalExtensionSettings(): LauncherLocalExtensionSettings {
+  const repository = requireLauncherPersistence()
+  const get = <T>(extensionId: string, key: string, fallback: T): T => {
+    const fullKey = `extension[${extensionId}].${key}`
+    const value = repository.getSetting<unknown>(fullKey, fallback)
+    return isLauncherRendererSettingValue(fullKey, value) ? value as T : fallback
+  }
+  const uuidDefaults = LAUNCHER_LOCAL_EXTENSION_DEFAULTS.UuidGenerator
+  const nested = get('UuidGenerator', 'generatorFormat', uuidDefaults.generatorFormat)
+  return Object.freeze({
+    Base64Conversion: Object.freeze({
+      decodePrefix: get('Base64Conversion', 'decodePrefix', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Base64Conversion.decodePrefix),
+      encodeDecodePrefix: get('Base64Conversion', 'encodeDecodePrefix', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Base64Conversion.encodeDecodePrefix),
+      encodePrefix: get('Base64Conversion', 'encodePrefix', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Base64Conversion.encodePrefix),
+    }),
+    Calculator: Object.freeze({
+      argumentSeparator: get('Calculator', 'argumentSeparator', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Calculator.argumentSeparator),
+      decimalSeparator: get('Calculator', 'decimalSeparator', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Calculator.decimalSeparator),
+      precision: get('Calculator', 'precision', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.Calculator.precision),
+    }),
+    ColorConverter: Object.freeze({ formats: Object.freeze([...get('ColorConverter', 'formats', [...LAUNCHER_LOCAL_EXTENSION_DEFAULTS.ColorConverter.formats])]) }),
+    PasswordGenerator: Object.freeze({
+      beginWithALetter: get('PasswordGenerator', 'beginWithALetter', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.beginWithALetter),
+      command: get('PasswordGenerator', 'command', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.command),
+      includeLowercaseCharacters: get('PasswordGenerator', 'includeLowercaseCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.includeLowercaseCharacters),
+      includeNumbers: get('PasswordGenerator', 'includeNumbers', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.includeNumbers),
+      includeSymbols: get('PasswordGenerator', 'includeSymbols', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.includeSymbols),
+      includeUppercaseCharacters: get('PasswordGenerator', 'includeUppercaseCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.includeUppercaseCharacters),
+      noDuplicateCharacters: get('PasswordGenerator', 'noDuplicateCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.noDuplicateCharacters),
+      noSequentialCharacters: get('PasswordGenerator', 'noSequentialCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.noSequentialCharacters),
+      noSimilarCharacters: get('PasswordGenerator', 'noSimilarCharacters', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.noSimilarCharacters),
+      passwordLength: get('PasswordGenerator', 'passwordLength', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.passwordLength),
+      quantity: get('PasswordGenerator', 'quantity', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.quantity),
+      symbols: get('PasswordGenerator', 'symbols', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.PasswordGenerator.symbols),
+    }),
+    QuickFormatter: Object.freeze({
+      command: get('QuickFormatter', 'command', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.command),
+      enableDeepFormatting: get('QuickFormatter', 'enableDeepFormatting', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.enableDeepFormatting),
+      enableJson: get('QuickFormatter', 'enableJson', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.enableJson),
+      enableStackTrace: get('QuickFormatter', 'enableStackTrace', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.enableStackTrace),
+      enableXml: get('QuickFormatter', 'enableXml', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.QuickFormatter.enableXml),
+    }),
+    RowlandTextEditor: Object.freeze({
+      columnSeparator: get('RowlandTextEditor', 'columnSeparator', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.RowlandTextEditor.columnSeparator),
+      rowSeparator: get('RowlandTextEditor', 'rowSeparator', LAUNCHER_LOCAL_EXTENSION_DEFAULTS.RowlandTextEditor.rowSeparator),
+    }),
+    UuidGenerator: Object.freeze({
+      braces: get('UuidGenerator', 'braces', nested.braces),
+      generatorFormat: Object.freeze({ ...nested }),
+      hyphens: get('UuidGenerator', 'hyphens', nested.hyphens),
+      numberOfUuids: get('UuidGenerator', 'numberOfUuids', uuidDefaults.numberOfUuids),
+      quotes: get('UuidGenerator', 'quotes', nested.quotes),
+      searchResultFormats: Object.freeze([...get('UuidGenerator', 'searchResultFormats', [...uuidDefaults.searchResultFormats])]),
+      uppercase: get('UuidGenerator', 'uppercase', nested.uppercase),
+      uuidVersion: get('UuidGenerator', 'uuidVersion', uuidDefaults.uuidVersion),
+      validateStrictly: get('UuidGenerator', 'validateStrictly', uuidDefaults.validateStrictly),
+    }),
+  }) as LauncherLocalExtensionSettings
+}
+
+function launcherEnabledLocalExtensionIds(): readonly string[] {
+  const repository = requireLauncherPersistence()
+  const context = launcherDefaultContext()
+  const resolved = resolveLauncherSettingDefault('extensions.enabledExtensionIds', context)
+  const fallback: readonly string[] = Array.isArray(resolved)
+    ? resolved.filter((item): item is string => typeof item === 'string')
+    : [...LAUNCHER_LOCAL_EXTENSION_IDS]
+  const value = repository.getSetting<unknown>('extensions.enabledExtensionIds', fallback)
+  return resolveLauncherEnabledExtensionIds(value, fallback)
+}
+
+function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSurfaceSettings {
+  const snapshot = launcherSettingsSnapshot()
+  const values = snapshot.values
+  const context = launcherDefaultContext()
+  const platform = context.platform
+  const boolValue = (key: string, fallback: boolean): boolean => typeof values[key] === 'boolean' ? values[key] as boolean : Boolean(resolveLauncherSettingDefault(key, context) ?? fallback)
+  const numberValue = (key: string, fallback: number): number => typeof values[key] === 'number' && Number.isFinite(values[key]) ? values[key] as number : Number(resolveLauncherSettingDefault(key, context) ?? fallback)
+  const textValue = (key: string, fallback: string): string => typeof values[key] === 'string' && values[key].length > 0 ? values[key] as string : String(resolveLauncherSettingDefault(key, context) ?? fallback)
+  const historyEnabled = boolValue('general.searchHistory.enabled', false)
+  const historyLimit = Math.min(100, Math.max(1, numberValue('general.searchHistory.limit', 10)))
+  const rawHistory = values['general.searchHistory.history']
+  const history = historyEnabled && Array.isArray(rawHistory) ? rawHistory.filter(item => typeof item === 'string').slice(0, historyLimit) : []
+  const enabled = new Set(launcherEnabledLocalExtensionIds())
+  if (launcherWorkflowFixtureEnabled) enabled.add('Workflow')
+  const unsupported = new Set<string>([
+    ...(platform === 'Linux' ? ['BrowserBookmarks', 'FileSearch', 'TerminalLauncher'] : []),
+    ...(platform !== 'Windows' ? ['WindowsControlPanel'] : []),
+  ])
+  const providerErrors = new Set<string>([
+    ...(launcherLocal?.getProviderErrors().keys() ?? []),
+    ...(launcherDiscovery?.getProviderErrors().keys() ?? []),
+    ...(launcherFileSearch?.getProviderErrors().keys() ?? []),
+    ...(launcherNetwork?.getProviderErrors().keys() ?? []),
+    ...(launcherOs?.getProviderErrors().keys() ?? []),
+    ...(launcherTerminal?.getProviderErrors().keys() ?? []),
+    ...(launcherWorkflow?.getProviderErrors().keys() ?? []),
+  ])
+  const providerStatuses: LauncherProviderStatus[] = LAUNCHER_COMPOSITION.extensionIds.map(extensionId => {
+    if (!enabled.has(extensionId)) return Object.freeze({ extensionId, state: 'disabled' as const, messageKey: 'disabled' as const })
+    if (unsupported.has(extensionId)) return Object.freeze({ extensionId, state: 'unsupported' as const, messageKey: 'unsupported' as const })
+    if (providerErrors.has(extensionId)) return Object.freeze({ extensionId, state: 'unavailable' as const, messageKey: 'unavailable' as const })
+    return Object.freeze({ extensionId, state: 'ready' as const })
+  })
+  const language = launcherLocale
+  const configuredPlaceholder = textValue('appearance.searchBarPlaceholderText', language === 'zh-CN' ? '搜索 TockTeam' : 'Search TockTeam')
+  return Object.freeze({
+    doubleClickBehavior: values['keyboardAndMouse.doubleClickBehavior'] === 'selectSearchResultItem' ? 'selectSearchResultItem' as const : 'invokeSearchResultItem' as const,
+    dragAndDropEnabled: false,
+    fuzziness: Math.min(1, Math.max(0, numberValue('searchEngine.fuzziness', 0.5))),
+    history: Object.freeze([...history]),
+    historyEnabled,
+    historyLimit,
+    hideWindowOn: Object.freeze((Array.isArray(values['window.hideWindowOn']) ? values['window.hideWindowOn'] : ['blur', 'afterInvocation']).filter((reason): reason is 'blur' | 'afterInvocation' | 'escapePressed' => reason === 'blur' || reason === 'afterInvocation' || reason === 'escapePressed')),
+    locale: language,
+    maxSearchResultItems: Math.min(200, Math.max(1, numberValue('searchEngine.maxResultLength', 50))),
+    placeholder: configuredPlaceholder.slice(0, 512),
+    preserveUserInput: boolValue('general.preserveUserInput', true),
+    providerStatuses: Object.freeze(providerStatuses),
+    searchBarAppearance: ['auto', 'outline', 'underline', 'filled-darker', 'filled-lighter'].includes(values['appearance.searchBarAppearance'] as string) ? values['appearance.searchBarAppearance'] as import('./launcher-contract.ts').LauncherSearchBarAppearance : 'auto',
+    searchBarSize: ['small', 'medium', 'large'].includes(values['appearance.searchBarSize'] as string) ? values['appearance.searchBarSize'] as import('./launcher-contract.ts').LauncherSearchBarSize : 'large',
+    searchEngineId: values['searchEngine.id'] === 'Fuse.js' ? 'Fuse.js' as const : 'fuzzysort' as const,
+    searchResultLayout: values['appearance.searchResultListLayout'] === 'detailed' ? 'detailed' as const : 'compact' as const,
+    scrollBehavior: ['auto', 'smooth', 'instant'].includes(values['window.scrollBehavior'] as string) ? values['window.scrollBehavior'] as import('./launcher-contract.ts').LauncherScrollBehavior : 'smooth',
+    showSearchIcon: boolValue('appearance.showSearchIcon', true),
+    singleClickBehavior: values['keyboardAndMouse.singleClickBehavior'] === 'invokeSearchResultItem' ? 'invokeSearchResultItem' as const : 'selectSearchResultItem' as const,
+  })
+}
+
+async function recordLauncherSearch(query: string): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> {
+  if (launcherWorkflowFixtureSlowHistoryEnabled && query === 'Cancel workflow') await new Promise<void>(resolve => setTimeout(resolve, 750))
+  const current = launcherSurfaceSettings()
+  await requireLauncherPersistence().recordSearch(query, {
+    historyEnabled: current.historyEnabled,
+    historyLimit: current.historyLimit,
+  })
+  return launcherSurfaceSettings()
+}
+
+function syncLauncherPersistentSets(core: Readonly<{ replacePersistentSettings: (settings: Readonly<{ excludedItemIds: readonly string[]; favoriteItemIds: readonly string[] }>) => void }>): void {
+  const repository = launcherPersistence
+  if (repository === undefined) return
+  const favorites = repository.getSetting('favorites', [])
+  const excluded = repository.getSetting('searchEngine.excludedItems', [])
+  core.replacePersistentSettings({
+    excludedItemIds: Array.isArray(excluded) ? excluded.filter(item => typeof item === 'string') : [],
+    favoriteItemIds: Array.isArray(favorites) ? favorites.filter(item => typeof item === 'string') : [],
+  })
+}
+
+function writeLauncherPackagedSmokeSecurity(window: BrowserWindow, launcherSession: Session): void {
+  if (!launcherPackagedSmokeEnabled) return
+  const filePath = join(app.getPath('userData'), 'launcher', 'packaged-smoke-security.json')
+  mkdirSync(dirname(filePath), { mode: 0o700, recursive: true })
+  writeFileSync(filePath, JSON.stringify({
+    appPath: app.getAppPath(),
+    appPathUsesAsar: app.getAppPath().endsWith('app.asar'),
+    launcherSessionPartition: window.webContents.session === launcherSession ? LAUNCHER_SESSION_PARTITION : 'unexpected',
+    sessionMatches: window.webContents.session === launcherSession,
+  }), { encoding: 'utf8', mode: 0o600 })
+}
+
+function createLauncherWindow(args: Readonly<{
+  launcherSession: Session
+  urlPolicy: LauncherUrlPolicy
+}>): BrowserWindow {
+  const window = new BrowserWindow({
+    alwaysOnTop: true,
+    frame: false,
+    fullscreenable: false,
+    height: 475,
+    maximizable: false,
+    minimizable: false,
+    resizable: false,
+    show: false,
+    skipTaskbar: true,
+    title: 'TockLauncher',
+    width: 750,
+    ...(process.platform === 'darwin' ? { transparent: true, type: 'panel' } : {}),
+    webPreferences: {
+      ...createLauncherWebPreferences({ electronDir: currentDir, role: LAUNCHER_ROLE }),
+      spellcheck: false,
+      webviewTag: false,
+    },
+  })
+  if (window.webContents.session !== args.launcherSession) {
+    window.destroy()
+    throw new Error('TockLauncher window was created with an unexpected session')
+  }
+  writeLauncherPackagedSmokeSecurity(window, args.launcherSession)
+  window.removeMenu()
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  window.webContents.on('will-attach-webview', event => { event.preventDefault() })
+  window.webContents.on('will-navigate', (event, url) => {
+    if (!args.urlPolicy.isAllowed(LAUNCHER_ROLE, url)) event.preventDefault()
+  })
+  window.webContents.on('will-redirect', (event, url) => {
+    if (!args.urlPolicy.isAllowed(LAUNCHER_ROLE, url)) event.preventDefault()
+  })
+  return window
+}
+
+function initializeLauncher(): void {
+  if (launcherController !== undefined) return
+  resetLauncherOsFixtureMarker()
+  resetLauncherTerminalFixtureMarker()
+  resetLauncherWorkflowFixtureMarker()
+  resetLauncherBrowserFixtureMarker()
+  const repository = requireLauncherPersistence()
+  const launcherSession = session.fromPartition(LAUNCHER_SESSION_PARTITION)
+  applyLauncherSessionPolicy(launcherSession)
+  const urlPolicy = createLauncherUrlPolicy({ launcherHtmlPath })
+  const platform = launcherPlatform()
+  const launcherHomePath = app.getPath('home')
+  const launcherHomeIdentity = captureLauncherHomeIdentitySync(launcherHomePath)
+  const local = createLauncherLocalExtensions({
+    copyText: async (text, signal) => {
+      if (signal.aborted) throw launcherAbortError(signal)
+      clipboard.writeText(text)
+      if (signal.aborted) throw launcherAbortError(signal)
+    },
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    onProviderError: (extensionId, error) => {
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
+    },
+  })
+  const reportDiscoveryError = (extensionId: 'ApplicationSearch' | 'BrowserBookmarks' | 'JetBrainsToolbox' | 'VSCode', error: Error): void => {
+    appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
+  }
+  const discoveryScanners = launcherDiscoveryFixtureRoot === undefined
+    ? createLauncherDiscoveryScanners({ onProviderError: reportDiscoveryError })
+    : Object.freeze({
+      ApplicationSearch: async () => [{ id: 'fixture:application', kind: 'application' as const, name: 'TockTeam Fixture', path: join(launcherDiscoveryFixtureRoot, 'Applications', 'TockTeam Fixture.app') }],
+      BrowserBookmarks: async () => [{ browserName: 'Google Chrome', id: 'fixture-bookmark', kind: 'bookmark' as const, name: 'TockTeam Fixture Bookmark', url: 'https://example.com/tockteam-fixture' }],
+      JetBrainsToolbox: async () => [{ executable: join(launcherDiscoveryFixtureRoot, 'JetBrains', 'idea'), id: 'fixture-jetbrains', kind: 'jetbrains' as const, name: 'TockTeam Fixture Project', projectPath: join(launcherDiscoveryFixtureRoot, 'JetBrains', 'project'), toolName: 'IntelliJ IDEA' }],
+      VSCode: async () => [{ commandArg: '--folder-uri' as const, fileType: 'Folder', id: 'fixture-vscode', kind: 'vscode' as const, label: 'TockTeam Fixture VS Code', path: join(launcherDiscoveryFixtureRoot, 'VSCode', 'project'), uri: 'vscode-remote://fixture/tockteam' }],
+    })
+  const discovery = createLauncherDiscoveryExtensions({
+    appDataPath: launcherPackagedSmokeEnabled ? app.getPath('userData') : app.getPath('appData'),
+    effects: {
+      confirmOpenApplicationAsAdministrator: async ({ name, target }, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        const result = await launcherAwaitAbortable(dialog.showMessageBox({
+          buttons: ['Open as administrator', 'Cancel'], cancelId: 1, defaultId: 1,
+          detail: [`Application: ${name}`, `Target: ${target}`, 'Windows will request administrator approval.'].join('\\n'),
+          message: `Open ${name} as administrator?`, title: PRODUCT_NAME, type: 'warning',
+        }), signal)
+        return result.response === 0
+      },
+      copyText: async (text, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        clipboard.writeText(text)
+        if (signal.aborted) throw launcherAbortError(signal)
+      },
+      launchExecutable: async (executable, args, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        await launchDetachedLauncherExecutable(executable, args, undefined, { signal, timeoutMs: 15_000 })
+        if (signal.aborted) throw launcherAbortError(signal)
+      },
+      openApplication: async (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (platform === 'Linux' && target.endsWith('.desktop')) {
+          const invocation = resolveLinuxDesktopEntryInvocation(target)
+          await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, signal, timeout: 15_000 })
+          return
+        }
+        if (platform === 'Windows' && revalidateLauncherWindowsStoreId(target)) {
+          await execFileAsync('explorer.exe', [target], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
+          return
+        }
+        const error = await launcherAwaitAbortable(shell.openPath(target), signal)
+        if (error) throw new Error(error)
+      },
+      openApplicationAsAdministrator: async (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        const invocation = resolveWindowsApplicationElevationInvocation(target)
+        await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
+      },
+      openExternal: async (url, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
+        await launcherAwaitAbortable(launcherCustomBrowser.openUrl(url, signal), signal)
+      },
+      revealPath: (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        shell.showItemInFolder(target)
+        if (signal.aborted) throw launcherAbortError(signal)
+      },
+    },
+    capturePathIdentity: async target => await statLauncherPathIdentity(target),
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    getApplicationIcon: async (target, signal) => {
+      if (signal.aborted || revalidateLauncherWindowsStoreId(target)) return undefined
+      const image = await app.getFileIcon(target, { size: 'normal' })
+      if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Application icon extraction canceled')
+      return image.isEmpty() ? undefined : image.resize({ height: 32, quality: 'good', width: 32 }).toDataURL()
+    },
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    homePath: app.getPath('home'),
+    onProviderError: reportDiscoveryError,
+    platform,
+    revalidate: {
+      application: async (target, entry, identity) => {
+        if (target !== entry.path) return false
+        if (platform === 'Windows' && revalidateLauncherWindowsStoreId(target)) return true
+        if (identity === undefined) return false
+        const kind = platform === 'macOS' && extname(target).toLocaleLowerCase('en-US') === '.app' ? 'directory' as const : 'file' as const
+        return await revalidateLauncherPath(target, { kind, identity })
+      },
+      bookmark: async (target, entry) => target === entry.url && await revalidateLauncherUrl(target, entry.url),
+      jetbrains: async ({ executable, projectPath, entry, executableIdentity, projectIdentity }) => {
+        if (executable !== entry.executable || projectPath !== entry.projectPath) return false
+        if (executableIdentity === undefined || projectIdentity === undefined) return false
+        const executableValid = await revalidateLauncherExecutable(executable, { identity: executableIdentity, ...(entry.installRoot === undefined ? {} : { root: entry.installRoot }) })
+        const projectValid = await revalidateLauncherPath(projectPath, { kind: 'directory', identity: projectIdentity })
+        return executableValid && projectValid
+      },
+      reveal: async (target, entry, identity) => {
+        if (target !== entry.path || identity === undefined) return false
+        const kind = platform === 'macOS' && extname(target).toLocaleLowerCase('en-US') === '.app' ? 'directory' as const : 'file' as const
+        return await revalidateLauncherPath(target, { kind, identity })
+      },
+      vscode: async ({ executable, uri, entry, executableIdentity, identity }) => {
+        if (uri !== entry.uri || executableIdentity === undefined || (uri.startsWith('file:') && identity === undefined)) return false
+        const executableValid = await revalidateLauncherExecutable(executable, { identity: executableIdentity })
+        return executableValid && await revalidateLauncherVscodeUri(uri, { ...(identity === undefined ? {} : { identity }) })
+      },
+    },
+    ...(launcherDiscoveryFixtureRoot === undefined ? {} : {
+      resolveExecutable: async () => join(launcherDiscoveryFixtureRoot, 'VSCode', 'code'),
+    }),
+    scanners: discoveryScanners,
+  })
+  launcherDiscovery = discovery
+  const fileSearchScanners = createLauncherFileSearchScanners()
+  const fileSearch = createLauncherFileSearchExtensions({
+    effects: {
+      openPath: async (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        const error = await launcherAwaitAbortable(shell.openPath(target), signal)
+        if (error) throw new Error(error)
+      },
+      revealPath: (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        shell.showItemInFolder(target)
+        if (signal.aborted) throw launcherAbortError(signal)
+      },
+    },
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    homePath: app.getPath('home'),
+    onProviderError: (extensionId, error) => {
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)
+    },
+    platform,
+    scanners: launcherFileSearchFixturePath === undefined
+      ? fileSearchScanners
+      : Object.freeze({
+        ...fileSearchScanners,
+        queryFileSearch: async ({ searchTerm, signal }) => {
+          if (!searchTerm.toLocaleLowerCase('en-US').includes('fixture')) return []
+          if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher file search fixture canceled')
+          const identity = await statLauncherPathIdentity(launcherFileSearchFixturePath)
+          return identity === undefined ? [] : [{ identity, path: launcherFileSearchFixturePath, type: 'file' as const }]
+        },
+      }),
+  })
+  launcherFileSearch = fileSearch
+  const network = createLauncherNetworkExtensions({
+    copyText: async (text, signal) => {
+      if (signal.aborted) throw launcherAbortError(signal)
+      clipboard.writeText(text)
+      if (signal.aborted) throw launcherAbortError(signal)
+    },
+    enabledExtensionIds: launcherEnabledLocalExtensionIds,
+    fetch: async (url, init) => launcherNetworkFixtureEnabled
+      ? await launcherNetworkFixtureFetch(url, init)
+      : await net.fetch(url, init) as unknown as Response,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    onProviderError: (extensionId, error) => {
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
+    },
+    openExternal: async (url, signal) => {
+      if (signal.aborted) throw launcherAbortError(signal)
+      if (launcherNetworkFixtureEnabled && !launcherBrowserFixtureEnabled) return
+      if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
+      await launcherAwaitAbortable(launcherCustomBrowser.openUrl(url, signal), signal)
+    },
+    ...(launcherNetworkFixtureEnabled ? { resolveAddresses: async () => ['8.8.8.8'] } : null),
+  })
+  launcherNetwork = network
+  const terminalEnabledExtensionIds = (): readonly string[] => launcherTerminalFixtureEnabled
+    ? [...new Set([...launcherEnabledLocalExtensionIds(), 'TerminalLauncher'])]
+    : launcherEnabledLocalExtensionIds()
+  const terminal = createLauncherTerminal({
+    effects: {
+      auditLaunch: async record => {
+        recordLauncherTerminalFixtureAudit(record)
+        appendLog('desktop', `TockLauncher terminal ${record.outcome}: terminal=${record.terminalId} commandLength=${record.commandLength} commandSha256=${record.commandSha256} workingDirectory=${record.workingDirectory}`)
+      },
+      confirmLaunch: async ({ command, terminalName, workingDirectory }, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherTerminalFixtureEnabled) {
+          if (command === 'fixture delayed') {
+            await new Promise<void>((resolve, reject) => {
+              const finish = (): void => { signal.removeEventListener('abort', abort); resolve() }
+              const timer = setTimeout(finish, 5_000)
+              const abort = (): void => {
+                clearTimeout(timer)
+                signal.removeEventListener('abort', abort)
+                recordLauncherTerminalFixtureCanceled()
+                reject(launcherAbortError(signal))
+              }
+              signal.addEventListener('abort', abort, { once: true })
+            })
+          }
+          return command === 'fixture accepted'
+        }
+        const owner = mainWindow
+        const pending = owner === undefined || owner.isDestroyed()
+          ? dialog.showMessageBox({ buttons: ['Launch', 'Cancel'], cancelId: 1, defaultId: 1, detail: `Terminal: ${terminalName}\\nCommand: ${command}\\nWorking directory: ${workingDirectory}`, message: `Launch command in ${terminalName}?`, title: PRODUCT_NAME, type: 'warning' })
+          : dialog.showMessageBox(owner, { buttons: ['Launch', 'Cancel'], cancelId: 1, defaultId: 1, detail: `Terminal: ${terminalName}\\nCommand: ${command}\\nWorking directory: ${workingDirectory}`, message: `Launch command in ${terminalName}?`, title: PRODUCT_NAME, type: 'warning' })
+        const result = await launcherAwaitAbortable(pending, signal)
+        return result.response === 0
+      },
+      launchTerminal: async (request, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherTerminalFixtureEnabled) {
+          if (request.command !== 'fixture accepted') {
+            launcherTerminalFixtureMarker.forbiddenEffects += 1
+            writeLauncherTerminalFixtureMarker()
+            throw new Error('Unexpected terminal fixture effect')
+          }
+          return
+        }
+        await launchTrustedLauncherTerminal(platform, request, signal)
+      },
+    },
+    enabledExtensionIds: terminalEnabledExtensionIds,
+    captureHomeIdentity: async target => await captureLauncherHomeIdentity(target),
+    getHomePath: () => app.getPath('home'),
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    homeIdentity: launcherHomeIdentity,
+    homePath: launcherHomePath,
+    onProviderError: error => { appendLog('desktop', `TockLauncher Terminal Launcher failed: ${error.name}`) },
+    platform,
+  })
+  launcherTerminal = terminal
+  const workflowEnabledExtensionIds = (): readonly string[] => launcherWorkflowFixtureEnabled
+    ? [...new Set([...launcherEnabledLocalExtensionIds(), 'Workflow'])]
+    : launcherEnabledLocalExtensionIds()
+  const confirmWorkflowAction = async (request: LauncherWorkflowConfirmation, signal?: AbortSignal): Promise<boolean> => {
+    if (signal?.aborted) throw launcherAbortError(signal)
+    const target = request.actionType === 'OpenFile'
+      ? `File (${request.kind}): ${request.filePath}`
+      : request.actionType === 'OpenUrl'
+        ? `URL: ${request.url}`
+        : request.actionType === 'OpenTerminal'
+          ? `Terminal: ${request.terminalId}\\nCommand: ${request.command}\\nWorking directory: ${request.workingDirectory}`
+          : `Command: ${request.command}\\nWorking directory: ${request.workingDirectory}`
+    const detail = `Action: ${request.actionName}\n${target}`
+    const pending = launcherWorkflowFixtureEnabled
+      ? (async () => {
+        if (/cancel/iu.test(request.actionName) && signal !== undefined) {
+          await new Promise<void>((resolve, reject) => {
+            let settled = false
+            const finish = (error?: Error): void => {
+              if (settled) return
+              settled = true
+              clearTimeout(timer)
+              signal.removeEventListener('abort', abort)
+              if (error === undefined) resolve()
+              else reject(error)
+            }
+            const abort = (): void => {
+              recordLauncherWorkflowFixtureConfirmation('canceled')
+              finish(launcherAbortError(signal))
+            }
+            const timer = setTimeout(finish, 5_000)
+            signal.addEventListener('abort', abort, { once: true })
+            if (signal.aborted) abort()
+          })
+        }
+        return { response: /decline/iu.test(request.actionName) ? 1 : 0 }
+      })()
+      : mainWindow === undefined || mainWindow.isDestroyed()
+        ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+        : dialog.showMessageBox(mainWindow, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: `Invoke ${request.actionType} in ${request.workflowName}?`, title: PRODUCT_NAME, type: 'warning' })
+    const result = signal === undefined ? await pending : await launcherAwaitAbortable(pending, signal)
+    const approved = result.response === 0
+    if (launcherWorkflowFixtureEnabled) recordLauncherWorkflowFixtureConfirmation(approved ? 'accepted' : 'declined')
+    return approved
+  }
+  const workflow = createLauncherWorkflow({
+    ...(launcherHomeIdentity === undefined ? {} : { captureHomeIdentity: async target => await captureLauncherHomeIdentity(target) }),
+    ...(launcherWorkflowFixtureEnabled ? {
+      capturePath: async (target: string) => ({ canonicalPath: target, identity: { dev: '0', ino: '0' }, kind: 'file' as const }),
+      revalidatePath: async () => true,
+    } : {}),
+    effects: {
+      auditWorkflow: async record => {
+        recordLauncherWorkflowFixtureAudit(record.outcome)
+        appendLog('desktop', `TockLauncher workflow ${record.outcome}: actions=${record.actionCount} commands=${record.commandCount} durationMs=${record.durationMs} stdoutBytes=${record.stdoutBytes} stderrBytes=${record.stderrBytes}`)
+      },
+      confirmAction: async request => await confirmWorkflowAction(request),
+      confirmActionWithSignal: async (request, signal) => await confirmWorkflowAction(request, signal),
+      executeCommand: async request => {
+        if (launcherWorkflowFixtureEnabled) {
+          recordLauncherWorkflowFixtureEffect('ExecuteCommand')
+          return Object.freeze({ stderrBytes: 0, stdoutBytes: 0 })
+        }
+        return await runBoundedWorkflowCommand({ command: request.command, platform, signal: request.signal, workingDirectory: request.workingDirectory })
+      },
+      openFileWithSignal: async (target, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherWorkflowFixtureEnabled) {
+          recordLauncherWorkflowFixtureEffect('OpenFile')
+          return
+        }
+        const error = await launcherAwaitAbortable(shell.openPath(target), signal)
+        if (error) throw new Error('TockLauncher Workflow file action failed')
+      },
+      openFile: async target => {
+        if (launcherWorkflowFixtureEnabled) return recordLauncherWorkflowFixtureEffect('OpenFile')
+        const error = await shell.openPath(target)
+        if (error) throw new Error('TockLauncher Workflow file action failed')
+      },
+      openTerminalWithSignal: async (request, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherWorkflowFixtureEnabled) {
+          if (request.command !== 'fixture accepted') return rejectLauncherWorkflowFixtureEffect('OpenTerminal')
+          recordLauncherWorkflowFixtureEffect('OpenTerminal')
+          return
+        }
+        await launchTrustedLauncherTerminal(platform, request, signal)
+      },
+      openTerminal: async request => {
+        if (launcherWorkflowFixtureEnabled) return recordLauncherWorkflowFixtureEffect('OpenTerminal')
+        await launchTrustedLauncherTerminal(platform, request)
+      },
+      openUrlWithSignal: async (url, signal) => {
+        if (signal.aborted) throw launcherAbortError(signal)
+        if (launcherWorkflowFixtureEnabled) {
+          recordLauncherWorkflowFixtureEffect('OpenUrl')
+          return
+        }
+        if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
+        await launcherAwaitAbortable(launcherCustomBrowser.openUrl(url, signal), signal)
+      },
+      openUrl: async url => {
+        if (launcherWorkflowFixtureEnabled) return recordLauncherWorkflowFixtureEffect('OpenUrl')
+        if (launcherCustomBrowser === undefined) throw new Error('Custom browser controller is unavailable')
+        await launcherCustomBrowser.openUrl(url)
+      },
+    },
+    enabledExtensionIds: workflowEnabledExtensionIds,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    ...(launcherHomeIdentity === undefined ? {} : { homeIdentity: launcherHomeIdentity }),
+    homePath: launcherHomePath,
+    onProviderError: _error => { appendLog('desktop', 'TockLauncher Workflow is unavailable.') },
+    platform,
+    validateHome: async (target, expected, signal) => {
+      if (signal.aborted) return false
+      const current = await captureLauncherHomeIdentity(target)
+      return current !== undefined && current.dev === expected.dev && current.ino === expected.ino
+    },
+    validateTerminal: async (terminalId, signal) => {
+      if (signal.aborted) return false
+      try {
+        const invocation = resolveTerminalInvocation(platform, { command: 'tockteam-workflow-check', terminalId, workingDirectory: launcherHomePath })
+        if (platform !== 'Windows') return invocation.executable === '/usr/bin/osascript'
+        const trusted = await resolveTrustedWindowsTerminalExecutable(terminalId)
+        return await revalidateTrustedWindowsTerminalExecutable(trusted)
+      } catch { return false }
+    },
+  })
+  launcherWorkflow = workflow
+  launcherLocal = local
+  const osEnabledExtensionIds = (): readonly string[] => launcherOsFixtureEnabled
+    ? [...new Set([...launcherEnabledLocalExtensionIds(), 'AppearanceSwitcher', 'SystemCommands', 'SystemSettings', 'UeliCommand', 'WindowsControlPanel'])]
+    : launcherEnabledLocalExtensionIds()
+  const resolveTrustedLauncherOsExecutable = async (executable: string): Promise<string> => {
+    if (platform === 'macOS') {
+      if (executable !== 'osascript') throw new Error('TockLauncher macOS executable is unavailable')
+      return '/usr/bin/osascript'
+    }
+    if (platform !== 'Windows') throw new Error('TockLauncher OS executable is unavailable')
+    const executableName = executable.toLocaleLowerCase('en-US') as LauncherTrustedWindowsSystemExecutable
+    if (!['control.exe', 'powershell.exe', 'rundll32.exe', 'shutdown.exe'].includes(executableName)) throw new Error('TockLauncher Windows executable is unavailable')
+    const trusted = await resolveTrustedWorkflowWindowsExecutable(executableName, process.env)
+    if (!await revalidateTrustedWorkflowWindowsExecutable(trusted)) throw new Error('TockLauncher Windows executable changed')
+    return trusted.executable
+  }
+  // Linux Empty Trash stays unpublished: Node has no atomic unlinkat/openat2 seam here.
+  const os = createLauncherOsExtensions({
+    effects: {
+      confirmPrivilegedAction: async ({ detail, operation, title }, signal) => {
+        if (launcherOsFixtureEnabled) {
+          if (signal.aborted) throw launcherAbortError(signal)
+          if (operation === 'invoke-system-command' && title === 'Shut Down?') {
+            return await new Promise<boolean>((resolve, reject) => {
+              const timer = setTimeout(() => {
+                signal.removeEventListener('abort', abort)
+                recordLauncherOsFixtureConfirmation('systemCommand', 'declined')
+                resolve(false)
+              }, 5_000)
+              const abort = (): void => {
+                clearTimeout(timer)
+                signal.removeEventListener('abort', abort)
+                recordLauncherOsFixtureConfirmation('shutdown', 'canceled')
+                reject(launcherAbortError(signal))
+              }
+              signal.addEventListener('abort', abort, { once: true })
+            })
+          }
+          // Fixture confirmation is deliberately entered for every protected row:
+          // only Lock is accepted, and its fixed effect remains inert below.
+          if (operation === 'invoke-system-command' && title === 'Lock?') return true
+          if (operation === 'open-control-panel-item') {
+            recordLauncherOsFixtureConfirmation('controlPanel', 'declined')
+            return false
+          }
+          if (operation === 'quit') {
+            recordLauncherOsFixtureConfirmation('quit', 'declined')
+            return false
+          }
+          recordLauncherOsFixtureConfirmation('systemCommand', 'declined')
+          return false
+        }
+        if (signal.aborted) throw launcherAbortError(signal)
+        const owner = mainWindow
+        const pending = owner === undefined || owner.isDestroyed()
+          ? dialog.showMessageBox({ buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: title, title: PRODUCT_NAME, type: 'warning' })
+          : dialog.showMessageBox(owner, { buttons: ['Continue', 'Cancel'], cancelId: 1, defaultId: 1, detail, message: title, title: PRODUCT_NAME, type: 'warning' })
+        const result = await launcherAwaitAbortable(pending, signal)
+        return result.response === 0
+      },
+      invokeSystemCommand: async (command, signal) => {
+        try {
+          if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled) {
+            if (command !== 'lock') return rejectLauncherOsFixtureEffect(`system-command:${command}`)
+            recordLauncherOsFixtureAcceptedLock()
+            return
+          }
+          const invocation = resolveSystemCommandInvocation(platform, command)
+          if (invocation === undefined) throw new Error('System command is unavailable')
+          const executable = await resolveTrustedLauncherOsExecutable(invocation.executable)
+          await execFileAsync(executable, [...invocation.args], {
+            maxBuffer: 64 * 1024,
+            shell: false,
+            signal,
+            timeout: 15_000,
+            ...(platform === 'Windows' ? { windowsHide: true } : {}),
+          })
+        } catch { throw new Error('TockLauncher system command failed') }
+      },
+      invokeUeliCommand: async (command, signal) => {
+        try {
+          if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled && command === 'quit') return rejectLauncherOsFixtureEffect('quit')
+          if (launcherLifecycle === undefined) throw new Error('TockLauncher lifecycle is unavailable')
+          const lifecycleWork = launcherLifecycle.invokeCommand(command, signal)
+          await launcherAwaitAbortable(lifecycleWork, signal)
+        } catch { throw new Error('TockLauncher lifecycle command failed') }
+      },
+      openControlPanelItem: async (canonicalName, signal) => {
+        try {
+          if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled) return rejectLauncherOsFixtureEffect(`control-panel:${canonicalName}`)
+          if (platform !== 'Windows') throw new Error('Windows Control Panel is unavailable')
+          const invocation = resolveWindowsControlPanelInvocation(canonicalName)
+          const executable = await resolveTrustedLauncherOsExecutable(invocation.executable)
+          await execFileAsync(executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, windowsHide: true })
+        } catch { throw new Error('TockLauncher Control Panel action failed') }
+      },
+      openSystemSetting: async (target, signal) => {
+        const catalog = platform === 'macOS' ? MACOS_SYSTEM_SETTINGS : WINDOWS_SYSTEM_SETTINGS
+        if (!catalog.some(row => row.target === target)) throw new Error('System setting is not in the current catalog')
+        try {
+          if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled) return rejectLauncherOsFixtureEffect(`system-setting:${target}`)
+          if (platform === 'Windows') {
+            await launcherAwaitAbortable(shell.openExternal(target), signal)
+            return
+          }
+          const identity = await statLauncherPathIdentity(target)
+          if (signal.aborted) throw launcherAbortError(signal)
+          if (identity === undefined || !await revalidateLauncherPath(target, { identity, kind: 'directory' })) throw new Error('System setting is unavailable')
+          if (signal.aborted) throw launcherAbortError(signal)
+          const error = await launcherAwaitAbortable(shell.openPath(target), signal)
+          if (error) throw new Error('System setting is unavailable')
+        } catch { throw new Error('TockLauncher system setting action failed') }
+      },
+      toggleAppearance: async signal => {
+        if (tockTutorPreviousThemeSource !== undefined) throw new Error('System appearance is unavailable during a theme override')
+        try {
+          if (signal.aborted) throw launcherAbortError(signal)
+          if (launcherOsFixtureEnabled) return rejectLauncherOsFixtureEffect('appearance')
+          const invocation = resolveAppearanceInvocation(platform, nativeTheme.shouldUseDarkColors)
+          const executable = await resolveTrustedLauncherOsExecutable(invocation.executable)
+          await execFileAsync(executable, [...invocation.args], { maxBuffer: 64 * 1024, shell: false, signal, timeout: 15_000, ...(platform === 'Windows' ? { windowsHide: true } : {}) })
+        } catch { throw new Error('TockLauncher appearance action failed') }
+      },
+    },
+    enabledExtensionIds: osEnabledExtensionIds,
+    getAppearanceMode: () => tockTutorPreviousThemeSource === undefined ? nativeTheme.shouldUseDarkColors : undefined,
+    getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    isAppearanceOverridden: () => tockTutorPreviousThemeSource !== undefined,
+    onProviderError: (extensionId, error) => {
+      const detail = launcherPackagedSmokeEnabled ? error.stack ?? error.message : error.name
+      appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${detail}`)
+    },
+    platform,
+    includeControlPanelFixture: launcherOsFixtureEnabled,
+    scanControlPanelItems: async signal => {
+      if (launcherOsFixtureEnabled) return [{ canonicalName: 'Fixture.System', name: 'Fixture Control Panel' }]
+      if (platform !== 'Windows') return []
+      const invocation = resolveWindowsControlPanelScanInvocation()
+      const executable = await resolveTrustedLauncherOsExecutable(invocation.executable)
+      const result = await execFileAsync(executable, [...invocation.args], {
+        encoding: 'utf8',
+        maxBuffer: 1_048_576,
+        shell: false,
+        signal,
+        timeout: 15_000,
+        windowsHide: true,
+      }) as unknown as { stdout: string }
+      return parseWindowsControlPanelItems(result.stdout)
+    },
+  })
+  launcherOs = os
+  const coreSearch = createLauncherCoreSearch({
+    initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
+    initialFavoriteItemIds: repository.getSetting('favorites', []),
+    initialIndexedItems: repository.readIndex(),
+    appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
+    loadIndexedItems: async (signal, preserveSignal) => {
+      const result = await createTockTeamDestinationResults('')
+      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
+    },
+    searchInstant: async searchTerm => {
+      const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
+        local.searchInstant(searchTerm), discovery.searchInstant(searchTerm), fileSearch.searchInstant(searchTerm), network.searchInstant(searchTerm), terminal.searchInstant(searchTerm),
+      ])
+      return Object.freeze({
+        after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after, ...networkResults.after, ...terminalResults.after]),
+        before: Object.freeze([...localResults.before, ...discoveryResults.before, ...fileResults.before, ...networkResults.before, ...terminalResults.before]),
+        ...(networkResults.lastError === undefined
+          ? fileResults.lastError === undefined ? null : { lastError: fileResults.lastError }
+          : { lastError: networkResults.lastError }),
+      })
+    },
+    persistIndex: async items => { await repository.writeIndex(items) },
+    persistSettings: async values => await runLauncherSettingsOperation(
+      async () => await runLauncherMutation('launcher-core-settings-mutation', async signal => {
+        await repository.updateSettings(values, signal)
+        assertLauncherSignal(signal)
+        launcherPersistentSetsSync?.()
+        return undefined
+      }),
+      { mutation: true },
+    ),
+    platform,
+  })
+  let controller: LauncherOverlayController | undefined
+  const actions = new LauncherActionStore({
+    ...(launcherWorkflowFixtureActionTtlMs === undefined ? {} : { ttlMsForSource: sourceExtension => sourceExtension === 'Workflow' ? launcherWorkflowFixtureActionTtlMs : undefined }),
+    cancel: async record => await workflow.cancelAction(record),
+    execute: async record => {
+      if (await coreSearch.executeAction(record)) return
+      if (await terminal.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
+      if (await workflow.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
+      if (await local.executeAction(record)) return
+      if (await discovery.executeAction(record)) return
+      if (await fileSearch.executeAction(record)) return
+      if (await network.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
+      if (await os.executeAction(record)) {
+        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+        return
+      }
+      await executeTockTeamDestination(record, () => {
+        if (runtimeUrl === undefined) return false
+        return mainWindow === undefined || mainWindow.isDestroyed()
+          ? true
+          : isEligibleDesktopRevealWindow()
+      }, destination => {
+        dispatchWorkbenchRoute({ destination })
+      })
+      if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+    },
+  })
+  launcherCore = coreSearch
+  launcherProviderInvalidator = createLauncherProviderInvalidator({
+    actions,
+    core: coreSearch,
+    discovery,
+    fileSearch,
+    local,
+    network,
+    os,
+    terminal,
+    workflow,
+    ...(launcherCustomBrowser === undefined ? {} : { browser: launcherCustomBrowser }),
+  })
+  const rescan = async (owner?: LauncherActionOwner, preserveSignal?: AbortSignal, reason = 'launcher-rescan') => {
+    const invalidationSignal = invalidateAllLauncherProviders(reason, owner, preserveSignal)
+    const rescanSignal = preserveSignal === undefined
+      ? invalidationSignal
+      : AbortSignal.any([invalidationSignal, preserveSignal])
+    return await coreSearch.rescan(rescanSignal, preserveSignal)
+  }
+  launcherRescan = rescan
+  const onWindowCleared = (window: { webContents: { id: number } }): void => {
+    const owner = { role: 'launcher' as const, webContentsId: window.webContents.id }
+    // Revoke every provider before clearing this renderer's public action owner.
+    invalidateAllLauncherProviders('launcher-owner-clear', owner)
+    const ownerGeneration = ++launcherOwnerGeneration
+    launcherOwnerReady = (async () => {
+      await waitForLauncherProvidersIdle()
+      if (ownerGeneration !== launcherOwnerGeneration || quitting) return
+      try { await rescan() } catch { /* the next owner will surface a bounded status */ }
+    })()
+  }
+  const nextController = new LauncherOverlayController({
+    createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
+    getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+    getLocale: () => launcherLocale,
+    getHideWindowOn: () => {
+      const configured = repository.getSetting<unknown>('window.hideWindowOn', ['blur', 'afterInvocation'])
+      return Array.isArray(configured) ? configured.filter((value): value is string => value === 'blur' || value === 'afterInvocation' || value === 'escapePressed') : ['blur', 'afterInvocation']
+    },
+    globalShortcut,
+    loadWindow: window => window.loadURL(urlPolicy.entryUrl).then(() => undefined),
+    onWindowCleared,
+    getThemeProjection: () => launcherThemeProjector.get(),
+    platform: process.platform,
+    registerWindow: (_role, window) => launcherWindowRegistry.register(
+      'launcher',
+      window as unknown as LauncherRegistryWindow,
+    ),
+  })
+  controller = nextController
+  launcherController = nextController
+  launcherCoreFlush = async () => {
+    await launcherCustomBrowser?.close()
+    const discoveryClose = discovery.close()
+    const fileClose = fileSearch.close()
+    const networkClose = network.close()
+    const osClose = os.close()
+    const terminalClose = terminal.close()
+    const workflowClose = workflow.close()
+    const localClose = local.close()
+    await discoveryClose
+    await fileClose
+    await networkClose
+    await osClose
+    await terminalClose
+    await workflowClose
+    await localClose
+    await coreSearch.close()
+  }
+  launcherPersistentSetsSync = () => { syncLauncherPersistentSets(coreSearch) }
+  launcherActions = actions
+  const launcherGuard = createLauncherIpcGuard({
+    launcherSession,
+    resolveWindow: sender => launcherWindowRegistry.resolveWindow(sender),
+    roleOf: window => launcherWindowRegistry.roleOf(window),
+    urlPolicy,
+  })
+  const disposeWindowIpc = registerLauncherWindowIpcHandlers({
+    controller: nextController,
+    getTheme: () => launcherThemeProjector.get(),
+    guard: launcherGuard,
+    ipcMain,
+    openSettings: openWorkbenchSettings,
+  })
+  try {
+    const disposeSearchIpc = registerLauncherIpcHandlers({
+      actions,
+      guard: launcherGuard,
+      ipcMain,
+      rescan,
+      search: async (searchTerm) => {
+        await launcherOwnerReady
+        const surface = launcherSurfaceSettings()
+        return await coreSearch.search(searchTerm, {
+          fuzziness: surface.fuzziness,
+          maxSearchResultItems: surface.maxSearchResultItems,
+          searchEngineId: surface.searchEngineId,
+        })
+      },
+      surface: {
+        getLocalExtensionSettings: launcherLocalExtensionSettings,
+        getSettings: launcherSurfaceSettings,
+        recordSearch: async query => await runLauncherSettingsOperation(async () => await recordLauncherSearch(query), { mutation: true }),
+      },
+    })
+    launcherIpcDisposer = () => {
+      disposeSearchIpc()
+      disposeWindowIpc()
+    }
+  } catch (error) {
+    disposeWindowIpc()
+    throw error
+  }
+  workbenchLauncherIpcDisposer = registerWorkbenchLauncherIpcHandlers({
+    assertTrustedMainIpc: event => { assertTrustedMainIpc(event as Electron.IpcMainInvokeEvent) },
+    controller: nextController,
+    ipcMain,
+    settings: {
+      exportSettings: async () => await runLauncherSettingsOperation(exportLauncherSettings),
+      getSnapshot: launcherSettingsSnapshot,
+      importSettings: async () => {
+        const result = await runLauncherSettingsOperation(
+          () => runLauncherMutation('launcher-settings-import', signal => importLauncherSettings(signal)),
+          { blockMutationsAfterSuccess: true, mutation: true },
+        )
+        if (!result.canceled) await queueSecureRelaunch('launcher-settings-import')
+        return result
+      },
+      resetSettings: async () => {
+        const result = await runLauncherSettingsOperation(
+          () => runLauncherMutation('launcher-settings-reset', signal => resetLauncherSettings(signal)),
+          { blockMutationsAfterSuccess: true, mutation: true },
+        )
+        if (!result.canceled) await queueSecureRelaunch('launcher-settings-reset')
+        return result
+      },
+      revokeCustomBrowser: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-custom-browser-revoke', signal => revokeCustomLauncherBrowser(signal)),
+        { mutation: true },
+      ),
+      revokeExternalSettings: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-external-settings-revoke', signal => revokeExternalLauncherSettings(signal)),
+        { mutation: true },
+      ),
+      selectCustomBrowser: async () => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-custom-browser-select', signal => selectCustomLauncherBrowser(signal)),
+        { mutation: true },
+      ),
+      selectExternalSettings: async () => {
+        const result = await runLauncherSettingsOperation(
+          () => runLauncherMutation('launcher-external-settings-select', signal => selectExternalLauncherSettings(signal)),
+          { blockMutationsAfterSuccess: true, mutation: true },
+        )
+        if (!result.canceled) await queueSecureRelaunch('launcher-settings-import')
+        return result
+      },
+      updateSetting: async (key, value) => await runLauncherSettingsOperation(
+        () => runLauncherMutation('launcher-setting-update', async signal => {
+          await requireLauncherPersistence().updateSetting(key, value, signal)
+          assertLauncherSignal(signal)
+          launcherPersistentSetsSync?.()
+          await launcherLifecycle?.sync()
+          assertLauncherSignal(signal)
+          return settingsOperation()
+        }, {
+          invalidate: launcherSettingRequiresProviderRescan(key),
+          rescan: launcherSettingRequiresProviderRescan(key),
+        }),
+        { mutation: true },
+      ),
+    },
+    onRouteReady: event => {
+      const sender = (event as Electron.IpcMainInvokeEvent).sender
+      if (sender !== mainWindow?.webContents) throw new Error('Desktop route readiness sender is unavailable')
+      const window = mainWindow
+      if (window === undefined || window.isDestroyed()) throw new Error('Desktop workbench is unavailable')
+      markWorkbenchReady(window)
+    },
+    syncLocale: (event, locale) => {
+      const sender = (event as Electron.IpcMainInvokeEvent).sender
+      const window = mainWindow
+      if (window === undefined || window.isDestroyed()
+        || sender !== window.webContents
+        || !workbenchRouteDelivery.isReady(window)
+        || workbenchReadyGeneration !== workbenchGeneration) {
+        throw new Error('Desktop locale sync is unavailable while the workbench is navigating')
+      }
+      launcherLocale = locale
+      nextController.sendLocale(locale)
+      return Object.freeze({ ok: true as const })
+    },
+    syncTheme: (event, source) => {
+      const sender = (event as Electron.IpcMainInvokeEvent).sender
+      const window = mainWindow
+      if (window === undefined || window.isDestroyed()
+        || sender !== window.webContents
+        || !workbenchRouteDelivery.isReady(window)
+        || workbenchReadyGeneration !== workbenchGeneration) {
+        throw new Error('Desktop theme sync is unavailable while the workbench is navigating')
+      }
+      const projection = launcherThemeProjector.update(source)
+      broadcastLauncherTheme(projection)
+      return Object.freeze({ ok: true as const })
+    },
+  })
+  nextController.registerShortcut()
+}
+
+async function initializeLauncherLifecycle(): Promise<void> {
+  if (launcherLifecycle !== undefined) return
+  const repository = requireLauncherPersistence()
+  initializeLauncherTray()
+  const overlay = launcherController
+  if (overlay === undefined) throw new Error('TockLauncher overlay is not initialized')
+  launcherLifecycle = new LauncherLifecycleController({
+    getSetting: (key, fallback) => {
+      const context = launcherDefaultContext()
+      const resolved = resolveLauncherSettingDefault(key, context)
+      return repository.getSetting(key, resolved === undefined ? fallback : resolved)
+    },
+    openWorkbenchSettings,
+    overlay,
+    queue: launcherToggleQueue,
+    queueSecureRelaunch,
+    requestSecureQuit: reason => { requestSecureQuit(reason) },
+    rescan: async signal => {
+      assertLauncherSignal(signal)
+      return await launcherRescan?.(undefined, signal, 'launcher-self-invalidation')
+    },
+    setDockVisible: setLauncherDockVisible,
+    setTrayVisible: setLauncherTrayVisible,
+    updateSetting: async (key, value, signal) => {
+      const needsRescan = key === 'general.hotkey.enabled'
+      assertLauncherSignal(signal)
+      if (needsRescan) invalidateAllLauncherProviders('launcher-self-invalidation', undefined, signal)
+      try {
+        await repository.updateSetting(key, value, signal)
+        assertLauncherSignal(signal)
+        launcherPersistentSetsSync?.()
+        await launcherLifecycle?.sync()
+        assertLauncherSignal(signal)
+        if (needsRescan) await launcherRescan?.(undefined, signal, 'launcher-self-invalidation')
+        assertLauncherSignal(signal)
+      } catch (reason) {
+        if (needsRescan) {
+          try { await launcherRescan?.(undefined, signal, 'launcher-self-invalidation') } catch { /* retain the original mutation error */ }
+        }
+        throw reason
+      }
+    },
+  })
+  try {
+    await launcherLifecycle.sync()
+  } catch (error) {
+    appendLog('desktop', `failed to initialize launcher lifecycle: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function queueCurrentWorkbenchRoute(window: BrowserWindow): void {
+  try {
+    workbenchRouteDelivery.deliver(window, { destination: currentWorkbenchDestination })
+  } catch (error) {
+    appendLog('desktop', `failed to queue current workbench route: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function invalidateWorkbenchReadiness(window: BrowserWindow | undefined = mainWindow): void {
+  if (window === undefined || window.isDestroyed()) return
+  workbenchGeneration += 1
+  workbenchReadyGeneration = -1
+  workbenchRouteDelivery.markUnready(window)
+  workbenchCommandDelivery.markUnready(window)
+  queueCurrentWorkbenchRoute(window)
+}
+
+function markWorkbenchReady(window: BrowserWindow): void {
+  if (window !== mainWindow || window.isDestroyed()) return
+  try {
+    workbenchRouteDelivery.markReady(window)
+    workbenchCommandDelivery.markReady(window)
+  } catch (error) {
+    workbenchRouteDelivery.markUnready(window)
+    workbenchCommandDelivery.markUnready(window)
+    queueCurrentWorkbenchRoute(window)
+    throw error
+  }
+  workbenchReadyGeneration = workbenchGeneration
+  void launcherLifecycle?.markReady().catch(error => {
+    appendLog('desktop', `failed to mark launcher ready: ${error instanceof Error ? error.message : String(error)}`)
+  })
+}
+
+function assignMainWindow(window: BrowserWindow): BrowserWindow {
+  workbenchGeneration += 1
+  workbenchReadyGeneration = -1
+  mainWindow = window
+  workbenchRouteDelivery.markUnready(window)
+  workbenchCommandDelivery.markUnready(window)
+  const pendingRoute = routeBeforeWorkbenchWindow ?? { destination: currentWorkbenchDestination }
+  routeBeforeWorkbenchWindow = undefined
+  workbenchRouteDelivery.deliver(window, pendingRoute)
+  const pending = commandsBeforeWorkbenchWindow.splice(0)
+  for (const command of pending) workbenchCommandDelivery.deliver(window, command)
+  return window
+}
+
+function activateWorkbench(): void {
+  if (mainWindow === undefined || mainWindow.isDestroyed()) {
+    if (runtimeUrl === undefined) {
+      void showSplash({ error: true, message: 'TockTeam 未运行，请从“DSH”菜单重新启动。' })
+      return
+    }
+    const window = assignMainWindow(createWindow())
+    void window.loadURL(runtimeUrl.href).then(flushQueuedOpenRequests).catch(error => {
+      appendLog('desktop', `failed to activate workbench: ${error instanceof Error ? error.message : String(error)}`)
+    })
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function dispatchWorkbenchRoute(route: LauncherWorkbenchRoute): void {
+  const parsedRoute = parseLauncherWorkbenchRoute(route)
+  currentWorkbenchDestination = parsedRoute.destination
+  if (runtimeUrl === undefined) throw new Error('TockTeam workbench is not on an active runtime page')
+  if (mainWindow !== undefined && !mainWindow.isDestroyed() && !isEligibleDesktopRevealWindow()) {
+    throw new Error('TockTeam workbench is not on an active runtime page')
+  }
+  const target = dispatchLauncherRouteToWorkbench({
+    createWorkbench: () => {
+      if (runtimeUrl === undefined) throw new Error('TockTeam runtime is unavailable')
+      const window = assignMainWindow(createWindow())
+      void window.loadURL(runtimeUrl.href).catch(error => {
+        appendLog('desktop', `failed to load workbench route: ${error instanceof Error ? error.message : String(error)}`)
+      })
+      return window
+    },
+    destination: parsedRoute.destination,
+    send: (window: BrowserWindow, nextRoute: LauncherWorkbenchRoute) => { workbenchRouteDelivery.deliver(window, nextRoute) },
+    workbenchWindow: mainWindow,
+  })
+  if (mainWindow !== target) assignMainWindow(target)
+}
+
+async function ensureWorkbenchWindow(): Promise<void> {
+  if (runtimeUrl === undefined) throw new Error('TockTeam workbench is unavailable')
+  const current = mainWindow
+  const window = current === undefined || current.isDestroyed()
+    ? assignMainWindow(createWindow())
+    : current
+  if (!isEligibleDesktopRevealWindow()) await window.loadURL(runtimeUrl.href)
+  if (window.isMinimized()) window.restore()
+  window.show()
+  window.focus()
+}
+
+async function openWorkbenchSettings(): Promise<void> {
+  await ensureWorkbenchWindow()
+  dispatchWorkbenchRoute({ destination: 'tockcoder' })
+  sendCommand({ section: 'tocklauncher', type: 'show-settings' })
+}
+
+function settingsOperation(canceled = false): Readonly<{ canceled?: boolean; ok: true }> {
+  return canceled ? Object.freeze({ canceled: true, ok: true as const }) : Object.freeze({ ok: true as const })
+}
+
+async function launcherOpenDialog(options: Electron.OpenDialogOptions): Promise<string | undefined> {
+  if (launcherBrowserFixtureEnabled && options.title === 'Choose TockLauncher Custom Browser') {
+    launcherBrowserFixtureMarker.picker += 1
+    writeLauncherBrowserFixtureMarker()
+    return launcherBrowserFixturePath()
+  }
+  const owner = mainWindow
+  const result = owner === undefined || owner.isDestroyed()
+    ? await dialog.showOpenDialog(options)
+    : await dialog.showOpenDialog(owner, options)
+  return result.canceled ? undefined : result.filePaths[0]
+}
+
+async function launcherSaveDialog(options: Electron.SaveDialogOptions): Promise<string | undefined> {
+  const owner = mainWindow
+  const result = owner === undefined || owner.isDestroyed()
+    ? await dialog.showSaveDialog(options)
+    : await dialog.showSaveDialog(owner, options)
+  return result.canceled ? undefined : result.filePath
+}
+
+function launcherPlatformPathExtension(): 'app' | 'exe' {
+  if (process.platform === 'darwin') return 'app'
+  if (process.platform === 'win32') return 'exe'
+  if (process.platform === 'linux') throw new Error('Custom browsers are not supported on Linux')
+  throw new Error('Unsupported TockLauncher platform')
+}
+
+async function importLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  const filePath = await launcherOpenDialog({
+    properties: ['openFile'],
+    title: 'Import TockLauncher Settings',
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  })
+  assertLauncherSignal(signal)
+  if (filePath === undefined) return settingsOperation(true)
+  await requireLauncherPersistence().importSettingsFromPath(filePath, signal)
+  assertLauncherSignal(signal)
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  assertLauncherSignal(signal)
+  return settingsOperation()
+}
+
+async function exportLauncherSettings(): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  const filePath = await launcherSaveDialog({
+    title: 'Export TockLauncher Settings',
+    defaultPath: join(app.getPath('documents'), 'tocklauncher-settings.json'),
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  })
+  if (filePath === undefined) return settingsOperation(true)
+  await requireLauncherPersistence().exportSettingsToPath(filePath)
+  return settingsOperation()
+}
+
+async function resetLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  const repository = requireLauncherPersistence()
+  if (repository.snapshot().settingsSource === 'external' && !repository.externalWriteAvailable) {
+    throw new Error('TockLauncher external settings writes are unavailable on this platform')
+  }
+  assertLauncherSignal(signal)
+  await launcherCustomBrowser?.revoke(signal)
+  await repository.resetSettings(signal)
+  assertLauncherSignal(signal)
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  assertLauncherSignal(signal)
+  return settingsOperation()
+}
+
+async function selectExternalLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  const filePath = await launcherOpenDialog({ properties: ['openFile'], title: 'Choose External TockLauncher Settings' })
+  assertLauncherSignal(signal)
+  if (filePath === undefined) return settingsOperation(true)
+  await requireLauncherPersistence().grantExternalSettingsFile(filePath, signal)
+  assertLauncherSignal(signal)
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  assertLauncherSignal(signal)
+  return settingsOperation()
+}
+
+async function selectCustomLauncherBrowser(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  if (process.platform === 'linux') throw new Error('Custom browsers are not supported on Linux')
+  const extension = launcherPlatformPathExtension()
+  const filePath = await launcherOpenDialog({
+    properties: ['openFile'],
+    title: 'Choose TockLauncher Custom Browser',
+    filters: [{ name: extension === 'app' ? 'Browser applications' : 'Browser executables', extensions: [extension] }],
+  })
+  assertLauncherSignal(signal)
+  if (filePath === undefined) return settingsOperation(true)
+  await launcherCustomBrowser?.select(filePath, signal)
+  assertLauncherSignal(signal)
+  return settingsOperation()
+}
+
+async function revokeExternalLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  assertLauncherSignal(signal)
+  await requireLauncherPersistence().revokeExternalSettingsFile(signal)
+  assertLauncherSignal(signal)
+  launcherPersistentSetsSync?.()
+  await launcherLifecycle?.sync()
+  assertLauncherSignal(signal)
+  return settingsOperation()
+}
+
+async function revokeCustomLauncherBrowser(signal?: AbortSignal): Promise<Readonly<{ canceled?: boolean; ok: true }>> {
+  assertLauncherSignal(signal)
+  await launcherCustomBrowser?.revoke(signal)
+  assertLauncherSignal(signal)
+  return settingsOperation()
+}
+
+function transferWorkbenchIntent(window: BrowserWindow): void {
+  const pendingRoute = workbenchRouteDelivery.takePending(window)
+  routeBeforeWorkbenchWindow = pendingRoute ?? { destination: currentWorkbenchDestination }
+  commandsBeforeWorkbenchWindow.push(...workbenchCommandDelivery.takePending(window))
+  workbenchRouteDelivery.clear(window)
+  workbenchCommandDelivery.clear(window)
+}
+
+let workbenchRendererRecovery: Promise<void> | undefined
+
+function replaceWorkbenchAfterRendererFailure(window: BrowserWindow): void {
+  if (mainWindow === window) {
+    transferWorkbenchIntent(window)
+    mainWindow = undefined
+  }
+  if (!window.isDestroyed()) {
+    try { window.destroy() } catch { /* renderer failure cleanup is best effort */ }
+  }
+  if (quitting || transitioning || runtimeUrl === undefined) return
+  const replacement = assignMainWindow(createWindow())
+  const url = runtimeUrl
+  void replacement.loadURL(url.href).then(flushQueuedOpenRequests).catch(error => {
+    appendLog('desktop', `failed to replace crashed workbench: ${error instanceof Error ? error.message : String(error)}`)
+  })
+}
+
+function recoverWorkbenchRenderer(window: BrowserWindow): void {
+  if (quitting || transitioning || runtimeUrl === undefined || workbenchRendererRecovery !== undefined) return
+  const url = runtimeUrl.href
+  const recovery = (async (): Promise<void> => {
+    if (mainWindow === window && !window.isDestroyed()) {
+      try {
+        await window.loadURL(url)
+        return
+      } catch (error) {
+        appendLog('desktop', `failed to reload crashed workbench: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+    replaceWorkbenchAfterRendererFailure(window)
+  })()
+  const tracked = recovery.finally(() => {
+    if (workbenchRendererRecovery === tracked) workbenchRendererRecovery = undefined
+  })
+  workbenchRendererRecovery = tracked
+  void tracked.catch(error => {
+    appendLog('desktop', `workbench renderer recovery failed: ${error instanceof Error ? error.message : String(error)}`)
+  })
+}
+
 function createWindow(options: { preview?: boolean; title?: string } = {}): BrowserWindow {
   const icon = windowIconPath()
   const displays = screen.getAllDisplays()
@@ -741,7 +2792,13 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   window.once('ready-to-show', () => { window.show() })
   window.on('closed', () => {
     if (mainWindow === window) {
+      launcherController?.destroyWindow()
       desktopCallerAuthorizations.revokeWindow(windowId)
+      const pendingRoute = workbenchRouteDelivery.takePending(window)
+      routeBeforeWorkbenchWindow = pendingRoute ?? { destination: currentWorkbenchDestination }
+      commandsBeforeWorkbenchWindow.push(...workbenchCommandDelivery.takePending(window))
+      workbenchRouteDelivery.clear(window)
+      workbenchCommandDelivery.clear(window)
       resetTockTutorTheme(window)
       mainWindow = undefined
     }
@@ -803,15 +2860,26 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
       event.preventDefault()
     })
   })
-  window.webContents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => {
+  window.webContents.on('did-finish-load', () => {
+    if (mainWindow !== window || runtimeOrigin === undefined) return
+    if (originOf(window.webContents.getURL()) !== runtimeOrigin) return
+    markWorkbenchReady(window)
+  })
+  window.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => {
     if (isMainFrame) {
       desktopCallerAuthorizations.revokeWindow(windowId)
-      if (mainWindow === window) resetTockTutorTheme(window)
+      if (!inPlace && mainWindow === window) {
+        invalidateWorkbenchReadiness(window)
+        resetTockTutorTheme(window)
+      }
     }
   })
   window.webContents.on('render-process-gone', () => {
     desktopCallerAuthorizations.revokeWindow(windowId)
-    if (mainWindow === window) resetTockTutorTheme(window)
+    if (mainWindow !== window) return
+    invalidateWorkbenchReadiness(window)
+    resetTockTutorTheme(window)
+    recoverWorkbenchRenderer(window)
   })
   window.webContents.on('will-navigate', (event, url) => {
     const allowedOrigin = options.preview === true ? previewOrigin : runtimeOrigin
@@ -823,17 +2891,35 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
 }
 
 async function showSplash(options: { detail?: string; error?: boolean; message?: string } = {}): Promise<void> {
-  if (mainWindow === undefined || mainWindow.isDestroyed()) mainWindow = createWindow()
+  if (mainWindow === undefined || mainWindow.isDestroyed()) assignMainWindow(createWindow())
   const query: Record<string, string> = {}
   if (options.error === true) query.state = 'error'
   if (options.message !== undefined) query.message = options.message
   if (options.detail !== undefined) query.detail = options.detail.slice(0, 4_000)
-  await mainWindow.loadFile(splashPath, { query })
+  const window = mainWindow
+  if (window === undefined || window.isDestroyed()) throw new Error('TockTeam workbench is unavailable')
+  await window.loadFile(splashPath, { query })
 }
 
-function sendCommand(command: DesktopCommand): void {
-  if (mainWindow === undefined || mainWindow.isDestroyed()) return
-  mainWindow.webContents.send('desktop:command', command)
+function sendCommand(command: DesktopCommand): boolean {
+  const window = mainWindow
+  if (window === undefined || window.isDestroyed()) {
+    if (commandsBeforeWorkbenchWindow.length >= 128) {
+      appendLog('desktop', 'workbench command queue is full')
+      return false
+    }
+    commandsBeforeWorkbenchWindow.push(command)
+    return true
+  }
+  try {
+    workbenchCommandDelivery.deliver(window, command)
+    return true
+  } catch (error) {
+    appendLog('desktop', `failed to queue workbench command: ${error instanceof Error ? error.message : String(error)}`)
+    // Delivery requeues an unsent command before throwing; only capacity
+    // failures remain caller-owned for a later retry.
+    return !(error instanceof Error && error.message === 'Workbench command queue is full')
+  }
 }
 
 function normalizeWorkspacePaths(paths: readonly string[]): string[] {
@@ -869,13 +2955,20 @@ function browserDispatchEvent(
 function flushQueuedProtocols(): void {
   const pending = queuedProtocolUrls
   queuedProtocolUrls = []
-  for (const raw of pending) desktopDispatchChannel.publishProtocol(raw)
+  for (let index = 0; index < pending.length; index += 1) {
+    if (desktopDispatchChannel.publishProtocol(pending[index]!)) continue
+    queuedProtocolUrls.push(...pending.slice(index))
+    break
+  }
 }
 
 function flushQueuedPaths(): void {
   const paths = normalizeWorkspacePaths(queuedPaths)
-  queuedPaths = []
-  if (paths.length > 0) sendCommand({ type: 'open-paths', paths })
+  if (paths.length === 0) {
+    queuedPaths = []
+    return
+  }
+  if (sendCommand({ type: 'open-paths', paths })) queuedPaths = []
 }
 
 function flushQueuedOpenRequests(): void {
@@ -883,59 +2976,112 @@ function flushQueuedOpenRequests(): void {
   flushQueuedProtocols()
 }
 
+let runtimeStopPromise: Promise<void> | undefined
+
+async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolean }> = {}): Promise<void> {
+  invalidateAllLauncherProviders('launcher-runtime-relaunch')
+  await launcherWorkflow?.waitForIdle()
+  const pendingStart = runtimeStartGate.pending
+  runtimeStartGate.invalidate()
+  invalidateWorkbenchReadiness()
+  if (runtimeStopPromise !== undefined) {
+    if (!options.skipStartWait && pendingStart !== undefined) await pendingStart.catch(() => {})
+    return await runtimeStopPromise
+  }
+  const supervisor = runtime
+  runtime = undefined
+  runtimeUrl = undefined
+  runtimeOrigin = undefined
+  const operation = (async (): Promise<void> => {
+    const results = await Promise.allSettled([
+      supervisor?.stop() ?? Promise.resolve(),
+      desktopPrintExportChannel.stop(),
+      desktopPopOutChannel.stop(),
+      desktopMicrophoneChannel.stop(),
+      stopDesktopDispatchChannel(),
+      desktopCallerChannel.stop(),
+      desktopPickerChannel.stop(),
+      desktopRevealChannel.stop(),
+    ])
+    const failed = results.find(result => result.status === 'rejected')
+    if (failed?.status === 'rejected') throw failed.reason
+  })()
+  const tracked = operation.finally(() => {
+    if (runtimeStopPromise === tracked) runtimeStopPromise = undefined
+  })
+  runtimeStopPromise = tracked
+  if (!options.skipStartWait && pendingStart !== undefined) await pendingStart.catch(() => {})
+  return await runtimeStopPromise
+}
+
 function handleRuntimeExit(exit: RuntimeExit): void {
   appendLog('desktop', `DSH runtime exited: code=${String(exit.code)} signal=${String(exit.signal)}`)
   if (quitting || transitioning) return
   transitioning = true
-  runtimeUrl = undefined
-  runtimeOrigin = undefined
-  void Promise.allSettled([
-    desktopRevealChannel.stop(),
-    desktopPickerChannel.stop(),
-    desktopCallerChannel.stop(),
-    stopDesktopDispatchChannel(),
-    desktopMicrophoneChannel.stop(),
-    desktopPopOutChannel.stop(),
-    desktopPrintExportChannel.stop(),
-  ]).then(async () => {
-    await showSplash({
+  void handleUnexpectedRuntimeExit({
+    log: error => {
+      appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
+    },
+    setTransitioning: value => { transitioning = value },
+    showStoppedSplash: () => showSplash({
       error: true,
       message: 'TockTeam 已停止。可从“DSH”菜单重新启动。',
       detail: logTail.slice(-12).join('\n'),
-    })
-  }).finally(() => { transitioning = false })
+    }),
+    stopRuntime: () => stopRuntimeAndChannels(),
+  }).catch(error => {
+    appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
+    transitioning = false
+  })
 }
 
-async function startRuntime(): Promise<void> {
+async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>): Promise<void> {
+  const ensureCurrent = (): void => {
+    if (quitting || !token.isCurrent()) throw new RuntimeStartCancelledError()
+  }
+  if (runtime !== undefined || runtimeUrl !== undefined) return
   const info = desktopInfo()
   ensureDesktopProfile(info.dshHome)
-  await desktopRevealChannel.start()
-  await desktopPickerChannel.start()
-  await desktopCallerChannel.start()
-  await desktopDispatchChannel.start()
-  await desktopMicrophoneChannel.start()
-  await desktopPopOutChannel.start()
-  await desktopPrintExportChannel.start()
   try {
+    const startChannel = async (start: () => Promise<unknown>): Promise<void> => {
+      await start()
+      ensureCurrent()
+    }
+    await startChannel(() => desktopRevealChannel.start())
+    await startChannel(() => desktopPickerChannel.start())
+    await startChannel(() => desktopCallerChannel.start())
+    await startChannel(() => desktopDispatchChannel.start())
+    await startChannel(() => desktopMicrophoneChannel.start())
+    await startChannel(() => desktopPopOutChannel.start())
+    await startChannel(() => desktopPrintExportChannel.start())
+    ensureCurrent()
     const supervisor = new DshRuntimeSupervisor(runtimeOptions())
     runtime = supervisor
     supervisor.on('exit', handleRuntimeExit)
     const url = await supervisor.start()
+    if (runtime !== supervisor) {
+      await supervisor.stop().catch(() => {})
+      throw new RuntimeStartCancelledError()
+    }
+    ensureCurrent()
     runtimeUrl = url
     runtimeOrigin = url.origin
-    if (mainWindow === undefined || mainWindow.isDestroyed()) mainWindow = createWindow()
-    await mainWindow.loadURL(url.href)
+    if (mainWindow === undefined || mainWindow.isDestroyed()) assignMainWindow(createWindow())
+    const window = mainWindow
+    if (window === undefined || window.isDestroyed()) throw new Error('TockTeam workbench is unavailable')
+    await window.loadURL(url.href)
+    ensureCurrent()
     flushQueuedOpenRequests()
+    await launcherRescan?.()
   } catch (error) {
-    await desktopPrintExportChannel.stop()
-    await desktopPopOutChannel.stop()
-    await desktopMicrophoneChannel.stop()
-    await stopDesktopDispatchChannel()
-    await desktopCallerChannel.stop()
-    await desktopPickerChannel.stop()
-    await desktopRevealChannel.stop()
+    await stopRuntimeAndChannels({ skipStartWait: true }).catch(() => {})
     throw error
   }
+}
+
+async function startRuntime(): Promise<void> {
+  if (quitting) throw new RuntimeStartCancelledError()
+  return await runtimeStartGate.start(startRuntimeOwned)
 }
 
 async function stopPreviewSurface(): Promise<void> {
@@ -990,22 +3136,16 @@ async function startPreviewSurface(input: {
 }
 
 async function stopLiveForMarketplace(): Promise<void> {
-  transitioning = true
-  await showSplash({ message: '正在应用插件 Profile…' })
-  await runtime?.stop()
-  await desktopPrintExportChannel.stop()
-  await desktopPopOutChannel.stop()
-  await desktopMicrophoneChannel.stop()
-  await stopDesktopDispatchChannel()
-  await desktopCallerChannel.stop()
-  await desktopPickerChannel.stop()
-  await desktopRevealChannel.stop()
-  runtime = undefined
-  runtimeUrl = undefined
-  runtimeOrigin = undefined
+  if (quitting) return
+  await stopLiveRuntimeForMarketplace({
+    setTransitioning: value => { transitioning = value },
+    showSplash: () => showSplash({ message: '正在应用插件 Profile…' }),
+    stopRuntime: () => stopRuntimeAndChannels(),
+  })
 }
 
 async function startLiveForMarketplace(): Promise<void> {
+  if (quitting) return
   try {
     await startRuntime()
   } finally {
@@ -1018,25 +3158,17 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
   transitioning = true
   try {
     await showSplash({ message })
-    await runtime?.stop()
-    await desktopPrintExportChannel.stop()
-    await desktopPopOutChannel.stop()
-    await desktopMicrophoneChannel.stop()
-    await stopDesktopDispatchChannel()
-    await desktopCallerChannel.stop()
-    await desktopPickerChannel.stop()
-    await desktopRevealChannel.stop()
-    runtime = undefined
-    runtimeUrl = undefined
-    runtimeOrigin = undefined
+    await stopRuntimeAndChannels()
     await startRuntime()
   } catch (error) {
-    appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
-    await showSplash({
-      error: true,
-      message: 'TockTeam Desktop 启动失败。',
-      detail: error instanceof Error ? error.message : String(error),
-    })
+    if (!quitting) {
+      appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
+      await showSplash({
+        error: true,
+        message: 'TockTeam Desktop 启动失败。',
+        detail: error instanceof Error ? error.message : String(error),
+      })
+    }
   } finally {
     transitioning = false
   }
@@ -1074,15 +3206,7 @@ async function installLocalPlugin(): Promise<void> {
   transitioning = true
   try {
     await showSplash({ message: '正在安装 DSH 插件…' })
-    await runtime?.stop()
-    await desktopPrintExportChannel.stop()
-    await desktopPopOutChannel.stop()
-    await desktopMicrophoneChannel.stop()
-    await stopDesktopDispatchChannel()
-    await desktopCallerChannel.stop()
-    await desktopPickerChannel.stop()
-    await desktopRevealChannel.stop()
-    runtime = undefined
+    await stopRuntimeAndChannels()
     const options = runtimeOptions()
     await runDshCommand(options, ['plugin', '--profile', DESKTOP_PROFILE, 'add', pluginPath])
     await startRuntime()
@@ -1144,6 +3268,7 @@ function labels() {
     openWorkspace: '打开工作区…',
     restart: '重新启动 DSH Runtime',
     settings: '设置…',
+    showLauncher: '显示 TockLauncher',
     toggleBottomPanel: '切换底部面板',
     togglePanelMaximized: '展开或还原工具侧栏',
     togglePinnedSummary: '切换置顶摘要',
@@ -1170,6 +3295,7 @@ function labels() {
     openWorkspace: 'Open Workspace…',
     restart: 'Restart DSH Runtime',
     settings: 'Settings…',
+    showLauncher: 'Show TockLauncher',
     toggleBottomPanel: 'Toggle Bottom Panel',
     togglePanelMaximized: 'Expand or Restore Side Panel',
     togglePinnedSummary: 'Toggle Pinned Summary',
@@ -1184,6 +3310,154 @@ function labels() {
   }
 }
 
+function setLauncherDockVisible(visible: boolean): void {
+  if (process.platform !== 'darwin' || app.dock === undefined) return
+  try {
+    if (visible) app.dock.show()
+    else app.dock.hide()
+  } catch (error) {
+    appendLog('desktop', `Dock visibility update failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function setLauncherTrayVisible(visible: boolean): void {
+  if (launcherTrayOwner === undefined) return
+  try {
+    launcherTrayOwner.setVisible(visible)
+  } catch (error) {
+    appendLog('desktop', `tray visibility update failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function initializeLauncherTray(): void {
+  if (launcherTrayOwner !== undefined) return
+  launcherTrayOwner = new SingleOwnedTray(() => {
+    const icon = windowIconPath()
+    if (icon === undefined) throw new Error('TockTeam tray icon is unavailable')
+    const tray = new Tray(icon)
+    try {
+      tray.setToolTip(PRODUCT_NAME)
+      tray.setContextMenu(Menu.buildFromTemplate([
+        { label: 'Show Workbench', click: () => { activateWorkbench() } },
+        { label: 'Show TockLauncher', click: () => { void launcherController?.show().catch(() => {}) } },
+        { label: 'Settings', click: () => { void openWorkbenchSettings().catch(() => {}) } },
+        { type: 'separator' },
+        { label: 'Quit TockTeam', click: () => { requestSecureQuit('tray') } },
+      ]))
+      tray.on('click', () => { activateWorkbench() })
+      return tray
+    } catch (error) {
+      try { tray.destroy() } catch { /* local native cleanup is best effort */ }
+      throw error
+    }
+  })
+}
+
+function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-quit' | 'updater-install'): void {
+  if (secureTeardownPromise !== undefined) return
+  secureTeardownPromise = (async () => {
+    quitting = true
+    invalidateAllLauncherProviders('launcher-shutdown')
+    await launcherWorkflow?.waitForIdle()
+    runtimeStartGate.close()
+    launcherLifecycle?.dispose()
+    launcherController?.dispose()
+    launcherIpcDisposer?.()
+    launcherIpcDisposer = undefined
+    workbenchLauncherIpcDisposer?.()
+    workbenchLauncherIpcDisposer = undefined
+    launcherUpdater = undefined
+    const settingsGateResult = await Promise.allSettled([closeLauncherSettingsOperations()])
+    if (settingsGateResult[0]?.status === 'rejected') appendLog('desktop', 'TockLauncher settings shutdown failed')
+    const launcherCloseResults = await Promise.allSettled([
+      launcherCoreFlush?.() ?? Promise.resolve(),
+      launcherCustomBrowser?.close() ?? Promise.resolve(),
+    ])
+    for (const result of launcherCloseResults) {
+      if (result.status === 'rejected') appendLog('desktop', 'TockLauncher shutdown operation failed')
+    }
+    const repositoryCloseResult = await Promise.allSettled([launcherPersistence?.close() ?? Promise.resolve()])
+    for (const result of repositoryCloseResult) {
+      if (result.status === 'rejected') appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
+    }
+    const results = await Promise.allSettled([
+      stopRuntimeAndChannels(),
+      stopPreviewSurface(),
+      marketplaceAgentGateway?.close() ?? Promise.resolve(),
+    ])
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
+      }
+    }
+    logStream?.end()
+    app.quit()
+  })()
+  void secureTeardownPromise.catch(error => {
+    appendLog('desktop', `secure quit failed: ${error instanceof Error ? error.message : String(error)}`)
+    app.quit()
+  })
+}
+
+async function reconcileLauncherAfterRelaunchFailure(reason: string): Promise<void> {
+  if (quitting) return
+  try {
+    launcherPersistentSetsSync?.()
+    await launcherLifecycle?.sync()
+    await waitForLauncherProvidersIdleBounded()
+    await launcherRescan?.(undefined, undefined, `${reason}-recovery`)
+  } finally {
+    if (!quitting) launcherSettingsOperations.reopenMutations()
+  }
+}
+
+async function queueSecureRelaunch(reason: 'launcher-settings-import' | 'launcher-settings-reset'): Promise<void> {
+  if (quitting) return
+  invalidateAllLauncherProviders(`launcher-${reason}-relaunch`)
+  await launcherWorkflow?.waitForIdle()
+  await attemptSecureRelaunchWithRecovery({
+    reconcile: async () => await reconcileLauncherAfterRelaunchFailure(reason),
+    relaunch: () => { app.relaunch() },
+    report: error => {
+      appendLog('desktop', `relaunch requested by ${reason} failed: ${error instanceof Error ? error.message : String(error)}`)
+    },
+    requestQuit: () => { requestSecureQuit('native-quit') },
+  })
+}
+
+async function prepareUpdaterInstall(): Promise<void> {
+  launcherUpdaterRuntimeWasActive = runtime !== undefined && runtimeUrl !== undefined
+  if (!launcherUpdaterRuntimeWasActive) return
+  transitioning = true
+  try {
+    await stopRuntimeAndChannels()
+  } catch (error) {
+    transitioning = false
+    throw error
+  }
+}
+
+async function recoverUpdaterInstall(): Promise<void> {
+  if (!launcherUpdaterRuntimeWasActive || quitting) return
+  launcherUpdaterRuntimeWasActive = false
+  try {
+    await startRuntime()
+  } finally {
+    transitioning = false
+  }
+}
+
+function broadcastLauncherTheme(projection: ReturnType<typeof launcherThemeProjector.get>): void {
+  launcherController?.sendTheme(projection)
+}
+
+function broadcastDesktopAppUpdateState(state: ReturnType<DesktopAppUpdater['getState']>): void {
+  const window = mainWindow
+  if (window === undefined || window.isDestroyed() || window.webContents.isDestroyed()) return
+  if (runtimeOrigin === undefined || originOf(window.webContents.getURL()) !== runtimeOrigin) return
+  window.webContents.send(DESKTOP_APP_UPDATE_CHANNELS.state, state)
+}
+
 function buildMenu(): void {
   const text = labels()
   const info = desktopInfo()
@@ -1194,7 +3468,8 @@ function buildMenu(): void {
       submenu: [
         { role: 'about' },
         { type: 'separator' },
-        { label: text.settings, accelerator: 'CmdOrCtrl+,', click: () => { sendCommand({ type: 'show-settings' }) } },
+        { label: text.settings, accelerator: 'CmdOrCtrl+,', click: () => { void openWorkbenchSettings().catch(() => {}) } },
+        { label: text.showLauncher, click: () => { void launcherLifecycle?.invokeCommand('show').catch(() => {}) } },
         ...(process.platform === 'darwin'
           ? [
             { type: 'separator' as const },
@@ -1313,10 +3588,49 @@ function installIpc(): void {
     assertTrustedMainIpc(event)
     return desktopRuntimeSnapshot()
   })
+  ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.getState, (event, ...rawArgs: unknown[]) => {
+    assertTrustedMainIpc(event)
+    assertNoLauncherIpcArguments(rawArgs)
+    if (launcherUpdater === undefined) throw new Error('Desktop updater is not initialized')
+    return parseDesktopAppUpdateState(launcherUpdater.getState())
+  })
+  ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.check, async (event, ...rawArgs: unknown[]) => {
+    assertTrustedMainIpc(event)
+    assertNoLauncherIpcArguments(rawArgs)
+    if (launcherUpdater === undefined) throw new Error('Desktop updater is not initialized')
+    return parseDesktopAppUpdateActionResult(await launcherUpdater.check())
+  })
+  ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.download, async (event, ...rawArgs: unknown[]) => {
+    assertTrustedMainIpc(event)
+    assertNoLauncherIpcArguments(rawArgs)
+    if (launcherUpdater === undefined) throw new Error('Desktop updater is not initialized')
+    return parseDesktopAppUpdateActionResult(await launcherUpdater.download())
+  })
+  ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.install, async (event, ...rawArgs: unknown[]) => {
+    assertTrustedMainIpc(event)
+    assertNoLauncherIpcArguments(rawArgs)
+    if (launcherUpdater === undefined) throw new Error('Desktop updater is not initialized')
+    return parseDesktopAppUpdateActionResult(await launcherUpdater.install())
+  })
+  ipcMain.handle('desktop:launch-on-start:get', event => {
+    assertTrustedMainIpc(event)
+    return readLaunchOnStart(app)
+  })
+  ipcMain.handle('desktop:launch-on-start:set', (event, raw: unknown) => {
+    assertTrustedMainIpc(event)
+    if (typeof raw !== 'boolean') throw new Error('Launch on Start must be a boolean')
+    return setLaunchOnStart(app, raw)
+  })
   ipcMain.handle('desktop:set-tocktutor-active', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
     if (typeof raw !== 'boolean') throw new Error('TockTutor window state must be a boolean')
     setTockTutorThemeActive(raw)
+  })
+  ipcMain.handle('desktop:workbench-destination', (event, raw: unknown, ...rawArgs: unknown[]) => {
+    assertTrustedMainIpc(event)
+    assertNoLauncherIpcArguments(rawArgs)
+    currentWorkbenchDestination = parseLauncherDestination(raw)
+    return Object.freeze({ ok: true as const })
   })
   ipcMain.handle('desktop:tocktutor-authorize', (event, raw: unknown) => {
     assertTrustedMainIpc(event)
@@ -1449,23 +3763,31 @@ async function bootstrap(): Promise<void> {
     applicationVersion: PRODUCT_VERSION,
     version: `TockTeam plugin distribution ${PRODUCT_VERSION}`,
   })
-  const gotLock = app.requestSingleInstanceLock()
+  // Capture the launcher intent before app/runtime readiness; repeated intents
+  // collapse into one toggle and never become workspace paths.
+  launcherToggleQueue.capture(process.argv)
+  const gotLock = app.requestSingleInstanceLock({
+    tockTutorProtocolUrls: parseSingleInstanceProtocolUrls(process.argv, undefined),
+  })
   if (!gotLock) {
     app.quit()
     return
   }
-  app.on('second-instance', (_event, argv) => {
-    const arguments_ = argv.slice(1).filter(argument => !argument.startsWith('-'))
-    queuedProtocolUrls.push(...arguments_.filter(isTockTutorProtocol))
+  app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
+    const toggle = argv.includes('--toggle')
+    const arguments_ = argv.slice(1).filter(argument => !argument.startsWith('-') && argument !== '--toggle')
+    queuedProtocolUrls.push(...parseSingleInstanceProtocolUrls(arguments_, additionalData))
     queuedPaths.push(...arguments_.filter(argument => !isTockTutorProtocol(argument)))
-    if (mainWindow === undefined || mainWindow.isDestroyed()) {
-      mainWindow = createWindow()
-      if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedOpenRequests)
-    } else {
-      mainWindow.show()
-      mainWindow.focus()
+    if (toggle) {
+      if (launcherLifecycle === undefined) launcherToggleQueue.capture(argv)
+      else void launcherLifecycle.handleSecondInstance(argv, activateWorkbench).catch(error => {
+        appendLog('desktop', `second-instance toggle failed: ${error instanceof Error ? error.message : String(error)}`)
+      })
       flushQueuedOpenRequests()
+      return
     }
+    activateWorkbench()
+    flushQueuedOpenRequests()
   })
   app.on('open-url', (event, url) => {
     event.preventDefault()
@@ -1478,16 +3800,65 @@ async function bootstrap(): Promise<void> {
     if (app.isReady()) flushQueuedPaths()
   })
   await app.whenReady()
+  if (!launcherNodeSqliteAvailable()) throw new Error('TockLauncher requires Electron built-in node:sqlite support')
 
   const info = desktopInfo()
   const logsDir = join(info.appDataPath, 'logs')
   mkdirSync(logsDir, { recursive: true })
   logStream = createWriteStream(join(logsDir, 'desktop.log'), { flags: 'a', mode: 0o600 })
   appendLog('desktop', `${PRODUCT_NAME} ${info.version} starting (${process.arch})`)
+  launcherPersistence = await LauncherPersistenceRepository.open({
+    secretCodec: createMainLauncherSecretCodec(),
+    secureStorageAvailable: launcherSecureStorageAvailable(),
+    userDataPath: info.appDataPath,
+  })
+  launcherCustomBrowser = await LauncherCustomBrowserController.open({
+    afterGrantMutation: operation => { recordLauncherBrowserFixtureSelection(operation) },
+    getSetting: (key, fallback) => requireLauncherPersistence().getSetting(key, fallback),
+    launch: async (executable, args, signal) => {
+      if (launcherBrowserFixtureEnabled) {
+        const expected = launcherBrowserFixturePath()
+        const url = args.at(-1)
+        if (executable !== '/usr/bin/open' || args.length !== 3 || args[0] !== '-a' || args[1] !== expected || typeof url !== 'string' || !/^https?:\/\//iu.test(url)) return rejectLauncherBrowserFixtureEffect('custom-open')
+        recordLauncherBrowserFixtureOpen('custom', url)
+        return
+      }
+      await launchDetachedLauncherExecutable(executable, args, undefined, { ...(signal === undefined ? {} : { signal }), timeoutMs: 15_000 })
+    },
+    openDefault: async (url, signal) => {
+      if (signal?.aborted) throw launcherAbortError(signal)
+      if (launcherBrowserFixtureEnabled) {
+        recordLauncherBrowserFixtureOpen('default', url)
+        return
+      }
+      const pending = Promise.resolve().then(() => {
+        if (signal?.aborted) throw launcherAbortError(signal)
+        return shell.openExternal(url)
+      })
+      await launcherAwaitAbortableWithTimeout(pending, signal ?? new AbortController().signal, 15_000, 'Default browser launch')
+      if (signal?.aborted) throw launcherAbortError(signal)
+    },
+    effectTimeoutMs: 15_000,
+    platform: launcherPlatform(),
+    userDataPath: info.appDataPath,
+  })
   marketplace = createPluginMarketplace()
   marketplaceAgentGateway = await startMarketplaceAgentGateway(marketplace, {
     onError: error => { appendLog('desktop', `[marketplace-agent] ${String(error)}`) },
   })
+  initializeLauncher()
+  await initializeLauncherLifecycle()
+  launcherUpdater = createDesktopAppUpdater({
+    app: {
+      getVersion: () => app.getVersion(),
+      isPackaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+    },
+    onStateChange: broadcastDesktopAppUpdateState,
+    prepareInstall: prepareUpdaterInstall,
+    recoverInstallFailure: recoverUpdaterInstall,
+  })
+  launcherLifecycle?.attachUpdater(launcherUpdater)
   installIpc()
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
     if (permission === 'media' && 'mediaTypes' in details && allowsRuntimeMicrophone({
@@ -1529,56 +3900,28 @@ async function bootstrap(): Promise<void> {
   browserSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
   browserSession.setPermissionCheckHandler(() => false)
   buildMenu()
-  mainWindow = createWindow()
+  assignMainWindow(createWindow())
   await showSplash()
   const initialArguments = process.argv.slice(app.isPackaged ? 1 : 2)
-    .filter(argument => !argument.startsWith('-'))
+    .filter(argument => !argument.startsWith('-') && argument !== '--toggle')
   queuedProtocolUrls.push(...initialArguments.filter(isTockTutorProtocol))
   queuedPaths.push(...initialArguments.filter(argument => !isTockTutorProtocol(argument)))
   await restartRuntime()
 
-  app.on('activate', () => {
-    if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
-      mainWindow.show()
-      return
-    }
-    mainWindow = createWindow()
-    if (runtimeUrl !== undefined) void mainWindow.loadURL(runtimeUrl.href).then(flushQueuedOpenRequests)
-    else void showSplash({ error: true, message: 'TockTeam 未运行，请从“DSH”菜单重新启动。' })
-  })
+  app.on('activate', () => { activateWorkbench() })
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
   })
-  app.on('before-quit', (event) => {
+  app.on('before-quit', event => {
     if (quitting) return
     event.preventDefault()
-    quitting = true
-    void Promise.allSettled([
-      runtime?.stop() ?? Promise.resolve(),
-      desktopPrintExportChannel.stop(),
-      desktopPopOutChannel.stop(),
-      desktopMicrophoneChannel.stop(),
-      stopDesktopDispatchChannel(),
-      desktopCallerChannel.stop(),
-      desktopPickerChannel.stop(),
-      desktopRevealChannel.stop(),
-      stopPreviewSurface(),
-      marketplaceAgentGateway?.close() ?? Promise.resolve(),
-    ]).then(results => {
-      for (const result of results) {
-        if (result.status === 'rejected') {
-          appendLog('desktop', result.reason instanceof Error ? result.reason.message : String(result.reason))
-        }
-      }
-    }).finally(() => {
-      logStream?.end()
-      app.quit()
-    })
+    requestSecureQuit('native-quit')
   })
 }
 
 void bootstrap().catch(async (error: unknown) => {
   const detail = error instanceof Error ? error.stack ?? error.message : String(error)
+  try { process.stderr.write(`[desktop] ${detail}\n`) } catch { /* stderr may be unavailable during shutdown */ }
   appendLog('desktop', detail)
   if (app.isReady()) await showSplash({ error: true, message: 'TockTeam Desktop 启动失败。', detail })
   else {

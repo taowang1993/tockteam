@@ -26,6 +26,7 @@ export interface DesktopDispatchLoopOptions {
     owner: () => TockTutorNativeActionsOwnerProps | undefined;
     remote: DesktopActionRemote;
     signal?: AbortSignal;
+    unavailableRetryLimit?: number;
 }
 export interface AudioMediaDevices {
     getUserMedia(constraints: {

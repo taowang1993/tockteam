@@ -109,6 +109,10 @@ class FakeRemote implements WorkbenchRouteRemote {
   vault: VaultReference | null = firstVault
   saveFailure: { code: string; message: string } | null = null
   draftContent: string | null = null
+  draftFailure: { code: string; message: string } | null = null
+  draftReject: Error | null = null
+  draftFailureReads = 0
+  draftFailuresBeforeSuccess = 0
   snapshots: Array<{ createdAt: number; digest: string; id: string; path: string; reason: string; size: number }> = []
   trashEntries: Array<{ createdAt: number; id: string; kind: 'document'; originalPath: string }> = []
   readonly calls: Array<{ method: string; parameters: unknown[] }> = []
@@ -264,6 +268,18 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     saveDraft: (request: { content: string; expectedVault: VaultReference; path: string; revision?: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'saveDraft', parameters: [request, signal] })
+      if (this.draftReject !== null) return Promise.reject(this.draftReject)
+      if (this.draftFailure !== null && this.draftFailuresBeforeSuccess > 0) {
+        this.draftFailuresBeforeSuccess -= 1
+        const owner = this
+        return Promise.resolve({
+          get error() {
+            owner.draftFailureReads += 1
+            return { code: owner.draftFailure!.code, details: {}, message: owner.draftFailure!.message }
+          },
+          ok: false as const,
+        })
+      }
       this.draftContent = request.content
       return success({ generation: request.expectedVault.generation, ok: true as const, updatedAt: 2 })
     },
@@ -378,6 +394,68 @@ class FakeRemote implements WorkbenchRouteRemote {
     for (const listener of this.listeners) listener(event)
   }
 }
+
+test('dispose flushes a draft scheduled immediately before true disposal', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('# Draft must survive disposal\n')
+  controller.dispose()
+  await new Promise<void>(resolve => { setImmediate(resolve) })
+  assert.equal(remote.draftContent, '# Draft must survive disposal\n')
+  assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 1)
+})
+
+test('dispose rejects a failed final draft result after bounded retries', async () => {
+  const remote = new FakeRemote()
+  remote.draftFailure = { code: 'transport-closed', message: 'transport closed' }
+  remote.draftFailuresBeforeSuccess = 99
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('# Draft failure\n')
+  await assert.rejects(controller.dispose(), /transport closed/u)
+  assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 3)
+  assert.ok(remote.draftFailureReads >= 2)
+})
+
+test('dispose retries a failed final draft result and preserves the latest content', async () => {
+  const remote = new FakeRemote()
+  remote.draftFailure = { code: 'temporary', message: 'try again' }
+  remote.draftFailuresBeforeSuccess = 1
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('# Draft retry\n')
+  await controller.dispose()
+  assert.equal(remote.draftContent, '# Draft retry\n')
+  assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 2)
+})
+
+test('dispose rejects a thrown final draft transport failure', async () => {
+  const remote = new FakeRemote()
+  remote.draftReject = new Error('transport closed')
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.edit('# Draft rejection\n')
+  await assert.rejects(controller.dispose(), /transport closed/u)
+  assert.equal(remote.calls.filter(call => call.method === 'saveDraft').length, 3)
+})
+
+test('browser location sync selects without recording a second navigation', async () => {
+  const remote = new FakeRemote()
+  const navigation: string[] = []
+  const controller = new WorkbenchRouteController(remote, path => { navigation.push(path) })
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md', false), true)
+  const before = navigation.length
+  await controller.syncLocation('/tocktutor/Second.md')
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.equal(navigation.length, before)
+  controller.dispose()
+})
 
 test('dirty-gates protocol open and exclusive create dispatch', async () => {
   const remote = new FakeRemote()
@@ -783,6 +861,41 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.match(html, /<button[^>]+aria-label="Search Notes"/u)
   assert.match(html, /<button[^>]+aria-label="New Note"/u)
   assert.doesNotMatch(html, /TockLauncher/u)
+  const previousDesktop = (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop
+  ;(globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop = { launcher: { show: async () => ({}) } }
+  try {
+    const desktopMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
+      active: true,
+      onActivateTab() {},
+      onAddPane() {},
+      onEdit() {},
+      onFocusPane() {},
+      onMode() {},
+      onMoveCanvas() {},
+      onSave() {},
+      onSelect() {},
+      onToggleTask() {},
+      snapshot: controller.getSnapshot(),
+    }))
+    assert.equal((desktopMarkup.match(/aria-label="Open TockLauncher"/gu) ?? []).length, 1)
+    const inactiveMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
+      active: false,
+      onActivateTab() {},
+      onAddPane() {},
+      onEdit() {},
+      onFocusPane() {},
+      onMode() {},
+      onMoveCanvas() {},
+      onSave() {},
+      onSelect() {},
+      onToggleTask() {},
+      snapshot: controller.getSnapshot(),
+    }))
+    assert.doesNotMatch(inactiveMarkup, /TockTutor Title Bar/u)
+  } finally {
+    if (previousDesktop === undefined) delete (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop
+    else (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop = previousDesktop
+  }
   assert.match(html, /pt-0/u)
   assert.match(html, /h-\[var\(--tockteam-titlebar-height,40px\)\]/u)
   assert.match(html, /tocktutor-titlebar absolute top-0/u)

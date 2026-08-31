@@ -100,7 +100,7 @@ async function installPeerFixture(desktopVersion: string): Promise<boolean> {
       await execFileAsync('pnpm', [
         'install',
         '--lockfile-only',
-        '--offline',
+        '--prefer-offline',
         '--ignore-scripts',
         '--strict-peer-dependencies',
         '--no-frozen-lockfile',

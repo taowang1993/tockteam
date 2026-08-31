@@ -59,6 +59,7 @@ export interface TockTutorRouteLocation {
   search: string
 }
 export interface TockTutorRouteOwnerProps {
+  active?: boolean
   location: TockTutorRouteLocation
   navigate: (path: string, mode?: TockTutorNavigationMode) => void
 }

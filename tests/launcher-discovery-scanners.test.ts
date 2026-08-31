@@ -1,0 +1,179 @@
+import assert from 'node:assert/strict'
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { test } from 'node:test'
+import {
+  createLauncherDiscoveryScanners,
+  launcherNodeSqliteAvailable,
+  parseChromiumBookmarks,
+  parseJetBrainsRecentProjectPaths,
+  parseLinuxDesktopEntry,
+  parseVSCodeRecentEntries,
+  windowsApplicationScanInvocation,
+} from '../src/launcher-discovery-scanners.ts'
+import type { LauncherDiscoveryScanContext } from '../src/launcher-discovery-extensions.ts'
+
+function context(overrides: Partial<LauncherDiscoveryScanContext> = {}): LauncherDiscoveryScanContext {
+  return {
+    appDataPath: '/tmp/tockteam-app-data',
+    defaults: {
+      ApplicationSearch: {
+        includeWindowsStoreApps: true,
+        linuxFolders: [],
+        macOsFolders: [],
+        mdfindFilterOption: "kMDItemKind=='Application'",
+        windowsFileExtensions: ['lnk'],
+        windowsFolders: [],
+      },
+      BrowserBookmarks: { browsers: [], iconType: 'favicon', searchResultStyle: 'nameOnly' },
+      VSCode: { command: 'code %s', prefix: 'vscode', showPath: false },
+    },
+    environment: {},
+    getSetting: <T>(_key: string, fallback: T) => fallback,
+    homePath: '/tmp/tockteam-home',
+    platform: 'Linux',
+    signal: new AbortController().signal,
+    ...overrides,
+  }
+}
+
+test('built-in node sqlite is available before provider implementation', () => {
+  assert.equal(launcherNodeSqliteAvailable(), true)
+})
+
+test('parses bounded Linux desktop entries with visibility rules', () => {
+  assert.deepEqual(parseLinuxDesktopEntry('[Desktop Entry]\nType=Application\nName=TockTeam\nOnlyShowIn=GNOME;KDE;', ['GNOME']), { name: 'TockTeam' })
+  assert.equal(parseLinuxDesktopEntry('[Desktop Entry]\nName=Hidden\nNoDisplay=true', ['GNOME']), undefined)
+  assert.equal(parseLinuxDesktopEntry('[Desktop Entry]\nName=Wrong\nOnlyShowIn=KDE;', ['GNOME']), undefined)
+  assert.equal(parseLinuxDesktopEntry('[Desktop Entry]\nName=Wrong\nNotShowIn=GNOME;', ['GNOME']), undefined)
+})
+
+test('recurses bounded Chromium bookmarks and keeps only HTTP(S)', () => {
+  assert.deepEqual(parseChromiumBookmarks(JSON.stringify({ roots: { bookmark_bar: { children: [
+    { guid: 'folder', type: 'folder', children: [
+      { guid: 'docs', type: 'url', name: 'Docs', url: 'https://docs.example.test/start' },
+      { guid: 'local', type: 'url', name: 'Local', url: 'file:///etc/passwd' },
+    ] },
+  ] } } })), [{ id: 'docs', name: 'Docs', url: 'https://docs.example.test/start' }])
+  assert.deepEqual(parseChromiumBookmarks('{bad'), [])
+})
+
+test('parses JetBrains projects without evaluating XML entities', { skip: process.platform === 'win32' }, () => {
+  assert.deepEqual(parseJetBrainsRecentProjectPaths('<entry key="$USER_HOME$/work/tockteam" value="{}" /><entry key="/work/other&amp;safe" value="{}" />', '/Users/max'), [
+    '/Users/max/work/tockteam', '/work/other&safe',
+  ])
+  assert.deepEqual(parseJetBrainsRecentProjectPaths('<!DOCTYPE foo><entry key="/unsafe" />', '/Users/max'), [])
+})
+
+test('merges VS Code storage values by first URI and classifies remote workspaces', { skip: process.platform === 'win32' }, () => {
+  const entries = parseVSCodeRecentEntries([
+    JSON.stringify({ entries: [{ folderUri: 'file:///work/one', label: 'One' }] }),
+    JSON.stringify({ entries: [{ fileUri: 'file:///work/two.txt' }] }),
+    JSON.stringify({ entries: [{ folderUri: 'file:///work/one' }, { workspace: { configPath: 'vscode-remote://ssh/work.code-workspace', id: 'id' } }] }),
+  ])
+  assert.deepEqual(entries.map(entry => [entry.uri, entry.commandArg, entry.fileType]), [
+    ['file:///work/one', '--folder-uri', 'Folder'],
+    ['file:///work/two.txt', '--file-uri', 'File'],
+    ['vscode-remote://ssh/work.code-workspace', '--file-uri', 'Remote Workspace'],
+  ])
+  assert.deepEqual(parseVSCodeRecentEntries([JSON.stringify({ entries: [{ fileUri: 'file://server/share/project' }] })]), [])
+})
+
+test('uses one fixed PowerShell script and data-only settings arguments', () => {
+  const safe = windowsApplicationScanInvocation({ fileExtensions: ['lnk'], folders: ['C:\\ProgramData\\Start Menu'], includeStoreApps: true })
+  const hostile = windowsApplicationScanInvocation({ fileExtensions: ['lnk; Write-Host pwned'], folders: ["C:\\safe'; Write-Host pwned; '"], includeStoreApps: false })
+  assert.equal(safe.executable, 'powershell.exe')
+  assert.equal(safe.args[3], hostile.args[3])
+  assert.ok(!String(hostile.args[3]).includes('pwned'))
+  assert.ok(String(hostile.args.at(-2)).includes('pwned'))
+  assert.match(String(safe.args[3]), /maxVisits|Select-Object -First/iu)
+  assert.doesNotMatch(String(safe.args[3]), /Get-ChildItem[^\n]+-Recurse/iu)
+  assert.ok(String(safe.args[3]).includes("'shell:AppsFolder\\' + $appId"))
+  assert.ok(!String(safe.args[3]).includes("'shell:AppsFolder\\\\' + $appId"))
+})
+
+test('falls back to bounded configured macOS application folders for unindexed fixtures', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-macos-apps-'))
+  try {
+    await mkdir(join(root, 'Fixture.app'), { recursive: true })
+    const scanner = createLauncherDiscoveryScanners({ execFile: async () => ({ stdout: '' }) })
+    const entries = await scanner.ApplicationSearch(context({
+      platform: 'macOS',
+      getSetting: <T>(key: string, fallback: T) => key.endsWith('.macOsFolders') ? [root] as T : fallback,
+    }))
+    assert.deepEqual(entries.map(entry => 'path' in entry ? entry.path : ''), [join(root, 'Fixture.app')])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('keeps macOS applications with exact .app path-component filtering', async () => {
+  const scanner = createLauncherDiscoveryScanners({ execFile: async () => ({ stdout: '/Applications/Foo.app-data/Bar.app\n/Applications/Foo.app/Bar.app\n/Applications/Good.app\n' }) })
+  const entries = await scanner.ApplicationSearch(context({
+    platform: 'macOS',
+    getSetting: <T>(key: string, fallback: T) => key.endsWith('.macOsFolders') ? ['/Applications'] as T : fallback,
+  }))
+  assert.deepEqual(entries.map(entry => 'path' in entry ? entry.path : ''), ['/Applications/Foo.app-data/Bar.app', '/Applications/Good.app'])
+})
+
+test('scans Linux applications sequentially with limits and cancellation', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-discovery-'))
+  try {
+    await mkdir(join(root, 'nested'), { recursive: true })
+    await writeFile(join(root, 'good.desktop'), '[Desktop Entry]\nType=Application\nName=Good\n', 'utf8')
+    await writeFile(join(root, 'hidden.desktop'), '[Desktop Entry]\nType=Application\nName=Hidden\nNoDisplay=true\n', 'utf8')
+    await writeFile(join(root, 'nested', 'nested.desktop'), '[Desktop Entry]\nType=Application\nName=Nested\n', 'utf8')
+    const scanner = createLauncherDiscoveryScanners()
+    const entries = await scanner.ApplicationSearch(context({
+      defaults: { ...context().defaults, ApplicationSearch: { ...context().defaults.ApplicationSearch, linuxFolders: [root] } },
+    }))
+    assert.deepEqual(entries.map(entry => 'name' in entry ? entry.name : ''), ['Good'])
+    const controller = new AbortController(); controller.abort(new Error('canceled'))
+    await assert.rejects(scanner.ApplicationSearch(context({
+      signal: controller.signal,
+      defaults: { ...context().defaults, ApplicationSearch: { ...context().defaults.ApplicationSearch, linuxFolders: [root] } },
+    })), /canceled/u)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('skips malformed JetBrains product metadata without losing other tools', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-jetbrains-'))
+  try {
+    const home = join(root, 'home')
+    const toolbox = join(home, 'Library', 'Application Support', 'JetBrains', 'Toolbox')
+    const config = join(home, 'Library', 'Application Support', 'JetBrains', 'IdeaIC2024.1', 'options')
+    const broken = join(root, 'broken', 'Contents', 'Resources')
+    const install = join(root, 'good')
+    const resources = join(install, 'Contents', 'Resources')
+    const executable = join(install, 'Contents', 'MacOS', 'idea')
+    const project = join(root, 'project')
+    await mkdir(toolbox, { recursive: true }); await mkdir(config, { recursive: true }); await mkdir(broken, { recursive: true }); await mkdir(resources, { recursive: true }); await mkdir(join(install, 'Contents', 'MacOS'), { recursive: true }); await mkdir(join(project, '.idea'), { recursive: true })
+    await writeFile(join(toolbox, 'state.json'), JSON.stringify({ tools: [
+      { displayName: 'Broken', installLocation: join(root, 'broken'), launchCommand: 'Contents/MacOS/idea' },
+      { displayName: 'IntelliJ IDEA', installLocation: install, launchCommand: 'Contents/MacOS/idea' },
+    ] }), 'utf8')
+    await writeFile(join(broken, 'product-info.json'), 'null', 'utf8')
+    await writeFile(join(resources, 'product-info.json'), JSON.stringify({ dataDirectoryName: 'IdeaIC2024.1' }), 'utf8')
+    await writeFile(executable, 'idea', 'utf8')
+    await writeFile(join(config, 'recentProjects.xml'), `<entry key="${project}" value="{}" />`, 'utf8')
+    await writeFile(join(project, '.idea', '.name'), 'TockTeam', 'utf8')
+    const scanner = createLauncherDiscoveryScanners()
+    const entries = await scanner.JetBrainsToolbox(context({ homePath: home, platform: 'macOS' }))
+    assert.deepEqual(entries.map(entry => 'toolName' in entry ? entry.toolName : ''), ['IntelliJ IDEA'])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('isolates broken browser profiles while preserving valid browser order', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-browser-'))
+  try {
+    const profile = join(root, 'Google', 'Chrome', 'Default')
+    await mkdir(profile, { recursive: true })
+    await writeFile(join(profile, 'Bookmarks'), JSON.stringify({ roots: { bookmark_bar: { children: [{ type: 'url', guid: 'one', name: 'One', url: 'https://one.example.test' }] } } }), 'utf8')
+    const scanner = createLauncherDiscoveryScanners()
+    const entries = await scanner.BrowserBookmarks(context({
+      appDataPath: root,
+      platform: 'macOS',
+      getSetting: <T>(key: string, fallback: T) => key.endsWith('.browsers') ? ['Google Chrome', 'Firefox'] as T : fallback,
+    }))
+    assert.deepEqual(entries.map(entry => 'browserName' in entry ? entry.browserName : ''), ['Google Chrome'])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})

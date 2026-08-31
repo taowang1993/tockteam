@@ -102,12 +102,12 @@ The browser client mounts that Remote and contributes the single `tockteam.tockt
 - tree, keyword/Related search, Quick Switcher, Outline, Footnotes, Backlinks, Outgoing Links, unlinked mentions, Properties, Tags, Smart Views, bookmarks, capture, templates, journals, Note Composer, and reviewed organization;
 - deterministic finite Global and Local Graphs with persisted depth, semantic filters, query groups, viewport controls, and bounded node actions;
 - conflict-safe JSON Canvas and executable Base views, including card/group/edge edits and revision-preserving rollback;
-- bounded note, media, Canvas, and Base embed hydration while keeping authored embed source editable, with exact paths preferred over an unambiguous basename fallback;
+- one cancellable note, media, Canvas, and Base embed resolver with exact-path preference, unambiguous basename fallback, depth-three recursion, cycle/budget guards, and target-stable Source and Live Preview widgets that reveal exact authored source;
 - attachment ingestion, previews, location settings, and recorded-audio handoff through the Desktop microphone owner;
 - draft recovery, timed/manual snapshots, external-change preservation, trash, restore-as-new, and retention;
 - native dispatch handling and the nested assistant, native-action, review-panel, and Web Viewer slots.
 
-The route accepts only Markdown, Canvas, and Base documents. Authored raw HTML is escaped; the renderer inserts only its sanitized Markdown projection. Local, credential-bearing, resource, and executable links remain inert.
+The route accepts only Markdown, Canvas, and Base documents. Reading and inert export render a bounded static raw-HTML subset after stack-based sanitization; scripts, handlers, unsafe URLs, active resources, malformed markup, and exhausted budgets remain inert. Local, credential-bearing, and executable links remain inert. Credential-free external content is admitted only through the isolated Web Viewer boundary.
 
 Nested slots:
 
@@ -115,7 +115,7 @@ Nested slots:
 - `tockteam.tocktutor.workbench.native-actions`
 - `tockteam.tocktutor.workbench.review`
 
-Native dispatches are invalidated by newer navigation. Protocol requests that name a vault are rejected because the browser route cannot verify a human vault name against the active opaque vault identity; cross-vault protocol routing must be implemented by a trusted Host owner before it can be enabled.
+Native dispatches are invalidated by newer navigation. TockTeam Desktop resolves current, named, recent, and absolute-path protocol selectors against main-owned canonical vault records, then sends only an opaque vault ID to the Host/client adapter. The Workbench accepts that request only after the selected runtime publishes the matching opaque identity. Tab, split, and window requests retain dirty-save gating and exact completion callbacks.
 
 ### `tockbot-note-desktop`
 
@@ -133,7 +133,7 @@ The client contributes the **Native Actions** controls for:
 
 Every native operation starts with an opaque authorization minted by the isolated preload for the trusted main frame. For vault-bound operations, the authorization records the browser-observed opaque `{ id, generation }`; the trusted Host independently proves the same live Runtime vault, synchronizes the Desktop owner, and only then claims the authorization to obtain the main-owned session, window, and operation identity. A browser assertion cannot mint vault authority by itself. Browser payloads never supply absolute paths, Electron objects, native handles, or unrestricted IPC names.
 
-Unload aborts pending work and closes pop-outs opened by the adapter. Dirty editors save before choose-vault, pop-out, print, HTML, or PDF authorization is claimed. Print and export content is bounded, sanitized, stripped of network-bearing resource attributes, and rendered through the shared Markdown exporter before the Desktop owner revalidates it. The Host resolves first-level embeds through generation-bound runtime reads: note projections render safely, Canvas and Base sources stay escaped, bounded supported images become data URLs, and audio/video/PDF embeds remain metadata-only. Recorded audio returns only bounded bytes to the active Workbench owner, which rechecks the note and vault after byte conversion before the runtime stores it.
+Unload aborts pending work and closes pop-outs opened by the adapter. Dirty editors save before choose-vault, pop-out, print, HTML, or PDF authorization is claimed. Print and export content is bounded, sanitized, stripped of network-bearing resource attributes, and rendered through the shared Markdown exporter before the Desktop owner revalidates it. Generation-bound runtime reads expand bounded nested notes, Canvas, Base, and supported data images through the shared resolver; audio/video/PDF embeds remain metadata-only in static output. Recorded audio returns only bounded bytes to the active Workbench owner, which rechecks the note and vault after byte conversion before the runtime stores it.
 
 ### `@tockteam/tocktutor-assistant`
 
@@ -142,8 +142,8 @@ Unload aborts pending work and closes pop-outs opened by the adapter. Dirty edit
 - assistant provider/model/write-permission settings;
 - production agent-turn binding;
 - a restricted Pennivo MCP child process;
-- active-turn read tools;
-- proposal-only `create_file` and `write_file` tools;
+- active-turn read tools, including generation-bound `notes_search` and `notes_read` aliases;
+- proposal-only `create_file`, `write_file`, `notes_stage_write`, and `notes_organize_capture` tools;
 - persisted proposals and bounded audit records;
 - explicit approval/rejection and continuation routing;
 - the browser-safe `tocktutorAssistant` Remote and assistant panel.
@@ -222,7 +222,7 @@ Do not move Electron authority, native path handling, or unrestricted filesystem
 
 ## Parity and Cutover Ledger
 
-`plugins/tocktutor/parity/ledger.json` is the machine-checked capability contract. It preserves all 122 observed rows from the pinned Obsidian checklist, the source's declared-123/observed-122 discrepancy, six additional Tockbot compatibility capabilities, exact owners, repository-relative evidence, and hostile fixtures. After the parity epic, all 88 included checklist rows and all six additional capabilities must be `proven`; the 34 unchecked rows stay `excluded` or `not-needed` rather than being invented as supported behavior.
+`plugins/tocktutor/parity/ledger.json` is the machine-checked capability contract. It preserves all 122 observed rows from the pinned Obsidian checklist, the source's declared-123/observed-122 discrepancy, six earlier compatibility capabilities, and 14 feature-level residual Tockbot capabilities anchored to commit `af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba`. The validator reports 108 proven rows/capabilities and zero gaps, including all 14 residual capabilities; 36 unchecked rows remain `excluded` or `not-needed`, and two static-output behaviors remain explicit security divergences rather than invented parity.
 
 The in-scope cutover includes Desktop install/upgrade, disable/uninstall/rollback transaction safety, copied-vault compatibility, legacy recent-vault reads, passive configuration backup, accessibility gates, destructive recovery, generated-payload drift checks, packaged Loader composition, and real Electron flows. Retiring the old Tockbot browser route is a separate reviewable change. It removes route and navigation admission only; it does not delete vaults, local settings, backup compatibility, or rollback code.
 
@@ -232,7 +232,7 @@ The standalone `tockbot-note-vault` filesystem adapter sorts the native director
 
 The assistant panel intentionally uses a render-time route epoch to prevent an aborted decision from reviving across an A → B → A navigation. Its component regression test protects that behavior; do not replace it with a route-key-only comparison.
 
-Static export resolves only the first embed level, matching the interactive projection. It does not recursively expand nested embeds or fetch network resources. Audio, video, PDF, BMP, and other non-allowlisted data-image payloads remain labeled metadata because the Desktop print/export owner accepts only bounded AVIF, GIF, JPEG, PNG, and WebP data URLs.
+Static export recursively expands bounded local note, Canvas, Base, and allowlisted data-image content to the same depth-three ceiling as live projection, but never fetches network resources. Audio, video, PDF, BMP, and other non-allowlisted data-image payloads remain labeled metadata because the Desktop print/export owner accepts only bounded AVIF, GIF, JPEG, PNG, and WebP data URLs.
 
 ## Generated and Release Payloads
 

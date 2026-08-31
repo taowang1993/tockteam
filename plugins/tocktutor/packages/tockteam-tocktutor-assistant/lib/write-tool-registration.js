@@ -40,6 +40,9 @@ const TOCKDRIVER_WRITE_OUTPUT_SCHEMA = {
     },
     additionalProperties: false,
 };
+function renderTockDriverWriteResult(value) {
+    return [{ type: 'text', text: JSON.stringify(value, undefined, 2) }];
+}
 class TockDriverWriteError extends Error {
     constructor(message) {
         super(message);
@@ -69,7 +72,7 @@ function writeArguments(value) {
         throw new Error('The staged write arguments are invalid.');
     return { path: args.path, content: args.content };
 }
-function notesWriteArguments(value) {
+export function notesWriteArguments(value) {
     if (typeof value !== 'object'
         || value === null
         || Array.isArray(value)
@@ -99,7 +102,7 @@ function notesWriteArguments(value) {
         operation: args.operation,
     };
 }
-function organizeCaptureArguments(value) {
+export function organizeCaptureArguments(value) {
     if (typeof value !== 'object'
         || value === null
         || Array.isArray(value)
@@ -158,7 +161,7 @@ function slug(value) {
         .replace(/^-+|-+$/gu, '')
         .slice(0, 64) || 'organized-capture';
 }
-function organizedCaptureContent(sourcePath, sourceMarkdown, organizedAt) {
+export function organizedCaptureContent(sourcePath, sourceMarkdown, organizedAt) {
     const title = captureTitle(sourcePath, sourceMarkdown);
     const body = stripFirstHeading(sourceMarkdown);
     const summary = firstMeaningfulLine(body) ?? title;
@@ -199,7 +202,7 @@ async function readDocumentForWrite(reader, path, binding, signal) {
         throw new ReadToolError('INVALID_RESULT', 'The note runtime returned an invalid bounded result.');
     return { content, source: read.source };
 }
-function publicTockDriverWriteResult(summary, binding, path, title, operation) {
+export function publicTockDriverWriteResult(summary, binding, path, title, operation) {
     return {
         id: summary.proposalId,
         status: 'pending_review',
@@ -319,10 +322,7 @@ export function registerAssistantWriteTools(agent, reader, stager, turns, allowe
                 },
                 output: {
                     schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
-                    render: (_args, value) => [{
-                            type: 'text',
-                            text: `Staged ${value.operation} proposal for ${value.relativePath}. User approval is required.`,
-                        }],
+                    render: (_args, value) => renderTockDriverWriteResult(value),
                 },
                 async execute(rawArgs, exec) {
                     try {
@@ -396,10 +396,7 @@ export function registerAssistantWriteTools(agent, reader, stager, turns, allowe
                 },
                 output: {
                     schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
-                    render: (_args, value) => [{
-                            type: 'text',
-                            text: `Staged organized note for ${value.relativePath}. User approval is required.`,
-                        }],
+                    render: (_args, value) => renderTockDriverWriteResult(value),
                 },
                 async execute(rawArgs, exec) {
                     try {
@@ -468,6 +465,51 @@ export function registerAssistantWriteTools(agent, reader, stager, turns, allowe
             dispose();
         throw error;
     }
+    let disposed = false;
+    return () => {
+        if (disposed)
+            return;
+        disposed = true;
+        for (const dispose of disposers.reverse())
+            dispose();
+    };
+}
+/** Register the durable reviewed-write aliases for ordinary DSH agents. */
+export function registerMainTockDriverWriteTools(tools, host) {
+    const disposers = [
+        tools.register(defineTool({
+            name: 'notes_stage_write',
+            description: 'Stage a Notes create or update for explicit user review. This never writes before approval.',
+            parameters: {
+                vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
+                path: { type: 'string', required: true, description: 'Vault-relative Markdown path.' },
+                content: { type: 'string', required: true, description: 'Complete proposed Markdown content.' },
+                operation: { type: 'string', required: true, enum: ['create', 'update'] },
+            },
+            output: {
+                schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
+                render: (_args, value) => renderTockDriverWriteResult(value),
+            },
+            async execute(rawArgs, exec) {
+                return await host.stage(notesWriteArguments(rawArgs), exec.signal);
+            },
+        })),
+        tools.register(defineTool({
+            name: 'notes_organize_capture',
+            description: 'Stage an organized Markdown note from an Inbox capture for explicit user review. This never writes before approval.',
+            parameters: {
+                vaultId: { type: 'string', description: 'Optional opaque id; omitted means the active Notes vault.' },
+                path: { type: 'string', required: true, description: 'Vault-relative Inbox Markdown path.' },
+            },
+            output: {
+                schema: TOCKDRIVER_WRITE_OUTPUT_SCHEMA,
+                render: (_args, value) => renderTockDriverWriteResult(value),
+            },
+            async execute(rawArgs, exec) {
+                return await host.organize(organizeCaptureArguments(rawArgs), exec.signal);
+            },
+        })),
+    ];
     let disposed = false;
     return () => {
         if (disposed)

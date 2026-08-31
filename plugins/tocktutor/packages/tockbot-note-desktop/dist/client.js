@@ -15016,7 +15016,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15031,7 +15031,7 @@ function clsx() {
   return n;
 }
 
-// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15391,9 +15391,17 @@ async function startAudioRecording(authorization, path, vault, current, request,
 }
 async function runDesktopDispatchLoop(options) {
   const active = options.active ?? (() => true);
+  let unavailablePolls = 0;
   while (active() && !options.signal?.aborted) {
     const event = await options.bridge.nextDispatch();
-    if (event === null) return;
+    if (event === null) {
+      const retryLimit = options.unavailableRetryLimit ?? 0;
+      if (!active() || options.signal?.aborted || unavailablePolls >= retryLimit) return;
+      unavailablePolls += 1;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(25 * 2 ** (unavailablePolls - 1), 250)));
+      continue;
+    }
+    unavailablePolls = 0;
     if (!active()) {
       await completeDispatch(options.bridge, {
         deliveryId: event.deliveryId,
@@ -15482,7 +15490,8 @@ function TockTutorNativeActions(props) {
       bridge: props.bridge,
       owner: () => owner.current,
       remote: props.remote,
-      signal: controller.signal
+      signal: controller.signal,
+      unavailableRetryLimit: 20
     }).catch(() => {
       if (active) setMessage("Desktop dispatch is unavailable.");
     });

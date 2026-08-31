@@ -59,7 +59,7 @@ test('fresh packed artifact runs through the pinned Loader and retained authorit
         'tockbot-web-clip': `file:${artifact}`,
       },
     }, null, 2))
-    await run('pnpm', ['install', '--offline', '--ignore-scripts', '--no-frozen-lockfile'], consumerRoot)
+    await run('pnpm', ['install', '--prefer-offline', '--ignore-scripts', '--no-frozen-lockfile'], consumerRoot)
 
     const nonce = randomUUID()
     const script = `

@@ -267,10 +267,18 @@ export async function startAudioRecording(authorization, path, vault, current, r
 /** Consume the trusted-main dispatch facade until Desktop closes the consumer. */
 export async function runDesktopDispatchLoop(options) {
     const active = options.active ?? (() => true);
+    let unavailablePolls = 0;
     while (active() && !options.signal?.aborted) {
         const event = await options.bridge.nextDispatch();
-        if (event === null)
-            return;
+        if (event === null) {
+            const retryLimit = options.unavailableRetryLimit ?? 0;
+            if (!active() || options.signal?.aborted || unavailablePolls >= retryLimit)
+                return;
+            unavailablePolls += 1;
+            await new Promise(resolve => setTimeout(resolve, Math.min(25 * (2 ** (unavailablePolls - 1)), 250)));
+            continue;
+        }
+        unavailablePolls = 0;
         if (!active()) {
             await completeDispatch(options.bridge, {
                 deliveryId: event.deliveryId,
@@ -341,6 +349,7 @@ export function TockTutorNativeActions(props) {
             owner: () => owner.current,
             remote: props.remote,
             signal: controller.signal,
+            unavailableRetryLimit: 20,
         }).catch(() => { if (active)
             setMessage('Desktop dispatch is unavailable.'); });
         return () => {

@@ -68,22 +68,24 @@ function staticWidget(kind, content, from, to) {
     widget.append(label, preview);
     return widget;
 }
-function calloutFoldButton(pos, collapsed) {
+function calloutFoldButton(pos, index, collapsed, title) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'tocktutor-live-callout-fold mr-1 inline-flex size-5 items-center justify-center rounded border-0 bg-transparent text-[var(--tt-muted)]';
     button.dataset.calloutFoldPos = String(pos);
+    button.dataset.calloutIndex = String(index);
     button.setAttribute('aria-expanded', String(!collapsed));
     button.setAttribute('aria-label', collapsed ? 'Expand Callout' : 'Collapse Callout');
-    button.textContent = collapsed ? '›' : '⌄';
+    button.textContent = collapsed ? `› ${title}` : '⌄';
     return button;
 }
-function taskCheckbox(pos, checked) {
+function taskCheckbox(pos, index, checked) {
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.className = 'tocktutor-live-task mr-1 align-middle';
     input.checked = checked;
     input.dataset.taskPos = String(pos);
+    input.dataset.taskIndex = String(index);
     input.setAttribute('aria-label', checked ? 'Mark Task as Incomplete' : 'Mark Task as Complete');
     input.tabIndex = -1;
     return input;
@@ -104,6 +106,8 @@ function decorations(state, folded) {
         });
     }
     let commentOpen = false;
+    let calloutIndex = 0;
+    let taskIndex = 0;
     state.doc.descendants((node, pos) => {
         if (node.type.name === 'code_block') {
             const language = String(node.attrs.language ?? node.attrs.lang ?? '').toLocaleLowerCase();
@@ -116,23 +120,22 @@ function decorations(state, folded) {
             values.push(Decoration.node(pos, pos + node.nodeSize, {
                 class: 'tocktutor-live-callout rounded border-l-4 border-[var(--tt-accent)] bg-[var(--tt-selected)] px-3 py-2',
             }));
+            const index = calloutIndex;
+            calloutIndex += 1;
             const marker = node.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u);
             if (marker !== null) {
                 const collapsed = marker[1] === '-';
-                values.push(Decoration.widget(pos + 2, () => calloutFoldButton(pos, collapsed), { side: -1 }));
-                if (collapsed) {
-                    let offset = 0;
-                    node.forEach((child, index) => {
-                        const childPos = pos + 1 + offset;
-                        if (index > 0)
-                            values.push(Decoration.node(childPos, childPos + child.nodeSize, { class: 'hidden' }));
-                        offset += child.nodeSize;
-                    });
-                }
+                const firstLine = node.firstChild?.textBetween(0, node.firstChild.content.size, '\n', '\n').split('\n')[0] ?? '';
+                const title = firstLine.replace(/^\[![A-Za-z][\w-]*\][+-]?\s*/u, '').trim() || 'Callout';
+                values.push(Decoration.widget(pos, () => calloutFoldButton(pos, index, collapsed, title), { side: -1 }));
+                if (collapsed)
+                    values.push(Decoration.node(pos, pos + node.nodeSize, { class: 'hidden' }));
             }
         }
         if (node.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
-            values.push(Decoration.widget(pos + 1, () => taskCheckbox(pos, Boolean(node.attrs.checked)), { side: -1 }));
+            const index = taskIndex;
+            taskIndex += 1;
+            values.push(Decoration.widget(pos + 1, () => taskCheckbox(pos, index, Boolean(node.attrs.checked)), { side: -1 }));
         }
         if (!node.isText || !node.text || node.marks.some(mark => mark.type.name === 'code'))
             return;
@@ -170,7 +173,7 @@ function decorations(state, folded) {
     });
     return DecorationSet.create(state.doc, values);
 }
-export function buildLivePreviewChromePlugin(onOpenExternalUrl) {
+export function buildLivePreviewChromePlugin(options) {
     return new Plugin({
         key: chromeKey,
         state: {
@@ -210,18 +213,52 @@ export function buildLivePreviewChromePlugin(onOpenExternalUrl) {
                 },
             },
             handleDOMEvents: {
+                beforeinput(_view, event) {
+                    if (!options.isProtected())
+                        return false;
+                    event.preventDefault();
+                    return true;
+                },
+                paste(_view, event) {
+                    if (!options.isProtected())
+                        return false;
+                    event.preventDefault();
+                    return true;
+                },
+                drop(_view, event) {
+                    if (!options.isProtected())
+                        return false;
+                    event.preventDefault();
+                    return true;
+                },
+                keydown(_view, event) {
+                    if (!options.isProtected())
+                        return false;
+                    const mutates = event.key.length === 1 && !event.metaKey && !event.ctrlKey
+                        || ['Backspace', 'Delete', 'Enter', 'Tab'].includes(event.key);
+                    if (!mutates)
+                        return false;
+                    event.preventDefault();
+                    return true;
+                },
                 mousedown(view, event) {
                     const target = event.target instanceof Element ? event.target : null;
                     const externalUrl = target?.closest('[data-external-url]')?.dataset.externalUrl;
                     if (externalUrl !== undefined) {
                         event.preventDefault();
-                        onOpenExternalUrl()?.(externalUrl);
+                        options.onOpenExternalUrl()?.(externalUrl);
                         return true;
                     }
                     const callout = target?.closest('[data-callout-fold-pos]');
                     if (callout !== null && callout !== undefined) {
                         event.preventDefault();
                         const pos = Number(callout.dataset.calloutFoldPos);
+                        const index = Number(callout.dataset.calloutIndex);
+                        if (options.isProtected()) {
+                            if (Number.isSafeInteger(index) && index >= 0)
+                                options.onToggleCallout(index);
+                            return true;
+                        }
                         const node = Number.isSafeInteger(pos) ? view.state.doc.nodeAt(pos) : null;
                         const marker = node?.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u);
                         if (node?.type.name === 'blockquote' && marker !== null && marker !== undefined) {
@@ -235,6 +272,12 @@ export function buildLivePreviewChromePlugin(onOpenExternalUrl) {
                     if (task !== null && task !== undefined) {
                         event.preventDefault();
                         const pos = Number(task.dataset.taskPos);
+                        const index = Number(task.dataset.taskIndex);
+                        if (options.isProtected()) {
+                            if (Number.isSafeInteger(index) && index >= 0)
+                                options.onToggleTask(index);
+                            return true;
+                        }
                         const node = view.state.doc.nodeAt(pos);
                         if (node?.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
                             view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: !node.attrs.checked }));

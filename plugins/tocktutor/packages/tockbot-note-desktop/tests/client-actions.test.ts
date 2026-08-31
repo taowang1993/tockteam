@@ -209,6 +209,60 @@ test('settles a dispatch race as stale when the slot is disposed', async () => {
   }])
 })
 
+test('keeps polling after Desktop is briefly unavailable during client startup', async () => {
+  const completions: unknown[] = []
+  let active = true
+  let polls = 0
+  const bridge = {
+    async authorize() { return { authorization: 'unused' } },
+    async cancelDispatch() {},
+    async completeDispatch(value: unknown) { completions.push(value); active = false; return 'handled' as const },
+    async nextDispatch() {
+      polls += 1
+      if (polls === 1) return null
+      return {
+        action: 'daily' as const,
+        deliveryId: 'delivery-after-startup',
+        kind: 'quick-action' as const,
+        operationId: 'dispatch-after-startup',
+      }
+    },
+  }
+  await runDesktopDispatchLoop({
+    active: () => active,
+    bridge,
+    owner: () => ({
+      activePath: 'Folder/Note.md',
+      async handleDispatch() { return 'handled' as const },
+      vault,
+    }),
+    remote: { tocktutorDesktop: {} } as DesktopActionRemote,
+    unavailableRetryLimit: 2,
+  })
+  assert.equal(polls, 2)
+  assert.deepEqual(completions, [{
+    deliveryId: 'delivery-after-startup',
+    operationId: 'dispatch-after-startup',
+    status: 'handled',
+  }])
+})
+
+test('stops polling when Desktop stays unavailable through the startup retry budget', async () => {
+  let polls = 0
+  await runDesktopDispatchLoop({
+    bridge: {
+      async authorize() { return { authorization: 'unused' } },
+      async cancelDispatch() {},
+      async completeDispatch() { return 'stale' as const },
+      async nextDispatch() { polls += 1; return null },
+    },
+    owner: () => undefined,
+    remote: { tocktutorDesktop: {} } as DesktopActionRemote,
+    unavailableRetryLimit: 1,
+  })
+  assert.equal(polls, 2)
+})
+
 test('settles a Workbench completion as stale after the slot is disposed', async () => {
   const completions: unknown[] = []
   let active = true

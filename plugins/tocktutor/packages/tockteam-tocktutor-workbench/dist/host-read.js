@@ -375,19 +375,25 @@ let TockTutorWorkbenchGateway = (() => {
             super(ctx, 'tocktutorWorkbench');
             __runInitializers(this, _instanceExtraInitializers);
         }
+        async synchronizeDesktopVault(signal) {
+            await this.ctx.noteVault.synchronizeDesktopSelection(signal);
+            signal.throwIfAborted();
+        }
         async currentVault(signal) {
             signal.throwIfAborted();
             const state = this.ctx.noteVault.state;
             if (!state.active)
                 return null;
-            const vault = { generation: state.generation, id: state.id };
-            assertVaultReference(vault);
+            const vault = activeReference(state);
+            await this.synchronizeDesktopVault(signal);
             return vault;
         }
         async createManagedVault(request, signal) {
             assertCreateManagedVaultRequest(request);
             signal.throwIfAborted();
-            return activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration));
+            const vault = activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration));
+            await this.synchronizeDesktopVault(signal);
+            return vault;
         }
         async listRecentVaults(signal) {
             signal.throwIfAborted();
@@ -399,7 +405,9 @@ let TockTutorWorkbenchGateway = (() => {
         async activateRecentVault(request, signal) {
             assertRecentVaultRequest(request);
             signal.throwIfAborted();
-            return activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration));
+            const vault = activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration));
+            await this.synchronizeDesktopVault(signal);
+            return vault;
         }
         async removeRecentVault(request, signal) {
             assertRecentVaultRequest(request);
@@ -412,7 +420,9 @@ let TockTutorWorkbenchGateway = (() => {
         async openSandboxVault(request, signal) {
             assertExpectedGeneration(request);
             signal.throwIfAborted();
-            return activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration));
+            const vault = activeReference(this.ctx.noteVault.openSandboxVault(request.expectedGeneration));
+            await this.synchronizeDesktopVault(signal);
+            return vault;
         }
         async inspectAttachment(path, expectedVault, signal) {
             assertAttachmentPath(path);

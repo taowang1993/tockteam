@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "baseline": "v9.29.0",
+  "entries": [
+    {
+      "id": "ueli-mit",
+      "source": "vendor/ueli/LICENSE",
+      "license": "MIT",
+      "sha256": "8da6c1a79d367a41aadf313019833f4bb3f2ff55f0da5b522fd058183d2f9106",
+      "attribution": "https://github.com/oliverschwendener/ueli",
+      "disposition": "provenance-only"
+    },
+    {
+      "id": "gnome-application-search-icons",
+      "source": "vendor/ueli/assets/Extensions/ApplicationSearch/LICENSE",
+      "license": "CC BY-SA 3.0",
+      "sha256": "ed29c8f605a1a27368c832b47816405bc6bb18f1d3ec53372cc5c40e64ae680d",
+      "attribution": "https://www.gnome.org",
+      "disposition": "provenance-only"
+    },
+    {
+      "id": "openmoji-custom-web-search-icon",
+      "source": "vendor/ueli/docs/Extensions/CustomWebSearch/README.md",
+      "license": "CC BY-SA 4.0",
+      "sha256": "377515334214846e9564c3dfb03d9a8e50f31e8d590fad20c6f09c165fa35244",
+      "attribution": "https://openmoji.org/",
+      "disposition": "shipped"
+    },
+    {
+      "id": "ueli-dependency-graph",
+      "source": [
+        "vendor/ueli/package.json",
+        "vendor/ueli/package-lock.json"
+      ],
+      "license": "mixed",
+      "attribution": "Ueli package dependency graph",
+      "disposition": "not-admitted"
+    },
+    {
+      "id": "ueli-os-assets",
+      "source": "vendor/ueli/LICENSE",
+      "license": "MIT",
+      "sha256": "8da6c1a79d367a41aadf313019833f4bb3f2ff55f0da5b522fd058183d2f9106",
+      "attribution": "https://github.com/oliverschwendener/ueli",
+      "disposition": "shipped"
+    }
+  ]
+}

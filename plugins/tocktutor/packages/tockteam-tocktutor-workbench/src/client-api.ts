@@ -10,7 +10,11 @@ import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
-import { TockTutorRoute, type WorkbenchRouteRemote } from './route.tsx'
+import {
+  TockTutorRoute,
+  type WorkbenchRouteRemote,
+  waitForTockTutorRouteFlushes,
+} from './route.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
@@ -27,6 +31,17 @@ export const name = '@tockteam/tocktutor-workbench'
 
 /** Required transport and route registry supplied by the pinned Desktop client graph. */
 export const inject = ['remote', 'slots']
+
+type RouteFiber = { dispose(): Promise<void> }
+
+async function disposeRouteBeforeRemote(
+  routeFiber: RouteFiber,
+  disposeRemote: () => Promise<void>,
+): Promise<void> {
+  await routeFiber.dispose()
+  await waitForTockTutorRouteFlushes()
+  await disposeRemote()
+}
 
 /** Mount strict transport first, then contribute one lifecycle-owned Desktop route. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
@@ -58,13 +73,16 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   try {
     await routeFiber
   } catch (error) {
-    await routeFiber.dispose()
-    await disposeRemote()
+    await disposeRouteBeforeRemote(routeFiber, disposeRemote)
     throw error
   }
-  return async () => {
-    await routeFiber.dispose()
-    await disposeRemote()
+  let disposal: Promise<void> | null = null
+  return () => {
+    if (disposal === null) {
+      disposal = disposeRouteBeforeRemote(routeFiber, disposeRemote)
+      void disposal.catch(() => undefined)
+    }
+    return disposal
   }
 }
 

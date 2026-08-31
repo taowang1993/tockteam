@@ -1,0 +1,107 @@
+# General stuff
+
+.eslintignore @oliverschwendener
+.eslintrc.json @oliverschwendener
+.gitattributes @oliverschwendener
+.github @oliverschwendener
+.gitignore @oliverschwendener
+.npmrc @oliverschwendener
+.prettierrc @oliverschwendener
+.vscode @oliverschwendener
+assets @oliverschwendener
+build @oliverschwendener
+docs @oliverschwendener
+electron-builder.config.js @oliverschwendener
+LICENSE @oliverschwendener
+package-lock.json @oliverschwendener
+package.json @oliverschwendener
+README.md @oliverschwendener
+src @oliverschwendener
+tsconfig.node.json @oliverschwendener
+tsconfig.renderer.json @oliverschwendener
+vite.config.mts @oliverschwendener
+
+# Core Modules
+
+src/main/Core/IniFileParser @ke1v
+src/main/Core/LinuxDesktopEnvironment @ke1v
+src/main/Core/XmlParser @scomans
+
+# Extensions
+
+# ApplicationSearch
+
+src/main/Extensions/ApplicationSearch/Linux @ke1v
+src/renderer/Extensions/ApplicationSearch/Linux @ke1v
+
+# Base64Conversion
+
+assets/Extensions/Base64Conversion @ChristopherSteiner
+docs/Extensions/Base64Conversion @ChristopherSteiner
+src/common/Extensions/Base64Conversion @ChristopherSteiner
+src/main/Extensions/Base64Conversion @ChristopherSteiner
+src/renderer/Extensions/Base64Conversion @ChristopherSteiner
+
+# CustomWebSearch
+
+assets/Extensions/CustomWebSearch @NiewView
+docs/Extensions/CustomWebSearch @NiewView
+src/common/Extensions/CustomWebSearch @NiewView
+src/main/Extensions/CustomWebSearch @NiewView
+src/renderer/Extensions/CustomWebSearch @NiewView
+
+# JetBrainsToolbox
+
+assets/Extensions/JetBrainsToolbox @scomans
+docs/Extensions/JetBrainsToolbox @scomans
+src/common/Extensions/JetBrainsToolbox @scomans
+src/main/Extensions/JetBrainsToolbox @scomans
+src/renderer/Extensions/JetBrainsToolbox @scomans
+
+# PasswordGenerator
+
+assets/Extensions/PasswordGenerator @MarcoSennHaag
+docs/Extensions/PasswordGenerator @MarcoSennHaag
+src/common/Extensions/PasswordGenerator @MarcoSennHaag
+src/main/Extensions/PasswordGenerator @MarcoSennHaag
+src/renderer/Extensions/PasswordGenerator @MarcoSennHaag
+
+# QuickFormatter
+
+assets/Extensions/QuickFormatter @MarcoSennHaag
+docs/Extensions/QuickFormatter @MarcoSennHaag
+src/common/Extensions/QuickFormatter @MarcoSennHaag
+src/main/Extensions/QuickFormatter @MarcoSennHaag
+src/renderer/Extensions/QuickFormatter @MarcoSennHaag
+
+# RowlandTextEditor
+
+assets/Extensions/RowlandTextEditor @ChristopherSteiner
+docs/Extensions/RowlandTextEditor @ChristopherSteiner
+src/common/Extensions/RowlandTextEditor @ChristopherSteiner
+src/main/Extensions/RowlandTextEditor @ChristopherSteiner
+src/renderer/Extensions/RowlandTextEditor @ChristopherSteiner
+
+# UuidGenerator
+
+assets/Extensions/UuidGenerator @ChristopherSteiner
+docs/Extensions/UuidGenerator @ChristopherSteiner
+src/common/Extensions/UuidGenerator @ChristopherSteiner
+src/main/Extensions/UuidGenerator @ChristopherSteiner
+src/renderer/Extensions/UuidGenerator @ChristopherSteiner
+
+# VSCode
+
+assets/Extensions/VSCode @IrishBruse
+docs/Extensions/VSCode @IrishBruse
+src/common/Extensions/VSCode @IrishBruse
+src/main/Extensions/VSCode @IrishBruse
+src/renderer/Extensions/VSCode @IrishBruse
+
+# WindowsControlPanel
+
+assets/Extensions/WindowsControlPanel @tkohlmeier
+docs/Extensions/WindowsControlPanel @tkohlmeier
+src/common/Extensions/WindowsControlPanel @tkohlmeier
+src/main/Extensions/WindowsControlPanel @tkohlmeier
+src/renderer/Extensions/WindowsControlPanel @tkohlmeier

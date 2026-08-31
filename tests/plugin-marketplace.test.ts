@@ -638,6 +638,33 @@ test('Agent gateway authenticates and defers runtime-restarting applies', async 
   }
 })
 
+test('Agent gateway close cancels deferred apply and prevents manager dispatch', async () => {
+  const setup = fixture()
+  const errors: unknown[] = []
+  const gateway = await startMarketplaceAgentGateway(setup.manager, {
+    deferMs: 40,
+    onError: error => { errors.push(error) },
+  })
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
+    const transactionId = setup.manager.getSnapshot().preview?.transactionId
+    assert.ok(transactionId)
+    const apply = await fetch(gateway.url, {
+      body: JSON.stringify({ type: 'dispatch', command: { type: 'apply', expectedTransactionId: transactionId } }),
+      headers: { authorization: `Bearer ${gateway.token}` },
+      method: 'POST',
+    })
+    assert.equal(apply.status, 202)
+    await gateway.close()
+    await new Promise(resolve => { setTimeout(resolve, 80) })
+    assert.equal(setup.manager.getSnapshot().preview?.transactionId, transactionId)
+    assert.deepEqual(errors, [])
+  } finally {
+    setup.cleanup()
+  }
+})
+
 test('Agent gateway binds deferred apply to the acknowledged preview', async () => {
   const setup = fixture()
   const errors: unknown[] = []

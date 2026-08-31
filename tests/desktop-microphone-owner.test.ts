@@ -55,6 +55,23 @@ test('microphone owner is single-flight and aborts late native completion', asyn
   owner.dispose()
 })
 
+test('microphone owner settles promptly when native access ignores abort', async () => {
+  const owner = new DesktopMicrophoneOwner({
+    isAvailable: () => true,
+    isCurrent: () => true,
+    requestAccess: async () => await new Promise<boolean>(() => {}),
+  })
+  const controller = new AbortController()
+  const pending = owner.request({ identity }, controller.signal)
+  controller.abort()
+  const result = await Promise.race([
+    pending,
+    new Promise<never>((_resolve, reject) => { setTimeout(() => { reject(new Error('microphone abort timed out')) }, 50) }),
+  ])
+  assert.deepEqual(result, { operationId: identity.operationId, status: 'cancelled' })
+  owner.dispose()
+})
+
 test('microphone owner rejects malformed extra fields and expires grants', async () => {
   let now = 1
   const owner = new DesktopMicrophoneOwner({

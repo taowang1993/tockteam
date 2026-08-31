@@ -249,6 +249,18 @@ export function isTockTutorProtocol(value: string): boolean {
   return value.slice(0, PROTOCOL_SCHEME.length).toLowerCase() === PROTOCOL_SCHEME
 }
 
+export function parseSingleInstanceProtocolUrls(
+  argv: readonly string[],
+  additionalData: unknown,
+): string[] {
+  const data = typeof additionalData === 'object' && additionalData !== null
+    ? (additionalData as Record<string, unknown>).tockTutorProtocolUrls
+    : undefined
+  const extra = Array.isArray(data) && data.length <= 16 ? data : []
+  return [...new Set([...argv.slice(0, 128), ...extra]
+    .filter((value): value is string => typeof value === 'string' && parseTockTutorProtocol(value) !== null))]
+}
+
 export function parseTockTutorProtocol(raw: string): TockTutorProtocolRequest | null {
   if (raw.length > MAX_PROTOCOL_URI_LENGTH || /%(?![0-9a-f]{2})/iu.test(raw)) return null
   const shorthandResult = shorthand(raw)
@@ -281,12 +293,13 @@ function validProtocolVault(value: DesktopProtocolVault): boolean {
 function protocolVaults(
   known: readonly DesktopProtocolVault[],
   current: DesktopProtocolVault | null | undefined,
+  canonicalizePath: (path: string) => string,
 ): DesktopProtocolVault[] {
   const result: DesktopProtocolVault[] = []
   const seen = new Set<string>()
   for (const candidate of [current, ...known]) {
     if (candidate === null || candidate === undefined || !validProtocolVault(candidate)) continue
-    const path = resolve(candidate.path)
+    const path = canonicalizePath(candidate.path)
     const key = `${candidate.id}:${String(candidate.generation)}:${path}`
     if (seen.has(key)) continue
     seen.add(key)
@@ -305,12 +318,13 @@ function relativeProtocolPath(vaultPath: string, targetPath: string): string | n
 function requestedVault(
   request: TockTutorProtocolRequest,
   known: readonly DesktopProtocolVault[],
+  canonicalizePath: (path: string) => string,
 ): { vault: DesktopProtocolVault; file?: string } | null {
   const selector = request.vault
   const absolutePath = request.path
   if (absolutePath !== undefined) {
     if (!isAbsolute(absolutePath)) return null
-    const targetPath = resolve(absolutePath)
+    const targetPath = canonicalizePath(absolutePath)
     const matches = known
       .map(vault => ({ vault, file: relativeProtocolPath(vault.path, targetPath) }))
       .filter((entry): entry is { vault: DesktopProtocolVault; file: string } => entry.file !== null)
@@ -320,7 +334,7 @@ function requestedVault(
   }
   if (selector === undefined) return null
   const matches = isAbsolute(selector)
-    ? known.filter(vault => resolve(vault.path) === resolve(selector))
+    ? known.filter(vault => vault.path === canonicalizePath(selector))
     : known.filter(vault => vault.name.toLocaleLowerCase() === selector.toLocaleLowerCase())
   return matches.length === 1 ? { vault: matches[0]! } : null
 }
@@ -331,10 +345,11 @@ export function resolveTockTutorProtocolRequest(
   knownVaults: readonly DesktopProtocolVault[],
   currentVault: DesktopProtocolVault | null | undefined,
   clipboardText?: string | null,
+  canonicalizePath: (path: string) => string = resolve,
 ): ResolvedTockTutorProtocolRequest | null {
   if (request === null || request.action === 'choose-vault') return request === null ? null : { request }
-  const known = protocolVaults(knownVaults, currentVault)
-  const selected = requestedVault(request, known)
+  const known = protocolVaults(knownVaults, currentVault, canonicalizePath)
+  const selected = requestedVault(request, known, canonicalizePath)
   const vault = selected?.vault ?? (request.vault === undefined && request.path === undefined ? currentVault : undefined)
   if (vault === undefined || vault === null || !validProtocolVault(vault)) return null
   const explicitTarget = request.vault !== undefined || request.path !== undefined

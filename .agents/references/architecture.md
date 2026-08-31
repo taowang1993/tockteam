@@ -92,6 +92,34 @@ the source and commit before entering an isolated preview. Only explicit
 application changes the current Profile. Agent-initiated installs use the
 same transaction and risk approval and cannot bypass the Loader.
 
+## Installed TockLauncher evidence
+
+The installed smoke supports a disposable macOS app and a Windows portable
+`.tar.gz` archive built from the supported directory artifact; Windows archive
+installation restores its bounded runtime-link manifest as junctions before the
+atomic swap. It also supports real Debian/AppImage lanes on Ubuntu. The
+checked-in macOS arm64 report records unsigned/internal macOS ad-hoc evidence at
+commit `63a72645`: identity, resources, security, actions, settings/reinstall,
+rollback, cleanup, and native Launch Services second-instance rows are
+local-verified; notices/vendor scanning and provider catalog are partially
+verified. The smoke requires exact identity/version/resources, renderer
+security, lifecycle and cleanup reports before a row can be promoted. Vendor
+results are explicitly bounded no-follow scans, not global source-absence proof.
+No workflow configuration alone counts as a passing run or publication claim.
+Hosted run `33295632276` recorded passing Windows portable archive and Linux
+Debian/AppImage installed smokes at commit `ed39e301`; run `33301125258`
+refreshed the historical reports at commit `455db8ca`. Hosted run `33342761994`
+passed the current Linux Debian/AppImage lane at commit `63a72645`, including a
+controlled validation failure and recovery by reinstalling the preserved prior
+Debian package from run `33301125258`. The historical
+Linux package rollback row was workflow-required; the current Linux row is hosted-verified.
+The current Windows
+lane failed before producing a valid report, so all Windows rows remain
+workflow-required. The historical hosted image reported Windows Control Panel unavailable
+and elevation confirmation-required but uninvoked. Bounded vendor
+scans remain partial. Signing, notarization, and public distribution remain
+unproven.
+
 ## Security boundaries
 
 - Web binds to loopback by default; LAN exposure requires trusted authorities.

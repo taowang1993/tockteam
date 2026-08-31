@@ -1,9 +1,20 @@
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
+import {
+  LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES,
+  LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS,
+} from '../src/launcher-local-extension-assets.ts'
+import { LAUNCHER_DISCOVERY_ASSETS } from '../src/launcher-discovery-assets.ts'
+import { LAUNCHER_FILE_SEARCH_ASSETS } from '../src/launcher-file-search-assets.ts'
+import { LAUNCHER_NETWORK_ASSETS } from '../src/launcher-network-assets.ts'
+import { LAUNCHER_OS_ASSETS } from '../src/launcher-os-assets.ts'
+import { LAUNCHER_TERMINAL_ASSETS } from '../src/launcher-terminal-assets.ts'
+import { LAUNCHER_WORKFLOW_ASSETS } from '../src/launcher-workflow-assets.ts'
 import { resolveProductVersion } from '../src/version.ts'
 import { adaptBetterSidebarHost } from './better-sidebar-upstream-adapter.mjs'
 import { buildTailwindCss } from './tailwind.mjs'
@@ -22,6 +33,33 @@ const splashTailwindCss = await buildTailwindCss(root, [{
   negated: false,
   pattern: 'src/splash.html',
 }])
+const launcherTailwindCss = await buildTailwindCss(root, [
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher.html',
+  },
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher.ts',
+  },
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher-local-tools.ts',
+  },
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher-file-search-tool.ts',
+  },
+  {
+    base: root,
+    negated: false,
+    pattern: 'src/launcher-network-extension-tool.ts',
+  },
+])
 const tailwindDefine = {
   ...versionDefine,
   __TOCKTEAM_TAILWIND_CSS__: JSON.stringify(tailwindCss),
@@ -61,6 +99,24 @@ const builds = [
     platform: 'node',
     format: 'cjs',
     external: ['electron'],
+  }),
+  build({
+    ...shared,
+    entryPoints: [join(root, 'src', 'launcher-preload.ts')],
+    outfile: join(dist, 'launcher-preload.cjs'),
+    platform: 'node',
+    format: 'cjs',
+    external: ['electron'],
+  }),
+  build({
+    bundle: true,
+    entryPoints: [join(root, 'src', 'launcher.ts')],
+    outfile: join(dist, 'launcher.js'),
+    platform: 'browser',
+    format: 'esm',
+    target: 'es2022',
+    sourcemap: true,
+    logLevel: 'info',
   }),
   build({
     ...shared,
@@ -130,6 +186,7 @@ const builds = [
     target: 'es2022',
     sourcemap: true,
     logLevel: 'info',
+    external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
     banner: {
       js: 'window.__ModuleLoader__.load({ id: "@tockteam/desktop", factory: (require) => { var module = { exports: {} }; var exports = module.exports;',
     },
@@ -198,6 +255,54 @@ for (const plugin of pluginPackages) {
 }
 
 await Promise.all(builds)
+writeFileSync(join(dist, 'launcher.css'), launcherTailwindCss)
+copyFileSync(join(root, 'src', 'launcher.html'), join(dist, 'launcher.html'))
+mkdirSync(join(dist, 'launcher-assets'), { recursive: true })
+for (const [extensionId, imageKey] of Object.entries(LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS)) {
+  const asset = `${imageKey}.png`
+  const source = join(root, 'vendor', 'ueli', 'assets', 'Extensions', extensionId, asset)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES[extensionId]) {
+    throw new Error(`TockLauncher local asset drifted: ${extensionId}`)
+  }
+  copyFileSync(source, join(dist, 'launcher-assets', asset))
+}
+for (const asset of LAUNCHER_DISCOVERY_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher discovery asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
+for (const asset of LAUNCHER_FILE_SEARCH_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher file-search asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
+for (const asset of LAUNCHER_NETWORK_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher network asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
+for (const asset of LAUNCHER_OS_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher OS asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
+for (const asset of LAUNCHER_TERMINAL_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher terminal asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
+for (const asset of LAUNCHER_WORKFLOW_ASSETS) {
+  const source = join(root, asset.source)
+  const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
+  if (digest !== asset.hash) throw new Error(`TockLauncher Workflow asset drifted: ${asset.key}`)
+  copyFileSync(source, join(dist, 'launcher-assets', asset.fileName))
+}
 
 const declarationRoot = mkdtempSync(join(tmpdir(), 'tockteam-host-declarations-'))
 try {

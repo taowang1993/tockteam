@@ -1,6 +1,6 @@
 // @ts-nocheck -- CodeMirror's extensionless declaration graph is incompatible with the pinned NodeNext analyzer.
-import { StateEffect } from '@codemirror/state';
-import { Decoration, EditorView, ViewPlugin, WidgetType, } from '@codemirror/view';
+import { StateEffect, StateField } from '@codemirror/state';
+import { Decoration, EditorView, WidgetType, } from '@codemirror/view';
 import { projectEditorStaticWidgets, projectEditorWidgets } from "./editor-widgets.js";
 const refreshSourceEmbeds = StateEffect.define();
 function mediaElement(embed) {
@@ -39,7 +39,7 @@ class StaticSourceWidget extends WidgetType {
     }
     eq(other) { return this.target.source === other.target.source && this.target.from === other.target.from; }
     toDOM() {
-        const widget = document.createElement('span');
+        const widget = document.createElement(this.target.kind === 'math' ? 'span' : 'div');
         widget.className = 'tocktutor-source-static-widget inline-flex max-w-full flex-col gap-1 rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 align-top text-[var(--tt-text)]';
         widget.dataset.embedFrom = String(this.target.from);
         widget.dataset.embedTo = String(this.target.to);
@@ -104,7 +104,7 @@ class SourceEmbedWidget extends WidgetType {
         return event.target instanceof Element && event.target.closest('audio,video') !== null;
     }
 }
-function buildDecorations(view, embeds) {
+function buildDecorations(state, embeds) {
     const buckets = new Map();
     for (const embed of embeds) {
         const bucket = buckets.get(embed.target.source) ?? [];
@@ -112,33 +112,34 @@ function buildDecorations(view, embeds) {
         buckets.set(embed.target.source, bucket);
     }
     const ranges = [];
-    for (const target of projectEditorWidgets(view.state.doc.toString())) {
-        if (view.state.selection.ranges.some(range => range.from <= target.to && range.to >= target.from))
+    for (const target of projectEditorWidgets(state.doc.toString())) {
+        if (state.selection.ranges.some(range => range.from <= target.to && range.to >= target.from))
             continue;
         const embed = buckets.get(target.source)?.shift();
         if (embed === undefined)
             continue;
         ranges.push(Decoration.replace({ widget: new SourceEmbedWidget(embed, target.from, target.to) }).range(target.from, target.to));
     }
-    for (const target of projectEditorStaticWidgets(view.state.doc.toString())) {
-        if (view.state.selection.ranges.some(range => range.from <= target.to && range.to >= target.from))
+    for (const target of projectEditorStaticWidgets(state.doc.toString())) {
+        if (state.selection.ranges.some(range => range.from <= target.to && range.to >= target.from))
             continue;
         ranges.push(Decoration.replace({ block: target.kind !== 'math', widget: new StaticSourceWidget(target) }).range(target.from, target.to));
     }
     return Decoration.set(ranges, true);
 }
 export function buildSourceEmbedWidgetExtension(getEmbeds) {
-    const plugin = ViewPlugin.fromClass(class {
-        decorations;
-        constructor(view) { this.decorations = buildDecorations(view, getEmbeds()); }
-        update(update) {
-            if (update.docChanged || update.selectionSet || update.transactions.some(transaction => transaction.effects.some(effect => effect.is(refreshSourceEmbeds)))) {
-                this.decorations = buildDecorations(update.view, getEmbeds());
-            }
-        }
-    }, {
-        decorations: value => value.decorations,
-        provide: value => EditorView.atomicRanges.of(view => view.plugin(value)?.decorations ?? Decoration.none),
+    const field = StateField.define({
+        create: state => buildDecorations(state, getEmbeds()),
+        update(value, transaction) {
+            return transaction.docChanged || !transaction.newSelection.eq(transaction.startState.selection)
+                || transaction.effects.some(effect => effect.is(refreshSourceEmbeds))
+                ? buildDecorations(transaction.state, getEmbeds())
+                : value;
+        },
+        provide: value => [
+            EditorView.decorations.from(value),
+            EditorView.atomicRanges.of(view => view.state.field(value)),
+        ],
     });
     const reveal = (event, view) => {
         const widget = event.target instanceof Element ? event.target.closest('[data-embed-from][data-embed-to]') : null;
@@ -153,7 +154,7 @@ export function buildSourceEmbedWidgetExtension(getEmbeds) {
         view.focus();
         return true;
     };
-    return [plugin, EditorView.domEventHandlers({ mousedown: reveal, keydown: reveal })];
+    return [field, EditorView.domEventHandlers({ mousedown: reveal, keydown: reveal })];
 }
 export function refreshSourceEmbedWidgets(view) {
     view?.dispatch({ effects: refreshSourceEmbeds.of(undefined) });

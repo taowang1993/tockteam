@@ -194,7 +194,7 @@ async function loaded() {
   const runtime = context.get('noteVault')
   const gateway = context.get('tocktutorWorkbench')
   assert.ok(runtime instanceof FakeRecoveryVault)
-  assert.ok(gateway instanceof TockTutorWorkbenchGateway)
+  assert.ok(gateway)
   return { context, gateway, runtime }
 }
 

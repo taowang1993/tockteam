@@ -196,7 +196,7 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Source' }))
     expect(onMode).toHaveBeenCalledWith('source')
     await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
-    expect(document.querySelector('.ProseMirror')?.getAttribute('contenteditable')).toBe('false')
+    expect(document.querySelector('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
     expect(screen.getByRole('note').textContent).toMatch(/Protected Markdown stays exact/u)
     fireEvent.mouseDown(screen.getByRole('checkbox', { name: 'Mark Task as Complete' }))
     expect(onToggleTask).toHaveBeenCalledWith(0)

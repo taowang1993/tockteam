@@ -11,7 +11,7 @@ import { $prose, getMarkdown, replaceAll } from '@milkdown/utils';
 import { useEffect, useMemo, useRef, } from 'react';
 import { projectEditorWidgets } from "./editor-widgets.js";
 import { runLivePreviewTableAction } from "./milkdown-editor-commands.js";
-import { splitLivePreviewSource } from "./live-preview-editor.js";
+import { isLivePreviewSourceProtected, splitLivePreviewSource } from "./live-preview-editor.js";
 import { buildLivePreviewEmbedPlugin, livePreviewEmbedPluginKey } from "./live-preview-embed-widgets.js";
 import { buildLivePreviewChromePlugin } from "./live-preview-chrome.js";
 function normalizeSource(source) {
@@ -48,13 +48,33 @@ function deleteSelectedTextblock(view) {
     view.dispatch(transaction.scrollIntoView());
     return true;
 }
+function toggleCalloutFold(source, targetIndex) {
+    let index = 0;
+    let offset = 0;
+    for (const line of source.split(/(?<=\n)/u)) {
+        const match = line.match(/^(\s*>\s*\[![A-Za-z][\w-]*\])([+-])/u);
+        if (match !== null) {
+            if (index === targetIndex) {
+                const from = offset + match[1].length;
+                return `${source.slice(0, from)}${match[2] === '-' ? '+' : '-'}${source.slice(from + 1)}`;
+            }
+            index += 1;
+        }
+        else if (/^\s*>\s*\[![A-Za-z][\w-]*\]/u.test(line))
+            index += 1;
+        offset += line.length;
+    }
+    return source;
+}
 function LivePreviewEditorInner(props) {
     const sourceRef = useRef(props.content);
     const frontmatterRef = useRef(splitLivePreviewSource(props.content).prefix);
     const embedsRef = useRef(props.resolvedEmbeds ?? []);
+    const protectedRef = useRef(isLivePreviewSourceProtected(props.content));
     const onMarkdownChangeRef = useRef(props.onMarkdownChange);
     const onOpenExternalUrlRef = useRef(props.onOpenExternalUrl);
     const onSelectionChangeRef = useRef(props.onSelectionChange);
+    const onToggleTaskRef = useRef(props.onToggleTask);
     const onWidgetStateRef = useRef(props.onWidgetState);
     const syncingRef = useRef(false);
     const lastSelectionRef = useRef(null);
@@ -63,6 +83,7 @@ function LivePreviewEditorInner(props) {
     useEffect(() => { onMarkdownChangeRef.current = props.onMarkdownChange; }, [props.onMarkdownChange]);
     useEffect(() => { onOpenExternalUrlRef.current = props.onOpenExternalUrl; }, [props.onOpenExternalUrl]);
     useEffect(() => { onSelectionChangeRef.current = props.onSelectionChange; }, [props.onSelectionChange]);
+    useEffect(() => { onToggleTaskRef.current = props.onToggleTask; }, [props.onToggleTask]);
     useEffect(() => { onWidgetStateRef.current = props.onWidgetState; }, [props.onWidgetState]);
     const editor = useEditor((root) => {
         const lifecycle = $prose(() => new Plugin({
@@ -87,8 +108,19 @@ function LivePreviewEditorInner(props) {
                 };
             },
         }));
-        const chrome = $prose(() => buildLivePreviewChromePlugin(() => onOpenExternalUrlRef.current));
-        const embedWidgets = $prose(() => buildLivePreviewEmbedPlugin(() => embedsRef.current));
+        const chrome = $prose(() => buildLivePreviewChromePlugin({
+            isProtected: () => protectedRef.current,
+            onOpenExternalUrl: () => onOpenExternalUrlRef.current,
+            onToggleCallout: index => {
+                const next = toggleCalloutFold(sourceRef.current, index);
+                if (next !== sourceRef.current) {
+                    sourceRef.current = next;
+                    onMarkdownChangeRef.current(next);
+                }
+            },
+            onToggleTask: index => { onToggleTaskRef.current?.(index); },
+        }));
+        const embedWidgets = $prose(() => buildLivePreviewEmbedPlugin(() => embedsRef.current, () => sourceRef.current));
         const editingShortcuts = $prose(() => new Plugin({
             props: {
                 handleKeyDown: (view, event) => {
@@ -155,7 +187,7 @@ function LivePreviewEditorInner(props) {
             .config(ctx => {
             const manager = ctx.get(listenerCtx);
             manager.markdownUpdated((_ctx, markdown) => {
-                if (syncingRef.current)
+                if (syncingRef.current || protectedRef.current)
                     return;
                 const next = preserveLineEndings(sourceRef.current, `${frontmatterRef.current}${markdown}`);
                 sourceRef.current = next;
@@ -167,6 +199,7 @@ function LivePreviewEditorInner(props) {
     useEffect(() => {
         sourceRef.current = props.content;
         frontmatterRef.current = splitLivePreviewSource(props.content).prefix;
+        protectedRef.current = isLivePreviewSourceProtected(props.content);
     }, [props.content]);
     useEffect(() => {
         embedsRef.current = props.resolvedEmbeds ?? [];

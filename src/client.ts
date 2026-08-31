@@ -1,9 +1,24 @@
 /** Browser face for the native TockTeam Desktop bridge. */
 
 import type { DesktopBridge, DesktopCommand } from './contracts.ts'
+import { localeTag, type LocaleService } from '../plugins/shared/i18n.ts'
+import { apply as applyLauncherSettings, inject as launcherSettingsInject } from './launcher-settings.tsx'
+import { projectLauncherThemeSource } from './launcher-theme.ts'
+import { deferSettingsOpen } from './desktop-settings-navigation.ts'
+import {
+  resolveLauncherRoutePath,
+  type LauncherWorkbenchRoute,
+} from './launcher-navigation.ts'
 import type { DesktopPanels } from '../plugins/panel-controls/src/client.ts'
 import type { PinnedSummary } from '../plugins/pinned-summary/src/client.ts'
 import type { WorkspaceTools } from '../plugins/sidebar/src/client.ts'
+import {
+  isTockCoderPath,
+  isTockTutorPath,
+  readLastTockTutorPath,
+  readTockTutorRouteLocation,
+  rememberTockTutorPath,
+} from '../plugins/sidebar/src/client/tocktutor-route.ts'
 import {
   brandingMutationRoots,
   findHeroHeadlines,
@@ -16,7 +31,10 @@ import {
 } from '../plugins/shared/surface.ts'
 
 export {
+  canonicalTockTeamPath,
+  isTockCoderPath,
   isTockTutorPath,
+  TOCKCODER_ROUTE_PREFIX,
   readTockTutorRouteLocation,
   resolveTockTutorNavigation,
   TOCKTUTOR_ROUTE_PREFIX,
@@ -37,9 +55,18 @@ interface WorkspacesService {
   startSession(workspaceId?: string): void
 }
 
+interface ThemeSnapshot {
+  active: Readonly<{ id: string; colorScheme: 'light' | 'dark' }>
+}
+
+interface ThemeService {
+  getTheme: () => ThemeSnapshot
+}
+
 interface ClientContext {
   effect(effect: () => (() => Promise<void> | void) | void, label?: string): void
   get(name: string): unknown
+  on(event: 'theme/change', listener: (snapshot: ThemeSnapshot) => void): () => void
   reflect: {
     provide(name: string, value: unknown, options?: unknown): (() => Promise<void> | void) | void
   }
@@ -52,7 +79,7 @@ declare global {
 }
 
 /** Wait for the DSH services used by native menu commands. */
-export const inject = ['workspaces', 'desktopPanels', 'pinnedSummary']
+export const inject = ['workspaces', 'desktopPanels', 'pinnedSummary', 'theme', ...launcherSettingsInject]
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
@@ -190,8 +217,81 @@ function findSettingsButton(): HTMLButtonElement | undefined {
     .sort((left, right) => right.getBoundingClientRect().bottom - left.getBoundingClientRect().bottom)[0]
 }
 
-function showSettings(): void {
-  findSettingsButton()?.click()
+function isSettingsShellOpen(): boolean {
+  return document.querySelector('[role="dialog"] button[aria-current]') !== null
+}
+
+function showSettingsAfterRoute(section?: 'tocklauncher'): void {
+  const schedule = (callback: () => void): void => {
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => { queueMicrotask(callback) })
+    } else {
+      queueMicrotask(callback)
+    }
+  }
+  if (section !== 'tocklauncher') {
+    deferSettingsOpen({
+      findButton: findSettingsButton,
+      isOpen: isSettingsShellOpen,
+      isTockCoder: () => isTockCoderPath(window.location.pathname),
+      isTockTutorActive: () => document.documentElement.dataset.tockteamTocktutorActive === 'true',
+      schedule: callback => {
+        if (typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(() => { queueMicrotask(callback) })
+        } else {
+          queueMicrotask(callback)
+        }
+      },
+    })
+    return
+  }
+  const selectLauncherSection = (): void => {
+    let attempts = 0
+    const attempt = (): void => {
+      const section = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')]
+        .find(button => button.textContent?.trim() === 'TockLauncher')
+      if (section !== undefined) {
+        section.click()
+        return
+      }
+      if (attempts >= 60) return
+      attempts += 1
+      schedule(attempt)
+    }
+    schedule(attempt)
+  }
+  deferSettingsOpen({
+    findButton: findSettingsButton,
+    isOpen: isSettingsShellOpen,
+    isTockCoder: () => isTockCoderPath(window.location.pathname),
+    isTockTutorActive: () => document.documentElement.dataset.tockteamTocktutorActive === 'true',
+    onOpened: selectLauncherSection,
+    schedule: callback => {
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => { queueMicrotask(callback) })
+      } else {
+        queueMicrotask(callback)
+      }
+    },
+  })
+}
+
+function navigateLauncherRoute(route: LauncherWorkbenchRoute): void {
+  const currentLocation = readTockTutorRouteLocation()
+  if (isTockTutorPath(currentLocation.pathname)) rememberTockTutorPath(currentLocation)
+  if (route.destination === 'tocktutor' && isTockTutorPath(currentLocation.pathname)) return
+  const pathname = route.destination === 'tocktutor'
+    ? readLastTockTutorPath()
+    : resolveLauncherRoutePath(route.destination)
+  const current = `${currentLocation.pathname}${currentLocation.search}${currentLocation.hash}`
+  if (current === pathname) {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    if (route.destination === 'tockcoder') window.setTimeout(focusComposer, 0)
+    return
+  }
+  window.history.pushState(window.history.state, '', pathname)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+  if (route.destination === 'tockcoder') window.setTimeout(focusComposer, 0)
 }
 
 async function openPaths(workspaces: WorkspacesService, paths: readonly string[]): Promise<void> {
@@ -221,7 +321,7 @@ function dispatch(
       })
       return
     case 'show-settings':
-      showSettings()
+      showSettingsAfterRoute(command.section)
       return
     case 'toggle-sidebar':
       panels.toggleSidebar()
@@ -273,6 +373,7 @@ export function apply(ctx: ClientContext): void {
   const workspaces = ctx.get('workspaces') as WorkspacesService
   const panels = ctx.get('desktopPanels') as DesktopPanels
   const pinnedSummary = ctx.get('pinnedSummary') as PinnedSummary
+  applyLauncherSettings(ctx)
   ctx.effect(() => {
     const removeShell = ctx.reflect.provide('desktopShell', bridge, undefined)
     // The unified three-surface contract, client plane: the desktop shell.
@@ -287,7 +388,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => {
     const removeDesktopChrome = installDesktopChrome()
     const removeBranding = installBranding()
-    const unsubscribe = bridge.onCommand((command) => {
+    const unsubscribeCommand = bridge.onCommand((command) => {
       dispatch(
         command,
         workspaces,
@@ -296,10 +397,28 @@ export function apply(ctx: ClientContext): void {
         ctx.get('workspaceTools') as WorkspaceTools,
       )
     })
+    const unsubscribeRoute = bridge.onRoute((route) => { navigateLauncherRoute(route) })
+    const theme = ctx.get('theme') as ThemeService
+    const locale = ctx.get('locale') as LocaleService
+    const syncLocale = (): void => {
+      void bridge.syncLauncherLocale(localeTag(locale)).catch(() => {})
+    }
+    const syncTheme = (): void => {
+      void bridge.syncLauncherTheme(projectLauncherThemeSource(theme.getTheme())).catch(() => {})
+    }
+    syncLocale()
+    syncTheme()
+    const unsubscribeLocale = locale.subscribe(syncLocale)
+    const unsubscribeTheme = ctx.on('theme/change', snapshot => {
+      void bridge.syncLauncherTheme(projectLauncherThemeSource(snapshot)).catch(() => {})
+    })
     return () => {
-      unsubscribe()
+      unsubscribeLocale()
+      unsubscribeTheme()
+      unsubscribeRoute()
+      unsubscribeCommand()
       removeBranding()
       removeDesktopChrome()
     }
-  }, 'tockteam-desktop: native command bridge')
+  }, 'tockteam-desktop: native command, route, and theme bridge')
 }
