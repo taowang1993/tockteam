@@ -149,6 +149,7 @@ test('launcher renderer uses the compact Tockbot composition', () => {
   assert.match(html, /id="launcher-root"[^>]+bg-\[var\(--dsw-alias-bg-overlay,var\(--dsw-alias-bg-layer-1,Canvas\)\)\]/u)
   assert.match(html, /id="launcher-search-form"[^>]+class="[^"]*box-border[^"]*h-\[60px\]/u)
   assert.match(html, /id="launcher-search-icon"[^>]+class="[^"]*hidden[^"]*"[^>]+hidden/u)
+  assert.match(html, /id="launcher-history-toggle"[^>]+class="[^"]*text-\[0px\][^"]*"/u)
   assert.match(launcher, /searchIcon\.classList\.toggle\('hidden', !surfaceSettings\.showSearchIcon\)/u)
   assert.match(html, /id="launcher-search"[^>]+placeholder="Type here\.\.\."/u)
   assert.doesNotMatch(html, /id="launcher-search"[^>]+class="[^"]*pl-7/u)
