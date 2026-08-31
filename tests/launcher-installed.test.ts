@@ -722,17 +722,16 @@ test('installed evidence catalog owns exact platform rows and immutable hosted p
     'macOS:artifact-build', 'macOS:identity-and-resources', 'macOS:ad-hoc-signature',
     'macOS:security-and-workbench', 'macOS:launcher-action', 'macOS:settings-session-compatibility',
     'macOS:reinstall-settings', 'macOS:rollback', 'macOS:permissions-and-cleanup',
+    'macOS:shortcut-second-instance',
   ])
   const hostedRows = new Set([
-    'Windows:portable-archive-install', 'Windows:identity-resources-notices', 'Windows:security-action-settings',
-    'Windows:reinstall-rollback-cleanup', 'Windows:shortcut-second-instance-permissions',
     'Linux:deb-install', 'Linux:appimage-install', 'Linux:identity-resources-notices',
-    'Linux:security-action-settings', 'Linux:file-search-custom-browser', 'Linux:shortcut-second-instance-permissions',
+    'Linux:security-action-settings', 'Linux:file-search-custom-browser',
+    'Linux:reinstall-rollback-cleanup', 'Linux:shortcut-second-instance-permissions',
   ])
   const partialRows = new Set([
     'macOS:notices-and-bounded-vendor-scan', 'macOS:provider-catalog',
-    'Windows:notices-and-bounded-vendor-scan', 'Windows:control-panel-terminal-elevation',
-    'Linux:notices-and-bounded-vendor-scan', 'Linux:reinstall-rollback-cleanup',
+    'Linux:notices-and-bounded-vendor-scan',
   ])
   const provenanceFor = (platform: 'Linux' | 'Windows' | 'macOS') => {
     const reference = `.beads/reports/tocklauncher-installed-${platform === 'Linux' ? 'linux-x64' : platform === 'Windows' ? 'windows-x64' : 'macos-arm64'}.json`

@@ -194,20 +194,24 @@ pnpm test:launcher:installed
 ```
 
 This command builds a fresh product and exercises the disposable macOS,
-Windows portable tar.gz archive, Debian, and AppImage lanes when run on their supported
-hosts. The checked-in macOS arm64 report records unsigned/internal ad-hoc proof
-for the identity, resources, security, actions, settings/reinstall, rollback,
-and cleanup rows. Notices/vendor scanning and provider catalog are only
-partially verified, and the shortcut row remains workflow-required because no
-actual shortcut path was exercised. Hosted run `33295632276` passed the Windows
-portable archive and Linux Debian/AppImage installed smokes at commit
-`ed39e301`; run `33301125258` refreshed the checked-in reports at commit
-`455db8ca`. The reports promote only the rows they exercised. Windows Control Panel
-was unavailable on the hosted image, elevation remained
-confirmation-required and uninvoked, and Linux package rollback remains
-workflow-required. The reports are not signing, notarization, publication, or
-public-distribution evidence. Vendor results are bounded no-follow scans, not
-global source-absence proof; upgrade claims require their own reports.
+Windows portable tar.gz archive, Debian, and AppImage lanes when run on their
+supported hosts. The checked-in macOS arm64 report records unsigned/internal
+ad-hoc proof at commit `63a72645` for identity, resources, security, actions,
+settings/reinstall, rollback, cleanup, and native Launch Services
+second-instance behavior. Notices/vendor scanning and provider catalog are only
+partially verified. Hosted run `33295632276` passed historical Windows portable
+archive and Linux Debian/AppImage installed smokes at commit `ed39e301`; run
+`33301125258` refreshed those historical reports at commit `455db8ca`. Hosted
+run `33342761994` passed the current Linux lanes at commit `63a72645`, including
+recovery from a controlled validation failure by reinstalling the preserved
+prior Debian package from run `33301125258`. The historical
+Linux package rollback row was workflow-required; the current Linux row is hosted-verified.
+The current Windows lane failed before producing a valid report, so its rows
+remain workflow-required. The historical hosted image reported Windows Control Panel unavailable
+and elevation confirmation-required but uninvoked. The
+reports are not signing, notarization, publication, or public-distribution
+evidence. Vendor results are bounded no-follow scans, not global source-absence
+proof; upgrade claims require their own reports.
 
 ## Data and troubleshooting
 
