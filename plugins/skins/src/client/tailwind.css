@@ -156,6 +156,35 @@
   background: color-mix(in srgb, var(--dsw-alias-bg-base, Canvas) 92%, var(--dsw-alias-label-primary, CanvasText));
 }
 
+#launcher-results {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+#launcher-results::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+#launcher-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#launcher-results::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+  background-color: transparent;
+}
+
+#launcher-results[data-scrolling='true'] {
+  scrollbar-color: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 24%, transparent) transparent;
+}
+
+#launcher-results[data-scrolling='true']::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 24%, transparent);
+}
+
 #launcher-results[data-layout='detailed'] [role='option'] {
   align-items: flex-start;
   padding-block: 0.625rem;

@@ -949,6 +949,14 @@ async function bootstrap(): Promise<void> {
       rescan.removeAttribute('aria-busy')
     }
   })
+  let scrollbarHideTimer = 0
+  results.addEventListener('scroll', () => {
+    results.dataset.scrolling = 'true'
+    window.clearTimeout(scrollbarHideTimer)
+    scrollbarHideTimer = window.setTimeout(() => {
+      delete results.dataset.scrolling
+    }, 300)
+  }, { passive: true })
   search.addEventListener('input', () => {
     if (invokingWorkflow) return
     void renderSearch(search.value)
