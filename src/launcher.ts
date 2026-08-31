@@ -190,7 +190,7 @@ function createLauncherShortcut(shortcut: string): HTMLSpanElement {
   wrapper.setAttribute('aria-hidden', 'true')
   for (const part of normalized.split('+')) {
     const key = document.createElement('kbd')
-    key.className = 'inline-grid h-4 min-w-4 place-items-center rounded-[3px] bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,CanvasText)_9%,transparent)] px-0.5 font-sans text-[9px] leading-none text-[var(--dsw-alias-label-secondary,CanvasText)]'
+    key.className = 'inline-grid box-border h-4 min-w-4 place-items-center rounded-[3px] border border-[color-mix(in_srgb,var(--dsw-alias-label-primary,CanvasText)_12%,var(--dsw-alias-border-l1,CanvasText))] bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,CanvasText)_9%,transparent)] px-[1.5px] font-sans text-[9px] leading-none text-[var(--dsw-alias-label-secondary,CanvasText)] shadow-[0_1px_0_0_var(--dsw-alias-border-l1,CanvasText)]'
     key.textContent = part
     wrapper.append(key)
   }
