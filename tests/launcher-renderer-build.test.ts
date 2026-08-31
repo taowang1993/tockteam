@@ -136,10 +136,21 @@ test('settings renderer never inserts sensitive values and preserves focused con
   assert.match(terminalAssets, /terminal-windows/u)
 })
 
-test('launcher renderer uses shared color tokens for primary actions and selection', () => {
-  assert.match(launcher, /brand-primary-invert/u)
+test('launcher renderer uses shared color tokens for actions and selection', () => {
+  assert.match(launcher, /brand-primary/u)
   assert.match(launcher, /interactive-bg-active/u)
   assert.doesNotMatch(launcher, /text-white|interactive-bg-selected|bg-selected/u)
+})
+
+test('launcher renderer uses the compact Tockbot composition', () => {
+  assert.match(html, /<body class="[^"]*overflow-hidden[^"]*bg-transparent/u)
+  assert.match(html, /<main[^>]+id="launcher-root"[^>]+class="[^"]*h-full[^"]*overflow-hidden/u)
+  assert.match(html, /<footer[^>]+id="launcher-footer"/u)
+  assert.match(html, /id="launcher-footer-selection"/u)
+  assert.doesNotMatch(html, /id="launcher-root"[^>]+class="[^"]*(?:gap-3|p-5)/u)
+  assert.match(launcher, /createLauncherShortcut/u)
+  assert.match(launcher, /launcher-result-shortcut/u)
+  assert.match(launcher, /launcher-footer-selection/u)
 })
 
 test('TockTutor titlebar and all shared skins use valid TockTeam token contracts', () => {

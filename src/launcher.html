@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en-US" class="h-full bg-[var(--dsw-alias-bg-base,Canvas)] text-[var(--dsw-alias-label-primary,CanvasText)] [color-scheme:light_dark]" data-launcher-ready="false">
+<html lang="en-US" class="h-full bg-transparent text-[var(--dsw-alias-label-primary,CanvasText)] [color-scheme:light_dark]" data-launcher-ready="false">
   <head>
     <meta charset="UTF-8" />
     <meta name="color-scheme" content="light dark" />
@@ -9,27 +9,28 @@
     <script type="module" src="./launcher.js"></script>
     <title>TockLauncher</title>
   </head>
-  <body class="m-0 h-full min-h-full overflow-auto bg-[var(--dsw-alias-bg-base,Canvas)] font-sans text-[var(--dsw-alias-label-primary,CanvasText)] motion-reduce:transition-none motion-reduce:animate-none">
-    <main id="launcher-root" class="mx-auto box-border flex min-h-full w-full max-w-[750px] min-w-0 flex-col gap-3 overflow-auto rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] p-5 shadow-lg motion-reduce:transition-none" data-launcher-ready="false">
+  <body class="m-0 h-full min-h-0 overflow-hidden bg-transparent font-sans text-[var(--dsw-alias-label-primary,CanvasText)] motion-reduce:transition-none motion-reduce:animate-none">
+    <main id="launcher-root" class="relative box-border flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[14px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,Canvas))] shadow-lg motion-reduce:transition-none" data-launcher-ready="false">
       <h1 class="sr-only">TockLauncher</h1>
-      <div id="launcher-search-form" class="flex min-w-0 flex-wrap items-center gap-2" role="search">
-        <label for="launcher-search" class="sr-only">Search TockLauncher</label>
-        <div class="relative min-w-0 flex-1 basis-full sm:basis-auto">
-          <span id="launcher-search-icon" class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]" aria-hidden="true"></span>
-          <input id="launcher-search" class="box-border h-10 w-full rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-specific-input-major,var(--dsw-alias-bg-base,Canvas))] px-3 pl-9 text-base text-[var(--dsw-alias-label-primary,CanvasText)] outline-none focus-visible:border-[var(--dsw-alias-brand-primary,CanvasText)] focus-visible:ring-2 focus-visible:ring-[var(--dsw-alias-brand-primary,CanvasText)]" type="search" role="combobox" aria-autocomplete="list" aria-controls="launcher-results" aria-expanded="false" autocomplete="off" placeholder="Search TockTeam" />
-        </div>
-        <button id="launcher-history-toggle" class="inline-flex h-10 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2" type="button" aria-label="Search History" aria-controls="launcher-history" aria-expanded="false" aria-haspopup="menu">History</button>
+      <div id="launcher-search-form" class="group relative flex min-h-[60px] shrink-0 items-center border-b border-[var(--dsw-alias-border-l1,var(--dsw-alias-border-l2,CanvasText))] px-4 [-webkit-app-region:drag]" role="search">
+        <label for="launcher-search" class="relative min-w-0 flex-1 [-webkit-app-region:no-drag]">
+          <span id="launcher-search-label" class="sr-only">Search TockLauncher</span>
+          <span id="launcher-search-icon" class="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]" aria-hidden="true"></span>
+          <input id="launcher-search" class="box-border h-11 w-full border-0 bg-transparent p-0 pr-10 pl-7 text-[15px] font-medium tracking-[0.005em] text-[var(--dsw-alias-label-primary,CanvasText)] outline-none placeholder:text-[var(--dsw-alias-label-secondary,CanvasText)] [-webkit-app-region:no-drag]" type="search" role="combobox" aria-autocomplete="list" aria-controls="launcher-results" aria-expanded="false" autocomplete="off" placeholder="Search TockTeam" />
+        </label>
+        <button id="launcher-history-toggle" class="absolute right-4 grid size-8 shrink-0 place-items-center rounded-md border border-transparent p-1 text-[0] text-[var(--dsw-alias-label-secondary,CanvasText)] opacity-0 transition-[opacity,background-color] duration-150 hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)] group-hover:opacity-100 aria-expanded:opacity-100 [-webkit-app-region:no-drag]" type="button" aria-label="Search History" aria-controls="launcher-history" aria-expanded="false" aria-haspopup="menu">History</button>
       </div>
-      <div id="launcher-history" class="max-h-40 overflow-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] shadow-md" role="menu" aria-label="Search History" hidden></div>
-      <p id="launcher-status" class="m-0 min-h-5 text-sm text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite" aria-atomic="true">Destinations will appear here.</p>
-      <div id="launcher-provider-statuses" class="min-w-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite" hidden></div>
-      <ul id="launcher-results" class="m-0 min-h-0 flex-1 list-none overflow-auto p-0" role="listbox" aria-label="TockLauncher destinations"></ul>
-      <div id="launcher-details" class="min-h-9 min-w-0"></div>
-      <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
-        <button id="launcher-rescan" class="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2 disabled:cursor-wait disabled:opacity-60" type="button">Rescan</button>
-        <button id="launcher-settings" class="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2" type="button">Open TockLauncher Settings</button>
-        <button id="launcher-close" class="h-9 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-3 text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]" type="button">Close TockLauncher</button>
-      </div>
+      <div id="launcher-history" class="absolute inset-x-2.5 top-[52px] z-20 max-h-40 overflow-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,Canvas))] p-1 shadow-lg" role="menu" aria-label="Search History" hidden></div>
+      <div id="launcher-provider-statuses" class="min-w-0 border-b border-[var(--dsw-alias-border-l1,var(--dsw-alias-border-l2,CanvasText))] px-3 py-1 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite" hidden></div>
+      <ul id="launcher-results" class="m-0 min-h-0 flex-1 list-none overflow-y-auto p-1.5" role="listbox" aria-label="TockLauncher destinations"></ul>
+      <footer id="launcher-footer" class="relative flex min-h-11 shrink-0 items-center justify-between gap-3 border-t border-[var(--dsw-alias-border-l1,var(--dsw-alias-border-l2,CanvasText))] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-4 py-2 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] [-webkit-app-region:drag]">
+        <div id="launcher-footer-selection" class="flex min-w-0 flex-1 items-center gap-2 [-webkit-app-region:no-drag]"></div>
+        <p id="launcher-status" class="m-0 max-w-56 truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)] data-[tone=ready]:sr-only" role="status" aria-live="polite" aria-atomic="true">Destinations will appear here.</p>
+        <div id="launcher-details" class="relative flex min-w-0 shrink-0 items-center justify-end gap-2 [-webkit-app-region:no-drag]"></div>
+        <button id="launcher-rescan" class="hidden" type="button">Rescan</button>
+        <button id="launcher-settings" class="hidden" type="button">Open TockLauncher Settings</button>
+        <button id="launcher-close" class="hidden" type="button">Close TockLauncher</button>
+      </footer>
     </main>
   </body>
 </html>

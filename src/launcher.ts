@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   History as HistoryIcon,
-  ListFilter,
   RefreshCw,
   Search,
   Settings,
@@ -180,6 +179,26 @@ function icon(definition: IconNode): SVGSVGElement {
   return svg
 }
 
+function createLauncherShortcut(shortcut: string): HTMLSpanElement {
+  const normalized = shortcut
+    .replace('Cmd', '⌘')
+    .replace('Shift', '⇧')
+    .replace('Alt', '⌥')
+    .replace('Enter', '↵')
+    .replace('Backspace', '⌫')
+    .replace('Delete', 'Del')
+  const wrapper = document.createElement('span')
+  wrapper.className = 'inline-flex shrink-0 items-center gap-px'
+  wrapper.setAttribute('aria-hidden', 'true')
+  for (const part of normalized.split('+')) {
+    const key = document.createElement('kbd')
+    key.className = 'inline-grid h-4 min-w-4 place-items-center rounded-[3px] bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,CanvasText)_9%,transparent)] px-0.5 font-sans text-[9px] leading-none text-[var(--dsw-alias-label-secondary,CanvasText)]'
+    key.textContent = part
+    wrapper.append(key)
+  }
+  return wrapper
+}
+
 async function bootstrap(): Promise<void> {
   const root = document.getElementById('launcher-root') as HTMLElement
   const search = document.getElementById('launcher-search') as HTMLInputElement
@@ -194,6 +213,8 @@ async function bootstrap(): Promise<void> {
   const historyPanel = document.getElementById('launcher-history') as HTMLElement
   const rescan = document.getElementById('launcher-rescan') as HTMLButtonElement
   const details = document.getElementById('launcher-details') as HTMLElement
+  const footer = document.getElementById('launcher-footer') as HTMLElement
+  const footerSelection = document.getElementById('launcher-footer-selection') as HTMLElement
   const bridge = window.tockteamLauncher as LauncherBridge
   if (!(root instanceof HTMLElement)
     || !(search instanceof HTMLInputElement)
@@ -208,6 +229,8 @@ async function bootstrap(): Promise<void> {
     || !(historyPanel instanceof HTMLElement)
     || !(rescan instanceof HTMLButtonElement)
     || !(details instanceof HTMLElement)
+    || !(footer instanceof HTMLElement)
+    || !(footerSelection instanceof HTMLElement)
     || bridge === undefined) {
     throw new Error('TockLauncher renderer is missing its required controls')
   }
@@ -275,11 +298,12 @@ async function bootstrap(): Promise<void> {
     document.documentElement.lang = surfaceSettings.locale
     document.title = 'TockLauncher'
     search.placeholder = surfaceSettings.placeholder
-    document.querySelector<HTMLLabelElement>('label[for="launcher-search"]')?.replaceChildren(document.createTextNode(copy.search))
+    document.getElementById('launcher-search-label')?.replaceChildren(document.createTextNode(copy.search))
     search.setAttribute('aria-label', copy.search)
     historyToggle.setAttribute('aria-label', copy.history)
     results.setAttribute('aria-label', copy.results)
     searchIcon.hidden = !surfaceSettings.showSearchIcon
+    search.classList.toggle('pl-7', surfaceSettings.showSearchIcon)
     search.dataset.searchBarAppearance = surfaceSettings.searchBarAppearance
     search.dataset.searchBarSize = surfaceSettings.searchBarSize
     search.classList.remove('h-8', 'h-10', 'h-12')
@@ -331,7 +355,7 @@ async function bootstrap(): Promise<void> {
     activeLocalTool = undefined
     activeLocalToolId = undefined
     tool?.remove()
-    for (const element of [searchForm, status, providerStatuses, results, details, rescan, settings]) element.hidden = false
+    for (const element of [searchForm, providerStatuses, results, footer]) element.hidden = false
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
@@ -343,7 +367,7 @@ async function bootstrap(): Promise<void> {
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
-    for (const element of [searchForm, status, providerStatuses, results, details, rescan, settings]) element.hidden = true
+    for (const element of [searchForm, providerStatuses, results, footer]) element.hidden = true
   }
   const openLocalTool = async (extensionId: LauncherLocalToolId): Promise<void> => {
     let localSettings: LauncherLocalExtensionSettings
@@ -609,32 +633,59 @@ async function bootstrap(): Promise<void> {
     }
   }
 
+  const createResultMarker = (item: LauncherPublicResultItem): HTMLImageElement | HTMLSpanElement => {
+    const localAsset = Object.hasOwn(LAUNCHER_LOCAL_EXTENSION_ASSET_URLS, item.sourceExtension) && item.imageKey !== undefined
+      ? LAUNCHER_LOCAL_EXTENSION_ASSET_URLS[item.sourceExtension as keyof typeof LAUNCHER_LOCAL_EXTENSION_ASSET_URLS]
+      : undefined
+    const packagedAsset = item.imageKey === undefined
+      ? undefined
+      : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey)
+    const imageUrl = isLauncherImageUrl(item.imageUrl) ? item.imageUrl : localAsset ?? packagedAsset
+    const marker = imageUrl === undefined ? document.createElement('span') : document.createElement('img')
+    marker.className = 'flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-[10px] font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)] object-contain'
+    marker.setAttribute('aria-hidden', 'true')
+    if (marker instanceof HTMLImageElement) {
+      marker.alt = ''
+      marker.src = imageUrl!
+      marker.onerror = () => {
+        const fallback = document.createElement('span')
+        fallback.className = marker.className
+        fallback.setAttribute('aria-hidden', 'true')
+        fallback.textContent = item.name.slice(0, 1).toLocaleUpperCase()
+        marker.replaceWith(fallback)
+      }
+    } else marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
+    return marker
+  }
+
   function renderDetails(): void {
     details.replaceChildren()
+    footerSelection.replaceChildren()
     const item = selectedItem()
     if (item === undefined) return
 
-    const selection = document.createElement('span')
-    selection.className = 'min-w-0 flex-1 truncate text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)]'
-    selection.textContent = `${item.name} — ${item.description}`
+    const selectionName = document.createElement('span')
+    selectionName.className = 'min-w-0 truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
+    selectionName.textContent = item.name
+    footerSelection.append(createResultMarker(item), selectionName)
+
     const open = document.createElement('button')
-    open.className = 'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[var(--dsw-alias-brand-primary,#0969da)] px-3 text-sm font-medium text-[var(--dsw-alias-brand-primary-invert,Canvas)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2'
+    open.className = 'inline-flex min-h-[22px] shrink-0 items-center gap-2 border-0 bg-transparent p-0 text-xs font-semibold text-[var(--dsw-alias-label-primary,CanvasText)] hover:text-[var(--dsw-alias-brand-text,var(--dsw-alias-label-primary,CanvasText))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
     open.type = 'button'
     open.disabled = workflowInteractionBlocked()
     open.setAttribute('aria-label', actionLabel(item.defaultAction))
     const openShortcut = actionAriaShortcut(item.defaultAction, true)
     if (openShortcut !== undefined) open.setAttribute('aria-keyshortcuts', openShortcut)
-    open.append(icon(ArrowRight))
     const openText = document.createElement('span')
     openText.textContent = item.defaultAction.description
-    open.append(openText)
+    open.append(openText, createLauncherShortcut('Enter'))
     open.addEventListener('click', () => {
       if (workflowInteractionBlocked()) return
       void invoke(item.defaultAction)
     })
 
     const toggle = document.createElement('button')
-    toggle.className = 'inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2'
+    toggle.className = 'inline-flex min-h-[22px] shrink-0 items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
     toggle.type = 'button'
     toggle.disabled = workflowInteractionBlocked()
     toggle.setAttribute('aria-label', `Actions for ${item.name}`)
@@ -642,10 +693,9 @@ async function bootstrap(): Promise<void> {
     toggle.setAttribute('aria-expanded', String(actionMenuOpen))
     toggle.setAttribute('aria-controls', 'launcher-actions-menu')
     toggle.setAttribute('aria-keyshortcuts', `${modifier}+K`)
-    toggle.append(icon(ListFilter))
     const toggleText = document.createElement('span')
     toggleText.textContent = messages().actions
-    toggle.append(toggleText)
+    toggle.append(toggleText, createLauncherShortcut(`${isMac ? 'Cmd' : 'Ctrl'}+K`))
     toggle.addEventListener('click', () => {
       if (workflowInteractionBlocked()) return
       if (!actionMenuOpen) {
@@ -660,11 +710,11 @@ async function bootstrap(): Promise<void> {
     })
 
     const row = document.createElement('div')
-    row.className = 'flex min-w-0 flex-wrap items-center gap-2'
-    row.append(selection, open)
+    row.className = 'flex min-w-0 items-center gap-3'
+    row.append(open)
     if (activeCancellation !== undefined && item.sourceExtension === 'Workflow') {
       const cancel = document.createElement('button')
-      cancel.className = 'inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] px-2 text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2'
+      cancel.className = 'inline-flex min-h-[22px] shrink-0 items-center border-0 bg-transparent p-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2'
       cancel.type = 'button'
       cancel.disabled = cancellationPending
       cancel.dataset.testid = 'tocklauncher-cancel-workflow'
@@ -678,14 +728,14 @@ async function bootstrap(): Promise<void> {
     if (!actionMenuOpen) return
 
     const menu = document.createElement('div')
-    menu.className = 'absolute bottom-full right-0 z-10 mb-2 max-h-[240px] w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full overflow-y-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg'
+    menu.className = 'absolute bottom-[calc(100%+12px)] right-0 z-10 max-h-[240px] w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full overflow-y-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,Canvas))] p-1 shadow-lg'
     menu.id = 'launcher-actions-menu'
     menu.setAttribute('role', 'menu')
     menu.setAttribute('aria-label', `Actions for ${item.name}`)
     const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
     for (const action of actions) {
       const actionButton = document.createElement('button')
-      actionButton.className = 'flex w-full items-center gap-2 truncate px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]'
+      actionButton.className = 'grid min-h-8 w-full grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-1 focus-visible:outline-offset-[-1px]'
       actionButton.type = 'button'
       actionButton.disabled = workflowInteractionBlocked()
       actionButton.setAttribute('role', 'menuitem')
@@ -697,7 +747,10 @@ async function bootstrap(): Promise<void> {
       const actionIcon = description.includes('favorite')
         ? description.includes('remove') ? StarOff : Star
         : description.includes('exclude') ? Trash2 : ArrowRight
-      actionButton.append(icon(actionIcon), document.createTextNode(actionLabel(action)))
+      const actionText = document.createElement('span')
+      actionText.className = 'min-w-0 truncate text-xs font-medium'
+      actionText.textContent = action.description
+      actionButton.append(icon(actionIcon), actionText, createLauncherShortcut(action.keyboardShortcut ?? 'Enter'))
       actionButton.addEventListener('click', () => {
         if (workflowInteractionBlocked()) return
         void invoke(action)
@@ -723,18 +776,17 @@ async function bootstrap(): Promise<void> {
         buttons[next]?.focus()
       }
     })
-    details.classList.add('relative')
     details.append(menu)
   }
 
   const renderGroup = (name: string, items: readonly LauncherPublicResultItem[], start: number): void => {
     if (items.length === 0) return
     const group = document.createElement('li')
-    group.className = 'mb-2'
+    group.className = 'mb-0.5'
     group.setAttribute('role', 'group')
     const heading = document.createElement('h2')
     heading.id = `launcher-group-${name.toLocaleLowerCase('en-US')}`
-    heading.className = 'm-0 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--dsw-alias-label-secondary,CanvasText)]'
+    heading.className = 'm-0 px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--dsw-alias-label-secondary,CanvasText)]'
     heading.textContent = name
     group.setAttribute('aria-labelledby', heading.id)
     const list = document.createElement('ul')
@@ -744,7 +796,7 @@ async function bootstrap(): Promise<void> {
       const listItem = document.createElement('li')
       listItem.setAttribute('role', 'presentation')
       const button = document.createElement('button')
-      button.className = 'flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] aria-selected:bg-[var(--dsw-alias-interactive-bg-active,rgb(0_0_0_/_10%))] aria-selected:font-semibold'
+      button.className = 'flex min-h-9 w-full min-w-0 items-center gap-2.5 rounded-md border border-transparent bg-transparent px-3 py-[7px] text-left text-[var(--dsw-alias-label-primary,CanvasText)] transition-[background-color,border-color] duration-150 hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)] aria-selected:border-[var(--dsw-alias-border-l2,CanvasText)] aria-selected:bg-[var(--dsw-alias-interactive-bg-active,rgb(0_0_0_/_10%))]'
       button.type = 'button'
       button.disabled = workflowInteractionBlocked()
       button.id = `launcher-result-${encodeURIComponent(item.id)}`
@@ -753,49 +805,30 @@ async function bootstrap(): Promise<void> {
       button.setAttribute('role', 'option')
       button.setAttribute('aria-selected', String(item.id === selectedItemId))
       button.tabIndex = -1
-      if (start + index < 9) button.setAttribute('aria-keyshortcuts', `${modifier}+${start + index + 1}`)
-      const localAsset = Object.hasOwn(LAUNCHER_LOCAL_EXTENSION_ASSET_URLS, item.sourceExtension) && item.imageKey !== undefined
-        ? LAUNCHER_LOCAL_EXTENSION_ASSET_URLS[item.sourceExtension as keyof typeof LAUNCHER_LOCAL_EXTENSION_ASSET_URLS]
-        : undefined
-      const packagedAsset = item.imageKey === undefined
-        ? undefined
-        : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey)
-      const imageUrl = isLauncherImageUrl(item.imageUrl)
-        ? item.imageUrl
-        : localAsset ?? packagedAsset
-      const marker = imageUrl !== undefined
-        ? document.createElement('img')
-        : document.createElement('span')
-      marker.className = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-sm font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'
-      marker.setAttribute('aria-hidden', 'true')
-      if (marker instanceof HTMLImageElement) {
-        marker.alt = ''
-        marker.src = imageUrl!
-        marker.onerror = () => {
-          const fallback = document.createElement('span')
-          fallback.className = marker.className
-          fallback.setAttribute('aria-hidden', 'true')
-          fallback.textContent = item.name.slice(0, 1).toLocaleUpperCase()
-          marker.replaceWith(fallback)
-        }
-      } else marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
+      const resultIndex = start + index
+      if (resultIndex < 9) button.setAttribute('aria-keyshortcuts', `${modifier}+${resultIndex + 1}`)
+      const compact = surfaceSettings.searchResultLayout === 'compact'
       const copy = document.createElement('span')
-      copy.className = 'min-w-0'
+      copy.className = compact ? 'flex min-w-0 flex-1 items-baseline gap-2' : 'min-w-0 flex-1'
       const nameElement = document.createElement('strong')
-      nameElement.className = 'block truncate text-sm font-medium'
+      nameElement.className = compact ? 'min-w-0 max-w-[42%] shrink-0 truncate text-[13px] font-medium tracking-[0.004em]' : 'block truncate text-sm font-medium'
       nameElement.textContent = item.name
       const description = document.createElement('span')
-      description.className = 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
+      description.className = compact ? 'min-w-0 flex-1 truncate text-xs font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
       description.textContent = item.description
-      const itemDetailsText = item.details
-      const itemDetails = itemDetailsText === undefined ? undefined : document.createElement('span')
-      if (itemDetails !== undefined) {
-        itemDetails.className = 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
-        itemDetails.textContent = itemDetailsText ?? null
-      }
       copy.append(nameElement, description)
-      if (itemDetails !== undefined) copy.append(itemDetails)
-      button.append(marker, copy)
+      if (!compact && item.details !== undefined) {
+        const itemDetails = document.createElement('span')
+        itemDetails.className = 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
+        itemDetails.textContent = item.details
+        copy.append(itemDetails)
+      }
+      button.append(createResultMarker(item), copy)
+      if (resultIndex < 9) {
+        const shortcut = createLauncherShortcut(`${isMac ? 'Cmd' : 'Ctrl'}+${resultIndex + 1}`)
+        shortcut.classList.add('launcher-result-shortcut', 'ml-auto')
+        button.append(shortcut)
+      }
       button.addEventListener('pointerdown', event => { event.preventDefault() })
       button.addEventListener('click', () => {
         if (workflowInteractionBlocked()) return
