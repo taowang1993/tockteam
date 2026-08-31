@@ -70,6 +70,20 @@ test('maps applications, bookmarks, JetBrains projects, and VS Code to opaque bo
   assert.equal(instant.after[0]?.defaultAction.argument.includes('file:///work/tockteam'), true)
 })
 
+test('application icon failures keep Application Search available with fallback icons', async () => {
+  const reported: string[] = []
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    getApplicationIcon: async () => { throw new Error('missing bundle icon') },
+    onProviderError: (extensionId, error) => { reported.push(`${extensionId}:${error.message}`) },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  const indexed = await provider.loadIndexedItems(new AbortController().signal)
+  assert.equal(indexed.some(item => item.sourceExtension === 'ApplicationSearch' && item.imageUrl === undefined), true)
+  assert.equal(provider.getProviderErrors().has('ApplicationSearch'), false)
+  assert.equal(reported.some(message => message.startsWith('ApplicationSearch:missing bundle icon')), true)
+})
+
 test('bounds application icon mapping by the scan deadline', async () => {
   const provider = createLauncherDiscoveryExtensions({
     ...baseOptions,
@@ -106,7 +120,7 @@ test('does not publish local targets without captured identities', async () => {
   assert.deepEqual(instant.after, [])
 })
 
-test('isolates provider failures and enforces latest scan cancellation', async () => {
+test('superseded discovery scans do not leave stale provider failures', async () => {
   const errors: string[] = []
   const controller = new AbortController()
   const provider = createLauncherDiscoveryExtensions({
@@ -124,9 +138,8 @@ test('isolates provider failures and enforces latest scan cancellation', async (
   const pending = provider.loadIndexedItems(controller.signal)
   controller.abort(new Error('superseded'))
   await assert.rejects(pending, /superseded/u)
-  assert.equal(errors.some(error => error.startsWith('ApplicationSearch:')), true)
-  assert.equal(errors.some(error => error.startsWith('BrowserBookmarks:')), true)
-  assert.deepEqual([...provider.getProviderErrors().keys()].sort(), ['ApplicationSearch', 'BrowserBookmarks', 'JetBrainsToolbox', 'VSCode'])
+  assert.deepEqual(errors, [])
+  assert.deepEqual([...provider.getProviderErrors().keys()], [])
 })
 
 test('clears VS Code actions after a failed rescan', async () => {

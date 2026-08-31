@@ -50,6 +50,19 @@ test('surface projection has bounded locale, appearance, interaction, and provid
   assert.equal(normalizeLauncherLocale('fr-FR'), 'en-US')
 })
 
+test('launcher surface defaults match the Tockbot search chrome', () => {
+  const projection = parseLauncherSurfaceSettings({
+    fuzziness: 0.5,
+    history: [],
+    historyEnabled: false,
+    historyLimit: 10,
+    maxSearchResultItems: 50,
+    searchEngineId: 'fuzzysort',
+  })
+  assert.equal(projection.placeholder, 'Type here...')
+  assert.equal(projection.showSearchIcon, false)
+})
+
 test('launcher shortcut matching requires exact modifiers and supports finite provider shortcuts', () => {
   assert.equal(launcherShortcutMatches({ key: 'o', metaKey: true, ctrlKey: false, altKey: false, shiftKey: false }, 'Cmd+O', 'macOS'), true)
   assert.equal(launcherShortcutMatches({ key: 'o', metaKey: true, ctrlKey: false, altKey: true, shiftKey: false }, 'Cmd+O', 'macOS'), false)

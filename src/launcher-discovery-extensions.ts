@@ -326,9 +326,9 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     await Promise.race([Promise.allSettled([...activeWork]).then(() => undefined), timer])
   }
 
-  const context = (extensionId: LauncherDiscoveryExtensionId, signal: AbortSignal, scanErrors: Set<LauncherDiscoveryExtensionId>): LauncherDiscoveryScanContext => Object.freeze({
+  const context = (extensionId: LauncherDiscoveryExtensionId, signal: AbortSignal, scanErrors: Map<LauncherDiscoveryExtensionId, Error>): LauncherDiscoveryScanContext => Object.freeze({
     appDataPath: options.appDataPath, defaults, environment, getSetting: options.getSetting,
-    homePath: options.homePath, onProviderError: error => { scanErrors.add(extensionId); reportProviderError(extensionId, error) }, platform: options.platform, signal,
+    homePath: options.homePath, onProviderError: error => { scanErrors.set(extensionId, error) }, platform: options.platform, signal,
   })
   const mappingTimeoutMs = Math.min(scanTimeoutMs, 1_000)
   const captureIdentity = async (target: string, signal: AbortSignal, timeoutMs = mappingTimeoutMs): Promise<LauncherDiscoveryIdentity | undefined> => {
@@ -344,7 +344,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     knownVscode = new Map(next)
   }
 
-  const scan = async (extensionId: LauncherDiscoveryExtensionId, parentSignal: AbortSignal, scanErrors: Set<LauncherDiscoveryExtensionId>): Promise<readonly LauncherDiscoveryEntry[]> => {
+  const scan = async (extensionId: LauncherDiscoveryExtensionId, parentSignal: AbortSignal, scanErrors: Map<LauncherDiscoveryExtensionId, Error>): Promise<readonly LauncherDiscoveryEntry[]> => {
     const controller = new AbortController()
     activeControllers.add(controller)
     const abortFromParent = () => controller.abort(parentSignal.reason instanceof Error ? parentSignal.reason : new Error('TockLauncher discovery scan canceled'))
@@ -373,19 +373,18 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     if (preserveSignal?.aborted) throw preserveSignal.reason instanceof Error ? preserveSignal.reason : new Error('TockLauncher discovery scan canceled')
     const ids = LAUNCHER_DISCOVERY_EXTENSION_IDS.filter(id => enabled().has(id))
     if (closed) throw new Error('TockLauncher discovery provider is closed')
-    const scanErrors = new Set<LauncherDiscoveryExtensionId>()
+    const scanErrors = new Map<LauncherDiscoveryExtensionId, Error>()
     const settled = await Promise.allSettled(ids.map(async id => {
       if (id === 'BrowserBookmarks' && options.platform === 'Linux') throw new Error('BrowserBookmarks is unsupported on Linux')
       return await track(scan(id, signal, scanErrors))
     }))
-    for (const [index, result] of settled.entries()) {
-      if (result.status === 'rejected') {
-        scanErrors.add(ids[index]!)
-        reportProviderError(ids[index]!, result.reason)
-      } else if (!scanErrors.has(ids[index]!)) clearProviderError(ids[index]!)
-    }
     if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery scan canceled')
     if (generation !== scanGeneration) throw new Error('TockLauncher discovery scan was superseded')
+    for (const [index, result] of settled.entries()) {
+      if (result.status === 'rejected') reportProviderError(ids[index]!, result.reason)
+      else if (scanErrors.has(ids[index]!)) reportProviderError(ids[index]!, scanErrors.get(ids[index]!))
+      else clearProviderError(ids[index]!)
+    }
     const vscodeIndex = ids.indexOf('VSCode')
     const vscodeFailed = vscodeIndex >= 0 && settled[vscodeIndex]?.status === 'rejected'
     if (vscodeFailed) {
@@ -404,7 +403,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     const mappingDeadline = Date.now() + scanTimeoutMs
     let applicationIconCalls = 0
     const indexed: LauncherInternalResultItem[] = []
-    const reportIconError = (() => { let reported = false; return (error: Error) => { if (!reported) { reported = true; scanErrors.add('ApplicationSearch'); reportProviderError('ApplicationSearch', error) } } })()
+    const reportIconError = (() => { let reported = false; return (error: Error) => { if (!reported) { reported = true; options.onProviderError?.('ApplicationSearch', error) } } })()
     const mapEntry = async (
       entry: LauncherDiscoveryEntry,
       map: Set<string>,

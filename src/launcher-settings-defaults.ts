@@ -18,10 +18,10 @@ function clone<T>(value: T): T {
 }
 
 function placeholder(locale: string): string {
-  if (locale.toLowerCase().startsWith('zh')) return '搜索'
-  if (locale.toLowerCase().startsWith('de')) return 'Suchen'
-  if (locale.toLowerCase().startsWith('fr')) return 'Rechercher'
-  return 'Search'
+  if (locale.toLowerCase().startsWith('zh')) return '在此输入…'
+  if (locale.toLowerCase().startsWith('de')) return 'Hier eingeben…'
+  if (locale.toLowerCase().startsWith('fr')) return 'Saisissez ici…'
+  return 'Type here...'
 }
 
 const HIDE_WINDOW_ON = Object.freeze(['blur', 'afterInvocation', 'escapePressed'])
@@ -43,6 +43,7 @@ export function resolveLauncherSettingDefault(key: string, context: LauncherDefa
     case 'extension[TerminalLauncher].terminalIds': return clone(context.terminalIds ?? launcherTerminalDefaults(context.platform))
     case 'extension[VSCode].command': return context.platform === 'macOS' ? '/usr/local/bin/code %s' : 'code %s'
     case 'appearance.searchBarPlaceholderText': return placeholder(context.locale ?? 'en-US')
+    case 'appearance.showSearchIcon': return false
     case 'searchEngine.rescanIntervalInSeconds': return 300
     case 'window.hideWindowOn': return clone(HIDE_WINDOW_ON)
     // Approved TockTeam safety divergences from the Ueli rows.

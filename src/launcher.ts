@@ -21,7 +21,7 @@ import {
   type LauncherSurfaceSettings,
 } from './launcher-contract.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
-import type { LauncherThemeProjection } from './launcher-theme.ts'
+import { launcherOriginalThemeTokens, type LauncherThemeProjection } from './launcher-theme.ts'
 import type { LauncherOsThemeMode } from './launcher-os-assets.ts'
 import { createLauncherLocalTool, LAUNCHER_LOCAL_TOOL_IDS, type LauncherLocalToolId } from './launcher-local-tools.ts'
 import { createLauncherFileSearchTool } from './launcher-file-search-tool.ts'
@@ -154,11 +154,9 @@ function applyLauncherTheme(projection: LauncherThemeProjection): void {
   for (const token of appliedThemeTokens) root.style.removeProperty(token)
   appliedThemeTokens = new Set<string>()
   const skin = projection.skinId === null ? undefined : tockTeamSkin(projection.skinId)
-  if (skin !== undefined) {
-    for (const [token, value] of Object.entries(skin.tokens)) {
-      root.style.setProperty(token, value)
-      appliedThemeTokens.add(token)
-    }
+  for (const [token, value] of Object.entries(skin?.tokens ?? launcherOriginalThemeTokens(projection.mode))) {
+    root.style.setProperty(token, value)
+    appliedThemeTokens.add(token)
   }
   launcherThemeRerender?.()
 }
@@ -273,7 +271,7 @@ async function bootstrap(): Promise<void> {
     hideWindowOn: Object.freeze(['blur', 'afterInvocation'] as const),
     locale: 'en-US',
     maxSearchResultItems: 50,
-    placeholder: 'Search TockTeam',
+    placeholder: 'Type here...',
     preserveUserInput: true,
     providerStatuses: Object.freeze([]),
     searchBarAppearance: 'auto',
@@ -281,7 +279,7 @@ async function bootstrap(): Promise<void> {
     searchEngineId: 'fuzzysort',
     searchResultLayout: 'compact',
     scrollBehavior: 'smooth',
-    showSearchIcon: true,
+    showSearchIcon: false,
     singleClickBehavior: 'selectSearchResultItem',
   })
   document.documentElement.lang = surfaceSettings.locale
@@ -303,6 +301,8 @@ async function bootstrap(): Promise<void> {
     historyToggle.setAttribute('aria-label', copy.history)
     results.setAttribute('aria-label', copy.results)
     searchIcon.hidden = !surfaceSettings.showSearchIcon
+    searchIcon.classList.toggle('hidden', !surfaceSettings.showSearchIcon)
+    searchIcon.classList.toggle('flex', surfaceSettings.showSearchIcon)
     search.classList.toggle('pl-7', surfaceSettings.showSearchIcon)
     search.dataset.searchBarAppearance = surfaceSettings.searchBarAppearance
     search.dataset.searchBarSize = surfaceSettings.searchBarSize

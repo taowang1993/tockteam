@@ -413,7 +413,7 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
     throw new Error('Invalid launcher surface settings')
   }
   const locale = value.locale === undefined ? 'en-US' : normalizeLauncherLocale(value.locale)
-  const placeholder = value.placeholder === undefined ? 'Search TockTeam' : value.placeholder
+  const placeholder = value.placeholder === undefined ? 'Type here...' : value.placeholder
   const providerStatuses = value.providerStatuses === undefined ? [] : value.providerStatuses
   if (!isBoundedText(placeholder, 512) || /[\0\r\n]/u.test(placeholder)
     || (value.locale !== undefined && value.locale !== 'en-US' && value.locale !== 'zh-CN')
@@ -467,7 +467,7 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
     searchEngineId: value.searchEngineId as LauncherSearchEngineId,
     searchResultLayout: searchResultLayout as LauncherResultLayout,
     scrollBehavior: scrollBehavior as LauncherScrollBehavior,
-    showSearchIcon: value.showSearchIcon !== false,
+    showSearchIcon: value.showSearchIcon === true,
     singleClickBehavior: singleClickBehavior as LauncherClickBehavior,
   })
 }

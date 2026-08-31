@@ -3,6 +3,41 @@ import type { SkinId } from '../plugins/skins/src/skin-ids.ts'
 
 export type LauncherThemeMode = 'light' | 'dark'
 
+const ORIGINAL_THEME_TOKENS = Object.freeze({
+  light: Object.freeze({
+    '--dsw-alias-bg-layer-1': '#FFFFFF',
+    '--dsw-alias-bg-layer-2': 'rgb(0 0 0 / 0.04)',
+    '--dsw-alias-bg-overlay': '#FFFFFF',
+    '--dsw-alias-border-l1': '#D1D5DB',
+    '--dsw-alias-border-l2': '#D1D5DB',
+    '--dsw-alias-brand-primary': '#533AFD',
+    '--dsw-alias-brand-text': '#533AFD',
+    '--dsw-alias-interactive-bg-active': 'rgb(39 39 42 / 0.09)',
+    '--dsw-alias-interactive-bg-hover': 'rgb(39 39 42 / 0.04)',
+    '--dsw-alias-label-primary': '#27272A',
+    '--dsw-alias-label-secondary': '#71717A',
+    '--dsw-alias-state-error-primary': 'oklch(0.58 0.22 27)',
+  }),
+  dark: Object.freeze({
+    '--dsw-alias-bg-layer-1': '#1B1B1B',
+    '--dsw-alias-bg-layer-2': '#0E0E0E',
+    '--dsw-alias-bg-overlay': '#1B1B1B',
+    '--dsw-alias-border-l1': '#3A3A3A',
+    '--dsw-alias-border-l2': '#3A3A3A',
+    '--dsw-alias-brand-primary': '#533AFD',
+    '--dsw-alias-brand-text': '#E0E0E0',
+    '--dsw-alias-interactive-bg-active': 'rgb(224 224 224 / 0.09)',
+    '--dsw-alias-interactive-bg-hover': 'rgb(224 224 224 / 0.04)',
+    '--dsw-alias-label-primary': '#E0E0E0',
+    '--dsw-alias-label-secondary': '#AAAAAA',
+    '--dsw-alias-state-error-primary': 'oklch(0.704 0.191 22.216)',
+  }),
+} as const)
+
+export function launcherOriginalThemeTokens(mode: LauncherThemeMode): Readonly<Record<string, string>> {
+  return ORIGINAL_THEME_TOKENS[mode]
+}
+
 export type LauncherThemeSource = Readonly<{
   mode: LauncherThemeMode
   skinId: SkinId | null

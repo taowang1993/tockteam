@@ -81,10 +81,10 @@ function effectiveValue(snapshot: LauncherSettingsSnapshot, key: string): unknow
   const value = snapshot.values[key]
   if (value !== undefined) return value
   if (key === 'appearance.searchBarAppearance') return 'auto'
-  if (key === 'appearance.searchBarPlaceholderText') return 'Search TockTeam'
+  if (key === 'appearance.searchBarPlaceholderText') return 'Type here...'
   if (key === 'appearance.searchBarSize') return 'large'
   if (key === 'appearance.searchResultListLayout') return 'compact'
-  if (key === 'appearance.showSearchIcon') return true
+  if (key === 'appearance.showSearchIcon') return false
   if (key === 'general.browser.useDefaultWebBrowser') return true
   if (key === 'general.hotkey.enabled') return true
   if (key === 'general.preserveUserInput') return true

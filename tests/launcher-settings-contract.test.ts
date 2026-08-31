@@ -150,6 +150,7 @@ test('every catalog default resolves or remains absent across bounded platform c
     { appDataPath: 'C:\\Users\\test\\AppData\\Roaming\\TockTeam', environment: {}, homePath: 'C:\\Users\\test', locale: 'zh-CN', platform: 'Windows' as const },
   ]
   const divergences: Readonly<Record<string, unknown>> = {
+    'appearance.showSearchIcon': false,
     'window.alwaysOnTop': true,
     'window.showOnStartup': false,
     'window.visibleOnAllWorkspaces': true,
@@ -163,6 +164,7 @@ test('every catalog default resolves or remains absent across bounded platform c
       else assert.notEqual(resolved, undefined, `${context.platform}:${row.key}`)
     }
   }
+  assert.equal(resolveLauncherSettingDefault('appearance.searchBarPlaceholderText', contexts[0]!), 'Type here...')
   const hostile = resolveLauncherSettingDefault('extension[ApplicationSearch].linuxFolders', contexts[0]!)
   assert.equal(Array.isArray(hostile) && hostile.every(folder => typeof folder === 'string' && folder.length <= 4_096), true)
 })

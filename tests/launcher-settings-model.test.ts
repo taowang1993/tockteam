@@ -20,6 +20,14 @@ test('settings model projects bounded renderer interaction preferences', () => {
   assert.equal(state.preferences.scrollBehavior, 'instant')
 })
 
+test('settings model starts with the Tockbot search chrome', () => {
+  const state = readPersistedLauncherState({
+    externalGrantStatus: 'none', logs: [], missingSensitiveKeys: [], recoveredSettings: false, settingsSource: 'managed', values: {},
+  })
+  assert.equal(state.preferences.placeholder, 'Type here...')
+  assert.equal(state.preferences.showSearchIcon, false)
+})
+
 test('settings snapshot merge preserves dirty values over an external reload', () => {
   const snapshot = { externalGrantStatus: 'none', logs: [], missingSensitiveKeys: [], recoveredSettings: false, settingsSource: 'managed', values: { 'general.preserveUserInput': true } } as const
   const merged = mergeLauncherDirtyValues(snapshot, new Map([['general.preserveUserInput', false]]))

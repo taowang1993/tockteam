@@ -137,6 +137,12 @@
 }
 
 /* Launcher settings are derived from the shared DSH surface projection. */
+#launcher-search::-webkit-search-cancel-button,
+#launcher-search::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 #launcher-search[data-search-bar-appearance='underline'] {
   border-width: 0 0 2px;
   border-radius: 0;

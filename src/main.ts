@@ -9,6 +9,7 @@ import {
   globalShortcut,
   ipcMain,
   Menu,
+  nativeImage,
   nativeTheme,
   net,
   screen,
@@ -90,6 +91,7 @@ import {
   type LauncherUrlPolicy,
 } from './launcher-security.ts'
 import { LauncherActionStore, type LauncherActionOwner } from './launcher-actions.ts'
+import { resolveMacOSApplicationIconPath } from './launcher-application-icons.ts'
 import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
 import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
 import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
@@ -1526,7 +1528,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
     return Object.freeze({ extensionId, state: 'ready' as const })
   })
   const language = launcherLocale
-  const configuredPlaceholder = textValue('appearance.searchBarPlaceholderText', language === 'zh-CN' ? '搜索 TockTeam' : 'Search TockTeam')
+  const configuredPlaceholder = textValue('appearance.searchBarPlaceholderText', language === 'zh-CN' ? '在此输入…' : 'Type here...')
   return Object.freeze({
     doubleClickBehavior: values['keyboardAndMouse.doubleClickBehavior'] === 'selectSearchResultItem' ? 'selectSearchResultItem' as const : 'invokeSearchResultItem' as const,
     dragAndDropEnabled: false,
@@ -1545,7 +1547,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
     searchEngineId: values['searchEngine.id'] === 'Fuse.js' ? 'Fuse.js' as const : 'fuzzysort' as const,
     searchResultLayout: values['appearance.searchResultListLayout'] === 'detailed' ? 'detailed' as const : 'compact' as const,
     scrollBehavior: ['auto', 'smooth', 'instant'].includes(values['window.scrollBehavior'] as string) ? values['window.scrollBehavior'] as import('./launcher-contract.ts').LauncherScrollBehavior : 'smooth',
-    showSearchIcon: boolValue('appearance.showSearchIcon', true),
+    showSearchIcon: boolValue('appearance.showSearchIcon', false),
     singleClickBehavior: values['keyboardAndMouse.singleClickBehavior'] === 'invokeSearchResultItem' ? 'invokeSearchResultItem' as const : 'selectSearchResultItem' as const,
   })
 }
@@ -1715,7 +1717,16 @@ function initializeLauncher(): void {
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
     getApplicationIcon: async (target, signal) => {
       if (signal.aborted || revalidateLauncherWindowsStoreId(target)) return undefined
-      const image = await app.getFileIcon(target, { size: 'normal' })
+      const image = platform === 'macOS'
+        ? nativeImage.createFromPath(await resolveMacOSApplicationIconPath(
+          target,
+          join(app.getPath('userData'), 'launcher', 'application-icons'),
+          async (executable, args) => {
+            const { stdout } = await execFileAsync(executable, [...args], { maxBuffer: 64 * 1024, signal, timeout: 10_000 })
+            return { stdout: String(stdout) }
+          },
+        ))
+        : await app.getFileIcon(target, { size: 'normal' })
       if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Application icon extraction canceled')
       return image.isEmpty() ? undefined : image.resize({ height: 32, quality: 'good', width: 32 }).toDataURL()
     },
