@@ -76,6 +76,10 @@ test('launcher menus expose normalized shortcuts and focusable empty history', (
   assert.match(launcherSource, /historyOpen = false[\s\S]{0,160}historyPanel\.hidden = true/u)
 })
 
+test('disabled providers do not crowd a visible provider failure', () => {
+  assert.match(launcherSource, /filter\(provider => provider\.state !== 'ready' && provider\.state !== 'disabled'\)/u)
+})
+
 test('document pointer dismissal preserves tool menu pointer activation', () => {
   assert.match(launcherSource, /const insideToolMenu = target instanceof Element[\s\S]{0,240}target\.closest\('\[role="menu"\], \[aria-haspopup="menu"\]'\) !== null/u)
   assert.match(launcherSource, /if \(activeLocalTool !== undefined && !insideToolMenu\) \{[\s\S]{0,120}tockteam-launcher-close-tool-menu/u)

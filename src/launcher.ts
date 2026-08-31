@@ -322,7 +322,7 @@ async function bootstrap(): Promise<void> {
     if (!invoking && !invokingWorkflow) status.textContent = copy.initialStatus
     providerStatuses.hidden = surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
     providerStatuses.textContent = surfaceSettings.providerStatuses
-      .filter(provider => provider.state !== 'ready')
+      .filter(provider => provider.state !== 'ready' && provider.state !== 'disabled')
       .map(provider => `${provider.extensionId}: ${messages().providerState(provider.state)}`)
       .join(' · ')
   }

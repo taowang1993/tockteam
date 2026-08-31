@@ -12,7 +12,7 @@
   <body class="m-0 h-full min-h-0 overflow-hidden bg-transparent font-sans text-[var(--dsw-alias-label-primary,CanvasText)] motion-reduce:transition-none motion-reduce:animate-none">
     <main id="launcher-root" class="relative box-border flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[14px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,Canvas))] shadow-lg motion-reduce:transition-none" data-launcher-ready="false">
       <h1 class="sr-only">TockLauncher</h1>
-      <div id="launcher-search-form" class="group relative flex min-h-[60px] shrink-0 items-center border-b border-[var(--dsw-alias-border-l1,var(--dsw-alias-border-l2,CanvasText))] px-4 [-webkit-app-region:drag]" role="search">
+      <div id="launcher-search-form" class="group relative box-border flex h-[60px] min-h-[60px] shrink-0 items-center border-b border-[var(--dsw-alias-border-l1,var(--dsw-alias-border-l2,CanvasText))] px-4 [-webkit-app-region:drag]" role="search">
         <label for="launcher-search" class="relative min-w-0 flex-1 [-webkit-app-region:no-drag]">
           <span id="launcher-search-label" class="sr-only">Search TockLauncher</span>
           <span id="launcher-search-icon" class="pointer-events-none absolute left-0 top-1/2 flex -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]" aria-hidden="true"></span>
@@ -23,7 +23,7 @@
       <div id="launcher-history" class="absolute inset-x-2.5 top-[52px] z-20 max-h-40 overflow-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,Canvas))] p-1 shadow-lg" role="menu" aria-label="Search History" hidden></div>
       <div id="launcher-provider-statuses" class="min-w-0 border-b border-[var(--dsw-alias-border-l1,var(--dsw-alias-border-l2,CanvasText))] px-3 py-1 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]" role="status" aria-live="polite" hidden></div>
       <ul id="launcher-results" class="m-0 min-h-0 flex-1 list-none overflow-y-auto p-1.5" role="listbox" aria-label="TockLauncher destinations"></ul>
-      <footer id="launcher-footer" class="relative flex min-h-11 shrink-0 items-center justify-between gap-3 border-t border-[var(--dsw-alias-border-l1,var(--dsw-alias-border-l2,CanvasText))] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-4 py-2 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] [-webkit-app-region:drag]">
+      <footer id="launcher-footer" class="relative box-border flex h-11 min-h-11 shrink-0 items-center justify-between gap-3 border-t border-[var(--dsw-alias-border-l1,var(--dsw-alias-border-l2,CanvasText))] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-4 py-2 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] [-webkit-app-region:drag]">
         <div id="launcher-footer-selection" class="flex min-w-0 flex-1 items-center gap-2 [-webkit-app-region:no-drag]"></div>
         <p id="launcher-status" class="m-0 max-w-56 truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)] data-[tone=ready]:sr-only" role="status" aria-live="polite" aria-atomic="true">Destinations will appear here.</p>
         <div id="launcher-details" class="relative flex min-w-0 shrink-0 items-center justify-end gap-2 [-webkit-app-region:no-drag]"></div>
