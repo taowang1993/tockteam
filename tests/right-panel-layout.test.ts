@@ -63,7 +63,7 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.match(workspace, /<AppRailIcon kind="agent" \/>/)
   assert.match(workspace, /<AppRailIcon kind="notebook" \/>/)
   assert.match(workspace, /return <Notebook aria-hidden="true" \/>/)
-  assert.match(workspace, /aria-label="Plugins"/)
+  assert.match(workspace, /<DesktopLauncherFallback t=\{t\} \/>[\s\S]*aria-label="Plugins"/u)
   assert.match(workspace, /aria-label="Settings"/)
   assert.match(workspace, /className="mt-auto flex flex-col gap-1 pb-1"/)
   assert.match(workspace, /<Blocks aria-hidden="true" \/>/)

@@ -331,7 +331,7 @@ test('shortcut conflicts preserve fallback and disposal unregisters only owned s
   conflict.setRegisterResult(false)
   const state = conflict.controller.registerShortcut()
   assert.equal(state.status, 'unavailable')
-  assert.match(state.message ?? '', /TockLauncher button in the TockTeam titlebar/u)
+  assert.match(state.message ?? '', /TockLauncher button in the TockTeam navigation bar/u)
   assert.deepEqual(conflict.unregistered, [])
 
   const owned = setup('darwin')

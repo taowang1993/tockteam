@@ -782,7 +782,7 @@ try {
   )
   const coderFacts = await workbenchConnection.evaluate(`({
     tutorTitlebars: [...document.querySelectorAll('[aria-label="TockTutor Title Bar"]')].filter(node => node.closest('[hidden]') === null).length,
-    launcherFallbacks: [...document.querySelectorAll('button')].filter(node => node.textContent?.includes('TockLauncher')).length,
+    launcherFallbacks: document.querySelectorAll('.tockteam-app-rail button[aria-label*="TockLauncher"]').length,
   })`)
   assert.deepEqual(coderFacts, { tutorTitlebars: 0, launcherFallbacks: 1 })
   await showLauncherFromWorkbench(workbenchConnection)

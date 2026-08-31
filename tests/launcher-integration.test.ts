@@ -141,13 +141,13 @@ test('fixture smoke reads host-owned effect counters instead of renderer authori
   assert.match(electronSmoke, /TOCKTEAM_WORKFLOW_SLOW_HISTORY/u)
 })
 
-test('workbench bridge and Desktop titlebar expose only finite launcher operations', () => {
+test('workbench bridge and Desktop navigation expose only finite launcher operations', () => {
   assert.match(contracts, /launcher: DesktopLauncherBridge/u)
   assert.match(contracts, /getState\(\): Promise<DesktopLauncherState>/u)
   assert.match(contracts, /show\(\): Promise<DesktopLauncherState>/u)
   assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.getState/u)
   assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.show/u)
-  assert.match(sidebar, /DesktopLauncherFallback/u)
+  assert.match(sidebar, /function DesktopAppRail[\s\S]*<DesktopLauncherFallback t=\{t\} \/>[\s\S]*aria-label="Plugins"/u)
   assert.match(launcherFallback, /window\.dshDesktop\?\.launcher/u)
   assert.match(launcherFallback, /bridge\.getState\(\)/u)
   assert.match(launcherFallback, /bridge\.show\(\)/u)
@@ -155,7 +155,8 @@ test('workbench bridge and Desktop titlebar expose only finite launcher operatio
   assert.ok(launcherFallback.includes('aria-label={accessibleLabel}'))
   assert.match(tockTutorRoute, /aria-label="Open TockLauncher"/u)
   assert.match(tockTutorRoute, /launcher\.show\(\)/u)
-  assert.ok(launcherFallback.includes("[body:has([data-sidebar-collapsed])_&]:!w-9"))
+  assert.match(launcherFallback, /<Search aria-hidden="true" \/>/u)
+  assert.match(launcherFallback, /className="sr-only" role="status" aria-live="polite"/u)
   assert.match(i18n, /'launcher\.button'/u)
   assert.match(i18n, /'launcher\.shortcut-unavailable'/u)
   assert.doesNotMatch(sidebar, /inject[^\n]*desktopShell/u)

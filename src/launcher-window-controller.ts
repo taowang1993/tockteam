@@ -51,7 +51,7 @@ type LauncherGlobalShortcut = Readonly<{
 }>
 
 const DEFAULT_HIDE_WINDOW_ON = Object.freeze(['blur', 'afterInvocation'])
-const DISPOSED_SHORTCUT_MESSAGE = 'The launcher is unavailable. Use the TockLauncher button in the TockTeam titlebar.'
+const DISPOSED_SHORTCUT_MESSAGE = 'The launcher is unavailable. Use the TockLauncher button in the TockTeam navigation bar.'
 
 export function resolveLauncherShortcut(platform: NodeJS.Platform): string {
   return platform === 'darwin' ? 'Option+Space' : 'Alt+Space'
@@ -143,7 +143,7 @@ export class LauncherOverlayController {
     if (!this.shortcutEnabled) {
       this.shortcutState = Object.freeze({
         accelerator,
-        message: `${accelerator} is disabled. Use the TockLauncher button in the TockTeam titlebar.`,
+        message: `${accelerator} is disabled. Use the TockLauncher button in the TockTeam navigation bar.`,
         status: 'unavailable',
       })
       return this.shortcutState
@@ -164,7 +164,7 @@ export class LauncherOverlayController {
       accelerator,
       message: registered
         ? null
-        : `${accelerator} is unavailable. Use the TockLauncher button in the TockTeam titlebar.`,
+        : `${accelerator} is unavailable. Use the TockLauncher button in the TockTeam navigation bar.`,
       status: registered ? 'registered' : 'unavailable',
     })
     return this.shortcutState
@@ -219,7 +219,7 @@ export class LauncherOverlayController {
       }
       this.shortcutState = Object.freeze({
         accelerator: resolveLauncherShortcut(this.args.platform),
-        message: `${resolveLauncherShortcut(this.args.platform)} is disabled. Use the TockLauncher button in the TockTeam titlebar.`,
+        message: `${resolveLauncherShortcut(this.args.platform)} is disabled. Use the TockLauncher button in the TockTeam navigation bar.`,
         status: 'unavailable',
       })
       return

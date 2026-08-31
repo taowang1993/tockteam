@@ -44,28 +44,20 @@ export function DesktopLauncherFallback({
     ? buttonLabel
     : `${buttonLabel} — ${statusLabel}`
   return (
-    <div className="tockteam-launcher-fallback flex min-w-0 items-center gap-1 [-webkit-app-region:no-drag] [html[data-tockteam-tocktutor-active='true']_&]:hidden">
+    <>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button unstyled
             type="button"
-            className="!flex !h-9 !w-auto !max-w-[132px] !gap-1.5 !rounded-lg !px-2 !text-[var(--dsw-alias-label-secondary,#57606a)] hover:!bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] hover:!text-[var(--dsw-alias-label-primary,#1f2328)] [body:has([data-sidebar-collapsed])_&]:!w-9 [body:has([data-sidebar-collapsed])_&]:!px-0"
             aria-label={accessibleLabel}
             onClick={() => {
               void bridge.show().then(next => { setState(next) }).catch(() => {})
             }}
-          >
-            <Search aria-hidden="true" />
-            <span className="truncate [body:has([data-sidebar-collapsed])_&]:hidden">{t('launcher.button')}</span>
-          </Button>
+          ><Search aria-hidden="true" /></Button>
         </TooltipTrigger>
-        <TooltipContent>{accessibleLabel}</TooltipContent>
+        <TooltipContent side="right">{accessibleLabel}</TooltipContent>
       </Tooltip>
-      {statusLabel !== null && (
-        <span className="truncate text-[10px] font-medium text-[var(--dsw-alias-state-warn-primary,#9a6700)] [body:has([data-sidebar-collapsed])_&]:hidden" role="status" aria-live="polite">
-          {statusLabel}
-        </span>
-      )}
-    </div>
+      {statusLabel !== null && <span className="sr-only" role="status" aria-live="polite">{statusLabel}</span>}
+    </>
   )
 }

@@ -872,7 +872,6 @@ function DesktopWindowTitlebar({
             </TooltipTrigger>
             <TooltipContent>{t('sidebar.toggle')}</TooltipContent>
           </Tooltip>
-          <DesktopLauncherFallback t={t} />
         </div>
       </TooltipProvider>
       <span className="tockteam-window-title min-w-0 truncate text-center text-sm leading-none font-normal text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_90%,var(--tockteam-shell-chrome,#fff)_10%)] [html[data-tockteam-tocktutor-active='true']_&]:invisible">TockCoder</span>
@@ -1982,9 +1981,11 @@ function AppRailIcon({ kind }: { kind: 'agent' | 'notebook' }): ReactNode {
 function DesktopAppRail({
   location,
   navigate,
+  t,
 }: {
   location: TockTutorRouteLocation
   navigate: (path: string) => void
+  t: Translate<WorkspaceMessage>
 }): ReactNode {
   const tockCoderActive = isTockCoderPath(location.pathname)
   const tockTutorActive = isTockTutorPath(location.pathname)
@@ -2025,6 +2026,7 @@ function DesktopAppRail({
         </Tooltip>
         {tockCoderActive && (
           <div className="mt-auto flex flex-col gap-1 pb-1">
+            <DesktopLauncherFallback t={t} />
             {pluginsAvailable && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -2060,7 +2062,11 @@ function DesktopAppRail({
   )
 }
 
-function registerTockTutorRoute(slots: RouteSlotsService): void {
+function registerTockTutorRoute(
+  slots: RouteSlotsService,
+  locale: LocaleService,
+  t: Translate<WorkspaceMessage>,
+): void {
   const routeStore = defineStore<RouteState>({
     init: () => ({ location: readTockTutorRouteLocation() }),
     actions: {
@@ -2077,10 +2083,16 @@ function registerTockTutorRoute(slots: RouteSlotsService): void {
     name: 'shell.overlay',
     order: -1000,
     store: routeStore,
-  }, (props: RouteHostProps): ReactNode => TockTutorRouteHost(props, slots)))
+  }, (props: RouteHostProps): ReactNode => TockTutorRouteHost(props, slots, locale, t)))
 }
 
-function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService): ReactNode {
+function TockTutorRouteHost(
+  props: RouteHostProps,
+  routeSlots: RouteSlotsService,
+  locale: LocaleService,
+  baseTranslate: Translate<WorkspaceMessage>,
+): ReactNode {
+  const t = useTranslate(locale, baseTranslate)
   const routeEntries = useSyncExternalStore(
     listener => routeSlots.subscribe(TOCKTUTOR_ROUTE_SLOT, listener),
     () => routeSlots.entries(TOCKTUTOR_ROUTE_SLOT).length,
@@ -2150,7 +2162,7 @@ function TockTutorRouteHost(props: RouteHostProps, routeSlots: RouteSlotsService
   }, [active])
   const rail = document.getElementById('tockteam-rail-root')
   const navigation = routeEntries > 0 && rail !== null
-    ? createPortal(<DesktopAppRail location={location} navigate={navigate} />, rail)
+    ? createPortal(<DesktopAppRail location={location} navigate={navigate} t={t} />, rail)
     : null
   const routeRoot = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -2178,8 +2190,8 @@ export function apply(ctx: ClientContext): void {
   const locale = ctx.get('locale') as LocaleService
   const slots = ctx.get('slots') as SlotsService
   const surface = ctx.get(TOCKTEAM_SURFACE_VIEW_SERVICE) as TockTeamSurfaceView
-  if (surface.kind === 'desktop') registerTockTutorRoute(slots as unknown as RouteSlotsService)
   const t: Translate<WorkspaceMessage> = locale.bind('tockteam.sidebar')
+  if (surface.kind === 'desktop') registerTockTutorRoute(slots as unknown as RouteSlotsService, locale, t)
   ctx.effect(
     () => locale.register('tockteam.sidebar', WORKSPACE_MESSAGES),
     'tockteam-sidebar: workspace tools dictionaries',
