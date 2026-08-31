@@ -9,7 +9,91 @@ permissions:
   contents: read
 
 jobs:
+  validate:
+    name: Validate release contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: recursive
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify release tag and package version
+        run: node scripts/check-release-version.mjs --tag "$GITHUB_REF_NAME"
+
+      - name: Verify Ueli baseline
+        run: pnpm test:ueli-baseline
+
+      - name: Audit Ueli baseline
+        run: pnpm audit:ueli-baseline
+
+      - name: Verify launcher parity catalogs
+        run: pnpm test:ueli-launcher-parity
+
+      - name: Audit launcher parity catalogs
+        run: pnpm audit:ueli-launcher-parity
+
+      - name: Verify launcher package feasibility
+        run: pnpm test:ueli-package-feasibility
+
+      - name: Audit launcher package feasibility
+        run: pnpm audit:ueli-package-feasibility
+
+      - name: Audit installed evidence catalog and claims
+        run: pnpm audit:installed-evidence
+
+  launcher-package-smoke:
+    name: Gate release on packaged TockLauncher smoke
+    needs: validate
+    runs-on: macos-15
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: recursive
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          architecture: arm64
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run real packaged TockLauncher smoke
+        run: pnpm test:launcher:packaged
+
   package:
+    needs: validate
     name: Package ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
@@ -35,11 +119,9 @@ jobs:
             dist_script: dist:linux
             node_platform: linux
             node_arch: x64
-          # Windows is build-verified in the CI matrix, but the pinned DSH
-          # runtime is not portable on Windows yet: pnpm's junction-based
-          # workspace layout contains cycles that packaging tools follow
-          # until Windows path limits fail. Re-add this job once staging
-          # produces a junction-free runtime on Windows.
+          # Windows packaging remains outside this release matrix; dist:win
+          # emits the supported finite tar.gz portable archive through
+          # scripts/build-windows.mjs on a Windows runner.
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       DSH_DESKTOP_NODE_ARCH: ${{ matrix.node_arch }}
@@ -73,6 +155,9 @@ jobs:
       - name: Package desktop distribution
         run: pnpm run ${{ matrix.dist_script }}
 
+      - name: Verify packaged artifact version
+        run: node scripts/check-release-version.mjs --tag "$GITHUB_REF_NAME" --artifact dist/release-package.json
+
       - name: Package TockTeam-Web distribution
         run: node scripts/build-web.mjs
 
@@ -94,7 +179,7 @@ jobs:
 
   publish:
     name: Publish GitHub release
-    needs: package
+    needs: [package, launcher-package-smoke]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

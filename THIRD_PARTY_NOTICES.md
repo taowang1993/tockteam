@@ -85,3 +85,18 @@ and terminal compatibility layer. The small downstream component owns only
 the unified launcher, Profile defaults, data boundary, and release packaging.
 We thank the upstream maintainer and keep the original license with the
 packaged source artifacts.
+
+## Ueli launcher assets
+
+TockTeam packages selected Ueli v9.29.0 launcher assets, including the finite
+operating-system extension icons, from the pinned provenance tree. Ueli is MIT
+licensed; source: <https://github.com/oliverschwendener/ueli>.
+Copyright (c) 2023 Oliver Schwendener.
+
+The assets `linux-applications.png` and `linux-generic-app-icon.png` by GNOME Project
+(<https://www.gnome.org>) are licensed under CC BY-SA 3.0
+(<https://creativecommons.org/licenses/by-sa/3.0/>).
+
+The Custom Web Search icon is designed by OpenMoji (<https://openmoji.org/>) and
+is licensed under CC BY-SA 4.0
+(<https://creativecommons.org/licenses/by-sa/4.0/>).

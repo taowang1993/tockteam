@@ -1,0 +1,746 @@
+{
+  "schemaVersion": 1,
+  "installedEvidenceCatalog": "scripts/ueli/installed-evidence-catalog.json",
+  "identity": {
+    "packageName": "@tockteam/desktop",
+    "productName": "TockTeam Desktop",
+    "appId": "ai.deepseek.tockteam-desktop",
+    "executableName": "tockteam-desktop",
+    "desktopName": "tockteam-desktop.desktop",
+    "protocols": [
+      "tocktutor"
+    ],
+    "dataDirectory": "TockTeam-Desktop"
+  },
+  "targets": [
+    {
+      "platform": "mac",
+      "formats": [
+        "dmg",
+        "zip"
+      ],
+      "architectures": [
+        "arm64",
+        "x64"
+      ]
+    },
+    {
+      "platform": "linux",
+      "formats": [
+        "AppImage",
+        "deb"
+      ],
+      "architectures": [
+        "arm64",
+        "x64"
+      ]
+    },
+    {
+      "platform": "win",
+      "formats": [
+        "dir"
+      ],
+      "architectures": [
+        "x64"
+      ]
+    }
+  ],
+  "resources": {
+    "asar": true,
+    "npmFiles": [
+      "dist/plugin.js",
+      "dist/launcher.html",
+      "dist/launcher.js",
+      "dist/launcher.js.map",
+      "dist/launcher.css",
+      "dist/launcher-preload.cjs",
+      "dist/launcher-preload.cjs.map",
+      "dist/launcher-assets/**",
+      "dist/client.js",
+      "dist/client.js.map",
+      "dist/client-api.js",
+      "client.d.ts",
+      "dist/host.js",
+      "host.d.ts",
+      "dist/cordis.patch.yml",
+      "plugins/tocktutor/README.md",
+      "plugins/tocktutor/packages/*/package.json",
+      "plugins/tocktutor/packages/*/cordis.patch.yml",
+      "plugins/tocktutor/packages/*/lib/**",
+      "plugins/tocktutor/packages/*/dist/**",
+      "plugins/tocktutor/packages/tockbot-note-vault/index.js",
+      "plugins/tocktutor/packages/tockbot-note-vault/inspection.js",
+      "plugins/tocktutor/packages/tockbot-note-vault/inspection.d.ts",
+      "plugins/tocktutor/packages/tockbot-note-vault/LICENSE",
+      "plugins/tocktutor/packages/tockbot-note-vault/README.md",
+      "plugins/tocktutor/packages/tockteam-tocktutor-assistant/PENNIVO_PROVENANCE.md",
+      "plugins/tocktutor/packages/tockteam-tocktutor-assistant/THIRD_PARTY_NOTICES",
+      "plugins/tocktutor/packages/tockteam-tocktutor-import-export/README.md",
+      "dist/tockteam.js",
+      "bin/tockteam",
+      "bin/tockteam.cmd"
+    ],
+    "builderFiles": [
+      "dist/main.js",
+      "dist/preload.cjs",
+      "dist/launcher.html",
+      "dist/launcher.js",
+      "dist/launcher.js.map",
+      "dist/launcher.css",
+      "dist/launcher-preload.cjs",
+      "dist/launcher-preload.cjs.map",
+      "dist/launcher-assets/**",
+      "dist/splash.html",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "package.json"
+    ],
+    "builderExtraResources": [
+      {
+        "from": ".stage",
+        "to": ".",
+        "filter": [
+          "dsh-runtime/**/*",
+          "node-runtime/**/*"
+        ]
+      },
+      {
+        "from": "assets/icons/512x512.png",
+        "to": "tockteam-desktop.png"
+      },
+      {
+        "from": "dist/tockteam.js",
+        "to": "lib/tockteam/cli.js"
+      },
+      {
+        "from": "dist/release-package.json",
+        "to": "lib/tockteam/package.json"
+      },
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "tockteam",
+          "tockteam.cmd"
+        ]
+      }
+    ]
+  },
+  "launcherLockfile": {
+    "path": "pnpm-lock.yaml",
+    "rootImporter": {
+      "color": {
+        "specifier": "4.2.3",
+        "version": "4.2.3"
+      },
+      "fast-xml-parser": {
+        "specifier": "5.7.0",
+        "version": "5.7.0"
+      },
+      "mathjs": {
+        "specifier": "15.2.0",
+        "version": "15.2.0"
+      },
+      "uuid": {
+        "specifier": "14.0.0",
+        "version": "14.0.0"
+      },
+      "fuse.js": {
+        "specifier": "7.1.0",
+        "version": "7.1.0"
+      },
+      "fuzzysort": {
+        "specifier": "3.1.0",
+        "version": "3.1.0"
+      },
+      "electron-updater": {
+        "specifier": "6.8.3",
+        "version": "6.8.3(supports-color@7.2.0)"
+      }
+    },
+    "packages": {
+      "@nodable/entities@2.1.1": {
+        "integrity": "sha512-Pig3HxDIoMgjdEH8OCf/dkcTmLFjJRjWuq8jSnklu284/TKOPibSRERmOykiwmyXTtv61mP+44f3GMx0tLAyjg=="
+      },
+      "fast-xml-builder@1.2.0": {
+        "integrity": "sha512-00aAWieqff+ZJhsXA4g1g7M8k+7AYoMUUHF+/zFb5U6Uv/P0Vl4QZo84/IcufzYalLuEj9928bXN9PbbFzMF0Q=="
+      },
+      "path-expression-matcher@1.5.0": {
+        "integrity": "sha512-cbrerZV+6rvdQrrD+iGMcZFEiiSrbv9Tfdkvnusy6y0x0GKBXREFg/Y65GhIfm0tnLntThhzCnfKwp1WRjeCyQ=="
+      },
+      "strnum@2.2.3": {
+        "integrity": "sha512-oKx6RUCuHfT3oyVjtnrmn19H1SiCqgJSg+54XqURKp5aCMbrXrhLjRN9TjuwMjiYstZ0MzDrHqkGZ5dFTKd+zg=="
+      },
+      "xml-naming@0.1.0": {
+        "integrity": "sha512-k8KO9hrMyNk6tUWqUfkTEZbezRRpONVOzUTnc97VnCvyj6Tf9lyUR9EDAIeiVLv56jsMcoXEwjW8Kv5yPY52lw=="
+      },
+      "color@4.2.3": {
+        "integrity": "sha512-1rXeuUUiGGrykh+CeBdu5Ie7OJwinCgQY0bc7GCRxy5xVHy+moaqkpL/jqQq0MtQOeYcrqEz4abc5f0KtU7W4A=="
+      },
+      "fast-xml-parser@5.7.0": {
+        "integrity": "sha512-MTcrUoRQ1GSQ9iG3QJzBGquYYYeA7piZaJoIWbPFGbRn6Jj6z7xgoAyi4DrZX4y2ZIQQBF59gc/zmvvejjgoFQ=="
+      },
+      "mathjs@15.2.0": {
+        "integrity": "sha512-UAQzSVob9rNLdGpqcFMYmSu9dkuLYy7Lr2hBEQS5SHQdknA9VppJz3cy2KkpMzTODunad6V6cNv+5kOLsePLow=="
+      },
+      "uuid@14.0.0": {
+        "integrity": "sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg=="
+      },
+      "fuse.js@7.1.0": {
+        "integrity": "sha512-trLf4SzuuUxfusZADLINj+dE8clK1frKdmqiJNb1Es75fmI5oY6X2mxLVUciLLjxqw/xr72Dhy+lER6dGd02FQ=="
+      },
+      "fuzzysort@3.1.0": {
+        "integrity": "sha512-sR9BNCjBg6LNgwvxlBd0sBABvQitkLzoVY9MYYROQVX/FvfJ4Mai9LsGhDgd8qYdds0bY77VzYd5iuB+v5rwQQ=="
+      },
+      "electron-updater@6.8.3": {
+        "integrity": "sha512-Z6sgw3jgbikWKXei1ENdqFOxBP0WlXg3TtKfz0rgw2vIZFJUyI4pD7ZN7jrkm7EoMK+tcm/qTnPUdqfZukBlBQ=="
+      }
+    },
+    "snapshots": {
+      "@nodable/entities@2.1.1": {},
+      "fast-xml-builder@1.2.0": {
+        "dependencies": {
+          "path-expression-matcher": "1.5.0",
+          "xml-naming": "0.1.0"
+        }
+      },
+      "path-expression-matcher@1.5.0": {},
+      "strnum@2.2.3": {},
+      "xml-naming@0.1.0": {},
+      "color@4.2.3": {
+        "dependencies": {
+          "color-convert": "2.0.1",
+          "color-string": "1.9.1"
+        }
+      },
+      "fast-xml-parser@5.7.0": {
+        "dependencies": {
+          "@nodable/entities": "2.1.1",
+          "fast-xml-builder": "1.2.0",
+          "path-expression-matcher": "1.5.0",
+          "strnum": "2.2.3"
+        }
+      },
+      "mathjs@15.2.0": {
+        "dependencies": {
+          "@babel/runtime": "7.29.7",
+          "complex.js": "2.4.3",
+          "decimal.js": "10.6.0",
+          "escape-latex": "1.2.0",
+          "fraction.js": "5.3.4",
+          "javascript-natural-sort": "0.7.1",
+          "seedrandom": "3.0.5",
+          "tiny-emitter": "2.1.0",
+          "typed-function": "4.2.2"
+        }
+      },
+      "uuid@14.0.0": {},
+      "fuse.js@7.1.0": {},
+      "fuzzysort@3.1.0": {},
+      "electron-updater@6.8.3(supports-color@7.2.0)": {
+        "dependencies": {
+          "builder-util-runtime": "9.5.1(supports-color@7.2.0)",
+          "fs-extra": "10.1.0",
+          "js-yaml": "4.3.1",
+          "lazy-val": "1.0.5",
+          "lodash.escaperegexp": "4.1.2",
+          "lodash.isequal": "4.5.0",
+          "semver": "7.7.4",
+          "tiny-typed-emitter": "2.1.0"
+        },
+        "transitivePeerDependencies": [
+          "supports-color"
+        ]
+      }
+    }
+  },
+  "foundation": {
+    "launcherImplemented": true,
+    "launcherPackaged": true,
+    "admittedRuntimeDependencies": [
+      "color@4.2.3",
+      "fast-xml-parser@5.7.0",
+      "mathjs@15.2.0",
+      "uuid@14.0.0",
+      "fuse.js@7.1.0",
+      "fuzzysort@3.1.0",
+      "electron-updater@6.8.3"
+    ],
+    "runtimeDependencyClosure": [
+      "@babel/runtime@7.29.7",
+      "@nodable/entities@2.1.1",
+      "argparse@2.0.1",
+      "builder-util-runtime@9.5.1",
+      "color-convert@2.0.1",
+      "color-name@1.1.4",
+      "color-string@1.9.1",
+      "color@4.2.3",
+      "complex.js@2.4.3",
+      "debug@4.4.3",
+      "decimal.js@10.6.0",
+      "electron-updater@6.8.3",
+      "escape-latex@1.2.0",
+      "fast-xml-builder@1.2.0",
+      "fast-xml-parser@5.7.0",
+      "fraction.js@5.3.4",
+      "fs-extra@10.1.0",
+      "fuse.js@7.1.0",
+      "fuzzysort@3.1.0",
+      "graceful-fs@4.2.11",
+      "is-arrayish@0.3.4",
+      "javascript-natural-sort@0.7.1",
+      "js-yaml@4.3.1",
+      "jsonfile@6.2.1",
+      "lazy-val@1.0.5",
+      "lodash.escaperegexp@4.1.2",
+      "lodash.isequal@4.5.0",
+      "mathjs@15.2.0",
+      "ms@2.1.3",
+      "path-expression-matcher@1.5.0",
+      "sax@1.6.1",
+      "seedrandom@3.0.5",
+      "semver@7.7.4",
+      "simple-swizzle@0.2.4",
+      "strnum@2.2.3",
+      "tiny-emitter@2.1.0",
+      "tiny-typed-emitter@2.1.0",
+      "typed-function@4.2.2",
+      "universalify@2.0.1",
+      "uuid@14.0.0",
+      "xml-naming@0.1.0"
+    ],
+    "launcherAssets": [
+      {
+        "key": "Base64Conversion",
+        "path": "dist/launcher-assets/base64-conversion.png",
+        "sha256": "4ec2ab60efec30d53dd04b48038dc5bfc97eee7c9e92c3c0fb6d1d8612a769a8"
+      },
+      {
+        "key": "Calculator",
+        "path": "dist/launcher-assets/calculator.png",
+        "sha256": "e0a078797184e5ebc584d305cefd201f83e7c3ea41383fbe1cdf5de668cd9391"
+      },
+      {
+        "key": "ColorConverter",
+        "path": "dist/launcher-assets/color-converter.png",
+        "sha256": "ae6d518c491a2451ff714c3d7329725db258d2d8bec861a9c0adde669e81bfd0"
+      },
+      {
+        "key": "PasswordGenerator",
+        "path": "dist/launcher-assets/password-generator.png",
+        "sha256": "8d317883865b625a35b50d1e1150afec2a2cf8392584e482aa5d09117f7aa9ca"
+      },
+      {
+        "key": "QuickFormatter",
+        "path": "dist/launcher-assets/quick-formatter.png",
+        "sha256": "5e1e438c834c0b37afc0106a47b7315d6090f089d5c10d271315c243c2d0c186"
+      },
+      {
+        "key": "RowlandTextEditor",
+        "path": "dist/launcher-assets/rowland-texteditor.png",
+        "sha256": "cb6bdcd60962680bb35be8db49469162951e1e5091d013b6dc11b149bd10700f"
+      },
+      {
+        "key": "UuidGenerator",
+        "path": "dist/launcher-assets/uuid-generator.png",
+        "sha256": "2a4b0aef1d383d3927c431031290b7f6cc6c9993aa6ca600e6459b51f4e5de75"
+      },
+      {
+        "key": "application-linux",
+        "path": "dist/launcher-assets/application-linux.png",
+        "sha256": "9571f48a26daa759c4243e28d1a427cfd459564d2a26e576b551d987be50d37f"
+      },
+      {
+        "key": "application-linux-generic",
+        "path": "dist/launcher-assets/application-linux-generic.png",
+        "sha256": "954a84019db2c87f0c3465aa564e4b6ed6167a7b1765ec866cbd4bacafb7e892"
+      },
+      {
+        "key": "application-macos",
+        "path": "dist/launcher-assets/application-macos.png",
+        "sha256": "da0027a559a037e662b38a8ede779b6a2e31bd4ac1bce7fceca0c8ea62a512cb"
+      },
+      {
+        "key": "application-macos-generic",
+        "path": "dist/launcher-assets/application-macos-generic.png",
+        "sha256": "8eaae03ecc49a1aa393cd5b256bae52a86a0a63ba16c3fa5ac32063bfd320b2b"
+      },
+      {
+        "key": "application-windows-dark",
+        "path": "dist/launcher-assets/application-windows-dark.png",
+        "sha256": "454a47d635d60ebbab44344ba66450cf52346e823ca76ca31bcbda0997eda5fa"
+      },
+      {
+        "key": "application-windows-light",
+        "path": "dist/launcher-assets/application-windows-light.png",
+        "sha256": "ac3070b1ded77ae1dadc4f5aed1714128fab73f9a380a92c41b40329d3b3d4d2"
+      },
+      {
+        "key": "application-windows-generic",
+        "path": "dist/launcher-assets/application-windows-generic.png",
+        "sha256": "000068955c67ab474df5b258a01a60f3bba2919d3c17326cade34a358a4912cc"
+      },
+      {
+        "key": "browser-bookmarks",
+        "path": "dist/launcher-assets/browser-bookmarks.png",
+        "sha256": "c2075df1fcf0e4e7e886e46ddd445e3c04b889dda20f5aca2566f7de0863a354"
+      },
+      {
+        "key": "jetbrains-toolbox",
+        "path": "dist/launcher-assets/jetbrains-toolbox.png",
+        "sha256": "4793800c7cd1b793aac93b33e6a38c1a18e0008ebeecaf04c9a8b838f632c1b5"
+      },
+      {
+        "key": "vscode-file",
+        "path": "dist/launcher-assets/vscode-file.png",
+        "sha256": "954a84019db2c87f0c3465aa564e4b6ed6167a7b1765ec866cbd4bacafb7e892"
+      },
+      {
+        "key": "vscode",
+        "path": "dist/launcher-assets/vscode.png",
+        "sha256": "7ac29e00cd66e549acc2ea6a99a813f92cb23a6d165293be6959845670f0c5a4"
+      },
+      {
+        "key": "browser-arc",
+        "path": "dist/launcher-assets/browser-arc.png",
+        "sha256": "c8e0daa8bab62d9f71c00cf0637ec2ab557862bbab7c8d9859dce04bc095e755"
+      },
+      {
+        "key": "browser-brave",
+        "path": "dist/launcher-assets/browser-brave-browser.png",
+        "sha256": "ba9f99c1a35042f3b20e365e477d2cf5da72feed28ff3e735f54940ffd47643c"
+      },
+      {
+        "key": "browser-firefox",
+        "path": "dist/launcher-assets/browser-firefox.png",
+        "sha256": "28651899a25e6665e1bd65ccf7a5302417a2822dc658263c12d57c9a247d51aa"
+      },
+      {
+        "key": "browser-google-chrome",
+        "path": "dist/launcher-assets/browser-google-chrome.png",
+        "sha256": "68e998cddd32341a776e2fb5e0c2ad26748594cf44cd3635ccc2974f0d84ba27"
+      },
+      {
+        "key": "browser-microsoft-edge",
+        "path": "dist/launcher-assets/browser-microsoft-edge.png",
+        "sha256": "a94a9d74adf95e9bdab3b19c13de497d525aa5d85743f8a98e885d3934010e94"
+      },
+      {
+        "key": "browser-yandex",
+        "path": "dist/launcher-assets/browser-yandex.svg",
+        "sha256": "29afe7aba01ff139dde1c22db8dad0300a5a8b6fea1c26e90bc3b20a3ac888b4"
+      },
+      {
+        "key": "browser-zen",
+        "path": "dist/launcher-assets/browser-zen.png",
+        "sha256": "e6893025a3f607b3d12b0c5abf8c36b643e453731886d97d0933358fc11fd2c9"
+      },
+      {
+        "key": "file-search-folder",
+        "path": "dist/launcher-assets/file-search-folder.png",
+        "sha256": "61dbce43d87a5af31a9aba8e9f78079dd171103ac8e2c0110819445b0e090fe3"
+      },
+      {
+        "key": "simple-file-search-linux",
+        "path": "dist/launcher-assets/simple-file-search-linux.png",
+        "sha256": "ffd2b70c988295be38a2e507380c9c8328c9aad44870d2e12ff77b76e64200e7"
+      },
+      {
+        "key": "simple-file-search-macos",
+        "path": "dist/launcher-assets/simple-file-search-macos.png",
+        "sha256": "59f8ff6242b8d79e6e8dba650ab1c7b0c55122472fb3e39ad4b56a21d4c0060a"
+      },
+      {
+        "key": "simple-file-search",
+        "path": "dist/launcher-assets/simple-file-search.png",
+        "sha256": "dc608686196c635d1fe0b55adb4e09f54fa5b1b238c839aa180dcb5d89c26f2f"
+      },
+      {
+        "key": "simple-file-search-windows",
+        "path": "dist/launcher-assets/simple-file-search-windows.ico",
+        "sha256": "d9b23fb20914aa0eb49de9df379c1628934bf0d77d274f0ba5391cfd4e596f2b"
+      },
+      {
+        "key": "currency-conversion",
+        "path": "dist/launcher-assets/currency-conversion.png",
+        "sha256": "6a87b37bf251565739e90a82614cd01838a84038866834cfcc432e2d3c7a3316"
+      },
+      {
+        "key": "custom-web-search",
+        "path": "dist/launcher-assets/custom-web-search.svg",
+        "sha256": "b7ce4cc6685aaf4f0b8e6ec3420d2f9d36a48af0acc721181010cdb0c06518e3"
+      },
+      {
+        "key": "deepl-translator",
+        "path": "dist/launcher-assets/deepl-translator.svg",
+        "sha256": "b36e136107ca67812c0dc9265afd95951bde1ef9cc4736ff980a8ac0bccf496f"
+      },
+      {
+        "key": "web-search-duckduckgo",
+        "path": "dist/launcher-assets/web-search-duckduckgo.svg",
+        "sha256": "a552810b288ab1511f5ad547957de90d44b4245c364b60a2a90a437532e16f21"
+      },
+      {
+        "key": "web-search-google",
+        "path": "dist/launcher-assets/web-search-google.png",
+        "sha256": "e2087f585c3b213ba537a56c8bc8e6134c69d6fa1a5728d306df56d697b4e7ab"
+      },
+      {
+        "key": "web-search",
+        "path": "dist/launcher-assets/web-search.png",
+        "sha256": "37667bef690d961232b7d290de1cdac56f8f33e23d4a7a732b95de2a7de3218a"
+      },
+      {
+        "key": "appearance-switcher-dark",
+        "path": "dist/launcher-assets/appearance-switcher-dark.png",
+        "sha256": "0918bc78b8742066d8afbe522e3c47159aadcee50902ce8b39e6b76e94b9bb25"
+      },
+      {
+        "key": "appearance-switcher-light",
+        "path": "dist/launcher-assets/appearance-switcher-light.png",
+        "sha256": "e7642a2d2364376291691734f3b12449c613134e43fbf2de50f525a015376ced"
+      },
+      {
+        "key": "system-command-linux",
+        "path": "dist/launcher-assets/system-command-linux.png",
+        "sha256": "39242bd103fa6dc422affb7cb40a7f864a533f6b94ba2e8bb595f867141d2ac9"
+      },
+      {
+        "key": "system-command-macos-lock-dark",
+        "path": "dist/launcher-assets/system-command-macos-lock-dark.png",
+        "sha256": "efd9efa69b3b1f1e2ae4db45ae1586c983b4681b935b34c283fa5273a2ca4fab"
+      },
+      {
+        "key": "system-command-macos-lock-light",
+        "path": "dist/launcher-assets/system-command-macos-lock-light.png",
+        "sha256": "863b8ecbf73cd9714760d5ad1dd4f66e9997adb329b2c3ce8a37ae583433ef2f"
+      },
+      {
+        "key": "system-command-macos-logout-dark",
+        "path": "dist/launcher-assets/system-command-macos-logout-dark.png",
+        "sha256": "aa9649088899592199b11ce7af7c6b6f8cbacf9e49bd0f9a05acc8e7f66cd1d0"
+      },
+      {
+        "key": "system-command-macos-logout-light",
+        "path": "dist/launcher-assets/system-command-macos-logout-light.png",
+        "sha256": "7d0c0edbcfd0f0bb6c57b8975fafa9869b69a9e4e9cf049d70573729593c3413"
+      },
+      {
+        "key": "system-command-macos-restart-dark",
+        "path": "dist/launcher-assets/system-command-macos-restart-dark.png",
+        "sha256": "af66662b5c3c691770e78f348071d858f0cc760e1d594ff8851f2fe950d63506"
+      },
+      {
+        "key": "system-command-macos-restart-light",
+        "path": "dist/launcher-assets/system-command-macos-restart-light.png",
+        "sha256": "e316a3aa47881d8efc51f13e9fb9a1143e86ac0d9edb2cd18ef6332cdd9cd488"
+      },
+      {
+        "key": "system-command-macos-shutdown-dark",
+        "path": "dist/launcher-assets/system-command-macos-shutdown-dark.png",
+        "sha256": "c035bcba9ac55fe61b7b6ec2a9f7a87b64461de596390279ad9e1180c7be07aa"
+      },
+      {
+        "key": "system-command-macos-shutdown-light",
+        "path": "dist/launcher-assets/system-command-macos-shutdown-light.png",
+        "sha256": "0325906ab4d6019f5cb56c8fa08cbcdef514b06c040cbf2e1ae5a11eba32ebe9"
+      },
+      {
+        "key": "system-command-macos-sleep-dark",
+        "path": "dist/launcher-assets/system-command-macos-sleep-dark.png",
+        "sha256": "1fd624e2ab370a896bd9bc21a777a219f1a4c92295157eee65ecf735dbf9c96b"
+      },
+      {
+        "key": "system-command-macos-sleep-light",
+        "path": "dist/launcher-assets/system-command-macos-sleep-light.png",
+        "sha256": "38914903ea6fd4419492c1e840b0eab4a0b4ed83be8e0d5cac2f50d034e6bac9"
+      },
+      {
+        "key": "system-command-macos",
+        "path": "dist/launcher-assets/system-command-macos.png",
+        "sha256": "c37f0fc743564b621263fcaf937ed97f5fcc5e9329ad31c49c438e7c8c0219e9"
+      },
+      {
+        "key": "system-command-trash",
+        "path": "dist/launcher-assets/system-command-trash.png",
+        "sha256": "e9970c694b14eb163c975f430899500ce863cc4d617294baf7e05ff78447df20"
+      },
+      {
+        "key": "system-command-windows",
+        "path": "dist/launcher-assets/system-command-windows.png",
+        "sha256": "41a80a39d7ea42f606b5cc1de9f133e03147a357360c8bcf8952a1d55d0dbd10"
+      },
+      {
+        "key": "system-settings-macos",
+        "path": "dist/launcher-assets/system-settings-macos.png",
+        "sha256": "c37f0fc743564b621263fcaf937ed97f5fcc5e9329ad31c49c438e7c8c0219e9"
+      },
+      {
+        "key": "system-settings-windows",
+        "path": "dist/launcher-assets/system-settings-windows.png",
+        "sha256": "41a80a39d7ea42f606b5cc1de9f133e03147a357360c8bcf8952a1d55d0dbd10"
+      },
+      {
+        "key": "ueli-command-dark",
+        "path": "dist/launcher-assets/ueli-command-dark.png",
+        "sha256": "3c62491065bec9cee765ebc238b6ae1546ebfd6288e0cf3ba642a4964b82979b"
+      },
+      {
+        "key": "ueli-command-light",
+        "path": "dist/launcher-assets/ueli-command-light.png",
+        "sha256": "35c0b53a23b9ae22aebbc011b3f1e939be37d2a02c1db404320c41d5ff320aa9"
+      },
+      {
+        "key": "control-panel",
+        "path": "dist/launcher-assets/control-panel.png",
+        "sha256": "6581a2084b71e7b65efb9665cd70469fe1cc237dc3c41a9d1c960ee2ce14accb"
+      },
+      {
+        "key": "terminal-command-prompt",
+        "path": "dist/launcher-assets/terminal-command-prompt.png",
+        "sha256": "9daa6c7d9a1237dd77c267ef9cc54b1ac0513cf5f8b3b1fbd99da402eca7c1e4"
+      },
+      {
+        "key": "terminal-iterm",
+        "path": "dist/launcher-assets/terminal-iterm.png",
+        "sha256": "c7358e53c5756539d9d35379d8733f44e08ebbb598cee730083d2fb0613b0b9a"
+      },
+      {
+        "key": "terminal-powershell-core",
+        "path": "dist/launcher-assets/terminal-powershell-core.svg",
+        "sha256": "5998c6d08f3076521328a39a856ca381cdc5b5935892dd62c0557fa230e28fa8"
+      },
+      {
+        "key": "terminal-powershell",
+        "path": "dist/launcher-assets/terminal-powershell.png",
+        "sha256": "dac022e145d0c63c53908fd4cd07a6bb1ceba3149c0a9b6aa8761928e1297fe2"
+      },
+      {
+        "key": "terminal-macos",
+        "path": "dist/launcher-assets/terminal-macos.png",
+        "sha256": "95ee8153a87c68f3a4a432b94c0a24a8a77961905bd049e0b7242f83be67385e"
+      },
+      {
+        "key": "terminal-windows",
+        "path": "dist/launcher-assets/terminal-windows.png",
+        "sha256": "d55cfcdce8e000ec4e4490ef487b147d63d2c1ed8d063f8d01e7ffecaaf450ac"
+      },
+      {
+        "key": "terminal-wsl",
+        "path": "dist/launcher-assets/terminal-wsl.png",
+        "sha256": "8974f977ee2bb8b72917c0361a1eab77e20580e41d072efeff3f2d8a5757e0e0"
+      },
+      {
+        "key": "workflow",
+        "path": "dist/launcher-assets/workflow.png",
+        "sha256": "baaf4c6eb4f9bdf3f921986eedd5f5186582f5788a2685e765a1321bfc6a5507"
+      }
+    ],
+    "launcherNotices": [
+      {
+        "id": "ueli-mit",
+        "source": "THIRD_PARTY_NOTICES.md",
+        "license": "MIT",
+        "attribution": "https://github.com/oliverschwendener/ueli"
+      },
+      {
+        "id": "gnome-application-search-icons",
+        "source": "THIRD_PARTY_NOTICES.md",
+        "license": "CC BY-SA 3.0",
+        "attribution": "https://www.gnome.org"
+      },
+      {
+        "id": "openmoji-custom-web-search-icon",
+        "source": "THIRD_PARTY_NOTICES.md",
+        "license": "CC BY-SA 4.0",
+        "attribution": "https://openmoji.org/"
+      },
+      {
+        "id": "ueli-os-assets",
+        "source": "THIRD_PARTY_NOTICES.md",
+        "license": "MIT",
+        "attribution": "https://github.com/oliverschwendener/ueli"
+      }
+    ],
+    "shippedVendorSource": false,
+    "importedUeliIdentity": false
+  },
+  "publication": {
+    "configuredTargets": [
+      "macOS arm64",
+      "macOS x64",
+      "Linux arm64",
+      "Linux x64",
+      "Windows x64"
+    ],
+    "workflowArtifacts": [
+      "macOS arm64",
+      "macOS x64",
+      "Linux x64"
+    ],
+    "launcherArtifacts": [],
+    "installedArtifact": false,
+    "signed": false,
+    "notarized": false,
+    "publicDistribution": false
+  },
+  "ueliIntegration": {
+    "baseline": "v9.29.0",
+    "peeledCommit": "c9670d61cb2576802adf99d95622c58538d265f3",
+    "admittedRuntimeDependencies": [
+      "color@4.2.3",
+      "fast-xml-parser@5.7.0",
+      "mathjs@15.2.0",
+      "uuid@14.0.0",
+      "fuse.js@7.1.0",
+      "fuzzysort@3.1.0",
+      "electron-updater@6.8.3"
+    ],
+    "runtimeDependencyClosure": [
+      "@babel/runtime@7.29.7",
+      "@nodable/entities@2.1.1",
+      "argparse@2.0.1",
+      "builder-util-runtime@9.5.1",
+      "color-convert@2.0.1",
+      "color-name@1.1.4",
+      "color-string@1.9.1",
+      "color@4.2.3",
+      "complex.js@2.4.3",
+      "debug@4.4.3",
+      "decimal.js@10.6.0",
+      "electron-updater@6.8.3",
+      "escape-latex@1.2.0",
+      "fast-xml-builder@1.2.0",
+      "fast-xml-parser@5.7.0",
+      "fraction.js@5.3.4",
+      "fs-extra@10.1.0",
+      "fuse.js@7.1.0",
+      "fuzzysort@3.1.0",
+      "graceful-fs@4.2.11",
+      "is-arrayish@0.3.4",
+      "javascript-natural-sort@0.7.1",
+      "js-yaml@4.3.1",
+      "jsonfile@6.2.1",
+      "lazy-val@1.0.5",
+      "lodash.escaperegexp@4.1.2",
+      "lodash.isequal@4.5.0",
+      "mathjs@15.2.0",
+      "ms@2.1.3",
+      "path-expression-matcher@1.5.0",
+      "sax@1.6.1",
+      "seedrandom@3.0.5",
+      "semver@7.7.4",
+      "simple-swizzle@0.2.4",
+      "strnum@2.2.3",
+      "tiny-emitter@2.1.0",
+      "tiny-typed-emitter@2.1.0",
+      "typed-function@4.2.2",
+      "universalify@2.0.1",
+      "uuid@14.0.0",
+      "xml-naming@0.1.0"
+    ],
+    "shippedVendorSource": false,
+    "importedIdentity": false
+  },
+  "noticeLedger": "scripts/ueli/notice-ledger.json"
+}

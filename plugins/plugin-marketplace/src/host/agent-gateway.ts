@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import type { AddressInfo } from 'node:net'
+import { type AddressInfo, type Socket } from 'node:net'
 import { parseMarketplaceCommand, type MarketplaceCommand } from '../protocol.ts'
 import type { PluginMarketplaceManager } from './transaction-manager.ts'
 
@@ -73,9 +73,18 @@ export async function startMarketplaceAgentGateway(
   options: MarketplaceAgentGatewayOptions = {},
 ): Promise<MarketplaceAgentGateway> {
   const token = randomBytes(32).toString('hex')
+  let closed = false
   let deferredPending = false
+  let deferredTimer: ReturnType<typeof setTimeout> | undefined
+  let closePromise: Promise<void> | undefined
+  const connections = new Set<Socket>()
+  const activeDispatches = new Set<Promise<unknown>>()
   const server = createServer((request, response) => {
     void (async () => {
+      if (closed) {
+        json(response, 503, { error: 'marketplace agent is closed' })
+        return
+      }
       if (request.method !== 'POST' || request.url !== '/v1/marketplace') {
         json(response, 404, { error: 'not found' })
         return
@@ -99,6 +108,7 @@ export async function startMarketplaceAgentGateway(
       const command = parseMarketplaceCommand(record.command)
       if (deferredPending) throw new Error('a marketplace restart action is already pending')
       if (!isDeferred(command)) {
+        if (closed) throw new Error('marketplace agent is closed')
         if (command.type === 'preview') {
           const plan = manager.getSnapshot().plan
           const expected = command.expectedPlan
@@ -110,7 +120,9 @@ export async function startMarketplaceAgentGateway(
             throw new Error('the prepared marketplace plan changed before preview approval')
           }
         }
-        const snapshot = await manager.dispatch(command)
+        const dispatch = manager.dispatch(command)
+        activeDispatches.add(dispatch)
+        const snapshot = await dispatch.finally(() => { activeDispatches.delete(dispatch) })
         json(response, 200, { accepted: true, deferred: false, snapshot })
         return
       }
@@ -130,7 +142,12 @@ export async function startMarketplaceAgentGateway(
         : snapshot.lifecycle.previous!.transactionId
       deferredPending = true
       json(response, 202, { accepted: true, deferred: true, snapshot })
-      setTimeout(() => {
+      deferredTimer = setTimeout(() => {
+        deferredTimer = undefined
+        if (closed) {
+          deferredPending = false
+          return
+        }
         const current = manager.getSnapshot()
         const currentTransactionId = command.type === 'apply'
           ? current.preview?.transactionId
@@ -140,17 +157,30 @@ export async function startMarketplaceAgentGateway(
           deferredPending = false
           return
         }
-        void manager.dispatch(command)
+        if (closed) {
+          deferredPending = false
+          return
+        }
+        const dispatch = manager.dispatch(command)
+        activeDispatches.add(dispatch)
+        void dispatch
           .then(result => {
             if (result.error !== null) options.onError?.(new Error(result.error))
           })
           .catch(options.onError ?? (() => {}))
-          .finally(() => { deferredPending = false })
+          .finally(() => {
+            activeDispatches.delete(dispatch)
+            deferredPending = false
+          })
       }, options.deferMs ?? DEFAULT_DEFER_MS)
     })().catch(error => {
       if (!response.headersSent) json(response, 400, { error: message(error) })
       else response.destroy(error instanceof Error ? error : new Error(message(error)))
     })
+  })
+  server.on('connection', socket => {
+    connections.add(socket)
+    socket.once('close', () => { connections.delete(socket) })
   })
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject)
@@ -162,9 +192,22 @@ export async function startMarketplaceAgentGateway(
   const address = server.address() as AddressInfo
   return {
     close: async () => {
-      await new Promise<void>((resolve, reject) => {
-        server.close(error => { if (error === undefined) resolve(); else reject(error) })
-      })
+      if (closePromise !== undefined) return await closePromise
+      closed = true
+      deferredPending = false
+      if (deferredTimer !== undefined) clearTimeout(deferredTimer)
+      deferredTimer = undefined
+      for (const socket of connections) socket.destroy()
+      closePromise = (async () => {
+        await new Promise<void>((resolve, reject) => {
+          server.close(error => {
+            if (error === undefined || (error as NodeJS.ErrnoException).code === 'ERR_SERVER_NOT_RUNNING') resolve()
+            else reject(error)
+          })
+        })
+        await Promise.allSettled([...activeDispatches])
+      })()
+      return await closePromise
     },
     token,
     url: `http://127.0.0.1:${String(address.port)}/v1/marketplace`,

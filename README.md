@@ -31,9 +31,10 @@ Choose a distribution from the
 | TUI-only | **TockTeam TUI**, Node runtime, and terminal plugins; no Electron | Terminal-only environments |
 
 The full distribution is currently published as DMG/ZIP for macOS and
-AppImage/deb for Linux. Windows artifacts are not currently published. On
-macOS, open the DMG and drag **TockTeam Desktop** into Applications. On Linux,
-run the AppImage or install the deb with `apt`.
+AppImage/deb for Linux. Windows artifacts are not currently published. The
+Windows source build emits a `TockTeam-Desktop-*-x64.tar.gz` portable archive.
+On macOS, open the DMG and drag **TockTeam Desktop** into Applications. On
+Linux, run the AppImage or install the deb with `apt`.
 
 Extract and start the Web-only package directly:
 

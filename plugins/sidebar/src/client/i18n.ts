@@ -11,6 +11,9 @@ export type WorkspaceMessage =
   | 'terminal.title'
   | 'side.toggle'
   | 'side.title'
+  | 'launcher.button'
+  | 'launcher.open'
+  | 'launcher.shortcut-unavailable'
   | 'review'
   | 'terminal'
   | 'browser'
@@ -122,6 +125,9 @@ export const WORKSPACE_MESSAGES: LocaleMessages<WorkspaceMessage> = {
     'terminal.title': 'Terminal',
     'side.toggle': 'Toggle side panel',
     'side.title': 'Side panel',
+    'launcher.button': 'TockLauncher',
+    'launcher.open': 'Open TockLauncher ({accelerator})',
+    'launcher.shortcut-unavailable': 'Shortcut Unavailable',
     review: 'Review',
     terminal: 'Terminal',
     browser: 'Browser',
@@ -232,6 +238,9 @@ export const WORKSPACE_MESSAGES: LocaleMessages<WorkspaceMessage> = {
     'terminal.title': '终端',
     'side.toggle': '切换侧边栏',
     'side.title': '侧边栏',
+    'launcher.button': 'TockLauncher',
+    'launcher.open': '打开 TockLauncher（{accelerator}）',
+    'launcher.shortcut-unavailable': '快捷键不可用',
     review: '审查',
     terminal: '终端',
     browser: '浏览器',

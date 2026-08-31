@@ -134,6 +134,14 @@ export interface NativeDispatchDraft {
     text?: string;
     title?: string;
 }
+export declare class TockTutorRouteFlushTimeoutError extends Error {
+    readonly timeoutMs: number;
+    constructor(timeoutMs: number);
+}
+/** Track async route cleanup until its owning client observes the outcome. */
+export declare function trackTockTutorRouteFlush(flush: PromiseLike<void> | void): void;
+/** Await route cleanup without allowing a stuck transport to block unload forever. */
+export declare function waitForTockTutorRouteFlushes(timeoutMs?: number): Promise<void>;
 export declare function pathFromTockTutorLocation(pathname: string): string | null;
 /** Bounded route state machine shared by the React contribution and focused tests. */
 export declare class WorkbenchRouteController {
@@ -143,6 +151,7 @@ export declare class WorkbenchRouteController {
     private readonly storage;
     private snapshot;
     private readonly listeners;
+    private disposal;
     private vaultGeneration;
     private shellSession;
     private readonly recentlyClosed;
@@ -159,6 +168,7 @@ export declare class WorkbenchRouteController {
     private saveAbort;
     private saving;
     private draftAbort;
+    private draftFlush;
     private draftTimer;
     private eventDispose;
     private pendingDispatch;
@@ -194,7 +204,10 @@ export declare class WorkbenchRouteController {
     private pane;
     private recordOpen;
     private recordDirty;
+    private persistDraft;
+    private persistFinalDraft;
     private scheduleDraft;
+    private flushPendingDraft;
     private clearDocument;
     private nextOperation;
     private cancelEmbedOperation;
@@ -260,7 +273,7 @@ export declare class WorkbenchRouteController {
     applyCanvasChange(change: CanvasChange): Promise<boolean>;
     save(): Promise<boolean>;
     private failureMessage;
-    dispose(): void;
+    dispose(): Promise<void>;
 }
 export interface TockTutorRouteViewProps {
     assistantPanel?: ReactNode;
@@ -333,6 +346,7 @@ export interface TockTutorRouteViewProps {
     onTogglePinTab?(paneId: string, path: string): void;
     onTrashCurrent?(): void;
     onToggleTask(index: number): void;
+    active?: boolean;
     reviewPanel?: ReactNode;
     snapshot: WorkbenchRouteSnapshot;
     webViewerPanel?: ReactNode;
@@ -341,6 +355,7 @@ export interface TockTutorRouteViewProps {
 /** Semantic, authority-free view for the route state machine. */
 export declare function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode;
 export type TockTutorRouteProps = TockTutorRouteOwnerProps & PropsRenderSlots<typeof TOCKTUTOR_ASSISTANT_PANEL_SLOT | typeof TOCKTUTOR_NATIVE_ACTIONS_SLOT | typeof TOCKTUTOR_REVIEW_PANEL_SLOT | typeof TOCKTUTOR_WEB_VIEWER_PANEL_SLOT> & {
+    active?: boolean;
     remote: WorkbenchRouteRemote;
 };
 /** Root-scoped component contributed to TockTeam's exact Desktop route seat. */

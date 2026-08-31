@@ -155,7 +155,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
     ])
     await run('pnpm', [
       'install',
-      '--offline',
+      '--prefer-offline',
       '--ignore-scripts',
       '--strict-peer-dependencies',
     ], { cwd: root })

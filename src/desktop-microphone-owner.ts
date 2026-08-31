@@ -25,6 +25,22 @@ function text(value: unknown): value is string {
     && !/[\u0000-\u001f\u007f]/u.test(value)
 }
 
+async function awaitAbortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  // Native permission APIs may ignore AbortSignal; race them without leaving a
+  // late rejection unhandled after the caller has already been released.
+  void operation.catch(() => undefined)
+  if (signal.aborted) throw new Error('native microphone request was aborted')
+  let rejectAbort!: (reason?: unknown) => void
+  const aborted = new Promise<never>((_resolve, reject) => { rejectAbort = reject })
+  const onAbort = (): void => { rejectAbort(new Error('native microphone request was aborted')) }
+  signal.addEventListener('abort', onAbort, { once: true })
+  try {
+    return await Promise.race([operation, aborted])
+  } finally {
+    signal.removeEventListener('abort', onAbort)
+  }
+}
+
 function identity(value: unknown): value is NativeOperationIdentity {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
@@ -59,7 +75,10 @@ export class DesktopMicrophoneOwner {
     this.pending = true
     const combined = AbortSignal.any([signal, this.lifetime.signal])
     try {
-      const granted = await this.options.requestAccess(combined)
+      const granted = await awaitAbortable(
+        Promise.resolve().then(() => this.options.requestAccess(combined)),
+        combined,
+      )
       if (combined.aborted) return { operationId, status: 'cancelled' }
       if (!this.options.isAvailable()) return { operationId, status: 'unavailable' }
       if (!this.options.isCurrent(request.identity)) return { operationId, status: 'stale' }

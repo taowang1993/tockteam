@@ -4,11 +4,16 @@ import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from "./assistant-panel.js";
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from "./web-viewer-panel.js";
-import { TockTutorRoute } from "./route.js";
+import { TockTutorRoute, waitForTockTutorRouteFlushes, } from "./route.js";
 /** Browser Loader identity for the native TockTutor workbench. */
 export const name = '@tockteam/tocktutor-workbench';
 /** Required transport and route registry supplied by the pinned Desktop client graph. */
 export const inject = ['remote', 'slots'];
+async function disposeRouteBeforeRemote(routeFiber, disposeRemote) {
+    await routeFiber.dispose();
+    await waitForTockTutorRouteFlushes();
+    await disposeRemote();
+}
 /** Mount strict transport first, then contribute one lifecycle-owned Desktop route. */
 export async function apply(ctx) {
     const disposeRemote = await ctx.remote.$mount(workbenchRemote);
@@ -34,13 +39,16 @@ export async function apply(ctx) {
         await routeFiber;
     }
     catch (error) {
-        await routeFiber.dispose();
-        await disposeRemote();
+        await disposeRouteBeforeRemote(routeFiber, disposeRemote);
         throw error;
     }
-    return async () => {
-        await routeFiber.dispose();
-        await disposeRemote();
+    let disposal = null;
+    return () => {
+        if (disposal === null) {
+            disposal = disposeRouteBeforeRemote(routeFiber, disposeRemote);
+            void disposal.catch(() => undefined);
+        }
+        return disposal;
     };
 }
 export * from "./assistant-panel.js";

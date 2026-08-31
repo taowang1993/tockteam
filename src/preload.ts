@@ -10,19 +10,225 @@ import type {
 } from './contracts.ts'
 import type { MarketplaceCommand, MarketplaceSnapshot } from '../plugins/plugin-marketplace/src/protocol.ts'
 import type { DesktopCallerOperation } from './host-contract.ts'
+import {
+  DESKTOP_APP_UPDATE_CHANNELS,
+  parseDesktopAppUpdateActionResult,
+  parseDesktopAppUpdateState,
+} from './desktop-app-update.ts'
+import {
+  LAUNCHER_WORKBENCH_ROUTE_CHANNEL,
+  LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL,
+  parseLauncherDestination,
+  parseLauncherWorkbenchRoute,
+  parseLauncherThemeSource,
+  parseLauncherWindowAcknowledgement,
+  type LauncherThemeSource,
+} from './launcher-window-contract.ts'
+import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
+import {
+  LAUNCHER_SETTINGS_IPC_CHANNELS,
+} from './launcher-window-contract.ts'
+import { parseLauncherLocale } from './launcher-contract.ts'
+import {
+  parseLauncherSettingUpdateArgs,
+  parseLauncherSettingsOperationResult,
+  parseLauncherSettingsSnapshot,
+} from './launcher-settings-contract.ts'
+import {
+  LAUNCHER_WINDOW_IPC_CHANNELS,
+  assertNoLauncherIpcArguments,
+  parseDesktopLauncherState,
+} from './launcher-window-contract.ts'
+
+const commandListeners = new Set<(command: DesktopCommand) => void>()
+const commandQueue: DesktopCommand[] = []
+const routeListeners = new Set<(route: LauncherWorkbenchRoute) => void>()
+let pendingRoute: LauncherWorkbenchRoute | undefined
+const updateListeners = new Set<(state: ReturnType<typeof parseDesktopAppUpdateState>) => void>()
+let pendingUpdate: ReturnType<typeof parseDesktopAppUpdateState> | undefined
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function parseDesktopCommand(value: unknown): DesktopCommand {
+  if (!isRecord(value) || typeof value.type !== 'string') throw new Error('Invalid desktop command')
+  const keys = Object.keys(value)
+  if (value.type === 'show-settings') {
+    if (keys.length === 1 && value.section === undefined) return { type: 'show-settings' }
+    if (keys.length === 2 && value.section === 'tocklauncher') return { section: 'tocklauncher', type: 'show-settings' }
+    throw new Error('Invalid desktop settings command')
+  }
+  if (value.type === 'open-paths') {
+    if (keys.length !== 2 || !Array.isArray(value.paths) || value.paths.length > 128
+      || value.paths.some(path => typeof path !== 'string' || path.length === 0 || path.length > 4_096 || /[\\0\\r\\n]/u.test(path))) throw new Error('Invalid desktop paths command')
+    return { paths: [...value.paths] as string[], type: 'open-paths' }
+  }
+  const commands = new Set([
+    'focus-composer', 'new-session', 'toggle-bottom-panel', 'toggle-panel-maximized', 'toggle-pinned-summary',
+    'toggle-side-panel', 'toggle-workspace-panel', 'open-browser', 'open-files', 'open-review', 'open-side-chat',
+    'open-trajectory', 'toggle-sidebar',
+  ])
+  if (keys.length !== 1 || !commands.has(value.type)) throw new Error('Invalid desktop command')
+  return { type: value.type } as DesktopCommand
+}
+
+ipcRenderer.on('desktop:command', (_event, raw: unknown) => {
+  let command: DesktopCommand
+  try { command = parseDesktopCommand(raw) } catch { return }
+  if (commandListeners.size === 0) {
+    if (commandQueue.length < 128) commandQueue.push(command)
+    return
+  }
+  for (const listener of commandListeners) listener(command)
+})
+ipcRenderer.on(LAUNCHER_WORKBENCH_ROUTE_CHANNEL, (_event, raw: unknown) => {
+  let route: LauncherWorkbenchRoute
+  try { route = parseLauncherWorkbenchRoute(raw) } catch { return }
+  if (routeListeners.size === 0) {
+    pendingRoute = route
+    return
+  }
+  for (const listener of routeListeners) listener(route)
+})
+ipcRenderer.on(DESKTOP_APP_UPDATE_CHANNELS.state, (_event, raw: unknown) => {
+  let state: ReturnType<typeof parseDesktopAppUpdateState>
+  try { state = parseDesktopAppUpdateState(raw) } catch { return }
+  pendingUpdate = state
+  for (const listener of updateListeners) listener(state)
+})
 
 const bridge: DesktopBridge = Object.freeze({
   chooseWorkspace: async (): Promise<string[]> => {
     return await ipcRenderer.invoke('desktop:choose-workspace') as string[]
   },
+  launcher: Object.freeze({
+    getState: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopLauncherState(
+        await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.getState),
+      )
+    },
+    show: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopLauncherState(
+        await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.show),
+      )
+    },
+    settings: Object.freeze({
+      getSnapshot: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsSnapshot(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.getSnapshot))
+      },
+      updateSetting: async (key: string, value: unknown, ...extra: unknown[]) => {
+        assertNoLauncherIpcArguments(extra)
+        const update = parseLauncherSettingUpdateArgs({ key, value })
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.updateSetting, update))
+      },
+      importSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.importSettings))
+      },
+      exportSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.exportSettings))
+      },
+      resetSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.resetSettings))
+      },
+      selectExternalSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.selectExternalSettings))
+      },
+      revokeExternalSettings: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.revokeExternalSettings))
+      },
+      selectCustomBrowser: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.selectCustomBrowser))
+      },
+      revokeCustomBrowser: async (...args: unknown[]) => {
+        assertNoLauncherIpcArguments(args)
+        return parseLauncherSettingsOperationResult(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.revokeCustomBrowser))
+      },
+    }),
+  }),
+  appUpdate: Object.freeze({
+    getState: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopAppUpdateState(
+        await ipcRenderer.invoke(DESKTOP_APP_UPDATE_CHANNELS.getState),
+      )
+    },
+    check: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopAppUpdateActionResult(await ipcRenderer.invoke(DESKTOP_APP_UPDATE_CHANNELS.check))
+    },
+    download: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopAppUpdateActionResult(await ipcRenderer.invoke(DESKTOP_APP_UPDATE_CHANNELS.download))
+    },
+    install: async (...args: unknown[]) => {
+      assertNoLauncherIpcArguments(args)
+      return parseDesktopAppUpdateActionResult(await ipcRenderer.invoke(DESKTOP_APP_UPDATE_CHANNELS.install))
+    },
+    onStateChange: (listener: (state: ReturnType<typeof parseDesktopAppUpdateState>) => void): (() => void) => {
+      if (typeof listener !== 'function') throw new Error('Desktop updater listener is invalid')
+      updateListeners.add(listener)
+      if (pendingUpdate !== undefined) listener(pendingUpdate)
+      return () => { updateListeners.delete(listener) }
+    },
+  }),
+  launchOnStart: Object.freeze({
+    get: async (...args: unknown[]): Promise<boolean> => {
+      assertNoLauncherIpcArguments(args)
+      const value = await ipcRenderer.invoke('desktop:launch-on-start:get')
+      if (typeof value !== 'boolean') throw new Error('Invalid Launch on Start state')
+      return value
+    },
+    set: async (enabled: boolean, ...extra: unknown[]): Promise<boolean> => {
+      assertNoLauncherIpcArguments(extra)
+      if (typeof enabled !== 'boolean') throw new Error('Launch on Start must be a boolean')
+      const value = await ipcRenderer.invoke('desktop:launch-on-start:set', enabled)
+      if (typeof value !== 'boolean') throw new Error('Invalid Launch on Start state')
+      return value
+    },
+  }),
   getInfo: async (): Promise<DesktopInfo> => await ipcRenderer.invoke('desktop:get-info') as DesktopInfo,
   getRuntimeSnapshot: async (): Promise<DesktopRuntimeSnapshot> => {
     return await ipcRenderer.invoke('desktop:get-runtime-snapshot') as DesktopRuntimeSnapshot
   },
   onCommand: (listener: (command: DesktopCommand) => void): (() => void) => {
-    const wrapped = (_event: Electron.IpcRendererEvent, command: DesktopCommand): void => { listener(command) }
-    ipcRenderer.on('desktop:command', wrapped)
-    return () => { ipcRenderer.removeListener('desktop:command', wrapped) }
+    if (typeof listener !== 'function') throw new Error('Desktop command listener is invalid')
+    commandListeners.add(listener)
+    const queued = commandQueue.splice(0)
+    for (const command of queued) listener(command)
+    return () => { commandListeners.delete(listener) }
+  },
+  onRoute: (listener: (route: LauncherWorkbenchRoute) => void): (() => void) => {
+    if (typeof listener !== 'function') throw new Error('Desktop route listener is invalid')
+    routeListeners.add(listener)
+    const queued = pendingRoute
+    pendingRoute = undefined
+    if (queued !== undefined) listener(queued)
+    return () => { routeListeners.delete(listener) }
+  },
+  syncLauncherLocale: async (locale: import('./launcher-contract.ts').LauncherLocale, ...extra: unknown[]): Promise<void> => {
+    assertNoLauncherIpcArguments(extra)
+    const parsed = parseLauncherLocale(locale)
+    parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.syncLocale, parsed))
+  },
+  syncLauncherTheme: async (source: LauncherThemeSource, ...extra: unknown[]): Promise<void> => {
+    assertNoLauncherIpcArguments(extra)
+    const parsed = parseLauncherThemeSource(source)
+    parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.syncThemeSource, parsed))
+  },
+  syncWorkbenchDestination: async (destination: TockTeamDestination, ...extra: unknown[]): Promise<void> => {
+    assertNoLauncherIpcArguments(extra)
+    const parsed = parseLauncherDestination(destination)
+    parseLauncherWindowAcknowledgement(await ipcRenderer.invoke('desktop:workbench-destination', parsed))
   },
   openExternal: async (url: string): Promise<void> => {
     await ipcRenderer.invoke('desktop:open-external', url)
@@ -70,3 +276,9 @@ const bridge: DesktopBridge = Object.freeze({
 })
 
 contextBridge.exposeInMainWorld('dshDesktop', bridge)
+
+// Splash documents also use this preload. Only a trusted runtime document can
+// complete the readiness handshake; the main process rejects every other URL.
+if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+  void ipcRenderer.invoke(LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL).catch(() => {})
+}

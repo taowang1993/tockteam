@@ -1,5 +1,16 @@
 import type { PluginMarketplaceBridge } from '../plugins/plugin-marketplace/src/protocol.ts'
 import type {
+  DesktopAppUpdateActionResult,
+  DesktopAppUpdateState,
+} from './desktop-app-update.ts'
+import type { DesktopLauncherState } from './launcher-window-contract.ts'
+import type { LauncherThemeSource } from './launcher-theme.ts'
+import type { LauncherLocale } from './launcher-contract.ts'
+import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
+import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
+
+export type { DesktopLauncherState } from './launcher-window-contract.ts'
+import type {
   DesktopCallerOperation,
   DesktopQuickAction,
   TockTutorBrowserProtocolRequest,
@@ -10,7 +21,7 @@ export type DesktopCommand =
   | { type: 'focus-composer' }
   | { type: 'new-session' }
   | { type: 'open-paths'; paths: string[] }
-  | { type: 'show-settings' }
+  | { section?: 'tocklauncher'; type: 'show-settings' }
   | { type: 'toggle-bottom-panel' }
   | { type: 'toggle-panel-maximized' }
   | { type: 'toggle-pinned-summary' }
@@ -75,6 +86,39 @@ export interface TockTutorDesktopCallerBridge {
   nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
 }
 
+export type LauncherSettingsOperationResult = Readonly<{ canceled?: boolean; ok: true }>
+
+export interface DesktopLauncherSettingsBridge {
+  exportSettings(): Promise<LauncherSettingsOperationResult>
+  getSnapshot(): Promise<LauncherSettingsSnapshot>
+  importSettings(): Promise<LauncherSettingsOperationResult>
+  resetSettings(): Promise<LauncherSettingsOperationResult>
+  revokeCustomBrowser(): Promise<LauncherSettingsOperationResult>
+  revokeExternalSettings(): Promise<LauncherSettingsOperationResult>
+  selectCustomBrowser(): Promise<LauncherSettingsOperationResult>
+  selectExternalSettings(): Promise<LauncherSettingsOperationResult>
+  updateSetting(key: string, value: unknown): Promise<LauncherSettingsOperationResult>
+}
+
+export interface DesktopLauncherBridge {
+  getState(): Promise<DesktopLauncherState>
+  show(): Promise<DesktopLauncherState>
+  settings: DesktopLauncherSettingsBridge
+}
+
+export interface DesktopAppUpdateBridge {
+  getState(): Promise<DesktopAppUpdateState>
+  check(): Promise<DesktopAppUpdateActionResult>
+  download(): Promise<DesktopAppUpdateActionResult>
+  install(): Promise<DesktopAppUpdateActionResult>
+  onStateChange(listener: (state: DesktopAppUpdateState) => void): () => void
+}
+
+export interface DesktopLaunchOnStartBridge {
+  get(): Promise<boolean>
+  set(enabled: boolean): Promise<boolean>
+}
+
 export interface WebClipDesktopBridge {
   authorizeDocument(frameId: number, html: string): Promise<string>
   onNavigationBlocked(listener: (navigation: WebClipBlockedNavigation) => void): () => void
@@ -83,9 +127,16 @@ export interface WebClipDesktopBridge {
 /** Browser-safe desktop bridge made available through contextBridge. */
 export interface DesktopBridge {
   chooseWorkspace(): Promise<string[]>
+  launcher: DesktopLauncherBridge
+  appUpdate: DesktopAppUpdateBridge
+  launchOnStart: DesktopLaunchOnStartBridge
   getInfo(): Promise<DesktopInfo>
   getRuntimeSnapshot(): Promise<DesktopRuntimeSnapshot>
   onCommand(listener: (command: DesktopCommand) => void): () => void
+  onRoute(listener: (route: LauncherWorkbenchRoute) => void): () => void
+  syncLauncherLocale(locale: LauncherLocale): Promise<void>
+  syncLauncherTheme(source: LauncherThemeSource): Promise<void>
+  syncWorkbenchDestination(destination: TockTeamDestination): Promise<void>
   openExternal(url: string): Promise<void>
   setTockTutorActive(active: boolean): Promise<void>
   pluginMarketplace: PluginMarketplaceBridge

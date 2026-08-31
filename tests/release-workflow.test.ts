@@ -54,6 +54,30 @@ test('macOS packages retain the production signing hook', () => {
   assert.match(hook, /spawnSync\('\/usr\/bin\/codesign'/u)
 })
 
+test('tagged releases validate the package version and launcher audits before packaging', () => {
+  const workflow = readFileSync(join(root, '.github', 'workflows', 'release.yml'), 'utf8').replace(/\r\n?/g, '\n')
+  assert.match(workflow, /name: Validate release contract/u)
+  const validate = workflow.slice(workflow.indexOf('  validate:'), workflow.indexOf('  launcher-package-smoke:'))
+  const validateTag = 'node scripts/check-release-version.mjs --tag "$GITHUB_REF_NAME"'
+  assert.match(validate, /node scripts\/check-release-version\.mjs --tag "\$GITHUB_REF_NAME"/u)
+  for (const command of [
+    'pnpm test:ueli-baseline',
+    'pnpm audit:ueli-baseline',
+    'pnpm test:ueli-launcher-parity',
+    'pnpm audit:ueli-launcher-parity',
+    'pnpm test:ueli-package-feasibility',
+    'pnpm audit:ueli-package-feasibility',
+    'pnpm audit:installed-evidence',
+  ]) assert.match(validate, new RegExp(command.replaceAll('.', '\\.'), 'u'))
+  assert.ok(workflow.indexOf('  validate:') < workflow.indexOf('  package:'))
+  assert.ok(workflow.indexOf(validateTag) < workflow.indexOf('  package:'))
+  assert.match(workflow, /package:\n    needs: validate/u)
+  assert.match(workflow, /launcher-package-smoke:\n    name: Gate release on packaged TockLauncher smoke/u)
+  assert.match(workflow, /launcher-package-smoke:[\s\S]*run: pnpm test:launcher:packaged/u)
+  assert.match(workflow, /node scripts\/check-release-version\.mjs --tag "\$GITHUB_REF_NAME" --artifact dist\/release-package\.json/u)
+  assert.match(workflow, /publish:\n    name:[\s\S]*needs: \[package, launcher-package-smoke\]/u)
+})
+
 test('tagged releases build and upload both TUI archive formats', () => {
   const workflow = readFileSync(
     join(root, '.github', 'workflows', 'release.yml'),
@@ -68,6 +92,8 @@ test('tagged releases build and upload both TUI archive formats', () => {
   assert.match(workflow, /run: node scripts\/build-tui\.mjs/)
   assert.match(workflow, /release\/tockteam-tui-\*\.tar\.gz/)
   assert.match(workflow, /release\/tockteam-tui-\*\.zip/)
+  assert.match(workflow, /Windows packaging remains outside this release matrix[\s\S]+finite tar\.gz portable archive/u)
+  assert.match(readFileSync(join(root, 'scripts', 'build-windows.mjs'), 'utf8'), /windows-portable-archive\.mjs[\s\S]+TockTeam-Desktop-\$\{version\}-x64\.tar\.gz/u)
   assert.match(workflow, /fetch-depth: 0/)
   assert.match(workflow, /fetch-tags: true/)
 })
