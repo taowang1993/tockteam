@@ -29,6 +29,7 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.doesNotMatch(css, /@layer utilities/)
   assert.doesNotMatch(css, /\*,:before,:after\{box-sizing:border-box/)
   assert.match(css, /grid-template-columns:minmax\(10rem,\.?8fr\) minmax\(0,1\.8fr\)/)
+  assert.match(css, /\.tockteam-desktop-shell body\[data-scroll-locked\]\{[^}]*padding-top:var\(--tockteam-titlebar-height\)/)
 })
 
 test('splash Tailwind build scans only the standalone loading document', async () => {

@@ -361,6 +361,10 @@ function flattenRunningCalls(calls: readonly RunningToolCall[]): RunningToolCall
 const TOCKTEAM_PRIMARY_SIDEBAR_MIN_WIDTH = 200
 const DSH_PRIMARY_SIDEBAR_MIN_WIDTH = 264
 
+function primarySidebarContent(frame: HTMLElement): HTMLElement | null {
+  return frame.querySelector<HTMLElement>('[data-slot="sidebar"] > :first-child')
+}
+
 function installPrimarySidebarAdapter(): () => void {
   let overriddenWidth: number | undefined
   const publishWidth = (width: number): void => {
@@ -391,8 +395,8 @@ function installPrimarySidebarAdapter(): () => void {
     const overriddenTracks = tracks.replace(/^[\d.]+px/u, pixelWidth)
     if (overriddenTracks !== tracks) frame.style.gridTemplateColumns = overriddenTracks
     if (handle !== null && handle.style.left !== pixelWidth) handle.style.left = pixelWidth
-    const sidebarContent = frame.children.item(0)?.firstElementChild
-    if (sidebarContent instanceof HTMLElement && sidebarContent.style.width !== pixelWidth) {
+    const sidebarContent = primarySidebarContent(frame)
+    if (sidebarContent !== null && sidebarContent.style.width !== pixelWidth) {
       sidebarContent.style.width = pixelWidth
     }
     publishWidth(overriddenWidth)
@@ -418,7 +422,7 @@ function installPrimarySidebarAdapter(): () => void {
     const startX = event.clientX
     const sidebarColumn = frame.children.item(0)
     const detailsColumn = frame.children.item(2)
-    const sidebarContent = sidebarColumn?.firstElementChild
+    const sidebarContent = primarySidebarContent(frame)
     const startWidth = sidebarColumn?.getBoundingClientRect().width ?? 0
     const detailsWidth = detailsColumn?.getBoundingClientRect().width ?? 0
     const frameWidth = frame.getBoundingClientRect().width
@@ -441,9 +445,7 @@ function installPrimarySidebarAdapter(): () => void {
       frame.style.gridTemplateColumns = `${String(width)}px minmax(0, 1fr) ${String(details)}px`
       target.style.left = `${String(width)}px`
       publishWidth(width)
-      if (sidebarContent instanceof HTMLElement) {
-        sidebarContent.style.width = `${String(width)}px`
-      }
+      if (sidebarContent !== null) sidebarContent.style.width = `${String(width)}px`
     }
     const move = (next: PointerEvent): void => {
       if (next.pointerId !== pointerId) return
@@ -2024,39 +2026,39 @@ function DesktopAppRail({
           </TooltipTrigger>
           <TooltipContent side="right">TockTutor</TooltipContent>
         </Tooltip>
-        {tockCoderActive && (
-          <div className="mt-auto flex flex-col gap-1 pb-1">
-            <DesktopLauncherFallback t={t} />
-            {pluginsAvailable && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button unstyled
-                    type="button"
-                    aria-label="Plugins"
-                    onClick={() => {
-                      const target = document.querySelector('[data-tockteam-marketplace-nav]')
-                      if (target instanceof HTMLButtonElement) target.click()
-                    }}
-                  ><Blocks aria-hidden="true" /></Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Plugins</TooltipContent>
-              </Tooltip>
-            )}
+        <div className="mt-auto flex flex-col gap-1 pb-1">
+          <DesktopLauncherFallback t={t} />
+          {pluginsAvailable && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button unstyled
                   type="button"
-                  aria-label="Settings"
+                  aria-label="Plugins"
                   onClick={() => {
-                    document.querySelector('[data-slot="settings.trigger"]')
-                      ?.closest<HTMLButtonElement>('button')?.click()
+                    if (!tockCoderActive) navigate(TOCKCODER_ROUTE_PREFIX)
+                    const target = document.querySelector('[data-tockteam-marketplace-nav]')
+                    if (target instanceof HTMLButtonElement) target.click()
                   }}
-                ><Settings aria-hidden="true" /></Button>
+                ><Blocks aria-hidden="true" /></Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Settings</TooltipContent>
+              <TooltipContent side="right">Plugins</TooltipContent>
             </Tooltip>
-          </div>
-        )}
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button unstyled
+                type="button"
+                aria-label="Settings"
+                onClick={() => {
+                  if (!tockCoderActive) navigate(TOCKCODER_ROUTE_PREFIX)
+                  document.querySelector('[data-slot="settings.trigger"]')
+                    ?.closest<HTMLButtonElement>('button')?.click()
+                }}
+              ><Settings aria-hidden="true" /></Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Settings</TooltipContent>
+          </Tooltip>
+        </div>
       </nav>
     </TooltipProvider>
   )

@@ -63,8 +63,9 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.match(workspace, /<AppRailIcon kind="agent" \/>/)
   assert.match(workspace, /<AppRailIcon kind="notebook" \/>/)
   assert.match(workspace, /return <Notebook aria-hidden="true" \/>/)
-  assert.match(workspace, /<DesktopLauncherFallback t=\{t\} \/>[\s\S]*aria-label="Plugins"/u)
-  assert.match(workspace, /aria-label="Settings"/)
+  assert.match(workspace, /<div className="mt-auto flex flex-col gap-1 pb-1">\s*<DesktopLauncherFallback t=\{t\} \/>\s*\{pluginsAvailable && \([\s\S]*aria-label="Plugins"[\s\S]*aria-label="Settings"/u)
+  assert.doesNotMatch(workspace, /\{tockCoderActive && \(\s*<>[\s\S]*aria-label="Plugins"/u)
+  assert.equal(workspace.match(/if \(!tockCoderActive\) navigate\(TOCKCODER_ROUTE_PREFIX\)/gu)?.length, 2)
   assert.match(workspace, /className="mt-auto flex flex-col gap-1 pb-1"/)
   assert.match(workspace, /<Blocks aria-hidden="true" \/>/)
   assert.match(workspace, /<Settings aria-hidden="true" \/>/)
@@ -160,6 +161,12 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /const DSH_PRIMARY_SIDEBAR_MIN_WIDTH = 264/u)
   assert.match(
     workspace,
+    /function primarySidebarContent\(frame: HTMLElement\): HTMLElement \| null \{\s*return frame\.querySelector<HTMLElement>\('\[data-slot="sidebar"\] > :first-child'\)\s*\}/u,
+  )
+  assert.equal(workspace.match(/primarySidebarContent\(frame\)/gu)?.length, 2)
+  assert.doesNotMatch(workspace, /frame\.children\.item\(0\)\?\.firstElementChild/u)
+  assert.match(
+    workspace,
     /document\.documentElement\.style\.setProperty\(\s*'--tockteam-primary-sidebar-width',\s*`\$\{String\(width\)\}px`,?\s*\)/u,
   )
   assert.match(workspace, /const width = Number\.parseFloat\(frame\.style\.gridTemplateColumns\)/u)
@@ -176,12 +183,15 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /tockteam-titlebar-leading ml-\[var\(--tockteam-rail-width\)\]/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+border-r/u)
   assert.match(workspace, /\[body:has\(\[data-sidebar-collapsed\]\)_&\]:w-\[84px\][^"\n]+\[body:has\(\[data-sidebar-collapsed\]\)_&\]:border-r-0/u)
-  assert.match(workspace, /tockteam-titlebar-leading[^"\n]+\[&_button\]:size-9/u)
+  assert.match(workspace, /tockteam-titlebar-leading[^"\n]+pr-1[^"\n]+\[&_button\]:size-9/u)
+  assert.match(tockTutor, /tocktutor-titlebar-sidebar[^"\n]+pr-1/u)
+  assert.match(tockTutor, /aria-label="Toggle Files Sidebar"[^>]+className="[^"]*size-9/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+\[&_svg\]:size-\[18px\]/u)
   assert.match(workspace, /tockteam-panel-toolbar[^"\n]+\[&_svg\]:size-\[18px\]/u)
   assert.match(workspace, /tockteam-app-rail[^"\n]+\[&_svg\]:size-\[18px\]/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+\[&_button\]:\[-webkit-app-region:no-drag\]/u)
   assert.match(workspace, /tockteam-panel-toolbar fixed top-\[5px\] right-3\.5[^"\n]+border-0 bg-transparent p-0 shadow-none/u)
+  assert.match(tockTutor, /tocktutor-titlebar-main[^"\n]+pl-2 pr-3\.5/u)
 })
 
 test('review, pinned summary, and embedded side tools keep distinct layouts', () => {

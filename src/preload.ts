@@ -98,6 +98,12 @@ ipcRenderer.on(DESKTOP_APP_UPDATE_CHANNELS.state, (_event, raw: unknown) => {
   for (const listener of updateListeners) listener(state)
 })
 
+// Appearance can initialize before the main process finishes accepting workbench facts.
+const workbenchReady = window.location.protocol === 'http:' || window.location.protocol === 'https:'
+  ? ipcRenderer.invoke(LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL).then(() => undefined)
+  : Promise.resolve()
+void workbenchReady.catch(() => {})
+
 const bridge: DesktopBridge = Object.freeze({
   chooseWorkspace: async (): Promise<string[]> => {
     return await ipcRenderer.invoke('desktop:choose-workspace') as string[]
@@ -218,11 +224,13 @@ const bridge: DesktopBridge = Object.freeze({
   syncLauncherLocale: async (locale: import('./launcher-contract.ts').LauncherLocale, ...extra: unknown[]): Promise<void> => {
     assertNoLauncherIpcArguments(extra)
     const parsed = parseLauncherLocale(locale)
+    await workbenchReady
     parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.syncLocale, parsed))
   },
   syncLauncherTheme: async (source: LauncherThemeSource, ...extra: unknown[]): Promise<void> => {
     assertNoLauncherIpcArguments(extra)
     const parsed = parseLauncherThemeSource(source)
+    await workbenchReady
     parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.syncThemeSource, parsed))
   },
   syncWorkbenchDestination: async (destination: TockTeamDestination, ...extra: unknown[]): Promise<void> => {
@@ -276,9 +284,3 @@ const bridge: DesktopBridge = Object.freeze({
 })
 
 contextBridge.exposeInMainWorld('dshDesktop', bridge)
-
-// Splash documents also use this preload. Only a trusted runtime document can
-// complete the readiness handshake; the main process rejects every other URL.
-if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-  void ipcRenderer.invoke(LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL).catch(() => {})
-}

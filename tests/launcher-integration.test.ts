@@ -15,6 +15,10 @@ const webPatch = readFileSync(new URL('../web/cordis.patch.yml', import.meta.url
 const tuiPatch = readFileSync(new URL('../plugins/tui/cordis.patch.yml', import.meta.url), 'utf8')
 const electronSmoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
 
+test('main activates the macOS app before handling a cross-display launcher shortcut', () => {
+  assert.match(main, /globalShortcut: \{[\s\S]*?const workbench = mainWindow[\s\S]*?screen\.getDisplayMatching\(workbench\.getBounds\(\)\)\.id[\s\S]*?screen\.getDisplayNearestPoint\(screen\.getCursorScreenPoint\(\)\)\.id[\s\S]*?app\.focus\(\{ steal: true \}\)\s*setImmediate\(callback\)\s*return/u)
+})
+
 test('main assembles one launcher owner without branching the DSH workbench factory', () => {
   assert.match(main, /globalShortcut/u)
   assert.match(main, /session\.fromPartition\(LAUNCHER_SESSION_PARTITION\)/u)
@@ -141,20 +145,25 @@ test('fixture smoke reads host-owned effect counters instead of renderer authori
   assert.match(electronSmoke, /TOCKTEAM_WORKFLOW_SLOW_HISTORY/u)
 })
 
+test('workbench preload waits for route readiness before initial launcher appearance sync', () => {
+  assert.match(preload, /const workbenchReady = [\s\S]*ipcRenderer\.invoke\(LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL\)/u)
+  assert.match(preload, /syncLauncherLocale:[\s\S]*?await workbenchReady[\s\S]*?LAUNCHER_WINDOW_IPC_CHANNELS\.syncLocale/u)
+  assert.match(preload, /syncLauncherTheme:[\s\S]*?await workbenchReady[\s\S]*?LAUNCHER_WINDOW_IPC_CHANNELS\.syncThemeSource/u)
+})
+
 test('workbench bridge and Desktop navigation expose only finite launcher operations', () => {
   assert.match(contracts, /launcher: DesktopLauncherBridge/u)
   assert.match(contracts, /getState\(\): Promise<DesktopLauncherState>/u)
   assert.match(contracts, /show\(\): Promise<DesktopLauncherState>/u)
   assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.getState/u)
   assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.show/u)
-  assert.match(sidebar, /function DesktopAppRail[\s\S]*<DesktopLauncherFallback t=\{t\} \/>[\s\S]*aria-label="Plugins"/u)
+  assert.match(sidebar, /<div className="mt-auto flex flex-col gap-1 pb-1">\s*<DesktopLauncherFallback t=\{t\} \/>\s*\{pluginsAvailable && \([\s\S]*aria-label="Plugins"[\s\S]*aria-label="Settings"/u)
   assert.match(launcherFallback, /window\.dshDesktop\?\.launcher/u)
   assert.match(launcherFallback, /bridge\.getState\(\)/u)
   assert.match(launcherFallback, /bridge\.show\(\)/u)
   assert.match(launcherFallback, /Shortcut Unavailable|launcher\.shortcut-unavailable/u)
   assert.ok(launcherFallback.includes('aria-label={accessibleLabel}'))
-  assert.match(tockTutorRoute, /aria-label="Open TockLauncher"/u)
-  assert.match(tockTutorRoute, /launcher\.show\(\)/u)
+  assert.doesNotMatch(tockTutorRoute, /Open TockLauncher|launcher\.show\(\)/u)
   assert.match(launcherFallback, /<Search aria-hidden="true" \/>/u)
   assert.match(launcherFallback, /className="sr-only" role="status" aria-live="polite"/u)
   assert.match(i18n, /'launcher\.button'/u)

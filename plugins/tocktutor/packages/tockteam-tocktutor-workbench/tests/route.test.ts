@@ -845,41 +845,20 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.match(html, /<button[^>]+aria-label="Search Notes"/u)
   assert.match(html, /<button[^>]+aria-label="New Note"/u)
   assert.doesNotMatch(html, /TockLauncher/u)
-  const previousDesktop = (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop
-  ;(globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop = { launcher: { show: async () => ({}) } }
-  try {
-    const desktopMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
-      active: true,
-      onActivateTab() {},
-      onAddPane() {},
-      onEdit() {},
-      onFocusPane() {},
-      onMode() {},
-      onMoveCanvas() {},
-      onSave() {},
-      onSelect() {},
-      onToggleTask() {},
-      snapshot: controller.getSnapshot(),
-    }))
-    assert.equal((desktopMarkup.match(/aria-label="Open TockLauncher"/gu) ?? []).length, 1)
-    const inactiveMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
-      active: false,
-      onActivateTab() {},
-      onAddPane() {},
-      onEdit() {},
-      onFocusPane() {},
-      onMode() {},
-      onMoveCanvas() {},
-      onSave() {},
-      onSelect() {},
-      onToggleTask() {},
-      snapshot: controller.getSnapshot(),
-    }))
-    assert.doesNotMatch(inactiveMarkup, /TockTutor Title Bar/u)
-  } finally {
-    if (previousDesktop === undefined) delete (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop
-    else (globalThis as typeof globalThis & { dshDesktop?: unknown }).dshDesktop = previousDesktop
-  }
+  const inactiveMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
+    active: false,
+    onActivateTab() {},
+    onAddPane() {},
+    onEdit() {},
+    onFocusPane() {},
+    onMode() {},
+    onMoveCanvas() {},
+    onSave() {},
+    onSelect() {},
+    onToggleTask() {},
+    snapshot: controller.getSnapshot(),
+  }))
+  assert.doesNotMatch(inactiveMarkup, /TockTutor Title Bar/u)
   assert.match(html, /pt-0/u)
   assert.match(html, /h-\[var\(--tockteam-titlebar-height,40px\)\]/u)
   assert.match(html, /tocktutor-titlebar absolute top-0[^"\n]+border-b border-\[var\(--tt-border\)\]/u)

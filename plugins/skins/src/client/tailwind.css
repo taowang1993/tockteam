@@ -209,6 +209,11 @@
     padding-top: var(--tockteam-titlebar-height);
   }
 
+  /* Keep the fixed titlebar offset when Radix locks body scrolling for a dialog. */
+  & body[data-scroll-locked] {
+    padding-top: var(--tockteam-titlebar-height);
+  }
+
   & [data-slot='sidebar'] button:is([aria-label='Collapse sidebar'], [aria-label='收起侧边栏']) {
     display: none !important;
   }
