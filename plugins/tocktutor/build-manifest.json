@@ -199,7 +199,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/lib/index.js",
-      "sha256": "d1fa8eb3f37dbcccafa2a47ca770f65382eaaf33a5ea1d144c34e7c21945327c"
+      "sha256": "0f2dc7e77b3c27b10909f97e81db3f1ac9610469b26a45d2ea86ea6e748cc60f"
     },
     {
       "path": "packages/tockbot-note-runtime/package.json",
@@ -207,7 +207,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/src/index.ts",
-      "sha256": "149c063406bafbac14036b9d2d1f3baf6fdb3efaaaabc3c40265f428ee43f995"
+      "sha256": "23526405bb1ff24c92c89eccd79ebcb05abebb8c57a85e98d84f6d7b58171a1c"
     },
     {
       "path": "packages/tockbot-note-runtime/tsconfig.build.json",

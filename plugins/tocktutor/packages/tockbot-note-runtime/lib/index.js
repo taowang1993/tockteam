@@ -2111,7 +2111,7 @@ function vaultStateDirectorySync(stateRoot) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) {
         throw new NoteVaultError('recovery-unavailable', 'Vault state storage is unsafe');
     }
-    assertInside(stateRoot, realpathSync(directory));
+    assertInside(stateRoot, realpathSync.native(directory));
     return directory;
 }
 function searchIndexDirectorySync(stateRoot) {
@@ -2129,7 +2129,7 @@ function searchIndexDirectorySync(stateRoot) {
         if (!entry.isDirectory() || entry.isSymbolicLink()) {
             throw new NoteVaultError('recovery-unavailable', 'Search index storage is unsafe');
         }
-        assertInside(stateRoot, realpathSync(directory));
+        assertInside(stateRoot, realpathSync.native(directory));
         parent = directory;
     }
     return parent;
@@ -2280,7 +2280,7 @@ function resolveStateRoot(stateRoot) {
                 throw error;
         }
         mkdirSync(stateRoot, { mode: 0o700, recursive: true });
-        const resolved = realpathSync(stateRoot);
+        const resolved = realpathSync.native(stateRoot);
         const entry = lstatSync(resolved);
         if (!entry.isDirectory() || entry.isSymbolicLink())
             throw new Error();
@@ -2292,7 +2292,7 @@ function resolveStateRoot(stateRoot) {
 }
 function resolveVaultRoot(vaultRoot) {
     try {
-        const resolved = realpathSync(vaultRoot);
+        const resolved = realpathSync.native(vaultRoot);
         if (!lstatSync(resolved).isDirectory())
             throw new Error();
         return resolved;

@@ -3139,7 +3139,7 @@ function vaultStateDirectorySync(stateRoot: string): string {
   if (!entry.isDirectory() || entry.isSymbolicLink()) {
     throw new NoteVaultError('recovery-unavailable', 'Vault state storage is unsafe')
   }
-  assertInside(stateRoot, realpathSync(directory))
+  assertInside(stateRoot, realpathSync.native(directory))
   return directory
 }
 
@@ -3156,7 +3156,7 @@ function searchIndexDirectorySync(stateRoot: string): string {
     if (!entry.isDirectory() || entry.isSymbolicLink()) {
       throw new NoteVaultError('recovery-unavailable', 'Search index storage is unsafe')
     }
-    assertInside(stateRoot, realpathSync(directory))
+    assertInside(stateRoot, realpathSync.native(directory))
     parent = directory
   }
   return parent
@@ -3286,7 +3286,7 @@ function resolveStateRoot(stateRoot: string | null): string | null {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
     }
     mkdirSync(stateRoot, { mode: 0o700, recursive: true })
-    const resolved = realpathSync(stateRoot)
+    const resolved = realpathSync.native(stateRoot)
     const entry = lstatSync(resolved)
     if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error()
     return resolved
@@ -3297,7 +3297,7 @@ function resolveStateRoot(stateRoot: string | null): string | null {
 
 function resolveVaultRoot(vaultRoot: string): string {
   try {
-    const resolved = realpathSync(vaultRoot)
+    const resolved = realpathSync.native(vaultRoot)
     if (!lstatSync(resolved).isDirectory()) throw new Error()
     return resolved
   } catch (error) {
