@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
@@ -36,12 +36,8 @@ test('desktop launch repairs a partial Electron install', () => {
       ...(process.platform === 'win32' ? ['node.exe'] : ['bin', 'node']),
     )
     mkdirSync(dirname(stagedNode), { recursive: true })
-    try {
-      linkSync(process.execPath, stagedNode)
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error
-      copyFileSync(process.execPath, stagedNode)
-    }
+    if (process.platform === 'win32') copyFileSync(process.execPath, stagedNode)
+    else symlinkSync(process.execPath, stagedNode)
     mkdirSync(join(electron, 'dist'), { recursive: true })
     writeFileSync(join(electron, 'package.json'), '{"version":"42.3.0"}')
     writeFileSync(join(electron, 'dist', 'partial-download'), '')

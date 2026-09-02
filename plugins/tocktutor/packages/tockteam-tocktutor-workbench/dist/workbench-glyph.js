@@ -1,5 +1,5 @@
 import { jsx as _jsx } from "react/jsx-runtime";
-import { Bookmark, ChevronLeft, ChevronRight, Ellipsis, FileText, Folder, MessageSquare, PanelLeft, PanelRight, Pencil, Plus, Search, X, } from 'lucide-react';
+import { Bookmark, ChevronLeft, ChevronRight, Ellipsis, FileText, Folder, MessageSquare, PanelLeft, PanelRight, Pencil, Plus, X, } from 'lucide-react';
 const GLYPHS = {
     back: ChevronLeft,
     bookmark: Bookmark,
@@ -14,7 +14,6 @@ const GLYPHS = {
     panel: PanelLeft,
     'panel-right': PanelRight,
     pencil: Pencil,
-    search: Search,
 };
 export function WorkbenchGlyph({ kind }) {
     const Glyph = GLYPHS[kind];

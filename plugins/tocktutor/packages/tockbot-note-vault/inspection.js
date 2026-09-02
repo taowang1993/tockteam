@@ -1985,6 +1985,99 @@ function queryDocumentMatches(document, groups, signal) {
   ))
 }
 
+function candidateRequest(groups, directory, limit) {
+  const candidateGroups = groups.map(group => group.include.flatMap(term => {
+    if (term.field === 'tag') return [{ field: 'tag', value: term.tag }]
+    if (term.field === 'property') return [{ field: 'property', value: term.key }]
+    return []
+  }))
+  return candidateGroups.every(group => group.length > 0)
+    ? { directory, groups: candidateGroups, limit }
+    : null
+}
+
+function validCandidateResult(result, limit) {
+  if (
+    result?.complete !== true
+    || typeof result.epoch !== 'string'
+    || result.epoch.length === 0
+    || result.epoch.length > 128
+    || !Array.isArray(result.paths)
+    || result.paths.length > limit
+  ) return null
+  const paths = []
+  const seen = new Set()
+  for (const value of result.paths) {
+    const candidate = safeInspectionPath(value)
+    if (!candidate || !isVaultDocument(candidate)) return null
+    if (!seen.has(candidate)) {
+      seen.add(candidate)
+      paths.push(candidate)
+    }
+  }
+  return { epoch: result.epoch, paths: paths.sort(compareVaultPaths) }
+}
+
+async function scanCandidateVault(input, candidates, config, signal, visitor, options) {
+  const position = decodeCursor(options.cursor, 'query-candidates', options.key)
+  const state = {
+    bytes: 0,
+    cursor: null,
+    entries: candidates.length,
+    files: 0,
+    truncated: false,
+    truncationReason: null,
+    warnings: [],
+  }
+  let lastPath = position.path
+  for (const candidate of candidates) {
+    signal.throwIfAborted()
+    if (position.path && compareVaultPaths(candidate, position.path) < 0) continue
+    if (position.path === candidate && position.offset === 0) continue
+    const remaining = config.maxSearchBytes - state.bytes
+    if (remaining <= 0) {
+      state.truncated = true
+      state.truncationReason = 'byte-limit'
+      state.cursor = encodeCursor('query-candidates', options.key, { path: lastPath, offset: 0 })
+      break
+    }
+    let document
+    try {
+      document = await readInspectionDocument(
+        input,
+        candidate,
+        Math.min(config.maxSearchFileBytes, remaining),
+        signal,
+      )
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error
+      return null
+    }
+    state.files += 1
+    state.bytes += Buffer.byteLength(document.content)
+    lastPath = candidate
+    const resumeOffset = position.path === candidate ? position.offset : 0
+    const result = await visitor({
+      content: document.content,
+      path: document.path,
+      size: Buffer.byteLength(document.content),
+    }, Object.freeze(candidates), resumeOffset)
+    if (result) {
+      const nextPosition = typeof result === 'object' && result.position
+        ? result.position
+        : { path: candidate, offset: 0 }
+      const hasMore = nextPosition.offset > 0 || candidate !== candidates.at(-1)
+      if (hasMore) {
+        state.truncated = true
+        state.truncationReason = 'result-limit'
+        state.cursor = encodeCursor('query-candidates', options.key, nextPosition)
+      }
+      break
+    }
+  }
+  return state
+}
+
 async function searchQueryVault(input, query, options, limit, config, signal, cursor) {
   const groups = parseSearchQuery(query, options)
   const start = inspectionDirectory(options.directory)
@@ -1996,7 +2089,7 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
     wholeWord: options.wholeWord,
   })
   const matches = []
-  const state = await scanVault(input, config, signal, (document, _paths, resumeOffset) => {
+  const visit = (document, _paths, resumeOffset) => {
     const documentMatches = queryDocumentMatches(document, groups, signal)
     const available = documentMatches.slice(resumeOffset)
     const taken = available.slice(0, limit - matches.length)
@@ -2005,7 +2098,36 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
       return { position: { path: document.path, offset: resumeOffset + taken.length } }
     }
     return matches.length >= limit
-  }, { cursor, key, operation: 'query-search', directory: start.path })
+  }
+  let state = null
+  const request = typeof input.searchCandidates === 'function'
+    ? candidateRequest(groups, start.path, config.maxSearchEntries)
+    : null
+  if (request) {
+    try {
+      const candidates = validCandidateResult(
+        await input.searchCandidates(request, signal),
+        config.maxSearchEntries,
+      )
+      if (candidates) {
+        state = await scanCandidateVault(input, candidates.paths, config, signal, visit, {
+          cursor,
+          key: `${key}:${candidates.epoch}`,
+        })
+      }
+    } catch (error) {
+      if (error?.name === 'AbortError' || cursor != null) throw error
+    }
+  }
+  if (!state) {
+    matches.length = 0
+    state = await scanVault(input, config, signal, visit, {
+      cursor,
+      key,
+      operation: 'query-search',
+      directory: start.path,
+    })
+  }
   boundSearchMatches(matches, state)
   return {
     matches,

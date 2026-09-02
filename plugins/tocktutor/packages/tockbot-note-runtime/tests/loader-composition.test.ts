@@ -1184,6 +1184,10 @@ test('Desktop vault selection aborts pending claims on provider loss and competi
         secondRequest,
         new AbortController().signal,
       )
+      const unloadedRejected = assert.rejects(
+        unloaded,
+        (error: unknown) => error instanceof NoteVaultError && error.code === 'unavailable',
+      )
       await didEnter
       const runtimeEntry = [...loaded.context.loader.entries()]
         .find(item => item.options.name === packageName)
@@ -1195,10 +1199,7 @@ test('Desktop vault selection aborts pending claims on provider loss and competi
       assert.equal(unloadSettled, false)
       finishRelease?.()
       await unloading
-      await assert.rejects(
-        unloaded,
-        (error: unknown) => error instanceof NoteVaultError && error.code === 'unavailable',
-      )
+      await unloadedRejected
       assert.equal(loaded.context.get('noteVault'), undefined)
       assert.equal(releases, 3)
     } finally {
@@ -1560,14 +1561,15 @@ test('Desktop reveal aborts pending effects on provider loss vault switch and ru
         expectedVault: { id: secondState.id, generation: secondState.generation },
         path: 'Note.md',
       }, new AbortController().signal)
+      const unloadRejected = assert.rejects(
+        unloaded,
+        (error: unknown) => error instanceof NoteVaultError && error.code === 'unavailable',
+      )
       const runtimeEntry = [...loaded.context.loader.entries()]
         .find(item => item.options.name === packageName)
       if (runtimeEntry?.fiber === undefined) assert.fail('runtime Loader entry is not active')
       await runtimeEntry.fiber.dispose()
-      await assert.rejects(
-        unloaded,
-        (error: unknown) => error instanceof NoteVaultError && error.code === 'unavailable',
-      )
+      await unloadRejected
       assert.equal(providerCalls, beforeUnload)
       assert.equal(loaded.context.get('noteVault'), undefined)
     } finally {
@@ -4471,6 +4473,152 @@ test('Loader rejects configured roots that are not existing directories', async 
       /vaultRoot.*existing directory/i,
     )
   } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('Keyword search reconciles state-owned indexed candidates through the exact verifier', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-indexed-search-'))
+  const stateRoot = join(fixture, 'state')
+  const vaultRoot = join(fixture, 'vault')
+  await Promise.all([mkdir(stateRoot), mkdir(vaultRoot)])
+  await writeFile(join(vaultRoot, 'Alpha.md'), '# Alpha\n#project indexed canary\n')
+  await writeFile(join(vaultRoot, 'FalsePositive.md'), '# False\nproject is plain text\n')
+  await writeFile(join(vaultRoot, 'Other.md'), '# Other\nunrelated\n')
+
+  const loaded = await load([
+    `stateRoot: ${JSON.stringify(stateRoot)}`,
+    `vaultRoot: ${JSON.stringify(vaultRoot)}`,
+  ].join('\n'))
+  try {
+    const state = loaded.context.noteVault.state
+    if (!state.active) assert.fail('configured vault must be active')
+    const expectedVault = { id: state.id, generation: state.generation }
+    const signal = new AbortController().signal
+    const indexedSearch = async (expectedEntries: number) => {
+      const deadline = Date.now() + 5_000
+      let observedEntries = -1
+      while (true) {
+        const result = await loaded.context.noteVault.search({
+          mode: 'query',
+          query: 'tag:project',
+        }, expectedVault, signal)
+        observedEntries = result.scan.entries
+        if (observedEntries === expectedEntries) return result
+        if (Date.now() >= deadline) {
+          throw new Error(`timed out waiting for ${String(expectedEntries)} indexed candidates; observed ${String(observedEntries)}`)
+        }
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+    }
+
+    const first = await indexedSearch(2)
+    assert.deepEqual(first.matches.map(match => match.path), ['Alpha.md'])
+    assert.equal((await lstat(join(stateRoot, 'search-index'))).isDirectory(), true)
+    await assert.rejects(lstat(join(vaultRoot, 'search-index')), { code: 'ENOENT' })
+
+    const opened = await loaded.context.noteVault.openDocument('Alpha.md', expectedVault, signal)
+    await loaded.context.noteVault.saveDocument({
+      content: '# Alpha\nno tag now\n',
+      expectedRevision: opened.revision,
+      expectedVault,
+      path: 'Alpha.md',
+    }, signal)
+    assert.deepEqual((await indexedSearch(1)).matches, [])
+
+    await loaded.context.noteVault.createDocument({
+      content: '# Delta\n#project new note\n',
+      expectedVault,
+      path: 'Delta.md',
+    }, signal)
+    const created = await indexedSearch(2)
+    assert.deepEqual(created.matches.map(match => match.path), ['Delta.md'])
+
+    const tree = await loaded.context.noteVault.listTree({ expectedVault, limit: 100 }, signal)
+    const delta = tree.entries.find(entry => entry.path === 'Delta.md')
+    if (delta?.kind !== 'document') assert.fail('created note must be listed')
+    await loaded.context.noteVault.trashEntry({
+      expectedRevision: delta.revision,
+      expectedVault,
+      path: delta.path,
+    }, signal)
+    assert.deepEqual((await indexedSearch(1)).matches, [])
+  } finally {
+    await dispose(loaded.context, loaded.root)
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('search indexing never writes into a vault that contains its state root', async () => {
+  const vaultRoot = await mkdtemp(join(tmpdir(), 'note-vault-contained-state-'))
+  const stateRoot = join(vaultRoot, '.state')
+  await writeFile(join(vaultRoot, 'Alpha.md'), '# Alpha\n#project canary\n')
+  const loaded = await load([
+    `stateRoot: ${JSON.stringify(stateRoot)}`,
+    `vaultRoot: ${JSON.stringify(vaultRoot)}`,
+  ].join('\n'))
+  try {
+    const state = loaded.context.noteVault.state
+    if (!state.active) assert.fail('configured vault must be active')
+    const result = await loaded.context.noteVault.search({
+      mode: 'query',
+      query: 'tag:project',
+    }, { id: state.id, generation: state.generation }, new AbortController().signal)
+    assert.deepEqual(result.matches.map(match => match.path), ['Alpha.md'])
+    assert.equal(result.scan.entries, 1)
+    await assert.rejects(lstat(join(stateRoot, 'search-index')), { code: 'ENOENT' })
+  } finally {
+    await dispose(loaded.context, loaded.root)
+    await rm(vaultRoot, { recursive: true, force: true })
+  }
+})
+
+test('persistent FlexSearch SQLite indexes reopen outside the user vault', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-search-index-'))
+  const stateRoot = join(fixture, 'state')
+  const vaultRoot = join(fixture, 'vault')
+  const config = [
+    `stateRoot: ${JSON.stringify(stateRoot)}`,
+    `vaultRoot: ${JSON.stringify(vaultRoot)}`,
+  ].join('\n')
+  await Promise.all([mkdir(stateRoot), mkdir(vaultRoot)])
+  await writeFile(join(vaultRoot, 'Alpha.md'), '# Alpha\n#project canary\n')
+  await writeFile(join(vaultRoot, 'FalsePositive.md'), '# False\nproject is plain text\n')
+  await writeFile(join(vaultRoot, 'Other.md'), '# Other\nunrelated\n')
+
+  let loaded: Awaited<ReturnType<typeof load>> | null = null
+  const verifyIndexedSearch = async () => {
+    if (loaded === null) assert.fail('runtime must be loaded')
+    const state = loaded.context.noteVault.state
+    if (!state.active) assert.fail('configured vault must be active')
+    const deadline = Date.now() + 5_000
+    while (true) {
+      const result = await loaded.context.noteVault.search({
+        mode: 'query',
+        query: 'tag:project',
+      }, { id: state.id, generation: state.generation }, new AbortController().signal)
+      if (result.scan.entries === 2) {
+        assert.deepEqual(result.matches.map(match => match.path), ['Alpha.md'])
+        return
+      }
+      if (Date.now() >= deadline) assert.fail('timed out waiting for persistent indexed candidates')
+      await new Promise(resolve => setTimeout(resolve, 20))
+    }
+  }
+
+  try {
+    loaded = await load(config)
+    await verifyIndexedSearch()
+    const first = loaded
+    loaded = null
+    await dispose(first.context, first.root)
+
+    loaded = await load(config)
+    await verifyIndexedSearch()
+    assert.equal((await lstat(join(stateRoot, 'search-index'))).isDirectory(), true)
+    await assert.rejects(lstat(join(vaultRoot, 'search-index')), { code: 'ENOENT' })
+  } finally {
+    if (loaded !== null) await dispose(loaded.context, loaded.root)
     await rm(fixture, { recursive: true, force: true })
   }
 })

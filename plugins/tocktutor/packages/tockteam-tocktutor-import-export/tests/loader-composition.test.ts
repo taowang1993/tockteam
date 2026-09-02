@@ -55,15 +55,13 @@ async function installPacked(consumer: string, tarball: string, artifacts: strin
   await writeFile(join(consumer, 'package.json'), `${JSON.stringify({ private: true, type: 'module', dependencies }, null, 2)}\n`)
   await writeFile(join(consumer, 'pnpm-workspace.yaml'), [
     'autoInstallPeers: false',
-    'allowBuilds:',
-    '  esbuild: true',
     'overrides:',
     ...Object.entries(dependencies)
       .filter(([, specifier]) => specifier.startsWith('file:') || specifier.startsWith('link:'))
       .map(([name, specifier]) => `  '${name}': ${specifier}`),
     '',
   ].join('\n'))
-  await exec('pnpm', ['install', '--force', '--reporter', 'append-only'], { cwd: consumer, env: { ...process.env, PNPM_CONFIG_LOGLEVEL: 'info' } })
+  await exec('pnpm', ['install', '--force', '--ignore-scripts', '--reporter', 'append-only'], { cwd: consumer, env: { ...process.env, PNPM_CONFIG_LOGLEVEL: 'info' } })
   return createRequire(join(consumer, 'package.json'))
 }
 

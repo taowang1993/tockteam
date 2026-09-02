@@ -441,6 +441,8 @@ export declare class NoteVaultRuntime extends Service {
     private readonly snapshotRetentionDays;
     private readonly stateRoot;
     private readonly treeConfig;
+    private searchIndex;
+    private readonly searchIndexCleanup;
     private vaultIdentity;
     private vaultRoot;
     private watcher;
@@ -471,6 +473,9 @@ export declare class NoteVaultRuntime extends Service {
     createManagedVault(name: string, expectedGeneration: number): NoteVaultState;
     revealEntry(request: RevealEntryRequest, signal: AbortSignal): Promise<RevealEntryResult>;
     activateRecentVault(id: string, expectedGeneration: number): NoteVaultState;
+    private invalidateSearchIndex;
+    private replaceSearchIndex;
+    private searchCandidates;
     private createInspection;
     private runInspection;
     search(args: VaultSearchArgs, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultInspectionRuntimeResult<VaultSearchResult>>;

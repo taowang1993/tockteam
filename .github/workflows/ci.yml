@@ -56,10 +56,17 @@ jobs:
           node-version: 24
           architecture: ${{ matrix.node_architecture }}
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            plugins/tocktutor/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Load the native TockTutor search index dependency
+        run: |
+          pnpm -C plugins/tocktutor install --frozen-lockfile
+          pnpm -C plugins/tocktutor/packages/tockbot-note-runtime run test:search-index
 
       - name: Type check
         run: pnpm run typecheck

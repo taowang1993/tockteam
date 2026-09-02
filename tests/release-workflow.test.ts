@@ -20,6 +20,16 @@ test('runtime CI verifies the nested TockTutor workspace before staging', () => 
   assert.ok(workflow.indexOf('pnpm run build:tocktutor') < workflow.indexOf('pnpm run stage:dsh'))
 })
 
+test('cross-platform core CI loads the native TockTutor search index dependency', () => {
+  const workflow = readFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'utf8')
+  const core = workflow.slice(workflow.indexOf('  core:'), workflow.indexOf('  runtime:'))
+  for (const target of ['macOS arm64', 'macOS x64', 'Linux x64', 'Windows x64']) {
+    assert.match(core, new RegExp(`name: ${target}`, 'u'))
+  }
+  assert.match(core, /pnpm -C plugins\/tocktutor install --frozen-lockfile/u)
+  assert.match(core, /pnpm -C plugins\/tocktutor\/packages\/tockbot-note-runtime run test:search-index/u)
+})
+
 test('CI actions are immutable and release write access is publish-only', () => {
   for (const name of ['ci.yml', 'release.yml']) {
     const workflow = readFileSync(join(root, '.github', 'workflows', name), 'utf8')

@@ -29,12 +29,14 @@ allowBuilds:
   esbuild: true
   koffi: false
   node-pty: true
+  sqlite3: true
 
 onlyBuiltDependencies:
   - electron
   - electron-winstaller
   - esbuild
   - node-pty
+  - sqlite3
 
 overrides:
   # Preserve the reviewed Tockbot lock closure for the exact local XML runtime.

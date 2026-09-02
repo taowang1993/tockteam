@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { closeSync, constants as fsConstants, fstatSync, fsyncSync, lstatSync, mkdirSync, openSync, readSync, realpathSync, renameSync, unlinkSync, watch, writeSync, } from 'node:fs';
 import { copyFile, link, lstat, mkdir, open, opendir, readlink, realpath, rename, rm, symlink, unlink } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
@@ -19,6 +20,7 @@ const DEFAULT_MAX_TREE_DEPTH = 64;
 const MAX_TREE_DEPTH = 128;
 const DEFAULT_MAX_TREE_ENTRIES = 20_000;
 const MAX_TREE_ENTRIES = 100_000;
+const MAX_SEARCH_INDEX_ENTRIES = 2_000_000;
 const DEFAULT_MAX_TREE_RESULTS = 200;
 const MAX_TREE_RESULTS = 1_000;
 const MAX_TREE_WARNINGS = 20;
@@ -29,6 +31,304 @@ const SNAPSHOT_METADATA_MAX_BYTES = 64 * 1024;
 const SNAPSHOT_SCAN_LIMIT = 1_000;
 const NOFOLLOW = typeof fsConstants.O_NOFOLLOW === 'number' ? fsConstants.O_NOFOLLOW : 0;
 const POST_COMMIT_SIGNAL = new AbortController().signal;
+const SEARCH_INDEX_SCHEMA = 'tocktutor-search-v1';
+const SEARCH_INDEX_TOKEN = /[\p{L}\p{N}_.-]+(?:\/[\p{L}\p{N}_.-]+)*/gu;
+function encodeSearchIndex(value) {
+    const tokens = value.normalize('NFKC').toLowerCase().match(SEARCH_INDEX_TOKEN) ?? [];
+    return tokens.flatMap((token) => {
+        if (!token.includes('/'))
+            return [token];
+        const parts = token.split('/');
+        return parts.map((_, index) => parts.slice(0, index + 1).join('/'));
+    });
+}
+function runSearchDatabase(database, sql, parameters = []) {
+    return new Promise((resolve, reject) => {
+        database.run(sql, parameters, error => error ? reject(error) : resolve());
+    });
+}
+function allSearchDatabase(database, sql, parameters = []) {
+    return new Promise((resolve, reject) => {
+        database.all(sql, parameters, (error, rows) => error ? reject(error) : resolve(rows));
+    });
+}
+const requireSearchDependency = createRequire(import.meta.url);
+let searchDependencies;
+function loadSearchDependencies() {
+    if (searchDependencies !== undefined)
+        return searchDependencies;
+    try {
+        const flexsearch = requireSearchDependency('flexsearch');
+        const Sqlite = requireSearchDependency('flexsearch/db/sqlite');
+        const sqlite3 = requireSearchDependency('sqlite3');
+        searchDependencies = { Document: flexsearch.Document, Sqlite, sqlite3 };
+    }
+    catch {
+        searchDependencies = null;
+    }
+    return searchDependencies;
+}
+async function closeSearchDatabase(database) {
+    try {
+        const raw = database.db;
+        database.db = null;
+        database.close();
+        await new Promise((resolve, reject) => {
+            raw.close((error) => error ? reject(error) : resolve());
+        });
+    }
+    catch { /* rebuildable index cleanup is best-effort */ }
+}
+function createSearchIndex(Document) {
+    return new Document({
+        document: { id: 'id', index: [{ field: 'content', tokenize: 'strict' }] },
+        encode: encodeSearchIndex,
+        commit: false,
+    });
+}
+class PersistentSearchIndex {
+    controller = new AbortController();
+    database = null;
+    options;
+    index = null;
+    ready = false;
+    reconcileTask = null;
+    fullReconcilePending = true;
+    pendingPaths = new Set();
+    epoch = '';
+    constructor(options) {
+        this.options = options;
+        this.reconcile();
+    }
+    invalidate(changedPath) {
+        this.ready = false;
+        if (changedPath === undefined) {
+            this.fullReconcilePending = true;
+            this.pendingPaths.clear();
+        }
+        else if (!this.fullReconcilePending) {
+            this.pendingPaths.add(changedPath);
+        }
+        this.reconcile();
+    }
+    async search(request, signal) {
+        signal.throwIfAborted();
+        if (!this.ready || this.index === null || this.database === null)
+            return null;
+        const index = this.index;
+        const groupIds = [];
+        for (const group of request.groups) {
+            let ids = null;
+            for (const anchor of group) {
+                signal.throwIfAborted();
+                const result = await index.searchAsync(anchor.value, {
+                    index: 'content',
+                    limit: request.limit + 1,
+                    merge: true,
+                });
+                if (result.length > request.limit)
+                    return null;
+                const found = new Set(result.map(item => item.id));
+                if (ids === null)
+                    ids = found;
+                else
+                    for (const id of ids)
+                        if (!found.has(id))
+                            ids.delete(id);
+            }
+            groupIds.push(ids ?? new Set());
+        }
+        const ids = [...new Set(groupIds.flatMap(group => [...group]))];
+        if (ids.length > request.limit)
+            return null;
+        const paths = [];
+        for (let offset = 0; offset < ids.length; offset += 500) {
+            const chunk = ids.slice(offset, offset + 500);
+            const rows = await allSearchDatabase(this.database.db, `SELECT id, path FROM documents WHERE id IN (${chunk.map(() => '?').join(',')})`, chunk);
+            paths.push(...rows
+                .map(row => row.path)
+                .filter(candidate => !request.directory || candidate.startsWith(`${request.directory}/`)));
+        }
+        signal.throwIfAborted();
+        if (!this.ready || index !== this.index)
+            return null;
+        return { complete: true, epoch: this.epoch, paths };
+    }
+    async close() {
+        this.ready = false;
+        this.controller.abort();
+        await this.reconcileTask?.catch(() => undefined);
+        const database = this.database;
+        this.database = null;
+        this.index = null;
+        if (database !== null)
+            await closeSearchDatabase(database);
+    }
+    reconcile() {
+        if (this.reconcileTask !== null || this.controller.signal.aborted)
+            return;
+        this.reconcileTask = this.reconcileNow()
+            .catch(() => { this.ready = false; })
+            .finally(() => {
+            this.reconcileTask = null;
+            if (this.fullReconcilePending || this.pendingPaths.size > 0)
+                this.reconcile();
+        });
+    }
+    async reconcileNow() {
+        const signal = this.controller.signal;
+        signal.throwIfAborted();
+        if (!this.fullReconcilePending && this.database !== null && this.index !== null) {
+            const paths = [...this.pendingPaths];
+            this.pendingPaths.clear();
+            await this.reconcilePaths(paths, signal);
+            if (!this.fullReconcilePending && this.pendingPaths.size === 0)
+                this.ready = true;
+            return;
+        }
+        this.fullReconcilePending = false;
+        this.pendingPaths.clear();
+        const documents = await this.options.list(signal);
+        signal.throwIfAborted();
+        if (documents === null)
+            return;
+        const dependencies = loadSearchDependencies();
+        if (dependencies === null)
+            return;
+        const databasePath = path.join(this.options.directory, `${this.options.vaultId.replace(/^vault:/u, '')}-${this.options.identity}.sqlite`);
+        try {
+            const entry = await lstat(databasePath);
+            if (!entry.isFile() || entry.isSymbolicLink())
+                return;
+            assertInside(this.options.directory, await realpath(databasePath));
+        }
+        catch (error) {
+            if (error.code !== 'ENOENT')
+                return;
+        }
+        let mounted = await this.open(databasePath, dependencies);
+        if (mounted === null) {
+            await rm(databasePath, { force: true });
+            mounted = await this.create(databasePath, dependencies);
+        }
+        const existing = await allSearchDatabase(mounted.database.db, 'SELECT id, path, revision FROM documents');
+        const current = new Map(documents.map(document => [document.path, document]));
+        for (const row of existing) {
+            signal.throwIfAborted();
+            if (current.has(row.path))
+                continue;
+            mounted.index.remove(row.id);
+            await runSearchDatabase(mounted.database.db, 'DELETE FROM documents WHERE id = ?', [row.id]);
+        }
+        const byPath = new Map(existing.map(row => [row.path, row]));
+        const revisionUpdates = [];
+        for (const document of documents) {
+            signal.throwIfAborted();
+            const prior = byPath.get(document.path);
+            if (prior?.revision === document.revision)
+                continue;
+            let id = prior?.id;
+            if (id === undefined) {
+                await runSearchDatabase(mounted.database.db, 'INSERT INTO documents(path, revision) VALUES (?, ?)', [document.path, '']);
+                id = (await allSearchDatabase(mounted.database.db, 'SELECT id FROM documents WHERE path = ?', [document.path]))[0]?.id;
+            }
+            if (id === undefined)
+                throw new Error('search index mapping failed');
+            const opened = await this.options.read(document.path, signal);
+            signal.throwIfAborted();
+            if (opened === null || opened.revision !== document.revision) {
+                this.fullReconcilePending = true;
+                await closeSearchDatabase(mounted.database);
+                return;
+            }
+            mounted.index.update(id, { id, content: opened.content });
+            revisionUpdates.push({ id, revision: document.revision });
+        }
+        await mounted.index.commit();
+        for (const update of revisionUpdates) {
+            await runSearchDatabase(mounted.database.db, 'UPDATE documents SET revision = ? WHERE id = ?', [update.revision, update.id]);
+        }
+        this.epoch = randomUUID();
+        await runSearchDatabase(mounted.database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['epoch', this.epoch]);
+        signal.throwIfAborted();
+        if (this.fullReconcilePending) {
+            await closeSearchDatabase(mounted.database);
+            return;
+        }
+        const previous = this.database;
+        this.database = mounted.database;
+        this.index = mounted.index;
+        this.ready = this.pendingPaths.size === 0;
+        if (previous !== null && previous !== mounted.database)
+            await closeSearchDatabase(previous);
+    }
+    async reconcilePaths(paths, signal) {
+        const database = this.database;
+        const index = this.index;
+        if (database === null || index === null)
+            return;
+        const revisionUpdates = [];
+        for (const changedPath of paths) {
+            signal.throwIfAborted();
+            const prior = (await allSearchDatabase(database.db, 'SELECT id, revision FROM documents WHERE path = ?', [changedPath]))[0];
+            const opened = await this.options.read(changedPath, signal);
+            signal.throwIfAborted();
+            if (opened === null) {
+                if (prior !== undefined) {
+                    index.remove(prior.id);
+                    await runSearchDatabase(database.db, 'DELETE FROM documents WHERE id = ?', [prior.id]);
+                }
+                continue;
+            }
+            if (prior?.revision === opened.revision)
+                continue;
+            let id = prior?.id;
+            if (id === undefined) {
+                await runSearchDatabase(database.db, 'INSERT INTO documents(path, revision) VALUES (?, ?)', [changedPath, '']);
+                id = (await allSearchDatabase(database.db, 'SELECT id FROM documents WHERE path = ?', [changedPath]))[0]?.id;
+            }
+            if (id === undefined)
+                throw new Error('search index mapping failed');
+            index.update(id, { id, content: opened.content });
+            revisionUpdates.push({ id, revision: opened.revision });
+        }
+        await index.commit();
+        for (const update of revisionUpdates) {
+            await runSearchDatabase(database.db, 'UPDATE documents SET revision = ? WHERE id = ?', [update.revision, update.id]);
+        }
+        this.epoch = randomUUID();
+        await runSearchDatabase(database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['epoch', this.epoch]);
+    }
+    async open(databasePath, { Document, Sqlite, sqlite3 }) {
+        const raw = new sqlite3.Database(databasePath);
+        try {
+            const metadata = await allSearchDatabase(raw, 'SELECT value FROM metadata WHERE key = ?', ['schema']);
+            if (metadata[0]?.value !== SEARCH_INDEX_SCHEMA)
+                throw new Error('schema mismatch');
+            const database = new Sqlite(this.storageName(), { db: raw, type: 'integer' });
+            const index = createSearchIndex(Document);
+            await index.mount(database);
+            return { database, index };
+        }
+        catch {
+            await new Promise(resolve => raw.close(() => resolve()));
+            return null;
+        }
+    }
+    async create(databasePath, { Document, Sqlite, sqlite3 }) {
+        const raw = new sqlite3.Database(databasePath);
+        await runSearchDatabase(raw, 'CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+        await runSearchDatabase(raw, 'CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL UNIQUE, revision TEXT NOT NULL)');
+        await runSearchDatabase(raw, 'INSERT INTO metadata(key, value) VALUES (?, ?)', ['schema', SEARCH_INDEX_SCHEMA]);
+        const database = new Sqlite(this.storageName(), { db: raw, type: 'integer' });
+        const index = createSearchIndex(Document);
+        await index.mount(database);
+        return { database, index };
+    }
+    storageName() {
+        return `tocktutor-${this.options.vaultId.slice(-16)}-${this.options.identity.slice(0, 16)}`;
+    }
+}
 export const Config = Schema.object({
     maxAttachmentBytes: Schema.natural().min(1).max(MAX_ATTACHMENT_BYTES).default(DEFAULT_MAX_ATTACHMENT_BYTES),
     maxDraftBytes: Schema.natural().min(1).max(MAX_DRAFT_BYTES).default(DEFAULT_MAX_DRAFT_BYTES),
@@ -73,7 +373,9 @@ export class NoteVaultError extends Error {
     }
 }
 function isInside(root, target) {
-    const relative = path.relative(root, target);
+    const base = process.platform === 'win32' ? path.toNamespacedPath(path.resolve(root)) : root;
+    const candidate = process.platform === 'win32' ? path.toNamespacedPath(path.resolve(target)) : target;
+    const relative = path.relative(base, candidate);
     return relative === '' || (relative !== '..'
         && !relative.startsWith(`..${path.sep}`)
         && !path.isAbsolute(relative));
@@ -1809,8 +2111,28 @@ function vaultStateDirectorySync(stateRoot) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) {
         throw new NoteVaultError('recovery-unavailable', 'Vault state storage is unsafe');
     }
-    assertInside(stateRoot, realpathSync(directory));
+    assertInside(stateRoot, realpathSync.native(directory));
     return directory;
+}
+function searchIndexDirectorySync(stateRoot) {
+    let parent = stateRoot;
+    for (const segment of ['search-index', SEARCH_INDEX_SCHEMA]) {
+        const directory = path.join(parent, segment);
+        try {
+            mkdirSync(directory, { mode: 0o700 });
+        }
+        catch (error) {
+            if (error.code !== 'EEXIST')
+                throw error;
+        }
+        const entry = lstatSync(directory);
+        if (!entry.isDirectory() || entry.isSymbolicLink()) {
+            throw new NoteVaultError('recovery-unavailable', 'Search index storage is unsafe');
+        }
+        assertInside(stateRoot, realpathSync.native(directory));
+        parent = directory;
+    }
+    return parent;
 }
 function parsePersistedRecentVaults(value, limit) {
     if (!Array.isArray(value))
@@ -1958,7 +2280,7 @@ function resolveStateRoot(stateRoot) {
                 throw error;
         }
         mkdirSync(stateRoot, { mode: 0o700, recursive: true });
-        const resolved = realpathSync(stateRoot);
+        const resolved = realpathSync.native(stateRoot);
         const entry = lstatSync(resolved);
         if (!entry.isDirectory() || entry.isSymbolicLink())
             throw new Error();
@@ -1970,7 +2292,7 @@ function resolveStateRoot(stateRoot) {
 }
 function resolveVaultRoot(vaultRoot) {
     try {
-        const resolved = realpathSync(vaultRoot);
+        const resolved = realpathSync.native(vaultRoot);
         if (!lstatSync(resolved).isDirectory())
             throw new Error();
         return resolved;
@@ -2019,6 +2341,8 @@ export class NoteVaultRuntime extends Service {
     snapshotRetentionDays;
     stateRoot;
     treeConfig;
+    searchIndex = null;
+    searchIndexCleanup = new Set();
     vaultIdentity;
     vaultRoot;
     watcher = null;
@@ -2094,6 +2418,7 @@ export class NoteVaultRuntime extends Service {
                 }
             }
         });
+        this.replaceSearchIndex();
         ctx.effect(() => {
             this.watcherActive = true;
             if (this.currentState.active && this.vaultRoot !== null) {
@@ -2117,6 +2442,11 @@ export class NoteVaultRuntime extends Service {
                 const watcher = this.watcher;
                 this.watcher = null;
                 watcher?.close();
+                const searchIndex = this.searchIndex;
+                this.searchIndex = null;
+                if (searchIndex !== null)
+                    await searchIndex.index.close();
+                await Promise.allSettled([...this.searchIndexCleanup]);
                 await Promise.allSettled(desktopSelectionCompletions);
                 const activeSelectionClaim = this.activeDesktopSelectionClaim;
                 this.activeDesktopSelectionClaim = null;
@@ -2168,10 +2498,12 @@ export class NoteVaultRuntime extends Service {
                 && this.watcherToken === token
                 && this.currentState === state
                 && this.vaultRoot === root) {
+                const vault = { id: state.id, generation: state.generation };
+                this.invalidateSearchIndex(vault);
                 this.context.emit('note-vault/change', {
                     action: 'watcher-error',
                     kind: 'tree',
-                    vault: { id: state.id, generation: state.generation },
+                    vault,
                 });
             }
         });
@@ -2192,6 +2524,7 @@ export class NoteVaultRuntime extends Service {
         const relativePath = normalizeWatcherPath(filename);
         if (relativePath === undefined)
             return;
+        let fullIndexReconcile = false;
         if (relativePath !== null) {
             const candidate = path.join(root, ...relativePath.split('/'));
             try {
@@ -2199,10 +2532,12 @@ export class NoteVaultRuntime extends Service {
                 const entry = await lstat(candidate);
                 if (entry.isSymbolicLink())
                     return;
+                fullIndexReconcile = entry.isDirectory();
             }
             catch (error) {
                 if (error.code !== 'ENOENT')
                     return;
+                fullIndexReconcile = eventType === 'rename';
             }
         }
         if (!this.watcherActive
@@ -2212,6 +2547,7 @@ export class NoteVaultRuntime extends Service {
             return;
         const vault = { id: state.id, generation: state.generation };
         if (relativePath !== null) {
+            this.invalidateSearchIndex(vault, fullIndexReconcile ? undefined : relativePath);
             this.context.emit('note-vault/change', {
                 action: eventType === 'rename' ? 'external-rename' : 'external-change',
                 kind: 'entry',
@@ -2223,11 +2559,13 @@ export class NoteVaultRuntime extends Service {
     }
     emitEntryChange(action, path, state) {
         const vault = { id: state.id, generation: state.generation };
+        this.invalidateSearchIndex(vault, path);
         this.context.emit('note-vault/change', { action, kind: 'entry', path, vault });
         this.context.emit('note-vault/change', { action: 'changed', kind: 'tree', vault });
     }
     emitFileMutation(action, fromPath, path, state) {
         const vault = { id: state.id, generation: state.generation };
+        this.invalidateSearchIndex(vault);
         this.context.emit('note-vault/change', { action, fromPath, kind: 'entry', path, vault });
         this.context.emit('note-vault/change', { action: 'changed', kind: 'tree', vault });
     }
@@ -2265,6 +2603,7 @@ export class NoteVaultRuntime extends Service {
         const watcher = this.watcher;
         this.watcher = null;
         watcher?.close();
+        this.replaceSearchIndex();
         if (this.stateRoot !== null) {
             try {
                 unlinkSync(path.join(vaultStateDirectorySync(this.stateRoot), 'selection.json'));
@@ -2594,6 +2933,7 @@ export class NoteVaultRuntime extends Service {
         this.watcherToken = nextToken;
         this.watcher = nextWatcher;
         previousWatcher?.close();
+        this.replaceSearchIndex();
         if (!preserveDesktopSelectionClaim) {
             const activeSelectionClaim = this.activeDesktopSelectionClaim;
             this.activeDesktopSelectionClaim = null;
@@ -2760,6 +3100,85 @@ export class NoteVaultRuntime extends Service {
             throw new NoteVaultError('not-found', 'Recent vault not found');
         return this.activate(recent.root, expectedGeneration);
     }
+    invalidateSearchIndex(vault, changedPath) {
+        if (this.searchIndex?.vault.id === vault.id
+            && this.searchIndex.vault.generation === vault.generation)
+            this.searchIndex.index.invalidate(changedPath);
+    }
+    replaceSearchIndex() {
+        const previous = this.searchIndex;
+        this.searchIndex = null;
+        if (this.stateRoot !== null
+            && this.currentState.active
+            && this.vaultRoot !== null
+            && this.vaultIdentity !== null) {
+            const state = this.currentState;
+            const root = this.vaultRoot;
+            const identity = this.vaultIdentity;
+            const vault = { id: state.id, generation: state.generation };
+            const identityKey = createHash('sha256')
+                .update(`${String(identity.dev)}:${String(identity.ino)}`)
+                .digest('hex');
+            let directory = null;
+            if (!isInside(root, this.stateRoot)) {
+                try {
+                    directory = searchIndexDirectorySync(this.stateRoot);
+                }
+                catch { /* scanner fallback */ }
+            }
+            if (directory !== null)
+                this.searchIndex = {
+                    vault,
+                    index: new PersistentSearchIndex({
+                        directory,
+                        identity: identityKey,
+                        vaultId: state.id,
+                        list: async (signal) => {
+                            const scan = await scanVaultTree(root, {
+                                maxDepth: this.treeConfig.maxDepth,
+                                maxEntries: MAX_SEARCH_INDEX_ENTRIES,
+                            }, signal);
+                            signal.throwIfAborted();
+                            this.assertCapturedVault(state, root);
+                            if (scan.truncationReason !== null)
+                                return null;
+                            return scan.entries.flatMap(entry => (entry.kind === 'document' && entry.size <= this.maxReadBytes
+                                ? [{ path: entry.path, revision: entry.revision }]
+                                : []));
+                        },
+                        read: async (requestedPath, signal) => {
+                            try {
+                                const document = await this.openDocument(requestedPath, vault, signal);
+                                return {
+                                    content: document.content,
+                                    path: document.path,
+                                    revision: document.revision,
+                                };
+                            }
+                            catch (error) {
+                                if (error instanceof NoteVaultError
+                                    && ['invalid-path', 'not-found', 'unsupported-type'].includes(error.code))
+                                    return null;
+                                throw error;
+                            }
+                        },
+                    }),
+                };
+        }
+        if (previous !== null) {
+            const cleanup = previous.index.close();
+            this.searchIndexCleanup.add(cleanup);
+            void cleanup.finally(() => this.searchIndexCleanup.delete(cleanup));
+        }
+    }
+    async searchCandidates(expectedVault, request, signal) {
+        const current = this.searchIndex;
+        if (current === null
+            || current.vault.id !== expectedVault.id
+            || current.vault.generation !== expectedVault.generation)
+            return null;
+        return await current.index.search(request, signal);
+    }
     createInspection(expectedVault, maxResults = Math.min(DEFAULT_MAX_INSPECTION_RESULTS, this.maxTreeResults)) {
         const input = {
             list: async (request, signal) => {
@@ -2823,6 +3242,7 @@ export class NoteVaultRuntime extends Service {
                 }
                 return { content: document.content, path: document.path };
             },
+            searchCandidates: async (request, signal) => (await this.searchCandidates(expectedVault, request, signal)),
         };
         const limits = {
             maxReadBytes: this.maxReadBytes,

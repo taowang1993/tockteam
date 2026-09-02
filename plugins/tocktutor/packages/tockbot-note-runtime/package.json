@@ -28,6 +28,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "node --test tests/*.test.ts",
+    "test:search-index": "node --test --test-name-pattern=\"Keyword search reconciles|persistent FlexSearch SQLite\" tests/loader-composition.test.ts",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm run build"
   },
@@ -36,7 +37,9 @@
     "tockbot-note-vault": "0.6.0"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "3.18.1"
+    "@deepseek-ai/schemastery": "3.18.1",
+    "flexsearch": "0.8.212",
+    "sqlite3": "5.1.7"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
