@@ -10,7 +10,6 @@ import {
   PanelRight,
   Pencil,
   Plus,
-  Search,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -30,7 +29,6 @@ export type WorkbenchGlyphKind =
   | 'panel'
   | 'panel-right'
   | 'pencil'
-  | 'search'
 
 const GLYPHS: Record<WorkbenchGlyphKind, LucideIcon> = {
   back: ChevronLeft,
@@ -46,7 +44,6 @@ const GLYPHS: Record<WorkbenchGlyphKind, LucideIcon> = {
   panel: PanelLeft,
   'panel-right': PanelRight,
   pencil: Pencil,
-  search: Search,
 }
 
 export function WorkbenchGlyph({ kind }: { kind: WorkbenchGlyphKind }): ReactNode {

@@ -724,22 +724,6 @@ test('owns bounded quick New, Capture, and Search route interactions', async () 
   assert.equal(controller.getSnapshot().searchOpen, true)
   assert.equal(controller.getSnapshot().searchQuery, 'second')
 
-  const html = renderToStaticMarkup(createElement(TockTutorRouteView, {
-    onActivateTab() {},
-    onAddPane() {},
-    onEdit() {},
-    onFocusPane() {},
-    onMode() {},
-    onMoveCanvas() {},
-    onSave() {},
-    onSelect() {},
-    onToggleTask() {},
-    snapshot: controller.getSnapshot(),
-  }))
-  assert.match(html, /<section[^>]+aria-label="Search Notes"/u)
-  assert.match(html, /<input[^>]+aria-label="Search Notes Query"[^>]+value="second"/u)
-  assert.match(html, />Second\.md</u)
-  assert.doesNotMatch(html, />Folder\/Note\.md</u)
   controller.dispose()
 })
 
@@ -877,7 +861,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
       onToggleTask() {},
       snapshot: controller.getSnapshot(),
     }))
-    assert.equal((desktopMarkup.match(/aria-label="Open TockLauncher"/gu) ?? []).length, 1)
+    assert.doesNotMatch(desktopMarkup, /TockLauncher/u)
     const inactiveMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
       active: false,
       onActivateTab() {},
@@ -898,7 +882,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   }
   assert.match(html, /pt-0/u)
   assert.match(html, /h-\[var\(--tockteam-titlebar-height,40px\)\]/u)
-  assert.match(html, /tocktutor-titlebar absolute top-0/u)
+  assert.match(html, /tocktutor-titlebar absolute top-0[^"\n]+border-b border-\[var\(--tt-border\)\]/u)
   assert.match(html, /<button[^>]+aria-label="Resize Files Sidebar, 280 Pixels"/u)
   assert.match(html, /title="Drag or Use Left and Right Arrow Keys"/u)
   assert.match(html, /grid-template-columns:280px minmax\(0, 1fr\) auto auto/u)

@@ -41,6 +41,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): void
   onOpenRecovery?(): void
+  onOpenSearch?(): void
   onOpenSandboxVault?(): void
   onReadSnapshot?(id: string): void
   onRemoveRecentVault?(id: string): void
@@ -48,6 +49,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onRestoreSnapshot?(id: string): void
   onRestoreTrash?(id: string): void
   onRunSearch?(): void
+  onSearchChange?(query: string): void
   onSearchMode?(mode: 'query' | 'related'): void
   onSettingsChange?(change: Record<string, unknown>): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
@@ -72,11 +74,34 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
 }
 
 describe('TockTutor titlebar panel controls', () => {
+  it('opens note search in the command palette dialog instead of the Files sidebar', () => {
+    const revision = '1'.repeat(64)
+    renderRoute({
+      entries: [
+        { createdAt: 1, kind: 'document', modifiedAt: 2, path: 'Second.md', revision, size: 12 },
+        { createdAt: 1, kind: 'document', modifiedAt: 2, path: 'Folder/Note.md', revision, size: 30 },
+      ],
+      phase: 'ready',
+      searchOpen: true,
+      searchQuery: 'second',
+    })
+
+    const dialog = screen.getByRole('dialog', { name: 'Search Notes' })
+    const query = screen.getByRole('searchbox', { name: 'Search Notes Query' })
+    expect(dialog.contains(query)).toBe(true)
+    expect(query.getAttribute('placeholder')).toBe('Search notes...')
+    expect(document.querySelector('aside[aria-label="Files"]')?.contains(query)).toBe(false)
+    expect(document.querySelector('button[aria-label="Command Palette"]')).toBeNull()
+    expect(screen.getByRole('list', { name: 'Matching Note Paths' }).textContent).toContain('Second.md')
+    expect(screen.queryByText('Folder/Note.md')).toBeNull()
+  })
+
   it('opens and closes the Files sidebar and Assistant panel', () => {
     renderRoute()
 
     const searchButton = screen.getByRole('button', { name: 'Search Notes' })
     expect(searchButton.className).toContain('border-0')
+    expect(searchButton.querySelector('svg')?.classList.contains('lucide-search')).toBe(true)
 
     const sidebarButton = screen.getByRole('button', { name: 'Toggle Files Sidebar' })
     const sidebar = screen.getByRole('complementary', { name: 'Files' })
@@ -163,15 +188,29 @@ describe('TockTutor titlebar panel controls', () => {
 
   it('filters and executes searchable command controls', () => {
     const onCloseCommandPalette = vi.fn()
+    const onOpenSearch = vi.fn()
     const onToggleFocusMode = vi.fn()
     renderRoute({ commandPaletteOpen: true }, {
       onCloseCommandPalette,
+      onOpenSearch,
       onToggleFocusMode,
     })
 
     const dialog = screen.getByRole('dialog', { name: 'Command Palette' })
     expect(dialog.className).toContain('z-[2147483647]')
+    expect(dialog.className).toContain('max-w-[900px]')
+    expect(dialog.className).toContain('[--tt-panel:var(--dsw-alias-bg-layer-1,#fff)]')
     expect(document.querySelector('[data-slot="dialog-overlay"]')?.className).toContain('z-[2147483646]')
+    expect(document.querySelector('[data-slot="dialog-overlay"]')?.className).toContain('!bg-transparent')
+    expect(screen.getByRole('listbox', { name: 'Command Search Results' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Command Preview' })).toBeTruthy()
+    expect(screen.getByText('Best Matches')).toBeTruthy()
+    expect(screen.getByText('Dismiss')).toBeTruthy()
+    fireEvent.click(screen.getByRole('option', { name: 'Search Notes' }))
+    expect(onOpenSearch).toHaveBeenCalledOnce()
+    expect(onCloseCommandPalette).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Commands' }))
     fireEvent.change(screen.getByLabelText('Search Commands'), { target: { value: 'focus' } })
     fireEvent.click(screen.getByRole('option', { name: 'Toggle Focus Mode' }))
     expect(onToggleFocusMode).toHaveBeenCalledOnce()
@@ -348,9 +387,33 @@ describe('TockTutor titlebar panel controls', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Related' }))
     expect(onSearchMode).toHaveBeenCalledWith('related')
+    fireEvent.keyDown(screen.getByRole('searchbox', { name: 'Search Notes Query' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('button', { name: 'Search' }))
-    expect(onRunSearch).toHaveBeenCalledOnce()
+    expect(onRunSearch).toHaveBeenCalledTimes(2)
     expect(screen.getByRole('list', { name: 'Vault Search Results' }).textContent).toContain('Lesson match')
+  })
+
+  it('shows Obsidian search operators and inserts the selected operator', async () => {
+    const onSearchChange = vi.fn()
+    renderRoute({ searchMode: 'query', searchOpen: true, searchQuery: 'lesson' }, { onSearchChange })
+
+    const query = screen.getByRole('searchbox', { name: 'Search Notes Query' }) as HTMLInputElement
+    query.setSelectionRange(query.value.length, query.value.length)
+    fireEvent.click(screen.getByRole('button', { name: 'Search Options' }))
+
+    const options = screen.getByRole('dialog', { name: 'Search Options' })
+    for (const operator of ['path:', 'file:', 'tag:', 'line:', 'section:', '[property]']) {
+      expect(options.textContent).toContain(operator)
+    }
+    fireEvent.click(screen.getByRole('button', { name: /^path:/u }))
+
+    expect(onSearchChange).toHaveBeenCalledWith('lesson path:')
+    await waitFor(() => { expect(document.activeElement).toBe(query) })
+  })
+
+  it('hides query operators in Related mode', () => {
+    renderRoute({ searchMode: 'related', searchOpen: true, searchQuery: 'lesson' })
+    expect(screen.queryByRole('button', { name: 'Search Options' })).toBeNull()
   })
 
   it('renders and submits the shadcn New Note dialog', () => {

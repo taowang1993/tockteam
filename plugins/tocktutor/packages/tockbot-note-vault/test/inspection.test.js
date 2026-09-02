@@ -753,6 +753,110 @@ test('provider-input scan constructs one path inventory and checks cancellation 
   }
 })
 
+test('query search uses complete indexed candidates only as input to the exact verifier', async () => {
+  const provider = memoryInput()
+  let listCalls = 0
+  const candidateRequests = []
+  const input = {
+    ...provider.input,
+    async list(...args) {
+      listCalls += 1
+      return await provider.input.list(...args)
+    },
+    async searchCandidates(request, signal) {
+      signal.throwIfAborted()
+      candidateRequests.push(request)
+      return {
+        complete: true,
+        epoch: 'index-v1',
+        paths: ['notes/alpha.md', 'beta.md', 'notes/alpha.md'],
+      }
+    },
+  }
+  const inspection = createVaultInspection(input, limits)
+  const result = await inspection.search({
+    mode: 'query',
+    query: 'tag:project content:Alpha',
+  }, new AbortController().signal)
+
+  assert.deepEqual(candidateRequests, [{
+    directory: '',
+    groups: [[{ field: 'tag', value: 'project' }]],
+    limit: 100,
+  }])
+  assert.equal(listCalls, 0)
+  assert.deepEqual(provider.readPaths, ['beta.md', 'notes/alpha.md'])
+  assert.deepEqual(result.matches.map(match => [match.path, match.operator]), [
+    ['notes/alpha.md', undefined],
+    ['notes/alpha.md', 'tag'],
+  ])
+  assert.deepEqual(result.scan, { bytes: 72, entries: 2, files: 2 })
+
+  await inspection.search({ mode: 'query', query: '[status]' }, new AbortController().signal)
+  assert.deepEqual(candidateRequests[1]?.groups, [[{ field: 'property', value: 'status' }]])
+})
+
+test('indexed candidate cursors resume exact projections without duplicates', async () => {
+  const provider = memoryInput()
+  const inspection = createVaultInspection({
+    ...provider.input,
+    async searchCandidates() {
+      return { complete: true, epoch: 'stable-index', paths: ['notes/alpha.md'] }
+    },
+  }, limits)
+  const first = await inspection.search({
+    limit: 1,
+    mode: 'query',
+    query: 'tag:project content:Alpha',
+  }, new AbortController().signal)
+  assert.equal(first.matches.length, 1)
+  assert.notEqual(first.cursor, null)
+
+  const second = await inspection.search({
+    cursor: first.cursor,
+    limit: 1,
+    mode: 'query',
+    query: 'tag:project content:Alpha',
+  }, new AbortController().signal)
+  assert.equal(second.cursor, null)
+  assert.deepEqual(
+    [...first.matches, ...second.matches].map(match => [match.kind, match.operator]),
+    [['content', undefined], ['tag', 'tag']],
+  )
+})
+
+test('query search falls back to the bounded scanner when candidates are unavailable, unsafe, or unsupported', async () => {
+  const provider = memoryInput()
+  let candidateCalls = 0
+  let candidateResult = null
+  const inspection = createVaultInspection({
+    ...provider.input,
+    async searchCandidates() { candidateCalls += 1; return candidateResult },
+  }, limits)
+  const unavailable = await inspection.search({
+    mode: 'query',
+    query: 'tag:project',
+  }, new AbortController().signal)
+
+  assert.deepEqual(unavailable.matches.map(match => match.path), ['notes/alpha.md'])
+  assert.equal(unavailable.scan.entries, 5)
+  assert.equal(unavailable.scan.files, 4)
+
+  candidateResult = { complete: true, epoch: 'unsafe-index', paths: ['../escape.md'] }
+  const unsafe = await inspection.search({
+    mode: 'query',
+    query: 'tag:project',
+  }, new AbortController().signal)
+  assert.deepEqual(unsafe.matches.map(match => match.path), ['notes/alpha.md'])
+
+  const unsupported = await inspection.search({
+    mode: 'query',
+    query: 'line:needle',
+  }, new AbortController().signal)
+  assert.deepEqual(unsupported.matches.map(match => match.path), ['beta.md'])
+  assert.equal(candidateCalls, 2)
+})
+
 test('query regex rejects backtracking hazards before scans and checks cancellation around matches', async () => {
   let listCalls = 0
   const content = Array.from({ length: 1_000 }, (_, index) => `line ${String(index)}`).join('\n')

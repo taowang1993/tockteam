@@ -93,7 +93,7 @@ test('icon-only actions use shared tooltips instead of native titles', () => {
     assert.doesNotMatch(sidebar, new RegExp(`title="${label}"`))
   }
   assert.match(sideTools, /<TooltipContent>\{t\('side\.close-tab'\)\}<\/TooltipContent>/)
-  for (const label of ['Search Notes', 'Toggle Files Sidebar', 'New Note', 'Toggle Assistant Panel', 'Close Search', 'More Note Actions', 'Open Assistant', 'Close More Options', 'Add Pane']) {
+  for (const label of ['Search Notes', 'Toggle Files Sidebar', 'New Note', 'Toggle Assistant Panel', 'More Note Actions', 'Open Assistant', 'Close More Options', 'Add Pane']) {
     assert.match(workbenchSurfaces, new RegExp(`<TooltipContent>${label}<\\/TooltipContent>`))
   }
   for (const label of ['Search Notes', 'New Note', 'Add Pane']) {

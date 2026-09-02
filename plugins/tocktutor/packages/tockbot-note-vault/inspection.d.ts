@@ -63,6 +63,18 @@ export interface VaultInspectionDocument {
   content: string
 }
 
+export interface VaultSearchCandidateRequest {
+  directory: string
+  groups: Array<Array<{ field: 'property' | 'tag'; value: string }>>
+  limit: number
+}
+
+export interface VaultSearchCandidateResult {
+  complete: true
+  epoch: string
+  paths: string[]
+}
+
 export interface VaultInspectionInput {
   /** Return one bounded, deterministic inventory page. */
   list(
@@ -74,6 +86,11 @@ export interface VaultInspectionInput {
     maxBytes: number,
     signal: AbortSignal,
   ): Promise<VaultInspectionDocument>
+  /** Return a complete conservative path superset, or null to use the bounded scanner. */
+  searchCandidates?(
+    request: VaultSearchCandidateRequest,
+    signal: AbortSignal,
+  ): Promise<VaultSearchCandidateResult | null>
 }
 
 export interface VaultScanCounters {
