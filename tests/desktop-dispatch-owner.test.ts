@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import path from 'node:path'
 import { test } from 'node:test'
 import { DesktopDispatchOwner } from '../src/desktop-dispatch-owner.ts'
 import {
@@ -7,6 +8,10 @@ import {
   parseTockTutorProtocol,
   resolveTockTutorProtocolRequest,
 } from '../src/desktop-native-policy.ts'
+
+const vaultsRoot = path.resolve(path.sep, 'vaults')
+const vaultPath = (...segments: string[]): string => path.join(vaultsRoot, ...segments)
+const protocolPath = (target: string): string => `tocktutor://open?path=${encodeURIComponent(target)}`
 
 function owner(): DesktopDispatchOwner {
   let id = 0
@@ -67,8 +72,8 @@ test('recovers protocol URLs from single-instance launch data when macOS omits a
 
 test('resolves named and absolute protocol selectors without exposing Host paths', () => {
   const known = [
-    { generation: 4, id: `vault:${'a'.repeat(64)}`, name: 'Archive', path: '/vaults/archive' },
-    { generation: 5, id: `vault:${'b'.repeat(64)}`, name: 'Work', path: '/vaults/work' },
+    { generation: 4, id: `vault:${'a'.repeat(64)}`, name: 'Archive', path: vaultPath('archive') },
+    { generation: 5, id: `vault:${'b'.repeat(64)}`, name: 'Work', path: vaultPath('work') },
   ]
   const named = resolveTockTutorProtocolRequest(
     parseTockTutorProtocol('tocktutor://open?vault=Work&file=Notes%2FPlan.md')!,
@@ -82,9 +87,9 @@ test('resolves named and absolute protocol selectors without exposing Host paths
       vaultId: known[1]!.id,
     },
   })
-  const nested = { generation: 6, id: `vault:${'c'.repeat(64)}`, name: 'Notes', path: '/vaults/work/Notes' }
+  const nested = { generation: 6, id: `vault:${'c'.repeat(64)}`, name: 'Notes', path: vaultPath('work', 'Notes') }
   const absolute = resolveTockTutorProtocolRequest(
-    parseTockTutorProtocol('tocktutor://open?path=%2Fvaults%2Fwork%2FNotes%2FPlan.md')!,
+    parseTockTutorProtocol(protocolPath(vaultPath('work', 'Notes', 'Plan.md')))!,
     [...known, nested],
     known[0],
   )
@@ -92,26 +97,27 @@ test('resolves named and absolute protocol selectors without exposing Host paths
   assert.equal(absolute?.request.vaultId, nested.id)
   assert.equal('path' in (absolute?.request ?? {}), false)
   assert.equal('vault' in (absolute?.request ?? {}), false)
+  const temporaryVaultsRoot = path.resolve(path.sep, 'tmp', 'vaults')
   const aliased = resolveTockTutorProtocolRequest(
-    parseTockTutorProtocol('tocktutor://open?path=%2Ftmp%2Fvaults%2Fwork%2FPlan.md')!,
+    parseTockTutorProtocol(protocolPath(path.join(temporaryVaultsRoot, 'work', 'Plan.md')))!,
     known,
     known[0],
     undefined,
-    path => path.replace(/^\/tmp\/vaults/u, '/vaults'),
+    candidate => candidate.replace(temporaryVaultsRoot, vaultsRoot),
   )
   assert.equal(aliased?.request.file, 'Plan.md')
   assert.equal(aliased?.request.vaultId, known[1]!.id)
   assert.equal(resolveTockTutorProtocolRequest(
-    parseTockTutorProtocol('tocktutor://open?path=%2Foutside%2FPlan.md')!,
+    parseTockTutorProtocol(protocolPath(path.resolve(path.sep, 'outside', 'Plan.md')))!,
     known,
     known[0],
   ), null)
   assert.equal(resolveTockTutorProtocolRequest(
-    parseTockTutorProtocol('tocktutor://open?path=%2Freplaced%2FPlan.md')!,
+    parseTockTutorProtocol(protocolPath(path.resolve(path.sep, 'replaced', 'Plan.md')))!,
     known,
     known[0],
     undefined,
-    path => path === '/vaults/work' ? '/replaced' : path,
+    candidate => candidate === vaultPath('work') ? path.resolve(path.sep, 'replaced') : candidate,
   ), null)
 })
 
@@ -130,9 +136,9 @@ test('delivers a named-vault request under the current boundary and completes un
     }),
     isAvailable: () => true,
     resolveProtocol: request => resolveTockTutorProtocolRequest(request, [
-      { ...current, name: 'Archive', path: '/vaults/archive' },
-      { ...target, name: 'Work', path: '/vaults/work' },
-    ], { ...current, name: 'Archive', path: '/vaults/archive' }),
+      { ...current, name: 'Archive', path: vaultPath('archive') },
+      { ...target, name: 'Work', path: vaultPath('work') },
+    ], { ...current, name: 'Archive', path: vaultPath('archive') }),
   })
   assert.equal(dispatch.publishProtocol('tocktutor://open?vault=Work&file=Plan.md'), true)
   const event = await dispatch.next(new AbortController().signal)
@@ -146,8 +152,8 @@ test('delivers a named-vault request under the current boundary and completes un
 
 test('reports a superseded queued vault callback exactly once', () => {
   const callbacks: string[] = []
-  const current = { generation: 4, id: `vault:${'a'.repeat(64)}`, name: 'Archive', path: '/vaults/archive' }
-  const work = { generation: 5, id: `vault:${'b'.repeat(64)}`, name: 'Work', path: '/vaults/work' }
+  const current = { generation: 4, id: `vault:${'a'.repeat(64)}`, name: 'Archive', path: vaultPath('archive') }
+  const work = { generation: 5, id: `vault:${'b'.repeat(64)}`, name: 'Work', path: vaultPath('work') }
   const dispatch = new DesktopDispatchOwner({
     identity: (operationId, requestId) => ({ operationId, requestId, sessionId: 'session', vaultGeneration: current.generation, vaultId: current.id, windowId: 'window' }),
     isAvailable: () => true,
@@ -207,9 +213,9 @@ test('reports terminal queue drops and superseded rollbacks through error callba
     isAvailable: () => true,
     onCallback: (url, status) => { callbacks.push(`${status}:${url}`) },
     resolveProtocol: request => resolveTockTutorProtocolRequest(request, [
-      { ...current, name: 'Current', path: '/vaults/current' },
-      { ...target, name: 'Target', path: '/vaults/target' },
-    ], { ...current, name: 'Current', path: '/vaults/current' }),
+      { ...current, name: 'Current', path: vaultPath('current') },
+      { ...target, name: 'Target', path: vaultPath('target') },
+    ], { ...current, name: 'Current', path: vaultPath('current') }),
   })
   assert.equal(switched.publishProtocol('tocktutor://open?vault=Target&file=One.md&x-error=https%3A%2F%2Fexample.test%2Fsuperseded'), true)
   const delivered = await switched.next(new AbortController().signal)
