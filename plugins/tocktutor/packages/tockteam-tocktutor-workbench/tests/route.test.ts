@@ -861,7 +861,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
       onToggleTask() {},
       snapshot: controller.getSnapshot(),
     }))
-    assert.doesNotMatch(desktopMarkup, /TockLauncher/u)
+    assert.equal((desktopMarkup.match(/aria-label="Open TockLauncher"/gu) ?? []).length, 1)
     const inactiveMarkup = renderToStaticMarkup(createElement(TockTutorRouteView, {
       active: false,
       onActivateTab() {},

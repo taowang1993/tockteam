@@ -1059,7 +1059,9 @@ type FileIdentity = {
 }
 
 function isInside(root: string, target: string): boolean {
-  const relative = path.relative(root, target)
+  const base = process.platform === 'win32' ? path.toNamespacedPath(path.resolve(root)) : root
+  const candidate = process.platform === 'win32' ? path.toNamespacedPath(path.resolve(target)) : target
+  const relative = path.relative(base, candidate)
   return relative === '' || (
     relative !== '..'
     && !relative.startsWith(`..${path.sep}`)

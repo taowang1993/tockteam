@@ -47,6 +47,10 @@ import type { TockTutorRouteOwnerProps } from '@tockteam/desktop/client'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 
+type DesktopLauncherBridge = Readonly<{
+  launcher?: Readonly<{ show(): Promise<unknown> }>
+}>
+
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
 import { ExecutableBaseView, type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx'
 import { executableBasePropertyIdentity, type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts'
@@ -2981,6 +2985,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   }
   const words = snapshot.source.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)?.length ?? 0
   const characters = snapshot.source.length
+  const launcher = (globalThis as typeof globalThis & { dshDesktop?: DesktopLauncherBridge }).dshDesktop?.launcher
+  const hasLauncher = launcher !== undefined && typeof launcher.show === 'function'
   const titlebar = active ? (
     <section
       aria-label="TockTutor Title Bar"
@@ -3057,6 +3063,16 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             </div>
           ))}
         </div>
+        {hasLauncher && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button unstyled aria-label="Open TockLauncher" className="border-0 bg-transparent p-1.5 text-[var(--tt-muted)]" onClick={() => { void launcher.show().catch(() => {}) }} type="button"><Search aria-hidden="true" /></Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Open TockLauncher</TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">
