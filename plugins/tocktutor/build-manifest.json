@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "package.json",
-      "sha256": "1fdea59719305bdd544c16fee3f1b18612b67b4f6cd0934a9f8603935318c197"
+      "sha256": "54fad833b283d696d5e3f996ac19bcf08d4b6aba1884d31ec93e40fb074e2a6e"
     },
     {
       "path": "packages/tockbot-note-desktop/cordis.patch.yml",
@@ -151,7 +151,7 @@
     },
     {
       "path": "packages/tockbot-note-desktop/scripts/generate-typert.mjs",
-      "sha256": "f986db38781cc6bdc130f7c5087ee82412967de373db55863b73dcae4ff9c014"
+      "sha256": "9b65ba3bb0da886be52a56e59de978e9fe49c18c149fb5eb6b69f05386118f5a"
     },
     {
       "path": "packages/tockbot-note-desktop/src/client-actions.tsx",
@@ -383,7 +383,7 @@
     },
     {
       "path": "packages/tockteam-note-vault-tools/tsconfig.json",
-      "sha256": "99ced3a7e9f002e2eb9c9660533689360e072e8ef4cee3be634b2d6b34f4f20f"
+      "sha256": "765023910223e4e3e770b8e9462415f09e8831dce966611b1e0329af2232e908"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/cordis.patch.yml",
@@ -715,7 +715,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/scripts/generate-typert.mjs",
-      "sha256": "2193caf6a73973eb7173a7cc4e61df06e8d3f13cfb0671371ba5da34163e4f55"
+      "sha256": "4f3ec05cde1482faa8861d30874da2d8a49e3f0e722b9eb02d1320e64071a51a"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/agent-continuation.ts",
@@ -1031,7 +1031,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/scripts/generate-typert.mjs",
-      "sha256": "fb7430c4d896273e801227d4d8cd41294fcf39759d72f707f4f4fa010407944f"
+      "sha256": "3d446b63208fdf775c6b3996cfc98322eb040bf3b5d3b4ab0034a60d63e8f60b"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/src/archive.ts",
@@ -2327,7 +2327,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/scripts/generate-typert.mjs",
-      "sha256": "8faf0b1d4333b5968fd62f1a08f6886d5d95d3af7ce2ddf2acc040a3fee7e0fd"
+      "sha256": "1196ef220b7195ec108508dac1da855f45f111db97f98c2bc6b2bbb9cfccc6c8"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/assistant-panel.ts",
@@ -2691,11 +2691,11 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "f964960e7a36bdd3e89a81be9ea7ed87d16fcaa65ddb8130f8d1919012fc0b6c"
+      "sha256": "b8445ca06c4925b92dd9de504174ad82b900c95f710a1c01dad418252e8ed782"
     },
     {
       "path": "pnpm-workspace.yaml",
-      "sha256": "ab09484248b678e31c8a3374171d239606ec80d931ae338d1e2a738e5710cde9"
+      "sha256": "c7eeee123e3fb6a36e133422bb17926ee7c5f0f0832efcdb698527f11278d3e0"
     }
   ]
 }

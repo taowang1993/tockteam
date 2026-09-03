@@ -4,10 +4,10 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { Service } from '@deepseek-ai/cordis'
-import { desktopArtifact, dshRoot } from '../../../test-utils.ts'
+import { desktopArtifact, loadDshAppBoot } from '../../../test-utils.ts'
 
 const run = promisify(execFile)
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -15,7 +15,7 @@ const {
   boot,
   composeEntries,
   loadOverlayPatches,
-} = await import(pathToFileURL(join(dshRoot, 'packages/boot/app-boot/lib/index.js')).href)
+} = await loadDshAppBoot()
 
 // Cordis FiberState.ACTIVE is a const enum with runtime value 2.
 const ACTIVE = 2

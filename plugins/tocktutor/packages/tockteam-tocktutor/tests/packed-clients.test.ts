@@ -11,16 +11,15 @@ import { promisify } from 'node:util'
 import { runInThisContext } from 'node:vm'
 import {
   desktopArtifact,
-  dshRoot,
+  loadDshAppBoot,
+  loadDshClientModules,
   packedClientModuleSystemOptions,
   packPlugin,
 } from '../../../test-utils.ts'
 
 const run = promisify(execFile)
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
-const { loadOverlayPatches } = await import(pathToFileURL(
-  join(dshRoot, 'packages/boot/app-boot/lib/index.js'),
-).href)
+const { loadOverlayPatches } = await loadDshAppBoot()
 
 interface ReleaseArtifact {
   client?: { external?: string[]; immediately?: boolean; inject: string[]; platform: 'web' }
@@ -205,9 +204,7 @@ test('every packed browser component activates exactly once through ClientModule
     const shellClient = shellManifest.exports['./client'].node as string
     const shellApi = await import(pathToFileURL(join(shellRoot, shellClient)).href)
     const packageRequire = createRequire(join(root, 'package.json'))
-    const { ClientModuleSystem } = await import(pathToFileURL(
-      join(dshRoot, 'packages/client/modules/lib/types/client/system.js'),
-    ).href)
+    const { ClientModuleSystem } = await loadDshClientModules()
     const modules = [...installed].map(([id, value]) => {
       const release = packedReleases.find(candidate => candidate.name === id)
       assert.ok(release?.client)

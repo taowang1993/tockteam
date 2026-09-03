@@ -33,8 +33,12 @@ test('fresh packed artifact runs through the pinned Loader and retained authorit
     assert.match(entries, /package\/cordis\.patch\.yml/u)
     assert.doesNotMatch(entries, /package\/(?:src|tests)\//u)
 
-    const pin = JSON.parse(await readFile(join(repositoryRoot, 'dsh-source.json'), 'utf8')) as { revision?: unknown }
-    assert.equal(pin.revision, 'b150a551b8d465e31e418e1b2eaf5e79bbb7d28e')
+    const pin = JSON.parse(await readFile(join(repositoryRoot, 'dsh-source.json'), 'utf8')) as {
+      package?: unknown
+      version?: unknown
+    }
+    assert.equal(pin.package, '@deepseek-ai/dsh')
+    assert.equal(pin.version, '0.1.1-rc.2')
     const desktopMain = await run('tar', ['-xOf', desktopArtifact, 'package/dist/main.js'], temporary)
     for (const invariant of [
       "default-src 'none'",

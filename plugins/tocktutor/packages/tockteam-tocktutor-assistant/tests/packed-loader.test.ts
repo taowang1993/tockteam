@@ -25,7 +25,7 @@ import NoteVaultRuntime, { Config as RuntimeConfig } from 'tockbot-note-runtime'
 import type { PennivoBinding, PennivoChildInfo } from '../src/pennivo-child.ts'
 import type { AssistantTurnLease } from '../src/turn-bindings.ts'
 import type { AssistantProposalView } from '../src/remote-types.ts'
-import { dshRoot, packedClientModuleSystemOptions } from '../../../test-utils.ts'
+import { loadDshClientModules, packedClientModuleSystemOptions } from '../../../test-utils.ts'
 
 const run = promisify(execFile)
 const packageName = '@tockteam/tocktutor-assistant'
@@ -273,9 +273,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
     assert.equal(assistantRow.url.startsWith(`/plugins/${packageName}/client.js?rev=`), true)
 
     Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis })
-    const { ClientModuleSystem } = await import(
-      pathToFileURL(join(dshRoot, 'packages/client/modules/lib/types/client/system.js')).href
-    )
+    const { ClientModuleSystem } = await loadDshClientModules()
     const fetched: string[] = []
     const modules = new ClientModuleSystem(packedClientModuleSystemOptions({
       modules: graph.entries,

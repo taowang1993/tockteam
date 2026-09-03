@@ -21,12 +21,12 @@ test('TockTutor build manifest ignores local analysis caches', () => {
   )
 })
 
-test('TockTutor workspace setup rejects a different ambient DSH checkout', () => {
+test('TockTutor workspace setup ignores an ambient DSH checkout', () => {
   const result = spawnSync(process.execPath, ['scripts/install-tocktutor.mjs'], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, DSH_SOURCE: '/tmp/dsh-override' },
   })
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /unset DSH_SOURCE first/u)
+  assert.equal(result.status, 0, result.stderr)
+  assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /build:dsh|DSH_SOURCE/u)
 })

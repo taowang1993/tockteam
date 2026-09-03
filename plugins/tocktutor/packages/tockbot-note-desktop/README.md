@@ -41,7 +41,7 @@ Pinned release dependencies:
 - `@tockteam/desktop >=0.1.11 <0.2.0`
 - `@tockteam/tocktutor-workbench 0.1.7`
 - `tockbot-note-runtime 0.1.2`
-- DSH `0.1.1-rc.2` at revision `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
+- `@deepseek-ai/dsh@0.1.1-rc.2`
 
 ## Verification
 
