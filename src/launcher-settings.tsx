@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Check, Database, Globe2, KeyRound, Keyboard, Palette, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@tockteam/ui/alert-dialog'
 import { Badge } from '@tockteam/ui/badge'
 import { Button } from '@tockteam/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tockteam/ui/card'
@@ -16,6 +17,7 @@ import { LauncherNetworkSettings } from './launcher-network-settings.tsx'
 import { LauncherTerminalSettings } from './launcher-terminal-settings.tsx'
 import { LauncherWorkflowSettings } from './launcher-workflow-settings.tsx'
 import { LauncherSurfaceSettingsSection } from './launcher-surface-settings.tsx'
+import { LauncherSettingField as Field } from './launcher-setting-field.tsx'
 import { launcherCountText, launcherFixedText } from './launcher-i18n.ts'
 import { launcherWorkflowSnapshotToken } from './launcher-workflow-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
@@ -112,18 +114,6 @@ function settingValue(snapshot: LauncherSettingsSnapshot, key: string, fallback:
   return typeof snapshot.values[key] === 'boolean' ? snapshot.values[key] as boolean : fallback
 }
 
-function Field({ title, description, children }: Readonly<{ title: string; description?: string; children?: ReactNode }>): ReactNode {
-  return (
-    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3 last:border-b-0">
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-foreground">{launcherFixedText(title)}</div>
-        {description ? <div className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{launcherFixedText(description)}</div> : null}
-      </div>
-      {children ? <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</div> : null}
-    </div>
-  )
-}
-
 function sectionId(title: string): string {
   let hash = 0
   for (const character of title) hash = (hash * 31 + character.codePointAt(0)!) >>> 0
@@ -163,7 +153,6 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const [busy, setBusy] = useState(false)
   const activeSaves = useRef(0)
   const [resetPending, setResetPending] = useState(false)
-  const resetDialogRef = useRef<HTMLDialogElement>(null)
   const resetTriggerRef = useRef<HTMLButtonElement>(null)
   const [secret, setSecret] = useState('')
   const [launchOnStart, setLaunchOnStart] = useState<boolean | null>(null)
@@ -209,22 +198,10 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
     void reload().then(() => setStatus(t('ready'))).catch(() => setStatus(t('unavailable')))
   }, [reload, settings])
 
-  useEffect(() => {
-    if (!resetPending) {
-      resetDialogRef.current?.close()
-      return
-    }
-    const dialog = resetDialogRef.current
-    if (dialog !== null && !dialog.open) {
-      try { dialog.showModal() } catch { dialog.setAttribute('open', '') }
-    }
-    requestAnimationFrame(() => dialog?.querySelector<HTMLButtonElement>('[data-testid="tocklauncher-reset-cancel"]')?.focus())
-  }, [resetPending])
-
   useLayoutEffect(() => {
     const onEscape = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
-      const dialog = document.querySelector<HTMLDialogElement>('[data-testid="tocklauncher-reset-dialog"][open], [data-testid="tocklauncher-workflow-delete-dialog"][open]')
+      const dialog = document.querySelector<HTMLElement>('[data-testid="tocklauncher-reset-dialog"][data-state="open"], [data-testid="tocklauncher-workflow-delete-dialog"][data-state="open"]')
       if (dialog === null) return
       event.preventDefault()
       event.stopImmediatePropagation()
@@ -469,12 +446,19 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">
-          <Button data-testid="tocklauncher-reset-trigger" ref={resetTriggerRef} size="sm" variant="outline" disabled={busy} onClick={() => setResetPending(true)}><RotateCcw aria-hidden="true" />{launcherFixedText('Reset')}</Button>
-          <dialog ref={resetDialogRef} aria-describedby="tocklauncher-reset-description" aria-labelledby="tocklauncher-reset-title" aria-modal="true" className="rounded-lg border border-border bg-background p-4 text-foreground shadow-xl" data-testid="tocklauncher-reset-dialog" onCancel={event => { event.preventDefault(); event.stopPropagation(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }} onKeyDownCapture={event => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }} onKeyDown={event => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }}>
-            <h3 id="tocklauncher-reset-title" className="text-base font-semibold">{launcherFixedText('Reset TockLauncher settings?')}</h3>
-            <p id="tocklauncher-reset-description" className="mt-2 max-w-md text-sm text-muted-foreground">{launcherFixedText('This clears launcher overrides, favorites, exclusions, history, and the custom-browser grant.')}</p>
-            <div className="mt-4 flex justify-end gap-2"><Button data-testid="tocklauncher-reset-cancel" type="button" variant="outline" disabled={busy} onClick={() => { setResetPending(false); requestAnimationFrame(() => resetTriggerRef.current?.focus()) }}>{launcherFixedText('Cancel')}</Button><Button type="button" variant="destructive" disabled={busy} onClick={() => { setResetPending(false); void operation('Reset', settings.resetSettings, true, true, resetTriggerRef.current ?? undefined) }}><Trash2 aria-hidden="true" />{launcherFixedText('Confirm reset')}</Button></div>
-          </dialog>
+          <AlertDialog open={resetPending} onOpenChange={setResetPending}>
+            <AlertDialogTrigger asChild><Button data-testid="tocklauncher-reset-trigger" ref={resetTriggerRef} size="sm" variant="outline" disabled={busy}><RotateCcw aria-hidden="true" />{launcherFixedText('Reset')}</Button></AlertDialogTrigger>
+            <AlertDialogContent data-testid="tocklauncher-reset-dialog">
+              <AlertDialogHeader>
+                <AlertDialogTitle>{launcherFixedText('Reset TockLauncher settings?')}</AlertDialogTitle>
+                <AlertDialogDescription>{launcherFixedText('This clears launcher overrides, favorites, exclusions, history, and the custom-browser grant.')}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="tocklauncher-reset-cancel" size="sm" disabled={busy}>{launcherFixedText('Cancel')}</AlertDialogCancel>
+                <AlertDialogAction size="sm" variant="destructive" disabled={busy} onClick={() => { void operation('Reset', settings.resetSettings, true, true, resetTriggerRef.current ?? undefined) }}><Trash2 aria-hidden="true" />{launcherFixedText('Confirm reset')}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </Field>
       </SectionCard>
 

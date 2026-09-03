@@ -1,7 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Accessibility, Keyboard, Palette, SlidersHorizontal, Timer, WandSparkles } from 'lucide-react'
 import { Badge } from '@tockteam/ui/badge'
+import { Checkbox } from '@tockteam/ui/checkbox'
 import { Input } from '@tockteam/ui/input'
+import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_SETTINGS_CATALOG } from './launcher-setting-catalog.ts'
@@ -9,6 +11,7 @@ import { launcherSettingDisposition } from './launcher-settings-model.ts'
 import { isLauncherRendererSettingValue, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import type { LauncherSurfacePlatform } from './launcher-contract.ts'
 import { launcherFixedText } from './launcher-i18n.ts'
+import { LauncherSettingField as Field } from './launcher-setting-field.tsx'
 import { useLauncherDraft } from './launcher-settings-drafts.ts'
 
 export type LauncherSurfaceSection = 'appearance' | 'browser' | 'compatibility' | 'keyboard' | 'search' | 'window'
@@ -31,10 +34,6 @@ function labelFor(key: string): string {
   return launcherFixedText(label)
 }
 
-function Field({ label, description, children }: Readonly<{ label: string; description?: string; children: ReactNode }>): ReactNode {
-  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-3 last:border-b-0"><div className="min-w-0 flex-1"><div className="text-sm font-medium text-foreground">{launcherFixedText(label)}</div>{description ? <div className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{launcherFixedText(description)}</div> : null}</div><div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</div></div>
-}
-
 function SettingValue({ keyName, value, busy, save }: Readonly<{ keyName: string; value: unknown; busy: boolean; save: LauncherSurfaceSettingsProps['save'] }>): ReactNode {
   const [draft, setDraft] = useLauncherDraft<string | number>(typeof value === 'string' || typeof value === 'number' ? value : '')
   const [invalid, setInvalid] = useState(false)
@@ -45,7 +44,7 @@ function SettingValue({ keyName, value, busy, save }: Readonly<{ keyName: string
   if (keyName === 'window.scrollBehavior') return <NativeSelect aria-label={labelFor(keyName)} disabled={busy} value={typeof value === 'string' ? value : 'smooth'} onChange={event => { void save(keyName, event.target.value) }}><NativeSelectOption value="auto">{launcherFixedText('Auto')}</NativeSelectOption><NativeSelectOption value="smooth">{launcherFixedText('Smooth')}</NativeSelectOption><NativeSelectOption value="instant">{launcherFixedText('Instant')}</NativeSelectOption></NativeSelect>
   if (keyName === 'window.hideWindowOn') {
     const options = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
-    return <div className="flex flex-wrap gap-2">{(['blur', 'afterInvocation', 'escapePressed'] as const).map(reason => <label key={reason} className="flex items-center gap-2 text-xs"><input aria-label={`${labelFor(keyName)} ${launcherFixedText(reason)}`} checked={options.includes(reason)} disabled={busy} type="checkbox" onChange={event => { const next = event.target.checked ? [...options, reason] : options.filter(item => item !== reason); if (isLauncherRendererSettingValue(keyName, next)) void save(keyName, next) }} />{launcherFixedText(reason)}</label>)}</div>
+    return <div className="flex flex-wrap gap-2">{(['blur', 'afterInvocation', 'escapePressed'] as const).map(reason => { const id = `tocklauncher-hide-${reason}`; return <span key={reason} className="flex items-center gap-2 text-xs"><Checkbox id={id} aria-label={`${labelFor(keyName)} ${launcherFixedText(reason)}`} checked={options.includes(reason)} disabled={busy} onCheckedChange={checked => { const next = checked === true ? [...options, reason] : options.filter(item => item !== reason); if (isLauncherRendererSettingValue(keyName, next)) void save(keyName, next) }} /><Label unstyled htmlFor={id}>{launcherFixedText(reason)}</Label></span> })}</div>
   }
   if (keyName === 'general.hotkey.enabled' || keyName === 'general.preserveUserInput' || keyName === 'appearance.showSearchIcon' || keyName === 'general.browser.useDefaultWebBrowser') return <Switch aria-label={labelFor(keyName)} checked={value === true} disabled={busy} onCheckedChange={checked => { void save(keyName, checked) }} />
   if (keyName === 'searchEngine.automaticRescan') return <Badge variant="outline">{launcherFixedText('Manual rescan only')}</Badge>

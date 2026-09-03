@@ -8,6 +8,7 @@ import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Spinner } from '@tockteam/ui/spinner'
+import { ToggleGroup, ToggleGroupItem } from '@tockteam/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
   useCallback,
@@ -36,6 +37,8 @@ import {
   type SessionListSnapshot,
   type SessionNavigationState,
 } from './session-navigation.ts'
+
+type MarketplaceStatusFilter = 'all' | 'installed' | 'available' | 'updates' | 'disabled'
 
 interface ClientContext {
   effect(effect: () => (() => void) | void, label?: string): void
@@ -716,9 +719,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
   const [pending, setPending] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'installed' | 'available' | 'updates' | 'disabled'
-  >('all')
+  const [statusFilter, setStatusFilter] = useState<MarketplaceStatusFilter>('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -870,7 +871,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                   </Tooltip>
                 )}
               </div>
-              <div className="flex h-[38px] max-w-full items-center overflow-x-auto rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-[var(--dsw-alias-interactive-bg-hover,#f3f4f5)] p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:flex [&_button]:h-[30px] [&_button]:cursor-pointer [&_button]:items-center [&_button]:gap-[5px] [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2.5 [&_button]:font-[inherit] [&_button]:text-[11px] [&_button]:text-muted-foreground [&_button[data-active=true]]:bg-background [&_button[data-active=true]]:font-semibold [&_button[data-active=true]]:text-foreground [&_button[data-active=true]]:shadow-[0_1px_4px_rgba(31,35,41,0.1)] [&_span]:text-[9px] [&_span]:text-subtle-foreground" role="group" aria-label={t('installation-status')}>
+              <ToggleGroup unstyled type="single" aria-label={t('installation-status')} className="flex h-[38px] max-w-full items-center overflow-x-auto rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-[var(--dsw-alias-interactive-bg-hover,#f3f4f5)] p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:flex [&_button]:h-[30px] [&_button]:cursor-pointer [&_button]:items-center [&_button]:gap-[5px] [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2.5 [&_button]:font-[inherit] [&_button]:text-[11px] [&_button]:text-muted-foreground [&_button[data-active=true]]:bg-background [&_button[data-active=true]]:font-semibold [&_button[data-active=true]]:text-foreground [&_button[data-active=true]]:shadow-[0_1px_4px_rgba(31,35,41,0.1)] [&_span]:text-[9px] [&_span]:text-subtle-foreground" value={statusFilter} onValueChange={value => { if (value !== '') setStatusFilter(value as MarketplaceStatusFilter) }}>
                 {([
                   ['all', t('all')],
                   ['installed', t('installed')],
@@ -878,16 +879,11 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                   ['updates', t('updates')],
                   ['disabled', t('disabled')],
                 ] as const).map(([value, label]) => (
-                  <Button unstyled
-                    data-active={String(statusFilter === value)}
-                    key={value}
-                    onClick={() => { setStatusFilter(value) }}
-                    type="button"
-                  >
+                  <ToggleGroupItem unstyled data-active={String(statusFilter === value)} key={value} value={value}>
                     {label}<span>{statusCounts[value]}</span>
-                  </Button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
               <NativeSelect unstyled
                 aria-label={t('plugin-category')}
                 className="h-[38px] rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[11px] font-[inherit] text-xs text-inherit"

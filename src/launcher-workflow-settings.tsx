@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@tockteam/ui/alert-dialog'
 import { Button } from '@tockteam/ui/button'
+import { Checkbox } from '@tockteam/ui/checkbox'
+import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet } from '@tockteam/ui/field'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
@@ -119,7 +122,6 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
   })
   const [pendingAction, setPendingAction] = useState<DraftAction>(() => makeAction(currentPlatform))
   const [deletePending, setDeletePending] = useState(false)
-  const deleteDialogRef = useRef<HTMLDialogElement>(null)
   const deleteTriggerRef = useRef<HTMLButtonElement>(null)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
@@ -137,18 +139,6 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
     setDraft(selected === undefined ? null : copyWorkflow(selected))
     setPendingAction(makeAction(currentPlatform))
   }, [currentPlatform, snapshot])
-
-  useEffect(() => {
-    if (!deletePending) {
-      deleteDialogRef.current?.close()
-      return
-    }
-    const dialog = deleteDialogRef.current
-    if (dialog !== null && !dialog.open) {
-      try { dialog.showModal() } catch { dialog.setAttribute('open', '') }
-    }
-    requestAnimationFrame(() => dialog?.querySelector<HTMLButtonElement>('[data-testid="tockteam-workflow-delete-cancel"]')?.focus())
-  }, [deletePending])
 
   const selectWorkflow = (workflow: LauncherWorkflow): void => {
     dirtyRef.current = false
@@ -207,10 +197,10 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
           <div className="flex min-w-0 flex-col gap-1" role="list">
             {workflows.length === 0 ? <p className="px-2 py-3 text-xs text-muted-foreground">{fixed('No saved workflows.')}</p> : workflows.map(workflow => (
               <div key={workflow.id} role="listitem">
-                <button aria-current={workflow.id === selectedId ? 'true' : undefined} className="w-full min-w-0 rounded px-2 py-2 text-left text-sm hover:bg-muted" disabled={busy || saving} type="button" onClick={() => selectWorkflow(workflow)}>
+                <Button unstyled aria-current={workflow.id === selectedId ? 'true' : undefined} className="w-full min-w-0 rounded px-2 py-2 text-left text-sm hover:bg-muted" disabled={busy || saving} type="button" onClick={() => selectWorkflow(workflow)}>
                   <span className="block truncate" title={workflow.name}>{workflow.name}</span>
                   <span className="block text-xs text-muted-foreground">{workflow.actions.length} {fixed(workflow.actions.length === 1 ? 'action' : 'actions')}</span>
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -223,15 +213,15 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
               <span className="max-w-full truncate text-xs text-muted-foreground">ID: {draft.id}</span>
             </div>
             <div className="grid gap-3">
-              <div className="grid gap-1">
-                <Label htmlFor="tocklauncher-workflow-name">{fixed('Workflow name')}</Label>
+              <Field data-invalid={draft.name.trim().length === 0 || draft.name.length > 128}>
+                <FieldLabel htmlFor="tocklauncher-workflow-name">{fixed('Workflow name')}</FieldLabel>
                 <Input id="tocklauncher-workflow-name" aria-describedby="tocklauncher-workflow-name-help" aria-invalid={draft.name.trim().length === 0 || draft.name.length > 128} disabled={busy || saving} maxLength={128} value={draft.name} onChange={updateDraftName} />
-                <p id="tocklauncher-workflow-name-help" className="text-xs text-muted-foreground">{fixed('Use 1–128 characters; the name is shown only as bounded display text.')}</p>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input aria-label={fixed('Workflow requires confirmation')} checked={draft.requiresConfirmation} disabled={busy || saving} type="checkbox" onChange={event => { dirtyRef.current = true; setDraft(previous => previous === null ? previous : { ...previous, requiresConfirmation: event.target.checked }) }} />
-                <span>{fixed('Require launcher confirmation (commands always do)')}</span>
-              </label>
+                <FieldDescription id="tocklauncher-workflow-name-help" className="text-xs">{fixed('Use 1–128 characters; the name is shown only as bounded display text.')}</FieldDescription>
+              </Field>
+              <Field orientation="horizontal">
+                <Checkbox id="tocklauncher-workflow-confirmation" aria-label={fixed('Workflow requires confirmation')} checked={draft.requiresConfirmation} disabled={busy || saving} onCheckedChange={checked => { dirtyRef.current = true; setDraft(previous => previous === null ? previous : { ...previous, requiresConfirmation: checked === true }) }} />
+                <FieldLabel htmlFor="tocklauncher-workflow-confirmation">{fixed('Require launcher confirmation (commands always do)')}</FieldLabel>
+              </Field>
 
               <div>
                 <h5 className="mb-2 text-sm font-medium text-foreground">{fixed('Ordered actions')}</h5>
@@ -243,8 +233,8 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
                 </ol>}
               </div>
 
-              <fieldset className="grid gap-2 rounded-md border border-border/60 p-2">
-                <legend className="px-1 text-xs font-medium text-foreground">{fixed('New action')}</legend>
+              <FieldSet className="grid gap-2 rounded-md border border-border/60 p-2">
+                <FieldLegend className="px-1 text-xs text-foreground" variant="label">{fixed('New action')}</FieldLegend>
                 <Label htmlFor="tocklauncher-workflow-action-name">{fixed('Action name')}</Label>
                 <Input id="tocklauncher-workflow-action-name" aria-describedby="tocklauncher-workflow-action-name-help" aria-invalid={pendingAction.name.trim().length === 0 || pendingAction.name.length > 128} disabled={busy || saving} maxLength={128} value={pendingAction.name} onChange={event => { dirtyRef.current = true; setPendingAction(previous => ({ ...previous, name: event.target.value })) }} />
                 <p id="tocklauncher-workflow-action-name-help" className="text-xs text-muted-foreground">{fixed('Action names are required and bounded to 128 characters.')}</p>
@@ -275,15 +265,24 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
                   setDraft(previous => previous === null ? previous : { ...previous, actions: [...previous.actions, { ...pendingAction, args: { ...pendingAction.args } }] })
                   setPendingAction(makeAction(currentPlatform))
                 }}>{fixed('Add action')}</Button>
-              </fieldset>
+              </FieldSet>
 
               <div className="flex flex-wrap justify-end gap-2">
-                {selectedWorkflow === undefined ? null : <Button ref={deleteTriggerRef} data-testid="tocklauncher-workflow-delete" size="sm" type="button" variant="outline" disabled={busy || saving} onClick={() => setDeletePending(true)}>{launcherFixedText('Delete')}</Button>}
-                <dialog ref={deleteDialogRef} aria-describedby="tocklauncher-workflow-delete-description" aria-labelledby="tocklauncher-workflow-delete-title" aria-modal="true" className="rounded-lg border border-border bg-background p-4 text-foreground shadow-xl" data-testid="tocklauncher-workflow-delete-dialog" onCancel={event => { event.preventDefault(); event.stopPropagation(); setDeletePending(false); requestAnimationFrame(() => deleteTriggerRef.current?.focus()) }} onKeyDownCapture={event => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); setDeletePending(false); requestAnimationFrame(() => deleteTriggerRef.current?.focus()) }} onKeyDown={event => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); setDeletePending(false); requestAnimationFrame(() => deleteTriggerRef.current?.focus()) }}>
-                  <h3 id="tocklauncher-workflow-delete-title" className="text-base font-semibold">{fixed('Confirm workflow deletion')}</h3>
-                  <p id="tocklauncher-workflow-delete-description" className="mt-2 text-sm text-muted-foreground">{fixed('This permanently removes the selected workflow from launcher settings.')}</p>
-                  <div className="mt-4 flex justify-end gap-2"><Button data-testid="tockteam-workflow-delete-cancel" size="sm" type="button" variant="outline" disabled={busy || saving} onClick={() => { setDeletePending(false); requestAnimationFrame(() => deleteTriggerRef.current?.focus()) }}>{launcherFixedText('Cancel')}</Button><Button data-testid="tocklauncher-workflow-confirm-delete" size="sm" type="button" variant="destructive" disabled={busy || saving} onClick={() => { setDeletePending(false); void persist(workflows.filter(workflow => workflow.id !== draft.id), workflows.find(workflow => workflow.id !== draft.id)?.id ?? '').finally(() => requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-testid="tocklauncher-workflow-add"]')?.focus())) }}>{fixed('Delete workflow')}</Button></div>
-                </dialog>
+                {selectedWorkflow === undefined ? null : (
+                  <AlertDialog open={deletePending} onOpenChange={setDeletePending}>
+                    <AlertDialogTrigger asChild><Button ref={deleteTriggerRef} data-testid="tocklauncher-workflow-delete" size="sm" type="button" variant="outline" disabled={busy || saving}>{launcherFixedText('Delete')}</Button></AlertDialogTrigger>
+                    <AlertDialogContent data-testid="tocklauncher-workflow-delete-dialog">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{fixed('Confirm workflow deletion')}</AlertDialogTitle>
+                        <AlertDialogDescription>{fixed('This permanently removes the selected workflow from launcher settings.')}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel data-testid="tockteam-workflow-delete-cancel" size="sm" disabled={busy || saving}>{launcherFixedText('Cancel')}</AlertDialogCancel>
+                        <AlertDialogAction data-testid="tocklauncher-workflow-confirm-delete" size="sm" variant="destructive" disabled={busy || saving} onClick={() => { void persist(workflows.filter(workflow => workflow.id !== draft.id), workflows.find(workflow => workflow.id !== draft.id)?.id ?? '').finally(() => requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-testid="tocklauncher-workflow-add"]')?.focus())) }}>{fixed('Delete workflow')}</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
                 <Button data-testid="tocklauncher-workflow-save" size="sm" type="button" disabled={busy || saving || !validWorkflow(draft, currentPlatform)} onClick={() => {
                   const value = workflowValue(draft)
                   if (!isLauncherWorkflows([value], currentPlatform)) return

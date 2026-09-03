@@ -4,6 +4,7 @@ import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS } from './launcher-local-extension-config.ts'
 import { launcherFixedText } from './launcher-i18n.ts'
+import { LauncherCompactSettingField as Field } from './launcher-setting-field.tsx'
 import { LauncherSyncedInput, LauncherSyncedNativeSelect, LauncherSyncedTextarea } from './launcher-settings-drafts.tsx'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 type LocalSettingsProps = Readonly<{
@@ -15,9 +16,6 @@ type LocalSettingsProps = Readonly<{
 function localValue(snapshot: LauncherSettingsSnapshot, id: string, key: string, fallback: unknown): unknown {
   const value = snapshot.values[`extension[${id}].${key}`]
   return value === undefined ? fallback : value
-}
-function Field({ label, children }: Readonly<{ label: string; children: ReactNode }>): ReactNode {
-  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 py-2 last:border-b-0"><span className="text-sm text-foreground">{launcherFixedText(label)}</span><span className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{children}</span></div>
 }
 function text(props: ComponentProps<typeof Input>): ReactNode {
   const label = props['aria-label']

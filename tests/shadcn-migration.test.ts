@@ -14,7 +14,18 @@ const migratedReactFiles = [
   'plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/assistant-panel.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-import-export/src/review-panel.tsx',
+  'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base-executable-view.tsx',
+  'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/canvas-board.tsx',
+  'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor-runtime.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx',
+  'src/launcher-discovery-settings.tsx',
+  'src/launcher-file-search-settings.tsx',
+  'src/launcher-local-settings.tsx',
+  'src/launcher-network-settings.tsx',
+  'src/launcher-settings-drafts.tsx',
+  'src/launcher-settings.tsx',
+  'src/launcher-surface-settings.tsx',
+  'src/launcher-workflow-settings.tsx',
 ]
 
 function read(path: string): string {
@@ -35,7 +46,11 @@ test('shared controls retain native semantics for parity migrations', () => {
   assert.match(read('plugins/ui/src/button.tsx'), /data-slot="button"/)
   assert.match(read('plugins/ui/src/card.tsx'), /data-slot="card"/)
   assert.match(read('plugins/ui/src/checkbox.tsx'), /data-slot="checkbox"/)
+  assert.match(read('plugins/ui/src/alert-dialog.tsx'), /data-slot="alert-dialog-content"/)
+  assert.match(read('plugins/ui/src/command.tsx'), /data-slot="command-item"/)
   assert.match(read('plugins/ui/src/dialog.tsx'), /data-slot="dialog-content"/)
+  assert.match(read('plugins/ui/src/dropdown-menu.tsx'), /data-slot="dropdown-menu-content"/)
+  assert.match(read('plugins/ui/src/field.tsx'), /data-slot="field"/)
   assert.match(read('plugins/ui/src/empty.tsx'), /data-slot="empty"/)
   assert.match(read('plugins/ui/src/input.tsx'), /data-slot="input"/)
   assert.match(read('plugins/ui/src/label.tsx'), /data-slot="label"/)
@@ -45,7 +60,25 @@ test('shared controls retain native semantics for parity migrations', () => {
   assert.match(read('plugins/ui/src/skeleton.tsx'), /data-slot="skeleton"/)
   assert.match(read('plugins/ui/src/spinner.tsx'), /data-slot="spinner"/)
   assert.match(read('plugins/ui/src/switch.tsx'), /data-slot="switch"/)
+  assert.match(read('plugins/ui/src/toggle-group.tsx'), /data-slot="toggle-group-item"/)
   assert.match(read('plugins/ui/src/tooltip.tsx'), /data-slot="tooltip-content"/)
+})
+
+test('settings, filters, and command search use shared interaction primitives', () => {
+  const launcher = read('src/launcher-settings.tsx')
+  const workflow = read('src/launcher-workflow-settings.tsx')
+  const marketplace = read('plugins/plugin-marketplace/src/client/plugin.tsx')
+  const workbench = read('plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx')
+
+  assert.match(launcher, /from '@tockteam\/ui\/alert-dialog'/)
+  assert.match(workflow, /from '@tockteam\/ui\/alert-dialog'/)
+  assert.match(launcher, /stopImmediatePropagation\(\)/)
+  assert.match(launcher, /tocklauncher-reset-dialog.*data-state="open"/)
+  assert.doesNotMatch(`${launcher}\n${workflow}`, /<dialog\b/)
+  assert.match(read('src/launcher-setting-field.tsx'), /from '@tockteam\/ui\/field'/)
+  assert.match(marketplace, /from '@tockteam\/ui\/toggle-group'/)
+  assert.match(workbench, /from '@tockteam\/ui\/command'/)
+  assert.match(workbench, /from '@tockteam\/ui\/toggle-group'/)
 })
 
 test('remaining browser placeholders and counters use shared presentation components', () => {
@@ -65,6 +98,7 @@ test('rich floating controls use shared popovers and tooltips', () => {
   assert.match(assistant, /from '@tockteam\/ui\/popover'/)
   assert.match(assistant, /from '@tockteam\/ui\/tooltip'/)
   assert.doesNotMatch(assistant, /tocktutor-assistant-add-menu absolute/)
+  assert.match(read('plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx'), /from '@tockteam\/ui\/dropdown-menu'/)
   assert.match(terminal, /from '@tockteam\/ui\/popover'/)
   assert.match(terminal, /from '@tockteam\/ui\/tooltip'/)
   assert.doesNotMatch(terminal, /role="dialog" aria-label=\{t\('terminal\.font-settings'\)\}/)
@@ -93,7 +127,7 @@ test('icon-only actions use shared tooltips instead of native titles', () => {
     assert.doesNotMatch(sidebar, new RegExp(`title="${label}"`))
   }
   assert.match(sideTools, /<TooltipContent>\{t\('side\.close-tab'\)\}<\/TooltipContent>/)
-  for (const label of ['Search Notes', 'Toggle Files Sidebar', 'New Note', 'Toggle Assistant Panel', 'More Note Actions', 'Open Assistant', 'Close More Options', 'Add Pane']) {
+  for (const label of ['Search Notes', 'Toggle Files Sidebar', 'New Note', 'Toggle Assistant Panel', 'More Note Actions', 'Open Assistant', 'Close Utility Panel', 'Add Pane']) {
     assert.match(workbenchSurfaces, new RegExp(`<TooltipContent>${label}<\\/TooltipContent>`))
   }
   for (const label of ['Search Notes', 'New Note', 'Add Pane']) {

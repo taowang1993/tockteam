@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { Input } from '@tockteam/ui/input'
 import { NativeSelect } from '@tockteam/ui/native-select'
+import { Textarea } from '@tockteam/ui/textarea'
 import { useLauncherDraft } from './launcher-settings-drafts.ts'
 
 function initialText(value: unknown): string | number {
@@ -17,7 +18,7 @@ export function LauncherSyncedNativeSelect({ defaultValue, value, onChange, ...p
   return <NativeSelect {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} />
 }
 
-export function LauncherSyncedTextarea({ defaultValue, value, onChange, ...props }: ComponentProps<'textarea'>): ReactNode {
+export function LauncherSyncedTextarea({ defaultValue, value, onChange, ...props }: ComponentProps<typeof Textarea>): ReactNode {
   const [draft, setDraft] = useLauncherDraft<string>(typeof value === 'string' ? value : typeof defaultValue === 'string' ? defaultValue : '')
-  return <textarea {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} />
+  return <Textarea {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} />
 }
