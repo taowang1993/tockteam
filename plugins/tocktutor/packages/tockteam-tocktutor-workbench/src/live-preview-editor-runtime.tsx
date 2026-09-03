@@ -8,6 +8,7 @@ import { Plugin } from '@milkdown/prose/state'
 import type { EditorView } from '@milkdown/prose/view'
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react'
 import { $prose, getMarkdown, replaceAll } from '@milkdown/utils'
+import { Button } from '@tockteam/ui/button'
 import {
   useEffect,
   useMemo,
@@ -250,7 +251,7 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
       {tableDocument && (
         <div aria-label="Live Preview Table Commands" className="sticky top-0 z-1 flex flex-wrap gap-1 border-b border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs">
           {([['add-row-before', 'Add Row Above'], ['add-row-after', 'Add Row Below'], ['move-row-up', 'Move Row Up'], ['move-row-down', 'Move Row Down'], ['delete-row', 'Delete Row'], ['add-column-before', 'Add Column Left'], ['add-column-after', 'Add Column Right'], ['move-column-left', 'Move Column Left'], ['move-column-right', 'Move Column Right'], ['delete-column', 'Delete Column'], ['align-default', 'Default Alignment'], ['align-left', 'Align Left'], ['align-center', 'Align Center'], ['align-right', 'Align Right'], ['sort-ascending', 'Sort Ascending'], ['sort-descending', 'Sort Descending']] as const).map(([action, label]) => (
-            <button className="rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-0.5 text-inherit" key={action} onClick={() => { tableAction(action) }} type="button">{label}</button>
+            <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-0.5 text-inherit" key={action} onClick={() => { tableAction(action) }} type="button">{label}</Button>
           ))}
         </div>
       )}

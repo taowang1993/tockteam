@@ -144,6 +144,7 @@ test('real Desktop and user layers replace Runtime config without mutating the a
       id: 'note-vault-runtime',
       name: 'tockbot-note-runtime',
       config: {
+        restoreActiveVault: true,
         stateRoot: { __jsExpr: "process.env.DSH_DESKTOP_APP_DATA ? process.env.DSH_DESKTOP_APP_DATA + '/tocktutor' : null" },
         vaultRoot: null,
       },

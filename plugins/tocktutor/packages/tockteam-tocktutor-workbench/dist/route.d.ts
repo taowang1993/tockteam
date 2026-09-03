@@ -318,7 +318,6 @@ export interface TockTutorRouteViewProps {
     onOpenCommandPalette?(): void;
     onOpenGraphNode?(path: string, mode: 'local' | 'note'): void;
     onOpenRecovery?(): void;
-    onOpenSandboxVault?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenExternalUrl?(url: string): void;
     onOpenSearch?(): void;
@@ -343,7 +342,6 @@ export interface TockTutorRouteViewProps {
     onSelect(path: string): void;
     onSubmitDispatch?(draft: NativeDispatchDraft): void;
     onToggleFocusMode?(): void;
-    onTogglePinTab?(paneId: string, path: string): void;
     onTrashCurrent?(): void;
     onToggleTask(index: number): void;
     active?: boolean;

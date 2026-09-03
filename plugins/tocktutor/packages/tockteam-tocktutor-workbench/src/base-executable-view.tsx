@@ -5,6 +5,11 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
+import { Button } from '@tockteam/ui/button'
+import { Checkbox } from '@tockteam/ui/checkbox'
+import { Field, FieldLabel } from '@tockteam/ui/field'
+import { Input } from '@tockteam/ui/input'
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 
 import { createExecutableBaseFrontmatterEdit, type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts'
 import { parseExecutableBase } from './base-parser.ts'
@@ -137,17 +142,11 @@ function EditableCell(props: {
     if (request !== null) props.onEdit?.(request)
   }
   if (cell.inputType === 'checkbox') {
-    return (
-      <input
-        aria-label={label}
-        checked={cell.value === true}
-        type="checkbox"
-        onChange={event => emit(event.currentTarget.checked ? 'true' : 'false')}
-      />
-    )
+    return <Checkbox aria-label={label} checked={cell.value === true} onCheckedChange={checked => emit(checked === true ? 'true' : 'false')} />
   }
   return (
-    <input
+    <Input
+      unstyled
       aria-label={label}
       className="min-w-24 rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-1"
       defaultValue={cell.text}
@@ -314,20 +313,23 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
   return (
     <section aria-label="Executable Base" className="flex min-h-0 flex-col gap-3 overflow-auto p-4">
       <header className="flex flex-wrap items-end gap-3">
-        <label className="grid gap-1 text-xs font-medium">
-          Base View
-          <select
+        <Field className="w-auto gap-1">
+          <FieldLabel htmlFor="tocktutor-base-view" className="text-xs">Base View</FieldLabel>
+          <NativeSelect unstyled
+            id="tocktutor-base-view"
             aria-label="Base View"
             className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm"
             value={model.view.name}
             onChange={event => props.onActiveViewChange?.(event.currentTarget.value)}
           >
-            {model.views.map(view => <option key={view.name} value={view.name}>{view.name} — {readableKind(view.kind)}</option>)}
-          </select>
-        </label>
-        <label className="grid min-w-48 flex-1 gap-1 text-xs font-medium">
-          Search This View
-          <input
+            {model.views.map(view => <NativeSelectOption key={view.name} value={view.name}>{view.name} — {readableKind(view.kind)}</NativeSelectOption>)}
+          </NativeSelect>
+        </Field>
+        <Field className="min-w-48 flex-1 gap-1">
+          <FieldLabel htmlFor="tocktutor-base-search" className="text-xs">Search This View</FieldLabel>
+          <Input
+            unstyled
+            id="tocktutor-base-search"
             aria-label={`Search ${model.view.name}`}
             className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm"
             maxLength={1_000}
@@ -335,26 +337,10 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
             value={model.search}
             onChange={event => props.onSearchChange?.(model.view.name, event.currentTarget.value)}
           />
-        </label>
+        </Field>
         <p aria-live="polite" className="m-0 text-sm text-[var(--tt-muted)]">{resultCount(model.rows.length)}</p>
-        <button
-          disabled={tsv === null || props.onCopy === undefined}
-          type="button"
-          onClick={() => {
-            if (tsv !== null) props.onCopy?.({ kind: 'results', text: tsv, view: model.view.name })
-          }}
-        >
-          Copy Visible Results
-        </button>
-        <button
-          disabled={csv === null || props.onExport === undefined}
-          type="button"
-          onClick={() => {
-            if (csv !== null) props.onExport?.({ filename: executableBaseCsvFilename(model.view.name), text: csv, view: model.view.name })
-          }}
-        >
-          Export Visible CSV
-        </button>
+        <Button size="sm" variant="outline" disabled={tsv === null || props.onCopy === undefined} type="button" onClick={() => { if (tsv !== null) props.onCopy?.({ kind: 'results', text: tsv, view: model.view.name }) }}>Copy Visible Results</Button>
+        <Button size="sm" variant="outline" disabled={csv === null || props.onExport === undefined} type="button" onClick={() => { if (csv !== null) props.onExport?.({ filename: executableBaseCsvFilename(model.view.name), text: csv, view: model.view.name }) }}>Export Visible CSV</Button>
       </header>
       {blocked ? (
         <p role="alert">Unsupported Base expression: {model.unsupported.map(entry => entry.expression).join(', ')}</p>

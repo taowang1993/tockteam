@@ -50,6 +50,18 @@ test('allocates a fresh pane id and deduplicates note tabs', () => {
   assert.equal(session.groups.find(group => group.id === second.groupId)?.tabs.length, 1)
 })
 
+test('replaces an active unpinned note only when requested', () => {
+  let session = createWorkbenchSession('route-1', { id: 'vault-1', generation: 1 })
+  session = openNoteTab(session, session.focusedGroupId, 'one.md')
+  const tabId = session.groups[0]?.tabs[0]?.id
+  session = openNoteTab(session, session.focusedGroupId, 'two.md', { replaceActive: true })
+  assert.deepEqual(session.groups[0]?.tabs.map(tab => tab.path), ['two.md'])
+  assert.equal(session.groups[0]?.tabs[0]?.id, tabId)
+
+  session = openNoteTab(session, session.focusedGroupId, 'three.md')
+  assert.deepEqual(session.groups[0]?.tabs.map(tab => tab.path), ['two.md', 'three.md'])
+})
+
 test('coalesces a dirty save gate and blocks failed persistence', async () => {
   let session = createWorkbenchSession('route-1', { id: 'vault-1', generation: 1 })
   session = openNoteTab(session, session.focusedGroupId, 'one.md')

@@ -5,25 +5,6 @@ import { classifyExternalEmbed } from "./external-embeds.js";
 const chromeKey = new PluginKey('tocktutorLivePreviewChrome');
 function foldRegions(doc) {
     const regions = [];
-    const top = [];
-    doc.forEach((node, offset) => { top.push({ node, pos: offset }); });
-    for (let index = 0; index < top.length; index += 1) {
-        const entry = top[index];
-        if (entry.node.type.name !== 'heading')
-            continue;
-        const level = Number(entry.node.attrs.level) || 1;
-        let bodyTo = doc.content.size;
-        for (let next = index + 1; next < top.length; next += 1) {
-            const candidate = top[next];
-            if (candidate.node.type.name === 'heading' && (Number(candidate.node.attrs.level) || 1) <= level) {
-                bodyTo = candidate.pos;
-                break;
-            }
-        }
-        const to = entry.pos + entry.node.nodeSize;
-        if (bodyTo > to)
-            regions.push({ bodyFrom: to, bodyTo, from: entry.pos, kind: 'heading', to });
-    }
     doc.descendants((node, pos) => {
         if (node.type.name !== 'list_item')
             return;
@@ -34,7 +15,7 @@ function foldRegions(doc) {
             if (child.isTextblock)
                 sawText = true;
             else if (sawText && (child.type.name === 'bullet_list' || child.type.name === 'ordered_list')) {
-                regions.push({ bodyFrom: childPos, bodyTo: childPos + child.nodeSize, from: pos, kind: 'list', to: pos + node.nodeSize });
+                regions.push({ bodyFrom: childPos, bodyTo: childPos + child.nodeSize, from: pos, to: pos + node.nodeSize });
             }
             offset += child.nodeSize;
         });
@@ -47,7 +28,7 @@ function widgetButton(region, folded) {
     button.className = 'tocktutor-live-fold mr-1 inline-flex size-5 items-center justify-center rounded border-0 bg-transparent text-[var(--tt-muted)]';
     button.dataset.foldFrom = String(region.from);
     button.setAttribute('aria-expanded', String(!folded));
-    button.setAttribute('aria-label', `${folded ? 'Expand' : 'Collapse'} ${region.kind === 'heading' ? 'Heading' : 'List'}`);
+    button.setAttribute('aria-label', `${folded ? 'Expand' : 'Collapse'} List`);
     button.textContent = folded ? '›' : '⌄';
     return button;
 }

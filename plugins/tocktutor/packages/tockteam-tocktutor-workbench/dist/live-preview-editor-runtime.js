@@ -8,6 +8,7 @@ import { gfm } from '@milkdown/preset-gfm';
 import { Plugin } from '@milkdown/prose/state';
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react';
 import { $prose, getMarkdown, replaceAll } from '@milkdown/utils';
+import { Button } from '@tockteam/ui/button';
 import { useEffect, useMemo, useRef, } from 'react';
 import { projectEditorWidgets } from "./editor-widgets.js";
 import { runLivePreviewTableAction } from "./milkdown-editor-commands.js";
@@ -245,7 +246,7 @@ function LivePreviewEditorInner(props) {
             props.onTableAction?.(action);
     };
     const shellClass = useMemo(() => `tocktutor-live-preview-editor relative min-h-0 min-w-0 flex-1 overflow-auto ${props.className ?? ''}`, [props.className]);
-    return (_jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: shellClass, children: [tableDocument && (_jsx("div", { "aria-label": "Live Preview Table Commands", className: "sticky top-0 z-1 flex flex-wrap gap-1 border-b border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs", children: [['add-row-before', 'Add Row Above'], ['add-row-after', 'Add Row Below'], ['move-row-up', 'Move Row Up'], ['move-row-down', 'Move Row Down'], ['delete-row', 'Delete Row'], ['add-column-before', 'Add Column Left'], ['add-column-after', 'Add Column Right'], ['move-column-left', 'Move Column Left'], ['move-column-right', 'Move Column Right'], ['delete-column', 'Delete Column'], ['align-default', 'Default Alignment'], ['align-left', 'Align Left'], ['align-center', 'Align Center'], ['align-right', 'Align Right'], ['sort-ascending', 'Sort Ascending'], ['sort-descending', 'Sort Descending']].map(([action, label]) => (_jsx("button", { className: "rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-0.5 text-inherit", onClick: () => { tableAction(action); }, type: "button", children: label }, action))) })), _jsx(Milkdown, {})] }));
+    return (_jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: shellClass, children: [tableDocument && (_jsx("div", { "aria-label": "Live Preview Table Commands", className: "sticky top-0 z-1 flex flex-wrap gap-1 border-b border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs", children: [['add-row-before', 'Add Row Above'], ['add-row-after', 'Add Row Below'], ['move-row-up', 'Move Row Up'], ['move-row-down', 'Move Row Down'], ['delete-row', 'Delete Row'], ['add-column-before', 'Add Column Left'], ['add-column-after', 'Add Column Right'], ['move-column-left', 'Move Column Left'], ['move-column-right', 'Move Column Right'], ['delete-column', 'Delete Column'], ['align-default', 'Default Alignment'], ['align-left', 'Align Left'], ['align-center', 'Align Center'], ['align-right', 'Align Right'], ['sort-ascending', 'Sort Ascending'], ['sort-descending', 'Sort Descending']].map(([action, label]) => (_jsx(Button, { unstyled: true, className: "rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-0.5 text-inherit", onClick: () => { tableAction(action); }, type: "button", children: label }, action))) })), _jsx(Milkdown, {})] }));
 }
 const plainTextPasteViews = new WeakSet();
 export function LivePreviewEditorRuntime(props) {

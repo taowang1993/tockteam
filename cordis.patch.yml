@@ -36,10 +36,11 @@
     - id: tockteam-plugin-marketplace
       name: '@tockteam/plugin-marketplace'
 
-# The Runtime bundle owns this entry. Desktop supplies both empty roots because
+# The Runtime bundle owns this entry. Desktop supplies the complete config because
 # the loader replaces the package patch config as one object.
 - id: note-vault-runtime
   name: tockbot-note-runtime
   config:
+    restoreActiveVault: true
     stateRoot: !!js "process.env.DSH_DESKTOP_APP_DATA ? process.env.DSH_DESKTOP_APP_DATA + '/tocktutor' : null"
     vaultRoot: null

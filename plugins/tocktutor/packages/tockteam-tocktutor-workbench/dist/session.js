@@ -193,15 +193,16 @@ export function openNoteTab(source, groupId, path, options = {}) {
         group.activeTabId = existing.id;
         return session;
     }
-    if (group.tabs.length >= MAX_NOTE_TABS)
-        return session;
-    const ids = new Set(session.groups.flatMap(candidate => candidate.tabs.map(tab => tab.id)));
     const mode = isEditorMode(options.mode) ? options.mode : DEFAULT_MODE;
     const lastEditingMode = isEditingMode(options.lastEditingMode)
         ? options.lastEditingMode
         : mode === 'reading' ? DEFAULT_EDITING_MODE : mode;
+    const activeIndex = options.replaceActive === true
+        ? group.tabs.findIndex(tab => tab.id === group.activeTabId && !tab.pinned)
+        : -1;
+    const ids = new Set(session.groups.flatMap(candidate => candidate.tabs.map(tab => tab.id)));
     const tab = makeTab({
-        id: nextId('tab', ids),
+        id: activeIndex < 0 ? nextId('tab', ids) : group.tabs[activeIndex].id,
         path,
         pinned: options.pinned === true,
         mode,
@@ -209,7 +210,14 @@ export function openNoteTab(source, groupId, path, options = {}) {
         revision: 0,
         savedRevision: 0,
     });
-    group.tabs.push(tab);
+    if (activeIndex < 0) {
+        if (group.tabs.length >= MAX_NOTE_TABS)
+            return session;
+        group.tabs.push(tab);
+    }
+    else {
+        group.tabs[activeIndex] = tab;
+    }
     group.activeTabId = tab.id;
     return session;
 }

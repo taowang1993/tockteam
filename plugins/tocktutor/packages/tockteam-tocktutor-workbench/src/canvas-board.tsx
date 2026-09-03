@@ -1,5 +1,6 @@
 import { Button } from '@tockteam/ui/button'
 import { Input } from '@tockteam/ui/input'
+import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Textarea } from '@tockteam/ui/textarea'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
@@ -68,14 +69,14 @@ function CanvasNodeEditor(props: {
   return (
     <form aria-label={`${label} Editor`} className="absolute top-12 left-2 z-40 grid min-w-64 gap-2 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-lg" onSubmit={props.onSubmit}>
       <strong>{editing ? `Edit ${label}` : `Add ${kind === 'group' ? 'Group' : `${kind[0]!.toUpperCase()}${kind.slice(1)} Card`}`}</strong>
-      {kind === 'text' && <label className="grid gap-1 text-xs">Card Text<Textarea unstyled aria-label="Card Text" className={controlClass} defaultValue={String(value ?? '')} maxLength={100_000} name="value" required /></label>}
-      {kind === 'link' && <label className="grid gap-1 text-xs">Card URL<Input unstyled aria-label="Card URL" className={controlClass} defaultValue={String(value ?? '')} maxLength={2_000} name="value" required type="url" /></label>}
-      {kind === 'file' && <label className="grid gap-1 text-xs">Card File<Input unstyled aria-label="Card File" className={controlClass} defaultValue={String(value ?? '')} maxLength={1_000} name="value" readOnly={editing} required /></label>}
-      {kind === 'group' && <label className="grid gap-1 text-xs">Group Label<Input unstyled aria-label="Group Label" className={controlClass} defaultValue={String(value ?? 'Group')} maxLength={200} name="value" required /></label>}
+      {kind === 'text' && <Label unstyled className="grid gap-1 text-xs">Card Text<Textarea unstyled aria-label="Card Text" className={controlClass} defaultValue={String(value ?? '')} maxLength={100_000} name="value" required /></Label>}
+      {kind === 'link' && <Label unstyled className="grid gap-1 text-xs">Card URL<Input unstyled aria-label="Card URL" className={controlClass} defaultValue={String(value ?? '')} maxLength={2_000} name="value" required type="url" /></Label>}
+      {kind === 'file' && <Label unstyled className="grid gap-1 text-xs">Card File<Input unstyled aria-label="Card File" className={controlClass} defaultValue={String(value ?? '')} maxLength={1_000} name="value" readOnly={editing} required /></Label>}
+      {kind === 'group' && <Label unstyled className="grid gap-1 text-xs">Group Label<Input unstyled aria-label="Group Label" className={controlClass} defaultValue={String(value ?? 'Group')} maxLength={200} name="value" required /></Label>}
       {editing && node !== undefined && (
         <fieldset className="grid grid-cols-2 gap-2 border-0 p-0">
           <legend className="sr-only">Card Geometry</legend>
-          {(['x', 'y', 'width', 'height'] as const).map(key => <label className="grid gap-1 text-xs" key={key}>{`Card ${key[0]!.toUpperCase()}${key.slice(1)}`}<Input unstyled aria-label={`Card ${key[0]!.toUpperCase()}${key.slice(1)}`} className={controlClass} defaultValue={String(node[key])} name={key} required type="number" /></label>)}
+          {(['x', 'y', 'width', 'height'] as const).map(key => <Label unstyled className="grid gap-1 text-xs" key={key}>{`Card ${key[0]!.toUpperCase()}${key.slice(1)}`}<Input unstyled aria-label={`Card ${key[0]!.toUpperCase()}${key.slice(1)}`} className={controlClass} defaultValue={String(node[key])} name={key} required type="number" /></Label>)}
         </fieldset>
       )}
       <div className="flex justify-end gap-2"><Button unstyled className={controlClass} onClick={props.onCancel} type="button">Cancel</Button><Button unstyled className={controlClass} type="submit">{editing ? `Save ${label}` : `Create ${label}`}</Button></div>
@@ -94,16 +95,16 @@ function CanvasEdgeEditor(props: {
   return (
     <form aria-label="Connection Editor" className="absolute top-12 right-2 z-40 grid min-w-72 gap-2 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 shadow-lg" onSubmit={props.onSubmit}>
       <strong>Edit Connection</strong>
-      <label className="grid gap-1 text-xs">Label<Input unstyled aria-label="Connection Label" className={controlClass} defaultValue={typeof edge.label === 'string' ? edge.label : ''} maxLength={200} name="label" /></label>
-      <label className="grid gap-1 text-xs">Color<NativeSelect unstyled aria-label="Connection Color" className={controlClass} defaultValue={typeof edge.color === 'string' ? edge.color : ''} name="color"><NativeSelectOption value="">Default</NativeSelectOption>{[1, 2, 3, 4, 5, 6].map(value => <NativeSelectOption key={value} value={String(value)}>{String(value)}</NativeSelectOption>)}</NativeSelect></label>
+      <Label unstyled className="grid gap-1 text-xs">Label<Input unstyled aria-label="Connection Label" className={controlClass} defaultValue={typeof edge.label === 'string' ? edge.label : ''} maxLength={200} name="label" /></Label>
+      <Label unstyled className="grid gap-1 text-xs">Color<NativeSelect unstyled aria-label="Connection Color" className={controlClass} defaultValue={typeof edge.color === 'string' ? edge.color : ''} name="color"><NativeSelectOption value="">Default</NativeSelectOption>{[1, 2, 3, 4, 5, 6].map(value => <NativeSelectOption key={value} value={String(value)}>{String(value)}</NativeSelectOption>)}</NativeSelect></Label>
       {(['from', 'to'] as const).map(endpoint => {
         const nodeId = endpoint === 'from' ? edge.fromNode : edge.toNode
         const side = endpoint === 'from' ? edge.fromSide : edge.toSide
         return (
           <fieldset className="grid grid-cols-2 gap-2 border-0 p-0" key={endpoint}>
             <legend className="sr-only">{endpoint === 'from' ? 'Connection Source' : 'Connection Target'}</legend>
-            <label className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Card' : 'Target Card'}<NativeSelect unstyled aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Card`} className={controlClass} defaultValue={nodeId} name={`${endpoint}Node`}>{props.document.nodes.filter(isConnectableCanvasNode).map(node => <NativeSelectOption key={node.id} value={node.id}>{nodeLabel(node)}</NativeSelectOption>)}</NativeSelect></label>
-            <label className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Side' : 'Target Side'}<NativeSelect unstyled aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Side`} className={controlClass} defaultValue={typeof side === 'string' ? side : endpoint === 'from' ? 'right' : 'left'} name={`${endpoint}Side`}>{SIDES.map(value => <NativeSelectOption key={value} value={value}>{titleCaseSide(value)}</NativeSelectOption>)}</NativeSelect></label>
+            <Label unstyled className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Card' : 'Target Card'}<NativeSelect unstyled aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Card`} className={controlClass} defaultValue={nodeId} name={`${endpoint}Node`}>{props.document.nodes.filter(isConnectableCanvasNode).map(node => <NativeSelectOption key={node.id} value={node.id}>{nodeLabel(node)}</NativeSelectOption>)}</NativeSelect></Label>
+            <Label unstyled className="grid gap-1 text-xs">{endpoint === 'from' ? 'Source Side' : 'Target Side'}<NativeSelect unstyled aria-label={`Connection ${endpoint === 'from' ? 'Source' : 'Target'} Side`} className={controlClass} defaultValue={typeof side === 'string' ? side : endpoint === 'from' ? 'right' : 'left'} name={`${endpoint}Side`}>{SIDES.map(value => <NativeSelectOption key={value} value={value}>{titleCaseSide(value)}</NativeSelectOption>)}</NativeSelect></Label>
           </fieldset>
         )
       })}

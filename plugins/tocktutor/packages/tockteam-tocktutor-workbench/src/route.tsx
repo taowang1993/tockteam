@@ -1,13 +1,16 @@
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@tockteam/ui/command'
 import { Dialog, DialogContent, DialogTitle } from '@tockteam/ui/dialog'
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@tockteam/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@tockteam/ui/popover'
 import { Textarea } from '@tockteam/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@tockteam/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
   useEffect,
@@ -24,22 +27,31 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Bookmark,
+  BookmarkPlus,
   ChevronLeft,
   ChevronRight,
   Ellipsis,
+  FileClock,
+  FileCode2,
   FileText,
-  Folder,
+  Globe2,
+  Link2,
+  ListTree,
   MessageSquare,
-  Music,
+  Network,
   PanelLeft,
   PanelRight,
+  PanelsTopLeft,
   PanelTop,
+  Paperclip,
   Pencil,
   Plus,
   Search,
   SlidersHorizontal,
+  Tags,
+  Trash2,
   Upload,
+  Wrench,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -63,7 +75,8 @@ import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
 import { LivePreviewView, RichReadingView } from './editor-surface.tsx'
 import { SourceEditor } from './source-editor.tsx'
-import { WorkbenchUtilities } from './utility-panel.tsx'
+import { WorkbenchUtilities, type WorkbenchUtilityView } from './utility-panel.tsx'
+import { WorkbenchVaultDialog } from './vault-dialog.tsx'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 import {
   parseCanvasDocument,
@@ -524,7 +537,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     links: null,
     message: 'Loading the active vault.',
     outline: null,
-    mode: 'source',
+    mode: 'live-preview',
     organizationProposal: null,
     path: null,
     phase: 'loading',
@@ -753,7 +766,7 @@ export class WorkbenchRouteController {
       this.update({
         documentKind: 'markdown',
         message: `${path} ${operation}.`,
-        mode: 'source',
+        mode: this.snapshot.settings?.defaultEditingMode ?? 'live-preview',
         path,
         revision: result.revision,
         saveStatus: 'saved',
@@ -1071,7 +1084,7 @@ export class WorkbenchRouteController {
       this.shellSession,
       this.shellSession.focusedGroupId,
       path,
-      { mode: sessionModeFromRoute(this.snapshot.mode) },
+      { mode: sessionModeFromRoute(this.snapshot.mode), replaceActive: true },
     )
     this.shellSession = markTabDirty(this.shellSession, this.shellSession.focusedGroupId, path, false)
     this.syncShell()
@@ -1889,8 +1902,9 @@ export class WorkbenchRouteController {
     else if (!this.dispatchCurrent(dispatchRevision, activeVault)) return false
     if (path === this.snapshot.path) return true
     const pane = this.pane()
+    const activeTab = pane?.tabs.find(tab => tab.path === pane.activePath)
     if (pane === undefined
-      || (!pane.tabs.some(tab => tab.path === path) && pane.tabs.length >= MAX_NOTE_TABS)) {
+      || (!pane.tabs.some(tab => tab.path === path) && pane.tabs.length >= MAX_NOTE_TABS && activeTab?.pinned !== false)) {
       this.update({ message: `This pane is limited to ${String(MAX_NOTE_TABS)} note tabs.` })
       return false
     }
@@ -1926,7 +1940,8 @@ export class WorkbenchRouteController {
           if (!this.current(operation.id, vault) || operation.signal.aborted) return false
         }
       }
-      const mode = pane.tabs.find(tab => tab.path === path)?.mode ?? this.snapshot.mode
+      const mode = pane.tabs.find(tab => tab.path === path)?.mode
+        ?? (documentKind(path) === 'markdown' ? this.snapshot.settings?.defaultEditingMode ?? 'live-preview' : 'source')
       this.cancelEmbedOperation()
       this.embedTargets = embedTargetSources(content)
       this.update({
@@ -2490,7 +2505,6 @@ export interface TockTutorRouteViewProps {
   onOpenCommandPalette?(): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): void
   onOpenRecovery?(): void
-  onOpenSandboxVault?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenExternalUrl?(url: string): void
   onOpenSearch?(): void
@@ -2515,7 +2529,6 @@ export interface TockTutorRouteViewProps {
   onSelect(path: string): void
   onSubmitDispatch?(draft: NativeDispatchDraft): void
   onToggleFocusMode?(): void
-  onTogglePinTab?(paneId: string, path: string): void
   onTrashCurrent?(): void
   onToggleTask(index: number): void
   active?: boolean
@@ -2587,6 +2600,77 @@ const SEARCH_OPTIONS = [
   { description: 'match property', label: '[property]', value: '[]' },
 ] as const
 
+function NoteSearchPreview(props: {
+  match: VaultSearchMatch | undefined
+  path: string | null
+}): ReactNode {
+  return (
+    <aside aria-label="Note Preview" className="min-h-0 p-3 max-sm:hidden" role="region">
+      {props.path === null ? (
+        <div className="flex h-full items-center justify-center rounded-lg border border-[var(--tt-border)] px-6 text-center text-sm text-[var(--tt-muted)]">Select a result to preview it.</div>
+      ) : (
+        <div className="h-full overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)]">
+          <div className="h-20 border-b border-[var(--tt-border)] bg-[var(--tt-selected)]" />
+          <div className="p-5">
+            <span className="text-xs text-[var(--tt-muted)]">Note</span>
+            <strong className="mt-1 block truncate text-xl font-semibold tracking-[-0.01em]">{noteTitle(props.path)}</strong>
+            {props.match === undefined ? (
+              <p className="mt-3 mb-0 truncate text-sm leading-5 text-[var(--tt-muted)]">{props.path}</p>
+            ) : (
+              <>
+                <p className="mt-3 mb-0 text-sm leading-5 text-[var(--tt-text)]">{props.match.preview}</p>
+                <p className="mt-2 mb-0 truncate text-xs text-[var(--tt-muted)]">{props.match.path}{props.match.line === null ? '' : `:${String(props.match.line)}`}</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </aside>
+  )
+}
+
+function NoteSearchResultList(props: {
+  matches: readonly VaultSearchMatch[]
+  onClose(): void
+  onPreview(choice: number | string): void
+  onSelect(path: string): void
+  pathResults: readonly string[]
+  previewMatchIndex: number
+  previewResultPath: string | null
+  query: string
+}): ReactNode {
+  return (
+    <div className="min-h-0 overflow-auto">
+      {props.matches.length > 0 ? (
+        <ul className="m-0 grid list-none gap-0.5 p-0" aria-label="Vault Search Results">
+          {props.matches.map((match, index) => (
+            <li key={`${match.kind}:${match.path}:${String(match.line ?? 0)}:${match.preview}`}>
+              <Button unstyled aria-current={props.previewMatchIndex === index ? 'true' : undefined} aria-label={`Open ${match.path}`} className="grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(match.path); props.onClose() }} onFocus={() => { props.onPreview(index) }} onMouseEnter={() => { props.onPreview(index) }} type="button">
+                <FileText aria-hidden="true" className="mt-0.5 text-[var(--tt-muted)]" strokeWidth={1.6} />
+                <span className="min-w-0">
+                  <strong className="block truncate text-sm font-medium">{noteTitle(match.path)}</strong>
+                  <span className="block truncate text-xs text-[var(--tt-muted)]">{match.preview}</span>
+                </span>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : props.pathResults.length > 0 ? (
+        <ul className="m-0 grid list-none gap-0.5 p-0" aria-label="Matching Note Paths">
+          {props.pathResults.map(path => (
+            <li key={path}>
+              <Button unstyled aria-current={props.previewResultPath === path ? 'true' : undefined} aria-label={`Open ${path}`} className="grid min-h-9 w-full grid-cols-[18px_minmax(0,1fr)] items-center gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-sm outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(path); props.onClose() }} onFocus={() => { props.onPreview(path) }} onMouseEnter={() => { props.onPreview(path) }} type="button">
+                <FileText aria-hidden="true" className="text-[var(--tt-muted)]" strokeWidth={1.6} />
+                <span className="truncate">{path}</span>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : <Alert unstyled className="px-2 py-3 text-sm text-[var(--tt-muted)]" role="status">{props.query.trim() === '' ? 'Type to search notes.' : 'No matching notes.'}</Alert>}
+    </div>
+  )
+}
+
 function WorkbenchNoteSearchPalette(props: {
   notePaths: readonly string[]
   onClose(): void
@@ -2603,6 +2687,10 @@ function WorkbenchNoteSearchPalette(props: {
   const searchInputContainer = useRef<HTMLDivElement>(null)
   const searchCaret = useRef<number | null>(null)
   const [searchOptionsOpen, setSearchOptionsOpen] = useState(false)
+  const [previewChoice, setPreviewChoice] = useState<number | string | null>(null)
+  const previewMatchIndex = typeof previewChoice === 'number' && matches[previewChoice] !== undefined ? previewChoice : 0
+  const previewMatch = matches[previewMatchIndex]
+  const previewResultPath = previewMatch?.path ?? pathResults.find(path => path === previewChoice) ?? pathResults[0] ?? null
   const insertSearchOption = (value: string): void => {
     const input = searchInputContainer.current?.querySelector('input')
     const start = input?.selectionStart ?? snapshot.searchQuery.length
@@ -2620,12 +2708,12 @@ function WorkbenchNoteSearchPalette(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
         unstyled
-        className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[600px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[900px] -translate-1/2 grid-rows-[60px_minmax(0,1fr)_44px] overflow-hidden rounded-[14px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[640px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[960px] -translate-1/2 grid-rows-[56px_42px_minmax(0,1fr)_40px] overflow-hidden rounded-[14px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-[0_18px_48px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)] outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-text)_6%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
         overlayClassName="z-[2147483646] !bg-transparent"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Search Notes</DialogTitle>
-        <div ref={searchInputContainer} className="flex min-w-0 items-center gap-3 border-b border-[var(--tt-border)] px-4 text-[var(--tt-muted)] [&>svg]:size-[18px]">
+        <div ref={searchInputContainer} className="flex min-w-0 items-center gap-3 px-4 text-[var(--tt-muted)] [&>svg]:size-[18px]">
           <Search aria-hidden="true" />
           <Input
             unstyled
@@ -2690,42 +2778,36 @@ function WorkbenchNoteSearchPalette(props: {
             </Popover>
           )}
         </div>
-        <section className="grid min-h-0 grid-rows-[52px_minmax(0,1fr)] px-4 pb-4" aria-label="Note Search Results">
-          <header className="flex items-center justify-between gap-3 border-b border-[var(--tt-border)] text-xs font-medium text-[var(--tt-muted)]">
-            <div className="flex gap-1">
-              <Button unstyled aria-pressed={(snapshot.searchMode ?? 'query') === 'query'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 aria-pressed:border-[var(--tt-accent)]" onClick={() => { props.onSearchMode?.('query') }} type="button">Keyword</Button>
-              <Button unstyled aria-pressed={snapshot.searchMode === 'related'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 aria-pressed:border-[var(--tt-accent)]" onClick={() => { props.onSearchMode?.('related') }} type="button">Related</Button>
-              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1" disabled={snapshot.searchLoading === true || snapshot.searchQuery.trim() === ''} onClick={props.onRunSearch} type="button">{snapshot.searchLoading === true ? 'Searching…' : 'Search'}</Button>
-            </div>
-            <Alert unstyled aria-live="polite" className="text-xs text-[var(--tt-muted)]" role="status">{matches.length > 0 ? `${String(matches.length)} vault results.` : `${String(pathResults.length)} matching note paths.`}</Alert>
-          </header>
-          <div className="min-h-0 overflow-auto py-2">
-            {matches.length > 0 ? (
-              <ul className="m-0 grid list-none gap-1 p-0" aria-label="Vault Search Results">
-                {matches.map(match => (
-                  <li key={`${match.kind}:${match.path}:${String(match.line ?? 0)}:${match.preview}`}>
-                    <Button unstyled className="w-full rounded-md border-0 bg-transparent px-2.5 py-2 text-left hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(match.path); props.onClose() }} type="button">
-                      <strong className="block truncate text-sm">{match.path}{match.line === null ? '' : `:${String(match.line)}`}</strong>
-                      <span className="block truncate text-xs text-[var(--tt-muted)]">{match.preview}</span>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : pathResults.length > 0 ? (
-              <ul className="m-0 grid list-none gap-1 p-0" aria-label="Matching Note Paths">
-                {pathResults.map(path => (
-                  <li key={path}>
-                    <Button unstyled className="w-full rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-sm hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(path); props.onClose() }} type="button">{path}</Button>
-                  </li>
-                ))}
-              </ul>
-            ) : <Alert unstyled className="px-2.5 py-2 text-sm text-[var(--tt-muted)]" role="status">{snapshot.searchQuery.trim() === '' ? 'Type to search notes.' : 'No matching notes.'}</Alert>}
+        <header className="flex items-center justify-between gap-3 border-b border-[var(--tt-border)] px-3 text-xs font-medium text-[var(--tt-muted)]">
+          <div className="flex items-center gap-0.5">
+            <ToggleGroup unstyled type="single" aria-label="Search Mode" className="flex items-center gap-0.5" value={snapshot.searchMode ?? 'query'} onValueChange={value => { if (value === 'query' || value === 'related') props.onSearchMode?.(value) }}>
+              <ToggleGroupItem unstyled className="rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] data-[state=on]:bg-[var(--tt-selected)] data-[state=on]:text-[var(--tt-text)]" value="query">Keyword</ToggleGroupItem>
+              <ToggleGroupItem unstyled className="rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] data-[state=on]:bg-[var(--tt-selected)] data-[state=on]:text-[var(--tt-text)]" value="related">Related</ToggleGroupItem>
+            </ToggleGroup>
+            <Button unstyled className="rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] disabled:opacity-40" disabled={snapshot.searchLoading === true || snapshot.searchQuery.trim() === ''} onClick={props.onRunSearch} type="button">{snapshot.searchLoading === true ? 'Searching…' : 'Search'}</Button>
           </div>
+          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role="status">{matches.length > 0 ? `${String(matches.length)} vault results` : `${String(pathResults.length)} matching note paths`}</Alert>
+        </header>
+        <section className="grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1" aria-label="Search Results">
+          <div className="grid min-h-0 grid-rows-[36px_minmax(0,1fr)] border-r border-[var(--tt-border)] px-3 pb-3 max-sm:border-r-0">
+            <div className="flex items-end px-2 pb-1 text-[11px] font-medium text-[var(--tt-muted)]">Results</div>
+            <NoteSearchResultList
+              matches={matches}
+              onClose={props.onClose}
+              onPreview={setPreviewChoice}
+              onSelect={props.onSelect}
+              pathResults={pathResults}
+              previewMatchIndex={previewMatchIndex}
+              previewResultPath={previewResultPath}
+              query={snapshot.searchQuery}
+            />
+          </div>
+          <NoteSearchPreview match={previewMatch} path={previewResultPath} />
         </section>
-        <footer className="flex items-center gap-5 border-t border-[var(--tt-border)] px-4 text-xs text-[var(--tt-muted)]">
-          <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[var(--tt-text)]" onClick={props.onCommands} type="button">Commands</Button>
-          <span className="ml-auto flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Enter</kbd> Search</span>
-          <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Esc</kbd> Dismiss</span>
+        <footer className="flex items-center gap-4 border-t border-[var(--tt-border)] px-3 text-[11px] text-[var(--tt-muted)]">
+          <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]" onClick={props.onCommands} type="button">Commands</Button>
+          <span className="ml-auto flex items-center gap-1.5"><kbd className="font-[inherit] text-[var(--tt-text)]">↵</kbd> Search</span>
+          <span className="flex items-center gap-1.5"><kbd className="font-[inherit] text-[var(--tt-text)]">Esc</kbd> Dismiss</span>
         </footer>
       </DialogContent>
     </Dialog>
@@ -2765,7 +2847,7 @@ function WorkbenchCommandPalette(props: {
     { disabled: !props.editorEnabled, label: 'Insert Table', run: editor('insert-table') },
     { disabled: !props.editorEnabled, label: 'Insert Tip Callout', run: editor('callout-tip') },
     { disabled: !props.editorEnabled, label: 'Delete Current Line', run: editor('delete-line') },
-  ].filter(command => command.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+  ]
   return (
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
@@ -2775,54 +2857,57 @@ function WorkbenchCommandPalette(props: {
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Command Palette</DialogTitle>
-        <Label unstyled className="flex min-w-0 items-center gap-3 border-b border-[var(--tt-border)] px-4 text-[var(--tt-muted)] [&>svg]:size-[18px]">
-          <Search aria-hidden="true" />
-          <Input
-            unstyled
-            aria-label="Search Commands"
-            autoFocus
-            className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] font-medium text-[var(--tt-text)] outline-none placeholder:text-[var(--tt-muted)]"
-            maxLength={200}
-            onChange={event => { setQuery(event.target.value) }}
-            placeholder="Search"
-            value={query}
-          />
-        </Label>
-        <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_minmax(240px,32%)] gap-6 px-4 pb-4 max-sm:grid-cols-1">
-          <section className="grid min-h-0 grid-rows-[52px_minmax(0,1fr)]" aria-label="Command Results">
-            <header className="flex items-center justify-between gap-3 text-xs font-medium text-[var(--tt-muted)]">
-              <span>Search Results</span>
-              <span>Best Matches</span>
-            </header>
-            <div className="grid auto-rows-max gap-1 overflow-auto" role="listbox" aria-label="Command Search Results">
-              {commands.map(command => (
-                <Button
-                  unstyled
-                  className="min-h-9 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-sm text-[var(--tt-text)] outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] disabled:opacity-40"
-                  disabled={command.disabled === true || command.run === undefined}
-                  key={command.label}
-                  onClick={() => {
-                    command.run?.()
-                    if (command.close !== false) props.onClose()
-                  }}
-                  role="option"
-                  type="button"
-                >{command.label}</Button>
-              ))}
-              {commands.length === 0 && <Alert unstyled className="px-2.5 py-2 text-sm text-[var(--tt-muted)]" role="status">No matching commands.</Alert>}
-            </div>
-          </section>
-          <section className="mt-[52px] min-h-0 rounded-xl border border-[var(--tt-border)] p-5 max-sm:hidden" aria-label="Command Preview">
+        <Command unstyled className="contents" label="Search Commands">
+          <Label unstyled className="flex min-w-0 items-center gap-3 border-b border-[var(--tt-border)] px-4 text-[var(--tt-muted)] [&>svg]:size-[18px]">
+            <Search aria-hidden="true" />
+            <CommandInput
+              unstyled
+              aria-label="Search Commands"
+              autoFocus
+              className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] font-medium text-[var(--tt-text)] outline-none placeholder:text-[var(--tt-muted)]"
+              maxLength={200}
+              onValueChange={setQuery}
+              placeholder="Search"
+              value={query}
+            />
+          </Label>
+          <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_minmax(240px,32%)] gap-6 px-4 pb-4 max-sm:grid-cols-1">
+            <section className="grid min-h-0 grid-rows-[52px_minmax(0,1fr)]" aria-label="Command Results">
+              <header className="flex items-center justify-between gap-3 text-xs font-medium text-[var(--tt-muted)]">
+                <span>Search Results</span>
+                <span>Best Matches</span>
+              </header>
+              <CommandList unstyled className="overflow-auto" label="Command Search Results">
+                <CommandEmpty unstyled className="px-2.5 py-2 text-sm text-[var(--tt-muted)]">No matching commands.</CommandEmpty>
+                <CommandGroup unstyled className="grid auto-rows-max gap-1">
+                  {commands.map(command => (
+                    <CommandItem
+                      unstyled
+                      className="min-h-9 cursor-default rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-sm text-[var(--tt-text)] outline-none hover:bg-[var(--tt-selected)] data-[selected=true]:bg-[var(--tt-selected)] data-[disabled=true]:opacity-40"
+                      disabled={command.disabled === true || command.run === undefined}
+                      key={command.label}
+                      onSelect={() => {
+                        command.run?.()
+                        if (command.close !== false) props.onClose()
+                      }}
+                      value={command.label}
+                    >{command.label}</CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </section>
+            <section className="mt-[52px] min-h-0 rounded-xl border border-[var(--tt-border)] p-5 max-sm:hidden" aria-label="Command Preview">
             <div className="flex h-full flex-col justify-center gap-2">
               <strong className="text-sm font-semibold">Command Preview</strong>
               <p className="m-0 text-sm leading-5 text-[var(--tt-muted)]">Choose a command to run it in TockTutor.</p>
             </div>
-          </section>
-        </div>
-        <footer className="flex items-center gap-5 border-t border-[var(--tt-border)] px-4 text-xs text-[var(--tt-muted)]">
-          <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Enter</kbd> Run</span>
-          <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Esc</kbd> Dismiss</span>
-        </footer>
+            </section>
+          </div>
+          <footer className="flex items-center gap-5 border-t border-[var(--tt-border)] px-4 text-xs text-[var(--tt-muted)]">
+            <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Enter</kbd> Run</span>
+            <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Esc</kbd> Dismiss</span>
+          </footer>
+        </Command>
       </DialogContent>
     </Dialog>
   )
@@ -2881,6 +2966,8 @@ function TreeEntries(props: {
   ))
 }
 
+const NOTE_ACTION_CLASS = "min-h-7 w-full gap-2 rounded-[5px] px-2 py-1 text-[13px] text-inherit focus:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus:text-inherit data-[highlighted]:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[highlighted]:text-inherit [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate"
+
 /** Semantic, authority-free view for the route state machine. */
 export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const { snapshot } = props
@@ -2903,7 +2990,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     : snapshot.entries.filter(entry => entry.kind === 'directory'
       ? documents.some(document => document.path.startsWith(`${entry.path}/`))
       : documents.includes(entry))
-  const [panel, setPanel] = useState<'assistant' | 'utilities' | null>(null)
+  const [panel, setPanel] = useState<'assistant' | WorkbenchUtilityView | null>(null)
   const [paletteView, setPaletteView] = useState<'commands' | 'notes' | null>(null)
   const visiblePalette = paletteView ?? (snapshot.searchOpen ? 'notes' : snapshot.commandPaletteOpen === true ? 'commands' : null)
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
@@ -2984,7 +3071,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const titlebar = active ? (
     <section
       aria-label="TockTutor Title Bar"
-      className="tocktutor-titlebar absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-tab-border:#d1d5db] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]"
+      className="tocktutor-titlebar absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]"
       style={{
         gridTemplateColumns: titlebarColumns,
         transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
@@ -3024,36 +3111,38 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <Button unstyled aria-label="Go Back" className="border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35" disabled={snapshot.canGoBack !== true} onClick={props.onBack} type="button"><WorkbenchGlyph kind="back" /></Button>
           <Button unstyled aria-label="Go Forward" className="border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35" disabled={snapshot.canGoForward !== true} onClick={props.onForward} type="button"><WorkbenchGlyph kind="forward" /></Button>
         </span>
-        <div className="tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex min-w-0 self-stretch items-end gap-1 overflow-visible px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:10px]" {...(focusedPane?.tabs.length ? { 'aria-label': 'Note Tabs', role: 'tablist' } : {})}>
+        <div className="tocktutor-tabs -mx-[calc(var(--tt-tab-curve)*2)] -mb-px flex max-w-[min(48rem,58vw)] min-w-0 self-stretch items-end gap-1 overflow-x-auto overflow-y-hidden px-[calc(var(--tt-tab-curve)*2)] [--tt-tab-curve:8px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" {...(focusedPane?.tabs.length ? { 'aria-label': 'Note Tabs', role: 'tablist' } : {})}>
           {focusedPane?.tabs.map((tab, index) => (
-            <div className="relative" key={tab.path} role="presentation">
-            <Button unstyled
-              aria-selected={tab.path === focusedPane.activePath}
-              className="relative z-1 -mb-px flex h-[30px] min-w-[118px] max-w-[220px] items-center gap-3 rounded-t-[10px] border border-b-0 border-[var(--tt-tab-border)] bg-[var(--tt-panel)] px-2.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_18%)] aria-[selected=false]:mb-0.5 aria-[selected=false]:border-b aria-[selected=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] aria-[selected=false]:text-[var(--tt-muted)] aria-[selected=false]:shadow-none aria-selected:before:pointer-events-none aria-selected:before:absolute aria-selected:before:bottom-[-1px] aria-selected:before:left-[calc(var(--tt-tab-curve)*-2)] aria-selected:before:h-[calc(var(--tt-tab-curve)*2)] aria-selected:before:w-[calc(var(--tt-tab-curve)*2)] aria-selected:before:rounded-full aria-selected:before:content-[''] aria-selected:before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] aria-selected:before:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] aria-selected:after:pointer-events-none aria-selected:after:absolute aria-selected:after:right-[calc(var(--tt-tab-curve)*-2)] aria-selected:after:bottom-[-1px] aria-selected:after:h-[calc(var(--tt-tab-curve)*2)] aria-selected:after:w-[calc(var(--tt-tab-curve)*2)] aria-selected:after:rounded-full aria-selected:after:content-[''] aria-selected:after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] aria-selected:after:[box-shadow:inset_0_0_0_1px_var(--tt-tab-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] [&>span]:truncate [&_svg]:ml-auto [&_svg]:size-3.5"
-              onClick={() => { props.onActivateTab(focusedPane.id, tab.path) }}
-              onKeyDown={event => {
-                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-                event.preventDefault()
-                const offset = event.key === 'ArrowLeft' ? -1 : 1
-                if (event.altKey) {
-                  props.onMoveTab?.(focusedPane.id, tab.path, offset)
-                  return
-                }
-                const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length]
-                if (next !== undefined) props.onActivateTab(focusedPane.id, next.path)
-              }}
-              aria-controls="tocktutor-note-editor"
-              role="tab"
-              tabIndex={tab.path === focusedPane.activePath ? 0 : -1}
-              title={tab.path}
-              type="button"
+            <div
+              className="relative z-1 -mb-px flex h-[34px] min-w-[118px] max-w-[220px] items-center gap-2 rounded-t-[5px] border border-b-0 border-[var(--tt-border)] bg-[var(--tt-panel)] pr-2.5 pl-3 before:pointer-events-none before:absolute before:bottom-[-1px] before:left-[calc(var(--tt-tab-curve)*-2)] before:h-[calc(var(--tt-tab-curve)*2)] before:w-[calc(var(--tt-tab-curve)*2)] before:rounded-full before:content-[''] before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)] before:[box-shadow:inset_0_0_0_1px_var(--tt-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] after:pointer-events-none after:absolute after:right-[calc(var(--tt-tab-curve)*-2)] after:bottom-[-1px] after:h-[calc(var(--tt-tab-curve)*2)] after:w-[calc(var(--tt-tab-curve)*2)] after:rounded-full after:content-[''] after:[clip-path:inset(50%_50%_0_calc(var(--tt-tab-curve)*-1))] after:[box-shadow:inset_0_0_0_1px_var(--tt-border),0_0_0_calc(var(--tt-tab-curve)*4)_var(--tt-panel)] data-[active=false]:border-b data-[active=false]:bg-[color-mix(in_srgb,var(--tt-panel)_70%,transparent)] data-[active=false]:text-[var(--tt-muted)] data-[active=false]:shadow-none data-[active=false]:before:hidden data-[active=false]:after:hidden"
+              data-active={tab.path === focusedPane.activePath}
+              key={tab.path}
+              role="presentation"
             >
-              <span>{tab.dirty && <span aria-label="Unsaved">•</span>}{fileName(tab.path)}</span>
-            </Button>
-            <span className="absolute top-1/2 right-1 z-2 flex -translate-y-1/2 gap-0.5">
-              <Button unstyled aria-label={`${tab.pinned === true ? 'Unpin' : 'Pin'} ${fileName(tab.path)}`} className="rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]" onClick={() => { props.onTogglePinTab?.(focusedPane.id, tab.path) }} type="button"><Bookmark aria-hidden="true" /></Button>
-              <Button unstyled aria-label={`Close ${fileName(tab.path)}`} className="rounded border-0 bg-transparent p-0.5 text-[var(--tt-muted)]" onClick={() => { props.onCloseTab?.(focusedPane.id, tab.path) }} type="button"><WorkbenchGlyph kind="close" /></Button>
-            </span>
+              <Button unstyled
+                aria-selected={tab.path === focusedPane.activePath}
+                className="relative z-1 flex min-w-0 flex-1 items-center self-stretch border-0 bg-transparent p-0 text-left [&>span]:truncate"
+                onClick={() => { props.onActivateTab(focusedPane.id, tab.path) }}
+                onKeyDown={event => {
+                  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+                  event.preventDefault()
+                  const offset = event.key === 'ArrowLeft' ? -1 : 1
+                  if (event.altKey) {
+                    props.onMoveTab?.(focusedPane.id, tab.path, offset)
+                    return
+                  }
+                  const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length]
+                  if (next !== undefined) props.onActivateTab(focusedPane.id, next.path)
+                }}
+                aria-controls="tocktutor-note-editor"
+                role="tab"
+                tabIndex={tab.path === focusedPane.activePath ? 0 : -1}
+                title={tab.path}
+                type="button"
+              >
+                <span>{tab.dirty && <span aria-label="Unsaved">•</span>}{fileName(tab.path)}</span>
+              </Button>
+              <Button unstyled aria-label={`Close ${fileName(tab.path)}`} className="relative z-1 inline-flex size-5 shrink-0 translate-x-0.5 items-center justify-center rounded border-0 bg-transparent p-0 text-[var(--tt-muted)] [&_svg]:size-3!" onClick={() => { props.onCloseTab?.(focusedPane.id, tab.path) }} type="button"><WorkbenchGlyph kind="close" /></Button>
             </div>
           ))}
         </div>
@@ -3158,16 +3247,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               </ul>
             </nav>
           </div>
-          <Button unstyled
-            aria-expanded={panel === 'utilities'}
-            className="tocktutor-vault-switcher grid grid-cols-[14px_minmax(0,1fr)_16px] items-center gap-1.5 border-0 border-t border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2.5 text-left [&>span]:truncate [&_svg]:size-[13px]"
-            onClick={() => { setPanel(current => current === 'utilities' ? null : 'utilities') }}
-            type="button"
-          >
-            <WorkbenchGlyph kind="collapse" />
-            <span>{snapshot.vault === null ? 'Choose Vault' : 'TockTutor Vault'}</span>
-            <WorkbenchGlyph kind="more" />
-          </Button>
+          <WorkbenchVaultDialog
+            onActivateRecentVault={props.onActivateRecentVault}
+            onCreateManagedVault={props.onCreateManagedVault}
+            onRemoveRecentVault={props.onRemoveRecentVault}
+            recentVaults={snapshot.recentVaults ?? []}
+            vault={snapshot.vault}
+          />
         </aside>
         <Button unstyled
           aria-label={`Resize Files Sidebar, ${String(sidebarWidth)} Pixels`}
@@ -3182,21 +3268,20 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <section aria-label="Note Editor" className="tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]" id="tocktutor-note-editor" role="tabpanel">
           <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5">
             <h2 className="m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
-            <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&_button]:inline-flex [&_button]:h-7 [&_button]:w-[26px] [&_button]:items-center [&_button]:justify-center [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--tt-muted)] [&_span]:inline-flex [&_span]:h-7 [&_span]:w-[26px] [&_span]:items-center [&_span]:justify-center [&_span]:border-0 [&_span]:bg-transparent [&_span]:p-0 [&_span]:text-[var(--tt-muted)]">
+            <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[26px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)]">
               {snapshot.documentKind === 'markdown' ? (
-                <span aria-label="Editor Mode" className="flex" role="group">
-                  {(['reading', 'live-preview', 'source'] as const).map(mode => (
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button
                       unstyled
-                      aria-label={mode === 'reading' ? 'Reading' : mode === 'live-preview' ? 'Live Preview' : 'Source'}
-                      aria-pressed={snapshot.mode === mode}
-                      className="w-auto! px-1.5! aria-pressed:text-[var(--tt-accent)]"
-                      key={mode}
-                      onClick={() => { props.onMode(mode) }}
+                      aria-label={snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View'}
+                      disabled={snapshot.path === null}
+                      onClick={() => { props.onMode(snapshot.mode === 'reading' ? 'live-preview' : 'reading') }}
                       type="button"
-                    >{mode === 'reading' ? <FileText aria-hidden="true" /> : mode === 'live-preview' ? <Pencil aria-hidden="true" /> : <WorkbenchGlyph kind="document" />}</Button>
-                  ))}
-                </span>
+                    >{snapshot.mode === 'reading' ? <Pencil aria-hidden="true" /> : <FileText aria-hidden="true" />}</Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View'}</TooltipContent>
+                </Tooltip>
               ) : (
                 <Button unstyled
                   aria-label={snapshot.mode === 'source' ? previewLabel : sourceLabel}
@@ -3204,24 +3289,72 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   type="button"
                 ><WorkbenchGlyph kind="pencil" /></Button>
               )}
-              <span><Music aria-hidden="true" /></span>
-              <span><Folder aria-hidden="true" /></span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button unstyled
-                    aria-label="More Note Actions"
-                    aria-expanded={panel === 'utilities'}
-                    onClick={() => { setPanel(current => current === 'utilities' ? null : 'utilities') }}
-                    type="button"
-                  ><WorkbenchGlyph kind="more" /></Button>
-                </TooltipTrigger>
-                <TooltipContent>More Note Actions</TooltipContent>
-              </Tooltip>
+              <DropdownMenu modal={false}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        unstyled
+                        aria-label="More Note Actions"
+                        className="inline-flex h-7 w-[26px] items-center justify-center border-0 bg-transparent p-0 text-[var(--tt-muted)]"
+                        type="button"
+                      ><WorkbenchGlyph kind="more" /></Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>More Note Actions</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-[260px] rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1,Canvas))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]"
+                  portalled={false}
+                  sideOffset={6}
+                  unstyled
+                >
+                  {snapshot.documentKind === 'markdown' && (
+                    <>
+                      <DropdownMenuRadioGroup aria-label="Editor Mode" value={snapshot.mode}>
+                        {([
+                          ['reading', 'Reading view', FileText],
+                          ['live-preview', 'Live Preview', Pencil],
+                          ['source', 'Source mode', FileCode2],
+                        ] as const).map(([mode, label, Icon]) => (
+                          <DropdownMenuRadioItem className={NOTE_ACTION_CLASS} key={mode} onSelect={() => { props.onMode(mode) }} value={mode}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuGroup>
+                    <DropdownMenuCheckboxItem checked={snapshot.settings?.backlinksInDocument ?? false} className={NOTE_ACTION_CLASS} disabled={snapshot.settings === undefined} onSelect={() => { props.onSettingsChange?.({ backlinksInDocument: !(snapshot.settings?.backlinksInDocument ?? false) }) }}><Link2 aria-hidden="true" /><span>Backlinks in document</span></DropdownMenuCheckboxItem>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || props.onAddBookmark === undefined} onSelect={() => { props.onAddBookmark?.() }}><BookmarkPlus aria-hidden="true" /><span>Bookmark note</span></DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    {([
+                      ['recovery', 'File recovery', FileClock],
+                      ['note-info', 'Properties and links', ListTree],
+                      ['graph', 'Graph view', Network],
+                      ['web', 'Web viewer', Globe2],
+                      ['library', 'Bookmarks and tags', Tags],
+                      ['attachments', 'Attachments and embeds', Paperclip],
+                      ['tools', 'Note tools', Wrench],
+                      ['workspace', 'Workspaces and panes', PanelsTopLeft],
+                      ['extensions', 'Reviews and actions', MessageSquare],
+                    ] as const).map(([view, label, Icon]) => (
+                      <DropdownMenuItem className={NOTE_ACTION_CLASS} key={view} onSelect={() => { setPanel(view) }}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem className={`${NOTE_ACTION_CLASS} text-[var(--dsw-alias-state-error-primary,#dc2626)]`} disabled={snapshot.path === null || props.onTrashCurrent === undefined} onSelect={() => { props.onTrashCurrent?.() }}><Trash2 aria-hidden="true" /><span>Move file to trash</span></DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
           <div
             aria-label="Editor Attachment Drop Zone"
-            className="tocktutor-editor-body relative min-h-0 overflow-auto"
+            className="tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-3xl [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none"
             onDrop={event => {
               if (event.dataTransfer.files.length === 0) return
               event.preventDefault()
@@ -3286,12 +3419,16 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           </div>
           <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]" role="group">
             <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
-            {snapshot.path !== null && (
-              <div className="ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
-                <span>0 Backlinks</span>
-                <span>{snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source'}</span>
-                <span>{String(words)} Words</span>
-                <span>{String(characters)} Characters</span>
+            <div className="tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
+              {snapshot.path !== null && (
+                <>
+                  <span>0 backlinks</span>
+                  <span>{snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source'}</span>
+                </>
+              )}
+              <span>{String(words)} words</span>
+              <span>{String(characters)} characters</span>
+              {snapshot.path !== null && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button unstyled
@@ -3304,8 +3441,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   </TooltipTrigger>
                   <TooltipContent>Open Assistant</TooltipContent>
                 </Tooltip>
-              </div>
-            )}
+              )}
+            </div>
           </footer>
         </section>
         <aside
@@ -3333,7 +3470,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           )}
           <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]">{props.assistantPanel}</div>
         </aside>
-        <WorkbenchUtilities {...props} activeProperties={activeProperties} onClose={() => { setPanel(null) }} open={panel === 'utilities'} />
+        <WorkbenchUtilities {...props} activeProperties={activeProperties} onClose={() => { setPanel(null) }} view={panel === 'assistant' ? null : panel} />
         </div>
       </main>
     </TooltipProvider>
@@ -3542,7 +3679,6 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenExternalUrl={url => { setExternalUrl(url) }}
         onOpenGraphNode={(path, mode) => { void controller.openGraphNode(path, mode) }}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
-        onOpenSandboxVault={() => { void controller.openSandboxVault() }}
         onOpenSearch={() => { controller.openSearch('') }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}
         onPrepareOrganization={() => { void controller.prepareOrganization() }}
@@ -3566,7 +3702,6 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onStoreAttachment={(fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64) }}
         onSubmitDispatch={draft => { void controller.submitDispatchDialog(draft) }}
         onToggleFocusMode={() => { controller.toggleFocusMode() }}
-        onTogglePinTab={(paneId, path) => { controller.togglePinTab(paneId, path) }}
         onToggleTask={index => { controller.toggleTask(index) }}
         onTrashCurrent={() => { void controller.trashCurrent() }}
         reviewPanel={(

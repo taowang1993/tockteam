@@ -499,6 +499,7 @@ test('dirty-gates protocol open and exclusive create dispatch', async () => {
     path: 'Created.md',
   })
   assert.equal(controller.getSnapshot().path, 'Created.md')
+  assert.equal(controller.getSnapshot().mode, 'live-preview')
   assert.equal(navigation.at(-1), '/tocktutor/Created.md')
   controller.dispose()
 })
@@ -804,6 +805,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
 
   assert.equal(await controller.select('Folder/Note.md'), true)
   assert.deepEqual(navigation, [['/tocktutor/Folder/Note.md', undefined]])
+  assert.equal(controller.getSnapshot().mode, 'live-preview')
   assert.equal(controller.getSnapshot().source, '# Before\n- [ ] Verify route\nParagraph ^route-block\n')
   controller.edit('x'.repeat(MAX_ROUTE_SOURCE_BYTES + 1))
   assert.equal(controller.getSnapshot().source, '# Before\n- [ ] Verify route\nParagraph ^route-block\n')
@@ -879,9 +881,9 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.doesNotMatch(sidebarHeader, /M15 3v18/u)
   assert.match(html, /\[--tt-footer-height:28px\]/u)
   assert.match(html, /grid-rows-\[40px_minmax\(0,1fr\)_var\(--tt-footer-height\)\]/u)
-  assert.match(html, /\[--tt-tab-border:#d1d5db\]/u)
-  assert.match(html, /\[--tt-tab-curve:10px\]/u)
-  assert.match(html, /box-shadow:inset_0_0_0_1px_var\(--tt-tab-border\)/u)
+  assert.doesNotMatch(html, /--tt-tab-border/u)
+  assert.match(html, /\[--tt-tab-curve:8px\]/u)
+  assert.match(html, /box-shadow:inset_0_0_0_1px_var\(--tt-border\)/u)
   assert.match(html, /<aside[^>]+aria-hidden="false"[^>]+aria-label="Files"[^>]+data-open="true"/u)
   assert.match(html, /<aside[^>]+aria-hidden="true"[^>]+aria-label="Assistant Panel"[^>]+class="tocktutor-right-panel tocktutor-right-panel-assistant[^>]+data-open="false"[^>]+inert=""/u)
   assert.doesNotMatch(html, /aria-label="Close Assistant"/u)
@@ -905,7 +907,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.equal(remote.listeners.size, 0)
 })
 
-test('deduplicates bounded note tabs and dirty-gates pane transitions', async () => {
+test('reuses the active note tab and dirty-gates pane transitions', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
@@ -913,12 +915,10 @@ test('deduplicates bounded note tabs and dirty-gates pane transitions', async ()
 
   await controller.select('Folder/Note.md')
   await controller.select('Second.md')
-  await controller.activateTab('pane-1', 'Folder/Note.md')
-  assert.deepEqual(controller.getSnapshot().panes[0]?.tabs.map(tab => tab.path), [
-    'Folder/Note.md',
-    'Second.md',
-  ])
-  assert.equal(controller.getSnapshot().panes[0]?.activePath, 'Folder/Note.md')
+  assert.deepEqual(controller.getSnapshot().panes[0]?.tabs.map(tab => tab.path), ['Second.md'])
+  assert.equal(controller.getSnapshot().panes[0]?.activePath, 'Second.md')
+  assert.equal(await controller.goBack(), true)
+  assert.deepEqual(controller.getSnapshot().panes[0]?.tabs.map(tab => tab.path), ['Folder/Note.md'])
 
   assert.equal(await controller.addPane(), true)
   assert.equal(controller.getSnapshot().focusedPaneId, 'pane-2')
@@ -960,18 +960,14 @@ test('deduplicates bounded note tabs and dirty-gates pane transitions', async ()
   controller.dispose()
 })
 
-test('enforces the route tab bound before dispatching another open', async () => {
+test('keeps ordinary note switching in one reusable tab', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
-  for (let index = 0; index < 20; index += 1) {
+  for (let index = 0; index <= 20; index += 1) {
     assert.equal(await controller.select(`Note-${String(index)}.md`), true)
   }
-  const opens = remote.calls.filter(call => call.method === 'openDocument').length
-  assert.equal(await controller.select('Overflow.md'), false)
-  assert.equal(controller.getSnapshot().panes[0]?.tabs.length, 20)
-  assert.equal(remote.calls.filter(call => call.method === 'openDocument').length, opens)
-  assert.match(controller.getSnapshot().message, /limited to 20 note tabs/u)
+  assert.deepEqual(controller.getSnapshot().panes[0]?.tabs.map(tab => tab.path), ['Note-20.md'])
   controller.dispose()
 })
 
@@ -1226,9 +1222,9 @@ test('pins, reorders, dirty-gates closes, and restores bounded route tabs', asyn
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
   assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.togglePinTab('pane-1', 'Folder/Note.md')
   assert.equal(await controller.select('Second.md'), true)
 
-  controller.togglePinTab('pane-1', 'Folder/Note.md')
   controller.moveTab('pane-1', 'Second.md', -1)
   let pane = controller.getSnapshot().panes[0]!
   assert.deepEqual(pane.tabs.map(tab => [tab.path, tab.pinned]), [
@@ -1274,12 +1270,13 @@ test('navigates note history and exposes command-palette and focus-mode shell st
   controller.dispose()
 })
 
-test('persists Reading, Live Preview, and Source mode independently per tab', async () => {
+test('persists Reading, Live Preview, and Source mode independently per explicit tab', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
   assert.equal(await controller.select('Folder/Note.md'), true)
   controller.setMode('live-preview')
+  controller.togglePinTab('pane-1', 'Folder/Note.md')
   assert.equal(controller.getSnapshot().mode, 'live-preview')
   assert.equal(await controller.select('Second.md'), true)
   controller.setMode('source')
@@ -1401,6 +1398,8 @@ test('persists bounded settings, tabs, focus mode, and named workspaces per vaul
   assert.equal(second.getSnapshot().settings?.defaultEditingMode, 'source')
   assert.equal(second.getSnapshot().settings?.backlinksInDocument, true)
   assert.equal(second.getSnapshot().workspaces?.[0]?.id, 'class-layout')
+  assert.equal(await second.select('Second.md'), true)
+  assert.equal(second.getSnapshot().mode, 'source')
   second.toggleFocusMode()
   assert.equal(await second.loadWorkspace('class-layout'), true)
   assert.equal(second.getSnapshot().focusMode, true)

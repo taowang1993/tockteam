@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   TockTutorRouteView,
@@ -25,7 +25,7 @@ const snapshot: WorkbenchRouteSnapshot = {
 }
 
 afterEach(() => {
-  document.body.replaceChildren()
+  cleanup()
 })
 
 function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
@@ -36,13 +36,13 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onCloseCommandPalette?(): void
   onCloseTab?(paneId: string, path: string): void
   onCopyGraphPath?(path: string): void
+  onCreateManagedVault?(name: string): void
   onEdit?(source: string): void
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): void
   onOpenRecovery?(): void
   onOpenSearch?(): void
-  onOpenSandboxVault?(): void
   onReadSnapshot?(id: string): void
   onRemoveRecentVault?(id: string): void
   onReopenClosedTab?(): void
@@ -54,7 +54,6 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onSettingsChange?(change: Record<string, unknown>): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
   onToggleFocusMode?(): void
-  onTogglePinTab?(paneId: string, path: string): void
   onToggleTask?(index: number): void
   onTrashCurrent?(): void
 } = {}): void {
@@ -71,6 +70,12 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
     snapshot={{ ...snapshot, ...overrides }}
     {...props}
   />)
+}
+
+function openNoteActions(): HTMLElement {
+  const trigger = screen.getByRole('button', { name: 'More Note Actions' })
+  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false })
+  return trigger
 }
 
 describe('TockTutor titlebar panel controls', () => {
@@ -152,7 +157,6 @@ describe('TockTutor titlebar panel controls', () => {
     const onBack = vi.fn()
     const onCloseTab = vi.fn()
     const onMoveTab = vi.fn()
-    const onTogglePinTab = vi.fn()
     renderRoute({
       canGoBack: true,
       commandPaletteOpen: false,
@@ -172,7 +176,6 @@ describe('TockTutor titlebar panel controls', () => {
       onBack,
       onCloseTab,
       onMoveTab,
-      onTogglePinTab,
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Go Back' }))
@@ -180,13 +183,15 @@ describe('TockTutor titlebar panel controls', () => {
     const firstTab = screen.getByRole('tab', { name: 'First.md' })
     fireEvent.keyDown(firstTab, { altKey: true, key: 'ArrowRight' })
     expect(onMoveTab).toHaveBeenCalledWith('main', 'First.md', 1)
-    fireEvent.click(screen.getByRole('button', { name: 'Pin First.md' }))
-    expect(onTogglePinTab).toHaveBeenCalledWith('main', 'First.md')
-    fireEvent.click(screen.getByRole('button', { name: 'Close First.md' }))
+    expect(screen.queryByRole('button', { name: 'Pin First.md' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Unpin Second.md' })).toBeNull()
+    const closeTab = screen.getByRole('button', { name: 'Close First.md' })
+    expect(firstTab.parentElement?.lastElementChild).toBe(closeTab)
+    fireEvent.click(closeTab)
     expect(onCloseTab).toHaveBeenCalledWith('main', 'First.md')
   })
 
-  it('filters and executes searchable command controls', () => {
+  it('filters and executes searchable command controls', async () => {
     const onCloseCommandPalette = vi.fn()
     const onOpenSearch = vi.fn()
     const onToggleFocusMode = vi.fn()
@@ -211,8 +216,10 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onCloseCommandPalette).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Commands' }))
-    fireEvent.change(screen.getByLabelText('Search Commands'), { target: { value: 'focus' } })
-    fireEvent.click(screen.getByRole('option', { name: 'Toggle Focus Mode' }))
+    const commandInput = screen.getByRole('combobox', { name: 'Search Commands' })
+    fireEvent.change(commandInput, { target: { value: 'focus' } })
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Toggle Focus Mode' }).getAttribute('aria-selected')).toBe('true'))
+    fireEvent.keyDown(commandInput, { key: 'Enter' })
     expect(onToggleFocusMode).toHaveBeenCalledOnce()
     expect(onCloseCommandPalette).toHaveBeenCalledOnce()
   })
@@ -221,7 +228,7 @@ describe('TockTutor titlebar panel controls', () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
     const onToggleTask = vi.fn()
-    const source = '# Lesson\n- [ ] Review\n```md\n> [!tip]- Literal\n```\n> [!tip]- Fold\n> Body\n'
+    const source = '# Lesson\n- [ ] Review\n- Parent\n  - Child\n```md\n> [!tip]- Literal\n```\n> [!tip]- Fold\n> Body\n'
     renderRoute({
       documentKind: 'markdown',
       mode: 'live-preview',
@@ -231,11 +238,36 @@ describe('TockTutor titlebar panel controls', () => {
       source,
     }, { onEdit, onMode, onToggleTask })
 
-    expect(screen.getByRole('button', { name: 'Live Preview' }).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getByRole('button', { name: 'Source' }))
+    expect(screen.getByRole('button', { name: 'Switch to Reading View' })).toBeTruthy()
+    const noteActions = screen.getByRole('button', { name: 'More Note Actions' })
+    const editorActions = noteActions.parentElement
+    expect(editorActions?.querySelector('.lucide-music')).toBeNull()
+    expect(editorActions?.querySelector('.lucide-folder')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Source' })).toBeNull()
+    expect(noteActions.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.keyDown(noteActions, { key: 'Enter' })
+    const menu = screen.getByRole('menu', { name: 'More Note Actions' })
+    expect(menu.getAttribute('data-slot')).toBe('dropdown-menu-content')
+    expect(menu.closest('[aria-hidden="true"]')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Reading view' })))
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Live Preview' })))
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(screen.queryByRole('menu', { name: 'More Note Actions' })).toBeNull()
+    expect(noteActions.getAttribute('aria-expanded')).toBe('false')
+    await waitFor(() => expect(document.activeElement).toBe(noteActions))
+    openNoteActions()
+    const sourceMode = await screen.findByRole('menuitemradio', { name: 'Source mode' })
+    expect(sourceMode.getAttribute('aria-checked')).toBe('false')
+    fireEvent.click(sourceMode)
     expect(onMode).toHaveBeenCalledWith('source')
     await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
     expect(document.querySelector('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
+    const editorBody = screen.getByLabelText('Editor Attachment Drop Zone')
+    expect(editorBody.className).toContain('[&_.ProseMirror]:mx-auto')
+    expect(editorBody.className).toContain('[&_.ProseMirror]:max-w-3xl')
+    expect(editorBody.className).toContain('[&_.ProseMirror]:w-[calc(100%-48px)]')
+    expect(editorBody.className).toContain('[&_.ProseMirror]:outline-none')
     expect(screen.getByRole('note').textContent).toMatch(/Protected Markdown stays exact/u)
     const task = screen.getByRole('checkbox', { name: 'Mark Task as Complete' })
     expect(task.tabIndex).toBe(0)
@@ -248,32 +280,83 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.keyDown(calloutFold, { key: 'Enter' })
     await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('> [!tip]- Fold', '> [!tip]+ Fold')))
     expect(callout).toBeTruthy()
-    const fold = screen.getByRole('button', { name: 'Collapse Heading' })
-    fireEvent.keyDown(fold, { key: ' ' })
-    expect(screen.getByRole('button', { name: 'Expand Heading' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Collapse Heading' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Collapse List' })).toBeTruthy()
   })
 
-  it('opens opaque recent and sandbox vault controls without paths', () => {
-    const id = `vault:${'a'.repeat(64)}`
+  it('opens an Obsidian-like vault switcher without developer controls', () => {
+    const currentId = `vault:${'a'.repeat(64)}`
+    const recentId = `vault:${'b'.repeat(64)}`
     const onActivateRecentVault = vi.fn()
-    const onOpenSandboxVault = vi.fn()
+    const onCreateManagedVault = vi.fn()
     const onRemoveRecentVault = vi.fn()
     renderRoute({
-      recentVaults: [{ id, lastOpenedAt: 1 }],
-      vault: { generation: 2, id: `vault:${'b'.repeat(64)}` },
-    }, { onActivateRecentVault, onOpenSandboxVault, onRemoveRecentVault })
+      recentVaults: [{ id: currentId, lastOpenedAt: 2 }, { id: recentId, lastOpenedAt: 1 }],
+      vault: { generation: 2, id: currentId },
+    }, { onActivateRecentVault, onCreateManagedVault, onRemoveRecentVault })
 
-    fireEvent.click(screen.getByRole('button', { name: /TockTutor Vault/u }))
-    const utilities = screen.getByLabelText('Workbench Utilities')
-    expect(utilities.className).toContain('auto-rows-max')
-    expect(utilities.className).not.toContain('minmax(0,1fr)')
-    fireEvent.click(screen.getByRole('button', { name: 'Open Sandbox Vault' }))
-    expect(onOpenSandboxVault).toHaveBeenCalledOnce()
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
-    expect(onActivateRecentVault).toHaveBeenCalledWith(id)
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Recent Vault 1' }))
-    expect(onRemoveRecentVault).toHaveBeenCalledWith(id)
-    expect(document.body.textContent).not.toContain(id)
+    const vaultSwitcher = screen.getByRole('button', { name: /TockTutor Vault/u })
+    fireEvent.click(vaultSwitcher)
+    const dialog = screen.getByRole('dialog', { name: 'Vaults' })
+    expect(screen.getByRole('region', { name: 'Vault List' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Vault Actions' })).toBeTruthy()
+    expect(dialog.textContent).toContain('Current Vault')
+    expect(dialog.textContent).toContain('Recent Vault 1')
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-open')).toBe('false')
+    expect(screen.queryByText('Developer Options')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open Demo Vault' })).toBeNull()
+    expect(document.body.textContent).not.toContain(currentId)
+    expect(document.body.textContent).not.toContain(recentId)
+    fireEvent.click(screen.getByRole('button', { name: 'Forget Recent Vault 1' }))
+    expect(onRemoveRecentVault).toHaveBeenCalledWith(recentId)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create New Vault' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Vault Name' }), { target: { value: 'Research' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create Vault' }))
+    expect(onCreateManagedVault).toHaveBeenCalledWith('Research')
+
+    fireEvent.click(vaultSwitcher)
+    fireEvent.click(screen.getByRole('button', { name: 'Open Recent Vault 1' }))
+    expect(onActivateRecentVault).toHaveBeenCalledWith(recentId)
+  })
+
+  it('keeps the active tab bottom corners on the tab shell', () => {
+    renderRoute({
+      documentKind: 'markdown',
+      panes: [{
+        activePath: 'Welcome.md',
+        id: 'main',
+        tabs: [
+          { dirty: false, mode: 'reading', path: 'Welcome.md' },
+          { dirty: false, mode: 'reading', path: 'Other.md' },
+        ],
+      }],
+      path: 'Welcome.md',
+      phase: 'ready',
+    })
+
+    const tab = screen.getByRole('tab', { name: 'Welcome.md' })
+    const shell = tab.parentElement
+    expect(shell?.dataset.active).toBe('true')
+    expect(shell?.className).toContain('before:[clip-path:inset(50%_calc(var(--tt-tab-curve)*-1)_0_50%)]')
+    expect(shell?.className).toContain('border-[var(--tt-border)]')
+    expect(shell?.className).not.toContain('shadow-[inset_0_1px')
+    expect(shell?.className).not.toContain('data-[active=false]:mb-0.5')
+    expect(screen.getByRole('tab', { name: 'Other.md' }).parentElement?.className).toContain('h-[34px]')
+    expect(shell?.className).toContain('rounded-t-[5px]')
+    expect(screen.getByRole('tablist', { name: 'Note Tabs' }).className).toContain('[--tt-tab-curve:8px]')
+    expect(screen.getByRole('button', { name: 'Close Welcome.md' }).className).toContain('[&_svg]:size-3!')
+    expect(screen.getByRole('button', { name: 'Close Welcome.md' }).className).toContain('translate-x-0.5')
+    expect(tab.className).not.toContain('before:')
+  })
+
+  it('keeps word and character counts visible in the bottom-right status bar', () => {
+    renderRoute()
+
+    const status = screen.getByRole('group', { name: 'TockTutor Status Bar' })
+    expect(status.textContent).toContain('0 words')
+    expect(status.textContent).toContain('0 characters')
+    expect(status.querySelector('.tocktutor-document-stats')?.className).toContain('ml-auto')
   })
 
   it('uses one identity-bound FileList callback for picker, paste, and drop', () => {
@@ -292,7 +375,10 @@ describe('TockTutor titlebar panel controls', () => {
     const dropZone = screen.getByLabelText('Editor Attachment Drop Zone')
     fireEvent.drop(dropZone, { dataTransfer: { files } })
     fireEvent.paste(dropZone, { clipboardData: { files } })
-    fireEvent.click(screen.getByRole('button', { name: 'More Note Actions' }))
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Attachments and embeds' }))
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('attachments')
+    expect(screen.queryByRole('heading', { name: 'Graph View' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Add Files'), { target: { files } })
     expect(onAttachFiles).toHaveBeenNthCalledWith(1, files)
     expect(onAttachFiles).toHaveBeenNthCalledWith(2, files)
@@ -319,7 +405,10 @@ describe('TockTutor titlebar panel controls', () => {
       trash: [{ createdAt: 2, id: trashId, kind: 'document', originalPath: 'Deleted.md' }],
     }, { onOpenRecovery, onReadSnapshot, onRestoreSnapshot, onRestoreTrash, onTrashCurrent })
 
-    fireEvent.click(screen.getByRole('button', { name: /Choose Vault/u }))
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'File recovery' }))
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('recovery')
+    expect(screen.queryByRole('heading', { name: 'Web Viewer' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
     expect(onOpenRecovery).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
@@ -349,7 +438,10 @@ describe('TockTutor titlebar panel controls', () => {
       },
     }, { onCopyGraphPath, onOpenGraphNode, onSettingsChange })
 
-    fireEvent.click(screen.getByRole('button', { name: /Choose Vault/u }))
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph view' }))
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('graph')
+    expect(screen.queryByRole('heading', { name: 'File Recovery' })).toBeNull()
     const graphNode = screen.getByLabelText('Lessons/One.md Graph Node')
     expect(screen.queryByLabelText('Other.md Graph Node')).toBeNull()
     expect(graphNode.getAttribute('data-graph-group')).toBe('Lessons')
@@ -385,12 +477,33 @@ describe('TockTutor titlebar panel controls', () => {
       searchQuery: 'lesson',
     }, { onRunSearch, onSearchMode })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Related' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Related' }))
     expect(onSearchMode).toHaveBeenCalledWith('related')
     fireEvent.keyDown(screen.getByRole('searchbox', { name: 'Search Notes Query' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('button', { name: 'Search' }))
     expect(onRunSearch).toHaveBeenCalledTimes(2)
     expect(screen.getByRole('list', { name: 'Vault Search Results' }).textContent).toContain('Lesson match')
+  })
+
+  it('shows a Notion-like result list with a focus-following note preview', () => {
+    renderRoute({
+      searchMatches: [
+        { kind: 'content', line: 2, path: 'Notes/Lesson.md', preview: 'First lesson match' },
+        { kind: 'content', line: 8, path: 'Notes/Lesson.md', preview: 'Second lesson match' },
+      ],
+      searchMode: 'query',
+      searchOpen: true,
+      searchQuery: 'lesson',
+    })
+
+    expect(screen.getByRole('radiogroup', { name: 'Search Mode' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Search Results' })).toBeTruthy()
+    const preview = screen.getByRole('region', { name: 'Note Preview' })
+    expect(preview.textContent).toContain('Lesson')
+    expect(preview.textContent).toContain('First lesson match')
+
+    fireEvent.focus(screen.getAllByRole('button', { name: 'Open Notes/Lesson.md' })[1]!)
+    expect(preview.textContent).toContain('Second lesson match')
   })
 
   it('shows Obsidian search operators and inserts the selected operator', async () => {

@@ -16,10 +16,24 @@ import { MAX_PANE_GROUPS } from './session.ts'
 import type { VaultHeading } from './types.ts'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 
+export type WorkbenchUtilityView = 'attachments' | 'extensions' | 'graph' | 'library' | 'note-info' | 'recovery' | 'tools' | 'web' | 'workspace'
+
+const UTILITY_TITLES: Record<WorkbenchUtilityView, string> = {
+  attachments: 'Attachments and Embeds',
+  extensions: 'Reviews and Actions',
+  graph: 'Graph View',
+  library: 'Bookmarks and Tags',
+  'note-info': 'Properties and Links',
+  recovery: 'File Recovery',
+  tools: 'Note Tools',
+  web: 'Web Viewer',
+  workspace: 'Workspaces and Panes',
+}
+
 export type WorkbenchUtilitiesProps = TockTutorRouteViewProps & {
   activeProperties: ReturnType<typeof parseFrontmatterProperties>
   onClose(): void
-  open: boolean
+  view: WorkbenchUtilityView | null
 }
 
 function graphFolder(path: string): string {
@@ -34,8 +48,8 @@ function graphFolderColor(folder: string): string {
 
 export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const { activeProperties, snapshot } = props
-  const [newVaultName, setNewVaultName] = useState('')
   const [graphZoom, setGraphZoom] = useState(1)
+  const open = props.view !== null
   const [graphPan, setGraphPan] = useState({ x: 0, y: 0 })
   const graphQuery = (snapshot.settings?.graphQuery ?? '').trim().toLocaleLowerCase()
   const graphNodes = (snapshot.graphLayout ?? []).filter(node => graphQuery === '' || node.path.toLocaleLowerCase().includes(graphQuery))
@@ -44,44 +58,24 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
     .toSorted(([left], [right]) => left.localeCompare(right))
   return (
         <aside
-          aria-hidden={!props.open}
+          aria-hidden={!open}
           aria-label="Workbench Utilities"
           className="tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 auto-rows-max grid-rows-[40px] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]"
-          data-open={props.open}
-          {...(props.open ? {} : { inert: '' })}
+          data-open={open}
+          data-view={props.view ?? undefined}
+          {...(open ? {} : { inert: '' })}
         >
           <header className="flex items-center justify-between border-b border-[var(--tt-border)] px-3">
-            <h2 className="m-0 text-sm">More Options</h2>
+            <h2 className="m-0 text-sm">{props.view === null ? 'Note Tools' : UTILITY_TITLES[props.view]}</h2>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button unstyled aria-label="Close More Options" className="border-0 bg-transparent p-[5px]" onClick={props.onClose} type="button"><WorkbenchGlyph kind="close" /></Button>
+                <Button unstyled aria-label="Close Utility Panel" className="border-0 bg-transparent p-[5px]" onClick={props.onClose} type="button"><WorkbenchGlyph kind="close" /></Button>
               </TooltipTrigger>
-              <TooltipContent>Close More Options</TooltipContent>
+              <TooltipContent>Close Utility Panel</TooltipContent>
             </Tooltip>
           </header>
-          <section aria-label="Vaults" className="border-t border-[var(--tt-border)] p-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="m-0 text-sm">Vaults</h2>
-              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={props.onOpenSandboxVault} type="button">Open Sandbox Vault</Button>
-            </div>
-            <form className="mt-2 flex gap-1" onSubmit={event => { event.preventDefault(); if (newVaultName.trim() !== '') { props.onCreateManagedVault?.(newVaultName); setNewVaultName('') } }}>
-              <Input unstyled aria-label="New Vault Name" className="min-w-0 flex-1 rounded border border-[var(--tt-border)] bg-transparent p-1 text-xs" maxLength={80} onChange={event => { setNewVaultName(event.target.value) }} value={newVaultName} />
-              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={newVaultName.trim() === ''} type="submit">Create Vault</Button>
-            </form>
-            <div className="mt-2 grid gap-1.5">
-              {(snapshot.recentVaults ?? []).map((vault, index) => (
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1" key={vault.id}>
-                  <span className="truncate text-xs" title={vault.id}>Recent Vault {String(index + 1)}{snapshot.vault?.id === vault.id ? ' · Active' : ''}</span>
-                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.vault?.id === vault.id} onClick={() => { props.onActivateRecentVault?.(vault.id) }} type="button">Open</Button>
-                  <Button unstyled aria-label={`Remove Recent Vault ${String(index + 1)}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRemoveRecentVault?.(vault.id) }} type="button">Remove</Button>
-                </div>
-              ))}
-              {(snapshot.recentVaults?.length ?? 0) === 0 && <Alert unstyled role="status">No recent vaults.</Alert>}
-            </div>
-          </section>
-          <section aria-label="File Recovery" className="border-t border-[var(--tt-border)] p-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="m-0 text-sm">File Recovery</h2>
+          <section aria-label="File Recovery" className="p-3" hidden={props.view !== 'recovery'}>
+            <div className="flex items-center justify-end gap-2">
               <span className="flex gap-1">
                 <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={props.onCaptureSnapshot} type="button">Capture</Button>
                 <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={(snapshot.snapshots?.length ?? 0) === 0} onClick={props.onClearSnapshots} type="button">Clear</Button>
@@ -118,13 +112,11 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               {(snapshot.trash?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">Trash is empty.</span>}
             </div>
           </section>
-          <section aria-label="Web Viewer" className="min-h-80 border-t border-[var(--tt-border)] p-3">
-            <h2 className="m-0 text-sm">Web Viewer</h2>
-            <div className="mt-2 flex min-h-72 flex-col">{props.webViewerPanel ?? <Alert unstyled role="status">Web Viewer is unavailable.</Alert>}</div>
+          <section aria-label="Web Viewer" className="min-h-80 p-3" hidden={props.view !== 'web'}>
+            <div className="flex min-h-72 flex-col">{props.webViewerPanel ?? <Alert unstyled role="status">Web Viewer is unavailable.</Alert>}</div>
           </section>
-          <section aria-label="Graph View" className="border-t border-[var(--tt-border)] p-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="m-0 text-sm">Graph View</h2>
+          <section aria-label="Graph View" className="p-3" hidden={props.view !== 'graph'}>
+            <div className="flex items-center justify-end gap-2">
               <span className="flex gap-1">
                 <Button unstyled aria-pressed={snapshot.graphMode === 'global'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onLoadGraph?.('global') }} type="button">Global</Button>
                 <Button unstyled aria-pressed={snapshot.graphMode === 'local'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={() => { props.onLoadGraph?.('local') }} type="button">Local</Button>
@@ -163,7 +155,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               </>
             ) : <span className="mt-2 block text-xs text-[var(--tt-muted)]">{(snapshot.graphLayout?.length ?? 0) > 0 ? 'No graph nodes match this filter.' : 'Open Global or Local Graph.'}</span>}
           </section>
-          <section aria-label="Bookmarks" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Bookmarks" className="p-3" hidden={props.view !== 'library'}>
             <h2 className="m-0 text-sm">Bookmarks</h2>
             <div className="mt-2 grid gap-1">
               {(snapshot.bookmarks ?? []).map(bookmark => (
@@ -175,7 +167,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               {(snapshot.bookmarks?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No bookmarks.</span>}
             </div>
           </section>
-          <section aria-label="Smart Views and Tags" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Smart Views and Tags" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'library'}>
             <h2 className="m-0 text-sm">Smart Views and Tags</h2>
             <div className="mt-2 grid grid-cols-2 gap-1">
               {(['recent', 'tasks', 'journals', 'favorites', 'collections', 'tags'] as const).map(kind => (
@@ -190,7 +182,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               </div>
             )}
           </section>
-          <section aria-label="Properties" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Properties" className="p-3" hidden={props.view !== 'note-info'}>
             <h2 className="m-0 text-sm">Properties</h2>
             <h3 className="mt-2 mb-1 text-xs">File</h3>
             <div className="grid gap-1">
@@ -211,7 +203,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               {(snapshot.facets?.properties ?? []).map(property => <Button unstyled className="rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={property.key.toLocaleLowerCase()} onClick={() => { props.onSearchChange?.(`[${property.key}]`); props.onRunSearch?.() }} type="button">{property.key} · {String(property.count)} · {property.types.join(', ')}</Button>)}
             </div>
           </section>
-          <section aria-label="Note Relationships" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Note Relationships" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'note-info'}>
             <h2 className="m-0 text-sm">Outline and Relationships</h2>
             <h3 className="mt-2 mb-1 text-xs">Outline</h3>
             <div className="grid gap-1">
@@ -228,7 +220,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             {(snapshot.links?.outgoingDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" disabled={link.resolvedPath === null} key={`${link.authoredTarget}-${String(link.line)}-${String(index)}`} onClick={() => { if (link.resolvedPath !== null) props.onSelect(link.resolvedPath) }} type="button">{link.displayText || link.authoredTarget}</Button>)}
             {(snapshot.links?.unlinkedMentions ?? []).map((mention, index) => <span className="block text-xs text-[var(--tt-muted)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`}>Mention: {mention.matchedText}</span>)}
           </section>
-          <section aria-label="Resolved Embeds" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Resolved Embeds" className="p-3" hidden={props.view !== 'attachments'}>
             <h2 className="m-0 text-sm">Resolved Embeds</h2>
             <div className="mt-2 grid gap-2">
               {(snapshot.embeds ?? []).map((embed, index) => (
@@ -246,7 +238,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               {(snapshot.embeds?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No resolved embeds.</span>}
             </div>
           </section>
-          <section aria-label="Attachments" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Attachments" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'attachments'}>
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Attachments</h2>
               <Label unstyled className="cursor-pointer rounded border border-[var(--tt-border)] px-2 py-1 text-xs">Add Files
@@ -269,14 +261,14 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               </div>
             )}
           </section>
-          <section aria-label="Note Composer and Format Converter" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Note Composer and Format Converter" className="p-3" hidden={props.view !== 'tools'}>
             <h2 className="m-0 text-sm">Note Composer and Format Converter</h2>
             <div className="mt-2 flex gap-1">
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading' || (snapshot.selectionEnd ?? 0) <= (snapshot.selectionStart ?? 0)} onClick={props.onExtractSelection} type="button">Extract Selection</Button>
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={props.onConvertActiveNote} type="button">Convert Formats</Button>
             </div>
           </section>
-          <section aria-label="Templates and Journals" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Templates and Journals" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'tools'}>
             <h2 className="m-0 text-sm">Templates and Journals</h2>
             <div className="mt-2 grid grid-cols-2 gap-1">
               {(Object.keys(BUILTIN_TEMPLATES) as Array<keyof typeof BUILTIN_TEMPLATES>).map(name => <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={name} onClick={() => { props.onCreateBuiltinTemplate?.(name) }} type="button">{name}</Button>)}
@@ -284,7 +276,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={() => { props.onInsertCurrentDateTime?.('time') }} type="button">Insert Current Time</Button>
             </div>
           </section>
-          <section aria-label="Capture Organization" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Capture Organization" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'tools'}>
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Capture Organization</h2>
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null || !/^Inbox\/.+\.md$/iu.test(snapshot.path)} onClick={props.onPrepareOrganization} type="button">Prepare Review</Button>
@@ -301,7 +293,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               </div>
             )}
           </section>
-          <section aria-label="TockTutor Settings" className="border-t border-[var(--tt-border)] p-3">
+          <section aria-label="TockTutor Settings" className="p-3" hidden={props.view !== 'workspace'}>
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-sm">Settings and Workspaces</h2>
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.settings === undefined} onClick={props.onSaveWorkspace} type="button">Save Workspace</Button>
@@ -323,7 +315,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               {(snapshot.workspaces?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No saved workspaces.</span>}
             </div>
           </section>
-          <section aria-label="Pane Groups" className="tocktutor-pane-groups border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Pane Groups" className="tocktutor-pane-groups border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'workspace'}>
             <div className="tocktutor-pane-heading flex items-center justify-between">
               <h2 className="m-0 text-sm">Pane Groups</h2>
               <Tooltip>
@@ -343,11 +335,11 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               ))}
             </div>
           </section>
-          <section aria-label="Shared Review Panel" className="tocktutor-review border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Shared Review Panel" className="tocktutor-review p-3" hidden={props.view !== 'extensions'}>
             <header><h2 className="m-0 text-sm">Reviews</h2></header>
             <div className="tocktutor-review-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.reviewPanel ?? <Alert unstyled role="status">No review workflow is active.</Alert>}</div>
           </section>
-          <section aria-label="Native Actions" className="tocktutor-native-actions border-t border-[var(--tt-border)] p-3">
+          <section aria-label="Native Actions" className="tocktutor-native-actions border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'extensions'}>
             <header><h2 className="m-0 text-sm">Native Actions</h2></header>
             <div className="tocktutor-native-actions-content min-h-0 overflow-auto text-xs text-[var(--tt-muted)]">{props.nativeActions ?? <Alert unstyled role="status">No native actions are available.</Alert>}</div>
           </section>

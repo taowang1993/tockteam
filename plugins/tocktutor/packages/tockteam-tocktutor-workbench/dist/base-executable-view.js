@@ -1,5 +1,10 @@
 import { jsxs as _jsxs, jsx as _jsx } from "react/jsx-runtime";
 import { useMemo, useRef, useState, } from 'react';
+import { Button } from '@tockteam/ui/button';
+import { Checkbox } from '@tockteam/ui/checkbox';
+import { Field, FieldLabel } from '@tockteam/ui/field';
+import { Input } from '@tockteam/ui/input';
+import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select';
 import { createExecutableBaseFrontmatterEdit } from "./base-edit.js";
 import { parseExecutableBase } from "./base-parser.js";
 import { executableBaseCellRangeTsv, executableBaseCsvFilename, executableBaseViewCsv, executableBaseViewTsv, } from "./base-spreadsheet.js";
@@ -44,9 +49,9 @@ function EditableCell(props) {
             props.onEdit?.(request);
     };
     if (cell.inputType === 'checkbox') {
-        return (_jsx("input", { "aria-label": label, checked: cell.value === true, type: "checkbox", onChange: event => emit(event.currentTarget.checked ? 'true' : 'false') }));
+        return _jsx(Checkbox, { "aria-label": label, checked: cell.value === true, onCheckedChange: checked => emit(checked === true ? 'true' : 'false') });
     }
-    return (_jsx("input", { "aria-label": label, className: "min-w-24 rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-1", defaultValue: cell.text, type: cell.inputType, onBlur: event => {
+    return (_jsx(Input, { unstyled: true, "aria-label": label, className: "min-w-24 rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-1", defaultValue: cell.text, type: cell.inputType, onBlur: event => {
             if (event.currentTarget.value !== cell.text)
                 emit(event.currentTarget.value);
         } }, `${row.revision}:${cell.column}:${cell.text}`));
@@ -179,12 +184,8 @@ export function ExecutableBaseView(props) {
     const blocked = model.unsupported.length > 0;
     const tsv = blocked ? null : executableBaseViewTsv(model);
     const csv = blocked ? null : executableBaseViewCsv(model);
-    return (_jsxs("section", { "aria-label": "Executable Base", className: "flex min-h-0 flex-col gap-3 overflow-auto p-4", children: [_jsxs("header", { className: "flex flex-wrap items-end gap-3", children: [_jsxs("label", { className: "grid gap-1 text-xs font-medium", children: ["Base View", _jsx("select", { "aria-label": "Base View", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm", value: model.view.name, onChange: event => props.onActiveViewChange?.(event.currentTarget.value), children: model.views.map(view => _jsxs("option", { value: view.name, children: [view.name, " \u2014 ", readableKind(view.kind)] }, view.name)) })] }), _jsxs("label", { className: "grid min-w-48 flex-1 gap-1 text-xs font-medium", children: ["Search This View", _jsx("input", { "aria-label": `Search ${model.view.name}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm", maxLength: 1_000, type: "search", value: model.search, onChange: event => props.onSearchChange?.(model.view.name, event.currentTarget.value) })] }), _jsx("p", { "aria-live": "polite", className: "m-0 text-sm text-[var(--tt-muted)]", children: resultCount(model.rows.length) }), _jsx("button", { disabled: tsv === null || props.onCopy === undefined, type: "button", onClick: () => {
-                            if (tsv !== null)
-                                props.onCopy?.({ kind: 'results', text: tsv, view: model.view.name });
-                        }, children: "Copy Visible Results" }), _jsx("button", { disabled: csv === null || props.onExport === undefined, type: "button", onClick: () => {
-                            if (csv !== null)
-                                props.onExport?.({ filename: executableBaseCsvFilename(model.view.name), text: csv, view: model.view.name });
-                        }, children: "Export Visible CSV" })] }), blocked ? (_jsxs("p", { role: "alert", children: ["Unsupported Base expression: ", model.unsupported.map(entry => entry.expression).join(', ')] })) : model.rows.length === 0 ? (_jsx("p", { children: "No notes match this view." })) : model.kind === 'table' ? (_jsx(ExecutableTable, { model: model, onCopy: props.onCopy, onEdit: props.onEdit })) : (_jsx(ReadonlyLayouts, { model: model })), _jsx(SummaryList, { model: model })] }));
+    return (_jsxs("section", { "aria-label": "Executable Base", className: "flex min-h-0 flex-col gap-3 overflow-auto p-4", children: [_jsxs("header", { className: "flex flex-wrap items-end gap-3", children: [_jsxs(Field, { className: "w-auto gap-1", children: [_jsx(FieldLabel, { htmlFor: "tocktutor-base-view", className: "text-xs", children: "Base View" }), _jsx(NativeSelect, { unstyled: true, id: "tocktutor-base-view", "aria-label": "Base View", className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm", value: model.view.name, onChange: event => props.onActiveViewChange?.(event.currentTarget.value), children: model.views.map(view => _jsxs(NativeSelectOption, { value: view.name, children: [view.name, " \u2014 ", readableKind(view.kind)] }, view.name)) })] }), _jsxs(Field, { className: "min-w-48 flex-1 gap-1", children: [_jsx(FieldLabel, { htmlFor: "tocktutor-base-search", className: "text-xs", children: "Search This View" }), _jsx(Input, { unstyled: true, id: "tocktutor-base-search", "aria-label": `Search ${model.view.name}`, className: "rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm", maxLength: 1_000, type: "search", value: model.search, onChange: event => props.onSearchChange?.(model.view.name, event.currentTarget.value) })] }), _jsx("p", { "aria-live": "polite", className: "m-0 text-sm text-[var(--tt-muted)]", children: resultCount(model.rows.length) }), _jsx(Button, { size: "sm", variant: "outline", disabled: tsv === null || props.onCopy === undefined, type: "button", onClick: () => { if (tsv !== null)
+                            props.onCopy?.({ kind: 'results', text: tsv, view: model.view.name }); }, children: "Copy Visible Results" }), _jsx(Button, { size: "sm", variant: "outline", disabled: csv === null || props.onExport === undefined, type: "button", onClick: () => { if (csv !== null)
+                            props.onExport?.({ filename: executableBaseCsvFilename(model.view.name), text: csv, view: model.view.name }); }, children: "Export Visible CSV" })] }), blocked ? (_jsxs("p", { role: "alert", children: ["Unsupported Base expression: ", model.unsupported.map(entry => entry.expression).join(', ')] })) : model.rows.length === 0 ? (_jsx("p", { children: "No notes match this view." })) : model.kind === 'table' ? (_jsx(ExecutableTable, { model: model, onCopy: props.onCopy, onEdit: props.onEdit })) : (_jsx(ReadonlyLayouts, { model: model })), _jsx(SummaryList, { model: model })] }));
 }
 //# sourceMappingURL=base-executable-view.js.map
