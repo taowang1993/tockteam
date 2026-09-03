@@ -17,3 +17,9 @@ if (typeof Range !== 'undefined') {
 
 HTMLElement.prototype.getBoundingClientRect ??= emptyRect
 HTMLElement.prototype.scrollIntoView ??= (() => {})
+
+globalThis.ResizeObserver ??= class ResizeObserver {
+  disconnect(): void {}
+  observe(): void {}
+  unobserve(): void {}
+}

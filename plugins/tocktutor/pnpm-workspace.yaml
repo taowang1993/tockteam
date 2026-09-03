@@ -10,6 +10,9 @@ allowBuilds:
   sqlite3: true
 
 overrides:
+  # Shared @tockteam/ui source crosses the root/nested workspace boundary.
+  # Resolve every nested React peer to the root UI package's pinned instance.
+  react: link:../../node_modules/.pnpm/react@18.3.1/node_modules/react
   '@deepseek-ai/cordis': link:../../.cache/dsh-source/b150a551b8d4/vendor/cordis
   '@deepseek-ai/dsh-agent': link:../../.cache/dsh-source/b150a551b8d4/packages/core/agent
   '@deepseek-ai/dsh-api-gateway': link:../../.cache/dsh-source/b150a551b8d4/packages/api/gateway
