@@ -1,15 +1,8 @@
-# TockTeam package builder.
-#
-# dshSource selects where the pinned DeepSeek Harness runtime comes from:
-#   "llm-agents"  (default) — numtide/llm-agents.nix, pre-built npm package
-#   "pinned"                — this repo's dsh-source.json revision, built from source
-#   "nixpkgs"               — pkgs.deepseek-harness (kept as a placeholder; the
-#                             nixpkgs PR is not yet merged, so this throws)
+# TockTeam package builder over the npm runtime pinned by dsh-source.json.
 
-{ pkgs, system, llm-agents, dshSourceSpec }:
+{ pkgs, dshSourceSpec }:
 
 { surface # "full" | "web" | "tui"
-, dshSource ? "llm-agents"
 }:
 
 let
@@ -19,24 +12,7 @@ let
   includesWeb = surface != "tui";
   includesTui = surface != "web";
 
-  # ---------------------------------------------------------------------------
-  # DSH runtime selection
-  # ---------------------------------------------------------------------------
-
-  dshRuntime =
-    if dshSource == "llm-agents" then
-      llm-agents.packages.${system}.dsh
-    else if dshSource == "pinned" then
-      pkgs.callPackage ./dsh-runtime-pinned.nix { inherit dshSourceSpec; }
-    else if dshSource == "nixpkgs" then
-      # Reserved: the nixpkgs deepseek-harness PR has not landed yet.
-      pkgs.deepseek-harness or (throw ''
-        dshSource = "nixpkgs" requires pkgs.deepseek-harness, which is not yet
-        in nixpkgs (see NixOS/nixpkgs#552467). Use "llm-agents" (default) or
-        "pinned" for now.
-      '')
-    else
-      throw "unknown dshSource: ${dshSource}";
+  dshRuntime = pkgs.callPackage ./dsh-runtime-pinned.nix { inherit dshSourceSpec; };
 
   # ---------------------------------------------------------------------------
   # TockTeam front-end bundle. The same build produces all surface adapters;
@@ -117,7 +93,7 @@ let
       runHook preBuild
 
       # The full release pipeline (build:dsh + stage:dsh) is skipped on purpose:
-      # the DSH runtime is provided by ${dshSource} instead of the staged copy.
+      # the pinned Nix DSH runtime replaces the staged copy.
       node scripts/build.mjs
 
       runHook postBuild
@@ -169,7 +145,7 @@ let
 
 in
 pkgs.stdenv.mkDerivation {
-  pname = "tockteam-${if isFull then "desktop" else surface}${lib.optionalString (dshSource != "llm-agents") "-${dshSource}"}";
+  pname = "tockteam-${if isFull then "desktop" else surface}";
   version = tockTeamBundle.version;
 
   dontUnpack = true;

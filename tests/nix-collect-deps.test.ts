@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readlinkSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -7,6 +7,34 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { test } from 'node:test'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+test('Nix surfaces use the repository npm runtime pin', () => {
+  const source = JSON.parse(readFileSync(join(root, 'dsh-source.json'), 'utf8')) as {
+    integrity: string
+    source: string
+    tarball: string
+    version: string
+  }
+  const runtime = readFileSync(join(root, 'nix', 'dsh-runtime-pinned.nix'), 'utf8')
+  const flake = readFileSync(join(root, 'flake.nix'), 'utf8')
+  const lock = JSON.parse(readFileSync(join(root, 'flake.lock'), 'utf8')) as {
+    nodes: Record<string, unknown>
+  }
+
+  assert.equal(source.source, 'npm')
+  assert.equal(source.tarball.endsWith(`/dsh-${source.version}.tgz`), true)
+  assert.match(source.integrity, /^sha512-/u)
+  assert.match(runtime, /fetchurl/u)
+  assert.match(runtime, /hash = dshSourceSpec\.integrity/u)
+  assert.match(runtime, /dsh-runtime-\$\{dshSourceSpec\.version\}-lock\.yaml/u)
+  assert.match(runtime, /pnpm install --frozen-lockfile --ignore-scripts/u)
+  assert.doesNotMatch(runtime, /fakeHash|fetchFromGitHub/u)
+  assert.doesNotMatch(flake, /llm-agents|dshSource\s*=/u)
+  for (const alias of ['tockteam-pinned = tockteam', 'tockteam-web-pinned = tockteam-web', 'tockteam-tui-pinned = tockteam-tui']) {
+    assert.match(flake, new RegExp(alias))
+  }
+  assert.deepEqual(Object.keys(lock.nodes).sort(), ['nixpkgs', 'root'])
+})
 
 function writePackage(store: string, name: string, version: string, manifest: object, source: string) {
   const packageDir = join(store, `${name.replace('/', '+')}@${version}`, 'node_modules', ...name.split('/'))
