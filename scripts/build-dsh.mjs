@@ -2,17 +2,18 @@ import { spawnSync } from 'node:child_process'
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
 import { delimiter, join } from 'node:path'
 import { resolveDshSource, resolvePinnedPnpm } from './dsh-source.mjs'
-import { acquireDshLucideIconLock, adaptDshLucideIcons } from './dsh-lucide-icons.mjs'
 
-const dshSource = resolveDshSource()
-const pnpm = resolvePinnedPnpm(dshSource)
+const { kind, path: dshSource } = resolveDshSource()
 
-/**
- * npm runs scripts with the project's node_modules/.bin ahead of PATH, and
- * the DSH build scripts call `pnpm` for nested workspace commands. Pin that
- * bin to the declared CLI so the inner calls never reach a host pnpm whose
- * version-switch verification rejects the pinned lockfile.
- */
+// npm releases already contain the compiled CLI and Web assets.
+if (kind === 'npm') {
+  console.log('Using the prebuilt DSH npm assembly; skipping source build')
+  process.exit(0)
+}
+
+const pnpm = resolvePinnedPnpm()
+
+/** Keep nested DSH build commands on the integrity-pinned pnpm version. */
 function pinInnerPnpm() {
   const binDir = join(dshSource, 'node_modules', '.bin')
   mkdirSync(binDir, { recursive: true })
@@ -28,10 +29,7 @@ function pinInnerPnpm() {
 }
 
 function run(args) {
-  const result = spawnSync(process.execPath, [
-    pnpm.cliEntry,
-    ...args,
-  ], {
+  const result = spawnSync(process.execPath, [pnpm.cliEntry, ...args], {
     cwd: dshSource,
     env: {
       ...process.env,
@@ -40,19 +38,11 @@ function run(args) {
     stdio: 'inherit',
   })
   if (result.error !== undefined) throw result.error
-  if (result.status !== 0) throw new Error(`pnpm ${args.join(' ')} exited with ${String(result.status)}`)
+  if (result.status !== 0) {
+    throw new Error(`pnpm ${args.join(' ')} exited with ${String(result.status)}`)
+  }
 }
 
-const releaseDshIconLock = acquireDshLucideIconLock(dshSource)
-try {
-  run(['install', '--frozen-lockfile'])
-  pinInnerPnpm()
-  const restoreDshIcons = adaptDshLucideIcons(dshSource)
-  try {
-    run(['run', 'build'])
-  } finally {
-    restoreDshIcons()
-  }
-} finally {
-  releaseDshIconLock()
-}
+run(['install', '--frozen-lockfile'])
+pinInnerPnpm()
+run(['run', 'build'])

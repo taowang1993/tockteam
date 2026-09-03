@@ -34,7 +34,7 @@ import { verifyTockTutorBuildManifest } from './tocktutor-build-manifest.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 verifyTockTutorBuildManifest()
-const dshSource = resolveDshSource()
+const dshSource = resolveDshSource().path
 const stage = join(root, '.stage')
 const runtime = join(stage, 'dsh-runtime')
 const nodeRuntime = join(stage, 'node-runtime')
@@ -987,7 +987,7 @@ if (process.argv.includes('--quick')
 
 rmSync(stage, { recursive: true, force: true })
 mkdirSync(stage, { recursive: true })
-const pnpm = resolvePinnedPnpm(dshSource)
+const pnpm = resolvePinnedPnpm()
 console.log('Deploying pinned DSH runtime (copy import mode)')
 run(process.execPath, [
   pnpm.cliEntry,
