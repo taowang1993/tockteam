@@ -250,18 +250,50 @@ function acquirePinnedGitSource(target) {
   }
 }
 
-function acquireNpmAssembly(target, archive) {
-  const extraction = join(dirname(target), `.npm-extract-${String(process.pid)}`)
+export function acquireNpmAssembly(parent, archive) {
+  const pointer = join(parent, 'assembly-path')
+  const legacyTarget = join(parent, 'assembly')
+  const previousName = existsSync(pointer)
+    ? readFileSync(pointer, 'utf8').trim()
+    : existsSync(legacyTarget) ? basename(legacyTarget) : undefined
+  if (previousName !== undefined && !/^assembly(?:-\d+-\d+)?$/u.test(previousName)) {
+    throw new Error(`invalid cached DSH assembly pointer: ${pointer}`)
+  }
+
+  const targetName = `assembly-${String(process.pid)}-${String(Date.now())}`
+  const target = join(parent, targetName)
+  const extraction = join(parent, `.npm-extract-${String(process.pid)}`)
+  const temporaryPointer = `${pointer}.tmp-${String(process.pid)}`
   rmSync(extraction, { recursive: true, force: true })
+  rmSync(temporaryPointer, { force: true })
   mkdirSync(extraction, { recursive: true })
   try {
     extractTarball(archive, extraction)
     const unpacked = join(extraction, 'package')
     if (!existsSync(unpacked)) throw new Error(`DSH npm package did not unpack to ${unpacked}`)
+    writeFileSync(join(unpacked, 'pnpm-workspace.yaml'), [
+      'packages:',
+      '  - .',
+      '',
+      'minimumReleaseAgeExclude:',
+      "  - '@deepseek-ai/*'",
+      '',
+    ].join('\n'))
     validateNpmAssembly(unpacked)
-    rmSync(target, { recursive: true, force: true })
     renameSync(unpacked, target)
+    writeFileSync(temporaryPointer, `${targetName}\n`)
+    renameSync(temporaryPointer, pointer)
+    if (previousName !== undefined && previousName !== targetName) {
+      rmSync(join(parent, previousName), { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
+    }
+    return target
+  } catch (error) {
+    if (!existsSync(pointer) || readFileSync(pointer, 'utf8').trim() !== targetName) {
+      rmSync(target, { recursive: true, force: true })
+    }
+    throw error
   } finally {
+    rmSync(temporaryPointer, { force: true })
     rmSync(extraction, { recursive: true, force: true })
   }
 }
@@ -269,21 +301,12 @@ function acquireNpmAssembly(target, archive) {
 function resolveNpmAssembly() {
   if (DSH_SOURCE_SPEC.source !== 'npm') throw new Error('npm assembly requires an npm source spec')
   const parent = join(root, '.cache', 'dsh-source', `npm-${DSH_SOURCE_SPEC.version}`)
-  const target = join(parent, 'assembly')
   const archive = join(parent, `${DSH_SOURCE_SPEC.version}.tgz`)
   mkdirSync(parent, { recursive: true })
   if (!existsSync(archive)) download(DSH_SOURCE_SPEC.tarball, archive)
   verifySha512(archive, DSH_SOURCE_SPEC.integrity)
   // pnpm mutates the assembly during install, so publish a fresh extraction on every resolution.
-  acquireNpmAssembly(target, archive)
-  writeFileSync(join(target, 'pnpm-workspace.yaml'), [
-    'packages:',
-    '  - .',
-    '',
-    'minimumReleaseAgeExclude:',
-    "  - '@deepseek-ai/*'",
-    '',
-  ].join('\n'))
+  const target = acquireNpmAssembly(parent, archive)
   validateNpmAssembly(target)
   return target
 }

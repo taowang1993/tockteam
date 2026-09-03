@@ -31,6 +31,8 @@ export function parseDshSourceSpec(value: unknown): DshSourceSpec
 
 export function verifySha512(path: string, integrity: string): void
 
+export function acquireNpmAssembly(parent: string, archive: string): string
+
 export function resolvePinnedPnpm(): {
   readonly binDir: string
   readonly cliEntry: string

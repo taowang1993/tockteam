@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { test } from 'node:test'
 import {
+  acquireNpmAssembly,
   DSH_SOURCE_SPEC,
   parseDshSourceSpec,
   resolveDshSource,
@@ -48,6 +50,45 @@ test('npm archive extraction keeps tar operands relative on Windows', () => {
     source,
     /function extractTarball\(archive, extraction\)[\s\S]*?\['-xzf', basename\(archive\), '-C', basename\(extraction\)\][\s\S]*?cwd: dirname\(archive\)/u,
   )
+})
+
+test('fresh npm assemblies replace the cache pointer only after extraction', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-assembly-'))
+  const fixture = join(root, 'fixture', 'package')
+  const cache = join(root, 'cache')
+  const archive = join(cache, 'package.tgz')
+  try {
+    mkdirSync(join(fixture, 'lib'), { recursive: true })
+    mkdirSync(join(fixture, 'config'), { recursive: true })
+    mkdirSync(cache)
+    writeFileSync(join(fixture, 'package.json'), JSON.stringify({
+      name: '@deepseek-ai/dsh',
+      version: DSH_SOURCE_SPEC.version,
+    }))
+    writeFileSync(join(fixture, 'lib', 'bin.js'), '')
+    const packed = spawnSync('tar', ['-czf', archive, '-C', join(root, 'fixture'), 'package'], { encoding: 'utf8' })
+    assert.equal(packed.status, 0, packed.stderr)
+
+    const first = acquireNpmAssembly(cache, archive)
+    writeFileSync(join(first, '.mutated'), '')
+    const second = acquireNpmAssembly(cache, archive)
+    assert.notEqual(second, first)
+    assert.equal(existsSync(first), false)
+    assert.equal(existsSync(join(second, '.mutated')), false)
+    assert.equal(readFileSync(join(cache, 'assembly-path'), 'utf8').trim(), basename(second))
+    assert.match(readFileSync(join(second, 'pnpm-workspace.yaml'), 'utf8'), /minimumReleaseAgeExclude/u)
+
+    const brokenArchive = join(cache, 'broken.tgz')
+    writeFileSync(brokenArchive, 'not a tarball')
+    assert.throws(() => acquireNpmAssembly(cache, brokenArchive), /tar .* failed with status/u)
+    assert.equal(readFileSync(join(cache, 'assembly-path'), 'utf8').trim(), basename(second))
+    assert.equal(existsSync(second), true)
+
+    writeFileSync(join(cache, 'assembly-path'), '../outside\n')
+    assert.throws(() => acquireNpmAssembly(cache, archive), /invalid cached DSH assembly pointer/u)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test('downloaded package archives must match their pinned SHA-512 integrity', () => {
