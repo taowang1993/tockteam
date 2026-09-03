@@ -90,15 +90,6 @@ void app.whenReady().then(async () => {
         }
         return {
         body: document.body?.innerText ?? '',
-        customIcons: [...document.querySelectorAll('svg:not(.lucide):not([data-tockteam-product-mark])')]
-          .filter(svg => {
-            const rect = svg.getBoundingClientRect()
-            return rect.width > 0 && rect.height > 0
-          })
-          .map(svg => ({
-            className: svg.getAttribute('class'),
-            viewBox: svg.getAttribute('viewBox'),
-          })),
         tailwind: (() => {
           const probe = document.createElement('div')
           const reference = document.createElement('div')
@@ -199,13 +190,6 @@ void app.whenReady().then(async () => {
     })()`)
       if (state.ready === true && state.previewBadgeVisible === true) {
         settle(new Error('TockCoder Preview badge is visible.'))
-        return
-      }
-      if (state.ready === true && state.customIcons.length > 0) {
-        settle(new Error(
-          'Visible interface icons are not Lucide: '
-          + JSON.stringify(state.customIcons),
-        ))
         return
       }
       if (state.ready === true

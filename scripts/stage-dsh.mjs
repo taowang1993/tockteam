@@ -27,17 +27,23 @@ import {
   sep,
 } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { resolveDshSource, resolvePinnedPnpm } from './dsh-source.mjs'
+import { DSH_SOURCE_SPEC, resolveDshSource, resolvePinnedPnpm } from './dsh-source.mjs'
 import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
 import { adaptTuiRendererPackage } from './tui-upstream-adapter.mjs'
 import { verifyTockTutorBuildManifest } from './tocktutor-build-manifest.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 verifyTockTutorBuildManifest()
-const dshSource = resolveDshSource().path
+const dshInput = resolveDshSource()
+const dshSource = dshInput.path
+const npmRelease = dshInput.kind === 'npm'
 const stage = join(root, '.stage')
 const runtime = join(stage, 'dsh-runtime')
 const nodeRuntime = join(stage, 'node-runtime')
+const sourceMarker = join(runtime, '.tockteam-dsh-source')
+const sourceIdentity = npmRelease
+  ? `npm:${DSH_SOURCE_SPEC.version}:${DSH_SOURCE_SPEC.integrity}`
+  : `source:${DSH_SOURCE_SPEC.version}:${dshSource}`
 const cache = join(root, '.cache')
 const nodeVersion = process.env.DSH_DESKTOP_NODE_VERSION ?? '26.0.0'
 // Node.js distribution triples use `linux`/`darwin`/`win` and `x64`/`arm64`.
@@ -54,8 +60,9 @@ const nodeArchive = join(cache, nodeArchiveName)
 const nodeCache = join(cache, nodeFolder)
 const nodeExecutable = join(nodeCache, isWindowsNode ? 'node.exe' : join('bin', 'node'))
 
-if (!existsSync(join(dshSource, 'apps', 'web', 'dist', 'index.html'))
-  || !existsSync(join(dshSource, 'apps', 'cli', 'lib', 'bin.js'))) {
+if (!npmRelease
+  && (!existsSync(join(dshSource, 'apps', 'web', 'dist', 'index.html'))
+    || !existsSync(join(dshSource, 'apps', 'cli', 'lib', 'bin.js')))) {
   throw new Error(`DSH build artifacts are missing at ${dshSource}; run pnpm run build:dsh first`)
 }
 
@@ -82,6 +89,60 @@ function portableSymlink(target, link) {
   // Junction targets must be absolute; materializeExternalLinks already
   // dereferenced the store-backed entries into the staged runtime.
   symlinkSync(resolved, link, 'junction')
+}
+
+function exposeHoistedPackages() {
+  const hoist = join(runtime, 'node_modules', '.pnpm', 'node_modules')
+  const prefix = join(runtime, 'node_modules')
+  if (!existsSync(hoist)) return
+  const visit = directory => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const source = join(directory, entry.name)
+      if (entry.isSymbolicLink()) {
+        const target = join(prefix, relative(hoist, source))
+        if (existsSync(target)) continue
+        mkdirSync(dirname(target), { recursive: true })
+        const logical = resolve(dirname(source), readlinkSync(source))
+        portableSymlink(relative(realpathSync(dirname(target)), logical), target)
+      } else if (entry.isDirectory()) {
+        visit(source)
+      }
+    }
+  }
+  visit(hoist)
+}
+
+/** Make the profile fallback aware of every package exposed above. */
+function recordExposedDependencies() {
+  const manifestPath = join(runtime, 'package.json')
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  const dependencies = { ...manifest.dependencies }
+  const visit = directory => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      if (entry.isSymbolicLink()) {
+        const packagePath = join(realpathSync(path), 'package.json')
+        if (!existsSync(packagePath)) continue
+        const dependency = JSON.parse(readFileSync(packagePath, 'utf8'))
+        if (typeof dependency.name === 'string' && typeof dependency.version === 'string') {
+          dependencies[dependency.name] = dependency.version
+        }
+      } else if (entry.isDirectory()) {
+        const packagePath = join(path, 'package.json')
+        if (existsSync(packagePath)) {
+          const dependency = JSON.parse(readFileSync(packagePath, 'utf8'))
+          if (typeof dependency.name === 'string' && typeof dependency.version === 'string') {
+            dependencies[dependency.name] = dependency.version
+          }
+        } else {
+          visit(path)
+        }
+      }
+    }
+  }
+  visit(join(runtime, 'node_modules'))
+  manifest.dependencies = dependencies
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`)
 }
 
 function download(url, target) {
@@ -168,7 +229,7 @@ function ensureNodeRuntime() {
   })
   if (!isWindowsNode) chmodSync(join(nodeRuntime, 'bin', 'node'), 0o755)
 
-  const pnpmSource = join(root, 'node_modules', 'pnpm')
+  const pnpmSource = dirname(dirname(pnpm.cliEntry))
   if (!existsSync(join(pnpmSource, 'dist', 'pnpm.mjs'))) {
     throw new Error('pnpm package is missing; run pnpm install before staging')
   }
@@ -698,11 +759,50 @@ function installCompiledPackageDependencies(sourceManifestPath, packageDir) {
   }
 }
 
+function runtimeDependencyTarget(dependency) {
+  const parts = dependency.split('/')
+  for (const candidate of [
+    join(runtime, 'node_modules', ...parts),
+    join(runtime, 'node_modules', '.pnpm', 'node_modules', ...parts),
+  ]) {
+    if (existsSync(join(candidate, 'package.json'))) return candidate
+  }
+
+  const store = join(runtime, 'node_modules', '.pnpm')
+  const prefix = dependency.replace('/', '+')
+  let fallback
+  for (const entry of readdirSync(store, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.startsWith(`${prefix}@`)) continue
+    const candidate = join(store, entry.name, 'node_modules', ...parts)
+    const manifestPath = join(candidate, 'package.json')
+    if (!existsSync(manifestPath)) continue
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    if (manifest.name !== dependency) continue
+    if (manifest.version === DSH_SOURCE_SPEC.version) return candidate
+    fallback ??= candidate
+  }
+  if (fallback !== undefined) return fallback
+  throw new Error(`DSH runtime is missing host dependency ${dependency}`)
+}
+
 function installCompiledPackageHostDependencies(sourceManifestPath, packageDir) {
   const manifest = JSON.parse(readFileSync(sourceManifestPath, 'utf8'))
-  const sourcePackages = discoverSourcePackages()
   for (const dependency of manifest.tockTeam?.hostDependencies ?? []) {
-    const source = sourcePackages.get(dependency)
+    if (npmRelease) {
+      const target = runtimeDependencyTarget(dependency)
+      if (isWindowsNode) {
+        const staged = JSON.parse(readFileSync(join(runtimePackageDirectory(dependency), 'package.json'), 'utf8'))
+        if (staged.name !== dependency) {
+          throw new Error(`${manifest.name} cannot resolve staged DSH peer ${dependency}`)
+        }
+        continue
+      }
+      const link = join(packageDir, 'node_modules', ...dependency.split('/'))
+      mkdirSync(dirname(link), { recursive: true })
+      portableSymlink(relative(dirname(link), target), link)
+      continue
+    }
+    const source = discoverSourcePackages().get(dependency)
     if (source === undefined) {
       throw new Error(`${manifest.name} cannot resolve DSH peer ${dependency}`)
     }
@@ -943,7 +1043,7 @@ function ensureLinuxPtyBuild() {
   }
 }
 
-if (!existsSync(join(dshSource, 'apps', 'cli', 'package.json'))) {
+if (!npmRelease && !existsSync(join(dshSource, 'apps', 'cli', 'package.json'))) {
   throw new Error(`DSH source checkout not found: ${dshSource}`)
 }
 for (const required of [
@@ -977,7 +1077,9 @@ for (const required of [
 const stagedNode = join(nodeRuntime, isWindowsNode ? 'node.exe' : join('bin', 'node'))
 if (process.argv.includes('--quick')
   && existsSync(join(runtime, 'lib', 'bin.js'))
-  && existsSync(stagedNode)) {
+  && existsSync(stagedNode)
+  && existsSync(sourceMarker)
+  && readFileSync(sourceMarker, 'utf8') === `${sourceIdentity}\n`) {
   // ponytail: refresh compiled desktop bundles only; use start:fresh after dependency or pinned DSH changes.
   console.log('Refreshing staged desktop bundles')
   installDesktopPackages({ desktopOnly: true })
@@ -985,17 +1087,42 @@ if (process.argv.includes('--quick')
   process.exit(0)
 }
 
-rmSync(stage, { recursive: true, force: true })
+rmSync(stage, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
 mkdirSync(stage, { recursive: true })
 const pnpm = resolvePinnedPnpm()
-console.log('Deploying pinned DSH runtime (copy import mode)')
+if (npmRelease) {
+  const releaseLockfile = join(root, 'scripts', `dsh-runtime-${DSH_SOURCE_SPEC.version}-lock.yaml`)
+  if (!existsSync(releaseLockfile)) {
+    throw new Error(`DSH runtime lockfile is missing: ${releaseLockfile}`)
+  }
+  copyFileSync(releaseLockfile, join(dshSource, 'pnpm-lock.yaml'))
+  console.log('Installing pinned DSH npm release assembly')
+  run(process.execPath, [
+    pnpm.cliEntry,
+    '--reporter=silent',
+    '--ignore-scripts',
+    'install',
+    '--frozen-lockfile',
+  ], {
+    cwd: dshSource,
+    env: {
+      ...process.env,
+      PATH: `${pnpm.binDir}${delimiter}${process.env.PATH ?? ''}`,
+    },
+  })
+}
+console.log(`Deploying pinned DSH runtime (${isWindowsNode ? 'hoisted copy' : 'copy import'} mode)`)
 run(process.execPath, [
   pnpm.cliEntry,
   '--reporter=silent',
   '--config.package-import-method=copy',
+  ...(isWindowsNode ? [
+    '--config.node-linker=hoisted',
+    '--config.inject-workspace-packages=true',
+  ] : []),
   '--ignore-scripts',
   '--filter', '@deepseek-ai/dsh',
-  'deploy', '--prod', '--legacy', runtime,
+  'deploy', '--prod', ...(isWindowsNode ? [] : ['--legacy']), runtime,
 ], {
   cwd: dshSource,
   env: {
@@ -1006,12 +1133,21 @@ run(process.execPath, [
 
 replaceDeprecatedDomExceptionShim()
 assertDeprecatedLockBranchesAreNotShipped()
-console.log('Relinking workspace packages')
-rewriteWorkspaceLinks()
-relinkInstallationWorkspacePackages()
+if (npmRelease) {
+  console.log('Exposing npm release packages for profile resolution')
+  exposeHoistedPackages()
+  recordExposedDependencies()
+} else {
+  console.log('Relinking workspace packages')
+  rewriteWorkspaceLinks()
+  relinkInstallationWorkspacePackages()
+}
 console.log('Installing desktop packages')
 installDesktopPackages()
-copyFileSync(join(dshSource, 'THIRD_PARTY_NOTICES.md'), join(runtime, 'THIRD_PARTY_NOTICES.md'))
+copyFileSync(
+  npmRelease ? join(root, 'THIRD_PARTY_NOTICES.md') : join(dshSource, 'THIRD_PARTY_NOTICES.md'),
+  join(runtime, 'THIRD_PARTY_NOTICES.md'),
+)
 restoreExecutableHelpers()
 console.log('Normalizing runtime links')
 normalizeRuntimeLinks()
@@ -1019,6 +1155,7 @@ assertSelfContained(runtime, 'DSH runtime')
 ensureNodeRuntime()
 assertSelfContained(nodeRuntime, 'Node runtime')
 ensureLinuxPtyBuild()
+writeFileSync(sourceMarker, `${sourceIdentity}\n`)
 
 const hostPlatform = { darwin: 'darwin', linux: 'linux', win: 'win32' }[nodePlatform]
 if (hostPlatform === process.platform) {
