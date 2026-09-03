@@ -177,6 +177,43 @@ tockteam web --port 3080
 tockteam tui
 ```
 
+The default source build resolves the exact `@deepseek-ai/dsh` tarball and
+SHA-512 integrity in `dsh-source.json`. `build:dsh` validates that prebuilt npm
+assembly and returns without rebuilding it; `stage:dsh` installs the committed
+`scripts/dsh-runtime-<version>-lock.yaml` with lifecycle scripts disabled.
+
+For development against a DSH checkout, its `package.json` version must match
+the repository pin:
+
+```sh
+DSH_SOURCE=/absolute/path/to/deepseek-harness pnpm run build:dsh
+DSH_SOURCE=/absolute/path/to/deepseek-harness pnpm run stage:dsh
+```
+
+### Update or Roll Back the DSH Runtime
+
+To update the runtime deterministically:
+
+1. Read the target release's exact package version, registry tarball URL, and
+   SHA-512 integrity from the npm registry.
+2. Update `dsh-source.json`, including the exact `pnpm@<version>` and its npm
+   integrity. Never use a tag such as `latest`.
+3. Extract the verified DSH tarball, run that pinned pnpm with
+   `install --lockfile-only --ignore-scripts`, and commit the result as
+   `scripts/dsh-runtime-<version>-lock.yaml`.
+4. Regenerate `plugins/tocktutor/pnpm-lock.yaml` with exact matching published
+   DSH package versions. Preserve its root React link and approved native build
+   list.
+5. Recalculate the `fetchPnpmDeps` hash in `nix/dsh-runtime-pinned.nix`; a Nix
+   build prints the required hash when the old value is replaced temporarily.
+6. Run the type, test, build, stage, Web/runtime smoke, package, browser, and Nix
+   gates before committing the update.
+
+Rollback is a source-controlled operation: revert the runtime update commit,
+remove only generated `.stage` and `.cache/dsh-source/npm-*` directories, then
+rebuild and stage. Do not delete or replace Desktop, Web, or TUI data roots or
+Profile files; their names and contents remain compatible across this cutover.
+
 Packaging commands:
 
 ```sh

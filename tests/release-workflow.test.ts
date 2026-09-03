@@ -20,6 +20,25 @@ test('runtime CI verifies the nested TockTutor workspace before staging', () => 
   assert.ok(workflow.indexOf('pnpm run build:tocktutor') < workflow.indexOf('pnpm run stage:dsh'))
 })
 
+test('Linux CI evaluates and builds every canonical and compatibility Nix output', () => {
+  const workflow = readFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'utf8')
+  const nix = workflow.slice(workflow.indexOf('  nix:'), workflow.indexOf('  runtime:'))
+
+  assert.match(nix, /DeterminateSystems\/nix-installer-action@[0-9a-f]{40}/u)
+  assert.match(nix, /nix flake check --no-build/u)
+  for (const output of [
+    'tockteam',
+    'tockteam-desktop',
+    'tockteam-web',
+    'tockteam-tui',
+    'tockteam-pinned',
+    'tockteam-desktop-pinned',
+    'tockteam-web-pinned',
+    'tockteam-tui-pinned',
+  ]) assert.match(nix, new RegExp(`\\.#${output}\\b`, 'u'))
+  assert.match(nix, /node scripts\/smoke-web\.mjs "\$PWD\/result-web"/u)
+})
+
 test('cross-platform core CI loads the native TockTutor search index dependency', () => {
   const workflow = readFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'utf8')
   const core = workflow.slice(workflow.indexOf('  core:'), workflow.indexOf('  runtime:'))
