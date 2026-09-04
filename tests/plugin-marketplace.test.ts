@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, win32 } from 'node:path'
 import { test } from 'node:test'
@@ -22,6 +22,7 @@ import {
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import {
   PluginMarketplaceManager,
+  removeWithin,
   type MarketplacePreviewRuntimeInput,
   type MarketplaceRuntime,
 } from '../plugins/plugin-marketplace/src/host/transaction-manager.ts'
@@ -33,6 +34,56 @@ import {
 
 const COMMIT = '0123456789abcdef0123456789abcdef01234567'
 const UPDATED_COMMIT = 'fedcba9876543210fedcba9876543210fedcba98'
+
+test('Marketplace cleanup removes Windows junctions without deleting their targets', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-marketplace-junction-'))
+  const previews = join(root, 'plugin-marketplace', 'previews')
+  const sandbox = join(previews, 'transaction', 'dsh', 'profiles', 'desktop', 'node_modules')
+  const external = join(root, 'bundled-runtime')
+  const junction = join(sandbox, 'packaged-runtime')
+  try {
+    mkdirSync(sandbox, { recursive: true })
+    mkdirSync(external, { recursive: true })
+    writeFileSync(join(external, 'bin.js'), 'runtime')
+    symlinkSync(
+      process.platform === 'win32' ? external : join('..', '..', '..', '..', '..', '..', '..', 'bundled-runtime'),
+      junction,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    )
+    const warnings: string[] = []
+    removeWithin(root, previews, message => { warnings.push(message) }, 'win32')
+    assert.deepEqual(warnings, [])
+    assert.equal(existsSync(junction), false)
+    assert.equal(existsSync(join(external, 'bin.js')), true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('Marketplace cleanup removes dangling Windows junctions and read-only entries', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-marketplace-dangling-'))
+  const previews = join(root, 'plugin-marketplace', 'previews')
+  const danglingTarget = join(root, 'missing-runtime')
+  const dangling = join(previews, 'dangling-runtime')
+  try {
+    mkdirSync(previews, { recursive: true })
+    writeFileSync(join(previews, 'read-only.pack'), 'pack', { mode: 0o400 })
+    if (process.platform === 'win32') {
+      mkdirSync(danglingTarget, { recursive: true })
+      symlinkSync(danglingTarget, dangling, 'junction')
+      rmSync(danglingTarget, { recursive: true, force: true })
+    } else {
+      symlinkSync(danglingTarget, dangling, 'dir')
+    }
+    const warnings: string[] = []
+    removeWithin(root, previews, message => { warnings.push(message) }, 'win32')
+    assert.deepEqual(warnings, [])
+    assert.equal(existsSync(previews), false)
+  } finally {
+    try { chmodSync(previews, 0o700) } catch { /* already removed */ }
+    rmSync(root, { recursive: true, force: true })
+  }
+})
 
 test('the marketplace protects every in-box Desktop and TockTutor package and row', () => {
   for (const packageName of [

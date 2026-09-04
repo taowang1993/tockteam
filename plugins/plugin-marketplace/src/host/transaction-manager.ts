@@ -1,13 +1,19 @@
 import { createHash, randomUUID } from 'node:crypto'
 import {
+  chmodSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   renameSync,
+  rmdirSync,
   rmSync,
+  unlinkSync,
   writeFileSync,
+  type Stats,
 } from 'node:fs'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { parseMarketplaceCatalog } from '../catalog.ts'
@@ -466,9 +472,79 @@ function ensureWithin(parent: string, candidate: string): void {
   }
 }
 
-function removeWithin(parent: string, candidate: string): void {
+function defaultWarn(message: string): void {
+  console.warn(`plugin-marketplace: ${message}`)
+}
+
+function makeWritable(path: string): void {
+  try {
+    const stats = lstatSync(path)
+    chmodSync(path, stats.mode | 0o200)
+  } catch {
+    // Best effort; the deletion below reports the real failure.
+  }
+}
+
+function isLinkEntry(path: string, stats: Stats): boolean {
+  if (stats.isSymbolicLink()) return true
+  if (!stats.isDirectory()) return false
+  try {
+    readlinkSync(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function removeLinkEntry(path: string): void {
+  try {
+    unlinkSync(path)
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'EISDIR' || code === 'EPERM' || code === 'ENOTEMPTY') {
+      rmdirSync(path)
+      return
+    }
+    throw error
+  }
+}
+
+/** Delete a Windows tree without traversing symlinks or directory junctions. */
+function removeTreeWindows(path: string): void {
+  let stats: Stats
+  try {
+    stats = lstatSync(path)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return
+    throw error
+  }
+  if (isLinkEntry(path, stats)) {
+    removeLinkEntry(path)
+    return
+  }
+  makeWritable(path)
+  if (stats.isDirectory()) {
+    for (const entry of readdirSync(path)) removeTreeWindows(join(path, entry))
+    rmdirSync(path)
+    return
+  }
+  unlinkSync(path)
+}
+
+export function removeWithin(
+  parent: string,
+  candidate: string,
+  onWarn: (message: string) => void = defaultWarn,
+  platform: NodeJS.Platform = process.platform,
+): void {
   ensureWithin(parent, candidate)
-  rmSync(candidate, { force: true, recursive: true })
+  try {
+    if (platform === 'win32') removeTreeWindows(candidate)
+    else rmSync(candidate, { force: true, recursive: true })
+  } catch (error) {
+    onWarn(`failed to clean plugin marketplace tree at ${candidate}: ${message(error)}`)
+    throw error
+  }
 }
 
 function copyDirectory(source: string, target: string): void {
@@ -546,7 +622,7 @@ export class PluginMarketplaceManager {
     this.#previewsRoot = join(this.#root, 'previews')
     this.#rollbacksRoot = join(this.#root, 'rollbacks')
     this.#rollbackStatePath = join(this.#rollbacksRoot, 'current.json')
-    rmSync(this.#previewsRoot, { force: true, recursive: true })
+    removeWithin(this.#root, this.#previewsRoot)
     mkdirSync(this.#previewsRoot, { recursive: true, mode: 0o700 })
     mkdirSync(this.#rollbacksRoot, { recursive: true, mode: 0o700 })
     this.#rollback = this.readRollback()
