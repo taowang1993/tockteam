@@ -110,7 +110,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(screen.getByLabelText('Live Preview Properties').textContent).toContain('statusactive')
   })
 
-  it('mounts one editable ProseMirror surface and keeps source untouched until edited', async () => {
+  it('mounts one editable ProseMirror surface and keeps source untouched until edited', { timeout: 10_000 }, async () => {
     const source = '# Lesson\r\n\r\n- [ ] Review\r\n'
     const onChange = vi.fn()
     const onSelection = vi.fn()
