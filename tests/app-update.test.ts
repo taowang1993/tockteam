@@ -16,6 +16,9 @@ class FakeUpdater implements AutoUpdaterPort {
   channel = ''
   allowPrerelease = false
   allowDowngrade = false
+  logger: unknown = { info() {}, warn() {}, error() {} }
+  loggerAtFirstBind: unknown = undefined
+  private hasBound = false
   checkCalls = 0
   downloadCalls = 0
   installCalls = 0
@@ -23,7 +26,14 @@ class FakeUpdater implements AutoUpdaterPort {
   failDownload = false
   failInstall = false
   private readonly listeners = new Map<string, Set<Listener>>()
-  on(event: string, listener: Listener): void { (this.listeners.get(event) ?? new Set()).add(listener); this.listeners.set(event, this.listeners.get(event) ?? new Set([listener])) }
+  on(event: string, listener: Listener): void {
+    if (!this.hasBound) {
+      this.loggerAtFirstBind = this.logger
+      this.hasBound = true
+    }
+    ;(this.listeners.get(event) ?? new Set()).add(listener)
+    this.listeners.set(event, this.listeners.get(event) ?? new Set([listener]))
+  }
   removeListener(event: string, listener: Listener): void { this.listeners.get(event)?.delete(listener) }
   emit(event: string, ...args: unknown[]): void { for (const listener of this.listeners.get(event) ?? []) listener(...args) }
   async checkForUpdates(): Promise<void> { this.checkCalls += 1; if (this.failCheck) throw new Error('check failed') }
@@ -38,7 +48,9 @@ function fakeApp(root: string, packaged: boolean): { isPackaged: boolean; getVer
 test('development and missing metadata stay disabled without touching updater', () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
   const updater = new FakeUpdater()
+  const logger = updater.logger
   const disabled = createDesktopAppUpdater({ app: fakeApp(root, false), updater })
+  assert.equal(updater.logger, logger)
   assert.equal(disabled.getState().enabled, false)
   assert.equal(disabled.getState().status, 'disabled')
   assert.equal(updater.checkCalls, 0)
@@ -72,6 +84,8 @@ test('enabled updater configures manual finite transitions and serializes action
   assert.equal(owner.getState().enabled, true)
   assert.equal(updater.autoDownload, false)
   assert.equal(updater.autoInstallOnAppQuit, false)
+  assert.equal(updater.logger, null)
+  assert.equal(updater.loggerAtFirstBind, null)
   const first = owner.check()
   const second = owner.check()
   assert.equal((await second).accepted, false)

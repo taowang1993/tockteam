@@ -19,6 +19,7 @@ export type AutoUpdaterPort = {
   channel: string
   allowPrerelease: boolean
   allowDowngrade: boolean
+  logger?: unknown
   checkForUpdates: () => Promise<unknown>
   downloadUpdate: () => Promise<unknown>
   quitAndInstall: (isSilent?: boolean, isForceRunAfter?: boolean) => void
@@ -206,6 +207,7 @@ export function createDesktopAppUpdater(args: Readonly<{
     target.channel = 'latest'
     target.allowPrerelease = false
     target.allowDowngrade = false
+    if (state.enabled) target.logger = null
   }
 
   const attach = (target: AutoUpdaterPort): void => {
