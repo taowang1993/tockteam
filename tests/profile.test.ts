@@ -12,9 +12,6 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     files: string[]
     scripts: Record<string, string>
   }
-  const sourcePin = JSON.parse(readFileSync(new URL('../dsh-source.json', import.meta.url), 'utf8')) as {
-    revision: string
-  }
   const pluginWorkspace = readFileSync(
     new URL('../plugins/tocktutor/pnpm-workspace.yaml', import.meta.url),
     'utf8',
@@ -23,6 +20,10 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
     new URL('../plugins/tocktutor/package.json', import.meta.url),
     'utf8',
   )) as { scripts: Record<string, string> }
+  const installer = readFileSync(
+    new URL('../scripts/install-tocktutor.mjs', import.meta.url),
+    'utf8',
+  )
   const bundle = JSON.parse(readFileSync(new URL('../plugins/tocktutor/packages/tockteam-tocktutor/package.json', import.meta.url), 'utf8')) as {
     dependencies: Record<string, string>
     peerDependencies: Record<string, string>
@@ -76,10 +77,9 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   for (const name of ['build', 'test', 'typecheck']) {
     assert.match(workspacePackage.scripts[name] ?? '', /--filter='!@tockteam\/tocktutor-workspace'/u)
   }
-  assert.deepEqual(
-    new Set([...pluginWorkspace.matchAll(/dsh-source\/([0-9a-f]{12})\//gu)].map(match => match[1])),
-    new Set([sourcePin.revision.slice(0, 12)]),
-  )
+  assert.doesNotMatch(pluginWorkspace, /dsh-source|'@deepseek-ai\/[^']+': link:/u)
+  assert.doesNotMatch(installer, /build:dsh|DSH_SOURCE/u)
+  assert.match(installer, /install',\s*'--frozen-lockfile'/u)
   assert.equal(packageJson.devDependencies['tockbot-note-runtime'], 'file:plugins/tocktutor/packages/tockbot-note-runtime')
   assert.equal(packageJson.devDependencies['tockbot-note-vault'], 'file:plugins/tocktutor/packages/tockbot-note-vault')
   assert.equal(packageJson.devDependencies['@tockteam/note-vault-tools'], 'file:plugins/tocktutor/packages/tockteam-note-vault-tools')

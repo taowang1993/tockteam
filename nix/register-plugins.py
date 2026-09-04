@@ -34,8 +34,20 @@ def main():
         "plugin-marketplace": os.path.join("plugins", "plugin-marketplace"),
         "better-sidebar-runtime": os.path.join("plugins", "better-sidebar-runtime"),
     }
+    tocktutor_plugins = {
+        "tockbot-note-desktop",
+        "tockbot-note-runtime",
+        "tockbot-note-vault",
+        "tockbot-web-clip",
+        "tockteam-note-vault-tools",
+        "tockteam-tocktutor",
+        "tockteam-tocktutor-assistant",
+        "tockteam-tocktutor-import-export",
+        "tockteam-tocktutor-workbench",
+    }
+    source_packages = tocktutor_plugins | {"ui"}
     selected = {
-        "full": set(plugin_dirs) | {"tui-renderer"},
+        "full": set(plugin_dirs) | {"tui-renderer"} | source_packages,
         "web": {"web", "skins", "sidebar", "panel-controls", "pinned-summary", "better-sidebar-runtime"},
         "tui": {"tui", "tui-renderer", "skins"},
     }.get(surface)
@@ -62,7 +74,10 @@ def main():
             f.write("\n")
 
         deps_link = os.path.join(package_dir, "node_modules")
-        if plugin_key == "tui-renderer":
+        package_deps = os.path.join(bundle_root, "package-deps", plugin_key)
+        if os.path.isdir(package_deps):
+            shutil.copytree(package_deps, deps_link, symlinks=True)
+        elif plugin_key == "tui-renderer":
             # The renderer requires React 19 while the Web runtime carries
             # React 18. Keep its direct dependency graph package-local.
             os.makedirs(deps_link, exist_ok=True)
@@ -92,19 +107,40 @@ def main():
                     shutil.copytree(src, dst)
                 else:
                     shutil.copy2(src, dst)
+        elif plugin_key in source_packages:
+            src_base = os.path.join(bundle_root, "tocktutor-packages", plugin_key)
+            for fname in os.listdir(src_base):
+                if fname == "package.json":
+                    continue
+                src = os.path.join(src_base, fname)
+                dst = os.path.join(package_dir, fname)
+                if os.path.isdir(src):
+                    shutil.copytree(src, dst)
+                else:
+                    shutil.copy2(src, dst)
         else:
             dist_subdir = plugin_dirs[plugin_key]
             src_base = os.path.join(dist_root, dist_subdir)
             dst_dir = os.path.join(package_dir, "dist")
             os.makedirs(dst_dir, exist_ok=True)
             if plugin_key == "desktop":
-                filenames = ("plugin.js", "client.js", "client.js.map", "cordis.patch.yml")
+                filenames = (
+                    "plugin.js",
+                    "client.js",
+                    "client.js.map",
+                    "client-api.js",
+                    "host.js",
+                    "cordis.patch.yml",
+                )
             else:
                 filenames = os.listdir(src_base)
             for fname in filenames:
                 src = os.path.join(src_base, fname)
                 if os.path.exists(src):
                     shutil.copy2(src, os.path.join(dst_dir, fname))
+            if plugin_key == "desktop":
+                for fname in ("client.d.ts", "host.d.ts"):
+                    shutil.copy2(os.path.join(bundle_root, fname), os.path.join(package_dir, fname))
 
         installed_versions[name] = manifest["version"]
         print(f"registered {name}")

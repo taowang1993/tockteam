@@ -14,7 +14,7 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   desktopArtifact,
-  dshRoot,
+  loadDshClientModules,
   packedClientModuleSystemOptions,
   packPlugin,
   packUi,
@@ -57,10 +57,10 @@ async function installFreshPackage(root: string): Promise<{
     name: 'tocktutor-workbench-packed-consumer',
     private: true,
     dependencies: {
-      '@deepseek-ai/cordis': `link:${join(dshRoot, 'vendor/cordis')}`,
-      '@deepseek-ai/dsh-client-runtime': `link:${join(dshRoot, 'packages/client/runtime')}`,
-      '@deepseek-ai/dsh-client-ui-slots': `link:${join(dshRoot, 'packages/client/ui-slots')}`,
-      '@deepseek-ai/dsh-typert-protocol': `link:${join(dshRoot, 'packages/typert/protocol')}`,
+      '@deepseek-ai/cordis': '4.0.1',
+      '@deepseek-ai/dsh-client-runtime': '0.1.1-rc.2',
+      '@deepseek-ai/dsh-client-ui-slots': '0.1.1-rc.2',
+      '@deepseek-ai/dsh-typert-protocol': '0.1.1-rc.2',
       '@tockteam/desktop': `file:${desktopArtifact}`,
       '@tockteam/ui': `file:${uiArtifact}`,
       [packageName]: `file:${artifact}`,
@@ -168,9 +168,7 @@ async function verifyPackedClient(
   const clientPath = join(packageRoot, 'dist/client.js')
   assert.equal(relative(consumerRoot, clientPath).startsWith(`node_modules${sep}`), true)
   assert.equal(clientPath.endsWith(join('dist', 'client.js')), true)
-  const { ClientModuleSystem } = await import(
-    pathToFileURL(join(dshRoot, 'packages/client/modules/lib/types/client/system.js')).href
-  )
+  const { ClientModuleSystem } = await loadDshClientModules()
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis })
   try {

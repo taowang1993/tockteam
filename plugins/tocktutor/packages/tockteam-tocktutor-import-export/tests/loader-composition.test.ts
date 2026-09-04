@@ -14,7 +14,7 @@ import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import {
   desktopArtifact,
-  dshRoot,
+  loadDshClientModules,
   packedClientModuleSystemOptions,
   packPlugin,
   packUi,
@@ -37,12 +37,12 @@ async function installPacked(consumer: string, tarball: string, artifacts: strin
   const vaultArtifact = await packPlugin('tockbot-note-vault', artifacts)
   const dependencies = {
     [packageName]: `file:${tarball}`,
-    '@deepseek-ai/cordis': `link:${join(dshRoot, 'vendor/cordis')}`,
+    '@deepseek-ai/cordis': '4.0.1',
     '@deepseek-ai/cordis-plugin-include': manifest.devDependencies['@deepseek-ai/cordis-plugin-include']!,
     '@deepseek-ai/cordis-plugin-loader': manifest.devDependencies['@deepseek-ai/cordis-plugin-loader']!,
-    '@deepseek-ai/dsh-client-runtime': `link:${join(dshRoot, 'packages/client/runtime')}`,
-    '@deepseek-ai/dsh-client-ui-slots': `link:${join(dshRoot, 'packages/client/ui-slots')}`,
-    '@deepseek-ai/dsh-typert-protocol': `link:${join(dshRoot, 'packages/typert/protocol')}`,
+    '@deepseek-ai/dsh-client-runtime': '0.1.1-rc.2',
+    '@deepseek-ai/dsh-client-ui-slots': '0.1.1-rc.2',
+    '@deepseek-ai/dsh-typert-protocol': '0.1.1-rc.2',
     '@tockteam/desktop': `file:${desktopArtifact}`,
     '@tockteam/tocktutor-workbench': `file:${workbenchArtifact}`,
     '@tockteam/ui': `file:${uiArtifact}`,
@@ -201,7 +201,7 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
   const packageManifest = require.resolve(`${packageName}/package.json`)
   const root = dirname(packageManifest)
   const clientPath = join(root, 'dist/client.js')
-  const { ClientModuleSystem } = await import(pathToFileURL(join(dshRoot, 'packages/client/modules/lib/types/client/system.js')).href)
+  const { ClientModuleSystem } = await loadDshClientModules()
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis })
   try {

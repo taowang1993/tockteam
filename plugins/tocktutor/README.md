@@ -2,7 +2,7 @@
 
 This workspace owns the TockTutor aggregate bundle and its component plugins. Package names and versions remain compatibility contracts; only their source location moved from separate local repositories into TockTeam.
 
-The workspace uses the DSH revision pinned by the repository. From the TockTeam root:
+The workspace installs the exact published DSH version pinned by the repository. From the TockTeam root:
 
 ```sh
 pnpm run install:tocktutor

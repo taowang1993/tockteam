@@ -4,15 +4,13 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { dshRoot, repositoryRoot } from '../../../test-utils.ts'
+import { loadDshAppBoot, repositoryRoot } from '../../../test-utils.ts'
 
 const run = promisify(execFile)
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
-const { loadOverlayPatches } = await import(pathToFileURL(
-  join(dshRoot, 'packages/boot/app-boot/lib/index.js'),
-).href)
+const { loadOverlayPatches } = await loadDshAppBoot()
 
 const dependencies = {
   'tockbot-note-runtime': '0.1.2',

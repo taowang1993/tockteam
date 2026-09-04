@@ -19,7 +19,7 @@ try {
   await mkdir(sessionRoot, { recursive: true })
   await cp(join(root, 'src'), join(packageRoot, 'src'), { recursive: true })
   const pinnedProtocol = await realpath(join(root, 'node_modules', '@deepseek-ai', 'dsh-typert-protocol'))
-  await cp(join(pinnedProtocol, 'src'), join(protocolRoot, 'src'), { recursive: true })
+  await cp(join(pinnedProtocol, 'lib', 'types'), join(protocolRoot, 'src'), { recursive: true })
   await symlink(
     await realpath(join(root, 'node_modules', '@deepseek-ai', 'cordis')),
     join(modulesRoot, '@deepseek-ai', 'cordis'),
@@ -41,7 +41,7 @@ try {
   await writeFile(join(protocolRoot, 'package.json'), JSON.stringify({
     name: '@deepseek-ai/dsh-typert-protocol',
     type: 'module',
-    exports: { '.': './src/index.ts' },
+    exports: { '.': './src/index.d.ts' },
   }, null, 2))
   await writeFile(join(sessionRoot, 'package.json'), JSON.stringify({
     name: '@deepseek-ai/dsh-session',
@@ -90,7 +90,7 @@ try {
   }, null, 2))
   await writeFile(join(protocolRoot, 'tsconfig.json'), JSON.stringify({
     compilerOptions,
-    include: ['src/**/*.ts'],
+    include: ['src/**/*.d.ts'],
   }, null, 2))
   await writeFile(join(sessionRoot, 'tsconfig.json'), JSON.stringify({
     compilerOptions,

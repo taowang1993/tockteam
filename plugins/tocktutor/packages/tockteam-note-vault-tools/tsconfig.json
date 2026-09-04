@@ -8,11 +8,6 @@
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
-    "paths": {
-      "@deepseek-ai/dsh-tools": [
-        "../../../../.cache/dsh-source/b150a551b8d4/packages/core/tools/lib/types/index.d.ts"
-      ]
-    },
     "types": ["node"],
     "skipLibCheck": true
   },

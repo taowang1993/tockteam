@@ -20,7 +20,7 @@ try {
   await mkdir(packageRoot, { recursive: true })
   await mkdir(protocolRoot, { recursive: true })
   await cp(join(root, 'src'), join(packageRoot, 'src'), { recursive: true })
-  await cp(join(root, 'node_modules', '@deepseek-ai', 'dsh-typert-protocol', 'src'), join(protocolRoot, 'src'), { recursive: true })
+  await cp(join(root, 'node_modules', '@deepseek-ai', 'dsh-typert-protocol', 'lib', 'types'), join(protocolRoot, 'src'), { recursive: true })
   await mkdir(join(workspace, 'node_modules', '@deepseek-ai'), { recursive: true })
   await symlink(protocolRoot, join(workspace, 'node_modules', '@deepseek-ai', 'dsh-typert-protocol'), 'dir')
   await Promise.all([
@@ -52,7 +52,7 @@ try {
   await writeFile(join(protocolRoot, 'package.json'), JSON.stringify({
     name: '@deepseek-ai/dsh-typert-protocol',
     type: 'module',
-    exports: { '.': './src/index.ts' },
+    exports: { '.': './src/index.d.ts' },
   }, null, 2))
   await writeFile(join(packageRoot, 'remote-stub.d.ts'), [
     "import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'",
@@ -77,7 +77,7 @@ try {
     verbatimModuleSyntax: true,
   }
   await writeFile(join(packageRoot, 'tsconfig.json'), JSON.stringify({ compilerOptions, include: ['src/**/*.ts', 'src/**/*.tsx'] }, null, 2))
-  await writeFile(join(protocolRoot, 'tsconfig.json'), JSON.stringify({ compilerOptions, include: ['src/**/*.ts'] }, null, 2))
+  await writeFile(join(protocolRoot, 'tsconfig.json'), JSON.stringify({ compilerOptions, include: ['src/**/*.d.ts'] }, null, 2))
   await writeFile(join(workspace, 'tsconfig.host.json'), JSON.stringify({
     files: [],
     references: [{ path: './packages/typert-protocol' }, { path: './packages/import-export' }],

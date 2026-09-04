@@ -74,7 +74,7 @@ class CdpPage {
       else pending.resolve(message.result)
     })
     socket.addEventListener('close', () => {
-      for (const pending of page.#pending.values()) pending.reject(new Error('CDP connection closed'))
+      for (const pending of page.#pending.values()) pending.reject(pending.closedError)
       page.#pending.clear()
     })
     await new Promise((resolve, reject) => {
@@ -87,7 +87,8 @@ class CdpPage {
   call(method, params = {}) {
     const id = this.#nextId++
     return new Promise((resolve, reject) => {
-      this.#pending.set(id, { resolve, reject })
+      const closedError = new Error(`CDP connection closed during ${method}`)
+      this.#pending.set(id, { closedError, resolve, reject })
       this.#socket.send(JSON.stringify({ id, method, params }))
     })
   }
@@ -486,7 +487,7 @@ try {
     accepted: true,
     confirmation: true,
     declined: true,
-    details: 'Terminal: Terminal\nWorking directory: /Users/max\nApproval: Always required',
+    details: `Terminal: Terminal\nWorking directory: ${homedir()}\nApproval: Always required`,
     image: 'terminal-macos',
     replay: true,
   })
@@ -744,13 +745,16 @@ try {
     pathname => pathname === '/tocktutor',
   )
   assert.equal(await workbenchConnection.evaluate('window.__tockteamLauncherSmokeMarker'), workbenchMarker)
-  const tutorFacts = await workbenchConnection.evaluate(`({
-    launcherButtons: document.querySelectorAll('button[aria-label="Open TockLauncher"]').length,
-    titlebars: document.querySelectorAll('[aria-label="TockTutor Title Bar"]').length,
-  })`)
+  const tutorFacts = await waitFor(
+    () => workbenchConnection.evaluate(`({
+      launcherButtons: document.querySelectorAll('button[aria-label^="Open TockLauncher"]').length,
+      titlebars: document.querySelectorAll('[aria-label="TockTutor Title Bar"]').length,
+    })`),
+    facts => facts.launcherButtons === 1 && facts.titlebars === 1,
+  )
   assert.deepEqual(tutorFacts, { launcherButtons: 1, titlebars: 1 })
   const tutorLauncherButton = await workbenchConnection.evaluate(`(() => {
-    const button = document.querySelector('button[aria-label="Open TockLauncher"]')
+    const button = document.querySelector('button[aria-label^="Open TockLauncher"]')
     return button instanceof HTMLButtonElement && !button.disabled
   })()`)
   assert.equal(tutorLauncherButton, true)
@@ -827,8 +831,8 @@ try {
   )
   await clearStartupDialogs(workbenchConnection)
   await showLauncherFromWorkbench(workbenchConnection)
-  const settingsClicked = await launcherConnection.clickSelector('#launcher-settings')
-  assert.equal(settingsClicked, true)
+  await launcherConnection.evaluate("document.getElementById('launcher-search')?.focus()")
+  await launcherConnection.pressKey(',', PRIMARY_MODIFIER)
   await waitFor(
     () => workbenchConnection.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'),
     visible => visible === false,
@@ -1056,13 +1060,13 @@ try {
     () => workbenchConnection.evaluate(`(() => {
       const dialog = document.querySelector('[data-testid="tocklauncher-workflow-delete-dialog"]')
       const cancel = document.querySelector('[data-testid="tockteam-workflow-delete-cancel"]')
-      return { open: dialog instanceof HTMLDialogElement && dialog.open, modal: dialog?.getAttribute('aria-modal'), focusedCancel: document.activeElement === cancel }
+      return { open: dialog instanceof HTMLElement && dialog.dataset.state === 'open', role: dialog?.getAttribute('role'), focusedCancel: document.activeElement === cancel }
     })()`),
-    state => state.open === true && state.modal === 'true' && state.focusedCancel === true,
+    state => state.open === true && state.role === 'alertdialog' && state.focusedCancel === true,
   )
   await workbenchConnection.pressKey('Escape')
   await waitFor(
-    () => workbenchConnection.evaluate(`({ open: document.querySelector('[data-testid="tocklauncher-workflow-delete-dialog"]')?.open ?? false, focused: document.activeElement?.getAttribute('data-testid') ?? null })`),
+    () => workbenchConnection.evaluate(`({ open: document.querySelector('[data-testid="tocklauncher-workflow-delete-dialog"][data-state="open"]') !== null, focused: document.activeElement?.getAttribute('data-testid') ?? null })`),
     state => state.open === false && state.focused === 'tocklauncher-workflow-delete',
   )
   const resetDialogClicked = await workbenchConnection.clickSelector('[data-testid="tocklauncher-reset-trigger"]')
@@ -1071,13 +1075,13 @@ try {
     () => workbenchConnection.evaluate(`(() => {
       const dialog = document.querySelector('[data-testid="tocklauncher-reset-dialog"]')
       const cancel = document.querySelector('[data-testid="tocklauncher-reset-cancel"]')
-      return { open: dialog instanceof HTMLDialogElement && dialog.open, focusedCancel: document.activeElement === cancel, modal: dialog?.getAttribute('aria-modal') }
+      return { open: dialog instanceof HTMLElement && dialog.dataset.state === 'open', focusedCancel: document.activeElement === cancel, role: dialog?.getAttribute('role') }
     })()`),
-    state => state.open === true && state.modal === 'true' && state.focusedCancel === true,
+    state => state.open === true && state.role === 'alertdialog' && state.focusedCancel === true,
   )
   await workbenchConnection.pressKey('Escape')
   await waitFor(
-    () => workbenchConnection.evaluate(`({ open: document.querySelector('[data-testid="tocklauncher-reset-dialog"]')?.open ?? false, focused: document.activeElement?.textContent?.trim() ?? null })`),
+    () => workbenchConnection.evaluate(`({ open: document.querySelector('[data-testid="tocklauncher-reset-dialog"][data-state="open"]') !== null, focused: document.activeElement?.textContent?.trim() ?? null })`),
     state => state.open === false && state.focused === 'Reset',
   )
   const browserChooseClicked = await workbenchConnection.clickSelector('[data-testid="tockteam-custom-browser-choose"]')
@@ -1475,7 +1479,10 @@ try {
   )
   const deepLCopy = await launcherConnection.clickSelector('[aria-label="DeepL Translator results"] li button')
   assert.equal(deepLCopy, true)
-  await waitFor(() => launcherConnection.evaluate('document.activeElement?.getAttribute("aria-label")'), label => label === 'Text to translate' || label === 'Actions for Fixture translation')
+  await waitFor(
+    () => launcherConnection.evaluate('document.activeElement?.getAttribute("aria-label")'),
+    label => label === 'Text to translate' || label === 'Actions for Fixture translation' || label === 'Fixture translation — Copy translation',
+  )
   assert.equal(await launcherConnection.clickSelector('[aria-label="Close DeepL Translator tool"]'), true)
   await waitFor(() => launcherConnection.evaluate('document.querySelector(\'[aria-label="DeepL Translator tool"]\') === null && document.activeElement?.id === "launcher-search"'), restored => restored === true)
 
@@ -1974,8 +1981,7 @@ try {
   const rowFocusRestored = await launcherConnection.evaluate(`(() => document.activeElement?.id === 'launcher-search' && document.querySelector('#launcher-actions-menu') === null)()`)
   assert.equal(rowFocusRestored, true)
 
-  const rescanClicked = await launcherConnection.clickSelector('#launcher-rescan')
-  assert.equal(rescanClicked, true)
+  await launcherConnection.pressKey('F5')
   await waitFor(
     () => launcherConnection.evaluate(`({
       busy: document.getElementById('launcher-rescan')?.getAttribute('aria-busy'),

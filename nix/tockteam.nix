@@ -1,42 +1,20 @@
-# TockTeam package builder.
-#
-# dshSource selects where the pinned DeepSeek Harness runtime comes from:
-#   "llm-agents"  (default) — numtide/llm-agents.nix, pre-built npm package
-#   "pinned"                — this repo's dsh-source.json revision, built from source
-#   "nixpkgs"               — pkgs.deepseek-harness (kept as a placeholder; the
-#                             nixpkgs PR is not yet merged, so this throws)
+# TockTeam package builder over the npm runtime pinned by dsh-source.json.
 
-{ pkgs, system, llm-agents, dshSourceSpec }:
+{ pkgs, dshSourceSpec }:
 
 { surface # "full" | "web" | "tui"
-, dshSource ? "llm-agents"
 }:
 
 let
   lib = pkgs.lib;
 
   isFull = surface == "full";
+  includesSidebar = surface != "tui";
   includesWeb = surface != "tui";
   includesTui = surface != "web";
 
-  # ---------------------------------------------------------------------------
-  # DSH runtime selection
-  # ---------------------------------------------------------------------------
-
-  dshRuntime =
-    if dshSource == "llm-agents" then
-      llm-agents.packages.${system}.dsh
-    else if dshSource == "pinned" then
-      pkgs.callPackage ./dsh-runtime-pinned.nix { inherit dshSourceSpec; }
-    else if dshSource == "nixpkgs" then
-      # Reserved: the nixpkgs deepseek-harness PR has not landed yet.
-      pkgs.deepseek-harness or (throw ''
-        dshSource = "nixpkgs" requires pkgs.deepseek-harness, which is not yet
-        in nixpkgs (see NixOS/nixpkgs#552467). Use "llm-agents" (default) or
-        "pinned" for now.
-      '')
-    else
-      throw "unknown dshSource: ${dshSource}";
+  dshRuntime = pkgs.callPackage ./dsh-runtime-pinned.nix { inherit dshSourceSpec; };
+  pinnedPnpm = pkgs.callPackage ./pnpm-pinned.nix { inherit dshSourceSpec; };
 
   # ---------------------------------------------------------------------------
   # TockTeam front-end bundle. The same build produces all surface adapters;
@@ -44,14 +22,19 @@ let
   cleanSource = lib.cleanSourceWith {
     src = ../.;
     filter = path: type:
-      let base = baseNameOf path;
+      let
+        base = baseNameOf path;
+        relativePath = lib.removePrefix "${toString ../.}/" (toString path);
       in !(lib.hasSuffix ".nix" base)
       && base != "flake.lock"
       && base != "release"
       && base != ".stage"
       && base != ".cache"
       && base != "node_modules"
-      && base != "dist";
+      && relativePath != "dist"
+      && !(lib.hasPrefix "dist/" relativePath)
+      && relativePath != "nix"
+      && !(lib.hasPrefix "nix/" relativePath);
   };
 
   betterSidebarSrc = pkgs.fetchFromGitHub {
@@ -84,6 +67,7 @@ let
     cp -r ${cleanSource} $out
     chmod -R u+w $out
     rm -rf $out/upstream/DSH-better-sidebar $out/upstream/dsh-TUI
+    mkdir -p $out/upstream
     cp -r ${betterSidebarSrc} $out/upstream/DSH-better-sidebar
     cp -r ${tuiSrc} $out/upstream/dsh-TUI
     chmod -R u+w $out/upstream/dsh-TUI
@@ -103,12 +87,12 @@ let
     pnpmDeps = pkgs.fetchPnpmDeps {
       inherit pname version src;
       fetcherVersion = 4;
-      hash = "sha256-jCX9aTQwF+3AqEHuZOq3nmrQO+2S0wsno2E+bvzTmfo=";
+      hash = "sha256-43T+onPcLeMnTdxsz03OhFaVe1mhwkTUx+x88hOrC/0=";
     };
 
     nativeBuildInputs = [
       pkgs.nodejs_24
-      pkgs.pnpm
+      pinnedPnpm
       pkgs.pnpmConfigHook
     ];
 
@@ -117,7 +101,20 @@ let
       runHook preBuild
 
       # The full release pipeline (build:dsh + stage:dsh) is skipped on purpose:
-      # the DSH runtime is provided by ${dshSource} instead of the staged copy.
+      # the pinned Nix DSH runtime replaces the staged copy. TockTutor's
+      # committed outputs are verified rather than rebuilt from a second lock.
+      ${lib.optionalString isFull ''
+        node scripts/tocktutor-build-manifest.mjs
+      ''}
+      ${lib.optionalString includesTui ''
+        (cd upstream/dsh-TUI && node scripts/prepare-guard.mjs)
+        pnpm --filter @dsh-std/core --filter @dsh-std/manifest \
+          --filter @dsh-std/connection --filter @dsh-std/presentation \
+          --filter @dsh-std/command --filter @dsh-std/storage \
+          --filter @dsh-std/messages --reporter append-only -r exec tsdown
+        node upstream/dsh-TUI/scripts/clean-lib.mjs
+        node node_modules/typescript/bin/tsc -p upstream/dsh-TUI/tsconfig.json
+      ''}
       node scripts/build.mjs
 
       runHook postBuild
@@ -129,7 +126,7 @@ let
       mkdir -p $out/lib/tockteam
       cp -r dist $out/lib/tockteam/
       cp -r bin $out/lib/tockteam/
-      cp package.json $out/lib/tockteam/
+      cp package.json client.d.ts host.d.ts $out/lib/tockteam/
 
       # Carry package manifests so the final package can register the selected
       # surfaces into dsh-runtime/node_modules (mirrors stage-dsh.mjs).
@@ -140,25 +137,94 @@ let
         cp "$p" "$out/lib/tockteam/manifests/$name.json"
       done
       cp web/package.json $out/lib/tockteam/manifests/web.json
-      cp upstream/dsh-TUI/package.json $out/lib/tockteam/manifests/tui-renderer.json
+      ${lib.optionalString includesTui ''
+        cp upstream/dsh-TUI/package.json $out/lib/tockteam/manifests/tui-renderer.json
+      ''}
 
-      # Copy the pinned renderer and apply the guarded TockTeam adaptation.
-      mkdir -p $out/lib/tockteam/tui-renderer
-      cp -r upstream/dsh-TUI/lib upstream/dsh-TUI/skills \
-        upstream/dsh-TUI/cordis.patch.yml upstream/dsh-TUI/cordis.yml \
-        upstream/dsh-TUI/LICENSE $out/lib/tockteam/tui-renderer/
-      node -e "import('./scripts/tui-upstream-adapter.mjs').then(({ adaptTuiRendererPackage }) => adaptTuiRendererPackage('$out/lib/tockteam/tui-renderer'))"
+      ${lib.optionalString isFull ''
+        mkdir -p $out/lib/tockteam/tocktutor-packages/ui
+        cp plugins/ui/package.json $out/lib/tockteam/tocktutor-packages/ui/package.json
+        cp -r plugins/ui/lib plugins/ui/src $out/lib/tockteam/tocktutor-packages/ui/
+        for package in plugins/tocktutor/packages/*; do
+          name=$(basename "$package")
+          target="$out/lib/tockteam/tocktutor-packages/$name"
+          mkdir -p "$target"
+          cp "$package/package.json" "$target/package.json"
+          cp "$package/package.json" "$out/lib/tockteam/manifests/$name.json"
+          for artifact in lib dist cordis.patch.yml index.js inspection.js inspection.d.ts LICENSE README.md PENNIVO_PROVENANCE.md THIRD_PARTY_NOTICES; do
+            if [ -e "$package/$artifact" ]; then
+              cp -r "$package/$artifact" "$target/$artifact"
+            fi
+          done
+        done
+      ''}
+
+      ${lib.optionalString includesTui ''
+        # Copy the pinned renderer and apply the guarded TockTeam adaptation.
+        mkdir -p $out/lib/tockteam/tui-renderer
+        cp -r upstream/dsh-TUI/lib upstream/dsh-TUI/dsh-ecosystem-spec \
+          upstream/dsh-TUI/presets upstream/dsh-TUI/skills \
+          upstream/dsh-TUI/cordis.patch.yml upstream/dsh-TUI/cordis.yml \
+          upstream/dsh-TUI/LICENSE $out/lib/tockteam/tui-renderer/
+        node -e "import('./scripts/tui-upstream-adapter.mjs').then(({ adaptTuiRendererPackage }) => adaptTuiRendererPackage('$out/lib/tockteam/tui-renderer'))"
+      ''}
+
+      # Keep native and exact-version dependencies package-local, matching the
+      # staged distribution instead of substituting DSH's shared versions.
+      ${lib.optionalString includesSidebar ''
+        mkdir -p $out/lib/tockteam/package-deps/better-sidebar-runtime
+        ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
+          node_modules/.pnpm \
+          plugins/better-sidebar-runtime/package.json \
+          $out/lib/tockteam/package-deps/better-sidebar-runtime
+        PYTHON=${pkgs.python3}/bin/python3 ${pkgs.nodejs_24}/bin/node \
+          ${pinnedPnpm}/lib/pnpm/dist/node_modules/node-gyp/bin/node-gyp.js \
+          rebuild --directory $out/lib/tockteam/package-deps/better-sidebar-runtime/node-pty \
+          --nodedir=${pkgs.nodejs_24}
+      ''}
 
       # Collect runtime dependency closures that the DSH runtime may not ship.
       mkdir -p $out/lib/tockteam/extra-deps
-      ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
-        node_modules/.pnpm \
-        plugins/better-sidebar-runtime/package.json \
-        $out/lib/tockteam/extra-deps
-      ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
-        node_modules/.pnpm \
-        upstream/dsh-TUI/package.json \
-        $out/lib/tockteam/extra-deps
+      ${lib.optionalString includesTui ''
+        mkdir -p $out/lib/tockteam/package-deps/tui-renderer
+        for name in command connection core manifest messages presentation storage; do
+          for root in extra-deps package-deps/tui-renderer; do
+            target="$out/lib/tockteam/$root/@dsh-std/$name"
+            mkdir -p "$(dirname "$target")"
+            cp -r "upstream/dsh-TUI/vendor/dsh-std/packages/$name" "$target"
+            chmod -R u+w "$target"
+            rm -rf "$target/node_modules" "$target/tests"
+            ln -s ../.. "$target/node_modules"
+          done
+        done
+        # Keep the renderer's React 19 graph away from the Web runtime's React 18.
+        ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
+          node_modules/.pnpm \
+          upstream/dsh-TUI/package.json \
+          $out/lib/tockteam/package-deps/tui-renderer
+      ''}
+      ${lib.optionalString isFull ''
+        mkdir -p $out/lib/tockteam/package-deps/tockbot-note-runtime
+        ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
+          node_modules/.pnpm \
+          plugins/tocktutor/packages/tockbot-note-runtime/package.json \
+          $out/lib/tockteam/package-deps/tockbot-note-runtime
+        PYTHON=${pkgs.python3}/bin/python3 ${pkgs.nodejs_24}/bin/node \
+          ${pinnedPnpm}/lib/pnpm/dist/node_modules/node-gyp/bin/node-gyp.js \
+          rebuild --directory $out/lib/tockteam/package-deps/tockbot-note-runtime/sqlite3 \
+          --nodedir=${pkgs.nodejs_24}
+
+        ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
+          node_modules/.pnpm \
+          plugins/ui/package.json \
+          $out/lib/tockteam/extra-deps
+        for manifest in plugins/tocktutor/packages/*/package.json; do
+          ${pkgs.python3}/bin/python3 ${./collect-deps.py} \
+            node_modules/.pnpm \
+            "$manifest" \
+            $out/lib/tockteam/extra-deps
+        done
+      ''}
 
       runHook postInstall
     '';
@@ -169,7 +235,7 @@ let
 
 in
 pkgs.stdenv.mkDerivation {
-  pname = "tockteam-${if isFull then "desktop" else surface}${lib.optionalString (dshSource != "llm-agents") "-${dshSource}"}";
+  pname = "tockteam-${if isFull then "desktop" else surface}";
   version = tockTeamBundle.version;
 
   dontUnpack = true;
@@ -210,14 +276,33 @@ pkgs.stdenv.mkDerivation {
     # Copy plugin runtime dependencies that the DSH runtime does not ship
     # (e.g. schemastery for better-sidebar-runtime).
     if [ -d "${tockTeamBundle}/lib/tockteam/extra-deps" ]; then
-      for dep in ${tockTeamBundle}/lib/tockteam/extra-deps/*/; do
+      if [ -d "${tockTeamBundle}/lib/tockteam/extra-deps/.tockteam-pnpm-closure" ]; then
+        cp -r "${tockTeamBundle}/lib/tockteam/extra-deps/.tockteam-pnpm-closure" \
+          "$out/dsh-runtime/node_modules/"
+      fi
+      for dep in ${tockTeamBundle}/lib/tockteam/extra-deps/*; do
+        [ -e "$dep" ] || continue
         name=$(basename "$dep")
-        if [ ! -d "$out/dsh-runtime/node_modules/$name" ]; then
+        if [[ "$name" == @* ]]; then
+          mkdir -p "$out/dsh-runtime/node_modules/$name"
+          for scopedDep in "$dep"/*; do
+            scopedName=$(basename "$scopedDep")
+            target="$out/dsh-runtime/node_modules/$name/$scopedName"
+            if [ ! -e "$target" ]; then
+              cp -r "$scopedDep" "$target"
+              chmod -R u+w "$target"
+            fi
+          done
+        elif [ ! -e "$out/dsh-runtime/node_modules/$name" ]; then
           cp -r "$dep" "$out/dsh-runtime/node_modules/$name"
           chmod -R u+w "$out/dsh-runtime/node_modules/$name"
         fi
       done
     fi
+
+    ${lib.optionalString includesSidebar ''
+      ${pkgs.nodejs_24}/bin/node ${./smoke-native.cjs} $out/dsh-runtime ${surface}
+    ''}
 
     # HMR is a development-time feature that requires --expose-internals;
     # the packaged runtime keeps it enabled (matching upstream releases).
