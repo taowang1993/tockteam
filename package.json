@@ -136,6 +136,7 @@
     "@deepseek-ai/cordis-plugin-loader": "1.0.2",
     "@pennivo/mcp-server": "1.4.0",
     "@tockteam/note-vault-tools": "file:plugins/tocktutor/packages/tockteam-note-vault-tools",
+    "@tockteam/tocktutor-workbench": "file:plugins/tocktutor/packages/tockteam-tocktutor-workbench",
     "@tockteam/ui": "workspace:*",
     "@types/color": "4.2.1",
     "@types/node": "^24.10.0",
@@ -148,6 +149,7 @@
     "pnpm": "11.21.0",
     "tockbot-note-runtime": "file:plugins/tocktutor/packages/tockbot-note-runtime",
     "tockbot-note-vault": "file:plugins/tocktutor/packages/tockbot-note-vault",
+    "tsdown": "0.22.2",
     "typescript": "^6.0.3"
   },
   "engines": {

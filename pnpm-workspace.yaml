@@ -39,6 +39,9 @@ onlyBuiltDependencies:
   - sqlite3
 
 overrides:
+  # Keep bundled TockTutor clients on the root Desktop and UI singletons.
+  '@tockteam/desktop': link:.
+  '@tockteam/ui': link:plugins/ui
   # Preserve the reviewed Tockbot lock closure for the exact local XML runtime.
   '@nodable/entities': 2.1.1
   fast-xml-builder: 1.2.0
