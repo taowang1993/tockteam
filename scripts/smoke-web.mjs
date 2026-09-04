@@ -128,8 +128,8 @@ function lineReader(stream, resolveReady) {
     for (let newline = pending.indexOf('\n'); newline >= 0; newline = pending.indexOf('\n')) {
       const line = pending.slice(0, newline).replace(/\r$/, '')
       pending = pending.slice(newline + 1)
-      lines.push(`[${stream}] ${line}`)
-      const match = /^dsh web: (http:\/\/127\.0\.0\.1:\d+)/.exec(line)
+      lines.push(`[${stream}] ${line.replace(/([?&]token=)[^\s)]+/gu, '$1<redacted>')}`)
+      const match = /^dsh web: (http:\/\/127\.0\.0\.1:\d+\/\?token=[^\s)]+)/u.exec(line)
       if (match?.[1] !== undefined) resolveReady(new URL(match[1]))
     }
   }
@@ -156,20 +156,32 @@ const timeout = new Promise((_, reject) => {
 })
 
 try {
-  const base = await Promise.race([ready, timeout])
-  const indexResponse = await fetch(base)
+  const launchUrl = await Promise.race([ready, timeout])
+  const base = new URL('/', launchUrl)
+  assert.equal((await fetch(base)).status, 401)
+  const exchange = await fetch(launchUrl, { redirect: 'manual' })
+  assert.equal(exchange.status, 303)
+  assert.equal(exchange.headers.get('location'), '/')
+  const cookie = exchange.headers.get('set-cookie')?.split(';', 1)[0]
+  assert.ok(cookie, 'launch-token exchange did not issue a browser cookie')
+  const authenticatedFetch = (input, init = {}) => {
+    const headers = new Headers(init.headers)
+    headers.set('cookie', cookie)
+    return fetch(input, { ...init, headers })
+  }
+  const indexResponse = await authenticatedFetch(base)
   const index = await indexResponse.text()
   assert.equal(indexResponse.status, 200)
   assert.match(index, /<div id="root"><\/div>/)
 
-  const settingsDescribeResponse = await fetch(new URL('/api/settings.describe', base), {
+  const settingsDescribeResponse = await authenticatedFetch(new URL('/api/settings/describe', base), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       type: 'client-request',
       rpcId: 'web-smoke-settings-describe',
-      method: 'settings.describe',
-      payload: {},
+      method: 'settings/describe',
+      payload: { args: {} },
     }),
   })
   const settingsDescribe = await settingsDescribeResponse.json()
@@ -179,14 +191,14 @@ try {
   assert.ok(settingsNamespaces.includes('agent-loop'))
   assert.equal(settingsNamespaces.includes('agent-default-model'), false)
 
-  const blockedSettingsResponse = await fetch(new URL('/api/settings.replace', base), {
+  const blockedSettingsResponse = await authenticatedFetch(new URL('/api/settings/replace', base), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       type: 'client-request',
       rpcId: 'web-smoke-settings-replace',
-      method: 'settings.replace',
-      payload: { ns: 'agent-default-model', section: {} },
+      method: 'settings/replace',
+      payload: { args: { ns: 'agent-default-model', section: {} } },
     }),
   })
   const blockedSettings = await blockedSettingsResponse.json()
@@ -216,7 +228,7 @@ try {
     assert.deepEqual(row.inject ?? [], manifest.dsh.client.inject ?? [])
     assert.equal(row.immediately === true, manifest.dsh.client.immediately === true)
     const bundleUrl = new URL(row.url, base)
-    const bundleResponse = await fetch(bundleUrl)
+    const bundleResponse = await authenticatedFetch(bundleUrl)
     const bundle = await bundleResponse.text()
     assert.equal(
       bundleResponse.status,
@@ -253,12 +265,12 @@ try {
 
   // The skins preferences server mounts on the web server.
   const preferencesUrl = new URL('/tockteam/skins/preferences', base)
-  const initialResponse = await fetch(preferencesUrl)
+  const initialResponse = await authenticatedFetch(preferencesUrl)
   const initial = await initialResponse.json()
   assert.equal(initialResponse.status, 200)
   assert.equal(initial.activeId, null)
   assert.equal(initial.fallbackTheme, 'system')
-  const saveResponse = await fetch(preferencesUrl, {
+  const saveResponse = await authenticatedFetch(preferencesUrl, {
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
@@ -267,7 +279,7 @@ try {
     body: JSON.stringify({ activeId: 'tockteam-skin-porcelain', fallbackTheme: 'dark' }),
   })
   assert.equal(saveResponse.status, 200, await saveResponse.text())
-  const saved = await fetch(preferencesUrl)
+  const saved = await authenticatedFetch(preferencesUrl)
   const persisted = await saved.json()
   assert.equal(persisted.activeId, 'tockteam-skin-porcelain')
   assert.equal(persisted.fallbackTheme, 'dark')
@@ -289,14 +301,14 @@ try {
   git('commit', '-m', 'web smoke baseline')
   writeFileSync(join(smokeRoot, 'web-smoke.txt'), 'after\n')
 
-  const sessionResponse = await fetch(new URL('/api/session.create', base), {
+  const sessionResponse = await authenticatedFetch(new URL('/api/session/create', base), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       type: 'client-request',
       rpcId: 'web-smoke-session',
-      method: 'session.create',
-      payload: { cwd: smokeRoot },
+      method: 'session/create',
+      payload: { args: { request: { cwd: smokeRoot } } },
     }),
   })
   const sessionEnvelope = await sessionResponse.json()
@@ -307,7 +319,7 @@ try {
   const workspaceFactsUrl = new URL('/tockteam/workspace', base)
   workspaceFactsUrl.searchParams.set('cwd', smokeRoot)
   workspaceFactsUrl.searchParams.set('sessionId', sessionId)
-  const workspaceFactsResponse = await fetch(workspaceFactsUrl)
+  const workspaceFactsResponse = await authenticatedFetch(workspaceFactsUrl)
   const workspaceFacts = await workspaceFactsResponse.json()
   assert.equal(workspaceFactsResponse.status, 200)
   assert.equal(workspaceFacts.kind, 'repository')
@@ -316,7 +328,7 @@ try {
   // The better-sidebar host serves session, Files, and Git through the same
   // /sidebar API the desktop distribution uses.
   const sidebarCall = async (method, payload) => {
-    const response = await fetch(new URL(`/sidebar/api/${method}`, base), {
+    const response = await authenticatedFetch(new URL(`/sidebar/api/${method}`, base), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),

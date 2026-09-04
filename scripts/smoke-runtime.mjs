@@ -308,8 +308,8 @@ function lineReader(stream, resolveReady) {
     for (let newline = pending.indexOf('\n'); newline >= 0; newline = pending.indexOf('\n')) {
       const line = pending.slice(0, newline).replace(/\r$/, '')
       pending = pending.slice(newline + 1)
-      lines.push(`[${stream}] ${line}`)
-      const match = /^dsh web: (http:\/\/127\.0\.0\.1:\d+)/.exec(line)
+      lines.push(`[${stream}] ${line.replace(/([?&]token=)[^\s)]+/gu, '$1<redacted>')}`)
+      const match = /^dsh web: (http:\/\/127\.0\.0\.1:\d+\/\?token=[^\s)]+)/u.exec(line)
       if (match?.[1] !== undefined) resolveReady(new URL(match[1]))
     }
   }
@@ -336,8 +336,20 @@ const timeout = new Promise((_, reject) => {
 })
 
 try {
-  const base = await Promise.race([ready, timeout])
-  const indexResponse = await fetch(base)
+  const launchUrl = await Promise.race([ready, timeout])
+  const base = new URL('/', launchUrl)
+  assert.equal((await fetch(base)).status, 401)
+  const exchange = await fetch(launchUrl, { redirect: 'manual' })
+  assert.equal(exchange.status, 303)
+  assert.equal(exchange.headers.get('location'), '/')
+  const cookie = exchange.headers.get('set-cookie')?.split(';', 1)[0]
+  assert.ok(cookie, 'launch-token exchange did not issue a browser cookie')
+  const authenticatedFetch = (input, init = {}) => {
+    const headers = new Headers(init.headers)
+    headers.set('cookie', cookie)
+    return fetch(input, { ...init, headers })
+  }
+  const indexResponse = await authenticatedFetch(base)
   const index = await indexResponse.text()
   assert.equal(indexResponse.status, 200)
   assert.match(index, /<div id="root"><\/div>/)
@@ -357,7 +369,7 @@ try {
     assert.deepEqual(row.inject ?? [], manifest.dsh.client.inject ?? [])
     assert.equal(row.immediately === true, manifest.dsh.client.immediately === true)
     const bundleUrl = new URL(row.url, base)
-    const bundleResponse = await fetch(bundleUrl)
+    const bundleResponse = await authenticatedFetch(bundleUrl)
     const bundle = await bundleResponse.text()
     assert.equal(
       bundleResponse.status,
@@ -387,7 +399,7 @@ try {
     encoding: 'utf8',
     env: {
       ...runtimeEnvironment,
-      DSH_SMOKE_RUNTIME_URL: base.href,
+      DSH_SMOKE_RUNTIME_URL: launchUrl.href,
     },
     timeout: 30_000,
   })
@@ -409,14 +421,14 @@ try {
     )
   }
 
-  const sessionResponse = await fetch(new URL('/api/session.create', base), {
+  const sessionResponse = await authenticatedFetch(new URL('/api/session/create', base), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       type: 'client-request',
       rpcId: 'desktop-smoke-session',
-      method: 'session.create',
-      payload: { cwd: smokeRoot },
+      method: 'session/create',
+      payload: { args: { request: { cwd: smokeRoot } } },
     }),
   })
   const sessionEnvelope = await sessionResponse.json()
@@ -425,7 +437,7 @@ try {
   const sessionId = sessionEnvelope.result.value.sessionId
 
   const sidebarCall = async (method, payload) => {
-    const response = await fetch(new URL(`/sidebar/api/${method}`, base), {
+    const response = await authenticatedFetch(new URL(`/sidebar/api/${method}`, base), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),
@@ -460,7 +472,7 @@ try {
   const workspaceFactsUrl = new URL('/tockteam/workspace', base)
   workspaceFactsUrl.searchParams.set('cwd', smokeRoot)
   workspaceFactsUrl.searchParams.set('sessionId', sessionId)
-  const workspaceFactsResponse = await fetch(workspaceFactsUrl)
+  const workspaceFactsResponse = await authenticatedFetch(workspaceFactsUrl)
   const workspaceFacts = await workspaceFactsResponse.json()
   assert.equal(workspaceFactsResponse.status, 200)
   assert.equal(workspaceFacts.kind, 'repository')
