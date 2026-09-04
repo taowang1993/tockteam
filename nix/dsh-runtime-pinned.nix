@@ -1,6 +1,6 @@
 # Build the pinned deepseek-harness runtime from the npm release recorded in
-# this repository's dsh-source.json. The npm package ships compiled `lib/`
-# and `config/`, so only the dependency graph needs installation.
+# this repository's dsh-source.json. The npm package ships compiled `lib/`,
+# so only the dependency graph needs installation.
 
 { lib
 , stdenv
@@ -25,12 +25,13 @@ let
     hash = dshSourceSpec.integrity;
   };
 
-  # pnpm install needs the lockfile and supply-chain policy beside
-  # package.json; the npm tarball carries neither repository file.
+  # The published manifest includes development-only experimental packages;
+  # staging and Nix both consume the reviewed production-only copy.
   src = runCommand "dsh-runtime-pinned-src" { } ''
     mkdir -p $out
     tar -xzf ${tarball} -C $out --strip-components=1
     cp ${../.npmrc} $out/.npmrc
+    cp ${../scripts}/dsh-runtime-${dshSourceSpec.version}-package.json $out/package.json
     cp ${../scripts}/dsh-runtime-${dshSourceSpec.version}-lock.yaml $out/pnpm-lock.yaml
     printf '%s\n' \
       'packages:' \
@@ -38,6 +39,13 @@ let
       "" \
       'minimumReleaseAgeExclude:' \
       "  - '@deepseek-ai/*'" \
+      "" \
+      'ignoredBuiltDependencies:' \
+      "  - '@deepseek-ai/dsh-subprocess-local'" \
+      "  - '@google/genai'" \
+      "  - 'koffi'" \
+      "  - 'node-pty'" \
+      "  - 'protobufjs'" \
       > $out/pnpm-workspace.yaml
   '';
 in
@@ -51,7 +59,7 @@ stdenv.mkDerivation rec {
   pnpmDeps = fetchPnpmDeps {
     inherit pname version src;
     fetcherVersion = 4;
-    hash = "sha256-cjSI0PFYvpUGJZEfuuL6/4JCvK4V+yf/psEAfrZ9FRQ=";
+    hash = "sha256-Y1P9i/sZnQUgoBUDYOejIfYWHtKfUPH0WfLIdaZDa5s=";
   };
 
   nativeBuildInputs = [ nodejs_24 pinnedPnpm pnpmConfigHook ];
@@ -112,7 +120,8 @@ stdenv.mkDerivation rec {
   installPhase = ''
     runHook preInstall
     mkdir -p $out/lib/dsh
-    cp -r lib config package.json node_modules $out/lib/dsh/
+    cp -r lib package.json node_modules $out/lib/dsh/
+    if [ -d config ]; then cp -r config $out/lib/dsh/; fi
     runHook postInstall
   '';
 

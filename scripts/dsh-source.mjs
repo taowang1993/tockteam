@@ -212,10 +212,8 @@ function validateNpmAssembly(source) {
       `DSH package ${DSH_SOURCE_SPEC.package} is required, received ${String(manifest.name)} at ${source}`,
     )
   }
-  for (const required of ['lib/bin.js', 'config']) {
-    if (!existsSync(join(source, required))) {
-      throw new Error(`DSH npm assembly is missing ${required}: ${source}`)
-    }
+  if (!existsSync(join(source, 'lib', 'bin.js'))) {
+    throw new Error(`DSH npm assembly is missing lib/bin.js: ${source}`)
   }
 }
 
@@ -278,7 +276,20 @@ export function acquireNpmAssembly(parent, archive) {
       'minimumReleaseAgeExclude:',
       "  - '@deepseek-ai/*'",
       '',
+      'ignoredBuiltDependencies:',
+      "  - '@deepseek-ai/dsh-subprocess-local'",
+      "  - '@google/genai'",
+      "  - 'koffi'",
+      "  - 'node-pty'",
+      "  - 'protobufjs'",
+      '',
     ].join('\n'))
+    const manifestPath = join(unpacked, 'package.json')
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    if (manifest.devDependencies !== undefined) {
+      delete manifest.devDependencies
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`)
+    }
     validateNpmAssembly(unpacked)
     renameSync(unpacked, target)
     writeFileSync(temporaryPointer, `${targetName}\n`)

@@ -16,12 +16,25 @@ test('desktop release source pins the published DSH npm assembly', () => {
   assert.deepEqual(DSH_SOURCE_SPEC, {
     source: 'npm',
     package: '@deepseek-ai/dsh',
-    version: '0.1.1-rc.2',
-    integrity: 'sha512-UP1UIh6q3Gme/yXRn/QL2P8IsVlv8Shpg22TRJIZPsCRWLm4CBiA1MUvXmJAfsOEETBMLAl+xWPtFw6ICsN3wg==',
-    tarball: 'https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.1-rc.2.tgz',
+    version: '0.1.2-rc.1',
+    integrity: 'sha512-RPq48TzxvwpdT9/7W1tbhZDBMmeK+bxDrX9cqQC27Wx/LqtgJF8PSa3b3xriU8oxtvhwYmk21w2cej3uMQrnVA==',
+    tarball: 'https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.2-rc.1.tgz',
     packageManager: 'pnpm@11.20.0',
     pnpmIntegrity: 'sha512-mm8zCpW2ZEbqCI+vFSFAWooB8H/ecSTMmVjf7VLUu0NnN+ZbCPhfN7Rvy6N1CSVYrFEmK4FoRLIvY0Bu0Wa/7g==',
   })
+})
+
+test('the runtime lock and stripped manifest pin the complete 0.1.2 release line', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../scripts/dsh-runtime-0.1.2-rc.1-package.json', import.meta.url), 'utf8'))
+  const lock = readFileSync(new URL('../scripts/dsh-runtime-0.1.2-rc.1-lock.yaml', import.meta.url), 'utf8')
+  const nix = readFileSync(new URL('../nix/dsh-runtime-pinned.nix', import.meta.url), 'utf8')
+
+  assert.equal(manifest.name, '@deepseek-ai/dsh')
+  assert.equal(manifest.version, DSH_SOURCE_SPEC.version)
+  assert.equal(manifest.devDependencies, undefined)
+  assert.doesNotMatch(lock, /@deepseek-ai\/dsh-[^@'\n]+@(?!0\.1\.2-rc\.1)/u)
+  assert.match(nix, /dsh-runtime-\$\{dshSourceSpec\.version\}-package\.json/u)
+  assert.match(nix, /if \[ -d config \]/u)
 })
 
 test('npm source specs reject untrusted or unpinned release inputs', () => {
@@ -59,11 +72,11 @@ test('fresh npm assemblies replace the cache pointer only after extraction', () 
   const archive = join(cache, 'package.tgz')
   try {
     mkdirSync(join(fixture, 'lib'), { recursive: true })
-    mkdirSync(join(fixture, 'config'), { recursive: true })
     mkdirSync(cache)
     writeFileSync(join(fixture, 'package.json'), JSON.stringify({
       name: '@deepseek-ai/dsh',
       version: DSH_SOURCE_SPEC.version,
+      devDependencies: { '@deepseek-ai/dsh-experimental-unpublished': DSH_SOURCE_SPEC.version },
     }))
     writeFileSync(join(fixture, 'lib', 'bin.js'), '')
     const packed = spawnSync('tar', ['-czf', archive, '-C', join(root, 'fixture'), 'package'], { encoding: 'utf8' })
@@ -76,7 +89,10 @@ test('fresh npm assemblies replace the cache pointer only after extraction', () 
     assert.equal(existsSync(first), false)
     assert.equal(existsSync(join(second, '.mutated')), false)
     assert.equal(readFileSync(join(cache, 'assembly-path'), 'utf8').trim(), basename(second))
-    assert.match(readFileSync(join(second, 'pnpm-workspace.yaml'), 'utf8'), /minimumReleaseAgeExclude/u)
+    const workspace = readFileSync(join(second, 'pnpm-workspace.yaml'), 'utf8')
+    assert.match(workspace, /minimumReleaseAgeExclude/u)
+    assert.match(workspace, /ignoredBuiltDependencies/u)
+    assert.equal(JSON.parse(readFileSync(join(second, 'package.json'), 'utf8')).devDependencies, undefined)
 
     const brokenArchive = join(cache, 'broken.tgz')
     writeFileSync(brokenArchive, 'not a tarball')
@@ -120,7 +136,7 @@ test('DSH source override must match the pinned package version', () => {
       name: '@deepseek-ai/dsh-root',
       version: '0.0.0',
     }))
-    assert.throws(() => resolveDshSource(), /0\.1\.1-rc\.2 is required/)
+    assert.throws(() => resolveDshSource(), /0\.1\.2-rc\.1 is required/)
   } finally {
     if (previous === undefined) delete process.env.DSH_SOURCE
     else process.env.DSH_SOURCE = previous
