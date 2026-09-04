@@ -9,13 +9,23 @@ test('desktop terminal uses the Better Sidebar host endpoint', () => {
 })
 
 test('Better Sidebar adapter frames session exits without changing agent terminals', () => {
+  const manifest = JSON.parse(readFileSync(
+    new URL('../upstream/DSH-better-sidebar/package.json', import.meta.url),
+    'utf8',
+  )) as { version?: string }
+  assert.equal(manifest.version, '0.15.2')
   const source = readFileSync(new URL('../upstream/DSH-better-sidebar/src/index.ts', import.meta.url), 'utf8')
+  assert.match(source, /'open\.external'/u)
   const adapted = adaptBetterSidebarHost(source)
+  assert.doesNotMatch(adapted, /launchExternal|'open\.external'/u)
+  assert.match(adapted, /control\.type === 'park'/u)
+  const gitSource = readFileSync(new URL('../upstream/DSH-better-sidebar/src/git.ts', import.meta.url), 'utf8')
+  assert.match(gitSource, /windowsHide: true/u)
   assert.equal((adapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)
   assert.equal((adapted.match(/\[process exited with code/g) ?? []).length, 1)
   const crlfSource = source.replaceAll('\r\n', '\n').replaceAll('\n', '\r\n')
   assert.equal((adaptBetterSidebarHost(crlfSource).match(/tockteam-terminal-exit/g) ?? []).length, 1)
-  assert.throws(() => adaptBetterSidebarHost(adapted), /exit seam changed upstream/u)
+  assert.throws(() => adaptBetterSidebarHost(adapted), /seam changed upstream/u)
 })
 
 test('terminal exit is a binary control frame, never PTY text', () => {

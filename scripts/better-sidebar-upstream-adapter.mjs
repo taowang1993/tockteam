@@ -1,3 +1,6 @@
+const EXTERNAL_OPEN_IMPORT = "import { launchExternal } from './open-external.ts'\n"
+const EXTERNAL_OPEN_START = '    // External open for the file tree'
+const EXTERNAL_OPEN_END = '    // Side Chat:'
 const SESSION_TERMINAL_ANCHOR = 'const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24'
 const SESSION_TERMINAL_END = 'const dataSub = handle.pty.onData(onData)'
 const TEXT_EXIT = `const onExit = ({ exitCode }: { exitCode: number; signal?: number }): void => {
@@ -10,11 +13,19 @@ const BINARY_EXIT = `const onExit = ({ exitCode }: { exitCode: number; signal?: 
     }`
 
 export function adaptBetterSidebarHost(source) {
-  const normalized = source.replaceAll('\r\n', '\n')
-  const start = normalized.indexOf(SESSION_TERMINAL_ANCHOR)
-  const end = normalized.indexOf(SESSION_TERMINAL_END, start)
+  let adapted = source.replaceAll('\r\n', '\n')
+  const externalStart = adapted.indexOf(EXTERNAL_OPEN_START)
+  const externalEnd = adapted.indexOf(EXTERNAL_OPEN_END, externalStart)
+  if (!adapted.includes(EXTERNAL_OPEN_IMPORT) || externalStart < 0 || externalEnd < 0) {
+    throw new Error('Better Sidebar external-open seam changed upstream')
+  }
+  adapted = adapted.replace(EXTERNAL_OPEN_IMPORT, '')
+  adapted = adapted.slice(0, externalStart) + adapted.slice(externalEnd)
+
+  const start = adapted.indexOf(SESSION_TERMINAL_ANCHOR)
+  const end = adapted.indexOf(SESSION_TERMINAL_END, start)
   if (start < 0 || end < 0) throw new Error('Better Sidebar session terminal seam changed upstream')
-  const section = normalized.slice(start, end)
+  const section = adapted.slice(start, end)
   if (!section.includes(TEXT_EXIT)) throw new Error('Better Sidebar session exit seam changed upstream')
-  return `${normalized.slice(0, start)}${section.replace(TEXT_EXIT, BINARY_EXIT)}${normalized.slice(end)}`
+  return `${adapted.slice(0, start)}${section.replace(TEXT_EXIT, BINARY_EXIT)}${adapted.slice(end)}`
 }
