@@ -81,3 +81,43 @@ test('terminal exit is a binary control frame, never PTY text', () => {
     Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: previous })
   }
 })
+
+test('terminal parks on conversation switches and closes on tab removal', () => {
+  class FakeWebSocket {
+    static readonly OPEN = 1
+    readonly OPEN = 1
+    binaryType = ''
+    readyState = FakeWebSocket.OPEN
+    onopen: (() => void) | null = null
+    onmessage: ((event: { data: unknown }) => void) | null = null
+    onclose: (() => void) | null = null
+    onerror: (() => void) | null = null
+    readonly sent: unknown[] = []
+    constructor(_url: string) {}
+    send(value: unknown): void { this.sent.push(value) }
+    close(): void {}
+  }
+  const previous = globalThis.WebSocket
+  Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: FakeWebSocket })
+  try {
+    const handlers = {
+      onError() {},
+      onExit() {},
+      onOutput() {},
+      onReady() {},
+    }
+    const parked = new TerminalSocket('ws://127.0.0.1/terminal')
+    parked.connect(80, 24, handlers, { sessionId: 'session', tabId: 'parked' })
+    const parkedTransport = (parked as unknown as { socket: FakeWebSocket }).socket
+    parked.close('park')
+    assert.deepEqual(parkedTransport.sent, [JSON.stringify({ type: 'park' })])
+
+    const closed = new TerminalSocket('ws://127.0.0.1/terminal')
+    closed.connect(80, 24, handlers, { sessionId: 'session', tabId: 'closed' })
+    const closedTransport = (closed as unknown as { socket: FakeWebSocket }).socket
+    closed.close()
+    assert.deepEqual(closedTransport.sent, [JSON.stringify({ type: 'close' })])
+  } finally {
+    Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: previous })
+  }
+})

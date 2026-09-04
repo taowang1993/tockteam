@@ -15,10 +15,11 @@ export interface TerminalViewProps {
   fontSize: number
   onReady(cwd: string): void
   onStatus(status: TerminalTabStatus, exitCode?: number | null): void
+  disposeMode(): 'close' | 'park'
   t: Translate<TerminalMessage>
 }
 
-/** One persistent xterm/PTY pair. It is destroyed only when its tab is closed. */
+/** One xterm attachment to a session-scoped Better Sidebar PTY. */
 export function TerminalView(props: TerminalViewProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
@@ -28,6 +29,7 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
   const fontSizeRef = useRef(props.fontSize)
   const onReadyRef = useRef(props.onReady)
   const onStatusRef = useRef(props.onStatus)
+  const disposeModeRef = useRef(props.disposeMode)
   const tRef = useRef(props.t)
   useEffect(() => {
     cwdRef.current = props.cwd
@@ -35,8 +37,9 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
     fontSizeRef.current = props.fontSize
     onReadyRef.current = props.onReady
     onStatusRef.current = props.onStatus
+    disposeModeRef.current = props.disposeMode
     tRef.current = props.t
-  }, [props.cwd, props.fontFamily, props.fontSize, props.onReady, props.onStatus, props.t])
+  }, [props.cwd, props.disposeMode, props.fontFamily, props.fontSize, props.onReady, props.onStatus, props.t])
 
   useEffect(() => {
     const container = containerRef.current
@@ -114,7 +117,7 @@ export function TerminalView(props: TerminalViewProps): JSX.Element {
       themeObserver.disconnect()
       inputSubscription.dispose()
       resizeSubscription.dispose()
-      socket.close()
+      socket.close(disposeModeRef.current())
       if (terminalRef.current === terminal) terminalRef.current = null
       if (fitAddonRef.current === fitAddon) fitAddonRef.current = null
       terminal.dispose()

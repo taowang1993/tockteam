@@ -86,13 +86,13 @@ export class TerminalSocket {
     this.sendControl({ type: 'resize', cols, rows })
   }
 
-  close(): void {
+  close(mode: 'close' | 'park' = 'close'): void {
     const socket = this.socket
     this.socket = undefined
     if (socket === undefined) return
     socket.onclose = null
     socket.onerror = null
-    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'close' }))
+    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: mode }))
     socket.close()
   }
 

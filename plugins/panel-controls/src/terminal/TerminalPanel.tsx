@@ -6,6 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@tockteam/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
   useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -54,8 +56,10 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
   const [resizing, setResizing] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [fontFamilyDraft, setFontFamilyDraft] = useState(state.fontFamily)
+  const activeRef = useRef(active)
   const fontPresetListId = `tockteam-terminal-fonts-${encodeURIComponent(scopeKey)}`
 
+  useLayoutEffect(() => { activeRef.current = active }, [active])
   useEffect(() => { setFontFamilyDraft(state.fontFamily) }, [state.fontFamily])
   useEffect(() => {
     if (!active) return
@@ -254,7 +258,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
         aria-hidden={state.collapsed}
         {...(state.collapsed ? { inert: '' } : {})}
       >
-        {state.tabs.map(tab => (
+        {active && state.tabs.map(tab => (
           <div
             key={tab.id}
             className={`h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden ${tab.id === state.activeTabId ? 'flex' : 'hidden'}`}
@@ -277,6 +281,7 @@ export function TerminalPanel({ locale, t: translate, store, scopeKey, cwd, acti
                   ...(exitCode === undefined ? {} : { exitCode }),
                 })
               }}
+              disposeMode={() => activeRef.current ? 'close' : 'park'}
               t={t}
             />
           </div>
