@@ -1,12 +1,18 @@
-import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as CordisContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import assistantRemote from '@tockteam/tocktutor-assistant/remote'
-import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from '@tockteam/tocktutor-workbench/client'
+import {
+  TOCKTUTOR_ASSISTANT_PANEL_SLOT,
+  type TockTutorSlots,
+} from '@tockteam/tocktutor-workbench/client'
 import {
   TockTutorAssistantPanel,
   type AssistantPanelRemote,
   type AssistantPanelSessions,
 } from './assistant-panel.tsx'
+
+type Context = CordisContext & { slots: TockTutorSlots }
 
 /** Browser Loader identity for the inline TockTutor assistant. */
 export const name = '@tockteam/tocktutor-assistant'
@@ -27,9 +33,10 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
           tocktutorAssistant: mountedRemote.tocktutorAssistant,
         }
         const sessions = child.sessions as unknown as AssistantPanelSessions
-        return child.slots.inject(
+        const slots = (child as Context).slots
+        return slots.inject(
           TOCKTUTOR_ASSISTANT_PANEL_SLOT,
-          () => child.slots.register({
+          () => slots.register({
             inject: () => ({ remote, sessions }),
             name: TOCKTUTOR_ASSISTANT_PANEL_SLOT,
             registrant: name,

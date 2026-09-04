@@ -1,4 +1,5 @@
-import { createUserMessage, deepFreeze, } from '@deepseek-ai/dsh-llm';
+import { createUserMessage, } from '@deepseek-ai/dsh-llm';
+import { deepFreeze } from '@deepseek-ai/dsh-util-values';
 import { buildAssistantPrompt, redactBoundaryText, } from "./context.js";
 const MAX_OUTPUT_CHARS = 32_000;
 const MAX_BUFFERED_CHARS = 100_000;

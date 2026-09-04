@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import {
@@ -129,7 +129,7 @@ test('create_file stages one bounded proposal and returns no approval secret or 
     const result = await context.tools.execute({
       agent,
       arguments: { path: 'notes/new.md', content: '# Private Draft' },
-      callId: CallId('call-create-12345678'),
+      callId: ToolCallId('call-create-12345678'),
       name: 'create_file',
       signal: new AbortController().signal,
     })
@@ -166,7 +166,7 @@ test('write_file reads current identity then stages an update without mutating',
     const result = await context.tools.execute({
       agent,
       arguments: { path: 'notes/a.md', content: '# Replacement' },
-      callId: CallId('call-update-12345678'),
+      callId: ToolCallId('call-update-12345678'),
       name: 'write_file',
       signal,
     })
@@ -214,7 +214,7 @@ test('TockDriver writes stage redacted proposals and organize Inbox captures thr
         content: '# Private TockDriver Draft',
         operation: 'create',
       },
-      callId: CallId('call-driver-stage-12345678'),
+      callId: ToolCallId('call-driver-stage-12345678'),
       name: 'notes_stage_write',
       signal: new AbortController().signal,
     })
@@ -250,7 +250,7 @@ test('TockDriver writes stage redacted proposals and organize Inbox captures thr
     const organized = await context.tools.execute({
       agent,
       arguments: { vaultId: 'vault:write-12345678', path: 'Inbox/capture.md' },
-      callId: CallId('call-driver-organize-12345678'),
+      callId: ToolCallId('call-driver-organize-12345678'),
       name: 'notes_organize_capture',
       signal: new AbortController().signal,
     })
@@ -288,7 +288,7 @@ test('writes stay absent for read-only turns and fail closed on missing identity
     const missing = await active.context.tools.execute({
       agent: active.agent,
       arguments: { path: 'notes/missing.md', content: 'x' },
-      callId: CallId('call-missing-12345678'),
+      callId: ToolCallId('call-missing-12345678'),
       name: 'write_file',
       signal: new AbortController().signal,
     })

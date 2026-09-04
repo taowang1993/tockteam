@@ -1,4 +1,8 @@
-import type { Context } from '@deepseek-ai/cordis';
+import type { Context as CordisContext } from '@deepseek-ai/cordis';
+import { type TockTutorSlots } from '@tockteam/tocktutor-workbench/client';
+type Context = CordisContext & {
+    slots: TockTutorSlots;
+};
 /** Browser Loader identity for the inline TockTutor assistant. */
 export declare const name = "@tockteam/tocktutor-assistant";
 /** Required generated transport and Workbench presentation services. */

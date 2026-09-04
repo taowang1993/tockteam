@@ -1,6 +1,5 @@
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
-import { settingsNamespace, } from '@deepseek-ai/dsh-settings';
 import { ProposalApprovalExecutor, } from "./approval.js";
 import { ProposalQueue, } from "./proposals.js";
 import { AssistantProposalStateStore } from "./proposal-state.js";
@@ -34,7 +33,7 @@ export const Config = Schema.object({
         Schema.const('propose'),
     ]).default('read-only'),
 });
-export const ASSISTANT_SETTINGS_NAMESPACE = settingsNamespace('tocktutor-assistant');
+export const ASSISTANT_SETTINGS_NAMESPACE = 'tocktutor-assistant';
 export class NoteAssistant extends Service {
     static Config = Config;
     static inject = ['agents', 'noteVault', 'settings', 'storageDomain', 'subprocess', 'tools'];

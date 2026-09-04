@@ -10,7 +10,7 @@ test('declares the installable Desktop-only bundle and immutable peers', async (
   assert.deepEqual(manifest.dsh, {
     bundle: { patch: './cordis.patch.yml' },
     client: {
-      inject: ['@deepseek-ai/dsh-client-runtime', '@tockteam/desktop', '@tockteam/tocktutor-workbench'],
+      inject: ['@deepseek-ai/dsh-api-remotes', '@tockteam/desktop', '@tockteam/tocktutor-workbench'],
       platform: 'web',
       immediately: true,
     },

@@ -37,12 +37,12 @@ async function installPacked(consumer: string, tarball: string, artifacts: strin
   const vaultArtifact = await packPlugin('tockbot-note-vault', artifacts)
   const dependencies = {
     [packageName]: `file:${tarball}`,
-    '@deepseek-ai/cordis': '4.0.1',
+    '@deepseek-ai/cordis': '4.0.2',
     '@deepseek-ai/cordis-plugin-include': manifest.devDependencies['@deepseek-ai/cordis-plugin-include']!,
     '@deepseek-ai/cordis-plugin-loader': manifest.devDependencies['@deepseek-ai/cordis-plugin-loader']!,
-    '@deepseek-ai/dsh-client-runtime': '0.1.1-rc.2',
-    '@deepseek-ai/dsh-client-ui-slots': '0.1.1-rc.2',
-    '@deepseek-ai/dsh-typert-protocol': '0.1.1-rc.2',
+    '@deepseek-ai/dsh-api-remotes': '0.1.2-rc.1',
+    '@deepseek-ai/dsh-client-ui-slots': '0.1.2-rc.1',
+    '@deepseek-ai/dsh-typert-protocol': '0.1.2-rc.1',
     '@tockteam/desktop': `file:${desktopArtifact}`,
     '@tockteam/tocktutor-workbench': `file:${workbenchArtifact}`,
     '@tockteam/ui': `file:${uiArtifact}`,

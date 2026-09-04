@@ -19,6 +19,7 @@ import { copyFile, link, lstat, mkdir, open, opendir, readlink, realpath, rename
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { Service, type Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-typert-protocol'
 import Schema from '@deepseek-ai/schemastery'
 import type { Document as FlexDocument, StorageInterface } from 'flexsearch'
 import {
@@ -1040,10 +1041,16 @@ export type NoteVaultErrorCode =
   | 'unsafe-target'
   | 'unsupported-type'
 
-export class NoteVaultError extends Error {
-  readonly code: NoteVaultErrorCode
+declare module '@deepseek-ai/dsh-typert-protocol' {
+  interface RemoteErrorDetailsMap extends Record<NoteVaultErrorCode, Record<never, never>> {}
+}
 
-  constructor(code: NoteVaultErrorCode, message: string) {
+export class NoteVaultError<Code extends NoteVaultErrorCode = NoteVaultErrorCode> extends Error {
+  readonly code: Code
+  readonly details: Record<never, never> = {}
+  readonly isDSHRemoteError = true
+
+  constructor(code: Code, message: string) {
     super(message)
     this.name = 'NoteVaultError'
     this.code = code

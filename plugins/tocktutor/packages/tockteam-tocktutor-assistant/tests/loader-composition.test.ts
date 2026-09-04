@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentRegistry, { agentEvents, type Agent, type PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { SettingsProvider, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
@@ -95,7 +95,7 @@ async function stageBoundCreate(
   const result = await context.tools.execute({
     agent,
     arguments: { path: input.destination, content: input.content },
-    callId: CallId(`call-stage-${String(sequence).padStart(8, '0')}`),
+    callId: ToolCallId(`call-stage-${String(sequence).padStart(8, '0')}`),
     name: 'create_file',
     signal: new AbortController().signal,
   })
@@ -305,7 +305,7 @@ test('the real Loader owns and cleans the packaged Pennivo child', { timeout: 15
     const toolResult = await context.tools.execute({
       agent,
       arguments: { path: 'proof.md' },
-      callId: CallId('call-loader-12345678'),
+      callId: ToolCallId('call-loader-12345678'),
       name: 'read_file',
       signal: new AbortController().signal,
     })
@@ -341,7 +341,7 @@ test('the real Loader owns and cleans the packaged Pennivo child', { timeout: 15
     const staged = await context.tools.execute({
       agent,
       arguments: { path: 'staged-only.md', content: '# Never Written Before Approval' },
-      callId: CallId('call-loader-stage-12345678'),
+      callId: ToolCallId('call-loader-stage-12345678'),
       name: 'create_file',
       signal: new AbortController().signal,
     })
@@ -370,7 +370,7 @@ test('the real Loader owns and cleans the packaged Pennivo child', { timeout: 15
     const rejectedStage = await context.tools.execute({
       agent,
       arguments: { path: 'rejected-only.md', content: '# Must Stay Rejected' },
-      callId: CallId('call-loader-reject-12345678'),
+      callId: ToolCallId('call-loader-reject-12345678'),
       name: 'create_file',
       signal: new AbortController().signal,
     })
@@ -752,7 +752,7 @@ test('the package publishes a browser client contribution without Host behavior'
   }
   assert.deepEqual(manifest.dsh?.client, {
     external: ['@tockteam/tocktutor-workbench/client'],
-    inject: ['@deepseek-ai/dsh-client-runtime', '@tockteam/tocktutor-workbench'],
+    inject: ['@deepseek-ai/dsh-api-remotes', '@deepseek-ai/dsh-client-ui-session', '@tockteam/tocktutor-workbench'],
     platform: 'web',
     immediately: true,
   })

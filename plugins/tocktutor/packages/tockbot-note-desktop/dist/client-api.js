@@ -55,7 +55,8 @@ export async function apply(ctx) {
             const remote = {
                 tocktutorDesktop: child.remote.tocktutorDesktop,
             };
-            return child.slots.inject(TOCKTUTOR_NATIVE_ACTIONS_SLOT, () => child.slots.register({
+            const slots = child.slots;
+            return slots.inject(TOCKTUTOR_NATIVE_ACTIONS_SLOT, () => slots.register({
                 id: name,
                 inject: () => ({ bridge, remote }),
                 name: TOCKTUTOR_NATIVE_ACTIONS_SLOT,

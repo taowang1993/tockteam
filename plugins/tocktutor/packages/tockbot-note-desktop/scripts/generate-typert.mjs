@@ -20,7 +20,7 @@ try {
   const pinnedProtocol = await realpath(join(root, 'node_modules', '@deepseek-ai', 'dsh-typert-protocol'))
   await cp(join(pinnedProtocol, 'lib', 'types'), join(protocolRoot, 'src'), { recursive: true })
   await symlink(join(root, 'node_modules', '@deepseek-ai', 'cordis'), join(modulesRoot, '@deepseek-ai', 'cordis'), 'dir')
-  await symlink(await realpath(join(root, 'node_modules', '@deepseek-ai', 'dsh-client-runtime')), join(modulesRoot, '@deepseek-ai', 'dsh-client-runtime'), 'dir')
+  await symlink(await realpath(join(root, 'node_modules', '@deepseek-ai', 'dsh-api-remotes')), join(modulesRoot, '@deepseek-ai', 'dsh-api-remotes'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', '@deepseek-ai', 'dsh-client-ui-slots')), join(modulesRoot, '@deepseek-ai', 'dsh-client-ui-slots'), 'dir')
   await symlink(protocolRoot, join(modulesRoot, '@deepseek-ai', 'dsh-typert-protocol'), 'dir')
   await symlink(await realpath(join(root, 'node_modules', '@tockteam', 'desktop')), join(modulesRoot, '@tockteam', 'desktop'), 'dir')
@@ -61,6 +61,9 @@ try {
     moduleResolution: 'NodeNext',
     noEmit: true,
     noUncheckedIndexedAccess: true,
+    paths: {
+      '@deepseek-ai/dsh-typert-protocol': [join(protocolRoot, 'src', 'index.d.ts')],
+    },
     skipLibCheck: true,
     strict: true,
     target: 'ES2024',
@@ -76,6 +79,7 @@ try {
     include: ['src/**/*.d.ts'],
   }, null, 2))
   await writeFile(join(workspace, 'tsconfig.host.json'), JSON.stringify({
+    compilerOptions,
     files: [],
     references: [
       { path: './packages/typert-protocol' },

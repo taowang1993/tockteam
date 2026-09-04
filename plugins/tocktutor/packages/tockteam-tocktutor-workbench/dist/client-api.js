@@ -7,7 +7,6 @@ import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from "./web-viewer-panel.js";
 import { TockTutorRoute, waitForTockTutorRouteFlushes, } from "./route.js";
 /** Browser Loader identity for the native TockTutor workbench. */
 export const name = '@tockteam/tocktutor-workbench';
-/** Required transport and route registry supplied by the pinned Desktop client graph. */
 export const inject = ['remote', 'slots'];
 async function disposeRouteBeforeRemote(routeFiber, disposeRemote) {
     await routeFiber.dispose();
@@ -23,7 +22,8 @@ export async function apply(ctx) {
             $on: mountedRemote.$on.bind(mountedRemote),
             tocktutorWorkbench: mountedRemote.tocktutorWorkbench,
         };
-        return child.slots.inject(TOCKTUTOR_ROUTE_SLOT, () => child.slots.register({
+        const slots = child.slots;
+        return slots.inject(TOCKTUTOR_ROUTE_SLOT, () => slots.register({
             children: {
                 [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: 'single', scope: 'root' },
                 [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },

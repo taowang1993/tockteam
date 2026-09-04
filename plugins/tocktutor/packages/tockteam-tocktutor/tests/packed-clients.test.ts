@@ -55,7 +55,7 @@ const releases: ReleaseArtifact[] = [
   },
   {
     client: {
-      inject: ['@deepseek-ai/dsh-client-runtime', '@tockteam/desktop'],
+      inject: ['@deepseek-ai/dsh-api-remotes', '@tockteam/desktop'],
       platform: 'web',
       immediately: true,
     },
@@ -71,7 +71,7 @@ const releases: ReleaseArtifact[] = [
   {
     client: {
       inject: [
-        '@deepseek-ai/dsh-client-runtime',
+        '@deepseek-ai/dsh-api-remotes',
         '@tockteam/desktop',
         '@tockteam/tocktutor-workbench',
       ],
@@ -91,7 +91,11 @@ const releases: ReleaseArtifact[] = [
   {
     client: {
       external: ['@tockteam/tocktutor-workbench/client'],
-      inject: ['@deepseek-ai/dsh-client-runtime', '@tockteam/tocktutor-workbench'],
+      inject: [
+        '@deepseek-ai/dsh-api-remotes',
+        '@deepseek-ai/dsh-client-ui-session',
+        '@tockteam/tocktutor-workbench',
+      ],
       platform: 'web',
       immediately: true,
     },
@@ -103,7 +107,7 @@ const releases: ReleaseArtifact[] = [
   },
   {
     client: {
-      inject: ['@deepseek-ai/dsh-client-runtime', '@tockteam/tocktutor-workbench'],
+      inject: ['@deepseek-ai/dsh-api-remotes', '@tockteam/tocktutor-workbench'],
       platform: 'web',
       immediately: true,
     },
@@ -208,12 +212,13 @@ test('every packed browser component activates exactly once through ClientModule
     const modules = [...installed].map(([id, value]) => {
       const release = packedReleases.find(candidate => candidate.name === id)
       assert.ok(release?.client)
+      const rev = release.sha256.slice(0, 12)
       return {
         id,
         inject: release.client.inject,
         ...(release.client.immediately === true ? { immediately: true } : {}),
-        rev: release.sha256.slice(0, 12),
-        url: pathToFileURL(join(value.root, clientExport(value.manifest))).href,
+        rev,
+        url: `${pathToFileURL(join(value.root, clientExport(value.manifest))).href}?rev=${rev}`,
       }
     })
     const loads = new Map<string, number>()

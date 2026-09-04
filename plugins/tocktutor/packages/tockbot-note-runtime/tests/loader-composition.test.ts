@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
+import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import NoteVaultRuntime, {
   NoteVaultError,
   TockTeamDesktopReveal,
@@ -27,6 +28,12 @@ import NoteVaultRuntime, {
 
 const packageName = 'tockbot-note-runtime'
 const desktopClaim = (value: string) => value as TockTeamDesktopVaultSelectionClaim
+
+test('NoteVaultError preserves its code across the DSH Remote boundary', () => {
+  const error = new NoteVaultError('conflict', 'changed')
+  assert.equal(remoteErrorOf(error), error)
+  assert.deepEqual(error.details, {})
+})
 
 async function load(config: string): Promise<{ context: Context; root: string }> {
   const root = await mkdtemp(join(tmpdir(), 'note-vault-runtime-'))

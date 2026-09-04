@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import {
@@ -105,7 +105,7 @@ test('resolves exact execution identity and forwards args, signal, and immutable
     const result = await context.tools.execute({
       agent,
       arguments: { query: 'alpha beta', scope: 'notes' },
-      callId: CallId('call-search-12345678'),
+      callId: ToolCallId('call-search-12345678'),
       name: 'search',
       signal,
     })
@@ -145,7 +145,7 @@ test('absent, spoofed, replayed, and ended turn calls fail through sanitized Too
     const call = (caller: Agent, id: string) => context.tools.execute({
       agent: caller,
       arguments: { path: 'a.md' },
-      callId: CallId(id),
+      callId: ToolCallId(id),
       name: 'read_file',
       signal: new AbortController().signal,
     })

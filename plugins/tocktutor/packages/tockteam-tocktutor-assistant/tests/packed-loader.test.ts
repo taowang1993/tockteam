@@ -13,7 +13,7 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import ClientModules from '@deepseek-ai/dsh-client-modules'
 import WebServer from '@deepseek-ai/dsh-host-webserver'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SettingsProvider, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
@@ -81,7 +81,7 @@ async function stage(
   const result = await context.tools.execute({
     agent,
     arguments: { path: input.path, content: input.content },
-    callId: CallId(`call-packed-${suffix}`),
+    callId: ToolCallId(`call-packed-${suffix}`),
     name: input.tool,
     signal: new AbortController().signal,
   })
@@ -164,7 +164,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       peerDependencies?: Record<string, string>
     }
     assert.equal(manifest.name, packageName)
-    assert.equal(manifest.peerDependencies?.['@deepseek-ai/dsh-storage-domain'], '0.1.1-rc.2')
+    assert.equal(manifest.peerDependencies?.['@deepseek-ai/dsh-storage-domain'], '0.1.2-rc.1')
 
     const consumerRequire = createRequire(join(root, 'package.json'))
     const packedHostPath = consumerRequire.resolve(packageName)
@@ -270,7 +270,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
     const assistantRow = graph.entries.find(row => row.id === packageName)
     assert.ok(assistantRow)
     assert.deepEqual(assistantRow.external, [`${workbenchName}/client`])
-    assert.equal(assistantRow.url.startsWith(`/plugins/${packageName}/client.js?rev=`), true)
+    assert.match(assistantRow.url, /^\/plugins\/\?\?@tockteam\/tocktutor-assistant\/client\.js&rev=/u)
 
     Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis })
     const { ClientModuleSystem } = await loadDshClientModules()

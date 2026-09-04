@@ -25,7 +25,7 @@ try {
   await symlink(protocolRoot, join(workspace, 'node_modules', '@deepseek-ai', 'dsh-typert-protocol'), 'dir')
   await Promise.all([
     link('@deepseek-ai/cordis'),
-    link('@deepseek-ai/dsh-client-runtime'),
+    link('@deepseek-ai/dsh-api-remotes'),
     link('@deepseek-ai/dsh-client-ui-slots'),
     link('@tockteam/desktop'),
     link('@tockteam/tocktutor-workbench'),
@@ -70,6 +70,9 @@ try {
     moduleResolution: 'NodeNext',
     noEmit: true,
     noUncheckedIndexedAccess: true,
+    paths: {
+      '@deepseek-ai/dsh-typert-protocol': [join(protocolRoot, 'src', 'index.d.ts')],
+    },
     skipLibCheck: true,
     strict: true,
     target: 'ES2024',
@@ -79,6 +82,7 @@ try {
   await writeFile(join(packageRoot, 'tsconfig.json'), JSON.stringify({ compilerOptions, include: ['src/**/*.ts', 'src/**/*.tsx'] }, null, 2))
   await writeFile(join(protocolRoot, 'tsconfig.json'), JSON.stringify({ compilerOptions, include: ['src/**/*.d.ts'] }, null, 2))
   await writeFile(join(workspace, 'tsconfig.host.json'), JSON.stringify({
+    compilerOptions,
     files: [],
     references: [{ path: './packages/typert-protocol' }, { path: './packages/import-export' }],
   }, null, 2))

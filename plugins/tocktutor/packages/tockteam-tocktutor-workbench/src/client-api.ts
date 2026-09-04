@@ -1,5 +1,5 @@
-import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as CordisContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { SlotEntryDef } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   TOCKTUTOR_ROUTE_SLOT,
@@ -29,7 +29,15 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** Browser Loader identity for the native TockTutor workbench. */
 export const name = '@tockteam/tocktutor-workbench'
 
+/** Slot service face used by TockTutor client contributions. */
+export interface TockTutorSlots {
+  inject(key: string, callback: () => () => void): () => void
+  register(options: object, component: unknown): () => void
+}
+
 /** Required transport and route registry supplied by the pinned Desktop client graph. */
+type Context = CordisContext & { slots: TockTutorSlots }
+
 export const inject = ['remote', 'slots']
 
 type RouteFiber = { dispose(): Promise<void> }
@@ -54,9 +62,10 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
         $on: mountedRemote.$on.bind(mountedRemote),
         tocktutorWorkbench: mountedRemote.tocktutorWorkbench,
       }
-      return child.slots.inject(
+      const slots = (child as Context).slots
+      return slots.inject(
         TOCKTUTOR_ROUTE_SLOT,
-        () => child.slots.register({
+        () => slots.register({
           children: {
             [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: 'single', scope: 'root' },
             [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { TockTutorNativeActionsOwnerProps } from '@tockteam/tocktutor-workbench/client'
 import {
   replaceActionController,
@@ -431,7 +432,7 @@ test('retries a native Remote with the same caller authorization after response 
         attempts += 1
         calls.push(['activateVault', authorization])
         return attempts === 1
-          ? { ok: false as const, error: { code: 'transport', message: 'response lost' } }
+          ? { ok: false as const, error: new RemoteError('gateway/internal', 'response lost', {}) }
           : { ok: true as const, value: { status: 'activated' as const } }
       },
     },

@@ -56,6 +56,51 @@ test('browser plugins use the 0.1.2 platform store without the removed client ru
   assert.match(build, /'@deepseek-ai\/dsh-client-store'/u)
 })
 
+test('TockTutor metadata follows the 0.1.2 client and Host contracts', () => {
+  const packagePaths = [
+    '../plugins/tocktutor/package.json',
+    '../plugins/tocktutor/packages/tockbot-note-desktop/package.json',
+    '../plugins/tocktutor/packages/tockbot-note-runtime/package.json',
+    '../plugins/tocktutor/packages/tockbot-note-vault/package.json',
+    '../plugins/tocktutor/packages/tockbot-web-clip/package.json',
+    '../plugins/tocktutor/packages/tockteam-note-vault-tools/package.json',
+    '../plugins/tocktutor/packages/tockteam-tocktutor/package.json',
+    '../plugins/tocktutor/packages/tockteam-tocktutor-assistant/package.json',
+    '../plugins/tocktutor/packages/tockteam-tocktutor-import-export/package.json',
+    '../plugins/tocktutor/packages/tockteam-tocktutor-workbench/package.json',
+  ]
+  const manifests = packagePaths.map(path => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8')))
+  const clientSources = [
+    '../plugins/tocktutor/packages/tockbot-note-desktop/src/client-api.ts',
+    '../plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx',
+    '../plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/client.ts',
+    '../plugins/tocktutor/packages/tockteam-tocktutor-import-export/src/client-api.ts',
+    '../plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/client-api.ts',
+  ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'))
+
+  const rootManifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  const cordisPins = {
+    '@deepseek-ai/cordis': '4.0.2',
+    '@deepseek-ai/cordis-plugin-include': '1.0.7',
+    '@deepseek-ai/cordis-plugin-loader': '1.0.3',
+  }
+  for (const [name, version] of Object.entries(cordisPins)) {
+    assert.equal(rootManifest.devDependencies[name], version)
+  }
+  for (const manifest of manifests) {
+    assert.doesNotMatch(JSON.stringify(manifest), /0\.1\.1-rc\.2|dsh-client-runtime/u)
+    for (const dependencies of [manifest.dependencies, manifest.devDependencies, manifest.peerDependencies]) {
+      for (const [name, version] of Object.entries(dependencies ?? {})) {
+        if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(version, DSH_SOURCE_SPEC.version, name)
+        if (name in cordisPins) assert.equal(version, cordisPins[name as keyof typeof cordisPins], name)
+      }
+    }
+  }
+  for (const source of clientSources) {
+    assert.doesNotMatch(source, /dsh-client-runtime/u)
+  }
+})
+
 test('npm source specs reject untrusted or unpinned release inputs', () => {
   const valid = { ...DSH_SOURCE_SPEC }
   assert.throws(

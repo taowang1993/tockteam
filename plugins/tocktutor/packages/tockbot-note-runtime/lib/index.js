@@ -366,6 +366,8 @@ export class TockTeamDesktopVaultSelection extends Service {
 }
 export class NoteVaultError extends Error {
     code;
+    details = {};
+    isDSHRemoteError = true;
     constructor(code, message) {
         super(message);
         this.name = 'NoteVaultError';

@@ -1,6 +1,6 @@
-import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@tockteam/tocktutor-workbench/client'
+import type { Context as CordisContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { TockTutorSlots } from '@tockteam/tocktutor-workbench/client'
 import desktopRemote from 'tockbot-note-desktop/remote'
 import {
   type DesktopActionRemote,
@@ -8,6 +8,8 @@ import {
   TockTutorNativeActions,
 } from './client-actions.tsx'
 import { assertDesktopSurface, TOCKTEAM_SURFACE_SERVICE } from './guard.ts'
+
+type Context = CordisContext & { slots: TockTutorSlots }
 
 export const name = 'tockbot-note-desktop'
 const TOCKTUTOR_NATIVE_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.native-actions'
@@ -75,9 +77,10 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
         const remote: DesktopActionRemote = {
           tocktutorDesktop: (child.remote as unknown as DesktopActionRemote).tocktutorDesktop,
         }
-        return child.slots.inject(
+        const slots = (child as Context).slots
+        return slots.inject(
           TOCKTUTOR_NATIVE_ACTIONS_SLOT,
-          () => child.slots.register({
+          () => slots.register({
             id: name,
             inject: () => ({ bridge, remote }),
             name: TOCKTUTOR_NATIVE_ACTIONS_SLOT,

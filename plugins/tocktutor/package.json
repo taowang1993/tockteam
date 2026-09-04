@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "devDependencies": {
-    "@deepseek-ai/dsh-app-boot": "0.1.1-rc.2",
-    "@deepseek-ai/dsh-client-modules": "0.1.1-rc.2"
+    "@deepseek-ai/dsh-app-boot": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-modules": "0.1.2-rc.1"
   },
   "scripts": {
     "build": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run build",

@@ -13,8 +13,8 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_approveProposal_result$sc
   'status': z.union([z.literal("created"), z.literal("saved")]),
 })
 const _tockteam_tocktutor_assistant_tocktutorAssistant_audit_parameter_0$schema = z.object({
-  'offset': z.union([z.undefined(), z.number()]).optional(),
-  'limit': z.union([z.undefined(), z.number()]).optional(),
+  'offset': z.number().optional(),
+  'limit': z.number().optional(),
 })
 const _tockteam_tocktutor_assistant_tocktutorAssistant_audit_result$schema = z.object({
   'entries': z.array(z.object({
@@ -26,7 +26,7 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_audit_result$schema = z.o
   'destination': z.string(),
   'operation': z.union([z.literal("create"), z.literal("update")]),
   'contentBytes': z.number(),
-  'reason': z.union([z.undefined(), z.string()]).optional(),
+  'reason': z.string().optional(),
 })),
   'dropped': z.number(),
   'total': z.number(),
@@ -49,8 +49,8 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_currentSettings_result$sc
   'writePermission': z.union([z.literal("read-only"), z.literal("propose")]),
 })
 const _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_parameter_0$schema = z.object({
-  'offset': z.union([z.undefined(), z.number()]).optional(),
-  'limit': z.union([z.undefined(), z.number()]).optional(),
+  'offset': z.number().optional(),
+  'limit': z.number().optional(),
 })
 const _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_result$schema = z.object({
   'proposals': z.array(z.object({

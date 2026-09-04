@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { ReactNode } from 'react'
 import {
   TockTutorAssistantPanel,
@@ -20,8 +21,8 @@ function success<T>(value: T) {
   return Promise.resolve({ ok: true as const, value })
 }
 
-function failure(code: string, message: string) {
-  return Promise.resolve({ ok: false as const, error: { code, details: {}, message } })
+function failure(message: string) {
+  return Promise.resolve({ ok: false as const, error: new RemoteError('gateway/internal', message, {}) })
 }
 
 function deferred<T>() {
@@ -290,7 +291,7 @@ describe('TockTutorAssistantPanel', () => {
       tocktutorAssistant: {
         approveProposal: request => {
           approveCalls.push(request)
-          return failure('STALE_PROPOSAL', 'This proposal is stale. Refresh the review queue.')
+          return failure('This proposal is stale. Refresh the review queue.')
         },
         audit: () => success({ dropped: 0, entries: [], nextOffset: null, total: 0 }),
         currentSettings: () => success({ provider: 'provider', model: 'model', writePermission: 'propose' as const }),
@@ -662,7 +663,7 @@ describe('TockTutorAssistantPanel', () => {
           auditCorrelationId: 'audit', destination: 'Note.md', operation: 'create' as const,
           proposalId: 'proposal', snapshotCaptured: false, status: 'created' as const,
         }),
-        audit: () => failure('AUDIT_UNAVAILABLE', 'Audit history is temporarily unavailable.'),
+        audit: () => failure('Audit history is temporarily unavailable.'),
         currentSettings: () => settings.promise,
         listProposals: () => success({ nextOffset: null, proposals: [], total: 0 }),
         rejectProposal: () => success({ auditCorrelationId: 'audit', proposalId: 'proposal' }),

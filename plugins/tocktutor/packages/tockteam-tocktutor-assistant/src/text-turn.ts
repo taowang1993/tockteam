@@ -1,10 +1,10 @@
 import {
   createUserMessage,
-  deepFreeze,
   type GenerateOptions,
   type LlmRuntime,
   type StreamChunk,
 } from '@deepseek-ai/dsh-llm'
+import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import {
   buildAssistantPrompt,
   redactBoundaryText,

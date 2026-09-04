@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import {
   AssistantTurnBindingError,
   AssistantTurnBindingRegistry,
@@ -44,7 +44,7 @@ test('resolves one immutable allowed call to the exact Host-bound assistant turn
   const current = registry.current(agent)
   const resolved = registry.resolve({
     agent,
-    callId: CallId('call-12345678'),
+    callId: ToolCallId('call-12345678'),
     signal: new AbortController().signal,
     tool: 'read_file',
   })
@@ -86,19 +86,19 @@ test('requires exact live agent identity, allowed tool scope, and unused call co
     error => expectCode(error, 'STALE_TURN'),
   )
   assert.throws(
-    () => registry.resolve({ agent: fakeAgent(agent.id), callId: CallId('call-wrong-agent'), signal: new AbortController().signal, tool: 'read_file' }),
+    () => registry.resolve({ agent: fakeAgent(agent.id), callId: ToolCallId('call-wrong-agent'), signal: new AbortController().signal, tool: 'read_file' }),
     error => expectCode(error, 'TOOL_UNAVAILABLE'),
   )
   assert.throws(
-    () => registry.resolve({ agent, callId: CallId('call-denied-tool'), signal: new AbortController().signal, tool: 'get_outline' }),
+    () => registry.resolve({ agent, callId: ToolCallId('call-denied-tool'), signal: new AbortController().signal, tool: 'get_outline' }),
     error => expectCode(error, 'TOOL_UNAVAILABLE'),
   )
-  const call = { agent, callId: CallId('call-unique-12345678'), signal: new AbortController().signal, tool: 'search' }
+  const call = { agent, callId: ToolCallId('call-unique-12345678'), signal: new AbortController().signal, tool: 'search' }
   registry.resolve(call)
   assert.throws(() => registry.resolve(call), error => expectCode(error, 'CALL_REPLAY'))
   ;(agent as { status: string }).status = 'idle'
   assert.throws(
-    () => registry.resolve({ agent, callId: CallId('call-idle-12345678'), signal: new AbortController().signal, tool: 'search' }),
+    () => registry.resolve({ agent, callId: ToolCallId('call-idle-12345678'), signal: new AbortController().signal, tool: 'search' }),
     error => expectCode(error, 'STALE_TURN'),
   )
 })
@@ -146,13 +146,13 @@ test('accepts TockDriver staged-write aliases while keeping them out of read-onl
     const signal = new AbortController().signal
     assert.equal(registry.resolve({
       agent,
-      callId: CallId('call-notes-stage-12345678'),
+      callId: ToolCallId('call-notes-stage-12345678'),
       signal,
       tool: 'notes_stage_write',
     }).readBinding.vaultId, 'vault:12345678')
     assert.equal(registry.resolve({
       agent,
-      callId: CallId('call-notes-organize-12345678'),
+      callId: ToolCallId('call-notes-organize-12345678'),
       signal,
       tool: 'notes_organize_capture',
     }).readBinding.vaultId, 'vault:12345678')
@@ -183,7 +183,7 @@ test('invalidates synchronously on every bound Host fact transition', () => {
     registry.begin(input({ agent }))
     invalidate(registry)
     assert.throws(
-      () => registry.resolve({ agent, callId: CallId('call-after-change'), signal: new AbortController().signal, tool: 'read_file' }),
+      () => registry.resolve({ agent, callId: ToolCallId('call-after-change'), signal: new AbortController().signal, tool: 'read_file' }),
       error => expectCode(error, 'TOOL_UNAVAILABLE'),
     )
   }
@@ -209,7 +209,7 @@ test('lifecycle abort, turn replacement, call abort, and registry disposal fail 
   const aborted = new AbortController()
   aborted.abort('Bearer top-secret /Users/max')
   assert.throws(
-    () => registry.resolve({ agent, callId: CallId('call-aborted-12345678'), signal: aborted.signal, tool: 'read_file' }),
+    () => registry.resolve({ agent, callId: ToolCallId('call-aborted-12345678'), signal: aborted.signal, tool: 'read_file' }),
     error => expectCode(error, 'ABORTED'),
   )
   replacement.end()

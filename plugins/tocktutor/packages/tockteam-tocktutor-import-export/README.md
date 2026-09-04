@@ -26,4 +26,4 @@ The trusted main Desktop window mints a short-lived caller authorization before 
 
 Desktop owns opaque external source/destination grants. This package owns bounded parsing, conversion, plans, review tokens, archive verification, and orchestration. `tockbot-note-runtime` remains the only active-vault filesystem authority and provides exclusive create operations. Partial multi-file results identify committed, skipped, failed, and recovery-required entries without claiming rollback.
 
-The release targets `@deepseek-ai/dsh@0.1.1-rc.2`, Desktop `>=0.1.11 <0.2.0`, Workbench `>=0.1.7 <0.2.0`, and exact Runtime `0.1.2`.
+The release targets `@deepseek-ai/dsh@0.1.2-rc.1`, Desktop `>=0.1.11 <0.2.0`, Workbench `>=0.1.7 <0.2.0`, and exact Runtime `0.1.2`.

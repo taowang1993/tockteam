@@ -6,10 +6,7 @@ import Schema from '@deepseek-ai/schemastery'
 import type { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
 import type NoteVaultRuntime from 'tockbot-note-runtime'
 import type { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
-import {
-  settingsNamespace,
-  type SettingsScope,
-} from '@deepseek-ai/dsh-settings'
+import type { SettingsScope } from '@deepseek-ai/dsh-settings'
 import {
   ProposalApprovalExecutor,
   type ApprovalResult,
@@ -134,7 +131,7 @@ export const Config: Schema<Config> = Schema.object({
   ]).default('read-only'),
 })
 
-export const ASSISTANT_SETTINGS_NAMESPACE = settingsNamespace('tocktutor-assistant')
+export const ASSISTANT_SETTINGS_NAMESPACE = 'tocktutor-assistant'
 
 export class NoteAssistant extends Service implements AssistantRemoteHost {
   static Config = Config

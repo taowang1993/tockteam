@@ -15016,7 +15016,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15031,7 +15031,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15161,7 +15161,7 @@ var Button = React2.forwardRef(function Button2({
 var import_react = require("react");
 var import_jsx_runtime3 = require("react/jsx-runtime");
 function responseWasLost(result) {
-  return !result.ok && result.error.code === "transport";
+  return !result.ok && result.error.code === "gateway/internal";
 }
 function valueOf(result) {
   if (result.ok) return result.value;
@@ -15684,9 +15684,10 @@ async function apply(ctx) {
         const remote = {
           tocktutorDesktop: child.remote.tocktutorDesktop
         };
-        return child.slots.inject(
+        const slots = child.slots;
+        return slots.inject(
           TOCKTUTOR_NATIVE_ACTIONS_SLOT,
-          () => child.slots.register({
+          () => slots.register({
             id: name,
             inject: () => ({ bridge, remote }),
             name: TOCKTUTOR_NATIVE_ACTIONS_SLOT,

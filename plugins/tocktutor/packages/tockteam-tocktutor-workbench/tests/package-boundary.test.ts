@@ -31,7 +31,7 @@ test('publishes one independently installable Host and browser-client bundle', a
   assert.equal(packageJson.dsh?.client?.platform, 'web')
   assert.equal(packageJson.dsh?.client?.immediately, true)
   assert.deepEqual(packageJson.dsh?.client?.inject, [
-    '@deepseek-ai/dsh-client-runtime',
+    '@deepseek-ai/dsh-api-remotes',
     '@tockteam/desktop',
   ])
   assert.equal(await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8'), [

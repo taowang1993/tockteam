@@ -3,7 +3,7 @@ import { Alert } from '@tockteam/ui/alert';
 import { Button } from '@tockteam/ui/button';
 import { useEffect, useRef, useState } from 'react';
 function responseWasLost(result) {
-    return !result.ok && result.error.code === 'transport';
+    return !result.ok && result.error.code === 'gateway/internal';
 }
 function valueOf(result) {
     if (result.ok)

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SettingsProvider, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
@@ -143,14 +143,14 @@ test('ordinary DSH agents stage durable reviewed Notes writes through the shared
     const staged = await ctx.tools.execute({
       agent,
       arguments: { path: 'Proposed.md', content: '# Proposed\n', operation: 'create' },
-      callId: CallId('call-main-stage-12345678'),
+      callId: ToolCallId('call-main-stage-12345678'),
       name: 'notes_stage_write',
       signal: new AbortController().signal,
     })
     const organized = await ctx.tools.execute({
       agent,
       arguments: { path: 'Inbox/capture.md' },
-      callId: CallId('call-main-organize-12345678'),
+      callId: ToolCallId('call-main-organize-12345678'),
       name: 'notes_organize_capture',
       signal: new AbortController().signal,
     })

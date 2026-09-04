@@ -11,7 +11,7 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_activateRecentVault_resul
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_captureSnapshot_parameter_0$schema = z.object({
   'content': z.string(),
-  'reason': z.union([z.undefined(), z.string()]).optional(),
+  'reason': z.string().optional(),
   'expectedVault': z.object({
   'generation': z.number(),
   'id': z.string(),
@@ -20,15 +20,15 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_captureSnapshot_parameter
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_captureSnapshot_result$schema = z.object({
   'generation': z.number(),
-  'removed': z.union([z.undefined(), z.number()]).optional(),
-  'snapshot': z.union([z.undefined(), z.object({
+  'removed': z.number().optional(),
+  'snapshot': z.object({
   'createdAt': z.number(),
   'digest': z.string(),
   'id': z.string(),
   'path': z.string(),
   'reason': z.string(),
   'size': z.number(),
-})]).optional(),
+}).optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_parameter_0$schema = z.object({
   'expectedVault': z.object({
@@ -40,7 +40,7 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_parameter_0$sc
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_result$schema = z.object({
   'generation': z.number(),
   'ok': z.literal(true),
-  'updatedAt': z.union([z.undefined(), z.number()]).optional(),
+  'updatedAt': z.number().optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_clearSnapshots_parameter_0$schema = z.object({
   'expectedVault': z.object({
@@ -51,15 +51,15 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_clearSnapshots_parameter_
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_clearSnapshots_result$schema = z.object({
   'generation': z.number(),
-  'removed': z.union([z.undefined(), z.number()]).optional(),
-  'snapshot': z.union([z.undefined(), z.object({
+  'removed': z.number().optional(),
+  'snapshot': z.object({
   'createdAt': z.number(),
   'digest': z.string(),
   'id': z.string(),
   'path': z.string(),
   'reason': z.string(),
   'size': z.number(),
-})]).optional(),
+}).optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_createDocument_parameter_0$schema = z.object({
   'content': z.string(),
@@ -96,13 +96,13 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_currentVault_result$schem
   'id': z.string(),
 })])
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_facets_parameter_0$schema = z.object({
-  'cursor': z.union([z.undefined(), z.string()]).optional(),
-  'directory': z.union([z.undefined(), z.string()]).optional(),
+  'cursor': z.string().optional(),
+  'directory': z.string().optional(),
   'expectedVault': z.object({
   'generation': z.number(),
   'id': z.string(),
 }),
-  'limit': z.union([z.undefined(), z.number()]).optional(),
+  'limit': z.number().optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_facets_result$schema = z.object({
   'complete': z.boolean(),
@@ -127,23 +127,23 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_facets_result$schema = z.
   'warnings': z.array(z.string()),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_graph_parameter_0$schema = z.object({
-  'cursor': z.union([z.undefined(), z.string()]).optional(),
-  'depth': z.union([z.undefined(), z.number()]).optional(),
-  'direction': z.union([z.undefined(), z.literal("outgoing"), z.literal("backlinks"), z.literal("both")]).optional(),
+  'cursor': z.string().optional(),
+  'depth': z.number().optional(),
+  'direction': z.union([z.literal("outgoing"), z.literal("backlinks"), z.literal("both")]).optional(),
   'expectedVault': z.object({
   'generation': z.number(),
   'id': z.string(),
 }),
-  'includeAttachments': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
-  'includeTags': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
-  'limit': z.union([z.undefined(), z.number()]).optional(),
-  'path': z.union([z.undefined(), z.string()]).optional(),
-  'scope': z.union([z.undefined(), z.literal("local"), z.literal("global")]).optional(),
-  'tag': z.union([z.undefined(), z.string()]).optional(),
+  'includeAttachments': z.boolean().optional(),
+  'includeTags': z.boolean().optional(),
+  'limit': z.number().optional(),
+  'path': z.string().optional(),
+  'scope': z.union([z.literal("local"), z.literal("global")]).optional(),
+  'tag': z.string().optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_graph_result$schema = z.object({
   'complete': z.boolean(),
-  'cursor': z.union([z.undefined(), z.literal(null), z.string()]).optional(),
+  'cursor': z.union([z.literal(null), z.string()]).optional(),
   'edges': z.array(z.object({
   'fragment': z.union([z.literal(null), z.string()]),
   'kind': z.union([z.literal("image"), z.literal("canvas-file"), z.literal("embed"), z.literal("image-reference"), z.literal("markdown"), z.literal("reference"), z.literal("tag"), z.literal("wiki")]),
@@ -192,12 +192,12 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_inspectAttachment_result$
   'size': z.number(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_links_parameter_0$schema = z.object({
-  'cursor': z.union([z.undefined(), z.string()]).optional(),
+  'cursor': z.string().optional(),
   'expectedVault': z.object({
   'generation': z.number(),
   'id': z.string(),
 }),
-  'includeUnlinked': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+  'includeUnlinked': z.boolean().optional(),
   'path': z.string(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_links_result$schema = z.object({
@@ -213,7 +213,7 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_links_result$schema = z.o
   'status': z.union([z.literal("ambiguous"), z.literal("resolved"), z.literal("unresolved")]),
 })),
   'backlinks': z.array(z.string()),
-  'complete': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+  'complete': z.boolean().optional(),
   'cursor': z.union([z.literal(null), z.string()]),
   'generation': z.number(),
   'outgoing': z.array(z.string()),
@@ -240,13 +240,13 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_links_result$schema = z.o
 })),
   'truncated': z.boolean(),
   'truncationReason': z.union([z.literal(null), z.literal("entry-limit"), z.literal("result-limit"), z.literal("byte-limit"), z.literal("file-limit"), z.literal("metadata-limit")]),
-  'unlinkedMentions': z.union([z.undefined(), z.array(z.object({
+  'unlinkedMentions': z.array(z.object({
   'identifierKind': z.union([z.literal("alias"), z.literal("basename"), z.literal("title")]),
   'line': z.number(),
   'matchedText': z.string(),
   'snippet': z.string(),
   'sourcePath': z.string(),
-}))]).optional(),
+})).optional(),
   'warnings': z.array(z.string()),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_listRecentVaults_result$schema = z.object({
@@ -290,12 +290,12 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_listTrash_result$schema =
   'generation': z.number(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_listTree_parameter_0$schema = z.object({
-  'cursor': z.union([z.undefined(), z.literal(null), z.string()]).optional(),
+  'cursor': z.union([z.literal(null), z.string()]).optional(),
   'expectedVault': z.object({
   'generation': z.number(),
   'id': z.string(),
 }),
-  'limit': z.union([z.undefined(), z.number()]).optional(),
+  'limit': z.number().optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_listTree_result$schema = z.object({
   'complete': z.boolean(),
@@ -353,19 +353,19 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_parameter_0$schem
   'generation': z.number(),
   'id': z.string(),
 }),
-  'includeFootnotes': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
-  'includeQueries': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
-  'limit': z.union([z.undefined(), z.number()]).optional(),
+  'includeFootnotes': z.boolean().optional(),
+  'includeQueries': z.boolean().optional(),
+  'limit': z.number().optional(),
   'path': z.string(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_result$schema = z.object({
-  'footnotes': z.union([z.undefined(), z.array(z.object({
+  'footnotes': z.array(z.object({
   'content': z.string(),
   'kind': z.literal("inline"),
   'line': z.number(),
   'ordinal': z.number(),
-}))]).optional(),
-  'footnotesTruncated': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+})).optional(),
+  'footnotesTruncated': z.boolean().optional(),
   'generation': z.number(),
   'headings': z.array(z.object({
   'level': z.number(),
@@ -402,7 +402,7 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_result$schema =
   'draft': z.union([z.literal(null), z.object({
   'content': z.string(),
   'path': z.string(),
-  'revision': z.union([z.undefined(), z.string()]).optional(),
+  'revision': z.string().optional(),
   'updatedAt': z.number(),
 })]),
   'generation': z.number(),
@@ -490,7 +490,7 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreTrash_parameter_0$
   'id': z.string(),
 }),
   'id': z.string(),
-  'toPath': z.union([z.undefined(), z.string()]).optional(),
+  'toPath': z.string().optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreTrash_result$schema = z.object({
   'generation': z.number(),
@@ -527,7 +527,7 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDocument_result$schem
 })])
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_parameter_0$schema = z.object({
   'content': z.string(),
-  'revision': z.union([z.undefined(), z.string()]).optional(),
+  'revision': z.string().optional(),
   'expectedVault': z.object({
   'generation': z.number(),
   'id': z.string(),
@@ -537,22 +537,22 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_parameter_0$sch
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_result$schema = z.object({
   'generation': z.number(),
   'ok': z.literal(true),
-  'updatedAt': z.union([z.undefined(), z.number()]).optional(),
+  'updatedAt': z.number().optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_search_parameter_0$schema = z.object({
-  'caseSensitive': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
-  'cursor': z.union([z.undefined(), z.string()]).optional(),
-  'directory': z.union([z.undefined(), z.string()]).optional(),
+  'caseSensitive': z.boolean().optional(),
+  'cursor': z.string().optional(),
+  'directory': z.string().optional(),
   'expectedVault': z.object({
   'generation': z.number(),
   'id': z.string(),
 }),
-  'limit': z.union([z.undefined(), z.number()]).optional(),
-  'mode': z.union([z.undefined(), z.literal("literal"), z.literal("query"), z.literal("related")]).optional(),
+  'limit': z.number().optional(),
+  'mode': z.union([z.literal("literal"), z.literal("query"), z.literal("related")]).optional(),
   'query': z.string(),
-  'regex': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
-  'scope': z.union([z.undefined(), z.literal("path"), z.literal("all"), z.literal("content"), z.literal("properties")]).optional(),
-  'wholeWord': z.union([z.undefined(), z.literal(false), z.literal(true)]).optional(),
+  'regex': z.boolean().optional(),
+  'scope': z.union([z.literal("path"), z.literal("all"), z.literal("content"), z.literal("properties")]).optional(),
+  'wholeWord': z.boolean().optional(),
 })
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema = z.object({
   'cursor': z.union([z.literal(null), z.string()]),
@@ -560,12 +560,12 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema = z.
   'matches': z.array(z.object({
   'kind': z.union([z.literal("path"), z.literal("tag"), z.literal("content"), z.literal("base"), z.literal("block"), z.literal("canvas"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("task")]),
   'line': z.union([z.literal(null), z.number()]),
-  'lineEnd': z.union([z.undefined(), z.literal(null), z.number()]).optional(),
-  'operator': z.union([z.undefined(), z.literal("path"), z.literal("tag"), z.literal("related"), z.literal("content"), z.literal("block"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("task"), z.literal("any"), z.literal("file"), z.literal("task-done"), z.literal("task-todo")]).optional(),
+  'lineEnd': z.union([z.literal(null), z.number()]).optional(),
+  'operator': z.union([z.literal("path"), z.literal("tag"), z.literal("related"), z.literal("content"), z.literal("block"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("task"), z.literal("any"), z.literal("file"), z.literal("task-done"), z.literal("task-todo")]).optional(),
   'path': z.string(),
   'preview': z.string(),
-  'provenance': z.union([z.undefined(), z.literal("path"), z.literal("canvas"), z.literal("section"), z.literal("task"), z.literal("body"), z.literal("frontmatter")]).optional(),
-  'score': z.union([z.undefined(), z.number()]).optional(),
+  'provenance': z.union([z.literal("path"), z.literal("canvas"), z.literal("section"), z.literal("task"), z.literal("body"), z.literal("frontmatter")]).optional(),
+  'score': z.number().optional(),
 })),
   'query': z.string(),
   'scan': z.object({

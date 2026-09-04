@@ -212,12 +212,27 @@ test('real Client Remote propagates cancellation and retires retained handles on
   }
 
   await context.plugin(TypertRegistry)
-  context.provide('connection', { rpc: { call } } as unknown as ConnectionHandle)
+  const connection = {
+    generation: { getSnapshot: () => undefined, subscribe: () => () => {} },
+    isLoopback: true,
+    reconnect: () => {},
+    registerGenerationSource: () => () => {},
+    rpc: {
+      call,
+      open: async function* () {},
+    },
+    start: () => ({ stop: () => {} }),
+    state: { getSnapshot: () => undefined, subscribe: () => () => {} },
+  } as unknown as ConnectionHandle
+  context.provide('connection', connection)
   context.provide('sessions', {} as never)
   context.provide('slots', { inject: () => () => {} } as never)
   const gatewayFiber = context.plugin(Object.assign(gateway.apply, { inject: gateway.inject }))
   await gatewayFiber
-  const clientFiber = context.plugin(Object.assign(client.apply, { inject: client.inject }))
+  const clientFiber = context.plugin(
+    Object.assign(client.apply, { inject: client.inject }) as never,
+    undefined as never,
+  )
   await clientFiber
   const namespace = (context.remote as unknown as {
     tocktutorAssistant: {
@@ -225,10 +240,12 @@ test('real Client Remote propagates cancellation and retires retained handles on
     }
   }).tocktutorAssistant
   const retained = namespace.currentSettings
+  let agentContext: Context
   context.typert.contexts.registerClient('agent', {
     identity: candidate => (candidate as Context & { agentIdentity?: string }).agentIdentity as SessionId | undefined,
+    resolve: id => id === 'agent-scoped-wire' ? agentContext : undefined,
   })
-  const agentContext = context.extend({ agentIdentity: 'agent-scoped-wire' })
+  agentContext = context.extend({ agentIdentity: 'agent-scoped-wire' })
   const scopedTurn = (agentContext.remote as unknown as {
     tocktutorAssistant: {
       continueTurn(
@@ -265,13 +282,14 @@ test('real Client Remote propagates cancellation and retires retained handles on
 
   await clientFiber.dispose()
   assert.equal((context.remote as unknown as Record<string, unknown>).tocktutorAssistant, undefined)
-  assert.deepEqual(await retained(), {
-    ok: false,
-    error: {
-      code: 'internal',
-      message: 'client api: Remote method tocktutorAssistant/currentSettings is no longer mounted',
-      details: {},
-    },
-  })
+  const withdrawn = await retained() as {
+    ok: false
+    error: { code: string; details: unknown; isDSHRemoteError: boolean; message: string }
+  }
+  assert.equal(withdrawn.ok, false)
+  assert.equal(withdrawn.error.code, 'gateway/internal')
+  assert.equal(withdrawn.error.message, 'client api: Remote method tocktutorAssistant/currentSettings is no longer mounted')
+  assert.deepEqual(withdrawn.error.details, {})
+  assert.equal(withdrawn.error.isDSHRemoteError, true)
   await context.fiber.dispose()
 })

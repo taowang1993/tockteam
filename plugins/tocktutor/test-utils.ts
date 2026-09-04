@@ -54,6 +54,7 @@ interface PackedClientModuleRow {
   external?: string[]
   id: string
   immediately?: boolean
+  initialUrl?: string
   inject?: string[]
   rev: string
   url: string
@@ -65,7 +66,7 @@ interface PackedClientModuleOptions {
   staticModules: Record<string, unknown>
 }
 
-/** Build rc.2 ClientModuleSystem inputs around the HTML loader facade used in production. */
+/** Build ClientModuleSystem inputs around the HTML loader facade used in production. */
 export function packedClientModuleSystemOptions(options: PackedClientModuleOptions) {
   const pendingQueue: ClientBundleRegistration[] = []
   const registrationTarget = {
@@ -88,6 +89,8 @@ export function packedClientModuleSystemOptions(options: PackedClientModuleOptio
       modules: options.modules.map(row => ({
         external: row.external ?? [],
         id: row.id,
+        initialUrl: row.initialUrl ?? row.url,
+        inject: row.inject ?? [],
         rev: row.rev,
         url: row.url,
       })),

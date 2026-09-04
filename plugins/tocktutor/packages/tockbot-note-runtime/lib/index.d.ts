@@ -416,9 +416,15 @@ export type VaultInspectionRuntimeResult<Result> = Result & {
 };
 export type { VaultCanvasArgs, VaultCanvasResult, VaultFacetsArgs, VaultFacetsResult, VaultGraphArgs, VaultGraphResult, VaultLinksArgs, VaultLinksResult, VaultListArgs, VaultListResult, VaultOutlineArgs, VaultOutlineResult, VaultPathRewriteArgs, VaultPathRewriteResult, VaultPathRewriteUpdate, VaultReadArgs, VaultSearchArgs, VaultSearchResult, } from 'tockbot-note-vault/inspection';
 export type NoteVaultErrorCode = 'cancelled' | 'changed' | 'conflict' | 'denied' | 'exists' | 'inactive' | 'invalid-content' | 'invalid-path' | 'invalid-vault' | 'not-found' | 'partial' | 'recovery-unavailable' | 'stale-vault' | 'too-large' | 'unavailable' | 'unsafe-target' | 'unsupported-type';
-export declare class NoteVaultError extends Error {
-    readonly code: NoteVaultErrorCode;
-    constructor(code: NoteVaultErrorCode, message: string);
+declare module '@deepseek-ai/dsh-typert-protocol' {
+    interface RemoteErrorDetailsMap extends Record<NoteVaultErrorCode, Record<never, never>> {
+    }
+}
+export declare class NoteVaultError<Code extends NoteVaultErrorCode = NoteVaultErrorCode> extends Error {
+    readonly code: Code;
+    readonly details: Record<never, never>;
+    readonly isDSHRemoteError = true;
+    constructor(code: Code, message: string);
 }
 export declare function isPassiveBackupPath(relativePath: string): boolean;
 export declare class NoteVaultRuntime extends Service {

@@ -53,7 +53,7 @@ export interface AssistantSettings {
 }
 export type Config = AssistantSettings;
 export declare const Config: Schema<Config>;
-export declare const ASSISTANT_SETTINGS_NAMESPACE: import("@deepseek-ai/dsh-settings").SettingsNamespace;
+export declare const ASSISTANT_SETTINGS_NAMESPACE = "tocktutor-assistant";
 export declare class NoteAssistant extends Service implements AssistantRemoteHost {
     static Config: Schema<AssistantSettings>;
     static inject: string[];

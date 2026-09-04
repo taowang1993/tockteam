@@ -80,7 +80,7 @@ export interface DesktopDispatchLoopOptions {
 }
 
 function responseWasLost(result: RemoteResult<NativeActionResult>): boolean {
-  return !result.ok && result.error.code === 'transport'
+  return !result.ok && result.error.code === 'gateway/internal'
 }
 
 function valueOf(result: RemoteResult<NativeActionResult>): NativeActionResult {

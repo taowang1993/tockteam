@@ -3,6 +3,7 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+import { NoteVaultError } from 'tockbot-note-runtime'
 import {
   IMPORT_CHOOSER_DELEGATIONS,
   ImportExportReviewController,
@@ -57,7 +58,7 @@ class FakeRemote implements ReviewPanelRemote {
         throw new Error('inspect response lost')
       }
       if (this.inspectFailureResult) {
-        return { ok: false, error: { code: 'unsupported-type', details: {}, message: 'Unsupported source.' } }
+        return { ok: false, error: new NoteVaultError('unsupported-type', 'Unsupported source.') }
       }
       return ok(preview)
     },

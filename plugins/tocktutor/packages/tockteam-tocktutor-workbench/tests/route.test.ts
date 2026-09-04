@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { NoteVaultError } from 'tockbot-note-runtime'
 import { createExecutableBaseFrontmatterEdit } from '../dist/base-edit.js'
 import { createCanvasChange } from '../dist/canvas-change.js'
 import { updateCanvasNodeGeometry } from '../dist/canvas-nodes.js'
@@ -30,9 +31,9 @@ function success<T>(value: T) {
   return Promise.resolve({ ok: true as const, value })
 }
 
-function failure(code: string, message: string) {
+function failure(code: 'conflict', message: string) {
   return Promise.resolve({
-    error: { code, details: {}, message },
+    error: new NoteVaultError(code, message),
     ok: false as const,
   })
 }
@@ -107,9 +108,9 @@ function tree(vault: VaultReference): VaultTreePage {
 
 class FakeRemote implements WorkbenchRouteRemote {
   vault: VaultReference | null = firstVault
-  saveFailure: { code: string; message: string } | null = null
+  saveFailure: { code: 'conflict'; message: string } | null = null
   draftContent: string | null = null
-  draftFailure: { code: string; message: string } | null = null
+  draftFailure: { code: 'unavailable'; message: string } | null = null
   draftReject: Error | null = null
   draftFailureReads = 0
   draftFailuresBeforeSuccess = 0
@@ -275,7 +276,7 @@ class FakeRemote implements WorkbenchRouteRemote {
         return Promise.resolve({
           get error() {
             owner.draftFailureReads += 1
-            return { code: owner.draftFailure!.code, details: {}, message: owner.draftFailure!.message }
+            return new NoteVaultError(owner.draftFailure!.code, owner.draftFailure!.message)
           },
           ok: false as const,
         })
@@ -409,7 +410,7 @@ test('dispose flushes a draft scheduled immediately before true disposal', async
 
 test('dispose rejects a failed final draft result after bounded retries', async () => {
   const remote = new FakeRemote()
-  remote.draftFailure = { code: 'transport-closed', message: 'transport closed' }
+  remote.draftFailure = { code: 'unavailable', message: 'transport closed' }
   remote.draftFailuresBeforeSuccess = 99
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
@@ -422,7 +423,7 @@ test('dispose rejects a failed final draft result after bounded retries', async 
 
 test('dispose retries a failed final draft result and preserves the latest content', async () => {
   const remote = new FakeRemote()
-  remote.draftFailure = { code: 'temporary', message: 'try again' }
+  remote.draftFailure = { code: 'unavailable', message: 'try again' }
   remote.draftFailuresBeforeSuccess = 1
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')

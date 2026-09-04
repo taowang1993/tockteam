@@ -1,5 +1,5 @@
 import type { Agent } from '@deepseek-ai/dsh-agent';
-import type { CallId } from '@deepseek-ai/dsh-llm';
+import type { ToolCallId } from '@deepseek-ai/dsh-llm';
 import { type PennivoReadTool, type ReadBinding } from './read-tools.ts';
 export declare const TOCKDRIVER_WRITE_TOOL_NAMES: readonly ["notes_stage_write", "notes_organize_capture"];
 export type TockDriverWriteTool = typeof TOCKDRIVER_WRITE_TOOL_NAMES[number];
@@ -28,7 +28,7 @@ export interface AssistantProposalBinding extends ReadBinding {
 }
 export interface AssistantToolExecutionIdentity {
     agent?: Agent;
-    callId: CallId;
+    callId: ToolCallId;
     signal: AbortSignal;
     tool: string;
 }

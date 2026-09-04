@@ -1,5 +1,5 @@
 import assistantRemote from '@tockteam/tocktutor-assistant/remote';
-import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from '@tockteam/tocktutor-workbench/client';
+import { TOCKTUTOR_ASSISTANT_PANEL_SLOT, } from '@tockteam/tocktutor-workbench/client';
 import { TockTutorAssistantPanel, } from "./assistant-panel.js";
 /** Browser Loader identity for the inline TockTutor assistant. */
 export const name = '@tockteam/tocktutor-assistant';
@@ -16,7 +16,8 @@ export async function apply(ctx) {
                 tocktutorAssistant: mountedRemote.tocktutorAssistant,
             };
             const sessions = child.sessions;
-            return child.slots.inject(TOCKTUTOR_ASSISTANT_PANEL_SLOT, () => child.slots.register({
+            const slots = child.slots;
+            return slots.inject(TOCKTUTOR_ASSISTANT_PANEL_SLOT, () => slots.register({
                 inject: () => ({ remote, sessions }),
                 name: TOCKTUTOR_ASSISTANT_PANEL_SLOT,
                 registrant: name,

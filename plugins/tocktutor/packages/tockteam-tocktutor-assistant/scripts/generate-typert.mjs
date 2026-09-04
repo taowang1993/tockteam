@@ -69,11 +69,14 @@ try {
     allowImportingTsExtensions: true,
     composite: true,
     exactOptionalPropertyTypes: true,
-    lib: ['ES2024'],
+    lib: ['ES2024', 'DOM'],
     module: 'NodeNext',
     moduleResolution: 'NodeNext',
     noEmit: true,
     noUncheckedIndexedAccess: true,
+    paths: {
+      '@deepseek-ai/dsh-typert-protocol': [join(protocolRoot, 'src', 'index.d.ts')],
+    },
     skipLibCheck: true,
     strict: true,
     target: 'ES2024',
@@ -97,6 +100,7 @@ try {
     files: ['types.ts'],
   }, null, 2))
   await writeFile(join(workspace, 'tsconfig.host.json'), JSON.stringify({
+    compilerOptions,
     files: [],
     references: [
       { path: './packages/typert-protocol' },

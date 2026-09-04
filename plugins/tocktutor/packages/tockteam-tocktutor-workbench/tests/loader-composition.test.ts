@@ -57,10 +57,10 @@ async function installFreshPackage(root: string): Promise<{
     name: 'tocktutor-workbench-packed-consumer',
     private: true,
     dependencies: {
-      '@deepseek-ai/cordis': '4.0.1',
-      '@deepseek-ai/dsh-client-runtime': '0.1.1-rc.2',
-      '@deepseek-ai/dsh-client-ui-slots': '0.1.1-rc.2',
-      '@deepseek-ai/dsh-typert-protocol': '0.1.1-rc.2',
+      '@deepseek-ai/cordis': '4.0.2',
+      '@deepseek-ai/dsh-api-remotes': '0.1.2-rc.1',
+      '@deepseek-ai/dsh-client-ui-slots': '0.1.2-rc.1',
+      '@deepseek-ai/dsh-typert-protocol': '0.1.2-rc.1',
       '@tockteam/desktop': `file:${desktopArtifact}`,
       '@tockteam/ui': `file:${uiArtifact}`,
       [packageName]: `file:${artifact}`,
@@ -153,7 +153,7 @@ async function verifyPackedClient(
   assert.equal(manifest.version, '0.1.7')
   assert.deepEqual(manifest.dsh?.bundle, { patch: './cordis.patch.yml' })
   assert.deepEqual(manifest.dsh?.client, {
-    inject: ['@deepseek-ai/dsh-client-runtime', '@tockteam/desktop'],
+    inject: ['@deepseek-ai/dsh-api-remotes', '@tockteam/desktop'],
     platform: 'web',
     immediately: true,
   })

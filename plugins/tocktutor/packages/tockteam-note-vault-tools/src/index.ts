@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { JsonSchemaNode, JsonValue, ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { JsonSchemaNode, ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type {
   NoteVaultRuntime,
   VaultCanvasArgs,

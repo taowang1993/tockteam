@@ -38,7 +38,7 @@ test('fresh packed artifact runs through the pinned Loader and retained authorit
       version?: unknown
     }
     assert.equal(pin.package, '@deepseek-ai/dsh')
-    assert.equal(pin.version, '0.1.1-rc.2')
+    assert.equal(pin.version, '0.1.2-rc.1')
     const desktopMain = await run('tar', ['-xOf', desktopArtifact, 'package/dist/main.js'], temporary)
     for (const invariant of [
       "default-src 'none'",
@@ -54,9 +54,9 @@ test('fresh packed artifact runs through the pinned Loader and retained authorit
       private: true,
       type: 'module',
       dependencies: {
-        '@deepseek-ai/cordis': '4.0.1',
-        '@deepseek-ai/cordis-plugin-include': '1.0.6',
-        '@deepseek-ai/cordis-plugin-loader': '1.0.2',
+        '@deepseek-ai/cordis': '4.0.2',
+        '@deepseek-ai/cordis-plugin-include': '1.0.7',
+        '@deepseek-ai/cordis-plugin-loader': '1.0.3',
         react: '18.3.1',
         'tockbot-note-runtime': `file:${runtimeArtifact}`,
         'tockbot-note-vault': `file:${vaultArtifact}`,

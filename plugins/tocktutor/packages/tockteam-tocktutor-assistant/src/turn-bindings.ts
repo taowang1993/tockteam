@@ -1,5 +1,5 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { CallId } from '@deepseek-ai/dsh-llm'
+import type { ToolCallId } from '@deepseek-ai/dsh-llm'
 import {
   REVIEWED_PENNIVO_READ_TOOLS,
   type PennivoReadTool,
@@ -60,7 +60,7 @@ export interface AssistantProposalBinding extends ReadBinding {
 
 export interface AssistantToolExecutionIdentity {
   agent?: Agent
-  callId: CallId
+  callId: ToolCallId
   signal: AbortSignal
   tool: string
 }

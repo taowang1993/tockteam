@@ -1,5 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
 import { Card } from '@tockteam/ui/card'
@@ -40,7 +39,10 @@ import {
 } from './viewer.ts'
 import type { ReaderViewResult } from './reader.ts'
 import type { ClipPreview } from './review.ts'
-import type { TockTutorWebViewerOwnerProps } from '@tockteam/tocktutor-workbench/client'
+import type {
+  TockTutorSlots,
+  TockTutorWebViewerOwnerProps,
+} from '@tockteam/tocktutor-workbench/client'
 
 const TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = 'tockteam.tocktutor.workbench.web-viewer'
 
@@ -533,6 +535,8 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
 }
 
 export const name = 'tockbot-web-clip'
+type Context = CordisContext & { slots: TockTutorSlots }
+
 export const inject = ['desktopSidebar', 'tockTeamSurface', 'slots']
 
 export function apply(ctx: Context): void {

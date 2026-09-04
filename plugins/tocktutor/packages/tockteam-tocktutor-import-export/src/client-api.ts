@@ -1,9 +1,10 @@
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import { createElement } from 'react'
-import type {} from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import {
   TOCKTUTOR_REVIEW_PANEL_SLOT,
   type TockTutorReviewPanelOwnerProps,
+  type TockTutorSlots,
 } from '@tockteam/tocktutor-workbench/client'
 import importExportRemote from '@tockteam/tocktutor-import-export/remote'
 import {
@@ -12,6 +13,8 @@ import {
 } from './review-panel.tsx'
 
 export const name = '@tockteam/tocktutor-import-export'
+type Context = CordisContext & { slots: TockTutorSlots }
+
 export const inject = ['remote', 'slots']
 
 export async function apply(ctx: Context): Promise<() => Promise<void>> {

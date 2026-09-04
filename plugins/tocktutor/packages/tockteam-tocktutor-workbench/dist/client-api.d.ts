@@ -1,4 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis';
+import type { Context as CordisContext } from '@deepseek-ai/cordis';
 import { type TockTutorRouteOwnerProps } from '@tockteam/desktop/client';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface SlotMap {
@@ -11,7 +11,15 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 /** Browser Loader identity for the native TockTutor workbench. */
 export declare const name = "@tockteam/tocktutor-workbench";
+/** Slot service face used by TockTutor client contributions. */
+export interface TockTutorSlots {
+    inject(key: string, callback: () => () => void): () => void;
+    register(options: object, component: unknown): () => void;
+}
 /** Required transport and route registry supplied by the pinned Desktop client graph. */
+type Context = CordisContext & {
+    slots: TockTutorSlots;
+};
 export declare const inject: string[];
 /** Mount strict transport first, then contribute one lifecycle-owned Desktop route. */
 export declare function apply(ctx: Context): Promise<() => Promise<void>>;
