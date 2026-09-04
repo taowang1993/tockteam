@@ -6,6 +6,7 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { UsageError } from './errors.ts'
+import { migrateLegacyState } from './data-root.ts'
 import { ensureWebProfile, WEB_PROFILE } from './profile.ts'
 import {
   DshRuntimeSupervisor,
@@ -25,6 +26,7 @@ export const DEFAULT_DATA_DIR_NAME = '.tockteam-web'
 /** Launch options resolved from argv and environment. */
 export interface LaunchOptions {
   dataRoot: string
+  legacyDataRoot?: string
   help: boolean
   host: string
   open: boolean
@@ -61,8 +63,12 @@ function parseOpen(value: string): boolean {
   throw new UsageError(`invalid TOCKTEAM_WEB_OPEN value: ${value}`)
 }
 
+function webEnv(env: NodeJS.ProcessEnv, name: string): string | undefined {
+  return env[`TOCKTEAM_WEB_${name}`] ?? env[`DSH_OH_WEB_${name}`]
+}
+
 function envBoolean(env: NodeJS.ProcessEnv, name: string): boolean | undefined {
-  const value = env[name]
+  const value = webEnv(env, name)
   if (value === undefined || value === '') return undefined
   return parseOpen(value)
 }
@@ -77,12 +83,15 @@ export function parseLaunchArgs(
   interactive: boolean,
   defaultDataRoot: string,
 ): LaunchOptions {
+  const home = webEnv(env, 'HOME')
+  const port = webEnv(env, 'PORT')
   const options: LaunchOptions = {
-    dataRoot: env.TOCKTEAM_WEB_HOME ?? defaultDataRoot,
+    dataRoot: home ?? defaultDataRoot,
+    ...(home === undefined ? { legacyDataRoot: join(dirname(defaultDataRoot), '.oh-dsh-web') } : {}),
     help: false,
-    host: env.TOCKTEAM_WEB_HOST ?? DEFAULT_WEB_HOST,
-    open: envBoolean(env, 'TOCKTEAM_WEB_OPEN') ?? interactive,
-    port: env.TOCKTEAM_WEB_PORT === undefined ? DEFAULT_WEB_PORT : parsePort(env.TOCKTEAM_WEB_PORT),
+    host: webEnv(env, 'HOST') ?? DEFAULT_WEB_HOST,
+    open: envBoolean(env, 'OPEN') ?? interactive,
+    port: port === undefined ? DEFAULT_WEB_PORT : parsePort(port),
     trustedHosts: [],
   }
   for (let index = 0; index < args.length; index += 1) {
@@ -122,6 +131,7 @@ export function parseLaunchArgs(
     const data = flag('--data')
     if (data !== undefined) {
       options.dataRoot = data
+      delete options.legacyDataRoot
       continue
     }
     const trustedHost = flag('--trusted-host')
@@ -136,7 +146,7 @@ export function parseLaunchArgs(
 
 /** Resolve the distribution root: the packaged install root or the repo stage. */
 export function resolveWebRoot(env: NodeJS.ProcessEnv = process.env): string {
-  const packaged = env.TOCKTEAM_WEB_ROOT
+  const packaged = webEnv(env, 'ROOT')
   if (packaged !== undefined && packaged !== '') return packaged
   // Development layout: dist/web.js lives directly under the repository root.
   return dirname(dirname(fileURLToPath(import.meta.url)))
@@ -209,7 +219,7 @@ export async function main(
   const stagedNode = process.platform === 'win32'
     ? join(root, '.stage', 'node-runtime', 'node.exe')
     : join(root, '.stage', 'node-runtime', 'bin', 'node')
-  const resourcesRoot = env.TOCKTEAM_WEB_ROOT !== undefined
+  const resourcesRoot = webEnv(env, 'ROOT') !== undefined
     ? root
     : existsSync(stagedNode)
       ? join(root, '.stage')
@@ -223,6 +233,10 @@ export async function main(
   }
 
   const dshHome = join(dataRoot, 'dsh')
+  if (options.legacyDataRoot !== undefined
+    && !migrateLegacyState(options.legacyDataRoot, dataRoot, 'web').complete) {
+    throw new Error('legacy Web state migration is incomplete; refusing to start')
+  }
   mkdirSync(dataRoot, { recursive: true, mode: 0o700 })
   ensureWebProfile(dshHome)
 

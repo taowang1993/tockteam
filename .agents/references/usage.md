@@ -258,6 +258,22 @@ TUI uses its own `~/.tockteam` root and does not load global plugin configuratio
 from `~/.dsh`. Configure the DeepSeek API key in Models settings or in `.env`
 under the matching DSH data directory.
 
+Default startup recovers missing entries from the matching legacy root:
+`Oh-DSH-Desktop` or `Oh-DSH-Desktop-Dev` for Desktop, `~/.oh-dsh-web` for Web,
+and `~/.ohdsh` for TUI. Current destination files win and legacy sources remain
+untouched. Packaged and development Desktop state stays separate; `~/.dsh`
+is never imported automatically. Explicit `--user-data-dir`, `--data`, or
+surface home variables skip default-root recovery. Public `DSH_OH_WEB_*` and
+`DSH_OH_TUI_*` launch variables are compatibility fallbacks; current TockTeam
+variables and command-line flags take precedence.
+
+Recovery records success in a surface-specific `.migrations/*-state-v1.complete`
+marker only after the full copy succeeds. An incomplete or broken link prevents
+normal initialization: repair the legacy link or resolve the destination conflict,
+then retry. Do not delete either root or overwrite current state as a shortcut.
+The marker makes completed recovery one-time; later legacy edits are not merged.
+Shared default session storage remains a separate, approval-gated migration.
+
 Troubleshooting order:
 
 1. Run `tockteam --help` to confirm the CLI source.

@@ -7,6 +7,7 @@ import { dirname, join, resolve } from 'node:path'
 import type { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import { UsageError } from './errors.ts'
+import { migrateLegacyState } from './data-root.ts'
 import { ensureTuiProfile, TUI_PROFILE } from './profile.ts'
 import {
   bundledRuntimePaths,
@@ -22,6 +23,7 @@ export const DEFAULT_TUI_HOME = join(homedir(), '.tockteam')
 export interface TuiLaunchOptions {
   cwd: string
   dataRoot: string
+  legacyDataRoot?: string
   fullscreen: boolean
   help: boolean
   lang?: 'en' | 'zh'
@@ -64,7 +66,7 @@ function parseBoolean(value: string, name: string): boolean {
 }
 
 function optionalEnv(env: NodeJS.ProcessEnv, name: string): string | undefined {
-  const value = env[name]
+  const value = env[name] ?? env[name.replace('TOCKTEAM_TUI_', 'DSH_OH_TUI_')]
   return value === undefined || value === '' ? undefined : value
 }
 
@@ -84,9 +86,11 @@ export function parseTuiArgs(
   const envLang = optionalEnv(env, 'TOCKTEAM_TUI_LANG')
   const envPreset = optionalEnv(env, 'TOCKTEAM_TUI_PRESET')
   const envSessionId = optionalEnv(env, 'TOCKTEAM_TUI_SESSION_ID')
+  const home = optionalEnv(env, 'TOCKTEAM_TUI_HOME')
   const options: TuiLaunchOptions = {
     cwd: optionalEnv(env, 'TOCKTEAM_TUI_CWD') ?? defaultCwd,
-    dataRoot: optionalEnv(env, 'TOCKTEAM_TUI_HOME') ?? defaultDataRoot,
+    dataRoot: home ?? defaultDataRoot,
+    ...(home === undefined ? { legacyDataRoot: join(dirname(defaultDataRoot), '.ohdsh') } : {}),
     fullscreen: envFullscreen === undefined
       ? true
       : parseBoolean(envFullscreen, 'TOCKTEAM_TUI_FULLSCREEN'),
@@ -132,6 +136,7 @@ export function parseTuiArgs(
     const data = flag('--data')
     if (data !== undefined) {
       options.dataRoot = data
+      delete options.legacyDataRoot
       continue
     }
     const sessionId = flag('--resume')
@@ -157,8 +162,8 @@ export function parseTuiArgs(
 /** Resolve the installed distribution root or the repository root. */
 export function resolveTuiRoot(env: NodeJS.ProcessEnv = process.env): string {
   for (const name of ['TOCKTEAM_TUI_ROOT', 'TOCKTEAM_SOURCE_ROOT'] as const) {
-    const value = env[name]
-    if (value !== undefined && value !== '') return resolve(value)
+    const value = optionalEnv(env, name)
+    if (value !== undefined) return resolve(value)
   }
   return dirname(dirname(fileURLToPath(import.meta.url)))
 }
@@ -232,7 +237,7 @@ export async function main(
   const stagedNode = process.platform === 'win32'
     ? join(root, '.stage', 'node-runtime', 'node.exe')
     : join(root, '.stage', 'node-runtime', 'bin', 'node')
-  const resourcesRoot = env.TOCKTEAM_TUI_ROOT !== undefined
+  const resourcesRoot = optionalEnv(env, 'TOCKTEAM_TUI_ROOT') !== undefined
     ? root
     : existsSync(stagedNode)
       ? join(root, '.stage')
@@ -248,6 +253,10 @@ export async function main(
   const dataRoot = resolve(options.dataRoot)
   const cwd = resolve(options.cwd)
   if (!existsSync(cwd)) throw new UsageError(`workspace directory does not exist: ${cwd}`)
+  if (options.legacyDataRoot !== undefined
+    && !migrateLegacyState(options.legacyDataRoot, dataRoot, 'tui').complete) {
+    throw new Error('legacy TUI state migration is incomplete; refusing to start')
+  }
   mkdirSync(dataRoot, { recursive: true, mode: 0o700 })
   ensureTuiProfile(dataRoot)
 

@@ -29,7 +29,6 @@ export const LEGACY_DESKTOP_DATA_DIRECTORY = 'Oh-DSH-Desktop'
 export const LEGACY_DESKTOP_DEV_DATA_DIRECTORY = 'Oh-DSH-Desktop-Dev'
 
 const MIGRATIONS_DIRECTORY = '.migrations'
-const DESKTOP_MIGRATION = 'desktop-state-v1.complete'
 
 /** Outcome of a legacy-state migration attempt. */
 export interface LegacyStateMigrationResult {
@@ -191,18 +190,20 @@ function copyEntry(
   }
 }
 
-function migrationMarker(root: string): string {
-  return join(root, MIGRATIONS_DIRECTORY, DESKTOP_MIGRATION)
+type MigrationSurface = 'desktop' | 'web' | 'tui'
+
+function migrationMarker(root: string, surface: MigrationSurface): string {
+  return join(root, MIGRATIONS_DIRECTORY, `${surface}-state-v1.complete`)
 }
 
-function hasCompleteMarker(root: string): boolean | undefined {
+function hasCompleteMarker(root: string, surface: MigrationSurface): boolean | undefined {
   const migrations = lstat(join(root, MIGRATIONS_DIRECTORY))
   if (migrations?.isDirectory() === false) return undefined
-  const marker = lstat(migrationMarker(root))
+  const marker = lstat(migrationMarker(root, surface))
   if (marker === undefined) return false
   if (!marker.isFile()) return undefined
   try {
-    return readFileSync(migrationMarker(root), 'utf8') === 'complete\n'
+    return readFileSync(migrationMarker(root, surface), 'utf8') === 'complete\n'
       ? true
       : undefined
   } catch {
@@ -257,8 +258,8 @@ export function copyDirectoryContents(
   }
 }
 
-function writeCompleteMarker(root: string): boolean {
-  const marker = migrationMarker(root)
+function writeCompleteMarker(root: string, surface: MigrationSurface): boolean {
+  const marker = migrationMarker(root, surface)
   try {
     if (lstat(root)?.isDirectory() !== true) return false
     const migrations = join(root, MIGRATIONS_DIRECTORY)
@@ -273,7 +274,7 @@ function writeCompleteMarker(root: string): boolean {
     return true
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') return false
-    return hasCompleteMarker(root) === true
+    return hasCompleteMarker(root, surface) === true
   }
 }
 
@@ -290,11 +291,23 @@ export function migrateLegacyDesktopState(input: {
 }): LegacyStateMigrationResult {
   if (input.skipDefaultImport === true) return NO_MIGRATION
 
-  const markerState = hasCompleteMarker(input.destinationRoot)
+  return migrateLegacyState(
+    desktopLegacyDataRoot(input.appDataRoot, input.isPackaged),
+    input.destinationRoot,
+    'desktop',
+  )
+}
+
+/** Copy missing legacy entries into a current surface root before initialization. */
+export function migrateLegacyState(
+  source: string,
+  destinationRoot: string,
+  surface: MigrationSurface,
+): LegacyStateMigrationResult {
+  const markerState = hasCompleteMarker(destinationRoot, surface)
   if (markerState === true) return NO_MIGRATION
   if (markerState === undefined) return INCOMPLETE_MIGRATION
 
-  const source = desktopLegacyDataRoot(input.appDataRoot, input.isPackaged)
   const sourceStat = lstat(source)
   if (sourceStat === undefined) return NO_MIGRATION
   if (sourceStat.isSymbolicLink() && followedStat(source) === undefined)
@@ -303,13 +316,13 @@ export function migrateLegacyDesktopState(input: {
     return INCOMPLETE_MIGRATION
 
   const sourcePath = resolve(source)
-  const destinationPath = resolve(input.destinationRoot)
+  const destinationPath = resolve(destinationRoot)
   if (overlaps(sourcePath, destinationPath)) return INCOMPLETE_MIGRATION
-  if (!copyDirectoryContents(source, input.destinationRoot, {
+  if (!copyDirectoryContents(source, destinationRoot, {
     exclude: new Set([MIGRATIONS_DIRECTORY]),
   })) {
     return INCOMPLETE_MIGRATION
   }
-  if (!writeCompleteMarker(input.destinationRoot)) return INCOMPLETE_MIGRATION
+  if (!writeCompleteMarker(destinationRoot, surface)) return INCOMPLETE_MIGRATION
   return { complete: true, migrated: true }
 }
