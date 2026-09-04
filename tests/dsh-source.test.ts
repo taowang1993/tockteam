@@ -39,14 +39,20 @@ test('the runtime lock and stripped manifest pin the complete 0.1.2 release line
 
 test('browser plugins use the 0.1.2 platform store without the removed client runtime', () => {
   const rootManifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-  const skinsManifest = JSON.parse(readFileSync(new URL('../plugins/skins/package.json', import.meta.url), 'utf8'))
-  const sidebarManifest = JSON.parse(readFileSync(new URL('../plugins/sidebar/package.json', import.meta.url), 'utf8'))
+  const clientManifests = [
+    '../web/package.json',
+    '../plugins/panel-controls/package.json',
+    '../plugins/pinned-summary/package.json',
+    '../plugins/plugin-marketplace/package.json',
+    '../plugins/sidebar/package.json',
+    '../plugins/skins/package.json',
+  ].map(path => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8')))
   const skinsClient = readFileSync(new URL('../plugins/skins/src/client/plugin.tsx', import.meta.url), 'utf8')
   const sidebarClient = readFileSync(new URL('../plugins/sidebar/src/client/plugin.tsx', import.meta.url), 'utf8')
   const build = readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8')
 
   assert.equal(rootManifest.devDependencies['@deepseek-ai/dsh-client-store'], DSH_SOURCE_SPEC.version)
-  for (const manifest of [rootManifest, skinsManifest, sidebarManifest]) {
+  for (const manifest of [rootManifest, ...clientManifests]) {
     assert.doesNotMatch(JSON.stringify(manifest.dsh.client.inject), /dsh-client-runtime/u)
   }
   for (const client of [skinsClient, sidebarClient]) {

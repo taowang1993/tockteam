@@ -42,7 +42,7 @@ test('rejects unsupported, external, non-executable, and unenforcing Landlock la
 })
 
 test('the pinned Linux package graph verifies Landlock on x64 and arm64 builds', () => {
-  const lock = readFileSync(new URL('../scripts/dsh-runtime-0.1.1-rc.2-lock.yaml', import.meta.url), 'utf8')
+  const lock = readFileSync(new URL('../scripts/dsh-runtime-0.1.2-rc.1-lock.yaml', import.meta.url), 'utf8')
   const nix = readFileSync(new URL('../nix/dsh-runtime-pinned.nix', import.meta.url), 'utf8')
   for (const arch of ['x64', 'arm64']) {
     assert.match(lock, new RegExp(`node-addon-landlock-run-linux-${arch}@0\\.1\\.1`, 'u'))
