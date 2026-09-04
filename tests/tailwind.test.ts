@@ -30,6 +30,15 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.doesNotMatch(css, /\*,:before,:after\{box-sizing:border-box/)
   assert.match(css, /grid-template-columns:minmax\(10rem,\.?8fr\) minmax\(0,1\.8fr\)/)
   assert.match(css, /\.tockteam-desktop-shell body\[data-scroll-locked\]\{[^}]*padding-top:var\(--tockteam-titlebar-height\)/)
+  const chromeLayer = css.match(/(?:^|})#tockteam-chrome-layer\{([^}]*)\}/)?.[1] ?? ''
+  assert.match(chromeLayer, /pointer-events:none/)
+  assert.match(chromeLayer, /position:fixed/)
+  assert.match(chromeLayer, /inset:0/)
+  assert.match(chromeLayer, /z-index:8900/)
+  assert.match(css, /\.tockteam-desktop-shell #tockteam-chrome-layer\{[^}]*top:var\(--tockteam-titlebar-height\)/)
+  const desktopSummary = css.match(/\.tockteam-desktop-shell #tockteam-chrome-layer>\[data-tockteam-pinned-summary\]\{([^}]*)\}/)?.[1] ?? ''
+  assert.match(desktopSummary, /height:calc\(50% - 12px\)/)
+  assert.match(desktopSummary, /top:12px/)
 })
 
 test('splash Tailwind build scans only the standalone loading document', async () => {

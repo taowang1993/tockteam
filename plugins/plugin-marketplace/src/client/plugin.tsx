@@ -21,6 +21,7 @@ import {
 import { createRoot, type Root } from 'react-dom/client'
 import { Blocks, Search, X } from 'lucide-react'
 import type { DesktopBridge } from '../../../../src/contracts.ts'
+import { mountChromeSurface } from '../../../shared/chrome-layer.ts'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import { localeTag } from '../../../shared/i18n.ts'
 import { useTranslate } from '../../../shared/use-i18n.ts'
@@ -241,6 +242,7 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
   #state: MarketplaceViewState = { available: false, open: readOpen() }
   #element: HTMLDivElement | null = null
   #root: Root | null = null
+  #unmountChrome: (() => void) | null = null
   #observer: MutationObserver | null = null
   #resizeObserver: ResizeObserver | null = null
   #geometryFrame: number | null = null
@@ -290,7 +292,7 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
     document.documentElement.classList.add('tockteam-marketplace-shell')
     this.#element = document.createElement('div')
     this.#element.id = 'tockteam-plugin-marketplace-root'
-    document.body.append(this.#element)
+    this.#unmountChrome = mountChromeSurface(this.#element)
     this.#root = createRoot(this.#element)
     this.#root.render(
       <MarketplaceSurface
@@ -335,9 +337,12 @@ class PluginMarketplaceViewService implements PluginMarketplaceView {
     this.#observer?.disconnect()
     this.#resizeObserver?.disconnect()
     this.#root?.unmount()
+    this.#root = null
     this.#footerStack?.removeAttribute(FOOTER_STACK_ATTRIBUTE)
     this.#footerStack = null
-    this.#element?.remove()
+    this.#unmountChrome?.()
+    this.#unmountChrome = null
+    this.#element = null
     document.documentElement.classList.remove('tockteam-marketplace-shell')
     this.#state = { available: false, open: false }
     for (const listener of this.#listeners) listener()
@@ -804,7 +809,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
 
   return (
     <TooltipProvider>
-      <div className="fixed inset-y-0 right-0 left-[var(--tockteam-marketplace-left,0px)] top-[var(--tockteam-titlebar-height,40px)] z-[8800] box-border translate-y-1 overflow-hidden invisible pointer-events-none border-l border-border bg-background text-foreground opacity-0 transition-[opacity,transform,visibility] [transition-duration:140ms,160ms,0s] [transition-timing-function:ease,ease,linear] [transition-delay:0s,0s,160ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] motion-reduce:transition-none" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
+      <div className="absolute inset-y-0 right-0 left-[var(--tockteam-marketplace-left,0px)] z-[8800] box-border translate-y-1 overflow-hidden invisible pointer-events-none border-l border-border bg-background text-foreground opacity-0 transition-[opacity,transform,visibility] [transition-duration:140ms,160ms,0s] [transition-timing-function:ease,ease,linear] [transition-delay:0s,0s,160ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] motion-reduce:transition-none" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
       <div className="grid h-full grid-rows-[auto_minmax(0,1fr)]">
         <div>
           <header className="flex min-h-[68px] items-center gap-3.5 border-b border-border px-7">

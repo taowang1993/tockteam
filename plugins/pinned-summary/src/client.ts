@@ -2,6 +2,7 @@
 
 import { createElement as createIcon, X } from 'lucide'
 import type { LocaleService, Translate } from '../../shared/i18n.ts'
+import { mountChromeSurface } from '../../shared/chrome-layer.ts'
 import { localeTag } from '../../shared/i18n.ts'
 import {
   PINNED_SUMMARY_MESSAGES,
@@ -117,6 +118,7 @@ class PinnedSummaryService implements PinnedSummary {
   readonly #listeners = new Set<() => void>()
   #open = readOpen()
   #panel: HTMLElement | undefined
+  #unmountChrome: (() => void) | undefined
   #title: HTMLElement | undefined
   #headerTitle: HTMLElement | undefined
   #close: HTMLButtonElement | undefined
@@ -143,7 +145,7 @@ class PinnedSummaryService implements PinnedSummary {
     const panel = document.createElement('aside')
     panel.dataset.tockteamPinnedSummary = 'true'
     panel.setAttribute('aria-label', this.#t('summary.label'))
-    panel.className = 'fixed right-3 top-[calc(var(--tockteam-titlebar-height,40px)+12px)] z-[9000] h-[calc((100vh-var(--tockteam-titlebar-height,40px)-24px)/2)] w-72 box-border translate-x-[calc(100%+24px)] overflow-hidden invisible pointer-events-none rounded-[22px] border border-[var(--dsw-alias-border-l1)] bg-background text-foreground opacity-0 shadow-[0_14px_42px_rgba(0,0,0,0.09)] transition-[opacity,transform,visibility] [transition-duration:140ms,180ms,0s] [transition-timing-function:var(--ds-ease-in-out,ease),var(--ds-ease-in-out,ease),linear] [transition-delay:0s,0s,180ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] max-[900px]:shadow-[-20px_0_48px_rgba(0,0,0,0.14)] motion-reduce:transition-none'
+    panel.className = 'absolute right-3 top-[calc(var(--tockteam-titlebar-height,40px)+12px)] z-[9000] h-[calc((100%-var(--tockteam-titlebar-height,40px)-24px)/2)] w-72 box-border translate-x-[calc(100%+24px)] overflow-hidden invisible pointer-events-none rounded-[22px] border border-[var(--dsw-alias-border-l1)] bg-background text-foreground opacity-0 shadow-[0_14px_42px_rgba(0,0,0,0.09)] transition-[opacity,transform,visibility] [transition-duration:140ms,180ms,0s] [transition-timing-function:var(--ds-ease-in-out,ease),var(--ds-ease-in-out,ease),linear] [transition-delay:0s,0s,180ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] max-[900px]:shadow-[-20px_0_48px_rgba(0,0,0,0.14)] motion-reduce:transition-none'
     panel.innerHTML = `
       <header data-tockteam-summary-header class="flex h-12 box-border items-center border-b border-border pr-2.5 pl-[15px] text-[13px] font-semibold">
         <span></span>
@@ -156,7 +158,7 @@ class PinnedSummaryService implements PinnedSummary {
         <p data-tockteam-summary-text class="m-0 whitespace-pre-wrap text-xs leading-[1.55] text-muted-foreground [overflow-wrap:anywhere]"></p>
       </div>
     `
-    document.body.append(panel)
+    this.#unmountChrome = mountChromeSurface(panel)
     this.#panel = panel
     this.#title = required(panel, '[data-tockteam-summary-title]')
     this.#headerTitle = required(panel, '[data-tockteam-summary-header] span')
@@ -183,7 +185,9 @@ class PinnedSummaryService implements PinnedSummary {
     this.#unsubscribeList?.()
     this.#unsubscribeSession?.()
     this.#unsubscribeLocale?.()
-    this.#panel?.remove()
+    this.#unmountChrome?.()
+    this.#unmountChrome = undefined
+    this.#panel = undefined
     delete document.documentElement.dataset.tockteamSummaryPinned
     if (document.documentElement.dataset.tockteamRightPanelOwner === 'pinned-summary') {
       delete document.documentElement.dataset.tockteamRightPanelOwner

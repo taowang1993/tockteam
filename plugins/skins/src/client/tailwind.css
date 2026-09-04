@@ -201,8 +201,24 @@
   }
 }
 
+#tockteam-chrome-layer {
+  position: fixed;
+  z-index: 8900;
+  inset: 0;
+  pointer-events: none;
+}
+
 @utility tockteam-desktop-shell {
   --tockteam-titlebar-height: 40px;
+
+  & #tockteam-chrome-layer {
+    top: var(--tockteam-titlebar-height);
+  }
+
+  & #tockteam-chrome-layer > [data-tockteam-pinned-summary] {
+    top: 12px;
+    height: calc((100% - 24px) / 2);
+  }
 
   & body {
     box-sizing: border-box;
@@ -270,13 +286,8 @@
   &:has(#root [role='presentation'] > [role='dialog']) .tockteam-panel-toolbar,
   &:has(#root [role='presentation'] > [role='dialog']) #tockteam-sidebar-root,
   &:has(#root [role='presentation'] > [role='dialog']) #tockteam-rail-root,
-  &:has(#root [role='presentation'] > [role='dialog']) [data-tockteam-pinned-summary],
-  &:has(#root [role='presentation'] > [role='dialog']) #tockteam-plugin-marketplace-root {
+  &:has(#root [role='presentation'] > [role='dialog']) #tockteam-chrome-layer {
     z-index: 999 !important;
-  }
-
-  &:has(#root [role='presentation'] > [role='dialog']) #tockteam-plugin-marketplace-root {
-    position: relative;
   }
 }
 

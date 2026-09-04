@@ -47,6 +47,8 @@ test('desktop client brands the coding route as TockCoder', () => {
   assert.doesNotMatch(client, /preview\.label|tockteamPreviewLabel/)
   assert.match(client, /previewBadge\.hidden = true/)
   assert.doesNotMatch(client, /html\[data-tockteam-preview='true'\] body::after/)
+  assert.match(client, /querySelector<HTMLElement>\('\[data-composer-input="true"\]'\)/)
+  assert.match(client, /\?\? document\.querySelector<HTMLTextAreaElement>\('textarea'\)/)
   assert.doesNotMatch(`${main}\n${splash}`, /DeepSeek Harness/)
   assert.doesNotMatch(splash, />DSH</)
   assert.match(splash, /aria-label="TockTeam Clock"/)
@@ -69,8 +71,10 @@ test('desktop Settings stays below portaled menus and above desktop surfaces', (
   )
   assert.match(
     tailwind,
-    /:has\(\s*#root \[role='presentation'\] > \[role='dialog'\]\s*\) \.tockteam-panel-toolbar,[\s\S]*#tockteam-sidebar-root,[\s\S]*\[data-tockteam-pinned-summary\],[\s\S]*#tockteam-plugin-marketplace-root[^}]*\{[^}]*z-index: 999 !important;/s,
+    /:has\(\s*#root \[role='presentation'\] > \[role='dialog'\]\s*\) \.tockteam-panel-toolbar,[\s\S]*#tockteam-sidebar-root,[\s\S]*#tockteam-chrome-layer[^}]*\{[^}]*z-index: 999 !important;/s,
   )
+  assert.doesNotMatch(tailwind, /:has\(\s*#root \[role='presentation'\] > \[role='dialog'\]\s*\) \[data-tockteam-pinned-summary\]/s)
+  assert.doesNotMatch(tailwind, /:has\(\s*#root \[role='presentation'\] > \[role='dialog'\]\s*\) #tockteam-plugin-marketplace-root/s)
 })
 
 test('every bundled TockTeam client follows the native locale service', () => {

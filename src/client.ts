@@ -194,7 +194,9 @@ function installBranding(): () => void {
 }
 
 function focusComposer(): void {
-  document.querySelector<HTMLTextAreaElement>('textarea')?.focus()
+  const composer = document.querySelector<HTMLElement>('[data-composer-input="true"]')
+    ?? document.querySelector<HTMLTextAreaElement>('textarea')
+  composer?.focus()
 }
 
 function findSettingsButton(): HTMLButtonElement | undefined {
