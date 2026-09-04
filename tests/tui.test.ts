@@ -23,10 +23,28 @@ import {
   type TuiSpawner,
 } from '../src/tui.ts'
 
+test('pins the dsh-TUI v0.9.2 renderer and bundled auth workspace', () => {
+  const repository = join(dirname(fileURLToPath(import.meta.url)), '..')
+  const renderer = JSON.parse(readFileSync(join(repository, 'upstream', 'dsh-TUI', 'package.json'), 'utf8'))
+  const auth = JSON.parse(readFileSync(join(repository, 'upstream', 'dsh-TUI', 'dsh-auth', 'package.json'), 'utf8'))
+  assert.equal(renderer.version, '0.9.2')
+  assert.equal(renderer.dependencies['@deepseek-harness-tui/dsh-auth'], 'link:./dsh-auth')
+  assert.equal(auth.name, '@deepseek-harness-tui/dsh-auth')
+})
+
 test('packaged TUI launchers expose only the TUI surface', () => {
   const build = readFileSync(new URL('../scripts/build-tui.mjs', import.meta.url), 'utf8')
   assert.match(build, /export TOCKTEAM_SURFACES=tui/)
   assert.match(build, /SET "TOCKTEAM_SURFACES=tui"/)
+})
+
+test('Nix assembly pins and packages the renderer auth workspace', () => {
+  const source = readFileSync(new URL('../nix/tockteam.nix', import.meta.url), 'utf8')
+  assert.match(source, /b166c2ecc03ab61ec5aee16fe69cdeaf0e2a03a9/)
+  assert.match(source, /fba02bcf7fb57e3d9885f73882d5835ccdf526c4/)
+  assert.match(source, /2d0236f7d4579814d9d177a58d03ebd168025960/)
+  assert.match(source, /tsc -p upstream\/dsh-TUI\/dsh-auth\/tsconfig\.json/)
+  assert.match(source, /package-deps\/tui-renderer\/@deepseek-harness-tui\/dsh-auth/)
 })
 
 function output(isTTY = false): { stream: NodeJS.WriteStream; text: () => string } {
@@ -117,7 +135,7 @@ test('TUI launcher initializes its profile and attaches the packaged runtime', a
   const stderr = output(true)
   try {
     assert.equal(await main(
-      ['--cwd', workspace, '--data', dataRoot, '--inline', '--lang', 'en'],
+      ['--cwd', workspace, '--data', dataRoot, '--inline', '--lang', 'en', '--preset', 'code', '--resume', 'session-123'],
       { TOCKTEAM_TUI_ROOT: packaged, PATH: process.env.PATH },
       stdout.stream,
       stderr.stream,
@@ -131,6 +149,12 @@ test('TUI launcher initializes its profile and attaches the packaged runtime', a
     assert.equal(launch.options.stdio, 'inherit')
     const childEnv = launch.options.env
     assert.equal(childEnv?.DSH_HOME, dataRoot)
+    assert.equal(childEnv?.DSH_TUI_LANG, 'en')
+    assert.equal(childEnv?.DSH_TUI_PRESET, 'code')
+    assert.equal(childEnv?.DSH_TUI_RESUME_SESSION, 'session-123')
+    assert.equal(childEnv?.CC_TUI_LANG, undefined)
+    assert.equal(childEnv?.CC_TUI_PRESET, undefined)
+    assert.equal(childEnv?.DSH_CC_RESUME_SESSION, undefined)
     assert.equal(childEnv?.TOCKTEAM_TUI_FULLSCREEN, '0')
     assert.equal(childEnv?.TOCKTEAM_TUI_LANG, 'en')
     assert.equal(childEnv?.TOCKTEAM_TUI_VERSION, '1.2.3')
@@ -181,6 +205,7 @@ test('TUI bundle mounts its surface and skins before the upstream renderer', () 
   ).replace(/\r\n?/g, '\n')
   assert.match(patch, /- id: cc-tui\n  disabled: true/)
   assert.match(patch, /- id: dsh-tui\n  disabled: true/)
+  assert.match(patch, /process\.env\.DSH_TUI_RESUME_SESSION \?\? process\.env\.TOCKTEAM_TUI_SESSION_ID/)
   const surface = patch.indexOf("name: '@tockteam/tui'")
   const skins = patch.indexOf("name: '@tockteam/skins'")
   const renderer = patch.indexOf("name: '@deepseek-harness-tui/dsh-tui'")
@@ -205,13 +230,23 @@ test('TUI upstream adapter removes legacy terminal branding and scopes storage',
     assert.match(readFileSync(join(lib, 'themePrefs.js'), 'utf8'), /DATA_DIR/)
     const commands = readFileSync(join(lib, 'commands.js'), 'utf8')
     assert.match(commands, /Exit TockTeam TUI/)
+    assert.match(commands, /Restart TockTeam TUI and resume this session/)
+    assert.match(commands, /Use TockTeam updates for new releases/)
     assert.doesNotMatch(commands, /description: .*dsh-tui/)
     const plugin = readFileSync(join(lib, 'dsh-adapter', 'plugin.js'), 'utf8')
+    assert.match(plugin, /process\.env\.TOCKTEAM_TUI !== '1'/)
+    assert.match(plugin, /onUpdate: process\.env\.TOCKTEAM_TUI === '1' \? undefined/)
     assert.match(plugin, /tockteam tui --resume/)
     assert.doesNotMatch(plugin, /dsh-tui --resume/)
+    const tips = readFileSync(join(lib, 'tips.js'), 'utf8')
+    assert.match(tips, /~\/\.tockteam\/tui\/themes/)
+    assert.doesNotMatch(tips, /~\/\.dsh-tui/)
     const messages = readFileSync(join(lib, 'i18n.js'), 'utf8')
     assert.match(messages, /TockTeam TUI session export/)
-    assert.doesNotMatch(messages, /~\/\.dsh-tui/)
+    assert.match(messages, /Updates are managed by TockTeam/)
+    assert.match(messages, /Restarting TockTeam TUI/)
+    assert.match(messages, /Launch      tockteam tui/)
+    assert.doesNotMatch(messages, /dsh plugin --profile|Restarting dsh-tui|~\/\.dsh-tui|~\/\.dsh\/profiles\/dsh-tui/)
     const channel = readFileSync(join(lib, 'dsh-adapter', 'channel.js'), 'utf8')
     assert.match(channel, /tockteam-tui-export-/)
     assert.doesNotMatch(channel, /dsh-tui-export-|join\(userHome, '\.dsh-tui\//)

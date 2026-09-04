@@ -19,7 +19,7 @@
     name: '@deepseek-harness-tui/dsh-tui'
     inject: [workspaceRegistry, agents, tuiWorkspaces, tuiScenes, tuiDialogs, tuiStatus, tuiShortcuts, tuiRenderers]
     config:
-      sessionId: !!js process.env.TOCKTEAM_TUI_SESSION_ID ?? undefined
+      sessionId: !!js process.env.DSH_TUI_RESUME_SESSION ?? process.env.TOCKTEAM_TUI_SESSION_ID ?? undefined
       provider: !!js process.env.TOCKTEAM_TUI_PROVIDER ?? 'deepseek-official'
       model: !!js process.env.TOCKTEAM_TUI_MODEL ?? undefined
       cwd: !!js process.env.TOCKTEAM_TUI_CWD ?? process.cwd()

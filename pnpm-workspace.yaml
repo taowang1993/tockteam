@@ -3,6 +3,7 @@ packages:
   - plugins/*
   - '!plugins/tocktutor'
   - upstream/dsh-TUI
+  - upstream/dsh-TUI/dsh-auth
   - upstream/dsh-TUI/vendor/dsh-std/packages/command
   - upstream/dsh-TUI/vendor/dsh-std/packages/connection
   - upstream/dsh-TUI/vendor/dsh-std/packages/core
@@ -24,11 +25,13 @@ peerDependencyRules:
     react: ^19.0.0
 
 allowBuilds:
+  '@google/genai': false
   electron: true
   electron-winstaller: true
   esbuild: true
   koffi: false
   node-pty: true
+  protobufjs: false
   sqlite3: true
 
 onlyBuiltDependencies:

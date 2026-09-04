@@ -179,10 +179,10 @@ export function tuiLaunchSpec(
   const cwd = resolve(options.cwd)
   const childEnv: NodeJS.ProcessEnv = {
     ...env,
-    CC_TUI_LANG: options.lang,
-    CC_TUI_PRESET: options.preset,
-    DSH_CC_RESUME_SESSION: options.sessionId,
     DSH_HOME: dataRoot,
+    DSH_TUI_LANG: options.lang,
+    DSH_TUI_PRESET: options.preset,
+    DSH_TUI_RESUME_SESSION: options.sessionId,
     TOCKTEAM_TUI: '1',
     TOCKTEAM_TUI_HOME: dataRoot,
     TOCKTEAM_TUI_PROFILE: TUI_PROFILE,

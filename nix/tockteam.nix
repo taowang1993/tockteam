@@ -46,14 +46,20 @@ let
   tuiSrc = pkgs.fetchFromGitHub {
     owner = "ccch1mneyyy";
     repo = "dsh-TUI";
-    rev = "bdff0afb028d50c304e4474fd40f83b0721d50fd";
-    hash = "sha256-N5jjAoHeABAM+rQMGuPtQasLEk9wmU/bSw2X2ilGg0U=";
+    rev = "b166c2ecc03ab61ec5aee16fe69cdeaf0e2a03a9";
+    hash = "sha256-AU3SxnjucUA8yvQia+cw/q3cqItRCFb/njaiRoiOS9c=";
+  };
+  tuiAuthSrc = pkgs.fetchFromGitHub {
+    owner = "ccch1mneyyy";
+    repo = "dsh-auth";
+    rev = "fba02bcf7fb57e3d9885f73882d5835ccdf526c4";
+    hash = "sha256-ip/jdsm/YiPvVdZ0o2m/thImd+4ZmRjzQKzXvJ9dAK8=";
   };
   tuiEcosystemSpecSrc = pkgs.fetchFromGitHub {
     owner = "T-Auto";
     repo = "dsh-ecosystem-spec";
-    rev = "e1b902b0f95f4280a8e68d414ec7a4d25d6ce106";
-    hash = "sha256-LVc7bMUJMI4GYW3IyBWYwFzkibayu6BgZxlO67FPtGk=";
+    rev = "2d0236f7d4579814d9d177a58d03ebd168025960";
+    hash = "sha256-7PK0j8gl3+1esTzjlrKOZkEei6OL13H/4JiIOf5LOR8=";
   };
   tuiStdSrc = pkgs.fetchFromGitHub {
     owner = "Yan-Zero";
@@ -71,8 +77,10 @@ let
     cp -r ${betterSidebarSrc} $out/upstream/DSH-better-sidebar
     cp -r ${tuiSrc} $out/upstream/dsh-TUI
     chmod -R u+w $out/upstream/dsh-TUI
-    rm -rf $out/upstream/dsh-TUI/dsh-ecosystem-spec \
+    rm -rf $out/upstream/dsh-TUI/dsh-auth \
+      $out/upstream/dsh-TUI/dsh-ecosystem-spec \
       $out/upstream/dsh-TUI/vendor/dsh-std
+    cp -r ${tuiAuthSrc} $out/upstream/dsh-TUI/dsh-auth
     mkdir -p $out/upstream/dsh-TUI/vendor
     cp -r ${tuiEcosystemSpecSrc} $out/upstream/dsh-TUI/dsh-ecosystem-spec
     cp -r ${tuiStdSrc} $out/upstream/dsh-TUI/vendor/dsh-std
@@ -87,7 +95,7 @@ let
     pnpmDeps = pkgs.fetchPnpmDeps {
       inherit pname version src;
       fetcherVersion = 4;
-      hash = "sha256-43T+onPcLeMnTdxsz03OhFaVe1mhwkTUx+x88hOrC/0=";
+      hash = "sha256-/gg/tJoE0Xabz8yCjzo67KOss8jkSB+dahoTQJlWGp4=";
     };
 
     nativeBuildInputs = [
@@ -113,6 +121,7 @@ let
           --filter @dsh-std/command --filter @dsh-std/storage \
           --filter @dsh-std/messages --reporter append-only -r exec tsdown
         node upstream/dsh-TUI/scripts/clean-lib.mjs
+        node node_modules/typescript/bin/tsc -p upstream/dsh-TUI/dsh-auth/tsconfig.json
         node node_modules/typescript/bin/tsc -p upstream/dsh-TUI/tsconfig.json
       ''}
       node scripts/build.mjs
@@ -202,6 +211,11 @@ let
           node_modules/.pnpm \
           upstream/dsh-TUI/package.json \
           $out/lib/tockteam/package-deps/tui-renderer
+        auth=$out/lib/tockteam/package-deps/tui-renderer/@deepseek-harness-tui/dsh-auth
+        mkdir -p "$(dirname "$auth")"
+        cp -r upstream/dsh-TUI/dsh-auth "$auth"
+        chmod -R u+w "$auth"
+        rm -rf "$auth/node_modules" "$auth/src" "$auth/scripts" "$auth/tsconfig.json"
       ''}
       ${lib.optionalString isFull ''
         mkdir -p $out/lib/tockteam/package-deps/tockbot-note-runtime
