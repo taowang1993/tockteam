@@ -199,6 +199,24 @@ test('desktop skins restore a persisted choice after theme registration', () => 
   assert.equal(dom.active, 'tockteam-skin-porcelain')
 })
 
+test('delayed appearance hydration preserves a skin restored from disk', () => {
+  const storage = new MemoryStorage()
+  storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-jade-circuit')
+  const theme = new FakeThemeService('system')
+  const dom = new FakeSkinDom()
+  const controller = new DesktopSkinsController(theme, storage, dom)
+  controller.start()
+
+  theme.setTheme('dark')
+  controller.adopt(theme.getTheme())
+
+  assert.equal(theme.getTheme().active.id, 'tockteam-skin-jade-circuit')
+  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-jade-circuit')
+  assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'dark')
+  assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-jade-circuit')
+  assert.equal(dom.active, 'tockteam-skin-jade-circuit')
+})
+
 test('choosing Original restores the appearance used before a skin', () => {
   const storage = new MemoryStorage()
   const theme = new FakeThemeService('dark')
@@ -245,7 +263,7 @@ test('theme hotkey matches Command/Ctrl + Shift + Period only', () => {
   assert.equal(matchesThemeHotkey({ ...event, code: 'KeyT', key: 't' }), false)
 })
 
-test('an official appearance change safely takes over from desktop skins', () => {
+test('appearance changes update the fallback without clearing an active skin', () => {
   const storage = new MemoryStorage()
   const theme = new FakeThemeService('system')
   const dom = new FakeSkinDom()
@@ -256,10 +274,11 @@ test('an official appearance change safely takes over from desktop skins', () =>
   theme.setTheme('light')
   controller.adopt(theme.getTheme())
 
-  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), null)
+  assert.equal(theme.getTheme().active.id, 'tockteam-skin-ember-dusk')
+  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-ember-dusk')
   assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'light')
-  assert.equal(controller.getSnapshot().activeId, null)
-  assert.equal(dom.active, undefined)
+  assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-ember-dusk')
+  assert.equal(dom.active, 'tockteam-skin-ember-dusk')
 })
 
 test('desktop skins reject unknown choices and release theme registrations', () => {
