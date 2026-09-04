@@ -186,6 +186,7 @@ import {
   parseDesktopAppUpdateState,
 } from './desktop-app-update.ts'
 import { createDesktopAppUpdater, type DesktopAppUpdater } from './app-update.ts'
+import { migrateLegacyDesktopState } from './data-root.ts'
 import { RuntimeStartCancelledError, RuntimeStartGate } from './runtime-start-gate.ts'
 import {
   handleUnexpectedRuntimeExit,
@@ -3805,13 +3806,22 @@ function installIpc(): void {
 
 async function bootstrap(): Promise<void> {
   app.setName(PRODUCT_NAME)
-  if (app.isPackaged) app.setAsDefaultProtocolClient('tocktutor')
   // The visible product name changed in 0.1.x. Keep the existing data path so
   // an in-place upgrade retains sessions, profiles, skins, and credentials.
   // Preserve Electron's standard explicit override for isolated test/deployment profiles.
-  if (!app.commandLine.hasSwitch('user-data-dir')) {
+  const hasExplicitUserDataDirectory = app.commandLine.hasSwitch('user-data-dir')
+  if (!hasExplicitUserDataDirectory) {
     app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? DATA_DIRECTORY : `${DATA_DIRECTORY}-Dev`))
+    const migration = migrateLegacyDesktopState({
+      appDataRoot: app.getPath('appData'),
+      destinationRoot: app.getPath('userData'),
+      isPackaged: app.isPackaged,
+    })
+    if (!migration.complete) {
+      throw new Error('legacy Desktop state migration is incomplete; refusing to start')
+    }
   }
+  if (app.isPackaged) app.setAsDefaultProtocolClient('tocktutor')
   initializeDesktopPicker()
   app.setAboutPanelOptions({
     applicationName: PRODUCT_NAME,
