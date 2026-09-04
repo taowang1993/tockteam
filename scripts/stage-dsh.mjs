@@ -28,6 +28,10 @@ import {
 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DSH_SOURCE_SPEC, resolveDshSource, resolvePinnedPnpm } from './dsh-source.mjs'
+import {
+  dependencyNames,
+  installCompiledPackageDependencies as installPackageDependencies,
+} from './stage-package-dependencies.mjs'
 import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
 import { restoreSettingsBoundary } from './settings-boundary.mjs'
 import { adaptTuiRendererPackage } from './tui-upstream-adapter.mjs'
@@ -302,14 +306,6 @@ function discoverSourcePackages() {
   visit(dshSource)
   sourcePackages = packages
   return packages
-}
-
-function dependencyNames(manifest) {
-  return new Map([
-    ...Object.keys(manifest.peerDependencies ?? {}).map(name => [name, true]),
-    ...Object.keys(manifest.optionalDependencies ?? {}).map(name => [name, true]),
-    ...Object.keys(manifest.dependencies ?? {}).map(name => [name, false]),
-  ])
 }
 
 function findDeployedPackage(sourceTarget) {
@@ -675,89 +671,10 @@ function resolveDependencyManifest(requireFromPackage, dependency) {
 }
 
 function installCompiledPackageDependencies(sourceManifestPath, packageDir) {
-  const installRoot = join(packageDir, 'node_modules')
-  const isInBoxPeer = (dependency, optional) =>
-    optional && dependency === '@tockteam/desktop'
-  const storeRoot = join(installRoot, '.tockteam-store')
-  const installed = new Map()
-
-  const instanceName = (manifestPath, manifest) => {
-    const parts = resolve(manifestPath).split(sep)
-    const storeIndex = parts.lastIndexOf('.pnpm')
-    const identity = storeIndex >= 0 && parts[storeIndex + 1] !== undefined
-      ? parts[storeIndex + 1]
-      : `${manifest.name}@${manifest.version}`
-    return identity.replace(/[^A-Za-z0-9._-]/g, '_')
-  }
-
-  const linkDependency = (parent, dependency, target) => {
-    const link = join(parent, 'node_modules', ...dependency.split('/'))
-    mkdirSync(dirname(link), { recursive: true })
-    portableSymlink(relative(dirname(link), target), link)
-  }
-
-  const installManifest = manifestPath => {
-    const canonicalManifest = realpathSync(manifestPath)
-    const existing = installed.get(canonicalManifest)
-    if (existing !== undefined) return existing
-    const source = dirname(canonicalManifest)
-    const manifest = JSON.parse(readFileSync(canonicalManifest, 'utf8'))
-    if (typeof manifest.name !== 'string' || typeof manifest.version !== 'string') {
-      throw new Error(`invalid runtime dependency manifest: ${canonicalManifest}`)
-    }
-    const target = join(
-      storeRoot,
-      instanceName(canonicalManifest, manifest),
-      'node_modules',
-      ...manifest.name.split('/'),
-    )
-    installed.set(canonicalManifest, target)
-    rmSync(target, { recursive: true, force: true })
-    mkdirSync(dirname(target), { recursive: true })
-    cpSync(source, target, {
-      dereference: true,
-      preserveTimestamps: true,
-      recursive: true,
-      filter: candidate => {
-        const rel = relative(source, candidate)
-        return rel === '' || rel.split(sep)[0] !== 'node_modules'
-      },
-    })
-
-    const requireFromPackage = createRequire(canonicalManifest)
-    for (const [dependency, optional] of dependencyNames(manifest)) {
-      // Desktop is installed once at the runtime root; nested packages resolve
-      // this peer through ordinary parent lookup instead of copying the repo.
-      if (isInBoxPeer(dependency, optional)) continue
-      try {
-        const dependencyTarget = installManifest(
-          resolveDependencyManifest(requireFromPackage, dependency),
-        )
-        linkDependency(target, dependency, dependencyTarget)
-      } catch (error) {
-        if (optional) continue
-        throw new Error(`${manifest.name} is missing runtime dependency ${dependency}`, { cause: error })
-      }
-    }
-    return target
-  }
-
-  const sourceManifest = JSON.parse(readFileSync(sourceManifestPath, 'utf8'))
-  const requireFromSource = createRequire(sourceManifestPath)
-  for (const [dependency, optional] of dependencyNames(sourceManifest)) {
-    if (isInBoxPeer(dependency, optional)) continue
-    try {
-      const dependencyTarget = installManifest(
-        resolveDependencyManifest(requireFromSource, dependency),
-      )
-      const link = join(installRoot, ...dependency.split('/'))
-      mkdirSync(dirname(link), { recursive: true })
-      portableSymlink(relative(dirname(link), dependencyTarget), link)
-    } catch (error) {
-      if (optional) continue
-      throw new Error(`${sourceManifest.name} is missing runtime dependency ${dependency}`, { cause: error })
-    }
-  }
+  installPackageDependencies(sourceManifestPath, packageDir, {
+    materializeDependencies: isWindowsNode ? 'copy' : 'link',
+    resolveDependencyManifest,
+  })
 }
 
 function runtimeDependencyTarget(dependency) {
