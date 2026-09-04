@@ -3,8 +3,10 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const pnpm = join(dirname(fileURLToPath(import.meta.resolve('pnpm'))), 'bin', 'pnpm.mjs')
 
-execFileSync('pnpm', [
+execFileSync(process.execPath, [
+  pnpm,
   '-C', 'plugins/tocktutor',
   'install',
   '--frozen-lockfile',
