@@ -232,6 +232,7 @@ export async function main(
       '--profile', WEB_PROFILE,
       '--host', options.host,
       '--port', String(options.port),
+      '--no-open',
       ...options.trustedHosts.flatMap(host => ['--trusted-host', host]),
     ],
     cliEntry: paths.cliEntry,
