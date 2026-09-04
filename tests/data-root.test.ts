@@ -322,6 +322,6 @@ test('Desktop bootstrap migrates before picker, runtime, or persistence writes',
   assert.ok(migration < main.indexOf('  await app.whenReady()', bootstrap))
   assert.match(
     main.slice(bootstrap, migration),
-    /hasExplicitUserDataDirectory/u,
+    /!app\.commandLine\.hasSwitch\('user-data-dir'\)/u,
   )
 })
