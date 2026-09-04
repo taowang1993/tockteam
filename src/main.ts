@@ -12,6 +12,7 @@ import {
   nativeImage,
   nativeTheme,
   net,
+  Notification,
   screen,
   session,
   safeStorage,
@@ -176,6 +177,7 @@ import {
   SingleOwnedTray,
   readLaunchOnStart,
   setLaunchOnStart,
+  shouldCloseToTray,
 } from './launcher-lifecycle.ts'
 import { createLauncherThemeProjector } from './launcher-theme.ts'
 import {
@@ -517,6 +519,7 @@ let marketplace: PluginMarketplaceManager | undefined
 let marketplaceAgentGateway: MarketplaceAgentGateway | undefined
 let logStream: WriteStream | undefined
 let quitting = false
+let closeToTrayNoticeShown = false
 let transitioning = false
 let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
@@ -2818,6 +2821,22 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   window.webContents.setZoomFactor(DEFAULT_UI_ZOOM_FACTOR)
   if (options.preview !== true) window.maximize()
   window.once('ready-to-show', () => { window.show() })
+  window.on('close', event => {
+    if (options.preview === true || !shouldCloseToTray({
+      platform: process.platform,
+      quitting,
+      trayVisible: launcherTrayOwner?.isVisible() === true,
+    })) return
+    event.preventDefault()
+    window.hide()
+    if (!closeToTrayNoticeShown && Notification.isSupported()) {
+      closeToTrayNoticeShown = true
+      new Notification({
+        body: 'TockTeam is still running in the tray.',
+        title: PRODUCT_NAME,
+      }).show()
+    }
+  })
   window.on('closed', () => {
     if (mainWindow === window) {
       launcherController?.destroyWindow()

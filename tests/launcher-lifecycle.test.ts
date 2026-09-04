@@ -9,6 +9,7 @@ import {
   readLaunchOnStart,
   resolveLauncherLifecycleSettings,
   setLaunchOnStart,
+  shouldCloseToTray,
 } from '../src/launcher-lifecycle.ts'
 
 test('lifecycle settings use safe TockTeam fallbacks and reject malformed values', () => {
@@ -144,6 +145,13 @@ test('secure relaunch recovery reconciles before reporting failure', async () =>
   assert.deepEqual(calls, ['reconcile', 'report:relaunch unavailable'])
 })
 
+test('only a visible Windows tray keeps the workbench alive on close', () => {
+  assert.equal(shouldCloseToTray({ platform: 'win32', quitting: false, trayVisible: true }), true)
+  assert.equal(shouldCloseToTray({ platform: 'darwin', quitting: false, trayVisible: true }), false)
+  assert.equal(shouldCloseToTray({ platform: 'win32', quitting: true, trayVisible: true }), false)
+  assert.equal(shouldCloseToTray({ platform: 'win32', quitting: false, trayVisible: false }), false)
+})
+
 test('owned tray is singleton and destroys only its own instance', () => {
   const trays: Array<{ destroyed: boolean; destroy(): void; isDestroyed(): boolean }> = []
   const owner = new SingleOwnedTray(() => {
@@ -154,8 +162,10 @@ test('owned tray is singleton and destroys only its own instance', () => {
   owner.setVisible(true)
   owner.setVisible(true)
   assert.equal(trays.length, 1)
+  assert.equal(owner.isVisible(), true)
   owner.setVisible(false)
   assert.equal(trays[0]?.destroyed, true)
+  assert.equal(owner.isVisible(), false)
   owner.setVisible(true)
   assert.equal(trays.length, 2)
   owner.dispose()

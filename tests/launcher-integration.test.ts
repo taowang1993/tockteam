@@ -114,6 +114,8 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(sidebar, /syncWorkbenchDestination/u)
   assert.match(main, /createDesktopAppUpdater/u)
   assert.match(main, /new SingleOwnedTray/u)
+  assert.match(main, /window\.on\('close'[\s\S]+shouldCloseToTray/u)
+  assert.match(main, /Notification\.isSupported\(\)[\s\S]+still running in the tray/u)
   assert.match(main, /requestSecureQuit/u)
   assert.match(main, /showLauncher: 'Show TockLauncher'/u)
   assert.match(main, /text\.showLauncher[\s\S]+launcherLifecycle\?\.invokeCommand\('show'\)/u)

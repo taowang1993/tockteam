@@ -122,6 +122,14 @@ export async function attemptSecureRelaunchWithRecovery(args: Readonly<{
   return false
 }
 
+export function shouldCloseToTray(input: Readonly<{
+  platform: NodeJS.Platform
+  quitting: boolean
+  trayVisible: boolean
+}>): boolean {
+  return input.platform === 'win32' && !input.quitting && input.trayVisible
+}
+
 /** Owns one native tray and never destroys a tray it did not create. */
 export class SingleOwnedTray<TTray extends Readonly<{
   destroy: () => void
@@ -132,6 +140,10 @@ export class SingleOwnedTray<TTray extends Readonly<{
 
   constructor(createTray: () => TTray) {
     this.createTray = createTray
+  }
+
+  isVisible(): boolean {
+    return this.tray !== null && !this.tray.isDestroyed()
   }
 
   setVisible(visible: boolean): void {
