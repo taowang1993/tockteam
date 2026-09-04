@@ -40,8 +40,8 @@ let
   betterSidebarSrc = pkgs.fetchFromGitHub {
     owner = "omdsh-dev";
     repo = "DSH-better-sidebar";
-    rev = "d9b8f15d9eab018742f97d67e54b2398504894cd";
-    hash = "sha256-bfpop+QKF8fRAl/vWjcTJgTkBA2bvHK+/KlBkR0NLa4=";
+    rev = "9e1a03452794532cda1f6ac677b72579dff48dfc";
+    hash = "sha256-s0QaSJwyy+x69DIjMdoZVwoIIziczP3qTvhmf4w0AEo=";
   };
   tuiSrc = pkgs.fetchFromGitHub {
     owner = "ccch1mneyyy";

@@ -13,7 +13,7 @@ test('Better Sidebar adapter frames session exits without changing agent termina
     new URL('../upstream/DSH-better-sidebar/package.json', import.meta.url),
     'utf8',
   )) as { version?: string }
-  assert.equal(manifest.version, '0.15.2')
+  assert.equal(manifest.version, '0.18.0')
   const source = readFileSync(new URL('../upstream/DSH-better-sidebar/src/index.ts', import.meta.url), 'utf8')
   assert.match(source, /'open\.external'/u)
   const adapted = adaptBetterSidebarHost(source)
@@ -26,6 +26,21 @@ test('Better Sidebar adapter frames session exits without changing agent termina
   const crlfSource = source.replaceAll('\r\n', '\n').replaceAll('\n', '\r\n')
   assert.equal((adaptBetterSidebarHost(crlfSource).match(/tockteam-terminal-exit/g) ?? []).length, 1)
   assert.throws(() => adaptBetterSidebarHost(adapted), /seam changed upstream/u)
+})
+
+test('Better Sidebar confines existing paths and new writes through real filesystem targets', () => {
+  const pathSecurity = readFileSync(
+    new URL('../upstream/DSH-better-sidebar/src/path-security.ts', import.meta.url),
+    'utf8',
+  )
+  const uploads = readFileSync(
+    new URL('../upstream/DSH-better-sidebar/src/fs-operations.ts', import.meta.url),
+    'utf8',
+  )
+  assert.match(pathSecurity, /realpath\(existingPath\)/u)
+  assert.match(pathSecurity, /assertWithinWorkspace\(realCwd, realTarget\)/u)
+  assert.match(uploads, /ensureWorkspacePath\(cwd, base, fence\)/u)
+  assert.match(uploads, /ensureWorkspaceWritePath\(cwd, target, fence\)/u)
 })
 
 test('terminal exit is a binary control frame, never PTY text', () => {

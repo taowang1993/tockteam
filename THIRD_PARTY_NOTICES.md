@@ -39,8 +39,8 @@ separate Web Terminal or shell plugin is required.
 ## DSH-better-sidebar
 
 - Project: <https://github.com/omdsh-dev/DSH-better-sidebar>
-- Pinned release: `v0.15.0`
-- Pinned revision: `f0965e1d6157a3e06ed2f5c7775a64428d5d3c29`
+- Pinned release: `v0.18.0`
+- Pinned revision: `9e1a03452794532cda1f6ac677b72579dff48dfc`
 - Declared license: MIT
 - TockTeam components: `@tockteam/better-sidebar-runtime` and
   `@tockteam/sidebar`
