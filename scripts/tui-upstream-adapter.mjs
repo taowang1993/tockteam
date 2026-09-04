@@ -28,6 +28,18 @@ function replaceEvery(path, before, after) {
  * upstream update moves a seam that needs a fresh review.
  */
 export function adaptTuiRendererPackage(packageDir) {
+  const liangshen = join(packageDir, 'presets', 'liangshen')
+  replaceOnce(
+    join(liangshen, 'compaction-epoch.mjs'),
+    'for (const event of session.events)',
+    'for (const event of session.snapshotEvents())',
+  )
+  replaceOnce(
+    join(liangshen, 'instruction-hint.mjs'),
+    'if (session.events.some(',
+    'if (session.snapshotEvents().some(',
+  )
+
   const lib = join(packageDir, 'lib', 'types')
   replaceOnce(
     join(lib, 'components', 'LogoV2.js'),
@@ -57,11 +69,6 @@ export function adaptTuiRendererPackage(packageDir) {
     "description: 'Show the dsh-tui configuration source'",
     "description: 'Show the TockTeam TUI configuration source'",
   )
-  replaceOnce(
-    commands,
-    "description: 'Practice programming with dsh-tui'",
-    "description: 'Practice programming with TockTeam TUI'",
-  )
   replaceEvery(
     commands,
     "description: 'Exit dsh-tui'",
@@ -81,18 +88,13 @@ export function adaptTuiRendererPackage(packageDir) {
   const plugin = join(lib, 'dsh-adapter', 'plugin.js')
   replaceOnce(
     plugin,
-    `    void checkForTuiUpdate().then((update) => {
-        if (update === undefined || exited || updateRequested)
-            return;
-        channel.notify(t('update-available', { current: update.current, latest: update.latest }), { color: 'warning', timeoutMs: 12000 });
-    });`,
-    `    if (process.env.TOCKTEAM_TUI !== '1') {
-        void checkForTuiUpdate().then((update) => {
-            if (update === undefined || exited || updateRequested)
-                return;
-            channel.notify(t('update-available', { current: update.current, latest: update.latest }), { color: 'warning', timeoutMs: 12000 });
-        });
-    }`,
+    '    void checkForTuiUpdate().then((update) => {',
+    "    if (process.env.TOCKTEAM_TUI !== '1') {\n        void checkForTuiUpdate().then((update) => {",
+  )
+  replaceOnce(
+    plugin,
+    '    });\n    // If the surrounding tree goes down',
+    '        });\n    }\n    // If the surrounding tree goes down',
   )
   replaceOnce(
     plugin,
@@ -142,7 +144,6 @@ export function adaptTuiRendererPackage(packageDir) {
     ["'cmd-desc-quit': { zh: '退出 dsh-tui' }", "'cmd-desc-quit': { zh: '退出 TockTeam TUI' }"],
     ["'cmd-desc-q': { zh: '退出 dsh-tui' }", "'cmd-desc-q': { zh: '退出 TockTeam TUI' }"],
     ["'cmd-desc-config': { zh: '查看 dsh-tui 配置来源' }", "'cmd-desc-config': { zh: '查看 TockTeam TUI 配置来源' }"],
-    ["'cmd-desc-practice': { zh: '与 dsh-tui 进行编程练习' }", "'cmd-desc-practice': { zh: '与 TockTeam TUI 进行编程练习' }"],
     ["'cmd-desc-restart': { zh: '重启 dsh-tui 并恢复当前会话' }", "'cmd-desc-restart': { zh: '重启 TockTeam TUI 并恢复当前会话' }"],
     ["'cmd-desc-exit': { zh: '退出 dsh-tui' }", "'cmd-desc-exit': { zh: '退出 TockTeam TUI' }"],
   ]) replaceOnce(messages, before, after)

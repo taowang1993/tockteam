@@ -13,7 +13,7 @@ import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import { test } from 'node:test'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { ensureTuiProfile, TUI_BUNDLES, TUI_PROFILE } from '../src/profile.ts'
 import { adaptTuiRendererPackage } from '../scripts/tui-upstream-adapter.mjs'
 import {
@@ -23,26 +23,41 @@ import {
   type TuiSpawner,
 } from '../src/tui.ts'
 
-test('pins the dsh-TUI v0.9.2 renderer and bundled auth workspace', () => {
+test('pins the dsh-TUI v0.10.0-beta.5 renderer and bundled auth workspace', () => {
   const repository = join(dirname(fileURLToPath(import.meta.url)), '..')
   const renderer = JSON.parse(readFileSync(join(repository, 'upstream', 'dsh-TUI', 'package.json'), 'utf8'))
   const auth = JSON.parse(readFileSync(join(repository, 'upstream', 'dsh-TUI', 'dsh-auth', 'package.json'), 'utf8'))
-  assert.equal(renderer.version, '0.9.2')
+  assert.equal(renderer.version, '0.10.0-beta.5')
   assert.equal(renderer.dependencies['@deepseek-harness-tui/dsh-auth'], 'link:./dsh-auth')
   assert.equal(auth.name, '@deepseek-harness-tui/dsh-auth')
+
+  const workspace = readFileSync(join(repository, 'pnpm-workspace.yaml'), 'utf8')
+  const sqlite = '@deepseek-ai/dsh-session-persistence-sqlite'
+  for (const dependency of Object.keys(renderer.devDependencies)) {
+    if (dependency.startsWith('@deepseek-ai/dsh-') && dependency !== sqlite) {
+      assert.match(workspace, new RegExp(`'${dependency}': 0\\.1\\.2-rc\\.1`))
+    }
+  }
+  assert.equal(renderer.devDependencies[sqlite], '0.1.1-rc.2')
+
+  const notices = readFileSync(join(repository, 'THIRD_PARTY_NOTICES.md'), 'utf8')
+  assert.match(notices, /@deepseek-harness-tui\/dsh-tui@0\.10\.0-beta\.5/)
+  assert.match(notices, /8f1444a2627fab01682e679a0e44de8989b66f77/)
 })
 
 test('packaged TUI launchers expose only the TUI surface', () => {
   const build = readFileSync(new URL('../scripts/build-tui.mjs', import.meta.url), 'utf8')
+  const staging = readFileSync(new URL('../scripts/stage-dsh.mjs', import.meta.url), 'utf8')
   assert.match(build, /export TOCKTEAM_SURFACES=tui/)
   assert.match(build, /SET "TOCKTEAM_SURFACES=tui"/)
+  assert.doesNotMatch(staging, /'upstream', 'dsh-TUI', 'skills'/)
 })
 
 test('Nix assembly pins and packages the renderer auth workspace', () => {
   const source = readFileSync(new URL('../nix/tockteam.nix', import.meta.url), 'utf8')
-  assert.match(source, /b166c2ecc03ab61ec5aee16fe69cdeaf0e2a03a9/)
-  assert.match(source, /fba02bcf7fb57e3d9885f73882d5835ccdf526c4/)
-  assert.match(source, /2d0236f7d4579814d9d177a58d03ebd168025960/)
+  assert.match(source, /8f1444a2627fab01682e679a0e44de8989b66f77/)
+  assert.match(source, /94fdf81e775e8d884af4dfb64a94b617c3751936/)
+  assert.match(source, /d28c267fe7fd775428ec2dccd65b0b7efd4dacee/)
   assert.match(source, /tsc -p upstream\/dsh-TUI\/dsh-auth\/tsconfig\.json/)
   assert.match(source, /package-deps\/tui-renderer\/@deepseek-harness-tui\/dsh-auth/)
 })
@@ -214,6 +229,22 @@ test('TUI bundle mounts its surface and skins before the upstream renderer', () 
   assert.equal((TUI_BUNDLES as readonly string[]).includes('tockbot-note-runtime'), false)
 })
 
+test('pinned TUI hardens terminal output, plugin authority, and private data files', () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'upstream', 'dsh-TUI', 'src')
+  const osc = readFileSync(join(root, 'ink', 'termio', 'osc.ts'), 'utf8')
+  assert.match(osc, /OSC_PAYLOAD_UNSAFE/u)
+  assert.match(osc, /parts\.map\(sanitizeOscPart\)/u)
+  const providerGuard = readFileSync(join(root, 'dsh-adapter', 'providerGuard.ts'), 'utf8')
+  assert.match(providerGuard, /verified && whitelisted/u)
+  assert.match(providerGuard, /alert-unverified/u)
+  const credentialGuard = readFileSync(join(root, 'dsh-adapter', 'credentialRefGuard.ts'), 'utf8')
+  assert.match(credentialGuard, /DEEPSEEK_API_KEY/u)
+  assert.match(credentialGuard, /DSH_/u)
+  const history = readFileSync(join(root, 'history.ts'), 'utf8')
+  assert.match(history, /mode: 0o700/u)
+  assert.match(history, /mode: 0o600/u)
+})
+
 test('TUI upstream adapter removes legacy terminal branding and scopes storage', () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-tui-adapter-'))
   const repository = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -221,6 +252,11 @@ test('TUI upstream adapter removes legacy terminal branding and scopes storage',
   cpSync(join(repository, 'upstream', 'dsh-TUI', 'lib', 'types'), lib, {
     recursive: true,
   })
+  cpSync(
+    join(repository, 'upstream', 'dsh-TUI', 'presets'),
+    join(root, 'presets'),
+    { recursive: true },
+  )
   try {
     adaptTuiRendererPackage(root)
     assert.match(readFileSync(join(lib, 'components', 'LogoV2.js'), 'utf8'), /TockTeam TUI/)
@@ -276,6 +312,42 @@ test('TUI upstream adapter removes legacy terminal branding and scopes storage',
       assert.match(preferences, /DATA_DIR/)
     }
     assert.doesNotThrow(() => { adaptTuiRendererPackage(root) })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('adapted Liangshen presets consume a real DSH 0.1.2 Session snapshot', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-tui-liangshen-'))
+  const repository = join(dirname(fileURLToPath(import.meta.url)), '..')
+  cpSync(join(repository, 'upstream', 'dsh-TUI', 'lib'), join(root, 'lib'), { recursive: true })
+  cpSync(join(repository, 'upstream', 'dsh-TUI', 'presets'), join(root, 'presets'), { recursive: true })
+  try {
+    adaptTuiRendererPackage(root)
+    const dshSession = await import(pathToFileURL(join(
+      repository,
+      'upstream',
+      'dsh-TUI',
+      'node_modules',
+      '@deepseek-ai',
+      'dsh-session',
+      'lib',
+      'index.js',
+    )).href)
+    const promotionModule = await import(pathToFileURL(
+      join(root, 'presets', 'liangshen', 'compaction-epoch.mjs'),
+    ).href)
+    const session = dshSession.Session.create('tockteam-liangshen-smoke')
+    assert.deepEqual(
+      promotionModule.createEpochPromotion(['tool/call']).status({ session }),
+      { boundary: -1, promoted: false },
+    )
+    const instructionHint = readFileSync(
+      join(root, 'presets', 'liangshen', 'instruction-hint.mjs'),
+      'utf8',
+    )
+    assert.match(instructionHint, /session\.snapshotEvents\(\)\.some/u)
+    assert.doesNotMatch(instructionHint, /session\.events/u)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

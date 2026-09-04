@@ -75,8 +75,8 @@ skins, a desktop Settings interface, and Host-backed persistence.
 ## dsh-TUI
 
 - Project: <https://github.com/ccch1mneyyy/dsh-TUI>
-- Upstream package: `@deepseek-harness-tui/dsh-tui@0.8.8`
-- Pinned revision: `bdff0afb028d50c304e4474fd40f83b0721d50fd`
+- Upstream package: `@deepseek-harness-tui/dsh-tui@0.10.0-beta.5`
+- Pinned revision: `8f1444a2627fab01682e679a0e44de8989b66f77`
 - Declared license: MIT
 - TockTeam component: `@tockteam/tui`
 

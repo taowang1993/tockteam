@@ -937,7 +937,6 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
         [join(root, 'upstream', 'dsh-TUI', 'lib'), 'lib'],
         [join(root, 'upstream', 'dsh-TUI', 'dsh-ecosystem-spec'), 'dsh-ecosystem-spec'],
         [join(root, 'upstream', 'dsh-TUI', 'presets'), 'presets'],
-        [join(root, 'upstream', 'dsh-TUI', 'skills'), 'skills'],
         [join(root, 'upstream', 'dsh-TUI', 'cordis.patch.yml'), 'cordis.patch.yml'],
         [join(root, 'upstream', 'dsh-TUI', 'cordis.yml'), 'cordis.yml'],
         [join(root, 'upstream', 'dsh-TUI', 'LICENSE'), 'LICENSE'],

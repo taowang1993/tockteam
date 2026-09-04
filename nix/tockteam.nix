@@ -46,20 +46,20 @@ let
   tuiSrc = pkgs.fetchFromGitHub {
     owner = "ccch1mneyyy";
     repo = "dsh-TUI";
-    rev = "b166c2ecc03ab61ec5aee16fe69cdeaf0e2a03a9";
-    hash = "sha256-AU3SxnjucUA8yvQia+cw/q3cqItRCFb/njaiRoiOS9c=";
+    rev = "8f1444a2627fab01682e679a0e44de8989b66f77";
+    hash = "sha256-uGCwkBgZojLuLcDCuESiPpgIG9ZA0kbSUqJmALsnl7M=";
   };
   tuiAuthSrc = pkgs.fetchFromGitHub {
     owner = "ccch1mneyyy";
     repo = "dsh-auth";
-    rev = "fba02bcf7fb57e3d9885f73882d5835ccdf526c4";
-    hash = "sha256-ip/jdsm/YiPvVdZ0o2m/thImd+4ZmRjzQKzXvJ9dAK8=";
+    rev = "94fdf81e775e8d884af4dfb64a94b617c3751936";
+    hash = "sha256-gSkDJnjm4N2qOqnEstDU12S4D9FvomrxB9UVwlFN2M4=";
   };
   tuiEcosystemSpecSrc = pkgs.fetchFromGitHub {
     owner = "T-Auto";
     repo = "dsh-ecosystem-spec";
-    rev = "2d0236f7d4579814d9d177a58d03ebd168025960";
-    hash = "sha256-7PK0j8gl3+1esTzjlrKOZkEei6OL13H/4JiIOf5LOR8=";
+    rev = "d28c267fe7fd775428ec2dccd65b0b7efd4dacee";
+    hash = "sha256-hhp/UUMo2engw0SyrB0Gq6Xc6BUYgvEmYh0F4OBdZEw=";
   };
   tuiStdSrc = pkgs.fetchFromGitHub {
     owner = "Yan-Zero";
@@ -95,7 +95,7 @@ let
     pnpmDeps = pkgs.fetchPnpmDeps {
       inherit pname version src;
       fetcherVersion = 4;
-      hash = "sha256-/gg/tJoE0Xabz8yCjzo67KOss8jkSB+dahoTQJlWGp4=";
+      hash = "sha256-U9XM2reAwPKuaXeuFFKUF8l+ECtSJRvuVjKikCGv/iA=";
     };
 
     nativeBuildInputs = [
@@ -172,8 +172,8 @@ let
         # Copy the pinned renderer and apply the guarded TockTeam adaptation.
         mkdir -p $out/lib/tockteam/tui-renderer
         cp -r upstream/dsh-TUI/lib upstream/dsh-TUI/dsh-ecosystem-spec \
-          upstream/dsh-TUI/presets upstream/dsh-TUI/skills \
-          upstream/dsh-TUI/cordis.patch.yml upstream/dsh-TUI/cordis.yml \
+          upstream/dsh-TUI/presets upstream/dsh-TUI/cordis.patch.yml \
+          upstream/dsh-TUI/cordis.yml \
           upstream/dsh-TUI/LICENSE $out/lib/tockteam/tui-renderer/
         node -e "import('./scripts/tui-upstream-adapter.mjs').then(({ adaptTuiRendererPackage }) => adaptTuiRendererPackage('$out/lib/tockteam/tui-renderer'))"
       ''}
