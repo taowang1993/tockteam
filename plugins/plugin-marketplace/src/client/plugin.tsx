@@ -30,6 +30,10 @@ import type {
   MarketplaceRiskReason,
   MarketplaceSnapshot,
 } from '../protocol.ts'
+import {
+  deriveMarketplaceCatalogView,
+  type MarketplaceStatusFilter,
+} from './catalog-view.ts'
 import { MARKETPLACE_MESSAGES, type MarketplaceMessage } from './i18n.ts'
 import {
   initialSessionNavigationState,
@@ -37,8 +41,6 @@ import {
   type SessionListSnapshot,
   type SessionNavigationState,
 } from './session-navigation.ts'
-
-type MarketplaceStatusFilter = 'all' | 'installed' | 'available' | 'updates' | 'disabled'
 
 interface ClientContext {
   effect(effect: () => (() => void) | void, label?: string): void
@@ -721,6 +723,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<MarketplaceStatusFilter>('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [showBuiltins, setShowBuiltins] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const run = useCallback(async (command: MarketplaceCommand): Promise<void> => {
@@ -749,32 +752,11 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
     return () => { alive = false }
   }, [bridge])
 
-  const categories = useMemo(() => {
-    return [...new Set(snapshot?.catalog.map(plugin => plugin.category) ?? [])].sort()
-  }, [snapshot?.catalog])
-  const statusCounts = useMemo(() => {
-    const catalog = snapshot?.catalog ?? []
-    const installed = catalog.filter(plugin => plugin.installed).length
-    return {
-      all: catalog.length,
-      available: catalog.length - installed,
-      disabled: catalog.filter(plugin => plugin.installed && !plugin.enabled).length,
-      installed,
-      updates: catalog.filter(plugin => plugin.updateAvailable).length,
-    }
-  }, [snapshot?.catalog])
-  const plugins = useMemo(() => {
-    const needle = search.trim().toLowerCase()
-    return (snapshot?.catalog ?? []).filter(plugin => {
-      if (statusFilter === 'installed' && !plugin.installed) return false
-      if (statusFilter === 'available' && plugin.installed) return false
-      if (statusFilter === 'updates' && !plugin.updateAvailable) return false
-      if (statusFilter === 'disabled' && (!plugin.installed || plugin.enabled)) return false
-      if (categoryFilter !== 'all' && plugin.category !== categoryFilter) return false
-      return needle === '' || [plugin.title, plugin.description, plugin.category, ...plugin.tags]
-        .some(value => value.toLowerCase().includes(needle))
-    })
-  }, [categoryFilter, search, snapshot?.catalog, statusFilter])
+  const catalogView = useMemo(() => deriveMarketplaceCatalogView(
+    snapshot?.catalog ?? [],
+    { categoryFilter, search, showBuiltins, statusFilter },
+  ), [categoryFilter, search, showBuiltins, snapshot?.catalog, statusFilter])
+  const { categories, plugins, statusCounts } = catalogView
   const selected = plugins.find(plugin => plugin.id === selectedId) ?? null
   const error = localError ?? snapshot?.error ?? null
   const resetView = (): void => {
@@ -782,6 +764,23 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
     setStatusFilter('all')
     setCategoryFilter('all')
     setSelectedId(null)
+  }
+  const setBuiltinsVisible = (visible: boolean): void => {
+    setShowBuiltins(visible)
+    if (visible) return
+    const hiddenView = deriveMarketplaceCatalogView(snapshot?.catalog ?? [], {
+      categoryFilter,
+      search,
+      showBuiltins: false,
+      statusFilter,
+    })
+    if (hiddenView.categoryFilter !== categoryFilter) {
+      setCategoryFilter(hiddenView.categoryFilter)
+    }
+    if (selectedId !== null
+      && !hiddenView.visibleCatalog.some(plugin => plugin.id === selectedId)) {
+      setSelectedId(null)
+    }
   }
 
   useEffect(() => {
@@ -888,11 +887,19 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                 aria-label={t('plugin-category')}
                 className="h-[38px] rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[11px] font-[inherit] text-xs text-inherit"
                 onChange={event => { setCategoryFilter(event.target.value) }}
-                value={categoryFilter}
+                value={catalogView.categoryFilter}
               >
                 <NativeSelectOption value="all">{t('all-categories')}</NativeSelectOption>
                 {categories.map(category => <NativeSelectOption key={category} value={category}>{category}</NativeSelectOption>)}
               </NativeSelect>
+              <Label unstyled className="inline-flex h-[38px] cursor-pointer items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
+                <Checkbox
+                  aria-label={t('show-builtins')}
+                  checked={showBuiltins}
+                  onCheckedChange={checked => { setBuiltinsVisible(checked === true) }}
+                />
+                <span>{t('show-builtins')}</span>
+              </Label>
               <span className="ml-auto whitespace-nowrap text-[11px] text-subtle-foreground">
                 {t('plugin-count', { count: plugins.length })}
               </span>
