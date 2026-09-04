@@ -114,6 +114,14 @@ class FakeSkinDom implements SkinDomPort {
   }
 }
 
+test('Desktop image lightboxes stay below the owned titlebar without changing Radix dialogs', async () => {
+  const css = await readFile(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
+  assert.match(css, /@utility tockteam-desktop-shell[\s\S]*?& body > \[role='dialog'\]\[aria-modal='true'\]:has\(> img\) \{[\s\S]*?top: var\(--tockteam-titlebar-height\) !important;[\s\S]*?padding: 40px !important;/u)
+  assert.match(css, /body > \[role='dialog'\]\[aria-modal='true'\]:has\(> img\) > img \{[\s\S]*?max-height: calc\(100vh - var\(--tockteam-titlebar-height\) - 80px\) !important;/u)
+  assert.match(css, /body > \[role='dialog'\]\[aria-modal='true'\]:has\(> img\) > button \{[\s\S]*?top: calc\(var\(--tockteam-titlebar-height\) \+ 8px\) !important;[\s\S]*?right: 8px !important;/u)
+  assert.doesNotMatch(css, /\[role='presentation'\] > \[role='dialog'\][^{]*\{[^}]*max-height:/u)
+})
+
 test('desktop skins are namespaced and keep every app surface on one opaque base', () => {
   assert.equal(DESKTOP_SKINS.length, 4)
   assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.id)).size, DESKTOP_SKINS.length)

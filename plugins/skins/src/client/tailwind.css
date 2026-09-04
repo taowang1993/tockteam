@@ -214,6 +214,21 @@
     padding-top: var(--tockteam-titlebar-height);
   }
 
+  /* DSH's image lightbox is a body-level dialog, outside the Radix wrapper. */
+  & body > [role='dialog'][aria-modal='true']:has(> img) {
+    top: var(--tockteam-titlebar-height) !important;
+    padding: 40px !important;
+  }
+
+  & body > [role='dialog'][aria-modal='true']:has(> img) > img {
+    max-height: calc(100vh - var(--tockteam-titlebar-height) - 80px) !important;
+  }
+
+  & body > [role='dialog'][aria-modal='true']:has(> img) > button {
+    top: calc(var(--tockteam-titlebar-height) + 8px) !important;
+    right: 8px !important;
+  }
+
   & [data-slot='sidebar'] button:is([aria-label='Collapse sidebar'], [aria-label='收起侧边栏']) {
     display: none !important;
   }
