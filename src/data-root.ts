@@ -97,6 +97,7 @@ function overlaps(left: string, right: string): boolean {
 interface CopyRoots {
   destination: string
   source: string
+  links: { path: string; directory: boolean }[]
 }
 
 function relocatedLinkTarget(
@@ -132,6 +133,11 @@ function copyEntry(
   // Destination state is authoritative, including an existing link or a
   // different entry type. Never replace user-owned current state.
   const destinationStat = lstat(destination)
+  if (sourceStat.isSymbolicLink()) {
+    const targetStat = followedStat(source)
+    if (targetStat === undefined) return false
+    roots.links.push({ path: destination, directory: targetStat.isDirectory() })
+  }
   if (destinationStat !== undefined && !sourceStat.isDirectory()) return true
   if (sourceStat.isDirectory()) {
     if (destinationStat !== undefined && !destinationStat.isDirectory())
@@ -234,13 +240,18 @@ export function copyDirectoryContents(
     mkdirSync(destination, { recursive: true, mode: 0o700 })
     const destinationRoot = realpathSync(destination)
     if (overlaps(sourceRoot, destinationRoot)) return false
-    const roots = { destination: destinationRoot, source: sourceRoot }
+    const roots: CopyRoots = { destination: destinationRoot, source: sourceRoot, links: [] }
     for (const entry of readdirSync(source)) {
       if (options.exclude?.has(entry) === true) continue
       if (!copyEntry(join(source, entry), join(destination, entry), roots))
         return false
     }
-    return true
+    // Check after the entire traversal: forward links may target entries copied
+    // later, or entries that an authoritative destination conflict prevented.
+    return roots.links.every(link => {
+      const target = followedStat(link.path)
+      return target !== undefined && target.isDirectory() === link.directory
+    })
   } catch {
     return false
   }

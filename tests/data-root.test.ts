@@ -299,6 +299,19 @@ test('destination aliases into the source fail closed before creating a recursiv
   assert.equal(existsSync(join(legacyRoot, 'new-destination')), false)
 })
 
+test('a rebased link with a destination conflict cannot mark migration complete', t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-link-conflict-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const input = migrationInput(root)
+  const legacy = desktopLegacyDataRoot(input.appDataRoot, true)
+  write(join(legacy, 'target', 'session.json'), 'legacy')
+  symlinkSync(join(legacy, 'target'), join(legacy, 'link'), 'junction')
+  write(join(input.destinationRoot, 'target'), 'current file wins')
+  assert.deepEqual(migrateLegacyDesktopState(input), INCOMPLETE)
+  assert.equal(existsSync(join(input.destinationRoot, '.migrations', 'desktop-state-v1.complete')), false)
+  assert.equal(readFileSync(join(input.destinationRoot, 'target'), 'utf8'), 'current file wins')
+})
+
 test('Desktop bootstrap migrates before picker, runtime, or persistence writes', () => {
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
   const bootstrap = main.indexOf('async function bootstrap(): Promise<void>')
