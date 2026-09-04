@@ -1,5 +1,5 @@
 import { Button } from '@tockteam/ui/button'
-import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore } from '@deepseek-ai/dsh-client-store'
 import { Check } from 'lucide-react'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import {
@@ -173,7 +173,7 @@ export function apply(ctx: ClientContext): void {
     storage,
     new SkinDomPresenter(typeof document === 'undefined' ? undefined : document),
   )
-  const store = defineStore<SkinRowState>({
+  const store = defineStore({
     init: () => ({ activeId: '', ready: false, revision: -1 }),
     actions: {
       sync: (draft, activeId: string, ready: boolean, revision: number) => {

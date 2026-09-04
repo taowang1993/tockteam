@@ -37,6 +37,25 @@ test('the runtime lock and stripped manifest pin the complete 0.1.2 release line
   assert.match(nix, /if \[ -d config \]/u)
 })
 
+test('browser plugins use the 0.1.2 platform store without the removed client runtime', () => {
+  const rootManifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  const skinsManifest = JSON.parse(readFileSync(new URL('../plugins/skins/package.json', import.meta.url), 'utf8'))
+  const sidebarManifest = JSON.parse(readFileSync(new URL('../plugins/sidebar/package.json', import.meta.url), 'utf8'))
+  const skinsClient = readFileSync(new URL('../plugins/skins/src/client/plugin.tsx', import.meta.url), 'utf8')
+  const sidebarClient = readFileSync(new URL('../plugins/sidebar/src/client/plugin.tsx', import.meta.url), 'utf8')
+  const build = readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8')
+
+  assert.equal(rootManifest.devDependencies['@deepseek-ai/dsh-client-store'], DSH_SOURCE_SPEC.version)
+  for (const manifest of [rootManifest, skinsManifest, sidebarManifest]) {
+    assert.doesNotMatch(JSON.stringify(manifest.dsh.client.inject), /dsh-client-runtime/u)
+  }
+  for (const client of [skinsClient, sidebarClient]) {
+    assert.match(client, /from '@deepseek-ai\/dsh-client-store'/u)
+    assert.doesNotMatch(client, /dsh-client-runtime/u)
+  }
+  assert.match(build, /'@deepseek-ai\/dsh-client-store'/u)
+})
+
 test('npm source specs reject untrusted or unpinned release inputs', () => {
   const valid = { ...DSH_SOURCE_SPEC }
   assert.throws(

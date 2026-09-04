@@ -243,7 +243,7 @@ for (const plugin of pluginPackages) {
         'react-dom/client',
         'react/jsx-runtime',
         ...(['skins', 'sidebar'].includes(plugin.directory)
-          ? ['@deepseek-ai/dsh-client-runtime/client']
+          ? ['@deepseek-ai/dsh-client-store']
           : []),
       ],
       banner: {

@@ -17,7 +17,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
-import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore } from '@deepseek-ai/dsh-client-store'
 import {
   Blocks,
   ChevronDown,
@@ -2069,7 +2069,7 @@ function registerTockTutorRoute(
   locale: LocaleService,
   t: Translate<WorkspaceMessage>,
 ): void {
-  const routeStore = defineStore<RouteState>({
+  const routeStore = defineStore({
     init: () => ({ location: readTockTutorRouteLocation() }),
     actions: {
       setLocation: (draft, location: TockTutorRouteLocation) => {
@@ -2236,7 +2236,7 @@ export function apply(ctx: ClientContext): void {
     t,
     workspaces,
   })
-  const settingsStore = defineStore<SidebarSettingsState>({
+  const settingsStore = defineStore({
     init: () => ({
       openByDefault: false,
       revision: -1,

@@ -118,7 +118,7 @@ test('desktop sidebar exposes one configurable tool registry in settings', () =>
     'utf8',
   )
 
-  assert.match(client, /defineStore<SidebarSettingsState>/)
+  assert.match(client, /const settingsStore = defineStore\(\{/)
   assert.match(client, /slots\.inject\('settings\.section'/)
   assert.match(client, /new SidebarRuntimeSettingsService/)
   assert.match(runtimeSettings, /betterSidebarApi/)
