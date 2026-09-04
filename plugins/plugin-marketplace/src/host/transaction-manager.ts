@@ -611,6 +611,8 @@ export class PluginMarketplaceManager {
   }
   #error: string | null = null
   readonly #latestCommits = new Map<string, string>()
+  readonly #repositoryStats = new Map<string, MarketplacePlugin['stats']>()
+  readonly #repositoryStatsLoaded = new Set<string>()
   #lastAction: string | null = null
   #plan: MarketplacePlan | null = null
   #rollback: RollbackState | null
@@ -657,6 +659,7 @@ export class PluginMarketplaceManager {
           enabled,
           installed: receipt !== undefined,
           latestCommit,
+          stats: this.#repositoryStats.get(plugin.repository) ?? plugin.stats,
           updateAvailable: receipt !== undefined
             && latestCommit !== null
             && latestCommit !== receipt.resolvedCommit,
@@ -697,6 +700,9 @@ export class PluginMarketplaceManager {
         case 'refresh':
           await this.refresh()
           break
+        case 'load-repository-stats':
+          await this.loadRepositoryStats(command.pluginId)
+          break
         case 'inspect':
           await this.inspect(command.action, command.pluginId)
           break
@@ -734,6 +740,8 @@ export class PluginMarketplaceManager {
     this.#catalog = catalog.plugins
     this.#catalogGeneratedAt = catalog.generatedAt
     this.#latestCommits.clear()
+    this.#repositoryStats.clear()
+    this.#repositoryStatsLoaded.clear()
     const available = new Map(catalog.plugins
       .filter(plugin => plugin.mechanism !== 'unsupported')
       .map(plugin => [plugin.id, plugin.repository]))
@@ -750,6 +758,19 @@ export class PluginMarketplaceManager {
         }
       }))
     this.#lastAction = `Loaded ${String(catalog.plugins.length)} catalog plugins.`
+  }
+
+  private async loadRepositoryStats(pluginId: string): Promise<void> {
+    const plugin = this.#catalog.find(candidate => candidate.id === pluginId)
+    if (plugin === undefined) throw new Error(`plugin is not present in the loaded catalog: ${pluginId}`)
+    if (this.#repositoryStatsLoaded.has(plugin.repository)) return
+    this.#repositoryStatsLoaded.add(plugin.repository)
+    try {
+      const stats = await this.#options.platform.loadRepositoryStats(plugin.repository)
+      if (stats !== null) this.#repositoryStats.set(plugin.repository, stats)
+    } catch {
+      // Repository presentation metadata never blocks marketplace transactions.
+    }
   }
 
   private async prepare(action: MarketplaceAction, pluginId: string): Promise<void> {

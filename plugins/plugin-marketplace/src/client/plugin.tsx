@@ -14,6 +14,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react'
@@ -396,6 +397,12 @@ function shortCommit(commit: string): string {
   return commit.slice(0, 10)
 }
 
+function formatDate(value: string | null, locale: string, unknown: string): string {
+  if (value === null) return unknown
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) ? date.toLocaleString(locale) : unknown
+}
+
 function mechanismLabel(
   plugin: MarketplacePlugin,
   t: Translate<MarketplaceMessage>,
@@ -534,11 +541,12 @@ function PluginDetail({
           <dt>{t('category')}</dt><dd>{plugin.category}</dd>
           <dt>{t('mechanism')}</dt><dd>{mechanismLabel(plugin, t)}</dd>
           <dt>{t('updated')}</dt>
-          <dd>
-            {plugin.pushedAt === null
-              ? t('unknown')
-              : new Date(plugin.pushedAt).toLocaleString(localeTag(locale))}
-          </dd>
+          <dd>{formatDate(plugin.stats?.updatedAt ?? plugin.pushedAt, localeTag(locale), t('unknown'))}</dd>
+          <dt>{t('stars')}</dt><dd>{plugin.stats?.stars.toLocaleString(localeTag(locale)) ?? t('unknown')}</dd>
+          <dt>{t('forks')}</dt><dd>{plugin.stats?.forks.toLocaleString(localeTag(locale)) ?? t('unknown')}</dd>
+          <dt>{t('open-issues')}</dt><dd>{plugin.stats?.openIssues.toLocaleString(localeTag(locale)) ?? t('unknown')}</dd>
+          <dt>{t('language')}</dt><dd>{plugin.stats?.language ?? t('unknown')}</dd>
+          <dt>{t('license')}</dt><dd>{plugin.stats?.license ?? t('unknown')}</dd>
           <dt>{t('repository')}</dt><dd>{plugin.url.replace('https://github.com/', '')}</dd>
           <dt>{t('trust')}</dt><dd>{t(`trust.${plugin.trust}`)}</dd>
           <dt>{t('runtime-boundary')}</dt><dd>{runtimeRiskLabel(plugin, t)}</dd>
@@ -725,8 +733,10 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [showBuiltins, setShowBuiltins] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const requestedStats = useRef(new Set<string>())
 
   const run = useCallback(async (command: MarketplaceCommand): Promise<void> => {
+    if (command.type === 'refresh') requestedStats.current.clear()
     setPending(true)
     setLocalError(null)
     try {
@@ -759,6 +769,11 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
   const { categories, plugins, statusCounts } = catalogView
   const selected = plugins.find(plugin => plugin.id === selectedId) ?? null
   const error = localError ?? snapshot?.error ?? null
+  useEffect(() => {
+    if (selected === null || selected.stats !== null || requestedStats.current.has(selected.id)) return
+    requestedStats.current.add(selected.id)
+    void run({ type: 'load-repository-stats', pluginId: selected.id })
+  }, [run, selected])
   const resetView = (): void => {
     setSearch('')
     setStatusFilter('all')

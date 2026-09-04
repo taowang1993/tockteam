@@ -19,7 +19,7 @@ import {
   sep,
   win32,
 } from 'node:path'
-import type { MarketplaceAuthStatus } from '../protocol.ts'
+import type { MarketplaceAuthStatus, MarketplaceRepositoryStats } from '../protocol.ts'
 import {
   MARKETPLACE_CATALOG_PATH,
   MARKETPLACE_CATALOG_REPOSITORY,
@@ -48,6 +48,7 @@ export interface MarketplacePlatform {
   buildBundle(input: BundleBuildInput): Promise<void>
   cloneRepository(repository: string, commit: string, target: string): Promise<void>
   loadCatalog(): Promise<unknown>
+  loadRepositoryStats(repository: string): Promise<MarketplaceRepositoryStats | null>
   readRepositoryFile(repository: string, path: string, commit: string): Promise<string | null>
   resolveCommit(repository: string): Promise<string>
   runDsh(input: DshCommandInput): Promise<void>
@@ -71,6 +72,32 @@ interface CommandOptions {
 }
 
 const MAX_OUTPUT_BYTES = 4 * 1024 * 1024
+const MAX_REPOSITORY_RESPONSE_CHARS = 1_000_000
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function metadataText(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const text = value.trim()
+  return text !== '' && text.length <= 100 ? text : null
+}
+
+export function parseGitHubRepositoryStats(value: unknown): MarketplaceRepositoryStats | null {
+  if (!isRecord(value)) return null
+  const counts = [value.forks_count, value.open_issues_count, value.stargazers_count]
+  if (counts.some(count => !Number.isSafeInteger(count) || (count as number) < 0)) return null
+  const updatedAt = metadataText(value.updated_at)
+  return {
+    forks: value.forks_count as number,
+    language: metadataText(value.language),
+    license: isRecord(value.license) ? metadataText(value.license.name) : null,
+    openIssues: value.open_issues_count as number,
+    stars: value.stargazers_count as number,
+    updatedAt: updatedAt !== null && Number.isFinite(Date.parse(updatedAt)) ? updatedAt : null,
+  }
+}
 
 function validateRepository(repository: string): void {
   if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(repository)) {
@@ -496,6 +523,32 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       }
     }
     throw new Error(`failed to load public marketplace catalog: ${String(publicError)}`)
+  }
+
+  async loadRepositoryStats(repository: string): Promise<MarketplaceRepositoryStats | null> {
+    validateRepository(repository)
+    try {
+      const response = await (this.#options.fetch ?? globalThis.fetch)(
+        `https://api.github.com/repos/${repository}`,
+        {
+          headers: {
+            accept: 'application/vnd.github+json',
+            'user-agent': 'tockteam-desktop',
+            'x-github-api-version': '2022-11-28',
+          },
+          signal: AbortSignal.timeout(30_000),
+        },
+      )
+      if (!response.ok) throw new Error(`GitHub repository request failed with HTTP ${String(response.status)}`)
+      const text = await response.text()
+      if (text.length > MAX_REPOSITORY_RESPONSE_CHARS) throw new Error('GitHub repository response is too large')
+      const stats = parseGitHubRepositoryStats(JSON.parse(text) as unknown)
+      if (stats === null) throw new Error('GitHub repository response omitted valid statistics')
+      return stats
+    } catch (error) {
+      this.#options.onLog?.(`marketplace repository metadata unavailable for ${repository}: ${String(error)}`)
+      return null
+    }
   }
 
   async resolveCommit(repository: string): Promise<string> {

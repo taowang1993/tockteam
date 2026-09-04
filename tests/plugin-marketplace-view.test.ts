@@ -17,6 +17,7 @@ function plugin(overrides: Partial<MarketplacePlugin> & Pick<MarketplacePlugin, 
     pushedAt: null,
     repository: `example/${overrides.id}`,
     runtimeRisk: 'profile-bundle',
+    stats: null,
     tags: [],
     title: overrides.id,
     trust: 'community',
@@ -39,9 +40,13 @@ const catalog = [
   plugin({ id: 'disabled', installed: true, updateAvailable: true }),
 ]
 
-test('Marketplace built-in visibility copy is localized', () => {
+test('Marketplace built-in visibility and repository metadata copy are localized', () => {
   assert.equal(MARKETPLACE_MESSAGES.en['show-builtins'], 'Show Built-in Plugins')
   assert.equal(MARKETPLACE_MESSAGES.zh['show-builtins'], '显示内置插件')
+  assert.equal(MARKETPLACE_MESSAGES.en['open-issues'], 'Open Issues and Pull Requests')
+  assert.equal(MARKETPLACE_MESSAGES.zh['open-issues'], '开放 Issue 与 PR')
+  assert.equal(MARKETPLACE_MESSAGES.en.license, 'License')
+  assert.equal(MARKETPLACE_MESSAGES.zh.license, '许可证')
 })
 
 const filters = {

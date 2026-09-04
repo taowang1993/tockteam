@@ -21,6 +21,11 @@ export type MarketplaceMessage =
   | 'category'
   | 'mechanism'
   | 'updated'
+  | 'stars'
+  | 'forks'
+  | 'open-issues'
+  | 'language'
+  | 'license'
   | 'unknown'
   | 'repository'
   | 'trust'
@@ -118,6 +123,11 @@ export const MARKETPLACE_MESSAGES: LocaleMessages<MarketplaceMessage> = {
     category: 'Category',
     mechanism: 'Mechanism',
     updated: 'Updated',
+    stars: 'Stars',
+    forks: 'Forks',
+    'open-issues': 'Open Issues and Pull Requests',
+    language: 'Language',
+    license: 'License',
     unknown: 'Unknown',
     repository: 'Repository',
     trust: 'Source trust',
@@ -214,6 +224,11 @@ export const MARKETPLACE_MESSAGES: LocaleMessages<MarketplaceMessage> = {
     category: '分类',
     mechanism: '安装机制',
     updated: '更新时间',
+    stars: '星标',
+    forks: '复刻',
+    'open-issues': '开放 Issue 与 PR',
+    language: '主要语言',
+    license: '许可证',
     unknown: '未知',
     repository: '仓库',
     trust: '来源信任',

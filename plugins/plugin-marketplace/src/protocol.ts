@@ -85,6 +85,15 @@ export function isProtectedMarketplacePlugin(
       && PROTECTED_PLUGIN_PACKAGES.has(packageName.toLowerCase()))
 }
 
+export interface MarketplaceRepositoryStats {
+  forks: number
+  language: string | null
+  license: string | null
+  openIssues: number
+  stars: number
+  updatedAt: string | null
+}
+
 export interface MarketplacePlugin {
   category: string
   description: string
@@ -98,6 +107,7 @@ export interface MarketplacePlugin {
   pushedAt: string | null
   repository: string
   runtimeRisk: MarketplaceRuntimeRisk
+  stats: MarketplaceRepositoryStats | null
   tags: string[]
   title: string
   trust: MarketplaceTrust
@@ -192,6 +202,7 @@ export interface MarketplacePlanIdentity {
 
 export type MarketplaceCommand =
   | { type: 'refresh' }
+  | { type: 'load-repository-stats'; pluginId: string }
   | { type: 'inspect'; action: MarketplaceAction; pluginId: string }
   | { type: 'prepare'; action: MarketplaceAction; pluginId: string }
   | {
@@ -234,6 +245,15 @@ export function parseMarketplaceCommand(value: unknown): MarketplaceCommand {
         expectedTransactionId: value.expectedTransactionId,
       }),
     }
+  }
+  if (value.type === 'load-repository-stats') {
+    if (Object.keys(value).some(key => key !== 'type' && key !== 'pluginId')
+      || typeof value.pluginId !== 'string'
+      || value.pluginId === ''
+      || value.pluginId.length > 100) {
+      throw new Error('invalid marketplace repository stats command')
+    }
+    return { type: 'load-repository-stats', pluginId: value.pluginId }
   }
   if (value.type === 'inspect' || value.type === 'prepare') {
     if (!['install', 'update', 'enable', 'disable', 'uninstall'].includes(String(value.action))

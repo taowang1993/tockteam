@@ -181,6 +181,7 @@ export function parseMarketplaceCatalog(
       pushedAt: row.pushedAt,
       repository: row.repository,
       runtimeRisk: runtimeRisk(row.mechanism),
+      stats: null,
       tags: row.tags,
       title: row.title,
       trust: row.trust,

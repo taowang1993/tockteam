@@ -6,7 +6,11 @@ import { dirname, join, win32 } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { parseMarketplaceCatalog } from '../plugins/plugin-marketplace/src/catalog.ts'
-import { isProtectedMarketplacePlugin } from '../plugins/plugin-marketplace/src/protocol.ts'
+import {
+  isProtectedMarketplacePlugin,
+  parseMarketplaceCommand,
+  type MarketplaceRepositoryStats,
+} from '../plugins/plugin-marketplace/src/protocol.ts'
 import type {
   BundleBuildInput,
   DshCommandInput,
@@ -15,6 +19,7 @@ import type {
 } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import {
   findGitHubCli,
+  parseGitHubRepositoryStats,
   previewSandboxPolicy,
   previewScriptCommand,
   ProductionMarketplacePlatform,
@@ -171,6 +176,15 @@ class FakePlatform implements MarketplacePlatform {
   latestCommit = COMMIT
   bundleName = '@example/bundle-demo'
   bundleDescription = 'Bundle demo manifest'
+  repositoryStats: MarketplaceRepositoryStats | null = {
+    forks: 5,
+    language: 'TypeScript',
+    license: 'MIT License',
+    openIssues: 7,
+    stars: 42,
+    updatedAt: '2026-08-27T12:00:00Z',
+  }
+  readonly repositoryStatsLoads: string[] = []
 
   async authStatus(): Promise<MarketplaceAuthResult> {
     return { detail: 'test auth', status: 'ready' }
@@ -190,6 +204,11 @@ class FakePlatform implements MarketplacePlatform {
 
   async loadCatalog(): Promise<unknown> {
     return this.catalog
+  }
+
+  async loadRepositoryStats(repository: string): Promise<MarketplaceRepositoryStats | null> {
+    this.repositoryStatsLoads.push(repository)
+    return this.repositoryStats
   }
 
   async readRepositoryFile(repository: string, path: string): Promise<string | null> {
@@ -299,6 +318,53 @@ function fixture(): {
     runtime,
   }
 }
+
+test('GitHub repository metadata accepts bounded fields and rejects malformed counts', async () => {
+  assert.deepEqual(parseGitHubRepositoryStats({
+    forks_count: 5,
+    language: 'TypeScript',
+    license: { name: 'MIT License' },
+    open_issues_count: 7,
+    stargazers_count: 42,
+    updated_at: '2026-08-27T12:00:00Z',
+  }), {
+    forks: 5,
+    language: 'TypeScript',
+    license: 'MIT License',
+    openIssues: 7,
+    stars: 42,
+    updatedAt: '2026-08-27T12:00:00Z',
+  })
+  assert.equal(parseGitHubRepositoryStats({
+    forks_count: -1,
+    open_issues_count: 0,
+    stargazers_count: 0,
+  }), null)
+
+  const logs: string[] = []
+  const platform = new ProductionMarketplacePlatform({
+    cliEntry: '/unused/dsh.mjs',
+    cwd: '/unused',
+    env: {},
+    fetch: async () => new Response('{"stargazers_count":"many"}', { status: 200 }),
+    nodeBinary: process.execPath,
+    onLog: message => { logs.push(message) },
+    pnpmEntry: '/unused/pnpm.mjs',
+  })
+  assert.equal(await platform.loadRepositoryStats('example/plugin'), null)
+  assert.match(logs.join('\n'), /metadata unavailable/u)
+})
+
+test('repository metadata command validates its selected plugin', () => {
+  assert.deepEqual(parseMarketplaceCommand({
+    type: 'load-repository-stats',
+    pluginId: 'bundle-demo',
+  }), { type: 'load-repository-stats', pluginId: 'bundle-demo' })
+  assert.throws(() => parseMarketplaceCommand({
+    type: 'load-repository-stats',
+    pluginId: '',
+  }), /invalid marketplace repository stats command/u)
+})
 
 test('catalog parser keeps safe entries and labels unsupported managers', () => {
   const catalog = parseMarketplaceCatalog(catalogDocument())
@@ -575,6 +641,34 @@ test('scripted bundle previews fail closed without a write sandbox', () => {
     platform: 'darwin',
     root: '/preview',
   }), /unavailable on darwin/)
+})
+
+test('repository metadata loads once per repository until the catalog refreshes', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    let snapshot = await setup.manager.dispatch({
+      type: 'load-repository-stats',
+      pluginId: 'bundle-demo',
+    })
+    assert.deepEqual(snapshot.catalog.find(plugin => plugin.id === 'bundle-demo')?.stats, setup.platform.repositoryStats)
+    await setup.manager.dispatch({ type: 'load-repository-stats', pluginId: 'bundle-demo' })
+    assert.deepEqual(setup.platform.repositoryStatsLoads, ['dsh-external/bundle-demo'])
+
+    setup.platform.repositoryStats = { ...setup.platform.repositoryStats!, stars: 43 }
+    await setup.manager.dispatch({ type: 'refresh' })
+    snapshot = await setup.manager.dispatch({
+      type: 'load-repository-stats',
+      pluginId: 'bundle-demo',
+    })
+    assert.equal(snapshot.catalog.find(plugin => plugin.id === 'bundle-demo')?.stats?.stars, 43)
+    assert.deepEqual(setup.platform.repositoryStatsLoads, [
+      'dsh-external/bundle-demo',
+      'dsh-external/bundle-demo',
+    ])
+  } finally {
+    setup.cleanup()
+  }
 })
 
 test('refresh keeps public catalogs available when GitHub CLI is unavailable', async () => {
