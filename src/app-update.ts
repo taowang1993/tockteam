@@ -62,6 +62,23 @@ function versionOf(value: unknown, fallback: string | null): string | null {
   return typeof version === 'string' && version.length <= MAX_TEXT ? version : fallback
 }
 
+const PROXY_FAILURE_CODES = new Set([
+  'ERR_PROXY_AUTH_UNSUPPORTED',
+  'ERR_PROXY_CONNECTION_FAILED',
+  'ERR_TUNNEL_CONNECTION_FAILED',
+])
+
+function updaterErrorCode(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'code' in error
+    && typeof error.code === 'string') return error.code.toUpperCase()
+  const match = /\bERR_[A-Z0-9_]+\b/u.exec(error instanceof Error ? error.message : String(error))
+  return match?.[0] ?? ''
+}
+
+function isProxyFailure(error: unknown): boolean {
+  return PROXY_FAILURE_CODES.has(updaterErrorCode(error))
+}
+
 function resourcesPathOf(app: DesktopUpdateApp): string {
   if (typeof app.resourcesPath === 'string') return app.resourcesPath
   const candidate = (process as NodeJS.Process & { resourcesPath?: unknown }).resourcesPath
@@ -120,6 +137,7 @@ export function createDesktopAppUpdater(args: Readonly<{
   onStateChange?: (state: DesktopAppUpdateState) => void
   prepareInstall?: () => Promise<void>
   recoverInstallFailure?: () => Promise<void>
+  bypassProxy?: () => Promise<void>
   startupDelayMs?: number
   pollIntervalMs?: number
   now?: () => Date
@@ -130,6 +148,7 @@ export function createDesktopAppUpdater(args: Readonly<{
   let activeAction: 'check' | 'download' | 'install' | null = null
   let installPrepared = false
   let installRecoveryRunning = false
+  let proxyBypassed = false
   let startupTimer: ReturnType<typeof setTimeout> | undefined
   let pollTimer: ReturnType<typeof setInterval> | undefined
   let started = false
@@ -258,6 +277,9 @@ export function createDesktopAppUpdater(args: Readonly<{
     })
     bind('error', (error: unknown) => {
       if (disposed || installRecoveryRunning) return
+      if (!proxyBypassed && args.bypassProxy !== undefined
+        && (activeAction === 'check' || activeAction === 'download')
+        && isProxyFailure(error)) return
       if (installPrepared) {
         activeAction = null
         void recoverPreparedInstall(error)
@@ -292,6 +314,17 @@ export function createDesktopAppUpdater(args: Readonly<{
     return await adapterPromise
   }
 
+  const runWithProxyFallback = async <T>(operation: () => Promise<T>): Promise<T> => {
+    try {
+      return await operation()
+    } catch (error) {
+      if (proxyBypassed || args.bypassProxy === undefined || !isProxyFailure(error)) throw error
+      proxyBypassed = true
+      await args.bypassProxy()
+      return await operation()
+    }
+  }
+
   const check = async (): Promise<DesktopAppUpdateActionResult> => {
     if (disposed || !state.enabled || activeAction !== null || state.downloadedVersion !== null) {
       return actionResult(false, false, state)
@@ -307,7 +340,7 @@ export function createDesktopAppUpdater(args: Readonly<{
     })
     try {
       const target = await loadAdapter()
-      await target.checkForUpdates()
+      await runWithProxyFallback(() => target.checkForUpdates())
       if (state.status === 'checking') {
         setState({
           ...state,
@@ -341,7 +374,7 @@ export function createDesktopAppUpdater(args: Readonly<{
     })
     try {
       const target = await loadAdapter()
-      await target.downloadUpdate()
+      await runWithProxyFallback(() => target.downloadUpdate())
       return actionResult(true, true, state)
     } catch (error) {
       return actionResult(true, false, setError(error, 'download'))

@@ -3487,6 +3487,13 @@ function broadcastDesktopAppUpdateState(state: ReturnType<DesktopAppUpdater['get
   window.webContents.send(DESKTOP_APP_UPDATE_CHANNELS.state, state)
 }
 
+async function bypassUpdaterProxy(): Promise<void> {
+  const updaterSession = session.fromPartition('electron-updater', { cache: false })
+  await updaterSession.setProxy({ mode: 'direct' })
+  await updaterSession.closeAllConnections()
+  appendLog('desktop', 'configured proxy unreachable; retrying the update directly')
+}
+
 function buildMenu(): void {
   const text = labels()
   const info = desktopInfo()
@@ -3883,6 +3890,7 @@ async function bootstrap(): Promise<void> {
       isPackaged: app.isPackaged,
       resourcesPath: process.resourcesPath,
     },
+    bypassProxy: bypassUpdaterProxy,
     onStateChange: broadcastDesktopAppUpdateState,
     prepareInstall: prepareUpdaterInstall,
     recoverInstallFailure: recoverUpdaterInstall,

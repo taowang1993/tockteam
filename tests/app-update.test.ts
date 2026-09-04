@@ -145,6 +145,93 @@ test('duplicate install is rejected until asynchronous recovery resets authority
   owner.dispose()
 })
 
+test('proxy failures retry once through a direct updater connection without flashing an error', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
+  mkdirSync(join(root, 'resources'))
+  writeFileSync(join(root, 'resources', 'app-update.yml'), 'provider: generic\n')
+  const updater = new FakeUpdater()
+  let calls = 0
+  updater.checkForUpdates = async () => {
+    calls += 1
+    if (calls === 1) {
+      const error = Object.assign(new Error('net::ERR_PROXY_CONNECTION_FAILED'), {
+        code: 'ERR_PROXY_CONNECTION_FAILED',
+      })
+      updater.emit('error', error)
+      throw error
+    }
+    updater.emit('update-available', { version: '1.3.0' })
+  }
+  let bypassCalls = 0
+  const owner = createDesktopAppUpdater({
+    app: { ...fakeApp(root, true), resourcesPath: join(root, 'resources') },
+    updater,
+    bypassProxy: async () => { bypassCalls += 1 },
+  })
+  const states: string[] = []
+  owner.onStateChange(state => { states.push(state.status) })
+
+  const result = await owner.check()
+  assert.equal(result.completed, true)
+  assert.equal(result.state.status, 'available')
+  assert.equal(calls, 2)
+  assert.equal(bypassCalls, 1)
+  assert.equal(states.includes('error'), false)
+
+  updater.checkForUpdates = async () => {
+    calls += 1
+    throw new Error('net::ERR_PROXY_CONNECTION_FAILED')
+  }
+  assert.equal((await owner.check()).state.status, 'error')
+  assert.equal(calls, 3)
+  assert.equal(bypassCalls, 1)
+})
+
+test('download retries once after a proxy tunnel failure', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
+  mkdirSync(join(root, 'resources'))
+  writeFileSync(join(root, 'resources', 'app-update.yml'), 'provider: generic\n')
+  const updater = new FakeUpdater()
+  let calls = 0
+  updater.downloadUpdate = async () => {
+    calls += 1
+    if (calls === 1) {
+      const error = new Error('net::ERR_TUNNEL_CONNECTION_FAILED')
+      updater.emit('error', error)
+      throw error
+    }
+    updater.emit('update-downloaded', { version: '1.3.0' })
+  }
+  let bypassCalls = 0
+  const owner = createDesktopAppUpdater({
+    app: { ...fakeApp(root, true), resourcesPath: join(root, 'resources') },
+    updater,
+    bypassProxy: async () => { bypassCalls += 1 },
+  })
+  updater.emit('update-available', { version: '1.3.0' })
+
+  assert.equal((await owner.download()).state.status, 'downloaded')
+  assert.equal(calls, 2)
+  assert.equal(bypassCalls, 1)
+})
+
+test('unrelated updater failures do not bypass the configured proxy', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
+  mkdirSync(join(root, 'resources'))
+  writeFileSync(join(root, 'resources', 'app-update.yml'), 'provider: generic\n')
+  const updater = new FakeUpdater()
+  updater.checkForUpdates = async () => { throw Object.assign(new Error('Not Found'), { code: 'HTTP_404' }) }
+  let bypassCalls = 0
+  const owner = createDesktopAppUpdater({
+    app: { ...fakeApp(root, true), resourcesPath: join(root, 'resources') },
+    updater,
+    bypassProxy: async () => { bypassCalls += 1 },
+  })
+
+  assert.equal((await owner.check()).state.status, 'error')
+  assert.equal(bypassCalls, 0)
+})
+
 test('failed check/download/install remain retryable and recovery runs', async () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-update-'))
   mkdirSync(join(root, 'resources'))
