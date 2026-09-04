@@ -60,6 +60,7 @@ export interface ProductionMarketplacePlatformOptions {
   fetch?: typeof globalThis.fetch
   nodeBinary: string
   pnpmEntry: string
+  sandboxLauncher?: string | undefined
   onLog?: (message: string) => void
 }
 
@@ -306,23 +307,29 @@ export function previewSandboxLauncher(input: {
   platform?: NodeJS.Platform
   readRoots?: readonly string[]
   root: string
-  sandbox?: string
+  sandbox?: string | undefined
 }): { args: string[]; command: string } {
   const platform = input.platform ?? process.platform
-  const sandbox = input.sandbox ?? '/usr/bin/sandbox-exec'
   const pathExists = input.pathExists ?? existsSync
-  if (platform !== 'darwin' || !pathExists(sandbox)) {
-    throw new Error(
-      `marketplace previews require a process sandbox, which is unavailable on ${platform}`,
-    )
+  const sandbox = input.sandbox ?? (platform === 'darwin' ? '/usr/bin/sandbox-exec' : undefined)
+  if (platform === 'darwin' && sandbox !== undefined && pathExists(sandbox)) {
+    return {
+      args: ['-p', previewSandboxPolicy(input.root, {
+        ...(input.network === undefined ? {} : { network: input.network }),
+        ...(input.readRoots === undefined ? {} : { readRoots: input.readRoots }),
+      })],
+      command: sandbox,
+    }
   }
-  return {
-    args: ['-p', previewSandboxPolicy(input.root, {
-      ...(input.network === undefined ? {} : { network: input.network }),
-      ...(input.readRoots === undefined ? {} : { readRoots: input.readRoots }),
-    })],
-    command: sandbox,
+  if (platform === 'linux' && sandbox !== undefined && pathExists(sandbox)) {
+    return {
+      args: ['--ro', '/', '--rw', input.root, '--rw', '/dev/null', '--'],
+      command: sandbox,
+    }
   }
+  throw new Error(
+    `marketplace previews require a process sandbox, which is unavailable on ${platform}`,
+  )
 }
 
 interface PreviewScriptCommandInput {
@@ -333,7 +340,7 @@ interface PreviewScriptCommandInput {
   platform?: NodeJS.Platform
   readRoots?: readonly string[]
   root: string
-  sandbox?: string
+  sandbox?: string | undefined
 }
 
 /** Select a write-restricted launcher or reject the scripted preview. */
@@ -435,6 +442,7 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
           dirname(dirname(this.#options.pnpmEntry)),
         ],
         root: input.sandboxRoot,
+        sandbox: this.#options.sandboxLauncher,
       })
       this.#options.onLog?.(`marketplace build: ${command.label}`)
       const result = await runCommand(launcher.command, launcher.args, {
@@ -561,6 +569,7 @@ export class ProductionMarketplacePlatform implements MarketplacePlatform {
       nodeBinary: this.#options.nodeBinary,
       readRoots: [dirname(dirname(this.#options.nodeBinary)), dirname(this.#options.cliEntry)],
       root: input.sandboxRoot,
+      sandbox: this.#options.sandboxLauncher,
     })
     const workspace = join(input.sandboxRoot, 'workspace')
     mkdirSync(workspace, { recursive: true, mode: 0o700 })

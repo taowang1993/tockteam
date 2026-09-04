@@ -81,6 +81,7 @@ import {
   type BundledRuntimePaths,
 } from './runtime-paths.ts'
 import { resolveProductVersion } from './version.ts'
+import { resolveLandlockLauncher } from './landlock-launcher.ts'
 import {
   LAUNCHER_ROLE,
   LAUNCHER_SESSION_PARTITION,
@@ -1186,6 +1187,7 @@ function previewRuntimeOptions(input: {
   const launcher = previewSandboxLauncher({
     readRoots: [paths.runtimeRoot, dirname(paths.nodeBinDirectory)],
     root: input.sandboxRoot,
+    sandbox: resolveLandlockLauncher(paths.runtimeRoot),
   })
   return {
     args: ['--profile', DESKTOP_PROFILE],
@@ -3265,6 +3267,7 @@ function createPluginMarketplace(): PluginMarketplaceManager {
       env: environment,
       nodeBinary: paths.nodeBinary,
       pnpmEntry: paths.pnpmEntry,
+      sandboxLauncher: resolveLandlockLauncher(paths.runtimeRoot),
       onLog: line => { appendLog('desktop', `[marketplace] ${line}`) },
     }),
     profile: DESKTOP_PROFILE,
