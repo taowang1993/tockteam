@@ -95,6 +95,24 @@ import {
 import { reviewCommitFromBetterSidebar } from './review-diff.ts'
 import type { GitReviewCommit } from './review-types.ts'
 import {
+  ComposerInputHistory,
+  type ComposerHistoryEventWindow,
+} from './composer-input-history.ts'
+import {
+  focusComposerEnd,
+  isComposerInput,
+  readComposerCaret,
+} from './composer-history-dom.ts'
+import {
+  historyDirectionForKey,
+  isAtHistoryBoundary,
+} from './composer-history-keyboard.ts'
+import {
+  composerInputForSession,
+  hasOpenComposerTriggerMenu,
+  type ComposerHistoryInputTriggers,
+} from './composer-history-bridge.ts'
+import {
   SidebarRuntimeSettingsService,
   type SidebarRuntimePreferences,
 } from './runtime-settings.ts'
@@ -136,11 +154,16 @@ interface RunningToolCall {
 }
 
 interface ConversationSnapshot {
+  hasMore?: boolean
+  loadingOlder?: boolean
   runningCalls?: readonly RunningToolCall[]
 }
 
 interface SessionBinding {
-  session: ObservableSnapshot<ConversationSnapshot>
+  session: ObservableSnapshot<ConversationSnapshot> & {
+    loadOlder?(): Promise<void>
+  }
+  eventSource: ObservableSnapshot<ComposerHistoryEventWindow>
 }
 
 interface SessionsService extends ReviewSessionsService {
@@ -149,6 +172,8 @@ interface SessionsService extends ReviewSessionsService {
   fork(options: { sessionId: string; increaseTitle?: boolean }): Promise<string>
   open(id: string): void
 }
+
+interface InputTriggersService extends ComposerHistoryInputTriggers, ReviewInputTriggersService {}
 
 interface WorkspaceView {
   workspaceId: string
@@ -2201,7 +2226,7 @@ export function apply(ctx: ClientContext): void {
   const panels = ctx.get('desktopPanels') as DesktopPanels
   const pinnedSummary = ctx.get('pinnedSummary') as PinnedSummary
   const sessions = ctx.get('sessions') as SessionsService
-  const inputTriggers = ctx.get('inputTriggers') as ReviewInputTriggersService
+  const inputTriggers = ctx.get('inputTriggers') as InputTriggersService
   const workspaces = ctx.get('workspaces') as WorkspacesService
   const originalOpenPath = workspaces.openPath
   const openExternalPath = async (path: string): Promise<void> => {
@@ -2216,6 +2241,7 @@ export function apply(ctx: ClientContext): void {
     new HttpSidebarPreferencesStorage(fetch.bind(globalThis)),
   )
   const runtimeSettings = new SidebarRuntimeSettingsService()
+  const composerHistory = new ComposerInputHistory()
   const service = new WorkspaceToolsService(
     desktopSidebar,
     panels,
@@ -2264,8 +2290,86 @@ export function apply(ctx: ClientContext): void {
   })
   let settingsActions: BoundSidebarSettingsActions | undefined
   ctx.effect(() => {
+    let historySessionId: string | undefined
+    let stopHistory = (): void => {}
+    const synchronizeHistory = (): void => {
+      const nextSessionId = sessions.list.getSnapshot().current
+      if (nextSessionId === historySessionId) return
+      composerHistory.resetNavigation(historySessionId)
+      stopHistory()
+      stopHistory = (): void => {}
+      historySessionId = undefined
+      if (nextSessionId === undefined) return
+      const binding = sessions.binding(nextSessionId)
+      if (binding === undefined) return
+      historySessionId = nextSessionId
+      const synchronize = (): void => {
+        composerHistory.synchronize(nextSessionId, binding.eventSource.getSnapshot())
+      }
+      synchronize()
+      stopHistory = binding.eventSource.subscribe(synchronize)
+    }
     const syncSession = (): void => {
       desktopSidebar.setSession(sessions.list.getSnapshot().current ?? null)
+      synchronizeHistory()
+    }
+    const resetComposerHistory = (target: EventTarget | null): void => {
+      if (!isComposerInput(target)) return
+      composerHistory.resetNavigation(sessions.list.getSnapshot().current)
+    }
+    const onComposerInput = (event: Event): void => {
+      resetComposerHistory(event.target)
+    }
+    const onComposerClick = (event: MouseEvent): void => {
+      const target = event.target
+      const button = target instanceof Element ? target.closest('button') : null
+      if (button === null || button.closest('[data-composer-card]') === null) return
+      composerHistory.resetNavigation(sessions.list.getSnapshot().current)
+    }
+    const onComposerKeyDown = (event: KeyboardEvent): void => {
+      const composer = event.target
+      if (!isComposerInput(composer)) return
+      const sessionId = sessions.list.getSnapshot().current
+      if (sessionId === undefined) return
+      if (hasOpenComposerTriggerMenu(inputTriggers, sessions, sessionId)) return
+      synchronizeHistory()
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+        composerHistory.resetNavigation(sessionId)
+        return
+      }
+      const direction = historyDirectionForKey(event)
+      if (direction === null) return
+      const history = composerHistory.forSession(sessionId)
+      const state = history.snapshot()
+      const caret = readComposerCaret(composer)
+      if (caret === null) return
+      if (!isAtHistoryBoundary(caret, direction, state.cursor !== null)) return
+      const binding = sessions.binding(sessionId)
+      if (binding === undefined) return
+      if (state.entries.length === 0) {
+        if (direction === 'older'
+          && composerHistory.requestOlder(sessionId, binding.session)) {
+          event.preventDefault()
+          event.stopImmediatePropagation()
+        }
+        return
+      }
+      if (direction === 'newer' && state.cursor === null) return
+      const input = composerInputForSession(ctx, sessions, sessionId)
+      if (input === undefined) return
+      const result = history.navigate(direction, caret.value)
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      if (!result.changed || result.value === null) {
+        if (direction === 'older') {
+          composerHistory.requestOlder(sessionId, binding.session)
+        }
+        return
+      }
+      input.setDraft(result.value)
+      window.requestAnimationFrame(() => {
+        if (composer.isConnected) focusComposerEnd(composer)
+      })
     }
     syncSession()
     const stopSessions = sessions.list.subscribe(syncSession)
@@ -2315,6 +2419,9 @@ export function apply(ctx: ClientContext): void {
     }
     workspaces.openPath = interceptOpenPath
     document.addEventListener('click', interceptExternalLink, true)
+    document.addEventListener('click', onComposerClick, true)
+    document.addEventListener('input', onComposerInput, true)
+    document.addEventListener('keydown', onComposerKeyDown, true)
     syncRuntime()
     void runtimeSettings.start()
     void desktopSidebar.start()
@@ -2326,10 +2433,14 @@ export function apply(ctx: ClientContext): void {
     )
     const removeService = ctx.reflect.provide('workspaceTools', service, undefined)
     return () => {
+      stopHistory()
       stopSessions()
       stopSettings()
       stopRuntime()
       document.removeEventListener('click', interceptExternalLink, true)
+      document.removeEventListener('click', onComposerClick, true)
+      document.removeEventListener('input', onComposerInput, true)
+      document.removeEventListener('keydown', onComposerKeyDown, true)
       if (workspaces.openPath === interceptOpenPath) {
         workspaces.openPath = originalOpenPath
       }
