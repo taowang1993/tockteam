@@ -29,6 +29,7 @@ import {
 import { fileURLToPath } from 'node:url'
 import { DSH_SOURCE_SPEC, resolveDshSource, resolvePinnedPnpm } from './dsh-source.mjs'
 import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
+import { restoreSettingsBoundary } from './settings-boundary.mjs'
 import { adaptTuiRendererPackage } from './tui-upstream-adapter.mjs'
 import { verifyTockTutorBuildManifest } from './tocktutor-build-manifest.mjs'
 
@@ -1142,6 +1143,7 @@ if (npmRelease) {
   rewriteWorkspaceLinks()
   relinkInstallationWorkspacePackages()
 }
+restoreSettingsBoundary(runtime)
 console.log('Installing desktop packages')
 installDesktopPackages()
 copyFileSync(

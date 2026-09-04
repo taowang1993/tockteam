@@ -98,6 +98,7 @@ stdenv.mkDerivation rec {
     manifest.dependencies = Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
     writeFileSync('package.json', JSON.stringify(manifest, undefined, 2) + '\n')
     NODE
+    node ${../scripts/settings-boundary.mjs} "$PWD"
 
     runHook postBuild
   '';

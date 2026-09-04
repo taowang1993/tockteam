@@ -162,6 +162,38 @@ try {
   assert.equal(indexResponse.status, 200)
   assert.match(index, /<div id="root"><\/div>/)
 
+  const settingsDescribeResponse = await fetch(new URL('/api/settings.describe', base), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: 'web-smoke-settings-describe',
+      method: 'settings.describe',
+      payload: {},
+    }),
+  })
+  const settingsDescribe = await settingsDescribeResponse.json()
+  assert.equal(settingsDescribeResponse.status, 200)
+  assert.equal(settingsDescribe.result?.ok, true, JSON.stringify(settingsDescribe))
+  const settingsNamespaces = settingsDescribe.result.value.namespaces.map(entry => entry.ns)
+  assert.ok(settingsNamespaces.includes('agent-loop'))
+  assert.equal(settingsNamespaces.includes('agent-default-model'), false)
+
+  const blockedSettingsResponse = await fetch(new URL('/api/settings.replace', base), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: 'web-smoke-settings-replace',
+      method: 'settings.replace',
+      payload: { ns: 'agent-default-model', section: {} },
+    }),
+  })
+  const blockedSettings = await blockedSettingsResponse.json()
+  assert.equal(blockedSettingsResponse.status, 200)
+  assert.equal(blockedSettings.result?.ok, false, JSON.stringify(blockedSettings))
+  assert.equal(blockedSettings.result.error.code, 'settings-not-exposed')
+
   // The TockTeam web plugins enroll their browser entries in the client graph.
   const bootEntries = parseBootEntries(index)
   const loaded = []
@@ -358,6 +390,7 @@ try {
       `Plugin compatible: ${plugin.id} (Host active, Client ${String(plugin.bytes)} bytes)`,
     )
   }
+  console.log('Settings API: namespace allowlist and write rejection verified')
   console.log('Skins preferences API: ready, persistence verified')
   console.log('Sidebar workspace Git API: ready, repository facts verified')
   console.log('Better Sidebar Host API: ready, session/files/Git verified on the web surface')
