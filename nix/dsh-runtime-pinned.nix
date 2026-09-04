@@ -14,6 +14,9 @@
 }:
 
 assert dshSourceSpec.source == "npm";
+assert !stdenv.hostPlatform.isLinux
+  || stdenv.hostPlatform.isAarch64
+  || stdenv.hostPlatform.isx86_64;
 
 let
   pinnedPnpm = callPackage ./pnpm-pinned.nix { inherit dshSourceSpec; };
@@ -56,6 +59,9 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     runHook preBuild
     pnpm install --frozen-lockfile --ignore-scripts
+    ${lib.optionalString stdenv.hostPlatform.isLinux ''
+      test -x "node_modules/.pnpm/node_modules/@deepseek-ai/node-addon-landlock-run-linux-${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}/bin/landlock-run"
+    ''}
 
     # Profiles live outside this package, so expose pnpm's complete hoisted
     # graph and record it for the DSH loader's package-resolution fallback.
