@@ -279,7 +279,6 @@ export class LauncherPersistenceRepository {
   #externalGrant: ExternalGrant | undefined
   #externalGrantStatus: LauncherSettingsSnapshot['externalGrantStatus'] = 'none'
   #index: LauncherInternalResultItem[] = []
-  #indexAvailable = false
   #logs: string[] = []
   #recoveredArtifacts = new Set<'external' | 'index' | 'logs' | 'settings'>()
   #recoveredSettings = false
@@ -312,7 +311,7 @@ export class LauncherPersistenceRepository {
     const index = await this.#recoverJson(this.#indexPath, MAX_LAUNCHER_INDEX_BYTES, parseIndex, undefined, recovered => {
       if (recovered) this.#recoveredArtifacts.add('index')
     })
-    this.#index = index ?? []; this.#indexAvailable = index !== undefined
+    this.#index = index ?? []
     this.#logs = await this.#recoverJson(this.#logsPath, MAX_LAUNCHER_LOG_BYTES, parseLogs, [], recovered => {
       if (recovered) this.#recoveredArtifacts.add('logs')
     })
@@ -361,7 +360,6 @@ export class LauncherPersistenceRepository {
 
   get externalWriteAvailable(): boolean { return this.#externalWriteAvailable }
   get secureStorageAvailable(): boolean { return this.#secureStorageUsable() }
-  get isClosed(): boolean { return this.#closed }
 
   getSetting<T>(key: string, defaultValue: T): T {
     if (!isLauncherRuntimeSettingKey(key)) throw new Error('TockLauncher setting key is not allowlisted')
@@ -380,7 +378,6 @@ export class LauncherPersistenceRepository {
   }
 
   readIndex(): readonly LauncherInternalResultItem[] { return Object.freeze(cloneJson(this.#index, MAX_LAUNCHER_INDEX_BYTES)) }
-  hasPersistedIndex(): boolean { return this.#indexAvailable }
 
   #secureStorageUsable(): boolean {
     try {
@@ -471,7 +468,7 @@ export class LauncherPersistenceRepository {
         backupMaxBytes: MAX_LAUNCHER_INDEX_BYTES,
         validateBackup: contents => { parseIndex(JSON.parse(contents) as unknown) },
       })
-      this.#index = parsed; this.#indexAvailable = true
+      this.#index = parsed
     })
   }
 

@@ -7,7 +7,6 @@ import {
 } from './launcher-window-contract.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
 
-export const TOCKLAUNCHER_PRODUCT_NAME = 'TockLauncher'
 export const LAUNCHER_WORK_AREA_MARGIN = 16
 export const LAUNCHER_TOP_FACTOR = 0.12
 

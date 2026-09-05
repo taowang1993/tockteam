@@ -2,7 +2,6 @@ import { constants } from 'node:fs'
 import { access as accessPath, lstat, mkdir, open, realpath, rename, rm, type FileHandle } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { parseLauncherBrowserHttpUrl, parseLauncherCustomBrowserArgumentTemplate } from './launcher-custom-browser-contract.ts'
 
 export { parseLauncherCustomBrowserArgumentTemplate } from './launcher-custom-browser-contract.ts'
@@ -36,18 +35,6 @@ export type LauncherCustomBrowserSnapshot = Readonly<{
   platform: LauncherCustomBrowserPlatform
   status: 'active' | 'none' | 'revoked'
 }>
-
-/** Browser identity is main-owned; renderer snapshots intentionally contain status only. */
-export function projectLauncherCustomBrowserSettings(
-  snapshot: LauncherSettingsSnapshot,
-  _browser: LauncherCustomBrowserSnapshot | Readonly<Record<string, unknown>>,
-  _platform: LauncherCustomBrowserPlatform,
-): LauncherSettingsSnapshot {
-  const values = { ...snapshot.values }
-  delete values['general.browser.customWebBrowser.executableFilePath']
-  delete values['general.browser.customWebBrowserName']
-  return Object.freeze({ ...snapshot, values: Object.freeze(values) })
-}
 
 type ControllerOptions = Readonly<{
   getSetting: <T>(key: string, fallback: T) => T

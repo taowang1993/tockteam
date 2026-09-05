@@ -836,7 +836,6 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         if (signal.aborted) throw abortReason(signal, 'Network navigation canceled')
       }, controller.signal, timeoutMs)
       if (!current()) throw new Error('Network URL action is stale')
-      if (!current()) throw new Error('Network URL action is stale')
       await track(Promise.resolve(options.openExternal(url.toString(), controller.signal)))
       if (!current()) throw new Error('Network URL action is stale')
       return true

@@ -218,14 +218,6 @@ export class LauncherLifecycleController {
     this.args = args
   }
 
-  get isReady(): boolean {
-    return this.ready
-  }
-
-  get resolvedSettings(): LauncherLifecycleSettings | null {
-    return this.settings
-  }
-
   attachUpdater(updater: Readonly<{ start: () => void; dispose: () => void }>): void {
     if (this.disposed) {
       updater.dispose()
@@ -248,10 +240,6 @@ export class LauncherLifecycleController {
       visibleOnAllWorkspaces: settings.visibleOnAllWorkspaces,
     })
     return settings
-  }
-
-  captureToggle(argv: readonly string[]): boolean {
-    return this.args.queue.capture(argv)
   }
 
   async markReady(): Promise<void> {
