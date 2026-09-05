@@ -17,7 +17,7 @@ async function staleLock(lockPath) {
     try { owner = JSON.parse(await readFile(join(lockPath, OWNER_FILE), 'utf8')) }
     catch { return Date.now() - metadata.mtimeMs > MAX_LOCK_AGE_MS }
     if (!Number.isSafeInteger(owner?.pid) || owner.pid <= 0 || !Number.isFinite(owner?.createdAt)) return false
-    return !processIsAlive(owner.pid) || Date.now() - owner.createdAt > MAX_LOCK_AGE_MS
+    return !processIsAlive(owner.pid)
   } catch { return false }
 }
 
