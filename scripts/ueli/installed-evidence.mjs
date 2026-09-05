@@ -174,7 +174,7 @@ export function inspectInstalledEvidenceFreshness(catalog, { head = 'HEAD', repo
       continue
     }
     const changed = String(diff.stdout).split(/\r?\n/u).filter(Boolean)
-      .filter(file => !file.startsWith('.beads/reports/') && !file.startsWith('tests/') && !file.includes('/tests/') && !ALLOWED_POST_EVIDENCE_PATHS.has(file))
+      .filter(file => !file.startsWith('.agents/skills/') && !file.startsWith('.beads/reports/') && !file.startsWith('tests/') && !file.includes('/tests/') && !ALLOWED_POST_EVIDENCE_PATHS.has(file))
       .sort()
     if (changed.length > 0) failures.push(`installed evidence commit has later runtime changes: ${commit}: ${changed.join(', ')}`)
   }

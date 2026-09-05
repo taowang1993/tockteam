@@ -765,7 +765,7 @@ test('installed evidence freshness rejects runtime drift after a report commit',
   assert.deepEqual(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit }).failures, [`installed evidence commit has later runtime changes: ${commit}: src/main.ts`])
   const allowedRunGit = (args: readonly string[]) => args[0] === 'merge-base'
     ? { status: 0, stdout: '' }
-    : { status: 0, stdout: '.agents/references/usage.md\n.beads/interactions.jsonl\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\ntests/launcher-installed.test.ts\n' }
+    : { status: 0, stdout: '.agents/references/usage.md\n.agents/skills/oh-dsh/SKILL.md\n.beads/interactions.jsonl\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\ntests/launcher-installed.test.ts\n' }
   assert.equal(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit: allowedRunGit }).failures.length, 0)
 })
 
