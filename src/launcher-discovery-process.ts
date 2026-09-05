@@ -243,9 +243,9 @@ export async function revalidateLauncherVscodeUri(value: string, expectation: Re
   return parsed.protocol === 'vscode-remote:' && Boolean(parsed.hostname) && !parsed.username && !parsed.password
 }
 
-export function resolveLinuxDesktopEntryInvocation(target: string): Readonly<{ args: readonly string[]; executable: 'gio' }> {
+export function resolveLinuxDesktopEntryInvocation(target: string): Readonly<{ args: readonly string[]; executable: '/usr/bin/gio' }> {
   if (!bounded(target) || !path.posix.isAbsolute(target) || path.posix.extname(target) !== '.desktop') throw new Error('Invalid Linux desktop entry path')
-  return Object.freeze({ args: Object.freeze(['launch', target]), executable: 'gio' })
+  return Object.freeze({ args: Object.freeze(['launch', target]), executable: '/usr/bin/gio' })
 }
 
 export function resolveWindowsApplicationElevationInvocation(

@@ -16,7 +16,7 @@ import {
 } from '../src/launcher-discovery-process.ts'
 
 test('fixed process adapters reject generic or malformed targets', () => {
-  assert.deepEqual(resolveLinuxDesktopEntryInvocation('/usr/share/applications/tockteam.desktop'), { executable: 'gio', args: ['launch', '/usr/share/applications/tockteam.desktop'] })
+  assert.deepEqual(resolveLinuxDesktopEntryInvocation('/usr/share/applications/tockteam.desktop'), { executable: '/usr/bin/gio', args: ['launch', '/usr/share/applications/tockteam.desktop'] })
   assert.throws(() => resolveLinuxDesktopEntryInvocation('../unsafe.desktop'), /desktop entry/u)
   const digest = 'a'.repeat(64)
   const elevated = resolveWindowsApplicationElevationInvocation('C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk', digest)
