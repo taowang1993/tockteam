@@ -104,14 +104,11 @@ export function createLauncherFileSearchTool(options: Readonly<{
     input.focus()
   }
   const invoke = async (action: LauncherPublicAction, item: LauncherPublicResultItem): Promise<void> => {
-    const focus = action.hideWindowAfterInvocation === true
-      ? undefined
-      : { menu: document.activeElement?.getAttribute('role') === 'menuitem', resultId: item.id }
+    const focus = { menu: document.activeElement?.getAttribute('role') === 'menuitem', resultId: item.id }
     try {
       const result = await bridge.invokeAction(action.actionId)
       if (!result.ok) { await search(focus); return }
-      if (action.hideWindowAfterInvocation === true) await bridge.dismiss().catch(() => undefined)
-      else await search(focus)
+      await search(focus)
     } catch {
       status.textContent = launcherText(options.locale, 'actionFailed', 'The action could not be completed.')
       status.setAttribute('data-tone', 'error')

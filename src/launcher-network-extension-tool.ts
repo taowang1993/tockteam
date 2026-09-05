@@ -216,22 +216,17 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     }
   }
   const invoke = async (action: LauncherPublicAction, item: LauncherPublicResultItem): Promise<void> => {
-    const focusItemId = action.hideWindowAfterInvocation === true ? undefined : item.id
     setStatus(`${text('actionWorking', 'Working…')} ${action.description}`)
     try {
       const result = await bridge.invokeAction(action.actionId)
       if (!result.ok) {
-        await search(focusItemId)
+        await search(item.id)
         return
       }
-      if (action.hideWindowAfterInvocation === true) {
-        await bridge.dismiss().catch(() => undefined)
-        return
-      }
-      await search(focusItemId)
+      await search(item.id)
     } catch {
       setStatus(text('actionFailed', 'The action could not be completed.'), 'error')
-      await search(focusItemId)
+      await search(item.id)
     }
   }
   input.addEventListener('input', () => { void search() })

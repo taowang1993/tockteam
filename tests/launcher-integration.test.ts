@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
+const launcherFileSearchTool = readFileSync(new URL('../src/launcher-file-search-tool.ts', import.meta.url), 'utf8')
+const launcherNetworkTool = readFileSync(new URL('../src/launcher-network-extension-tool.ts', import.meta.url), 'utf8')
 const client = readFileSync(new URL('../src/client.ts', import.meta.url), 'utf8')
 const security = readFileSync(new URL('../src/launcher-security.ts', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/preload.ts', import.meta.url), 'utf8')
@@ -37,7 +40,6 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /launcherController\?\.dispose\(\)/u)
   assert.match(main, /executeTockTeamDestination\(record, \(\) =>/u)
   assert.match(main, /fileSearch\.executeAction\(record\)[\s\S]+network\.executeAction\(record\)[\s\S]+executeTockTeamDestination/u)
-  assert.match(main, /if \(await network\.executeAction\(record\)\) \{[\s\S]+hideAfterInvocation/u)
   assert.match(main, /createLauncherLocalExtensions/u)
   assert.match(main, /createLauncherOsExtensions/u)
   assert.match(main, /createLauncherTerminal/u)
@@ -49,8 +51,8 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /launcherAwaitAbortableWithTimeout/u)
   assert.match(main, /properties: \['openFile'\][\s\S]+Browser applications|Browser executables/u)
   assert.match(main, /os\.loadIndexedItems\(signal(?:, preserveSignal)?/u)
-  assert.match(main, /if \(await terminal\.executeAction\(record\)\)/u)
-  assert.match(main, /if \(await os\.executeAction\(record\)\)/u)
+  assert.match(main, /terminal\.executeAction\(record\)/u)
+  assert.match(main, /os\.executeAction\(record\)/u)
   assert.match(main, /invalidateAllLauncherProviders/u)
   assert.match(main, /onWindowCleared/u)
   assert.match(main, /waitForLauncherProvidersIdle/u)
@@ -127,6 +129,15 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(client, /unsubscribeTheme\(\)[\s\S]+unsubscribeRoute\(\)[\s\S]+unsubscribeCommand\(\)/u)
   assert.match(client, /deferSettingsOpen\([\s\S]+requestAnimationFrame[\s\S]+queueMicrotask/u)
   assert.doesNotMatch(main, /createWindow\([^)]*launcher/u)
+})
+
+test('Electron main exclusively applies the after-invocation window policy', () => {
+  const dispatch = main.slice(main.indexOf('const actions = new LauncherActionStore'), main.indexOf('launcherCore = coreSearch'))
+  assert.equal(dispatch.match(/controller\?\.hideAfterInvocation/gu)?.length, 1)
+  assert.match(dispatch, /if \(record\.hideWindowAfterInvocation\) controller\?\.hideAfterInvocation\(record\.owner\.webContentsId\)/u)
+  for (const renderer of [launcher, launcherFileSearchTool, launcherNetworkTool]) {
+    assert.doesNotMatch(renderer, /action\.hideWindowAfterInvocation[\s\S]{0,160}bridge\.dismiss/u)
+  }
 })
 
 test('fixture smoke reads host-owned effect counters instead of renderer authority', () => {

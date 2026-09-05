@@ -2209,34 +2209,24 @@ function initializeLauncher(): void {
     ...(launcherWorkflowFixtureActionTtlMs === undefined ? {} : { ttlMsForSource: sourceExtension => sourceExtension === 'Workflow' ? launcherWorkflowFixtureActionTtlMs : undefined }),
     cancel: async record => await workflow.cancelAction(record),
     execute: async record => {
-      if (await coreSearch.executeAction(record)) return
-      if (await terminal.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
+      let handled = await coreSearch.executeAction(record)
+      if (!handled) handled = await terminal.executeAction(record)
+      if (!handled) handled = await workflow.executeAction(record)
+      if (!handled) handled = await local.executeAction(record)
+      if (!handled) handled = await discovery.executeAction(record)
+      if (!handled) handled = await fileSearch.executeAction(record)
+      if (!handled) handled = await network.executeAction(record)
+      if (!handled) handled = await os.executeAction(record)
+      if (!handled) {
+        await executeTockTeamDestination(record, () => {
+          if (runtimeUrl === undefined) return false
+          return mainWindow === undefined || mainWindow.isDestroyed()
+            ? true
+            : isEligibleDesktopRevealWindow()
+        }, destination => {
+          dispatchWorkbenchRoute({ destination })
+        })
       }
-      if (await workflow.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
-      }
-      if (await local.executeAction(record)) return
-      if (await discovery.executeAction(record)) return
-      if (await fileSearch.executeAction(record)) return
-      if (await network.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
-      }
-      if (await os.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
-      }
-      await executeTockTeamDestination(record, () => {
-        if (runtimeUrl === undefined) return false
-        return mainWindow === undefined || mainWindow.isDestroyed()
-          ? true
-          : isEligibleDesktopRevealWindow()
-      }, destination => {
-        dispatchWorkbenchRoute({ destination })
-      })
       if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
     },
   })

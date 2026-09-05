@@ -591,10 +591,6 @@ async function bootstrap(): Promise<void> {
         await openNetworkTool(candidate!.sourceExtension as 'DeeplTranslator' | 'WebSearch')
         return
       }
-      if (action.hideWindowAfterInvocation === true) {
-        await bridge.dismiss().catch(() => undefined)
-        return
-      }
       search.value = invocationSearchTerm()
       await renderSearch(search.value)
       restoreSearchFocus()
