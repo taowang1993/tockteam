@@ -119,6 +119,7 @@ test('settings renderer never inserts sensitive values and preserves focused con
   assert.match(launcherSettings, /save\('window\.visibleOnAllWorkspaces', checked\)/u)
   assert.doesNotMatch(launcherSettings, /window\.visibleOnAll workspaces/u)
   assert.match(launcherDrafts, /useLauncherDraft<string \| number>/u)
+  assert.match(launcherDrafts, /commitDraft/u)
   assert.match(launcherDraftValue, /typeof left === 'string' && typeof right === 'number'/u)
   assert.match(launcherSettings, /onDraftFoldersChange/u)
   assert.match(launcherSettings, /<LauncherFileSearchSettings [\s\S]+draftFolders=\{simpleFileSearchDraft\}/u)

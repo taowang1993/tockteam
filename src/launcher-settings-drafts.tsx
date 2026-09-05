@@ -8,9 +8,9 @@ function initialText(value: unknown): string | number {
   return typeof value === 'string' || typeof value === 'number' ? value : ''
 }
 
-export function LauncherSyncedInput({ defaultValue, value, onChange, ...props }: ComponentProps<typeof Input>): ReactNode {
-  const [draft, setDraft] = useLauncherDraft<string | number>(initialText(value ?? defaultValue))
-  return <Input {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} />
+export function LauncherSyncedInput({ defaultValue, value, onBlur, onChange, ...props }: ComponentProps<typeof Input>): ReactNode {
+  const [draft, setDraft, commitDraft] = useLauncherDraft<string | number>(initialText(value ?? defaultValue))
+  return <Input {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} onBlur={event => { commitDraft(); onBlur?.(event) }} />
 }
 
 export function LauncherSyncedNativeSelect({ defaultValue, value, onChange, ...props }: ComponentProps<typeof NativeSelect>): ReactNode {
@@ -18,7 +18,7 @@ export function LauncherSyncedNativeSelect({ defaultValue, value, onChange, ...p
   return <NativeSelect {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} />
 }
 
-export function LauncherSyncedTextarea({ defaultValue, value, onChange, ...props }: ComponentProps<typeof Textarea>): ReactNode {
-  const [draft, setDraft] = useLauncherDraft<string>(typeof value === 'string' ? value : typeof defaultValue === 'string' ? defaultValue : '')
-  return <Textarea {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} />
+export function LauncherSyncedTextarea({ defaultValue, value, onBlur, onChange, ...props }: ComponentProps<typeof Textarea>): ReactNode {
+  const [draft, setDraft, commitDraft] = useLauncherDraft<string>(typeof value === 'string' ? value : typeof defaultValue === 'string' ? defaultValue : '')
+  return <Textarea {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} onBlur={event => { commitDraft(); onBlur?.(event) }} />
 }
