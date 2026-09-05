@@ -89,7 +89,7 @@ packaged source artifacts.
 ## Ueli launcher assets
 
 TockTeam packages selected Ueli v9.29.0 launcher assets, including the finite
-operating-system extension icons, from the pinned provenance tree. Ueli is MIT
+operating-system extension icons, from the pinned upstream release. Ueli is MIT
 licensed; source: <https://github.com/oliverschwendener/ueli>.
 Copyright (c) 2023 Oliver Schwendener.
 
