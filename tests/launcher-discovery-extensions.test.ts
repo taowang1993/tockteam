@@ -311,6 +311,32 @@ test('VSCode and JetBrains launch effects receive the provider signal before own
   }
 })
 
+test('Windows shortcut elevation carries its scan-bound digest through confirmation', async () => {
+  const target = 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk'
+  const digest = 'a'.repeat(64)
+  const elevated: Array<{ digest: string; target: string }> = []
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    appDataPath: 'C:\\Users\\max\\AppData\\Roaming',
+    captureApplicationDigest: async () => digest,
+    enabledExtensionIds: () => ['ApplicationSearch'],
+    effects: {
+      confirmOpenApplicationAsAdministrator: async () => true,
+      copyText: () => {}, launchExecutable: () => {}, openApplication: () => {},
+      openApplicationAsAdministrator: async (applicationTarget, applicationDigest) => { elevated.push({ digest: applicationDigest, target: applicationTarget }) },
+      openExternal: () => {}, revealPath: () => {},
+    },
+    homePath: 'C:\\Users\\max', platform: 'Windows',
+    revalidate: { application: async () => true },
+    scanners: { ...entries, ApplicationSearch: async () => [{ id: `applications:${target}`, kind: 'application' as const, name: 'TockTeam', path: target }] },
+  })
+  const [item] = await provider.loadIndexedItems(new AbortController().signal)
+  const admin = item?.additionalActions?.find(action => action.description === 'Open application as administrator')
+  assert.ok(item && admin)
+  await provider.executeAction(record(item, { argument: admin.argument, handlerKey: admin.handlerKey, requiresConfirmation: true }))
+  assert.deepEqual(elevated, [{ digest, target }])
+})
+
 test('Windows applications expose confirmed elevation and store IDs omit reveal', async () => {
   let confirmed = 0
   let elevated = 0

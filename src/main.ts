@@ -124,6 +124,7 @@ import {
 } from './launcher-os-process.ts'
 import { MACOS_SYSTEM_SETTINGS, WINDOWS_SYSTEM_SETTINGS } from './launcher-os-catalog.ts'
 import {
+  digestLauncherElevationTarget,
   launchDetachedLauncherExecutable,
   revalidateLauncherExecutable,
   revalidateLauncherPath,
@@ -1704,9 +1705,11 @@ function initializeLauncher(): void {
         const error = await launcherAwaitAbortable(shell.openPath(target), signal)
         if (error) throw new Error(error)
       },
-      openApplicationAsAdministrator: async (target, signal) => {
+      openApplicationAsAdministrator: async (target, digest, signal) => {
         if (signal.aborted) throw launcherAbortError(signal)
-        const invocation = resolveWindowsApplicationElevationInvocation(target)
+        if (await digestLauncherElevationTarget(target) !== digest) throw new Error('Application changed before elevation')
+        if (signal.aborted) throw launcherAbortError(signal)
+        const invocation = resolveWindowsApplicationElevationInvocation(target, digest)
         await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
       },
       openExternal: async (url, signal) => {
@@ -1720,6 +1723,7 @@ function initializeLauncher(): void {
         if (signal.aborted) throw launcherAbortError(signal)
       },
     },
+    captureApplicationDigest: async target => await digestLauncherElevationTarget(target),
     capturePathIdentity: async target => await statLauncherPathIdentity(target),
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
     getApplicationIcon: async (target, signal) => {

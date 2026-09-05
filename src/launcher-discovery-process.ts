@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process'
-import { lstat, realpath, stat } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { constants } from 'node:fs'
+import { lstat, open, realpath, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -16,6 +18,7 @@ const spawnDetachedProcess: SpawnDetachedProcess = (executable, args, options) =
 const WINDOWS_STORE_APPLICATION_PATTERN = /^shell:AppsFolder\\[A-Za-z0-9._!{}-]{1,512}$/u
 const MAX_TARGET_LENGTH = 16_384
 const MAX_URL_LENGTH = 8_192
+const MAX_ELEVATION_TARGET_BYTES = 1024 * 1024
 const POWERSHELL_PREFIX = Object.freeze(['-NoLogo', '-NoProfile', '-NonInteractive', '-Command'])
 
 export function resolveWindowsSystemExecutable(
@@ -173,6 +176,40 @@ export async function revalidateLauncherExecutable(target: string, expectation: 
   return await revalidateLauncherPath(target, { ...expectation, kind: 'file' })
 }
 
+export async function digestLauncherElevationTarget(target: string): Promise<string | undefined> {
+  if (!bounded(target) || !isAbsolute(target) || path.win32.extname(target).toLocaleLowerCase('en-US') !== '.lnk') return undefined
+  let handle
+  try {
+    const selected = await lstat(target, { bigint: true })
+    if (selected.isSymbolicLink() || !selected.isFile() || selected.size <= 0n || selected.size > BigInt(MAX_ELEVATION_TARGET_BYTES)) return undefined
+    const noFollow = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0
+    handle = await open(target, constants.O_RDONLY | noFollow)
+    const opened = await handle.stat({ bigint: true })
+    const selectedIdentity = launcherPathIdentity(selected)
+    const openedIdentity = launcherPathIdentity(opened)
+    if (selectedIdentity === undefined || openedIdentity === undefined || selectedIdentity.dev !== openedIdentity.dev || selectedIdentity.ino !== openedIdentity.ino
+      || opened.size !== selected.size || opened.mtimeNs !== selected.mtimeNs) return undefined
+    const hash = createHash('sha256')
+    const chunk = Buffer.allocUnsafe(64 * 1024)
+    let position = 0
+    while (position < Number(opened.size)) {
+      const { bytesRead } = await handle.read(chunk, 0, Math.min(chunk.byteLength, Number(opened.size) - position), position)
+      if (bytesRead === 0) return undefined
+      hash.update(chunk.subarray(0, bytesRead))
+      position += bytesRead
+    }
+    const afterRead = await handle.stat({ bigint: true })
+    const current = await lstat(target, { bigint: true })
+    const currentIdentity = launcherPathIdentity(current)
+    if (current.isSymbolicLink() || !current.isFile() || currentIdentity === undefined
+      || currentIdentity.dev !== openedIdentity.dev || currentIdentity.ino !== openedIdentity.ino
+      || afterRead.size !== opened.size || afterRead.mtimeNs !== opened.mtimeNs
+      || current.size !== opened.size || current.mtimeNs !== opened.mtimeNs) return undefined
+    return hash.digest('hex')
+  } catch { return undefined }
+  finally { await handle?.close().catch(() => undefined) }
+}
+
 export function revalidateLauncherWindowsStoreId(target: unknown): target is string {
   return typeof target === 'string' && WINDOWS_STORE_APPLICATION_PATTERN.test(target)
 }
@@ -213,14 +250,17 @@ export function resolveLinuxDesktopEntryInvocation(target: string): Readonly<{ a
 
 export function resolveWindowsApplicationElevationInvocation(
   target: string,
+  digest: string,
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): LauncherFixedInvocation {
-  if (!bounded(target) || (!path.win32.isAbsolute(target) && !WINDOWS_STORE_APPLICATION_PATTERN.test(target))) throw new Error('Invalid Windows application target')
+  if (!bounded(target) || !path.win32.isAbsolute(target)) throw new Error('Invalid Windows application target')
+  if (!/^[a-f0-9]{64}$/u.test(digest)) throw new Error('Invalid Windows application digest')
   return Object.freeze({
     args: Object.freeze([
       ...POWERSHELL_PREFIX,
-      "$target=$args[0]; if ([string]::IsNullOrWhiteSpace($target)) { throw 'Missing application target' }; Start-Process -FilePath $target -Verb RunAs",
+      "$target=$args[0]; $expected=$args[1]; $stream=[IO.File]::Open($target,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read); try { $sha=[Security.Cryptography.SHA256]::Create(); try { $actual=([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-','').ToLowerInvariant() } finally { $sha.Dispose() }; if ($actual -cne $expected) { throw 'Application changed before elevation' }; Start-Process -FilePath $target -Verb RunAs } finally { $stream.Dispose() }",
       target,
+      digest,
     ]),
     executable: resolveWindowsSystemExecutable('powershell', environment),
   })
