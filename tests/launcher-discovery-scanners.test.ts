@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -13,6 +14,8 @@ import {
   windowsApplicationScanInvocation,
 } from '../src/launcher-discovery-scanners.ts'
 import type { LauncherDiscoveryScanContext } from '../src/launcher-discovery-extensions.ts'
+
+const scannerSource = readFileSync(new URL('../src/launcher-discovery-scanners.ts', import.meta.url), 'utf8')
 
 function context(overrides: Partial<LauncherDiscoveryScanContext> = {}): LauncherDiscoveryScanContext {
   return {
@@ -37,6 +40,11 @@ function context(overrides: Partial<LauncherDiscoveryScanContext> = {}): Launche
     ...overrides,
   }
 }
+
+test('bounded discovery reads reject links and do not block on special files', () => {
+  assert.match(scannerSource, /constants\.O_NOFOLLOW/u)
+  assert.match(scannerSource, /constants\.O_NONBLOCK/u)
+})
 
 test('built-in node sqlite is available before provider implementation', () => {
   assert.equal(launcherNodeSqliteAvailable(), true)

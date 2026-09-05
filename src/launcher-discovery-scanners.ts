@@ -1,7 +1,7 @@
 import { execFile as nodeExecFile } from 'node:child_process'
 import { DatabaseSync } from 'node:sqlite'
 import { opendir, open, readdir, stat } from 'node:fs/promises'
-import { statSync } from 'node:fs'
+import { constants, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
@@ -111,7 +111,8 @@ function isNestedMacApplication(value: string): boolean {
 }
 
 async function readBoundedText(filePath: string): Promise<string> {
-  const handle = await open(filePath, 'r')
+  const flags = constants.O_RDONLY | (process.platform === 'win32' ? 0 : constants.O_NOFOLLOW | constants.O_NONBLOCK)
+  const handle = await open(filePath, flags)
   try {
     const metadata = await handle.stat({ bigint: true })
     if (!metadata.isFile() || metadata.size > BigInt(MAX_DISCOVERY_FILE_BYTES)) throw new Error('Discovery file exceeds its size limit')
