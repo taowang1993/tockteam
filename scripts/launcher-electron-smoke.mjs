@@ -1354,7 +1354,7 @@ try {
   )
   assert.equal(workflowFixtureAfterCancel.forbiddenEffects, 0)
   await workbenchConnection.evaluate(`(async () => {
-    await window.dshDesktop?.launcher?.settings?.updateSetting('window.hideWindowOn', ['blur', 'afterInvocation', 'escapePressed'])
+    await window.dshDesktop?.launcher?.settings?.updateSetting('window.hideWindowOn', ['afterInvocation', 'escapePressed'])
   })()`)
   await showLauncherFromWorkbench(workbenchConnection)
 
@@ -2159,8 +2159,7 @@ try {
     env: fixtureEnvironment,
     stdio: ['ignore', 'ignore', 'ignore'],
   })
-  await waitFor(() => electronPages(restartPort), pages => pages.some(page => page.title === 'TockCoder'))
-  const restartedPages = await electronPages(restartPort)
+  const restartedPages = await waitFor(() => electronPages(restartPort), pages => pages.some(page => page.title === 'TockCoder'))
   const restartedWorkbench = restartedPages.find(page => page.title === 'TockCoder')
   assert.ok(restartedWorkbench)
   restartedWorkbenchConnection = await CdpPage.connect(restartedWorkbench.webSocketDebuggerUrl)
