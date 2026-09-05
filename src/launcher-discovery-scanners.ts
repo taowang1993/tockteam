@@ -1,10 +1,11 @@
 import { execFile as nodeExecFile } from 'node:child_process'
 import { DatabaseSync } from 'node:sqlite'
 import { opendir, open, readdir, stat } from 'node:fs/promises'
-import { constants, statSync } from 'node:fs'
+import { constants } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
+import { Worker } from 'node:worker_threads'
 import type {
   LauncherDiscoveryEntry,
   LauncherDiscoveryExtensionId,
@@ -35,33 +36,71 @@ const defaultExecFile: LauncherExecFile = async (executable, args, options) => {
 
 type SqliteBookmarkRow = Readonly<{ id?: unknown; name?: unknown; url?: unknown }>
 export type LauncherSqliteAdapter = Readonly<{
-  readBookmarks: (databasePath: string) => readonly SqliteBookmarkRow[]
-  readValue: (databasePath: string, key: string) => unknown
+  readBookmarks: (databasePath: string, signal: AbortSignal) => Promise<readonly SqliteBookmarkRow[]>
+  readValue: (databasePath: string, key: string, signal: AbortSignal) => Promise<unknown>
 }>
 
+type SqliteWorkerRequest = Readonly<{ databasePath: string; key?: string; maximumBytes: number; operation: 'bookmarks' | 'value' }>
+
+const SQLITE_WORKER_SOURCE = String.raw`
+const { lstatSync } = require('node:fs')
+const { DatabaseSync } = require('node:sqlite')
+const { parentPort, workerData } = require('node:worker_threads')
+let database
+try {
+  const metadata = lstatSync(workerData.databasePath, { bigint: true })
+  if (!metadata.isFile() || metadata.size > BigInt(workerData.maximumBytes)) throw new Error('Discovery database exceeds its size limit')
+  database = new DatabaseSync(workerData.databasePath, { readOnly: true })
+  const value = workerData.operation === 'bookmarks'
+    ? database.prepare("SELECT b.guid AS id, b.title AS name, p.url AS url FROM moz_bookmarks b JOIN moz_places p ON p.id = b.fk WHERE b.type = 1 AND p.url LIKE 'http%' LIMIT 200").all()
+    : database.prepare('SELECT value FROM ItemTable WHERE key = ? LIMIT 1').get(workerData.key)?.value
+  parentPort.postMessage({ ok: true, value })
+} catch (error) {
+  parentPort.postMessage({ error: error instanceof Error ? error.message : 'Discovery database read failed', ok: false })
+} finally {
+  database?.close()
+}`
+
+async function runSqliteWorker<T>(request: SqliteWorkerRequest, signal: AbortSignal): Promise<T> {
+  throwIfAborted(signal)
+  const worker = new Worker(SQLITE_WORKER_SOURCE, { eval: true, workerData: request })
+  return await new Promise<T>((resolve, reject) => {
+    let settled = false
+    const finish = (callback: () => void): void => {
+      if (settled) return
+      settled = true
+      signal.removeEventListener('abort', abort)
+      worker.removeAllListeners()
+      void worker.terminate().catch(() => undefined)
+      callback()
+    }
+    const abort = (): void => finish(() => reject(signal.reason instanceof Error ? signal.reason : new Error('TockLauncher discovery scan canceled')))
+    signal.addEventListener('abort', abort, { once: true })
+    worker.once('message', (message: unknown) => {
+      if (typeof message !== 'object' || message === null || Array.isArray(message)) {
+        finish(() => reject(new Error('Discovery database worker returned an invalid response')))
+        return
+      }
+      const response = message as { error?: unknown; ok?: unknown; value?: T }
+      if (response.ok === true) finish(() => resolve(response.value as T))
+      else finish(() => reject(new Error(typeof response.error === 'string' ? response.error : 'Discovery database read failed')))
+    })
+    worker.once('error', reason => finish(() => reject(reason)))
+    worker.once('exit', code => {
+      if (code !== 0) finish(() => reject(new Error('Discovery database worker exited unexpectedly')))
+    })
+    if (signal.aborted) abort()
+  })
+}
+
 function createNodeSqliteAdapter(): LauncherSqliteAdapter {
-  const open = (databasePath: string): DatabaseSync => {
-    const metadata = statSync(databasePath, { bigint: true }) as { isFile(): boolean; size: bigint }
-    if (!metadata.isFile() || metadata.size > BigInt(MAX_DISCOVERY_FILE_BYTES)) throw new Error('Discovery database exceeds its size limit')
-    return new DatabaseSync(databasePath, { readOnly: true })
-  }
   return Object.freeze({
-    readBookmarks: databasePath => {
-      const database = open(databasePath)
-      try {
-        return database.prepare(`
-          SELECT b.guid AS id, b.title AS name, p.url AS url
-          FROM moz_bookmarks b JOIN moz_places p ON p.id = b.fk
-          WHERE b.type = 1 AND p.url LIKE 'http%'
-          LIMIT 200
-        `).all() as SqliteBookmarkRow[]
-      } finally { database.close() }
-    },
-    readValue: (databasePath, key) => {
-      const database = open(databasePath)
-      try { return database.prepare('SELECT value FROM ItemTable WHERE key = ? LIMIT 1').get(key)?.value }
-      finally { database.close() }
-    },
+    readBookmarks: async (databasePath, signal) => await runSqliteWorker<readonly SqliteBookmarkRow[]>({
+      databasePath, maximumBytes: MAX_DISCOVERY_FILE_BYTES, operation: 'bookmarks',
+    }, signal),
+    readValue: async (databasePath, key, signal) => await runSqliteWorker<unknown>({
+      databasePath, key, maximumBytes: MAX_DISCOVERY_FILE_BYTES, operation: 'value',
+    }, signal),
   })
 }
 
@@ -336,7 +375,8 @@ async function scanBrowser(browser: string, context: LauncherDiscoveryScanContex
     for (const profile of profiles) {
       throwIfAborted(context.signal)
       try {
-        rows.push(...sqlite.readBookmarks(path.join(profile, 'places.sqlite')).flatMap(row => {
+        const bookmarks = await sqlite.readBookmarks(path.join(profile, 'places.sqlite'), context.signal)
+        rows.push(...bookmarks.flatMap(row => {
           if (!boundedDiscoveryString(row.id, 256) || !boundedDiscoveryString(row.name, 512) || !boundedDiscoveryString(row.url, 4_096)) return []
           try {
             const parsed = new URL(row.url)
@@ -497,18 +537,18 @@ async function scanVSCode(context: LauncherDiscoveryScanContext, sqlite: Launche
   const sharedDatabase = context.platform === 'Windows'
     ? path.win32.join(context.homePath, '.vscode-shared', 'sharedStorage', 'state.vscdb')
     : path.join(context.homePath, '.vscode-shared', 'sharedStorage', 'state.vscdb')
-  const read = (databasePath: string, key: string): string | undefined => {
+  const read = async (databasePath: string, key: string): Promise<string | undefined> => {
     try {
-      const value = sqlite.readValue(databasePath, key)
+      const value = await sqlite.readValue(databasePath, key, context.signal)
       return typeof value === 'string' && Buffer.byteLength(value, 'utf8') <= MAX_DISCOVERY_FILE_BYTES ? value : undefined
     } catch { return undefined }
   }
   throwIfAborted(context.signal)
-  return parseVSCodeRecentEntries([
+  return parseVSCodeRecentEntries(await Promise.all([
     read(sharedDatabase, 'history.recentlyOpenedPathsList'),
     read(userDatabase, 'recently.opened'),
     read(userDatabase, 'history.recentlyOpenedPathsList'),
-  ])
+  ]))
 }
 
 export function windowsApplicationScanInvocation(settings: Readonly<{ fileExtensions: readonly string[]; folders: readonly string[]; includeStoreApps: boolean }>): Readonly<{ args: readonly string[]; executable: 'powershell.exe' }> {

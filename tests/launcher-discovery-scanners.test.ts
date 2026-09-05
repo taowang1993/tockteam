@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import { test } from 'node:test'
 import {
   createLauncherDiscoveryScanners,
@@ -46,6 +47,10 @@ test('bounded discovery reads reject links and do not block on special files', (
   assert.match(scannerSource, /constants\.O_NONBLOCK/u)
 })
 
+test('SQLite discovery runs outside the main thread', () => {
+  assert.match(scannerSource, /new Worker\(/u)
+})
+
 test('built-in node sqlite is available before provider implementation', () => {
   assert.equal(launcherNodeSqliteAvailable(), true)
 })
@@ -86,6 +91,24 @@ test('merges VS Code storage values by first URI and classifies remote workspace
     ['vscode-remote://ssh/work.code-workspace', '--file-uri', 'Remote Workspace'],
   ])
   assert.deepEqual(parseVSCodeRecentEntries([JSON.stringify({ entries: [{ fileUri: 'file://server/share/project' }] })]), [])
+})
+
+test('reads VS Code SQLite state through the discovery worker', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-vscode-'))
+  const databasePath = join(root, '.config', 'Code', 'User', 'globalStorage', 'state.vscdb')
+  try {
+    await mkdir(join(databasePath, '..'), { recursive: true })
+    const database = new DatabaseSync(databasePath)
+    try {
+      database.exec('CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)')
+      database.prepare('INSERT INTO ItemTable (key, value) VALUES (?, ?)').run(
+        'history.recentlyOpenedPathsList',
+        JSON.stringify({ entries: [{ folderUri: 'file:///work/tockteam' }] }),
+      )
+    } finally { database.close() }
+    const entries = await createLauncherDiscoveryScanners().VSCode(context({ homePath: root }))
+    assert.deepEqual(entries.map(entry => 'uri' in entry ? entry.uri : ''), ['file:///work/tockteam'])
+  } finally { await rm(root, { recursive: true, force: true }) }
 })
 
 test('uses one fixed PowerShell script and data-only settings arguments', () => {
