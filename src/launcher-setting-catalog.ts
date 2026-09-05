@@ -1,4 +1,4 @@
-/** Generated from scripts/ueli/parity-catalogs.json; do not hand-edit rows. */
+/** Derived from the reviewed Ueli v9.29.0 settings catalog. */
 export type LauncherSettingDefaultKind = 'absent' | 'dynamic' | 'literal'
 export type LauncherSettingApplicability = 'Linux' | 'macOS' | 'Windows'
 export type LauncherSettingCatalogEntry = Readonly<{ key: string; sourceId: string; source: string; order: number; applicability: readonly string[]; owner: string; issue: string; defaultKind: LauncherSettingDefaultKind; defaultValue?: unknown; defaultExpression?: string; divergence?: string }>

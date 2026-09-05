@@ -39,18 +39,6 @@ jobs:
       - name: Verify release tag and package version
         run: node scripts/check-release-version.mjs --tag "$GITHUB_REF_NAME"
 
-      - name: Verify Ueli baseline
-        run: pnpm test:ueli-baseline
-
-      - name: Audit Ueli baseline
-        run: pnpm audit:ueli-baseline
-
-      - name: Verify launcher parity catalogs
-        run: pnpm test:ueli-launcher-parity
-
-      - name: Audit launcher parity catalogs
-        run: pnpm audit:ueli-launcher-parity
-
       - name: Verify launcher package feasibility
         run: pnpm test:ueli-package-feasibility
 

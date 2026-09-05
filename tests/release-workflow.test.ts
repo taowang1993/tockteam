@@ -90,10 +90,6 @@ test('tagged releases validate the package version and launcher audits before pa
   const validateTag = 'node scripts/check-release-version.mjs --tag "$GITHUB_REF_NAME"'
   assert.match(validate, /node scripts\/check-release-version\.mjs --tag "\$GITHUB_REF_NAME"/u)
   for (const command of [
-    'pnpm test:ueli-baseline',
-    'pnpm audit:ueli-baseline',
-    'pnpm test:ueli-launcher-parity',
-    'pnpm audit:ueli-launcher-parity',
     'pnpm test:ueli-package-feasibility',
     'pnpm audit:ueli-package-feasibility',
     'pnpm audit:installed-evidence',

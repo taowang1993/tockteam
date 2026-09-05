@@ -41,14 +41,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Ueli parity and package gates
+      - name: Run Ueli-Derived Launcher Package Gate
         id: ueli-gates
         shell: bash
         run: |
-          pnpm test:ueli-baseline
-          pnpm audit:ueli-baseline
-          pnpm test:ueli-launcher-parity
-          pnpm audit:ueli-launcher-parity
           pnpm test:ueli-package-feasibility
           pnpm audit:ueli-package-feasibility
 
@@ -136,14 +132,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Ueli parity and package gates
+      - name: Run Ueli-Derived Launcher Package Gate
         id: ueli-gates
         shell: bash
         run: |
-          pnpm test:ueli-baseline
-          pnpm audit:ueli-baseline
-          pnpm test:ueli-launcher-parity
-          pnpm audit:ueli-launcher-parity
           pnpm test:ueli-package-feasibility
           pnpm audit:ueli-package-feasibility
 

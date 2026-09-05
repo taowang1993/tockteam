@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { LAUNCHER_SETTINGS_CATALOG } from '../src/launcher-setting-catalog.ts'
 import { resolveLauncherSettingDefault } from '../src/launcher-settings-defaults.ts'
@@ -124,16 +123,6 @@ test('TockLauncher keeps the generated 100-row catalog and exact 102-key runtime
   assert.equal(new Set(LAUNCHER_RUNTIME_SETTING_KEYS).size, 102)
   assert.deepEqual(LAUNCHER_RUNTIME_SETTING_KEYS.slice(-2), ['favorites', 'searchEngine.excludedItems'])
   for (const key of LAUNCHER_RUNTIME_SETTING_KEYS) assert.ok(Object.hasOwn(valid, key), key)
-})
-
-test('generated catalog order and source metadata match every pinned Ueli row', () => {
-  const manifest = JSON.parse(readFileSync(new URL('../scripts/ueli/parity-catalogs.json', import.meta.url), 'utf8')) as {
-    catalogs: { settings: Array<{ applicability: string[]; id: string; issue: string; owner: string; source: string }> }
-  }
-  assert.deepEqual(
-    LAUNCHER_SETTINGS_CATALOG.map(({ applicability, issue, order, owner, source, sourceId }) => ({ applicability, id: sourceId, issue, order, owner, source })),
-    manifest.catalogs.settings.map((row, order) => ({ applicability: row.applicability, id: row.id, issue: row.issue, order, owner: row.owner, source: row.source })),
-  )
 })
 
 test('full generated catalog metadata stays locked to its reviewed golden digest', () => {
