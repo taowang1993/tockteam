@@ -32,7 +32,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const input = element(document, 'input')
   const maxInputLength = LAUNCHER_MAX_SEARCH_TERM_LENGTH
   input.type = 'search'; input.className = 'min-w-0 w-full max-w-full'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.setAttribute('aria-controls', 'launcher-file-search-results'); input.setAttribute('aria-autocomplete', 'list'); input.autocomplete = 'off'
-  const status = element(document, 'p', 'launcher-local-tool-error'); status.setAttribute('role', 'status'); status.textContent = text('enterFile', 'Enter a file name to search.')
+  const status = element(document, 'p', 'launcher-local-tool-status data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)]'); status.setAttribute('role', 'status'); status.textContent = text('enterFile', 'Enter a file name to search.')
   const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0'); list.id = 'launcher-file-search-results'; list.setAttribute('aria-label', text('fileSearchResults', 'File Search Results')); list.setAttribute('role', 'list')
   content.append(input, status, list)
 
@@ -43,6 +43,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const render = (items: readonly LauncherPublicResultItem[]): void => {
     currentItems = [...items]
     list.replaceChildren()
+    const resultButtons: HTMLButtonElement[] = []
     for (const [index, item] of currentItems.entries()) {
       const row = element(document, 'li', 'relative min-w-0'); row.setAttribute('role', 'listitem')
       const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
@@ -57,6 +58,15 @@ export function createLauncherFileSearchTool(options: Readonly<{
       button.append(name, description)
       if (details !== undefined) content.append(details)
       button.addEventListener('click', () => { void invoke(item.defaultAction, item) })
+      button.addEventListener('keydown', event => {
+        const next = event.key === 'ArrowDown' ? (index + 1) % currentItems.length
+          : event.key === 'ArrowUp' ? (index - 1 + currentItems.length) % currentItems.length
+            : event.key === 'Home' ? 0 : event.key === 'End' ? currentItems.length - 1 : undefined
+        if (next === undefined) return
+        event.preventDefault()
+        resultButtons[next]?.focus()
+      })
+      resultButtons.push(button)
       content.append(button)
       if (actions.length > 1) {
         const menuId = `launcher-file-search-actions-${index}`

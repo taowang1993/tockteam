@@ -70,7 +70,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   input.className = 'min-w-0 w-full max-w-full'
   if (!isDeepL) input.setAttribute('type', 'search')
   label.append(labelText, input)
-  const status = element(document, 'p', 'launcher-local-tool-status')
+  const status = element(document, 'p', 'launcher-local-tool-status data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)]')
   status.setAttribute('role', 'status')
   status.setAttribute('aria-live', 'polite')
   status.textContent = isDeepL ? text('enterTranslation', 'Enter text to translate.') : text('enterWebSearch', 'Enter a web search.')
@@ -93,6 +93,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   }
   const render = (): void => {
     list.replaceChildren()
+    const resultButtons: HTMLButtonElement[] = []
     for (const [index, item] of currentItems.entries()) {
       const row = element(document, 'li', 'relative min-w-0')
       row.setAttribute('role', 'listitem')
@@ -177,6 +178,15 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
         row.append(menu)
       }
       button.addEventListener('click', () => { void invoke(item.defaultAction, item) })
+      button.addEventListener('keydown', event => {
+        const next = event.key === 'ArrowDown' ? (index + 1) % currentItems.length
+          : event.key === 'ArrowUp' ? (index - 1 + currentItems.length) % currentItems.length
+            : event.key === 'Home' ? 0 : event.key === 'End' ? currentItems.length - 1 : undefined
+        if (next === undefined) return
+        event.preventDefault()
+        resultButtons[next]?.focus()
+      })
+      resultButtons.push(button)
       list.append(row)
     }
   }
