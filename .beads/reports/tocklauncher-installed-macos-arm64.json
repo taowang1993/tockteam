@@ -3,19 +3,19 @@
   "installed": {
     "identity": {
       "appId": "ai.deepseek.tockteam-desktop",
-      "asarPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
-      "executable": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+      "asarPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+      "executable": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
       "signature": "adhoc",
       "resources": true
     },
-    "installRoot": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app",
+    "installRoot": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app",
     "package": {
       "appId": "ai.deepseek.tockteam-desktop",
-      "appPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+      "appPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
       "version": "0.1.14",
       "appPathUsesAsar": true,
       "assetCount": 65,
-      "executable": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+      "executable": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
       "electron": {
         "architecture": "arm64",
         "version": "42.3.0"
@@ -72,7 +72,7 @@
           "search"
         ],
         "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'",
-        "href": "file:///Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam%20Desktop.app/Contents/Resources/app.asar/dist/launcher.html",
+        "href": "file:///Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam%20Desktop.app/Contents/Resources/app.asar/dist/launcher.html",
         "hasNodeProcess": false,
         "hasRequire": false,
         "notificationPermission": "denied",
@@ -81,12 +81,12 @@
       },
       "runtimeArchitecture": "arm64",
       "search": {
-        "actionId": "launcher-action:c9eb46ca-b8ae-4c5c-bcc4-c3fe9655aeb6",
+        "actionId": "launcher-action:48a2e129-bf0a-436c-8e50-55e7621e727b",
         "id": "ueli-local:Base64Conversion",
         "sourceExtension": "Base64Conversion"
       },
       "security": {
-        "appPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+        "appPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
         "appPathUsesAsar": true,
         "launcherSessionPartition": "persist:tockteam-launcher",
         "sessionMatches": true
@@ -96,7 +96,7 @@
         "changed": 0.6
       },
       "workbench": {
-        "href": "http://127.0.0.1:54605/tockcoder",
+        "href": "http://127.0.0.1:55234/tockcoder",
         "marker": "workbench-before-dismiss",
         "title": "TockCoder"
       }
@@ -105,18 +105,18 @@
       "backup": true,
       "identity": {
         "appId": "ai.deepseek.tockteam-desktop",
-        "asarPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
-        "executable": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+        "asarPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+        "executable": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
         "signature": "adhoc",
         "resources": true
       },
       "package": {
         "appId": "ai.deepseek.tockteam-desktop",
-        "appPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+        "appPath": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
         "version": "0.1.14",
         "appPathUsesAsar": true,
         "assetCount": 65,
-        "executable": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-EjFkIF/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+        "executable": "/Users/taowang/Library/Caches/TockTeam.noindex/installed-smoke/tockteam-installed-launcher-smoke-qgOieT/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
         "electron": {
           "architecture": "arm64",
           "version": "42.3.0"
@@ -189,7 +189,7 @@
   "platform": "darwin",
   "productName": "TockTeam Desktop",
   "result": "passed",
-  "sourceCommit": "773056bd8ef8295529eaa83fee93c8a2b4553300",
+  "sourceCommit": "4cff686e5288572d8694b734835f593309c03baf",
   "cleanup": {
     "processTreesGone": true,
     "smokeRootRemoved": true,
