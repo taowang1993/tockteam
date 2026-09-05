@@ -186,6 +186,22 @@ async function syncDirectory(directory: string): Promise<void> {
   finally { await handle.close() }
 }
 
+async function ensurePrivateDirectory(directory: string): Promise<void> {
+  await mkdir(path.dirname(directory), { recursive: true, mode: 0o700 })
+  try { await mkdir(directory, { mode: 0o700 }) }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
+  const selected = await lstat(directory, { bigint: true })
+  if (selected.isSymbolicLink() || !selected.isDirectory()) throw new Error('TockLauncher managed directory must not be a symlink')
+  const handle = await open(directory, constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0))
+  try {
+    const opened = await handle.stat({ bigint: true })
+    if (!opened.isDirectory() || identityPart(opened.dev) !== identityPart(selected.dev) || identityPart(opened.ino) !== identityPart(selected.ino)) {
+      throw new Error('TockLauncher managed directory changed')
+    }
+    await handle.chmod(0o700)
+  } finally { await handle.close() }
+}
+
 /** Managed app-owned atomic file writer. It never follows a temporary symlink. */
 async function atomicWrite(filePath: string, contents: string, options: Readonly<{
   backup?: boolean
@@ -305,7 +321,7 @@ export class LauncherPersistenceRepository {
   }
 
   async #initialize(): Promise<void> {
-    await mkdir(this.#rootPath, { recursive: true, mode: 0o700 }); await chmod(this.#rootPath, 0o700)
+    await ensurePrivateDirectory(this.#rootPath)
     this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {}, recovered => {
       if (recovered) { this.#recoveredSettings = true; this.#recoveredArtifacts.add('settings') }
     })

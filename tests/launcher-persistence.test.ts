@@ -30,6 +30,16 @@ test('persistence tolerates only unsupported Windows directory fsync after commi
   assert.match(persistenceSource, /await handle\.sync\(\)/u)
 })
 
+test('managed persistence rejects a pre-existing launcher symlink', async () => {
+  const userDataPath = await root()
+  const redirected = await root()
+  try {
+    await symlink(redirected, path.join(userDataPath, 'launcher'))
+    await assert.rejects(LauncherPersistenceRepository.open({ userDataPath }), /directory|symlink/u)
+    assert.equal(await readFile(path.join(redirected, 'settings.json'), 'utf8').catch(() => undefined), undefined)
+  } finally { await Promise.all([userDataPath, redirected].map(value => rm(value, { recursive: true, force: true }))) }
+})
+
 test('persistence survives restart, encrypts secrets, strips index image data, and recovers backups', async () => {
   const userDataPath = await root()
   try {
