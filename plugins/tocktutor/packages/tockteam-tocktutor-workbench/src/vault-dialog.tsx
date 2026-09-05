@@ -58,12 +58,13 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="z-[2147483647] gap-0 overflow-hidden p-0"
+        unstyled
+        className="fixed top-1/2 left-1/2 z-[2147483647] grid w-full -translate-x-1/2 -translate-y-1/2 gap-0 overflow-hidden rounded-xl border border-[var(--tt-border)] bg-[var(--tt-panel)] p-0 text-[var(--tt-text)] shadow-[0_18px_48px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)] outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]"
         overlayClassName="z-[2147483646]"
         style={{ maxWidth: '720px', width: 'calc(100% - 2rem)' }}
       >
         <div className="grid min-h-[420px] sm:grid-cols-[230px_minmax(0,1fr)]">
-          <section aria-label="Vault List" className="flex min-h-0 flex-col border-b border-border bg-muted/35 p-4 sm:border-r sm:border-b-0">
+          <section aria-label="Vault List" className="flex min-h-0 flex-col border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-4 sm:border-r sm:border-b-0">
             <DialogHeader className="text-left">
               <DialogTitle>Vaults</DialogTitle>
               <DialogDescription className="sr-only">Switch between local Markdown vaults or create a new one.</DialogDescription>
