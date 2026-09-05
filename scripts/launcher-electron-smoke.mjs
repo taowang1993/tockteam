@@ -1099,7 +1099,7 @@ try {
         pathHidden: !(document.body.textContent ?? '').includes('TockTeam Fixture Browser.app'),
         privateSnapshot: !/(Fixture Browser|customWebBrowserName|executableFilePath|parentRealPath|"dev"|"ino")/iu.test(snapshotText),
         focus: document.activeElement === chooseButton,
-        accessibleNames: chooseButton?.getAttribute('aria-label') === 'Choose custom browser' && revokeButton?.getAttribute('aria-label') === 'Revoke custom browser',
+        accessibleNames: chooseButton?.getAttribute('aria-label') === 'Choose Custom Browser' && revokeButton?.getAttribute('aria-label') === 'Revoke Custom Browser',
         statusSemantics: statusNode?.getAttribute('aria-live') === 'polite',
       }
     })()`),

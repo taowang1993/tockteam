@@ -17,6 +17,8 @@ const SETTINGS_STRINGS = [
   'Bounded launcher diagnostics are retained without secret or path material.',
   'Reset',
   'Custom browser grant',
+  'Choose Custom Browser',
+  'Revoke Custom Browser',
   'Use the native Choose/Revoke controls in Storage and Privacy; executable paths and arguments are never editable here.',
   'Global shortcut',
   'Electron main owns registration and conflict handling.',
