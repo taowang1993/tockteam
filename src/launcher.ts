@@ -49,14 +49,15 @@ const FOCUS_SEARCH_EVENT = 'tockteam-launcher-focus-search'
 
 type LauncherMessages = Readonly<{
   actions: string
+  actionsFor: string
   cancel: string
   cancelFailed: string
   canceling: string
   canceled: string
+  cancelWorkflow: string
   close: string
   fileSearchUnavailable: string
   indexed: (count: number) => string
-  initialStatus: string
   invokeFailed: (action: string) => string
   invoking: (action: string) => string
   history: string
@@ -79,15 +80,16 @@ type LauncherMessages = Readonly<{
 const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Object.freeze({
   en: Object.freeze({
     actions: 'Actions',
+    actionsFor: 'Actions for',
     cancel: 'Cancel',
     cancelFailed: 'Workflow could not be canceled.',
     canceling: 'Canceling workflow…',
     canceled: 'Workflow canceled.',
+    cancelWorkflow: 'Cancel workflow',
     close: 'Close TockLauncher',
     fileSearchUnavailable: 'Local extension settings are unavailable.',
     history: 'History',
     indexed: (count: number) => `${count} indexed destinations`,
-    initialStatus: 'Destinations will appear here.',
     invokeFailed: (action: string) => `${action} could not be completed.`,
     invoking: (action: string) => `${action}…`,
     noHistory: 'No Recent Searches',
@@ -107,15 +109,16 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
   }),
   zh: Object.freeze({
     actions: '操作',
+    actionsFor: '操作：',
     cancel: '取消',
     cancelFailed: '无法取消工作流。',
     canceling: '正在取消工作流…',
     canceled: '工作流已取消。',
+    cancelWorkflow: '取消工作流',
     close: '关闭 TockLauncher',
     fileSearchUnavailable: '本地扩展设置不可用。',
     history: '历史',
     indexed: (count: number) => `${count} 个已索引目标`,
-    initialStatus: '目标将在此处显示。',
     invokeFailed: (action: string) => `${action} 无法完成。`,
     invoking: (action: string) => `${action}…`,
     noHistory: '没有最近搜索',
@@ -316,10 +319,11 @@ async function bootstrap(): Promise<void> {
       else button.append(document.createTextNode(label))
     }
     setButtonLabel(historyToggle, copy.history)
-    setButtonLabel(rescan, copy.rescan)
-    setButtonLabel(close, copy.close)
-    setButtonLabel(settings, copy.settings)
-    if (!invoking && !invokingWorkflow) status.textContent = copy.initialStatus
+    for (const [button, label] of [[rescan, copy.rescan], [close, copy.close], [settings, copy.settings]] as const) {
+      setButtonLabel(button, label)
+      button.setAttribute('aria-label', label)
+      button.title = label
+    }
     providerStatuses.hidden = surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
     providerStatuses.textContent = surfaceSettings.providerStatuses
       .filter(provider => provider.state !== 'ready' && provider.state !== 'disabled')
@@ -684,7 +688,7 @@ async function bootstrap(): Promise<void> {
     toggle.className = 'inline-flex min-h-[22px] shrink-0 items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
     toggle.type = 'button'
     toggle.disabled = workflowInteractionBlocked()
-    toggle.setAttribute('aria-label', `Actions for ${item.name}`)
+    toggle.setAttribute('aria-label', `${messages().actionsFor} ${item.name}`)
     toggle.setAttribute('aria-haspopup', 'menu')
     toggle.setAttribute('aria-expanded', String(actionMenuOpen))
     toggle.setAttribute('aria-controls', 'launcher-actions-menu')
@@ -714,7 +718,7 @@ async function bootstrap(): Promise<void> {
       cancel.type = 'button'
       cancel.disabled = cancellationPending
       cancel.dataset.testid = 'tocklauncher-cancel-workflow'
-      cancel.setAttribute('aria-label', 'Cancel workflow')
+      cancel.setAttribute('aria-label', messages().cancelWorkflow)
       cancel.textContent = messages().cancel
       cancel.addEventListener('click', () => { void cancelActiveWorkflow() })
       row.append(cancel)
@@ -727,7 +731,7 @@ async function bootstrap(): Promise<void> {
     menu.className = 'absolute bottom-[calc(100%+12px)] right-0 z-10 max-h-[240px] w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full overflow-y-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,Canvas))] p-1 shadow-lg'
     menu.id = 'launcher-actions-menu'
     menu.setAttribute('role', 'menu')
-    menu.setAttribute('aria-label', `Actions for ${item.name}`)
+    menu.setAttribute('aria-label', `${messages().actionsFor} ${item.name}`)
     const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
     for (const action of actions) {
       const actionButton = document.createElement('button')

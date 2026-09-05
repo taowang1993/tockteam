@@ -156,6 +156,9 @@ test('launcher renderer uses the compact Tockbot composition', () => {
   assert.match(tailwind, /#launcher-search::-webkit-search-decoration[\s\S]+appearance: none/u)
   assert.match(html, /<footer[^>]+id="launcher-footer"[^>]+class="[^"]*box-border[^"]*h-11/u)
   assert.match(html, /id="launcher-footer-selection"/u)
+  for (const id of ['launcher-rescan', 'launcher-settings', 'launcher-close']) {
+    assert.doesNotMatch(html, new RegExp(`id="${id}"[^>]+class="hidden"`, 'u'))
+  }
   assert.doesNotMatch(html, /id="launcher-root"[^>]+class="[^"]*(?:gap-3|p-5)/u)
   assert.match(launcher, /createLauncherShortcut/u)
   assert.match(launcher, /key\.className = '[^']*box-border[^']*px-\[1\.5px\]/u)
@@ -198,6 +201,9 @@ test('launcher renderer uses shared types, Lucide icons, visible selection, and 
   assert.match(preload, /dispatchEvent\(new Event\('tockteam-launcher-focus-search'\)\)/u)
   assert.match(launcher, /No Recent Searches/u)
   assert.match(launcher, /Results Refreshed\. Try Again\./u)
+  assert.match(launcher, /messages\(\)\.actionsFor/u)
+  assert.match(launcher, /messages\(\)\.cancelWorkflow/u)
+  assert.doesNotMatch(launcher, /status\.textContent = copy\.initialStatus/u)
   assert.doesNotMatch(launcher, /event\.metaKey \|\| event\.ctrlKey/u)
   assert.match(launcher, /event\.stopPropagation\(\)/u)
 })
