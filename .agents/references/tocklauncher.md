@@ -116,7 +116,7 @@ The renderer provides:
 - native buttons, listbox/menu/dialog semantics, live status, focus restoration, visible focus, and reduced-motion behavior;
 - semantic DSH color tokens, Tailwind v4, shared `@tockteam/ui` React controls, and Lucide icons.
 
-The settings button opens the canonical workbench settings page. There is no second settings application or renderer-owned persistence authority. Active text drafts survive background snapshot refreshes; committed drafts reconcile with the accepted main-owned snapshot. Invalid structured values receive visible and announced field errors.
+The settings button opens the canonical workbench settings page. There is no second settings application or renderer-owned persistence authority. Active text drafts survive background snapshot refreshes; committed drafts reconcile with the accepted main-owned snapshot. Rejected drafts stay editable after blur, and invalid structured values receive visible and announced field errors.
 
 ## Provider Composition
 
@@ -264,7 +264,7 @@ dist/launcher-assets/**
 
 The Electron package is `@tockteam/desktop@0.1.14`, product name `TockTeam Desktop`, application ID `ai.deepseek.tockteam-desktop`, with ASAR packaging and the launcher files explicitly admitted by `package.json`. The staged DSH and Node runtimes remain extra resources owned by the unified TockTeam distribution.
 
-`scripts/install-mac.mjs` and `scripts/install-windows.mjs` perform validated pending-copy/extraction, atomic promotion, backup, rollback, and cleanup. Their lock directories contain process ownership metadata; a dead installer's lock is recovered, while a live installer remains exclusive.
+`scripts/install-mac.mjs` and `scripts/install-windows.mjs` perform validated pending-copy/extraction, atomic promotion, backup, rollback, and cleanup. Their lock directories contain process ownership metadata; stale takeover uses an exclusive recovery claim and revalidates the same owner and inode before replacement, so a dead installer's lock is recoverable while a live installer remains exclusive.
 
 Installed evidence is described by `scripts/ueli/installed-evidence-catalog.json`. Checked-in reports prove only their recorded platform, commit, identity, lifecycle, and security observations. Workflow configuration is not execution proof; signing, notarization, and public distribution require their own evidence.
 
