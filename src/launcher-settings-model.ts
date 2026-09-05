@@ -49,6 +49,7 @@ export function mergeLauncherDirtyValues(snapshot: LauncherSettingsSnapshot, dir
 
 /** Every accepted setting is either rendered, explicitly disabled, or delegated to one owner. */
 export function launcherSettingDisposition(key: string, platform: 'Linux' | 'macOS' | 'Windows'): LauncherSettingDisposition {
+  if (platform !== 'macOS' && key.startsWith('general.browser.')) return 'platform-disabled'
   if (LAUNCHER_INTERNAL_SETTING_KEYS.includes(key as never)) return 'internal'
   if (LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never)
     || key === 'general.browser.customWebBrowser.commandlineArguments'

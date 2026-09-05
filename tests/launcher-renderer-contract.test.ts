@@ -110,6 +110,8 @@ test('long result and action labels retain an inspection affordance', () => {
 })
 
 test('every catalog row has an explicit renderer disposition', () => {
+  assert.equal(launcherSettingDisposition('general.browser.useDefaultWebBrowser', 'Windows'), 'platform-disabled')
+  assert.equal(launcherSettingDisposition('general.browser.useDefaultWebBrowser', 'macOS'), 'effective')
   for (const platform of ['macOS', 'Windows', 'Linux'] as const) {
     for (const key of ['appearance.searchBarSize', 'general.language', 'window.vibrancy', 'favorites']) {
       assert.ok(['effective', 'platform-disabled', 'status-only', 'internal'].includes(launcherSettingDisposition(key, platform)), `${platform}:${key}`)
