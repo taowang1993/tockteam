@@ -260,7 +260,7 @@ copyFileSync(join(root, 'src', 'launcher.html'), join(dist, 'launcher.html'))
 mkdirSync(join(dist, 'launcher-assets'), { recursive: true })
 for (const [extensionId, imageKey] of Object.entries(LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS)) {
   const asset = `${imageKey}.png`
-  const source = join(root, 'vendor', 'ueli', 'assets', 'Extensions', extensionId, asset)
+  const source = join(root, 'assets', 'launcher', 'Extensions', extensionId, asset)
   const digest = createHash('sha256').update(readFileSync(source)).digest('hex')
   if (digest !== LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES[extensionId]) {
     throw new Error(`TockLauncher local asset drifted: ${extensionId}`)

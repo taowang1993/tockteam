@@ -4,14 +4,14 @@ export type LauncherWorkflowAsset = Readonly<{
   fileName: 'workflow.png'
   hash: 'baaf4c6eb4f9bdf3f921986eedd5f5186582f5788a2685e765a1321bfc6a5507'
   key: 'workflow'
-  source: 'vendor/ueli/assets/Extensions/Workflow/workflow.png'
+  source: 'assets/launcher/Extensions/Workflow/workflow.png'
 }>
 
 const asset: LauncherWorkflowAsset = Object.freeze({
   fileName: 'workflow.png',
   hash: 'baaf4c6eb4f9bdf3f921986eedd5f5186582f5788a2685e765a1321bfc6a5507',
   key: 'workflow',
-  source: 'vendor/ueli/assets/Extensions/Workflow/workflow.png',
+  source: 'assets/launcher/Extensions/Workflow/workflow.png',
 })
 
 export const LAUNCHER_WORKFLOW_ASSETS = Object.freeze([asset])

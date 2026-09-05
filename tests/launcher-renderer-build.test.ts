@@ -204,7 +204,7 @@ test('launcher renderer uses shared types, Lucide icons, visible selection, and 
 
 test('local extension assets remain pinned to reviewed provenance hashes', () => {
   for (const [extensionId, imageKey] of Object.entries(LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS)) {
-    const bytes = readFileSync(new URL(`../vendor/ueli/assets/Extensions/${extensionId}/${imageKey}.png`, import.meta.url))
+    const bytes = readFileSync(new URL(`../assets/launcher/Extensions/${extensionId}/${imageKey}.png`, import.meta.url))
     assert.equal(createHash('sha256').update(bytes).digest('hex'), LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES[extensionId as keyof typeof LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES])
   }
   assert.match(build, /LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES/u)
