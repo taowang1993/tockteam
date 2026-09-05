@@ -80,6 +80,8 @@ Folder: `.agents/references/`
 - Must use the TDD skill for non-trivial implementation or bug fixes: run the failing check first, then report the exact verification command.
 - Must use the design skill for UI/UX work and the playwright-cli skill to verify browser-visible UI or user-flow changes.
 - Must stop any Electron app, web server, and child process started for verification unless the user asks to keep it running.
+- On macOS, use `pnpm test:launcher:electron` while iterating. Run `pnpm test:launcher:installed` only after focused checks pass and only once per final commit; never run installed smokes concurrently.
+- Run local installed smokes with `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT` inside a `.noindex` cache directory to reduce Spotlight churn.
 - Write new reports in `.beads/reports`.
 - Never push without explicit authority from the user, orchestrator, or active repository profile. Never squash-merge pull requests; use merge commits.
 - Never modify `AGENTS.md` or add Markdown files at the repository root without explicit user permission.
