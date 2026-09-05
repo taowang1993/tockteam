@@ -17,7 +17,6 @@ export function installCompiledPackageDependencies(
   sourceManifestPath: string,
   packageDir: string,
   options: {
-    materializeDependencies?: 'link' | 'copy'
     resolveDependencyManifest: DependencyManifestResolver
   },
 ): void

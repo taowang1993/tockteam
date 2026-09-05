@@ -1,18 +1,20 @@
 import assert from 'node:assert/strict'
 import {
+  copyFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { join, relative } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { test } from 'node:test'
 import { installCompiledPackageDependencies } from '../scripts/stage-package-dependencies.mjs'
 
@@ -30,12 +32,27 @@ function collectLinks(directory: string, links: string[] = []): string[] {
   return links
 }
 
-test('Windows-style staging copies a non-workspace package dependency tree without symlinks', () => {
+function copyMaterialized(source: string, destination: string): void {
+  const canonical = lstatSync(source).isSymbolicLink() ? realpathSync(source) : source
+  const stat = lstatSync(canonical)
+  if (stat.isDirectory()) {
+    mkdirSync(destination, { recursive: true })
+    for (const entry of readdirSync(canonical)) {
+      copyMaterialized(join(canonical, entry), join(destination, entry))
+    }
+    return
+  }
+  copyFileSync(canonical, destination)
+}
+
+test('a copied Windows-oriented package keeps its non-workspace dependency closure offline', () => {
   const fixture = mkdtempSync(join(tmpdir(), 'tockteam-stage-deps-'))
   const sourcePackage = join(fixture, 'outside-workspace', 'fixture-package')
   const dependencyStore = join(fixture, 'pnpm-store')
   const dependencyPackage = join(dependencyStore, 'fixture-dependency')
-  const outputPackage = join(fixture, 'staged', 'fixture-package')
+  const stage = join(fixture, 'stage')
+  const outputPackage = join(stage, 'node_modules', 'fixture-package')
+  const copied = join(fixture, 'copied')
   try {
     writeManifest(sourcePackage, {
       name: 'fixture-package',
@@ -76,22 +93,33 @@ test('Windows-style staging copies a non-workspace package dependency tree witho
       process.platform === 'win32' ? 'junction' : 'dir',
     )
 
-    mkdirSync(outputPackage, { recursive: true })
-    writeFileSync(
-      join(outputPackage, 'package.json'),
-      readFileSync(join(sourcePackage, 'package.json')),
-    )
+    writeManifest(outputPackage, {
+      name: 'fixture-package',
+      version: '1.0.0',
+      main: 'index.cjs',
+    })
     writeFileSync(join(outputPackage, 'index.cjs'), readFileSync(join(sourcePackage, 'index.cjs')))
     installCompiledPackageDependencies(join(sourcePackage, 'package.json'), outputPackage, {
-      materializeDependencies: 'copy',
       resolveDependencyManifest: (requireFromPackage, dependency) =>
         requireFromPackage.resolve(`${dependency}/package.json`),
     })
 
+    const stageRoot = `${realpathSync(stage)}${sep}`
+    const links = collectLinks(stage)
+    assert.ok(links.length > 0)
+    for (const link of links) {
+      assert.ok(`${realpathSync(link)}${sep}`.startsWith(stageRoot), `${link} escapes the stage`)
+    }
+
+    copyMaterialized(stage, copied)
+    const copiedPackage = join(copied, 'node_modules', 'fixture-package')
+    assert.equal(existsSync(join(copiedPackage, 'node_modules', 'fixture-dependency', 'package.json')), true)
+    assert.equal(lstatSync(join(copiedPackage, 'node_modules', 'fixture-dependency')).isSymbolicLink(), false)
     rmSync(sourcePackage, { recursive: true, force: true })
     rmSync(dependencyStore, { recursive: true, force: true })
+    rmSync(stage, { recursive: true, force: true })
     const result = spawnSync(process.execPath, ['-e', 'process.stdout.write(require("."))'], {
-      cwd: outputPackage,
+      cwd: copiedPackage,
       encoding: 'utf8',
       env: { PATH: process.env.PATH ?? '' },
     })
@@ -100,7 +128,7 @@ test('Windows-style staging copies a non-workspace package dependency tree witho
     assert.equal(
       existsSync(
         join(
-          outputPackage,
+          copiedPackage,
           'node_modules',
           'fixture-dependency',
           'node_modules',
@@ -110,8 +138,9 @@ test('Windows-style staging copies a non-workspace package dependency tree witho
       ),
       true,
     )
-    assert.deepEqual(collectLinks(outputPackage), [])
-    assert.equal(lstatSync(outputPackage).isDirectory(), true)
+    assert.deepEqual(collectLinks(copied), [])
+    assert.equal(lstatSync(copiedPackage).isDirectory(), true)
+    assert.equal(resolve(copiedPackage).startsWith(resolve(copied)), true)
   } finally {
     rmSync(fixture, { recursive: true, force: true })
   }

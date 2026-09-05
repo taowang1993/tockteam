@@ -672,7 +672,6 @@ function resolveDependencyManifest(requireFromPackage, dependency) {
 
 function installCompiledPackageDependencies(sourceManifestPath, packageDir) {
   installPackageDependencies(sourceManifestPath, packageDir, {
-    materializeDependencies: isWindowsNode ? 'copy' : 'link',
     resolveDependencyManifest,
   })
 }
