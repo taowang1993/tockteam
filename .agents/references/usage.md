@@ -232,23 +232,22 @@ pnpm test:launcher:installed
 
 This command builds a fresh product and exercises the disposable macOS,
 Windows portable tar.gz archive, Debian, and AppImage lanes when run on their
-supported hosts. The checked-in macOS arm64 report records unsigned/internal
+supported hosts. A historical macOS arm64 report recorded unsigned/internal
 ad-hoc proof at commit `63a72645` for identity, resources, security, actions,
 settings/reinstall, rollback, cleanup, and native Launch Services
-second-instance behavior. Notices/vendor scanning and provider catalog are only
-partially verified. Hosted run `33295632276` passed historical Windows portable
-archive and Linux Debian/AppImage installed smokes at commit `ed39e301`; run
-`33301125258` refreshed those historical reports at commit `455db8ca`. Hosted
-run `33342761994` passed the current Linux lanes at commit `63a72645`, including
-recovery from a controlled validation failure by reinstalling the preserved
-prior Debian package from run `33301125258`. The historical
-Linux package rollback row was workflow-required; the current Linux row is hosted-verified.
-The current Windows lane failed before producing a valid report, so its rows
-remain workflow-required. The historical hosted image reported Windows Control Panel unavailable
-and elevation confirmation-required but uninvoked. The
-reports are not signing, notarization, publication, or public-distribution
-evidence. Vendor results are bounded no-follow scans, not global source-absence
-proof; upgrade claims require their own reports.
+second-instance behavior. Hosted run `33295632276` passed historical Windows
+portable archive and Linux Debian/AppImage installed smokes at
+commit `ed39e301`; run `33301125258` refreshed those historical reports at commit
+`455db8ca`. Hosted run `33342761994` passed Linux lanes at commit `63a72645`,
+including recovery from a controlled validation failure using the preserved
+prior Debian package from run `33301125258`. Those reports were later removed
+and the runtime changed, so every current catalog row is workflow-required until
+fresh proof is checked in. The historical Linux package rollback row was workflow-required.
+The historical hosted image reported Windows Control Panel unavailable and
+elevation confirmation-required but uninvoked. Historical reports are not
+current signing, notarization, publication, or public-distribution evidence.
+Vendor results are bounded no-follow scans, not global source-absence proof;
+upgrade claims require their own reports.
 
 ## Data and troubleshooting
 

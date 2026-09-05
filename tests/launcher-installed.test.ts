@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { mkdir, mkdtemp, readFile, readlink, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
@@ -698,7 +697,7 @@ test('extra-resource inspection is bounded and never follows symlink cycles', as
   }
 })
 
-test('installed evidence catalog owns exact platform rows and immutable hosted proof', () => {
+test('installed evidence catalog owns exact platform rows without stale proof claims', () => {
   assert.equal(catalog.schemaVersion, 1)
   assert.equal(catalog.issue, 'tockteam-tl.15')
   assert.deepEqual(catalog.evidenceStates, ['local-verified', 'hosted-verified', 'partially-verified', 'workflow-required', 'unverified', 'not-applicable'])
@@ -718,35 +717,11 @@ test('installed evidence catalog owns exact platform rows and immutable hosted p
   ]
   assert.deepEqual(catalog.rows.map(row => row.id), expectedIds)
   assert.equal(catalog.rows.length, 27)
-  const localMacRows = new Set([
-    'macOS:artifact-build', 'macOS:identity-and-resources', 'macOS:ad-hoc-signature',
-    'macOS:security-and-workbench', 'macOS:launcher-action', 'macOS:settings-session-compatibility',
-    'macOS:reinstall-settings', 'macOS:rollback', 'macOS:permissions-and-cleanup',
-    'macOS:shortcut-second-instance',
-  ])
-  const hostedRows = new Set([
-    'Linux:deb-install', 'Linux:appimage-install', 'Linux:identity-resources-notices',
-    'Linux:security-action-settings', 'Linux:file-search-custom-browser',
-    'Linux:reinstall-rollback-cleanup', 'Linux:shortcut-second-instance-permissions',
-  ])
-  const partialRows = new Set([
-    'macOS:notices-and-bounded-vendor-scan', 'macOS:provider-catalog',
-    'Linux:notices-and-bounded-vendor-scan',
-  ])
-  const provenanceFor = (platform: 'Linux' | 'Windows' | 'macOS') => {
-    const reference = `.beads/reports/tocklauncher-installed-${platform === 'Linux' ? 'linux-x64' : platform === 'Windows' ? 'windows-x64' : 'macos-arm64'}.json`
-    const bytes = readFileSync(join(root, reference))
-    const report = JSON.parse(bytes.toString('utf8')) as { platform: string; sourceCommit: string }
-    return { platform: report.platform, commit: report.sourceCommit, reportSha256: createHash('sha256').update(bytes).digest('hex'), reference }
-  }
-  const provenance = { Linux: provenanceFor('Linux'), Windows: provenanceFor('Windows'), macOS: provenanceFor('macOS') }
   for (const row of catalog.rows) {
     assert.ok(row.id && row.platform && row.owner && row.state)
     if (row.required) assert.notEqual(row.owner, 'unowned')
-    const expectedState = localMacRows.has(row.id) ? 'local-verified' : hostedRows.has(row.id) ? 'hosted-verified' : partialRows.has(row.id) ? 'partially-verified' : 'workflow-required'
-    assert.equal(row.state, expectedState)
-    if (expectedState === 'workflow-required') assert.equal(row.evidence, null)
-    else assert.deepEqual({ platform: row.evidence?.platform, commit: row.evidence?.commit, reportSha256: row.evidence?.reportSha256, reference: row.evidence?.reference }, provenance[row.platform as keyof typeof provenance])
+    assert.equal(row.state, 'workflow-required')
+    assert.equal(row.evidence, null)
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
@@ -765,8 +740,8 @@ test('installed evidence catalog owns exact platform rows and immutable hosted p
   shortcut.state = 'local-verified'
   shortcut.evidence = { kind: 'checked-in-report', platform: 'darwin', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '.beads/reports/fabricated.json', reportSha256: 'b'.repeat(64) }
   assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.some(failure => failure.includes('report is missing')))
-  const traversal = structuredClone(catalog)
-  const promoted = traversal.rows.find(row => row.id === 'macOS:artifact-build')!
+  const traversal = structuredClone(fabricated)
+  const promoted = traversal.rows.find(row => row.id === 'macOS:shortcut-second-instance')!
   promoted.evidence!.reference = '.beads/reports/../package.json'
   assert.ok(inspectInstalledEvidenceCatalog(traversal).failures.some(failure => failure.includes('not checked in')))
 })
@@ -775,13 +750,14 @@ test('installed evidence freshness rejects runtime drift after a report commit',
   const runGit = (args: readonly string[]) => args[0] === 'merge-base'
     ? { status: 0, stdout: '' }
     : { status: 0, stdout: '.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\nsrc/main.ts\n' }
-  const commit = catalog.rows.find(row => row.evidence?.commit)?.evidence?.commit
-  assert.ok(commit)
-  assert.deepEqual(inspectInstalledEvidenceFreshness(catalog, { head: 'HEAD', repoRoot: root, runGit }).failures, [`installed evidence commit has later runtime changes: ${commit}: src/main.ts`])
+  const commit = 'a'.repeat(40)
+  const evidenceCatalog = structuredClone(catalog)
+  evidenceCatalog.rows[0]!.evidence = { kind: 'checked-in-report', platform: 'darwin', commit, version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '.beads/reports/report.json', reportSha256: 'b'.repeat(64) }
+  assert.deepEqual(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit }).failures, [`installed evidence commit has later runtime changes: ${commit}: src/main.ts`])
   const allowedRunGit = (args: readonly string[]) => args[0] === 'merge-base'
     ? { status: 0, stdout: '' }
     : { status: 0, stdout: '.agents/references/usage.md\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\ntests/launcher-installed.test.ts\n' }
-  assert.equal(inspectInstalledEvidenceFreshness(catalog, { head: 'HEAD', repoRoot: root, runGit: allowedRunGit }).failures.length, 0)
+  assert.equal(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit: allowedRunGit }).failures.length, 0)
 })
 
 test('installed report validation requires complete platform lifecycle evidence', () => {
