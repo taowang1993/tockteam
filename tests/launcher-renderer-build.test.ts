@@ -13,6 +13,7 @@ const launcherSettings = readFileSync(new URL('../src/launcher-settings.tsx', im
 const launcherDrafts = readFileSync(new URL('../src/launcher-settings-drafts.tsx', import.meta.url), 'utf8')
 const launcherDraftValue = readFileSync(new URL('../src/launcher-settings-draft-value.ts', import.meta.url), 'utf8')
 const localSettings = readFileSync(new URL('../src/launcher-local-settings.tsx', import.meta.url), 'utf8')
+const discoverySettings = readFileSync(new URL('../src/launcher-discovery-settings.tsx', import.meta.url), 'utf8')
 const localTools = readFileSync(new URL('../src/launcher-local-tools.ts', import.meta.url), 'utf8')
 const fileSearchTool = readFileSync(new URL('../src/launcher-file-search-tool.ts', import.meta.url), 'utf8')
 const fileSearchSettings = readFileSync(new URL('../src/launcher-file-search-settings.tsx', import.meta.url), 'utf8')
@@ -88,6 +89,10 @@ test('local settings controls cover every provider and keep UUID formats bounded
   for (const label of ['Base64 Conversion', 'Calculator', 'Color Converter', 'Password Generator', 'Quick Formatter', 'Rowland Text Editor', 'UUID / GUID Generator']) assert.match(localSettings, new RegExp(label, 'u'))
   assert.match(localSettings, /searchResultFormats/u)
   assert.match(localSettings, /maxLength.{0,3}4096/u)
+  assert.match(localSettings, /FieldError/u)
+  assert.match(localSettings, /aria-describedby/u)
+  assert.match(discoverySettings, /FieldError/u)
+  assert.match(discoverySettings, /aria-describedby/u)
 })
 
 test('local tools stay finite and browser-safe', () => {
