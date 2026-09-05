@@ -4552,7 +4552,7 @@ test('Keyword search reconciles state-owned indexed candidates through the exact
     assert.deepEqual((await indexedSearch(1)).matches, [])
   } finally {
     await dispose(loaded.context, loaded.root)
-    await rm(fixture, { recursive: true, force: true })
+    await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }
 })
 
@@ -4626,6 +4626,6 @@ test('persistent FlexSearch SQLite indexes reopen outside the user vault', async
     await assert.rejects(lstat(join(vaultRoot, 'search-index')), { code: 'ENOENT' })
   } finally {
     if (loaded !== null) await dispose(loaded.context, loaded.root)
-    await rm(fixture, { recursive: true, force: true })
+    await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }
 })

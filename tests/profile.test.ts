@@ -77,6 +77,7 @@ test('desktop profile pins the released TockTutor runtime and peer package', () 
   for (const name of ['build', 'test', 'typecheck']) {
     assert.match(workspacePackage.scripts[name] ?? '', /--filter='!@tockteam\/tocktutor-workspace'/u)
   }
+  assert.match(workspacePackage.scripts.test ?? '', /--workspace-concurrency=1/u)
   assert.doesNotMatch(pluginWorkspace, /dsh-source|'@deepseek-ai\/[^']+': link:/u)
   assert.doesNotMatch(installer, /build:dsh|DSH_SOURCE/u)
   assert.match(installer, /install',\s*'--frozen-lockfile'/u)
