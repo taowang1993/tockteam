@@ -5,7 +5,8 @@
 - Package: `@deepseek-harness-tui/dsh-auth`
 - Exact revision: `94fdf81e775e8d884af4dfb64a94b617c3751936`
 - Runtime cohort: DSH `0.1.2-rc.1`, dsh-TUI `v0.10.0-beta.5`
-- Recommendation: **Defer Desktop/Web admission. Keep the existing TUI-only mount.**
+- Decision: **Defer Desktop/Web admission. Keep the existing TUI-only mount.**
+- Human approval: `Keep It TUI-Only` selected on 2026-09-04
 - Source/profile changes: none
 
 ## Blocking Findings
