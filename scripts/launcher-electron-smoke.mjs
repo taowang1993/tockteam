@@ -1148,7 +1148,10 @@ try {
       }
     })()`),
     controls => [controls.currencies, controls.target, controls.custom].every(control => control.invalid === 'true'
-      && control.describedBy !== null && control.describedBy !== ''),
+      && control.describedBy !== null && control.describedBy !== '')
+      && controls.currencies.value === 'usd, !'
+      && controls.target.value === 'USD'
+      && controls.custom.value === '{not json',
   )
   const networkValidationFacts = await workbenchConnection.evaluate(`(async () => {
     const fields = ['tockteam-currency-error', 'tockteam-target-currency-error', 'tockteam-custom-search-error']
