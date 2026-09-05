@@ -11,6 +11,7 @@ import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { acquireInstallLock } from './install-lock.mjs'
 
 const execFileAsync = promisify(execFile)
 const APP_NAME = 'TockTeam Desktop.app'
@@ -91,14 +92,7 @@ export async function replaceMacBundle(options) {
   let promoted = false
 
   await validateBundle(source)
-  try {
-    await mkdir(lock)
-  } catch (error) {
-    if (error !== null && typeof error === 'object' && error.code === 'EEXIST') {
-      throw new Error('another TockTeam Desktop install is already in progress')
-    }
-    throw error
-  }
+  await acquireInstallLock(lock, 'another TockTeam Desktop install is already in progress')
   try {
     await copyBundle(source, pending)
     await validateBundle(pending)

@@ -162,6 +162,9 @@ test('installed smoke selects only the loopback descriptor and atomically replac
       assert.equal((await stat(join(path, '.tockteam-portable.json'))).isFile(), true)
       assert.equal((await stat(join(path, 'win-unpacked', 'TockTeam Desktop.exe'))).isFile(), true)
     }
+    const staleLock = join(rootPath, '.installed.install.lock')
+    await mkdir(staleLock)
+    await writeFile(join(staleLock, 'owner.json'), JSON.stringify({ createdAt: Date.now(), pid: 2_147_483_647 }))
     const result = await replaceWindowsPortableArchive({ archive, destination, backupDirectory, extractArchive, validateInstall })
     assert.equal(result.destination, destination)
     assert.equal(extracted.length, 1)
