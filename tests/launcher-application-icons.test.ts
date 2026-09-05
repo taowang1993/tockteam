@@ -1,9 +1,28 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import { resolveMacOSApplicationIconPath } from '../src/launcher-application-icons.ts'
+
+test('macOS application icon cache evicts stale path churn', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'tockteam-launcher-application-icon-quota-'))
+  try {
+    const applicationPath = path.join(root, 'Current.app')
+    const iconPath = path.join(applicationPath, 'Contents', 'Resources', 'AppIcon.icns')
+    const cacheDirectory = path.join(root, 'cache')
+    await mkdir(path.dirname(iconPath), { recursive: true })
+    await mkdir(cacheDirectory)
+    await writeFile(iconPath, 'icns')
+    await Promise.all(Array.from({ length: 257 }, (_, index) => writeFile(path.join(cacheDirectory, `${index.toString(16).padStart(64, '0')}.png`), 'png')))
+    await resolveMacOSApplicationIconPath(applicationPath, cacheDirectory, async (executable, args) => {
+      if (executable === '/usr/bin/defaults') return { stdout: 'AppIcon\n' }
+      await writeFile(args.at(-1)!, 'png')
+      return { stdout: '' }
+    })
+    assert.ok((await readdir(cacheDirectory)).filter(name => name.endsWith('.png')).length <= 256)
+  } finally { await rm(root, { force: true, recursive: true }) }
+})
 
 test('macOS application icons use the bundle icon and reuse the bounded cache', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'tockteam-launcher-application-icon-'))
