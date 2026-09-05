@@ -352,8 +352,8 @@ export class LauncherPersistenceRepository {
     } catch {
       if (!await exists(backupPath)) throw new Error('External settings source is invalid')
       const backup = await readJson(backupPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value))
-      await this.#writeExternalDescriptor(grant, JSON.stringify(backup, null, 2), undefined)
-      this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = backup; this.#recoveredSettings = true; this.#recoveredArtifacts.add('external')
+      const refreshedGrant = await this.#writeExternalDescriptor(grant, JSON.stringify(backup, null, 2))
+      this.#externalGrant = refreshedGrant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = backup; this.#recoveredSettings = true; this.#recoveredArtifacts.add('external')
     }
   }
 
@@ -573,8 +573,7 @@ export class LauncherPersistenceRepository {
         parseStoredSettings(JSON.parse(previous) as unknown)
         const backupPath = this.#externalBackupPath(grant)
         await atomicWrite(backupPath, previous, { backup: false })
-        await this.#writeExternalDescriptor(grant, serialized, previous)
-        await atomicWrite(backupPath, serialized, { backup: false })
+        this.#externalGrant = await this.#writeExternalDescriptor(grant, serialized)
       } catch (error) {
         this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
         this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
@@ -587,22 +586,37 @@ export class LauncherPersistenceRepository {
     this.#settings = cloneJson(normalized, MAX_LAUNCHER_SETTINGS_BYTES)
   }
 
-  async #writeExternalDescriptor(grant: ExternalGrant, contents: string, _previous: string | undefined): Promise<void> {
+  async #writeExternalDescriptor(grant: ExternalGrant, contents: string): Promise<ExternalGrant> {
     if (!this.#externalWriteAvailable || !HAS_NOFOLLOW) throw new Error('TockLauncher external settings writes are unavailable on this platform')
-    const parent = await realpath(path.dirname(grant.path))
-    if (parent !== grant.parentRealPath) throw new Error('TockLauncher external settings directory changed')
-    const handle = await open(grant.path, constants.O_RDWR | NOFOLLOW)
+    const directory = path.dirname(grant.path)
+    if (await realpath(directory) !== grant.parentRealPath) throw new Error('TockLauncher external settings directory changed')
+    const target = await open(grant.path, constants.O_RDONLY | NOFOLLOW)
+    const temporary = path.join(directory, `.${path.basename(grant.path)}.${process.pid}.${randomUUID()}.tmp`)
+    let staged
     try {
-      const stats = await handle.stat({ bigint: true })
-      if (!stats.isFile() || !sameIdentity(stats, grant)) throw new Error('TockLauncher external settings file changed')
-      await handle.truncate(0)
-      await handle.writeFile(contents, 'utf8')
-      await handle.sync()
-      const after = await handle.stat({ bigint: true })
+      const opened = await target.stat({ bigint: true })
+      if (!opened.isFile() || !sameIdentity(opened, grant)) throw new Error('TockLauncher external settings file changed')
+      staged = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | NOFOLLOW, 0o600)
+      await staged.writeFile(contents, 'utf8')
+      await staged.sync()
+      const stagedIdentity = await staged.stat({ bigint: true })
+      await staged.close(); staged = undefined
       const current = await lstat(grant.path, { bigint: true })
-      const parentAfter = await realpath(path.dirname(grant.path))
-      if (!sameIdentity(after, grant) || !sameIdentity(current, grant) || parentAfter !== grant.parentRealPath) throw new Error('TockLauncher external settings file changed')
-    } finally { await handle.close() }
+      if (current.isSymbolicLink() || !sameIdentity(current, grant) || await realpath(directory) !== grant.parentRealPath) {
+        throw new Error('TockLauncher external settings file changed')
+      }
+      await rename(temporary, grant.path)
+      await syncDirectory(directory)
+      const refreshed = await this.#createGrant(grant.path)
+      if (!sameIdentity(stagedIdentity, refreshed)) throw new Error('TockLauncher external settings file changed')
+      await atomicWrite(this.#externalBackupPath(refreshed), contents, { backup: false })
+      await atomicWrite(this.#grantPath, JSON.stringify(refreshed, null, 2), { backup: false })
+      return refreshed
+    } finally {
+      await staged?.close().catch(() => undefined)
+      await target.close()
+      await rm(temporary, { force: true })
+    }
   }
 
   async #createGrant(filePath: string): Promise<ExternalGrant> {

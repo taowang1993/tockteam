@@ -73,8 +73,13 @@ test('external settings accepts regular files, preserves replacement, and fails 
     await assert.rejects(repository.grantExternalSettingsFile(link))
     await repository.grantExternalSettingsFile(external)
     assert.equal(repository.snapshot().settingsSource, 'external')
+    const originalIdentity = await lstat(external, { bigint: true })
     await repository.updateSetting('general.language', 'fr-FR')
+    const replacedIdentity = await lstat(external, { bigint: true })
+    assert.notEqual(`${replacedIdentity.dev}:${replacedIdentity.ino}`, `${originalIdentity.dev}:${originalIdentity.ino}`)
     assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'fr-FR' })
+    await repository.updateSetting('general.language', 'de-CH')
+    assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'de-CH' })
     const replacement = `${external}.replacement`
     await writeFile(replacement, JSON.stringify({ 'general.language': 'zh-CN' }), { mode: 0o600 })
     await rm(external); await rename(replacement, external)
