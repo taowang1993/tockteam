@@ -2,6 +2,7 @@ import { constants } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { chmod, mkdir, open, realpath, rename, rm, lstat } from 'node:fs/promises'
 import path from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 import type { LauncherInternalResultItem } from './launcher-actions.ts'
 import {
   isLauncherRendererSettingValue,
@@ -345,6 +346,8 @@ export class LauncherPersistenceRepository {
   async #loadExternal(grant: ExternalGrant): Promise<void> {
     const backupPath = this.#externalBackupPath(grant)
     try {
+      const currentGrant = await this.#createGrant(grant.path)
+      if (!this.#sameGrant(currentGrant, grant)) throw new Error('TockLauncher external settings grant changed')
       const settings = await readJson(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), grant)
       this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = settings
       return
@@ -500,12 +503,14 @@ export class LauncherPersistenceRepository {
 
   async exportSettingsToPath(filePath: string): Promise<void> {
     const absolute = path.resolve(filePath)
-    const existing = await exists(absolute)
-    if (existing) {
-      const stats = await lstat(absolute)
-      if (stats.isSymbolicLink() || !stats.isFile()) throw new Error('TockLauncher export target is invalid')
-    }
     await this.#enqueue(async () => {
+      if (await exists(absolute)) {
+        const target = await this.#createGrant(absolute)
+        const active = this.#externalGrant
+        if (active !== undefined && (target.path === active.path || sameIdentity(target, active))) {
+          throw new Error('TockLauncher export target is the active external settings file')
+        }
+      }
       const exported = parseLauncherSettingsRecord(this.#settings, { omitMainOwned: true, omitSensitive: true })
       await atomicWrite(absolute, JSON.stringify(exported, null, 2), { backup: false })
     })
@@ -567,7 +572,8 @@ export class LauncherPersistenceRepository {
       if (!this.#externalWriteAvailable) throw new Error('TockLauncher external settings writes are unavailable on this platform')
       try {
         const previous = await readBoundedRegularFile(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, grant)
-        parseStoredSettings(JSON.parse(previous) as unknown)
+        const currentSettings = parseStoredSettings(JSON.parse(previous) as unknown)
+        if (!isDeepStrictEqual(currentSettings, this.#settings)) throw new Error('TockLauncher external settings file contents changed')
         const backupPath = this.#externalBackupPath(grant)
         await atomicWrite(backupPath, previous, { backup: false })
         this.#externalGrant = await this.#writeExternalDescriptor(grant, serialized)
@@ -619,13 +625,19 @@ export class LauncherPersistenceRepository {
   async #createGrant(filePath: string): Promise<ExternalGrant> {
     const absolute = path.resolve(filePath)
     const selected = await lstat(absolute, { bigint: true })
-    if (selected.isSymbolicLink() || !selected.isFile()) throw new Error('TockLauncher external settings path must be a regular file')
-    const canonical = await realpath(absolute)
-    const parent = await realpath(path.dirname(canonical))
-    const stats = await lstat(canonical, { bigint: true })
-    const dev = identityPart(stats.dev); const ino = identityPart(stats.ino)
-    if (dev === undefined || ino === undefined) throw new Error('TockLauncher external settings identity is unavailable')
-    return Object.freeze({ dev, ino, parentRealPath: parent, path: canonical, version: 1 })
+    const selectedDev = identityPart(selected.dev); const selectedIno = identityPart(selected.ino)
+    if (selected.isSymbolicLink() || !selected.isFile() || selectedDev === undefined || selectedIno === undefined) throw new Error('TockLauncher external settings path must be a regular file')
+    const handle = await open(absolute, constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0))
+    try {
+      const opened = await handle.stat({ bigint: true })
+      const dev = identityPart(opened.dev); const ino = identityPart(opened.ino)
+      if (!opened.isFile() || dev === undefined || ino === undefined || dev !== selectedDev || ino !== selectedIno) throw new Error('TockLauncher external settings file changed')
+      const canonical = await realpath(absolute)
+      const parent = await realpath(path.dirname(canonical))
+      const current = await lstat(canonical, { bigint: true })
+      if (current.isSymbolicLink() || identityPart(current.dev) !== dev || identityPart(current.ino) !== ino) throw new Error('TockLauncher external settings file changed')
+      return Object.freeze({ dev, ino, parentRealPath: parent, path: canonical, version: 1 })
+    } finally { await handle.close() }
   }
 
   #sameGrant(left: ExternalGrant, right: ExternalGrant): boolean { return left.path === right.path && left.parentRealPath === right.parentRealPath && left.dev === right.dev && left.ino === right.ino }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
+import { link as hardLink, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -96,6 +96,59 @@ test('external settings accepts regular files, preserves replacement, and fails 
     await assert.rejects(readonly.updateSetting('general.language', 'en-US'), /unavailable|platform/i)
     await readonly.close()
   } finally { await Promise.all([userDataPath, readonlyUserDataPath].map(path => rm(path, { recursive: true, force: true }))) }
+})
+
+test('external settings cannot be exported over the active grant or a hard-link alias', { skip: process.platform === 'win32' }, async () => {
+  const userDataPath = await root()
+  try {
+    const external = path.join(userDataPath, 'external.json')
+    const alias = path.join(userDataPath, 'external-alias.json')
+    await writeFile(external, JSON.stringify({ 'general.language': 'de-CH' }), { mode: 0o600 })
+    await hardLink(external, alias)
+    const repository = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, secretCodec: codec, secureStorageAvailable: true, userDataPath })
+    await repository.grantExternalSettingsFile(external)
+    await assert.rejects(repository.exportSettingsToPath(external), /active external settings/u)
+    await assert.rejects(repository.exportSettingsToPath(alias), /active external settings/u)
+    assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'de-CH' })
+    assert.equal(repository.snapshot().settingsSource, 'external')
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('same-inode external edits are preserved and revoke stale launcher state', { skip: process.platform === 'win32' }, async () => {
+  const userDataPath = await root()
+  try {
+    const external = path.join(userDataPath, 'external.json')
+    await writeFile(external, JSON.stringify({ 'general.language': 'de-CH' }), { mode: 0o600 })
+    const repository = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, secretCodec: codec, secureStorageAvailable: true, userDataPath })
+    await repository.grantExternalSettingsFile(external)
+    const identity = await lstat(external, { bigint: true })
+    await writeFile(external, JSON.stringify({ 'general.language': 'zh-CN', 'searchEngine.fuzziness': 0.9 }), { mode: 0o600 })
+    const editedIdentity = await lstat(external, { bigint: true })
+    assert.equal(`${editedIdentity.dev}:${editedIdentity.ino}`, `${identity.dev}:${identity.ino}`)
+    await assert.rejects(repository.updateSetting('general.language', 'fr-FR'), /changed or was revoked/u)
+    assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'zh-CN', 'searchEngine.fuzziness': 0.9 })
+    assert.equal(repository.snapshot().externalGrantStatus, 'revoked')
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('startup rejects an external grant whose canonical parent metadata changed', { skip: process.platform === 'win32' }, async () => {
+  const userDataPath = await root()
+  try {
+    const external = path.join(userDataPath, 'external.json')
+    await writeFile(external, JSON.stringify({ 'general.language': 'de-CH' }), { mode: 0o600 })
+    const repository = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, userDataPath })
+    await repository.grantExternalSettingsFile(external)
+    await repository.close()
+    const grantPath = path.join(userDataPath, 'launcher', 'external-settings-grant.json')
+    const grant = JSON.parse(await readFile(grantPath, 'utf8')) as Record<string, unknown>
+    await writeFile(grantPath, JSON.stringify({ ...grant, parentRealPath: path.dirname(userDataPath) }), 'utf8')
+    const restarted = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, userDataPath })
+    assert.equal(restarted.snapshot().externalGrantStatus, 'revoked')
+    assert.equal(restarted.snapshot().settingsSource, 'managed')
+    await restarted.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
 test('external folder grant drift falls back to managed folders before later writes', async () => {
