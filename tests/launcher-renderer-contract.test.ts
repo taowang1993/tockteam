@@ -61,6 +61,7 @@ test('launcher surface defaults match the Tockbot search chrome', () => {
   })
   assert.equal(projection.placeholder, 'Type here...')
   assert.equal(projection.showSearchIcon, false)
+  assert.deepEqual(projection.hideWindowOn, ['blur', 'afterInvocation', 'escapePressed'])
 })
 
 test('launcher shortcut matching requires exact modifiers and supports finite provider shortcuts', () => {

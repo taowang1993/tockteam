@@ -122,6 +122,8 @@ test('settings renderer never inserts sensitive values and preserves focused con
   assert.match(launcherSettings, /createLauncherSettingsWriteQueue[\s\S]+writeQueue\.enqueue/u)
   assert.match(launcherSettings, /writeQueue\?\.waitForIdle\(\)/u)
   assert.match(launcherSettings, /save\('window\.visibleOnAllWorkspaces', checked\)/u)
+  assert.match(launcherSettings, /disabled=\{busy \|\| rendererPlatform === 'Windows'\}/u)
+  assert.match(launcherSettings, /disabled=\{busy \|\| rendererPlatform !== 'macOS'\}/u)
   assert.doesNotMatch(launcherSettings, /window\.visibleOnAll workspaces/u)
   assert.match(launcherDrafts, /useLauncherDraft<string \| number>/u)
   assert.match(launcherDrafts, /commitDraft/u)

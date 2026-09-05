@@ -146,7 +146,7 @@ import { createLauncherLocalExtensions, resolveLauncherEnabledExtensionIds } fro
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
-import { LAUNCHER_COMPOSITION, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
+import { LAUNCHER_COMPOSITION, LAUNCHER_HIDE_WINDOW_ON_DEFAULT, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
 import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
 import {
   executeTockTeamDestination,
@@ -1414,7 +1414,7 @@ function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['s
     : context.platform === 'Windows'
       ? ['extension[ApplicationSearch].windowsFolders']
       : ['extension[ApplicationSearch].macOsFolders']
-  for (const key of [...dynamicKeys, 'extension[VSCode].command']) {
+  for (const key of [...dynamicKeys, 'extension[VSCode].command', 'appearance.searchBarPlaceholderText']) {
     if (Object.hasOwn(values, key)) continue
     const fallback = resolveLauncherSettingDefault(key, context)
     if (fallback !== undefined) values[key] = fallback
@@ -1542,7 +1542,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
     history: Object.freeze([...history]),
     historyEnabled,
     historyLimit,
-    hideWindowOn: Object.freeze((Array.isArray(values['window.hideWindowOn']) ? values['window.hideWindowOn'] : ['blur', 'afterInvocation']).filter((reason): reason is 'blur' | 'afterInvocation' | 'escapePressed' => reason === 'blur' || reason === 'afterInvocation' || reason === 'escapePressed')),
+    hideWindowOn: Object.freeze((Array.isArray(values['window.hideWindowOn']) ? values['window.hideWindowOn'] : LAUNCHER_HIDE_WINDOW_ON_DEFAULT).filter((reason): reason is 'blur' | 'afterInvocation' | 'escapePressed' => reason === 'blur' || reason === 'afterInvocation' || reason === 'escapePressed')),
     locale: language,
     maxSearchResultItems: Math.min(200, Math.max(1, numberValue('searchEngine.maxResultLength', 50))),
     placeholder: configuredPlaceholder.slice(0, 512),
@@ -2268,8 +2268,8 @@ function initializeLauncher(): void {
     getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
     getLocale: () => launcherLocale,
     getHideWindowOn: () => {
-      const configured = repository.getSetting<unknown>('window.hideWindowOn', ['blur', 'afterInvocation'])
-      return Array.isArray(configured) ? configured.filter((value): value is string => value === 'blur' || value === 'afterInvocation' || value === 'escapePressed') : ['blur', 'afterInvocation']
+      const configured = repository.getSetting<unknown>('window.hideWindowOn', LAUNCHER_HIDE_WINDOW_ON_DEFAULT)
+      return Array.isArray(configured) ? configured.filter((value): value is string => value === 'blur' || value === 'afterInvocation' || value === 'escapePressed') : LAUNCHER_HIDE_WINDOW_ON_DEFAULT
     },
     globalShortcut: {
       register: (accelerator, callback) => globalShortcut.register(accelerator, () => {

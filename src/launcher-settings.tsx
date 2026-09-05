@@ -372,9 +372,9 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           <Switch aria-label={launcherFixedText('Show TockLauncher on startup')} checked={state.preferences.showOnStartup} disabled={busy} onCheckedChange={checked => { void save('window.showOnStartup', checked) }} />
         </Field>
         <Field title="Keep TockLauncher always on top"><Switch aria-label={launcherFixedText('Keep TockLauncher always on top')} checked={state.preferences.alwaysOnTop} disabled={busy} onCheckedChange={checked => { void save('window.alwaysOnTop', checked) }} /></Field>
-        <Field title="Show on all workspaces"><Switch aria-label={launcherFixedText('Show on all workspaces')} checked={state.preferences.visibleOnAllWorkspaces} disabled={busy} onCheckedChange={checked => { void save('window.visibleOnAllWorkspaces', checked) }} /></Field>
+        <Field title="Show on all workspaces" description={rendererPlatform === 'Windows' ? 'Unavailable on Windows.' : 'Available on macOS and Linux.'}><Switch aria-label={launcherFixedText('Show on all workspaces')} checked={state.preferences.visibleOnAllWorkspaces} disabled={busy || rendererPlatform === 'Windows'} onCheckedChange={checked => { void save('window.visibleOnAllWorkspaces', checked) }} /></Field>
         <Field title="Show tray icon"><Switch aria-label={launcherFixedText('Show tray icon')} checked={state.preferences.showTrayIcon} disabled={busy} onCheckedChange={checked => { void save('general.tray.showIcon', checked) }} /></Field>
-        <Field title="Show Dock icon"><Switch aria-label={launcherFixedText('Show Dock icon')} checked={state.preferences.showDockIcon} disabled={busy} onCheckedChange={checked => { void save('appearance.showAppIconInDock', checked) }} /></Field>
+        <Field title="Show Dock icon" description={rendererPlatform === 'macOS' ? 'Available on macOS.' : `Unavailable on ${rendererPlatform}.`}><Switch aria-label={launcherFixedText('Show Dock icon')} checked={state.preferences.showDockIcon} disabled={busy || rendererPlatform !== 'macOS'} onCheckedChange={checked => { void save('appearance.showAppIconInDock', checked) }} /></Field>
         <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="window" snapshot={snapshot} />
       </SectionCard>
 

@@ -103,6 +103,7 @@ export type LauncherResultLayout = 'compact' | 'detailed'
 export type LauncherScrollBehavior = 'auto' | 'smooth' | 'instant'
 export type LauncherClickBehavior = 'selectSearchResultItem' | 'invokeSearchResultItem'
 export type LauncherProviderState = 'ready' | 'disabled' | 'unsupported' | 'unavailable'
+export const LAUNCHER_HIDE_WINDOW_ON_DEFAULT = Object.freeze(['blur', 'afterInvocation', 'escapePressed'] as const)
 export type LauncherProviderStatus = Readonly<{
   extensionId: (typeof LAUNCHER_COMPOSITION.extensionIds)[number]
   state: LauncherProviderState
@@ -430,7 +431,7 @@ export function parseLauncherSurfaceSettings(value: unknown): LauncherSurfaceSet
     || parsedStatuses.some((status, index) => status.extensionId !== LAUNCHER_COMPOSITION.extensionIds[index]))) {
     throw new Error('Launcher provider status projection is incomplete')
   }
-  const hideWindowOn = value.hideWindowOn === undefined ? ['blur', 'afterInvocation'] : value.hideWindowOn
+  const hideWindowOn = value.hideWindowOn === undefined ? [...LAUNCHER_HIDE_WINDOW_ON_DEFAULT] : value.hideWindowOn
   const doubleClickBehavior = value.doubleClickBehavior === undefined ? 'invokeSearchResultItem' : value.doubleClickBehavior
   const singleClickBehavior = value.singleClickBehavior === undefined ? 'selectSearchResultItem' : value.singleClickBehavior
   const searchBarAppearance = value.searchBarAppearance === undefined ? 'auto' : value.searchBarAppearance

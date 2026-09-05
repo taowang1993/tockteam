@@ -13,6 +13,7 @@ import {
 import type { IconNode } from 'lucide'
 import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-actions.ts'
 import {
+  LAUNCHER_HIDE_WINDOW_ON_DEFAULT,
   launcherEffectiveScrollBehavior,
   launcherShortcutAriaLabel,
   launcherShortcutMatches,
@@ -271,7 +272,7 @@ async function bootstrap(): Promise<void> {
     history: Object.freeze([]),
     historyEnabled: false,
     historyLimit: 10,
-    hideWindowOn: Object.freeze(['blur', 'afterInvocation'] as const),
+    hideWindowOn: LAUNCHER_HIDE_WINDOW_ON_DEFAULT,
     locale: 'en-US',
     maxSearchResultItems: 50,
     placeholder: 'Type here...',
