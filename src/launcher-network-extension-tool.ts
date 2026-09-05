@@ -27,6 +27,11 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   searchOptions: LauncherSearchOptions
 }>): HTMLElement {
   const { bridge, document, extensionId } = options
+  let inputTimer: ReturnType<typeof setTimeout> | undefined
+  const closeTool = (): void => {
+    if (inputTimer !== undefined) clearTimeout(inputTimer)
+    options.onClose()
+  }
   const text = (key: string, fallback: string): string => launcherText(options.locale, key, fallback)
   const isDeepL = extensionId === 'DeeplTranslator'
   const title = isDeepL ? text('deeplName', 'DeepL Translator') : text('webSearchName', 'Web Search')
@@ -45,7 +50,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   close.type = 'button'
   close.textContent = text('back', 'Back to Results')
   close.setAttribute('aria-label', `${text('closeTool', 'Close')} ${title} ${text('tool', 'Tool').toLocaleLowerCase('en-US')}`)
-  close.addEventListener('click', options.onClose)
+  close.addEventListener('click', closeTool)
   header.append(identity, close)
 
   const content = element(document, 'div', 'launcher-local-tool-content min-w-0 overflow-auto')
@@ -216,6 +221,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     }
   }
   const invoke = async (action: LauncherPublicAction, item: LauncherPublicResultItem): Promise<void> => {
+    if (inputTimer !== undefined) clearTimeout(inputTimer)
     setStatus(`${text('actionWorking', 'Working…')} ${action.description}`)
     try {
       const result = await bridge.invokeAction(action.actionId)
@@ -229,13 +235,24 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
       await search(item.id)
     }
   }
-  input.addEventListener('input', () => { void search() })
+  input.addEventListener('input', () => {
+    if (inputTimer !== undefined) clearTimeout(inputTimer)
+    requestRevision += 1
+    currentItems = []
+    render()
+    if (input.value.trim().length === 0) {
+      setStatus(isDeepL ? text('enterTranslation', 'Enter text to translate.') : text('enterWebSearch', 'Enter a web search.'))
+      return
+    }
+    setStatus(isDeepL ? text('translating', 'Translating with DeepL…') : text('loadingSuggestions', 'Loading suggestions…'))
+    inputTimer = setTimeout(() => { inputTimer = undefined; void search() }, 200)
+  })
   input.addEventListener('keydown', event => {
     const keyboardEvent = event as KeyboardEvent
     if (keyboardEvent.key === 'Escape') {
       keyboardEvent.preventDefault()
       keyboardEvent.stopPropagation()
-      options.onClose()
+      closeTool()
     } else if (keyboardEvent.key === 'ArrowDown') {
       const first = list.querySelector<HTMLButtonElement>('button')
       if (first !== null) { keyboardEvent.preventDefault(); first.focus() }
