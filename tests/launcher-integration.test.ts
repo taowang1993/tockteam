@@ -18,6 +18,10 @@ const webPatch = readFileSync(new URL('../web/cordis.patch.yml', import.meta.url
 const tuiPatch = readFileSync(new URL('../plugins/tui/cordis.patch.yml', import.meta.url), 'utf8')
 const electronSmoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
 
+test('main does not spawn Windows system helpers by a bare search-path name', () => {
+  assert.doesNotMatch(main, /execFileAsync\('(powershell|explorer)\.exe'/u)
+})
+
 test('main activates the macOS app before handling a cross-display launcher shortcut', () => {
   assert.match(main, /globalShortcut: \{[\s\S]*?const workbench = mainWindow[\s\S]*?screen\.getDisplayMatching\(workbench\.getBounds\(\)\)\.id[\s\S]*?screen\.getDisplayNearestPoint\(screen\.getCursorScreenPoint\(\)\)\.id[\s\S]*?app\.focus\(\{ steal: true \}\)\s*setImmediate\(callback\)\s*return/u)
 })

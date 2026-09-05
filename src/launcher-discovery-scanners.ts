@@ -6,6 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { Worker } from 'node:worker_threads'
+import { resolveWindowsSystemExecutable } from './launcher-discovery-process.ts'
 import type {
   LauncherDiscoveryEntry,
   LauncherDiscoveryExtensionId,
@@ -435,7 +436,7 @@ async function scanApplications(context: LauncherDiscoveryScanContext, execFile:
       fileExtensions: boundedStringArray(context.getSetting('extension[ApplicationSearch].windowsFileExtensions', defaults.windowsFileExtensions), defaults.windowsFileExtensions, 16),
       folders: boundedStringArray(context.getSetting('extension[ApplicationSearch].windowsFolders', defaults.windowsFolders), defaults.windowsFolders),
       includeStoreApps: context.getSetting('extension[ApplicationSearch].includeWindowsStoreApps', defaults.includeWindowsStoreApps) === true,
-    })
+    }, context.environment)
     const { stdout } = await execFile(invocation.executable, [...invocation.args], { maxBuffer: MAX_DISCOVERY_EXEC_BUFFER, signal: context.signal, timeout: 10_000, windowsHide: true })
     let parsed: unknown
     try { parsed = JSON.parse(stdout || '[]') } catch { return Object.freeze([]) }
@@ -551,7 +552,10 @@ async function scanVSCode(context: LauncherDiscoveryScanContext, sqlite: Launche
   ]))
 }
 
-export function windowsApplicationScanInvocation(settings: Readonly<{ fileExtensions: readonly string[]; folders: readonly string[]; includeStoreApps: boolean }>): Readonly<{ args: readonly string[]; executable: 'powershell.exe' }> {
+export function windowsApplicationScanInvocation(
+  settings: Readonly<{ fileExtensions: readonly string[]; folders: readonly string[]; includeStoreApps: boolean }>,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): Readonly<{ args: readonly string[]; executable: string }> {
   const script = String.raw`$folders = ConvertFrom-Json $args[0]
 $extensions = ConvertFrom-Json $args[1]
 $includeStore = $args[2] -eq 'true'
@@ -586,7 +590,7 @@ if ($includeStore -and $results.Count -lt $maxResults -and $visits -lt $maxVisit
   }
 }
 $results | Select-Object -First $maxResults | ConvertTo-Json -Compress`.trim()
-  return Object.freeze({ args: Object.freeze(['-NoProfile', '-NonInteractive', '-Command', script, JSON.stringify(settings.folders.slice(0, 32)), JSON.stringify(settings.fileExtensions.slice(0, 16)), String(settings.includeStoreApps)]), executable: 'powershell.exe' })
+  return Object.freeze({ args: Object.freeze(['-NoProfile', '-NonInteractive', '-Command', script, JSON.stringify(settings.folders.slice(0, 32)), JSON.stringify(settings.fileExtensions.slice(0, 16)), String(settings.includeStoreApps)]), executable: resolveWindowsSystemExecutable('powershell', environment) })
 }
 
 export function createLauncherDiscoveryScanners(options: Readonly<{

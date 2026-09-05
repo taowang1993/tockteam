@@ -132,6 +132,7 @@ import {
   launcherPathIdentity,
   resolveLinuxDesktopEntryInvocation,
   resolveWindowsApplicationElevationInvocation,
+  resolveWindowsSystemExecutable,
   revalidateLauncherWindowsStoreId,
   statLauncherPathIdentity,
 } from './launcher-discovery-process.ts'
@@ -1697,7 +1698,7 @@ function initializeLauncher(): void {
           return
         }
         if (platform === 'Windows' && revalidateLauncherWindowsStoreId(target)) {
-          await execFileAsync('explorer.exe', [target], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
+          await execFileAsync(resolveWindowsSystemExecutable('explorer'), [target], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
           return
         }
         const error = await launcherAwaitAbortable(shell.openPath(target), signal)

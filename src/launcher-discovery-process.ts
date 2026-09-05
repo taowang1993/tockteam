@@ -18,6 +18,19 @@ const MAX_TARGET_LENGTH = 16_384
 const MAX_URL_LENGTH = 8_192
 const POWERSHELL_PREFIX = Object.freeze(['-NoLogo', '-NoProfile', '-NonInteractive', '-Command'])
 
+export function resolveWindowsSystemExecutable(
+  executable: 'explorer' | 'powershell',
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  const configuredRoot = environment.SystemRoot ?? environment.WINDIR
+  const systemRoot = configuredRoot !== undefined && /^[A-Za-z]:[\\/][^\0\r\n]{1,4000}$/u.test(configuredRoot)
+    ? path.win32.normalize(configuredRoot)
+    : 'C:\\Windows'
+  return executable === 'explorer'
+    ? path.win32.join(systemRoot, 'explorer.exe')
+    : path.win32.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+}
+
 function bounded(value: unknown, maxLength = MAX_TARGET_LENGTH): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= maxLength && !/[\0\r\n]/u.test(value)
 }
@@ -198,7 +211,10 @@ export function resolveLinuxDesktopEntryInvocation(target: string): Readonly<{ a
   return Object.freeze({ args: Object.freeze(['launch', target]), executable: 'gio' })
 }
 
-export function resolveWindowsApplicationElevationInvocation(target: string): LauncherFixedInvocation {
+export function resolveWindowsApplicationElevationInvocation(
+  target: string,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): LauncherFixedInvocation {
   if (!bounded(target) || (!path.win32.isAbsolute(target) && !WINDOWS_STORE_APPLICATION_PATTERN.test(target))) throw new Error('Invalid Windows application target')
   return Object.freeze({
     args: Object.freeze([
@@ -206,7 +222,7 @@ export function resolveWindowsApplicationElevationInvocation(target: string): La
       "$target=$args[0]; if ([string]::IsNullOrWhiteSpace($target)) { throw 'Missing application target' }; Start-Process -FilePath $target -Verb RunAs",
       target,
     ]),
-    executable: 'powershell.exe',
+    executable: resolveWindowsSystemExecutable('powershell', environment),
   })
 }
 

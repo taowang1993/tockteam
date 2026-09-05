@@ -114,7 +114,7 @@ test('reads VS Code SQLite state through the discovery worker', async () => {
 test('uses one fixed PowerShell script and data-only settings arguments', () => {
   const safe = windowsApplicationScanInvocation({ fileExtensions: ['lnk'], folders: ['C:\\ProgramData\\Start Menu'], includeStoreApps: true })
   const hostile = windowsApplicationScanInvocation({ fileExtensions: ['lnk; Write-Host pwned'], folders: ["C:\\safe'; Write-Host pwned; '"], includeStoreApps: false })
-  assert.equal(safe.executable, 'powershell.exe')
+  assert.equal(safe.executable, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
   assert.equal(safe.args[3], hostile.args[3])
   assert.ok(!String(hostile.args[3]).includes('pwned'))
   assert.ok(String(hostile.args.at(-2)).includes('pwned'))

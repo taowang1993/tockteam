@@ -17,7 +17,7 @@ import {
 test('fixed process adapters reject generic or malformed targets', () => {
   assert.deepEqual(resolveLinuxDesktopEntryInvocation('/usr/share/applications/tockteam.desktop'), { executable: 'gio', args: ['launch', '/usr/share/applications/tockteam.desktop'] })
   assert.throws(() => resolveLinuxDesktopEntryInvocation('../unsafe.desktop'), /desktop entry/u)
-  assert.deepEqual(resolveWindowsApplicationElevationInvocation('C:\\Program Files\\TockTeam\\tockteam.exe').executable, 'powershell.exe')
+  assert.deepEqual(resolveWindowsApplicationElevationInvocation('C:\\Program Files\\TockTeam\\tockteam.exe').executable, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
   assert.deepEqual(resolveWindowsApplicationElevationInvocation('shell:AppsFolder\\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App').args.at(-1), 'shell:AppsFolder\\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App')
   assert.throws(() => resolveWindowsApplicationElevationInvocation('powershell.exe; evil'), /Windows application target/u)
 })
