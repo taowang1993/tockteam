@@ -98,6 +98,7 @@ function setup(
   const callbacks: (() => void)[] = []
   const unregistered: string[] = []
   let registerResult = true
+  let focusAppCount = 0
   const workArea = { x: 100, y: 50, width: 1440, height: 900 }
   const controller = new LauncherOverlayController({
     createWindow: () => {
@@ -107,6 +108,7 @@ function setup(
       return window
     },
     getDisplayWorkArea: () => workArea,
+    focusApp: () => { focusAppCount += 1 },
     globalShortcut: {
       register: (_accelerator, callback) => {
         if (!registerResult) return false
@@ -123,6 +125,7 @@ function setup(
   return {
     callbacks,
     controller,
+    focusAppCount: () => focusAppCount,
     setRegisterResult: (value: boolean) => { registerResult = value },
     unregistered,
     windows,
@@ -145,6 +148,15 @@ test('launcher shortcut and geometry use the platform contract', () => {
     x: -4,
     y: 6,
   })
+})
+
+test('macOS activates the app before showing the launcher', async () => {
+  const mac = setup('darwin')
+  await mac.controller.show()
+  assert.equal(mac.focusAppCount(), 1)
+  const linux = setup('linux')
+  await linux.controller.show()
+  assert.equal(linux.focusAppCount(), 0)
 })
 
 test('launcher lazily creates and reuses one focused, rebound window', async () => {

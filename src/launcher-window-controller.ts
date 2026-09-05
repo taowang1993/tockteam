@@ -80,6 +80,7 @@ export function resolveLauncherBounds(workArea: Rectangle): Rectangle {
 export class LauncherOverlayController {
   private readonly args: Readonly<{
     createWindow: () => LauncherOverlayWindow
+    focusApp?: () => void
     getDisplayWorkArea: () => Rectangle
     getHideWindowOn?: () => readonly string[]
     globalShortcut: LauncherGlobalShortcut
@@ -109,6 +110,7 @@ export class LauncherOverlayController {
 
   constructor(args: Readonly<{
     createWindow: () => LauncherOverlayWindow
+    focusApp?: () => void
     getDisplayWorkArea: () => Rectangle
     getHideWindowOn?: () => readonly string[]
     globalShortcut: LauncherGlobalShortcut
@@ -186,6 +188,7 @@ export class LauncherOverlayController {
       throw new Error('Launcher window is unavailable')
     }
     window.setBounds(resolveLauncherBounds(this.args.getDisplayWorkArea()))
+    if (this.args.platform === 'darwin') this.args.focusApp?.()
     window.show()
     window.focus()
     this.sendTheme()

@@ -2274,6 +2274,7 @@ function initializeLauncher(): void {
   }
   const nextController = new LauncherOverlayController({
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
+    focusApp: () => app.focus({ steal: true }),
     getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
     getLocale: () => launcherLocale,
     getHideWindowOn: () => {
