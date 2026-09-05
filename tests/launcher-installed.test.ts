@@ -705,7 +705,7 @@ test('extra-resource inspection is bounded and never follows symlink cycles', as
   }
 })
 
-test('installed evidence catalog owns exact platform rows without stale proof claims', () => {
+test('installed evidence catalog owns exact platform rows with current checked-in proof', () => {
   assert.equal(catalog.schemaVersion, 1)
   assert.equal(catalog.issue, 'tockteam-tl.15')
   assert.deepEqual(catalog.evidenceStates, ['local-verified', 'hosted-verified', 'partially-verified', 'workflow-required', 'unverified', 'not-applicable'])
@@ -728,8 +728,8 @@ test('installed evidence catalog owns exact platform rows without stale proof cl
   for (const row of catalog.rows) {
     assert.ok(row.id && row.platform && row.owner && row.state)
     if (row.required) assert.notEqual(row.owner, 'unowned')
-    assert.equal(row.state, 'workflow-required')
-    assert.equal(row.evidence, null)
+    assert.equal(row.state, row.platform === 'macOS' ? 'local-verified' : 'hosted-verified')
+    assert.equal(row.evidence?.kind, 'checked-in-report')
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
@@ -760,6 +760,7 @@ test('installed evidence freshness rejects runtime drift after a report commit',
     : { status: 0, stdout: '.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\nsrc/main.ts\n' }
   const commit = 'a'.repeat(40)
   const evidenceCatalog = structuredClone(catalog)
+  for (const row of evidenceCatalog.rows) row.evidence = null
   evidenceCatalog.rows[0]!.evidence = { kind: 'checked-in-report', platform: 'darwin', commit, version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '.beads/reports/report.json', reportSha256: 'b'.repeat(64) }
   assert.deepEqual(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit }).failures, [`installed evidence commit has later runtime changes: ${commit}: src/main.ts`])
   const allowedRunGit = (args: readonly string[]) => args[0] === 'merge-base'

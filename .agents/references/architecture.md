@@ -106,11 +106,15 @@ portable archive and Linux Debian/AppImage installed smokes at
 commit `ed39e301`; run `33301125258` refreshed those historical reports at commit
 `455db8ca`. Hosted run `33342761994` passed Linux Debian/AppImage at commit
 `63a72645`, including controlled validation failure and recovery using the
-preserved prior Debian package from run `33301125258`. Those reports were later
-removed and the runtime changed, so every current catalog row is
-workflow-required until fresh proof is checked in. The historical Linux package rollback row was workflow-required.
-The historical hosted image reported Windows Control Panel unavailable and
-elevation confirmation-required but uninvoked. The smoke requires exact
+preserved prior Debian package from run `33301125258`. Those reports were
+later removed and the runtime changed. Fresh installed reports now cover source
+commit `1138bb3`: local macOS arm64 unsigned/internal
+ad-hoc evidence and hosted run `33951487579` for Windows x64 and Linux x64.
+The checked-in Linux report proves controlled validation failure and recovery
+through the preserved Debian package from run `33301125258`; the historical
+Linux package rollback row was workflow-required. The current Windows report
+records Windows Control Panel unavailable and elevation
+confirmation-required but uninvoked. The smoke requires exact
 identity/version/resources, renderer security, lifecycle, and cleanup reports
 before promotion. Vendor results are explicitly bounded no-follow scans, not
 global source-absence proof. No workflow configuration alone counts as a

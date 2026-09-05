@@ -1,0 +1,198 @@
+{
+  "classification": "unsigned/internal macOS evidence (ad-hoc signed for local execution); not notarized or public distribution",
+  "installed": {
+    "identity": {
+      "appId": "ai.deepseek.tockteam-desktop",
+      "asarPath": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+      "executable": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+      "signature": "adhoc",
+      "resources": true
+    },
+    "installRoot": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app",
+    "package": {
+      "appId": "ai.deepseek.tockteam-desktop",
+      "appPath": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+      "version": "0.1.14",
+      "appPathUsesAsar": true,
+      "assetCount": 65,
+      "executable": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+      "electron": {
+        "architecture": "arm64",
+        "version": "42.3.0"
+      },
+      "node": {
+        "architecture": "arm64",
+        "version": "v26.0.0"
+      },
+      "productName": "TockTeam Desktop",
+      "assetsVerified": true,
+      "noticesVerified": true,
+      "vendorScan": {
+        "scope": "bounded-no-follow",
+        "maxDepth": 2,
+        "maxEntries": 4096,
+        "checkedEntries": 300,
+        "forbiddenSourceFound": false,
+        "launcherSourceAbsent": true
+      },
+      "extraResources": {
+        "checkedEntries": 300,
+        "roots": [
+          "dsh-runtime",
+          "node-runtime",
+          "tockteam-desktop.png",
+          "lib/tockteam/cli.js",
+          "lib/tockteam/package.json",
+          "bin/tockteam",
+          "bin/tockteam.cmd"
+        ],
+        "vendorScan": {
+          "scope": "bounded-no-follow",
+          "maxDepth": 2,
+          "maxEntries": 4096,
+          "checkedEntries": 300,
+          "forbiddenSourceFound": false
+        }
+      }
+    },
+    "renderer": {
+      "launcher": {
+        "apiKeys": [
+          "cancelAction",
+          "dismiss",
+          "getLocalExtensionSettings",
+          "getSurfaceSettings",
+          "getTheme",
+          "invokeAction",
+          "onLocale",
+          "onTheme",
+          "openSettings",
+          "recordSearch",
+          "rescan",
+          "search"
+        ],
+        "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'",
+        "href": "file:///private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam%20Desktop.app/Contents/Resources/app.asar/dist/launcher.html",
+        "hasNodeProcess": false,
+        "hasRequire": false,
+        "notificationPermission": "denied",
+        "ready": "true",
+        "title": "TockLauncher"
+      },
+      "runtimeArchitecture": "arm64",
+      "search": {
+        "actionId": "launcher-action:51977d62-f38f-49cf-8804-73cca3534ef4",
+        "id": "ueli-local:Base64Conversion",
+        "sourceExtension": "Base64Conversion"
+      },
+      "security": {
+        "appPath": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+        "appPathUsesAsar": true,
+        "launcherSessionPartition": "persist:tockteam-launcher",
+        "sessionMatches": true
+      },
+      "settingsRoundTrip": {
+        "restored": 0.5,
+        "changed": 0.6
+      },
+      "workbench": {
+        "href": "http://127.0.0.1:56265/tockcoder",
+        "marker": "workbench-before-dismiss",
+        "title": "TockCoder"
+      }
+    },
+    "reinstallSettings": {
+      "backup": true,
+      "identity": {
+        "appId": "ai.deepseek.tockteam-desktop",
+        "asarPath": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+        "executable": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+        "signature": "adhoc",
+        "resources": true
+      },
+      "package": {
+        "appId": "ai.deepseek.tockteam-desktop",
+        "appPath": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/Resources/app.asar",
+        "version": "0.1.14",
+        "appPathUsesAsar": true,
+        "assetCount": 65,
+        "executable": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-installed-launcher-smoke-dad3OS/Applications/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+        "electron": {
+          "architecture": "arm64",
+          "version": "42.3.0"
+        },
+        "node": {
+          "architecture": "arm64",
+          "version": "v26.0.0"
+        },
+        "productName": "TockTeam Desktop",
+        "assetsVerified": true,
+        "noticesVerified": true,
+        "vendorScan": {
+          "scope": "bounded-no-follow",
+          "maxDepth": 2,
+          "maxEntries": 4096,
+          "checkedEntries": 300,
+          "forbiddenSourceFound": false,
+          "launcherSourceAbsent": true
+        },
+        "extraResources": {
+          "checkedEntries": 300,
+          "roots": [
+            "dsh-runtime",
+            "node-runtime",
+            "tockteam-desktop.png",
+            "lib/tockteam/cli.js",
+            "lib/tockteam/package.json",
+            "bin/tockteam",
+            "bin/tockteam.cmd"
+          ],
+          "vendorScan": {
+            "scope": "bounded-no-follow",
+            "maxDepth": 2,
+            "maxEntries": 4096,
+            "checkedEntries": 300,
+            "forbiddenSourceFound": false
+          }
+        }
+      },
+      "settings": {
+        "processTreesGone": true,
+        "restored": 0.6,
+        "runtimeReady": "ready"
+      },
+      "version": "0.1.14"
+    },
+    "rollback": {
+      "preservedAsarSha256": "790897dc34f8bce0d851d588168c98c27d44cd33764b07c5bb345558454129b5",
+      "validationFailureRecovered": true
+    },
+    "provider": {
+      "controlPanel": "unsupported",
+      "destructiveEffects": "not-invoked",
+      "providerCount": 24,
+      "terminal": "ready"
+    },
+    "secondInstance": {
+      "singleInstance": true,
+      "permissions": "renderer-permission-denied",
+      "launchPath": "macOS Launch Services (/usr/bin/open)",
+      "persistentAppProcesses": 1,
+      "toggleDelivered": true
+    },
+    "processTreesGone": true,
+    "temporaryInstallRemoved": true
+  },
+  "appId": "ai.deepseek.tockteam-desktop",
+  "architecture": "arm64",
+  "version": "0.1.14",
+  "platform": "darwin",
+  "productName": "TockTeam Desktop",
+  "result": "passed",
+  "sourceCommit": "1138bb3a7f3f0762ed15490415f6e4da840ab361",
+  "cleanup": {
+    "processTreesGone": true,
+    "smokeRootRemoved": true,
+    "temporaryInstallRemoved": true
+  }
+}

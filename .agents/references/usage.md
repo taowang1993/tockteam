@@ -241,13 +241,17 @@ commit `ed39e301`; run `33301125258` refreshed those historical reports at commi
 `455db8ca`. Hosted run `33342761994` passed Linux lanes at commit `63a72645`,
 including recovery from a controlled validation failure using the preserved
 prior Debian package from run `33301125258`. Those reports were later removed
-and the runtime changed, so every current catalog row is workflow-required until
-fresh proof is checked in. The historical Linux package rollback row was workflow-required.
-The historical hosted image reported Windows Control Panel unavailable and
-elevation confirmation-required but uninvoked. Historical reports are not
-current signing, notarization, publication, or public-distribution evidence.
-Vendor results are bounded no-follow scans, not global source-absence proof;
-upgrade claims require their own reports.
+and the runtime changed. Fresh checked-in reports now cover source commit
+`1138bb3`: local macOS arm64 unsigned/internal
+ad-hoc evidence and hosted run `33951487579` for Windows x64 and Linux x64.
+The current Linux report proves controlled validation failure and recovery
+through the preserved Debian package from run `33301125258`; the historical
+Linux package rollback row was workflow-required. The current Windows report
+records Windows Control Panel unavailable and elevation
+confirmation-required but uninvoked. These reports do not prove signing,
+notarization, publication, or public distribution. Vendor results are bounded
+no-follow scans, not global source-absence proof; upgrade claims require their
+own reports.
 
 ## Data and troubleshooting
 
