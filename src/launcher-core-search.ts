@@ -232,7 +232,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     const searchGeneration = indexGeneration
     const available = indexedItems.filter(({ id }) => !excluded.has(id))
     const trimmedSearchTerm = searchTerm.trim()
-    const filtered = searchTerm.length > 0
+    const filtered = trimmedSearchTerm.length > 0
       ? searchIndexedItems(available, trimmedSearchTerm, searchOptions)
       : available.toSorted(alphabetically)
     const favoriteItems = filtered.filter(({ id }) => favorites.has(id))
@@ -241,9 +241,9 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       .slice(0, searchOptions.maxSearchResultItems)
     let instantBefore: readonly LauncherInternalResultItem[] = []
     let instantAfter: readonly LauncherInternalResultItem[] = []
-    if (searchTerm.length > 0 && options.searchInstant !== undefined) {
+    if (trimmedSearchTerm.length > 0 && options.searchInstant !== undefined) {
       try {
-        const instant = await options.searchInstant(searchTerm)
+        const instant = await options.searchInstant(trimmedSearchTerm)
         if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
         if (latestSearchToken === searchToken) {
           instantBefore = instant.before
