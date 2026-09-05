@@ -26,6 +26,7 @@ const MAX_INDEX_ITEMS = 50_000
 const MAX_LOG_MESSAGE_LENGTH = 512
 const MAX_LOG_ENTRIES = MAX_LAUNCHER_LOG_ENTRIES
 const MAX_GRANT_BYTES = 16 * 1024
+const MAX_EXTERNAL_TRANSACTION_BYTES = 40 * 1024
 const ENVELOPE_VERSION = 1 as const
 const ENVELOPE_KEY = '$tockteamEncrypted'
 
@@ -37,6 +38,12 @@ type ExternalGrant = Readonly<{
   ino: string
   parentRealPath: string
   path: string
+  version: 1
+}>
+
+type ExternalReplacementJournal = Readonly<{
+  next: ExternalGrant
+  previous: ExternalGrant
   version: 1
 }>
 
@@ -134,6 +141,14 @@ function parseGrant(value: unknown): ExternalGrant {
     path: value.path,
     version: 1,
   })
+}
+
+function parseExternalReplacementJournal(value: unknown): ExternalReplacementJournal {
+  if (!isRecord(value) || Object.keys(value).length !== 3 || value.version !== 1) throw new Error('TockLauncher external settings transaction is invalid')
+  const next = parseGrant(value.next)
+  const previous = parseGrant(value.previous)
+  if (next.path !== previous.path || next.parentRealPath !== previous.parentRealPath) throw new Error('TockLauncher external settings transaction changed destination')
+  return Object.freeze({ next, previous, version: 1 })
 }
 
 function sameIdentity(stats: { dev: unknown; ino: unknown }, grant: ExternalGrant): boolean {
@@ -287,6 +302,7 @@ export class LauncherPersistenceRepository {
   readonly #indexPath: string
   readonly #logsPath: string
   readonly #grantPath: string
+  readonly #externalTransactionPath: string
   readonly #externalBackupRoot: string
   readonly #secretCodec: LauncherSecretCodec | undefined
   readonly #secureStorageAvailable: boolean | undefined
@@ -308,6 +324,7 @@ export class LauncherPersistenceRepository {
     this.#indexPath = path.join(this.#rootPath, 'search-index.json')
     this.#logsPath = path.join(this.#rootPath, 'logs.json')
     this.#grantPath = path.join(this.#rootPath, 'external-settings-grant.json')
+    this.#externalTransactionPath = path.join(this.#rootPath, 'external-settings-transaction.json')
     this.#externalBackupRoot = path.join(this.#rootPath, 'external-backups')
     this.#secretCodec = options.secretCodec
     this.#secureStorageAvailable = options.secureStorageAvailable
@@ -332,6 +349,10 @@ export class LauncherPersistenceRepository {
     this.#logs = await this.#recoverJson(this.#logsPath, MAX_LAUNCHER_LOG_BYTES, parseLogs, [], recovered => {
       if (recovered) this.#recoveredArtifacts.add('logs')
     })
+    if (await this.#recoverExternalReplacement()) {
+      this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
+      return
+    }
     if (!await exists(this.#grantPath)) return
     try {
       const grant = await readJson(this.#grantPath, MAX_GRANT_BYTES, parseGrant)
@@ -339,6 +360,31 @@ export class LauncherPersistenceRepository {
     } catch {
       this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
     }
+  }
+
+  async #recoverExternalReplacement(): Promise<boolean> {
+    if (!await exists(this.#externalTransactionPath)) return false
+    let journal: ExternalReplacementJournal
+    try { journal = await readJson(this.#externalTransactionPath, MAX_EXTERNAL_TRANSACTION_BYTES, parseExternalReplacementJournal) }
+    catch {
+      await rm(this.#externalTransactionPath, { force: true }).catch(() => undefined)
+      await syncDirectory(this.#rootPath).catch(() => undefined)
+      return false
+    }
+    try {
+      const current = await this.#createGrant(journal.next.path)
+      if (this.#sameGrant(current, journal.next)) {
+        const settings = await readJson(current.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), current)
+        const serialized = JSON.stringify(settings, null, 2)
+        await atomicWrite(this.#externalBackupPath(current), serialized, { backup: false })
+        await atomicWrite(this.#grantPath, JSON.stringify(current, null, 2), { backup: false })
+      } else if (this.#sameGrant(current, journal.previous)) {
+        await readJson(current.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), current)
+      } else return true
+      await rm(this.#externalTransactionPath, { force: true })
+      await syncDirectory(this.#rootPath)
+      return false
+    } catch { return true }
   }
 
   async #recoverJson<T>(filePath: string, maxBytes: number, parser: (value: unknown) => T, fallback: T, setRecovered?: (recovered: boolean) => void): Promise<T> {
@@ -619,17 +665,23 @@ export class LauncherPersistenceRepository {
       await staged.writeFile(contents, 'utf8')
       await staged.sync()
       const stagedIdentity = await staged.stat({ bigint: true })
+      const stagedDev = identityPart(stagedIdentity.dev); const stagedIno = identityPart(stagedIdentity.ino)
+      if (stagedDev === undefined || stagedIno === undefined) throw new Error('TockLauncher external settings replacement has no stable identity')
+      const nextGrant = Object.freeze({ ...grant, dev: stagedDev, ino: stagedIno })
       await staged.close(); staged = undefined
       const current = await lstat(grant.path, { bigint: true })
       if (current.isSymbolicLink() || !sameIdentity(current, grant) || await realpath(directory) !== grant.parentRealPath) {
         throw new Error('TockLauncher external settings file changed')
       }
+      await atomicWrite(this.#externalTransactionPath, JSON.stringify({ next: nextGrant, previous: grant, version: 1 }, null, 2), { backup: false })
       await rename(temporary, grant.path)
       await syncDirectory(directory)
       const refreshed = await this.#createGrant(grant.path)
       if (!sameIdentity(stagedIdentity, refreshed)) throw new Error('TockLauncher external settings file changed')
       await atomicWrite(this.#externalBackupPath(refreshed), contents, { backup: false })
       await atomicWrite(this.#grantPath, JSON.stringify(refreshed, null, 2), { backup: false })
+      await rm(this.#externalTransactionPath, { force: true })
+      await syncDirectory(this.#rootPath)
       return refreshed
     } finally {
       await staged?.close().catch(() => undefined)

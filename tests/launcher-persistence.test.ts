@@ -161,6 +161,34 @@ test('startup rejects an external grant whose canonical parent metadata changed'
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
+test('startup completes a journaled external settings replacement', async () => {
+  const userDataPath = await root()
+  const externalRoot = await root()
+  const external = path.join(externalRoot, 'settings.json')
+  try {
+    await writeFile(external, JSON.stringify({ 'general.language': 'en-US' }))
+    const repository = await LauncherPersistenceRepository.open({ userDataPath, externalWriteAvailable: true })
+    await repository.grantExternalSettingsFile(external)
+    await repository.close()
+    const grantPath = path.join(userDataPath, 'launcher', 'external-settings-grant.json')
+    const previous = JSON.parse(await readFile(grantPath, 'utf8')) as Record<string, unknown>
+    const staged = path.join(externalRoot, '.replacement')
+    await writeFile(staged, JSON.stringify({ 'general.language': 'zh-CN' }))
+    await rename(staged, external)
+    const identity = await lstat(external, { bigint: true })
+    const next = { ...previous, dev: identity.dev.toString(), ino: identity.ino.toString() }
+    const journalPath = path.join(userDataPath, 'launcher', 'external-settings-transaction.json')
+    await writeFile(journalPath, JSON.stringify({ next, previous, version: 1 }))
+
+    const reopened = await LauncherPersistenceRepository.open({ userDataPath, externalWriteAvailable: true })
+    assert.equal(reopened.snapshot().settingsSource, 'external')
+    assert.equal(reopened.getSetting('general.language', 'en-US'), 'zh-CN')
+    assert.deepEqual(JSON.parse(await readFile(grantPath, 'utf8')), next)
+    await assert.rejects(readFile(journalPath), /ENOENT/u)
+    await reopened.close()
+  } finally { await Promise.all([userDataPath, externalRoot].map(value => rm(value, { recursive: true, force: true }))) }
+})
+
 test('external folder grant drift falls back to managed folders before later writes', async () => {
   const userDataPath = await root()
   try {
