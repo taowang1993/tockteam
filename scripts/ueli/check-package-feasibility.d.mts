@@ -10,7 +10,6 @@ export interface NoticeEntry {
 export interface FeasibilityInputs {
   contract: any
   packageJson: any
-  vendorPackageJson: any
   mainSource: string
   noticeLedger: { entries: NoticeEntry[] }
   noticeContents: Record<string, string>

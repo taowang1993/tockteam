@@ -103,14 +103,12 @@ test('the notice ledger keeps exact attribution for shipped launcher assets', as
     { id: 'ueli-mit', disposition: 'provenance-only' },
     { id: 'gnome-application-search-icons', disposition: 'provenance-only' },
     { id: 'openmoji-custom-web-search-icon', disposition: 'shipped' },
-    { id: 'ueli-dependency-graph', disposition: 'not-admitted' },
     { id: 'ueli-os-assets', disposition: 'shipped' },
   ])
   assert.deepEqual(ledger.entries.map(({ id, attribution }) => ({ id, attribution })), [
     { id: 'ueli-mit', attribution: 'https://github.com/oliverschwendener/ueli' },
     { id: 'gnome-application-search-icons', attribution: 'https://www.gnome.org' },
     { id: 'openmoji-custom-web-search-icon', attribution: 'https://openmoji.org/' },
-    { id: 'ueli-dependency-graph', attribution: 'Ueli package dependency graph' },
     { id: 'ueli-os-assets', attribution: 'https://github.com/oliverschwendener/ueli' },
   ])
   assert.equal(inputs.contract.foundation.launcherNotices.length, 4)
@@ -155,23 +153,15 @@ test('the feasibility audit rejects application identity leakage but permits pro
   )
 })
 
-test('the feasibility audit derives Ueli runtime dependencies and rejects vendor references', async () => {
+test('the feasibility audit rejects vendor references', async () => {
   const inputs = await loadLauncherPackageFeasibilityInputs({ repoRoot })
+  const mutation = structuredClone(inputs)
+  mutation.packageJson.optionalDependencies = { 'local-ueli': 'file:vendor/ueli' }
 
-  const dependencyMutation = structuredClone(inputs)
-  dependencyMutation.packageJson.devDependencies['@fluentui/react-components'] = '9.0.0'
   assert.match(
-    inspectLauncherPackageFeasibility(dependencyMutation).failures.join('\n'),
-    /Ueli-derived dependency is admitted.*@fluentui\/react-components/u,
+    inspectLauncherPackageFeasibility(mutation).failures.join('\n'),
+    /package metadata must not reference vendor\/ueli/u,
   )
-
-  const pathMutation = structuredClone(inputs)
-  pathMutation.packageJson.optionalDependencies = { 'local-ueli': 'file:vendor/ueli' }
-  assert.match(
-    inspectLauncherPackageFeasibility(pathMutation).failures.join('\n'),
-    /dependency value must not reference vendor\/ueli/u,
-  )
-
   assert.deepEqual(inspectLauncherPackageFeasibility(inputs).failures, [])
 })
 
