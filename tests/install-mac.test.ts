@@ -107,6 +107,26 @@ test('local mac install rejects concurrent replacement without touching the winn
   assert.equal(await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'), 'first')
 })
 
+test('stale lock recovery does not remove another recovery claim', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-recovery-race-'))
+  const source = join(root, 'source.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  const lock = join(root, 'Applications', '.TockTeam Desktop.app.install.lock')
+  await makeBundle(source, 'new')
+  await mkdir(join(lock, '.recovery'), { recursive: true })
+  const owner = JSON.stringify({ createdAt: Date.now(), pid: 2_147_483_647 })
+  await writeFile(join(lock, 'owner.json'), owner)
+
+  await assert.rejects(replaceMacBundle({
+    source,
+    destination,
+    backupDirectory: join(root, 'Trash'),
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: makeBundleValidation,
+  }), /install is already in progress/u)
+  assert.equal(await readFile(join(lock, 'owner.json'), 'utf8'), owner)
+})
+
 test('local mac install recovers a lock left by a dead installer', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tockteam-install-stale-lock-'))
   const source = join(root, 'source.app')
