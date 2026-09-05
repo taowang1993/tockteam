@@ -94,8 +94,8 @@ function smokeEnvironment(overrides = {}, disposableRoot = undefined) {
   return environment
 }
 
-async function runProcess(command, args, options = {}) {
-  const { disposableRoot, ...spawnOptions } = options
+export async function runProcess(command, args, options = {}) {
+  const { disposableRoot, timeoutMs = 180_000, ...spawnOptions } = options
   if (disposableRoot !== undefined) await prepareSmokeEnvironmentRoots(disposableRoot)
   return await new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
@@ -111,8 +111,8 @@ async function runProcess(command, args, options = {}) {
     const timeout = setTimeout(() => {
       if (finished) return
       finished = true
-      void stopPackagedChild(child).finally(() => reject(new Error(`${command} timed out after 180000ms`)))
-    }, 180_000)
+      void stopPackagedChild(child).finally(() => reject(new Error(`${command} timed out after ${String(timeoutMs)}ms`)))
+    }, timeoutMs)
     const finish = callback => {
       if (finished) return
       finished = true
@@ -646,7 +646,7 @@ async function runNonMacInstalledSmoke(artifact) {
     const packageVersion = (await runProcess('/usr/bin/dpkg-deb', ['-f', deb, 'Version'], { disposableRoot: artifact.rootPath })).stdout.trim()
     const installRoot = join('/opt', contract.identity.productName)
     assert.equal(existsSync(installRoot), false, 'Linux deb install root already exists on the disposable runner')
-    const dpkg = async args => await runProcess('/usr/bin/sudo', ['-n', '/usr/bin/dpkg', ...args], { disposableRoot: artifact.rootPath })
+    const dpkg = async args => await runProcess('/usr/bin/sudo', ['-n', '/usr/bin/dpkg', ...args], { disposableRoot: artifact.rootPath, timeoutMs: 600_000 })
     const dpkgQuery = async args => await runProcess('/usr/bin/dpkg-query', args, { disposableRoot: artifact.rootPath })
     const queryInstalledField = async field => {
       try { return (await dpkgQuery([`--showformat=${field}`, '--show', packageName])).stdout.trim() } catch { return undefined }

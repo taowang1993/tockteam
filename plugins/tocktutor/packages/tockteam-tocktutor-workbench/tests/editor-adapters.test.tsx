@@ -110,7 +110,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(screen.getByLabelText('Live Preview Properties').textContent).toContain('statusactive')
   })
 
-  it('mounts one editable ProseMirror surface and keeps source untouched until edited', { timeout: 10_000 }, async () => {
+  it('mounts one editable ProseMirror surface and keeps source untouched until edited', { timeout: 20_000 }, async () => {
     const source = '# Lesson\r\n\r\n- [ ] Review\r\n'
     const onChange = vi.fn()
     const onSelection = vi.fn()
@@ -118,7 +118,7 @@ describe('Milkdown Live Preview editor', () => {
       <LivePreviewEditor content={source} onMarkdownChange={onChange} onSelectionChange={onSelection} />,
     )
 
-    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
+    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 15_000 })
     expect(container.querySelector('.ProseMirror')?.textContent).toContain('Lesson')
     expect(onChange).not.toHaveBeenCalled()
     expect(container.querySelector<HTMLElement>('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')

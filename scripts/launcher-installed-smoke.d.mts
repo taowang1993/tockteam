@@ -12,6 +12,12 @@ export function macApplicationLaunchArgs(appPath: string, args: readonly string[
 
 export function macMainProcessPids(output: string, executable: string): readonly number[]
 
+export function runProcess(
+  command: string,
+  args: readonly string[],
+  options?: Readonly<{ disposableRoot?: string; timeoutMs?: number; [key: string]: unknown }>,
+): Promise<{ stdout: string; stderr: string }>
+
 export function recoverDebTransition(options: Readonly<{
   candidate: string
   prior: string

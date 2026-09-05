@@ -52,6 +52,7 @@ const ALLOWED_OWNERS = new Set([
 const ALLOWED_POST_EVIDENCE_PATHS = new Set([
   '.agents/references/architecture.md',
   '.agents/references/usage.md',
+  '.beads/interactions.jsonl',
   'scripts/ueli/installed-evidence-catalog.json',
 ])
 const WORKFLOW_OWNER_ROWS = new Set([

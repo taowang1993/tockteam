@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import {
   resolveLandlockLauncher,
@@ -7,13 +8,14 @@ import {
 import { previewSandboxLauncher } from '../plugins/plugin-marketplace/src/host/platform.ts'
 
 test('resolves and probes the staged Landlock launcher for both Linux architectures', () => {
+  const runtimeRoot = resolve('/runtime')
   for (const arch of ['x64', 'arm64'] as const) {
     const packageName = `@deepseek-ai/node-addon-landlock-run-linux-${arch}`
-    const packageJson = `/runtime/node_modules/${packageName}/package.json`
-    const launcher = `/runtime/node_modules/${packageName}/bin/landlock-run`
+    const packageJson = join(runtimeRoot, 'node_modules', packageName, 'package.json')
+    const launcher = join(runtimeRoot, 'node_modules', packageName, 'bin', 'landlock-run')
     const requested: string[] = []
     const probed: string[] = []
-    assert.equal(resolveLandlockLauncher('/runtime', 'linux', arch, {
+    assert.equal(resolveLandlockLauncher(runtimeRoot, 'linux', arch, {
       executable: path => path === launcher,
       probe: path => { probed.push(path); return true },
       resolvePackageJson: specifier => { requested.push(specifier); return packageJson },

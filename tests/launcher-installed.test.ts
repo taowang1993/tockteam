@@ -41,6 +41,7 @@ import {
   macApplicationLaunchArgs,
   macMainProcessPids,
   recoverDebTransition,
+  runProcess as runInstalledProcess,
   withInstalledSession,
   writeInstalledSmokeDiagnostics,
 } from '../scripts/launcher-installed-smoke.mjs'
@@ -75,6 +76,13 @@ const catalog = JSON.parse(readFileSync(join(root, 'scripts', 'ueli', 'installed
   publication: Record<string, boolean>
   rows: Array<{ id: string; platform: string; owner: string; required: boolean; state: string; evidence?: Record<string, string> | null }>
 }
+
+test('installed commands honor an operation-specific timeout', async () => {
+  await assert.rejects(
+    runInstalledProcess(process.execPath, ['-e', 'setTimeout(() => {}, 200)'], { timeoutMs: 20 }),
+    /timed out after 20ms/u,
+  )
+})
 
 test('TockTeam exposes an executable installed-artifact smoke and audit', () => {
   assert.equal(typeof packageJson.scripts?.['test:launcher:installed'], 'string')
@@ -756,7 +764,7 @@ test('installed evidence freshness rejects runtime drift after a report commit',
   assert.deepEqual(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit }).failures, [`installed evidence commit has later runtime changes: ${commit}: src/main.ts`])
   const allowedRunGit = (args: readonly string[]) => args[0] === 'merge-base'
     ? { status: 0, stdout: '' }
-    : { status: 0, stdout: '.agents/references/usage.md\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\ntests/launcher-installed.test.ts\n' }
+    : { status: 0, stdout: '.agents/references/usage.md\n.beads/interactions.jsonl\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\ntests/launcher-installed.test.ts\n' }
   assert.equal(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit: allowedRunGit }).failures.length, 0)
 })
 
