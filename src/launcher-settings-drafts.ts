@@ -29,7 +29,10 @@ export function useLauncherDraft<T>(value: T, equals: (left: T, right: T) => boo
       return resolved
     })
   }, [])
-  const commitDraft = useCallback((): void => { dirtyRef.current = false }, [])
+  const commitDraft = useCallback((): void => {
+    if (!equalsRef.current(draftRef.current, value)) return
+    dirtyRef.current = false
+  }, [value])
 
   return [draft, setDraft, commitDraft]
 }
