@@ -708,7 +708,7 @@ test('extra-resource inspection is bounded and never follows symlink cycles', as
   }
 })
 
-test('installed evidence catalog owns exact platform rows with current checked-in proof', () => {
+test('installed evidence catalog owns current local proof and pending hosted proof', () => {
   assert.equal(catalog.schemaVersion, 1)
   assert.equal(catalog.issue, 'tockteam-tl.15')
   assert.deepEqual(catalog.evidenceStates, ['local-verified', 'hosted-verified', 'partially-verified', 'workflow-required', 'unverified', 'not-applicable'])
@@ -731,8 +731,8 @@ test('installed evidence catalog owns exact platform rows with current checked-i
   for (const row of catalog.rows) {
     assert.ok(row.id && row.platform && row.owner && row.state)
     if (row.required) assert.notEqual(row.owner, 'unowned')
-    assert.equal(row.state, row.platform === 'macOS' ? 'local-verified' : 'hosted-verified')
-    assert.equal(row.evidence?.kind, 'checked-in-report')
+    assert.equal(row.state, row.platform === 'macOS' ? 'local-verified' : 'workflow-required')
+    assert.equal(row.platform === 'macOS' ? row.evidence?.kind : row.evidence, row.platform === 'macOS' ? 'checked-in-report' : null)
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
