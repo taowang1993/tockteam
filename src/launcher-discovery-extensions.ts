@@ -291,12 +291,21 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   const getProviderErrors = (): ReadonlyMap<LauncherDiscoveryExtensionId, string> => new Map(providerErrors)
   const activeControllers = new Set<AbortController>()
   const activeWork = new Set<Promise<unknown>>()
+  const activeIdentityMappings = new Set<Promise<unknown>>()
+  const activeIconMappings = new Set<Promise<unknown>>()
   const resolveExecutable = options.resolveExecutable ?? ((command, platform, values) => resolveLauncherExecutable(command, platform, values))
 
   const track = <T>(work: Promise<T>): Promise<T> => {
     let tracked!: Promise<T>
     tracked = work.then(value => { activeWork.delete(tracked); return value }, reason => { activeWork.delete(tracked); throw reason })
     activeWork.add(tracked)
+    return tracked
+  }
+  const startNativeMapping = <T>(active: Set<Promise<unknown>>, operation: () => Promise<T>): Promise<T> | undefined => {
+    if (active.size >= MAX_ICON_CONCURRENCY) return undefined
+    let tracked!: Promise<T>
+    tracked = Promise.resolve().then(operation).finally(() => { active.delete(tracked) })
+    active.add(tracked)
     return tracked
   }
   const abortAll = (reason: Error, preserveSignal?: AbortSignal): void => {
@@ -323,7 +332,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   }
   const waitForIdle = async (): Promise<void> => {
     const timer = new Promise<void>(resolve => setTimeout(resolve, 100))
-    await Promise.race([Promise.allSettled([...activeWork]).then(() => undefined), timer])
+    await Promise.race([Promise.allSettled([...activeWork, ...activeIdentityMappings, ...activeIconMappings]).then(() => undefined), timer])
   }
 
   const context = (extensionId: LauncherDiscoveryExtensionId, signal: AbortSignal, scanErrors: Map<LauncherDiscoveryExtensionId, Error>): LauncherDiscoveryScanContext => Object.freeze({
@@ -333,7 +342,9 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   const mappingTimeoutMs = Math.min(scanTimeoutMs, 1_000)
   const captureIdentity = async (target: string, signal: AbortSignal, timeoutMs = mappingTimeoutMs): Promise<LauncherDiscoveryIdentity | undefined> => {
     if (options.capturePathIdentity === undefined) return undefined
-    try { return await withTimeout(Promise.resolve().then(() => options.capturePathIdentity!(target)), signal, Math.max(1, Math.min(mappingTimeoutMs, timeoutMs))) }
+    const operation = startNativeMapping(activeIdentityMappings, async () => await options.capturePathIdentity!(target))
+    if (operation === undefined) return undefined
+    try { return await withTimeout(operation, signal, Math.max(1, Math.min(mappingTimeoutMs, timeoutMs))) }
     catch { return undefined }
   }
   const replaceVscodeActions = (next: ReadonlyMap<string, Readonly<{ command: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>): void => {
@@ -424,8 +435,11 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
         try {
           if (options.getApplicationIcon !== undefined && applicationIconCalls < MAX_APPLICATION_ICON_CALLS && Date.now() < mappingDeadline) {
             applicationIconCalls++
-            const candidate = await withTimeout(Promise.resolve().then(() => options.getApplicationIcon!(entry.path, signal)), signal, Math.max(1, Math.min(mappingTimeoutMs, mappingDeadline - Date.now())))
-            if (isLauncherImageUrl(candidate)) imageUrl = candidate
+            const operation = startNativeMapping(activeIconMappings, async () => await options.getApplicationIcon!(entry.path, signal))
+            if (operation !== undefined) {
+              const candidate = await withTimeout(operation, signal, Math.max(1, Math.min(mappingTimeoutMs, mappingDeadline - Date.now())))
+              if (isLauncherImageUrl(candidate)) imageUrl = candidate
+            }
           }
         } catch (error) {
           if (signal.aborted) throw error

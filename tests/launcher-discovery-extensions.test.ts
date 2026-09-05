@@ -95,6 +95,21 @@ test('bounds application icon mapping by the scan deadline', async () => {
   assert.equal(indexed.some(item => item.sourceExtension === 'ApplicationSearch'), true)
 })
 
+test('caps unresolved native mapping work across repeated rescans', async () => {
+  let iconCalls = 0
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    scanTimeoutMs: 5,
+    getApplicationIcon: async () => {
+      iconCalls += 1
+      return await new Promise<string | undefined>(() => {})
+    },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  for (let attempt = 0; attempt < 10; attempt += 1) await provider.loadIndexedItems(new AbortController().signal)
+  assert.equal(iconCalls, 8)
+})
+
 test('caps public bookmark labels after adding URL details', async () => {
   const longUrl = `https://docs.example.test/${'x'.repeat(4_096)}`
   const provider = createLauncherDiscoveryExtensions({
