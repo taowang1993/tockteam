@@ -28,11 +28,43 @@ export type LauncherCoreStatus = Readonly<{
   rescanStatus: 'error' | 'idle' | 'scanning'
 }>
 
+export type LauncherSearchSectionId = 'pinned' | 'recent' | 'commands' | 'applications' | 'results'
+
+export type LauncherCoreSearchSection = Readonly<{
+  id: LauncherSearchSectionId
+  items: readonly LauncherInternalResultItem[]
+}>
+
 type LauncherCoreSearchResult = Readonly<{
   after: readonly LauncherInternalResultItem[]
   before: readonly LauncherInternalResultItem[]
+  sections: readonly LauncherCoreSearchSection[]
   status: LauncherCoreStatus
 }>
+
+/** Only these existing providers may fill the unpinned opening screen. */
+export const LAUNCHER_OPENING_SCREEN_SOURCE_SECTIONS = Object.freeze({
+  AppearanceSwitcher: 'commands',
+  ApplicationSearch: 'applications',
+  Base64Conversion: 'commands',
+  Calculator: 'commands',
+  ColorConverter: 'commands',
+  CurrencyConversion: 'commands',
+  CustomWebSearch: 'commands',
+  DeeplTranslator: 'commands',
+  PasswordGenerator: 'commands',
+  QuickFormatter: 'commands',
+  RowlandTextEditor: 'commands',
+  SystemCommands: 'commands',
+  SystemSettings: 'commands',
+  TerminalLauncher: 'commands',
+  TockTeam: 'commands',
+  UeliCommand: 'commands',
+  UuidGenerator: 'commands',
+  WebSearch: 'commands',
+  WindowsControlPanel: 'commands',
+  Workflow: 'commands',
+} as const satisfies Readonly<Record<string, 'commands' | 'applications'>>)
 
 export type LauncherCoreSearchOptions = Readonly<{
   appendLog?: (level: 'ERROR', message: string) => Promise<void>
@@ -57,7 +89,12 @@ function errorMessage(_error: unknown): string {
 }
 
 function alphabetically(left: LauncherInternalResultItem, right: LauncherInternalResultItem): number {
-  return left.name.localeCompare(right.name)
+  return left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+}
+
+function openingSectionFor(item: LauncherInternalResultItem): 'commands' | 'applications' | undefined {
+  if (!Object.hasOwn(LAUNCHER_OPENING_SCREEN_SOURCE_SECTIONS, item.sourceExtension)) return undefined
+  return LAUNCHER_OPENING_SCREEN_SOURCE_SECTIONS[item.sourceExtension as keyof typeof LAUNCHER_OPENING_SCREEN_SOURCE_SECTIONS]
 }
 
 function searchIndexedItems(
@@ -121,7 +158,13 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   let activeRescan: Readonly<{ controller: AbortController; token: object }> | undefined
   let rescanStatus: LauncherCoreStatus['rescanStatus'] = 'idle'
   const excluded = new Set<string>(options.initialExcludedItemIds ?? [])
-  const favorites = new Set<string>(options.initialFavoriteItemIds ?? [])
+  const favorites = new Set<string>()
+  const favoriteOrder: string[] = []
+  for (const id of options.initialFavoriteItemIds ?? []) {
+    if (favorites.has(id)) continue
+    favorites.add(id)
+    favoriteOrder.push(id)
+  }
   const knownItemIds = new Set<string>()
   let indexGeneration = 0
   let indexWriteTail: Promise<void> = Promise.resolve()
@@ -231,14 +274,22 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
 
     const searchGeneration = indexGeneration
     const available = indexedItems.filter(({ id }) => !excluded.has(id))
+    const availableById = new Map<string, LauncherInternalResultItem>()
+    for (const item of available) if (!availableById.has(item.id)) availableById.set(item.id, item)
     const trimmedSearchTerm = searchTerm.trim()
     const filtered = trimmedSearchTerm.length > 0
       ? searchIndexedItems(available, trimmedSearchTerm, searchOptions)
       : available.toSorted(alphabetically)
-    const favoriteItems = filtered.filter(({ id }) => favorites.has(id))
-    const ordinaryItems = filtered
-      .filter(({ id }) => !favorites.has(id))
-      .slice(0, searchOptions.maxSearchResultItems)
+    const favoriteItems = trimmedSearchTerm.length > 0
+      ? filtered.filter(({ id }) => favorites.has(id))
+      : favoriteOrder
+        .map(id => availableById.get(id))
+        .filter((item): item is LauncherInternalResultItem => item !== undefined)
+    const ordinaryItems = trimmedSearchTerm.length > 0
+      ? filtered
+        .filter(({ id }) => !favorites.has(id))
+        .slice(0, searchOptions.maxSearchResultItems)
+      : []
     let instantBefore: readonly LauncherInternalResultItem[] = []
     let instantAfter: readonly LauncherInternalResultItem[] = []
     if (trimmedSearchTerm.length > 0 && options.searchInstant !== undefined) {
@@ -258,17 +309,53 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     }
     if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
 
-    const before = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS).map(decorate)
-    const after = [...instantBefore, ...ordinaryItems, ...instantAfter]
-      .slice(0, LAUNCHER_MAX_RESULT_ITEMS - before.length)
-      .map(decorate)
+    let beforeItems = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS)
+    let afterItems: readonly LauncherInternalResultItem[] = [...instantBefore, ...ordinaryItems, ...instantAfter]
+      .slice(0, Math.max(0, LAUNCHER_MAX_RESULT_ITEMS - beforeItems.length))
+    let sections: readonly LauncherCoreSearchSection[]
+    if (trimmedSearchTerm.length === 0) {
+      beforeItems = beforeItems.slice(0, Math.min(searchOptions.maxSearchResultItems, LAUNCHER_MAX_RESULT_ITEMS))
+      const pinnedIds = new Set(beforeItems.map(item => item.id))
+      const uniqueAvailable = [...availableById.values()]
+      const commands = uniqueAvailable
+        .filter(item => !pinnedIds.has(item.id) && openingSectionFor(item) === 'commands')
+        .toSorted(alphabetically)
+      const applications = uniqueAvailable
+        .filter(item => !pinnedIds.has(item.id) && openingSectionFor(item) === 'applications')
+        .toSorted(alphabetically)
+      const remaining = Math.max(0, Math.min(searchOptions.maxSearchResultItems, LAUNCHER_MAX_RESULT_ITEMS) - beforeItems.length)
+      const commandItems = commands.slice(0, remaining)
+      const applicationItems = applications.slice(0, Math.max(0, remaining - commandItems.length))
+      afterItems = [...commandItems, ...applicationItems]
+      sections = [
+        { id: 'pinned' as const, items: beforeItems },
+        { id: 'commands' as const, items: commandItems },
+        { id: 'applications' as const, items: applicationItems },
+      ]
+        .filter(section => section.items.length > 0)
+        .map(section => Object.freeze({ id: section.id, items: Object.freeze([...section.items]) }))
+    } else {
+      sections = [
+        { id: 'pinned' as const, items: beforeItems },
+        { id: 'results' as const, items: afterItems },
+      ]
+        .filter(section => section.items.length > 0)
+        .map(section => Object.freeze({ id: section.id, items: Object.freeze([...section.items]) }))
+    }
+    const before = Object.freeze(beforeItems.map(decorate))
+    const after = Object.freeze(afterItems.map(decorate))
+    sections = Object.freeze(sections.map(section => Object.freeze({
+      id: section.id,
+      items: Object.freeze(section.items.map(decorate)),
+    })))
     if (latestSearchToken === searchToken) {
       knownItemIds.clear()
       for (const item of [...before, ...after]) knownItemIds.add(item.id)
     }
     return Object.freeze({
-      after: Object.freeze(after),
-      before: Object.freeze(before),
+      after,
+      before,
+      sections,
       status: status(),
     })
   }
@@ -281,15 +368,18 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
 
       if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.addFavorite) {
         if (favorites.has(record.argument)) throw new Error('TockLauncher item is already a favorite')
-        await options.persistSettings?.({ favorites: [...favorites, record.argument] })
+        const nextFavorites = [...favoriteOrder, record.argument]
+        await options.persistSettings?.({ favorites: nextFavorites })
         favorites.add(record.argument)
+        favoriteOrder.push(record.argument)
         return
       }
       if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.removeFavorite) {
         if (!favorites.has(record.argument)) throw new Error('TockLauncher favorite was not found')
-        const nextFavorites = [...favorites].filter(id => id !== record.argument)
+        const nextFavorites = favoriteOrder.filter(id => id !== record.argument)
         await options.persistSettings?.({ favorites: nextFavorites })
         favorites.delete(record.argument)
+        favoriteOrder.splice(0, favoriteOrder.length, ...nextFavorites)
         return
       }
       if (excluded.has(record.argument)) throw new Error('TockLauncher item is already excluded')
@@ -317,8 +407,13 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   }>): void => {
     excluded.clear()
     favorites.clear()
+    favoriteOrder.splice(0, favoriteOrder.length)
     settings.excludedItemIds.forEach(id => excluded.add(id))
-    settings.favoriteItemIds.forEach(id => favorites.add(id))
+    settings.favoriteItemIds.forEach(id => {
+      if (favorites.has(id)) return
+      favorites.add(id)
+      favoriteOrder.push(id)
+    })
   }
 
   const track = <T>(operation: () => Promise<T>): Promise<T> => {
