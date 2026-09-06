@@ -1,7 +1,11 @@
 /** Public client contract for Desktop route contributions. */
 export type DesktopCallerOperation =
   | 'activate-vault'
+  | 'move-vault'
+  | 'remove-vault'
+  | 'rename-vault'
   | 'reveal-entry'
+  | 'reveal-vault'
   | 'popout-open'
   | 'popout-close'
   | 'popout-close-all'

@@ -42,7 +42,8 @@ function isVaultReference(value: unknown): value is VaultReference {
 export function isNoteVaultChangeEvent(value: unknown): value is NoteVaultChangeEvent {
   if (!isRecord(value) || !isVaultReference(value.vault)) return false
   if (value.kind === 'vault') {
-    return value.action === 'activated' && hasExactKeys(value, ['action', 'kind', 'vault'])
+    return (value.action === 'activated' || value.action === 'deactivated')
+      && hasExactKeys(value, ['action', 'kind', 'vault'])
   }
   if (value.kind === 'tree') {
     return (value.action === 'changed' || value.action === 'watcher-error')

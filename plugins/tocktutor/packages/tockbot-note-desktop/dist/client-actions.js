@@ -1,6 +1,8 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { Alert } from '@tockteam/ui/alert';
 import { Button } from '@tockteam/ui/button';
+import { DropdownMenuItem, DropdownMenuSeparator } from '@tockteam/ui/dropdown-menu';
+import { FolderOpen, FolderTree, PencilLine, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 function responseWasLost(result) {
     return !result.ok && result.error.code === 'gateway/internal';
@@ -318,8 +320,10 @@ function resultMessage(result) {
         case 'exported': return 'Note exported.';
         case 'focused': return 'Pop-out focused.';
         case 'granted': return 'Microphone ready.';
+        case 'moved': return 'Vault moved.';
         case 'opened': return 'Pop-out opened.';
         case 'printed': return 'Print request opened.';
+        case 'renamed': return 'Vault renamed.';
         case 'revealed': return 'Entry revealed.';
         case 'cancelled': return 'Action cancelled.';
         case 'denied': return 'Action denied.';
@@ -332,12 +336,64 @@ export async function openFolderAsVault(owner, bridge, remote, signal) {
         return undefined;
     return await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.activateVault(authorization, ownerSignal)));
 }
-/** Desktop-only vault picker contribution for the vault-management dialog. */
+export async function revealVault(owner, bridge, remote, signal) {
+    if (owner.vault === null)
+        return undefined;
+    return await nativeCall(bridge, 'reveal-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.revealVault(authorization, owner.vault, ownerSignal)), owner.vault);
+}
+export async function renameVault(owner, name, bridge, remote, signal) {
+    if (owner.vault === null || !await saveCurrent(owner))
+        return undefined;
+    return await nativeCall(bridge, 'rename-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.renameVault(authorization, name, owner.vault, ownerSignal)), owner.vault);
+}
+export async function moveVault(owner, bridge, remote, signal) {
+    if (owner.vault === null || !await saveCurrent(owner))
+        return undefined;
+    return await nativeCall(bridge, 'move-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.moveVault(authorization, owner.vault, ownerSignal)), owner.vault);
+}
+export async function removeVault(owner, bridge, remote, signal) {
+    if (owner.vault === null || !await saveCurrent(owner))
+        return undefined;
+    const result = await nativeCall(bridge, 'remove-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.removeVault(authorization, owner.vault, ownerSignal)), owner.vault);
+    if (result.status === 'closed')
+        owner.close();
+    return result;
+}
+/** Desktop-only vault picker and management contribution for the vault dialog. */
 export function TockTutorVaultActions(props) {
     const operation = useRef();
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState('');
     useEffect(() => () => { operation.current?.abort(); }, []);
+    const runMenu = async (pending, failure, action) => {
+        const controller = replaceActionController(operation.current);
+        operation.current = controller;
+        setBusy(true);
+        setMessage(pending);
+        let closeMenu = false;
+        try {
+            const result = await action(controller.signal);
+            if (!controller.signal.aborted) {
+                if (result === undefined)
+                    setMessage(failure);
+                else {
+                    setMessage(resultMessage(result));
+                    closeMenu = ['cancelled', 'closed', 'moved', 'revealed'].includes(result.status);
+                }
+            }
+        }
+        catch {
+            if (!controller.signal.aborted)
+                setMessage(failure);
+        }
+        finally {
+            if (!controller.signal.aborted) {
+                setBusy(false);
+                if (closeMenu)
+                    props.closeMenu();
+            }
+        }
+    };
     const open = async () => {
         const controller = replaceActionController(operation.current);
         operation.current = controller;
@@ -360,8 +416,29 @@ export function TockTutorVaultActions(props) {
                 setBusy(false);
         }
     };
-    if (props.placement === 'menu')
-        return null;
+    if (props.placement === 'menu') {
+        return (_jsxs(_Fragment, { children: [_jsxs(DropdownMenuItem, { disabled: busy || props.vault === null, onSelect: event => {
+                        event.preventDefault();
+                        props.beginRename(async (name, signal) => {
+                            try {
+                                return (await renameVault(props, name, props.bridge, props.remote, signal))?.status === 'renamed';
+                            }
+                            catch {
+                                return false;
+                            }
+                        });
+                        props.closeMenu();
+                    }, children: [_jsx(PencilLine, { "aria-hidden": "true" }), _jsx("span", { children: "Rename vault..." })] }), _jsxs(DropdownMenuItem, { disabled: busy || props.vault === null, onSelect: event => {
+                        event.preventDefault();
+                        void runMenu('Moving vault…', 'The vault could not be moved.', signal => (moveVault(props, props.bridge, props.remote, signal)));
+                    }, children: [_jsx(FolderTree, { "aria-hidden": "true" }), _jsx("span", { children: "Move vault..." })] }), _jsx(DropdownMenuSeparator, {}), _jsxs(DropdownMenuItem, { disabled: busy || props.vault === null, onSelect: event => {
+                        event.preventDefault();
+                        void runMenu('Revealing vault…', 'The vault could not be revealed.', signal => (revealVault(props, props.bridge, props.remote, signal)));
+                    }, children: [_jsx(FolderOpen, { "aria-hidden": "true" }), _jsx("span", { children: "Reveal vault in Finder" })] }), _jsx(DropdownMenuSeparator, {}), _jsxs(DropdownMenuItem, { className: "text-destructive focus:text-destructive", disabled: busy || props.vault === null, onSelect: event => {
+                        event.preventDefault();
+                        void runMenu('Removing vault…', 'The vault could not be removed.', signal => (removeVault(props, props.bridge, props.remote, signal)));
+                    }, children: [_jsx(X, { "aria-hidden": "true" }), _jsx("span", { children: "Remove from list" })] }), message !== '' && _jsx(DropdownMenuItem, { "aria-live": "polite", disabled: true, children: message })] }));
+    }
     return (_jsxs("div", { className: "flex items-center gap-4 p-4", "data-vault-action-row": true, children: [_jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("h3", { className: "m-0 font-medium", children: "Open Folder as Vault" }), _jsx("p", { className: "mt-1 text-xs text-[var(--tt-muted)]", children: "Choose an existing folder of Markdown files." })] }), _jsx(Button, { "aria-label": "Open Folder as Vault", disabled: busy, onClick: () => { void open(); }, variant: "outline", children: busy ? 'Opening…' : 'Open' }), _jsx("span", { "aria-live": "polite", className: "sr-only", children: message })] }));
 }
 /** Accessible contribution for Workbench's root-scoped Native Actions seat. */

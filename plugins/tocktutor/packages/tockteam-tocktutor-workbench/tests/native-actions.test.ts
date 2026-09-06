@@ -42,7 +42,9 @@ const exactOwner = {
 } satisfies TockTutorNativeActionsOwnerProps
 
 const exactVaultOwner = {
+  beginRename() {},
   close() {},
+  closeMenu() {},
   placement: 'actions',
   async saveCurrent() { return true },
   vault,
@@ -95,7 +97,7 @@ test('exports a distinct bounded root list contract for native actions', async (
   assert.equal(exactOwner.activePath, 'Native/Actions.md')
   assert.equal(exactOwner.vault, vault)
   assert.deepEqual(Object.keys(exactOwner).sort(), ['activePath', 'handleDispatch', 'vault'])
-  assert.deepEqual(Object.keys(exactVaultOwner).sort(), ['close', 'placement', 'saveCurrent', 'vault', 'vaultName'])
+  assert.deepEqual(Object.keys(exactVaultOwner).sort(), ['beginRename', 'close', 'closeMenu', 'placement', 'saveCurrent', 'vault', 'vaultName'])
 })
 
 test('route renders an accessible Native Actions area with bounded owner props', () => {

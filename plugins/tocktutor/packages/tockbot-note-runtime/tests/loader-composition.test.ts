@@ -457,19 +457,99 @@ test('Desktop vault selection activates only through a generation-bound Host cla
   }
 })
 
+test('Desktop vault move consumes only an explicit path-free destination claim', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-desktop-move-'))
+  const vault = join(fixture, 'Vault')
+  const destination = join(fixture, 'Destination')
+  try {
+    await Promise.all([mkdir(vault), mkdir(destination)])
+    await writeFile(join(vault, 'Note.md'), '# Move\n')
+    const loaded = await load(`vaultRoot: ${JSON.stringify(vault)}\nstateRoot: ${JSON.stringify(join(fixture, 'state'))}`)
+    try {
+      const initial = loaded.context.noteVault.state
+      if (!initial.active) assert.fail('configured vault must be active')
+      const targetIdentity = await lstat(destination, { bigint: true })
+      const consumed: TockTeamDesktopVaultSelectionConsumeInput[] = []
+      const released: TockTeamDesktopVaultSelectionReleaseInput[] = []
+      let malformed = true
+      class SelectionOwner extends TockTeamDesktopVaultSelection {
+        async consume(input: TockTeamDesktopVaultSelectionConsumeInput): Promise<TockTeamDesktopVaultSelectionConsumeResult> {
+          consumed.push(input)
+          const result = {
+            canonicalPath: await realpath(destination),
+            claim: desktopClaim('move-claim'),
+            identity: { dev: targetIdentity.dev.toString(10), ino: targetIdentity.ino.toString(10) },
+            operationId: input.identity.operationId,
+            status: 'consumed' as const,
+          }
+          return malformed ? { ...result, extra: true } as never : result
+        }
+        async bind(input: TockTeamDesktopVaultSelectionBindInput): Promise<TockTeamDesktopVaultSelectionBindResult> {
+          return { operationId: input.operationId, status: 'unavailable' }
+        }
+        async release(input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void> { released.push(input) }
+      }
+      await loaded.context.plugin(SelectionOwner)
+      const identity = {
+        operationId: 'move-operation',
+        requestId: 'move-request',
+        sessionId: 'move-session',
+        vaultGeneration: initial.generation,
+        vaultId: initial.id,
+        windowId: 'move-window',
+      }
+      await assert.rejects(
+        loaded.context.noteVault.moveDesktopSelection({
+          authorization: 'malformed-move-authorization',
+          expectedVault: { id: initial.id, generation: initial.generation },
+          identity,
+        }, new AbortController().signal),
+        (error: unknown) => error instanceof NoteVaultError && error.code === 'unavailable',
+      )
+      assert.deepEqual(released, [{ claim: 'move-claim', operationId: 'move-operation' }])
+      consumed.length = 0
+      released.length = 0
+      malformed = false
+      const result = await loaded.context.noteVault.moveDesktopSelection({
+        authorization: 'move-authorization',
+        expectedVault: { id: initial.id, generation: initial.generation },
+        identity,
+      }, new AbortController().signal)
+      assert.deepEqual(result, {
+        operationId: 'move-operation',
+        status: 'moved',
+        vaultGeneration: 2,
+        vaultId: initial.id,
+      })
+      assert.deepEqual(consumed, [{ authorization: 'move-authorization', identity, purpose: 'move' }])
+      assert.deepEqual(released, [{ claim: 'move-claim', operationId: 'move-operation' }])
+      assert.equal(await readFile(join(destination, 'Vault', 'Note.md'), 'utf8'), '# Move\n')
+      assert.equal(JSON.stringify(result).includes(fixture), false)
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
 test('active runtime vault synchronizes through the authenticated Desktop owner before native actions', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-desktop-synchronize-'))
   try {
     const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
     try {
       const adopted: TockTeamDesktopVaultSelectionAdoptInput[] = []
+      const released: TockTeamDesktopVaultSelectionReleaseInput[] = []
+      let finishRelease: (() => void) | undefined
+      let releaseEntered: (() => void) | undefined
+      const releaseGate = new Promise<void>(resolve => { finishRelease = resolve })
       class SelectionOwner extends TockTeamDesktopVaultSelection {
         async adopt(
           input: TockTeamDesktopVaultSelectionAdoptInput,
           _signal: AbortSignal,
         ): Promise<TockTeamDesktopVaultSelectionAdoptResult> {
           adopted.push(input)
-          return { operationId: input.operationId, status: 'bound' }
+          return { claim: desktopClaim('synchronized-claim'), operationId: input.operationId, status: 'bound' }
         }
         async consume(input: TockTeamDesktopVaultSelectionConsumeInput): Promise<TockTeamDesktopVaultSelectionConsumeResult> {
           return { operationId: input.identity.operationId, status: 'unavailable' }
@@ -477,7 +557,11 @@ test('active runtime vault synchronizes through the authenticated Desktop owner 
         async bind(input: TockTeamDesktopVaultSelectionBindInput): Promise<TockTeamDesktopVaultSelectionBindResult> {
           return { operationId: input.operationId, status: 'unavailable' }
         }
-        async release(_input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void> {}
+        async release(input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void> {
+          released.push(input)
+          releaseEntered?.()
+          await releaseGate
+        }
       }
       await loaded.context.plugin(SelectionOwner)
       const result = await loaded.context.noteVault.synchronizeDesktopSelection(new AbortController().signal)
@@ -491,6 +575,64 @@ test('active runtime vault synchronizes through the authenticated Desktop owner 
         vaultId: result.active ? result.id : '',
       })
       assert.match(adopted[0]?.operationId ?? '', /^[0-9a-f-]{36}$/u)
+      assert.strictEqual(
+        await loaded.context.noteVault.synchronizeDesktopSelection(new AbortController().signal),
+        result,
+      )
+      assert.equal(adopted.length, 2)
+      assert.deepEqual(released, [])
+      const didEnterRelease = new Promise<void>(resolve => { releaseEntered = resolve })
+      const removal = loaded.context.noteVault.removeVault({ id: result.id, generation: result.generation })
+      await didEnterRelease
+      assert.throws(
+        () => loaded.context.noteVault.activate(fixture, result.generation + 1),
+        (error: unknown) => error instanceof NoteVaultError && error.code === 'unavailable',
+      )
+      finishRelease?.()
+      await removal
+      assert.deepEqual(released, [{ claim: 'synchronized-claim', operationId: adopted[1]?.operationId }])
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('cancelled Desktop synchronization releases a claim returned after abort', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-desktop-sync-abort-'))
+  try {
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    try {
+      let adoptOperationId = ''
+      let resolveAdopt: ((result: TockTeamDesktopVaultSelectionAdoptResult) => void) | undefined
+      let entered: (() => void) | undefined
+      const released: TockTeamDesktopVaultSelectionReleaseInput[] = []
+      class SelectionOwner extends TockTeamDesktopVaultSelection {
+        async adopt(input: TockTeamDesktopVaultSelectionAdoptInput): Promise<TockTeamDesktopVaultSelectionAdoptResult> {
+          adoptOperationId = input.operationId
+          entered?.()
+          return await new Promise(resolve => { resolveAdopt = resolve })
+        }
+        async consume(input: TockTeamDesktopVaultSelectionConsumeInput): Promise<TockTeamDesktopVaultSelectionConsumeResult> {
+          return { operationId: input.identity.operationId, status: 'unavailable' }
+        }
+        async bind(input: TockTeamDesktopVaultSelectionBindInput): Promise<TockTeamDesktopVaultSelectionBindResult> {
+          return { operationId: input.operationId, status: 'unavailable' }
+        }
+        async release(input: TockTeamDesktopVaultSelectionReleaseInput): Promise<void> { released.push(input) }
+      }
+      await loaded.context.plugin(SelectionOwner)
+      const didEnter = new Promise<void>(resolve => { entered = resolve })
+      const controller = new AbortController()
+      const synchronization = loaded.context.noteVault.synchronizeDesktopSelection(controller.signal)
+      const rejected = assert.rejects(synchronization, (error: unknown) => error instanceof Error && error.name === 'AbortError')
+      await didEnter
+      controller.abort()
+      await rejected
+      resolveAdopt?.({ claim: desktopClaim('late-sync-claim'), operationId: adoptOperationId, status: 'bound' })
+      await new Promise(resolve => setTimeout(resolve, 0))
+      assert.deepEqual(released, [{ claim: 'late-sync-claim', operationId: adoptOperationId }])
     } finally {
       await dispose(loaded.context, loaded.root)
     }
@@ -1319,6 +1461,7 @@ test('Desktop reveal delegates only confined file and directory identities witho
         expectedVault,
         path: 'Folder',
       }, signal)
+      const vaultResult = await loaded.context.noteVault.revealVault(expectedVault, signal)
 
       assert.deepEqual(fileResult, {
         generation: 1,
@@ -1330,13 +1473,17 @@ test('Desktop reveal delegates only confined file and directory identities witho
         path: 'Folder',
         status: 'revealed',
       })
-      assert.equal(JSON.stringify([fileResult, directoryResult]).includes(fixture), false)
-      assert.equal(requests.length, 2)
+      assert.deepEqual(vaultResult, { generation: 1, status: 'revealed' })
+      assert.equal(JSON.stringify([fileResult, directoryResult, vaultResult]).includes(fixture), false)
+      assert.equal(requests.length, 3)
       assert.equal(requests[0]?.canonicalPath, await realpath(document))
       assert.equal(requests[0]?.kind, 'file')
       assert.equal(requests[1]?.canonicalPath, await realpath(folder))
       assert.equal(requests[1]?.kind, 'directory')
+      assert.equal(requests[2]?.canonicalPath, await realpath(vault))
+      assert.equal(requests[2]?.kind, 'directory')
       assert.notEqual(requests[0]?.operationId, requests[1]?.operationId)
+      assert.notEqual(requests[1]?.operationId, requests[2]?.operationId)
       for (const request of requests) {
         assert.equal(request.vaultId, state.id)
         assert.equal(request.vaultGeneration, 1)
@@ -1562,12 +1709,14 @@ test('Desktop reveal aborts pending effects on provider loss vault switch and ru
         (error: unknown) => error instanceof Error && error.name === 'AbortError',
       )
 
-      providerMode = 'immediate'
-      const beforeUnload = providerCalls
+      providerMode = 'pending'
+      didEnter = waitForEntry()
       const unloaded = loaded.context.noteVault.revealEntry({
         expectedVault: { id: secondState.id, generation: secondState.generation },
         path: 'Note.md',
       }, new AbortController().signal)
+      await didEnter
+      const beforeUnload = providerCalls
       const unloadRejected = assert.rejects(
         unloaded,
         (error: unknown) => error instanceof NoteVaultError && error.code === 'unavailable',
@@ -4201,6 +4350,129 @@ test('active vault recent identity and drafts survive a bounded runtime restart'
   }
 })
 
+test('vault root rename, move, and removal preserve Obsidian filesystem semantics', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'note-vault-root-management-'))
+  const stateRoot = await mkdtemp(join(tmpdir(), 'note-vault-root-state-'))
+  const original = join(workspace, 'Alpha')
+  const destination = join(workspace, 'Destination')
+  try {
+    await Promise.all([mkdir(original), mkdir(destination)])
+    await mkdir(join(original, '.obsidian'))
+    await writeFile(join(original, '.obsidian', 'app.json'), '{}')
+    await writeFile(join(original, 'Note.md'), '# Test\n')
+    const loaded = await load([
+      `vaultRoot: ${JSON.stringify(original)}`,
+      `stateRoot: ${JSON.stringify(stateRoot)}`,
+      'restoreActiveVault: true',
+    ].join('\n'))
+    let id = ''
+    let moved = ''
+    try {
+      const initial = loaded.context.noteVault.state
+      if (!initial.active) assert.fail('configured vault must be active')
+      id = initial.id
+      const renamed = loaded.context.noteVault.renameVault('Beta', { id, generation: initial.generation })
+      if (!renamed.active) assert.fail('renamed vault must remain active')
+      assert.deepEqual(renamed, { active: true, generation: 2, id })
+      assert.equal(loaded.context.noteVault.activeVaultName(), 'Beta')
+      assert.equal(await lstat(original).then(() => true, () => false), false)
+      assert.equal(await readFile(join(workspace, 'Beta', '.obsidian', 'app.json'), 'utf8'), '{}')
+
+      const stateDirectory = join(stateRoot, 'vault-state')
+      const savedStateDirectory = join(stateRoot, 'saved-vault-state')
+      await rename(stateDirectory, savedStateDirectory)
+      await writeFile(stateDirectory, 'unsafe')
+      assert.throws(
+        () => loaded.context.noteVault.renameVault('Gamma', { id, generation: renamed.generation }),
+        (error: unknown) => error instanceof NoteVaultError && error.code === 'recovery-unavailable',
+      )
+      assert.deepEqual(loaded.context.noteVault.state, renamed)
+      assert.equal(await readFile(join(workspace, 'Beta', 'Note.md'), 'utf8'), '# Test\n')
+      await rm(stateDirectory)
+      await rename(savedStateDirectory, stateDirectory)
+
+      const movedState = loaded.context.noteVault.moveVault(destination, { id, generation: renamed.generation })
+      if (!movedState.active) assert.fail('moved vault must remain active')
+      moved = join(destination, 'Beta')
+      assert.deepEqual(movedState, { active: true, generation: 3, id })
+      assert.equal(await readFile(join(moved, 'Note.md'), 'utf8'), '# Test\n')
+      assert.throws(
+        () => loaded.context.noteVault.moveVault(moved, { id, generation: movedState.generation }),
+        (error: unknown) => error instanceof NoteVaultError && error.code === 'invalid-path',
+      )
+
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+
+    const activeRestart = await load([
+      'vaultRoot: null',
+      `stateRoot: ${JSON.stringify(stateRoot)}`,
+      'restoreActiveVault: true',
+    ].join('\n'))
+    try {
+      const restored = activeRestart.context.noteVault.state
+      assert.deepEqual(restored, { active: true, generation: 1, id })
+      assert.equal(activeRestart.context.noteVault.activeVaultName(), 'Beta')
+      if (!restored.active) assert.fail('moved vault must restore')
+      const removed = await activeRestart.context.noteVault.removeVault({ id, generation: restored.generation })
+      assert.deepEqual(removed, { active: false, generation: 2 })
+      assert.deepEqual(activeRestart.context.noteVault.listRecentVaults(), [])
+      assert.equal(await readFile(join(moved, 'Note.md'), 'utf8'), '# Test\n')
+    } finally {
+      await dispose(activeRestart.context, activeRestart.root)
+    }
+
+    const inactiveRestart = await load([
+      'vaultRoot: null',
+      `stateRoot: ${JSON.stringify(stateRoot)}`,
+      'restoreActiveVault: true',
+    ].join('\n'))
+    try {
+      assert.deepEqual(inactiveRestart.context.noteVault.state, { active: false, generation: 0 })
+      assert.deepEqual(inactiveRestart.context.noteVault.listRecentVaults(), [])
+      assert.equal(await readFile(join(moved, '.obsidian', 'app.json'), 'utf8'), '{}')
+    } finally {
+      await dispose(inactiveRestart.context, inactiveRestart.root)
+    }
+  } finally {
+    await rm(workspace, { recursive: true, force: true })
+    await rm(stateRoot, { recursive: true, force: true })
+  }
+})
+
+test('vault relocation journal recovers a committed move after interruption', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'note-vault-relocation-recovery-'))
+  const stateRoot = await mkdtemp(join(tmpdir(), 'note-vault-relocation-state-'))
+  const original = join(workspace, 'Before')
+  const target = join(workspace, 'After')
+  try {
+    await mkdir(original)
+    const loaded = await load(`vaultRoot: ${JSON.stringify(original)}\nstateRoot: ${JSON.stringify(stateRoot)}`)
+    const state = loaded.context.noteVault.state
+    if (!state.active) assert.fail('configured vault must be active')
+    await dispose(loaded.context, loaded.root)
+
+    await rename(original, target)
+    await writeFile(join(stateRoot, 'vault-state', 'relocation.json'), `${JSON.stringify({
+      activeRoot: target,
+      fromRoot: original,
+      recents: [{ id: state.id, lastOpenedAt: Date.now(), root: target }],
+    })}\n`)
+    const recovered = await load(`vaultRoot: ${JSON.stringify(original)}\nstateRoot: ${JSON.stringify(stateRoot)}\nrestoreActiveVault: true`)
+    try {
+      assert.deepEqual(recovered.context.noteVault.state, { active: true, generation: 1, id: state.id })
+      assert.equal(recovered.context.noteVault.activeVaultName(), 'After')
+      await assert.rejects(lstat(join(stateRoot, 'vault-state', 'relocation.json')), { code: 'ENOENT' })
+    } finally {
+      await dispose(recovered.context, recovered.root)
+    }
+  } finally {
+    await rm(workspace, { recursive: true, force: true })
+    await rm(stateRoot, { recursive: true, force: true })
+  }
+})
+
 test('recent vault persistence dedupes caps and reactivates by opaque ID', async () => {
   const stateRoot = await mkdtemp(join(tmpdir(), 'note-vault-recents-state-'))
   const vaults = await Promise.all(['A', 'B', 'C'].map(async name => {
@@ -4282,8 +4554,20 @@ test('legacy Tockbot vault state migrates read-only and sandbox/removal stay opa
       await writeFile(join(sandboxRoot, 'Welcome.md'), 'local edit')
       loaded.context.noteVault.openSandboxVault(sandbox.generation)
       assert.equal(await readFile(join(sandboxRoot, 'Welcome.md'), 'utf8'), 'local edit')
+      await loaded.context.noteVault.removeVault({ id: sandbox.id, generation: sandbox.generation })
     } finally {
       await dispose(loaded.context, loaded.root)
+    }
+
+    const restarted = await load([
+      'vaultRoot: null',
+      `stateRoot: ${JSON.stringify(stateRoot)}`,
+      'restoreActiveVault: true',
+    ].join('\n'))
+    try {
+      assert.deepEqual(restarted.context.noteVault.state, { active: false, generation: 0 })
+    } finally {
+      await dispose(restarted.context, restarted.root)
     }
   } finally {
     await rm(stateRoot, { recursive: true, force: true })

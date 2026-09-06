@@ -7,7 +7,7 @@ import { type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from
 import { type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts';
 import type { BaseHydratedFile } from './base-query.ts';
 import type { CanvasChange } from './canvas-change.ts';
-import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
+import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult, type TockTutorVaultActionsOwnerProps } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts';
 import { type PropertyValue } from './properties.ts';
@@ -338,7 +338,7 @@ export interface TockTutorRouteViewProps {
     onTrashCurrent?(): void;
     onToggleTask(index: number): void;
     active?: boolean;
-    renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void) => ReactNode) | undefined;
+    renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void, closeMenu: () => void, beginRename: TockTutorVaultActionsOwnerProps['beginRename']) => ReactNode) | undefined;
     reviewPanel?: ReactNode;
     snapshot: WorkbenchRouteSnapshot;
     webViewerPanel?: ReactNode;

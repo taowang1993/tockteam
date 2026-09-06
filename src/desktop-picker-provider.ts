@@ -1,5 +1,7 @@
 import {
   TockTeamDesktopVaultSelection,
+  type TockTeamDesktopVaultSelectionAdoptInput,
+  type TockTeamDesktopVaultSelectionAdoptResult,
   type TockTeamDesktopVaultSelectionBindInput,
   type TockTeamDesktopVaultSelectionBindResult,
   type TockTeamDesktopVaultSelectionConsumeInput,
@@ -33,8 +35,6 @@ import {
   type RevokeDesktopDestinationPlanResult,
   type RevalidateDesktopSourceRequest,
   type RevalidateDesktopSourceResult,
-  type TockTeamDesktopVaultSelectionAdoptInput,
-  type TockTeamDesktopVaultSelectionAdoptResult,
   type StatDesktopSourceRequest,
   type StatDesktopSourceResult,
   type TockTeamDesktopPickerService,

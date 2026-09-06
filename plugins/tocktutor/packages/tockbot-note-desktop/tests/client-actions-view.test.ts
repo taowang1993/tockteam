@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { DropdownMenu, DropdownMenuContent } from '@tockteam/ui/dropdown-menu'
 import {
   TockTutorNativeActions,
   TockTutorVaultActions,
@@ -52,8 +53,10 @@ test('renders keyboard-native actions with bounded availability and polite statu
 
 test('renders the vault folder picker as a dedicated action', () => {
   const html = renderToStaticMarkup(createElement(TockTutorVaultActions, {
+    beginRename() {},
     bridge,
     close() {},
+    closeMenu() {},
     placement: 'actions',
     remote,
     vault,
@@ -61,4 +64,26 @@ test('renders the vault folder picker as a dedicated action', () => {
   }))
   assert.match(html, /<button[^>]*aria-label="Open Folder as Vault"/u)
   assert.match(html, />Open<\/button>/u)
+})
+
+test('renders the Obsidian-compatible native vault menu actions', () => {
+  const html = renderToStaticMarkup(createElement(
+    DropdownMenu,
+    null,
+    createElement(DropdownMenuContent, { forceMount: true, portalled: false }, createElement(TockTutorVaultActions, {
+      beginRename() {},
+      bridge,
+      close() {},
+      closeMenu() {},
+      placement: 'menu',
+      remote,
+      vault,
+      vaultName: 'Research Vault',
+    })),
+  ))
+  assert.match(html, /Rename vault\.\.\./u)
+  assert.match(html, /Move vault\.\.\./u)
+  assert.match(html, /Reveal vault in Finder/u)
+  assert.match(html, /Remove from list/u)
+  assert.doesNotMatch(html, /Open Folder as Vault/u)
 })

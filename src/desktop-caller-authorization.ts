@@ -4,7 +4,11 @@ export type { DesktopCallerOperation } from './host-contract.ts'
 
 export const DESKTOP_CALLER_OPERATIONS = [
   'activate-vault',
+  'move-vault',
+  'remove-vault',
+  'rename-vault',
   'reveal-entry',
+  'reveal-vault',
   'popout-open',
   'popout-close',
   'popout-close-all',

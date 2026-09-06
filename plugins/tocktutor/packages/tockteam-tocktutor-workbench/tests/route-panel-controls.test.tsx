@@ -55,7 +55,12 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onToggleFocusMode?(): void
   onToggleTask?(index: number): void
   onTrashCurrent?(): void
-  renderVaultActions?: (placement: 'actions' | 'menu', close: () => void) => ReactNode
+  renderVaultActions?: (
+    placement: 'actions' | 'menu',
+    close: () => void,
+    closeMenu: () => void,
+    beginRename: (rename: (name: string, signal: AbortSignal) => Promise<boolean>) => void,
+  ) => ReactNode
 } = {}): void {
   render(<TockTutorRouteView
     onActivateTab={() => {}}
@@ -284,16 +289,25 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('button', { name: 'Collapse List' })).toBeTruthy()
   })
 
-  it('opens a spacious Obsidian-like vault switcher with clean vault navigation', () => {
+  it('opens a spacious Obsidian-like vault switcher with clean vault navigation', async () => {
     const currentId = `vault:${'a'.repeat(64)}`
     const onCreateManagedVault = vi.fn()
     const onOpenFolderAsVault = vi.fn()
+    const onRenameVault = vi.fn(async () => true)
+    const writeText = vi.fn(async () => undefined)
+    Object.defineProperty(window.navigator, 'clipboard', { configurable: true, value: { writeText } })
     renderRoute({
       vault: { generation: 2, id: currentId },
+      vaultName: 'Research Vault',
     }, {
       onCreateManagedVault,
-      renderVaultActions: (placement, close) => placement === 'menu'
-        ? <button onClick={close} role="menuitem" type="button">Reveal Vault in Finder</button>
+      renderVaultActions: (placement, close, closeMenu, beginRename) => placement === 'menu'
+        ? (
+            <>
+              <button onClick={() => { beginRename(onRenameVault); closeMenu() }} role="menuitem" type="button">Rename vault...</button>
+              <button onClick={close} role="menuitem" type="button">Reveal vault in Finder</button>
+            </>
+          )
         : (
             <div>
               <p>Open Folder as Vault</p>
@@ -302,7 +316,7 @@ describe('TockTutor titlebar panel controls', () => {
           ),
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /TockTutor Vault/u }))
+    fireEvent.click(screen.getByRole('button', { name: 'Research Vault' }))
     const dialog = screen.getByRole('dialog', { name: 'Vault Switcher' })
     const vaultList = screen.getByRole('region', { name: 'Vault List' })
     expect(dialog.className).toContain('bg-[var(--tt-panel)]')
@@ -314,12 +328,21 @@ describe('TockTutor titlebar panel controls', () => {
     expect(dialog.style.maxHeight).toBe('calc(100vh - 2rem)')
     expect(dialog.style.maxWidth).toBe('860px')
     expect(vaultList.className).toContain('bg-[var(--tockteam-shell-chrome,var(--tt-panel))]')
-    expect(vaultList.textContent).toContain('TockTutor Vault')
+    expect(vaultList.textContent).toContain('Research Vault')
     expect(screen.getByText('Vault Switcher').parentElement?.className).toContain('sr-only')
     fireEvent.pointerDown(screen.getByRole('button', { name: 'More Vault Actions' }), { button: 0, ctrlKey: false })
-    expect(screen.getByRole('menuitem', { name: 'Copy Vault ID' })).toBeTruthy()
-    expect(screen.getByRole('menuitem', { name: 'Reveal Vault in Finder' })).toBeTruthy()
-    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+    expect(screen.getByRole('menuitem', { name: 'Reveal vault in Finder' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy vault ID' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(currentId))
+    writeText.mockRejectedValueOnce(new Error('denied'))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More Vault Actions' }), { button: 0, ctrlKey: false })
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy vault ID' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('The vault ID could not be copied.')
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More Vault Actions' }), { button: 0, ctrlKey: false })
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename vault...' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Vault Name' }), { target: { value: 'Renamed Vault' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Vault' }))
+    await waitFor(() => expect(onRenameVault).toHaveBeenCalledWith('Renamed Vault', expect.any(AbortSignal)))
     expect(screen.getByRole('img', { name: 'TockTeam Logo' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Vault Actions' })).toBeTruthy()
     expect(dialog.textContent).not.toContain('Current Vault')
@@ -335,7 +358,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onOpenFolderAsVault).toHaveBeenCalledOnce()
     expect(screen.queryByRole('dialog', { name: 'Vault Switcher' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: /TockTutor Vault/u }))
+    fireEvent.click(screen.getByRole('button', { name: 'Research Vault' }))
     fireEvent.click(screen.getByRole('button', { name: 'Create New Vault' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Vault Name' }), { target: { value: 'Research' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create Vault' }))

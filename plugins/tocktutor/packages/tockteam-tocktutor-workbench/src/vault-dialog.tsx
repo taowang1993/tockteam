@@ -16,13 +16,18 @@ import {
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { Copy, Ellipsis, Plus } from 'lucide-react'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { VaultReference } from './types.ts'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 
 export interface WorkbenchVaultDialogProps {
   onCreateManagedVault?: ((name: string) => void) | undefined
-  renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void) => ReactNode) | undefined
+  renderVaultActions?: ((
+    placement: 'actions' | 'menu',
+    close: () => void,
+    closeMenu: () => void,
+    beginRename: (rename: (name: string, signal: AbortSignal) => Promise<boolean>) => void,
+  ) => ReactNode) | undefined
   vault: VaultReference | null
   vaultName: string | null
 }
@@ -39,16 +44,74 @@ function TockTeamLogo(): ReactNode {
 }
 
 export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNode {
+  const [copyError, setCopyError] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [name, setName] = useState('')
   const [open, setOpen] = useState(false)
+  const [rename, setRename] = useState<((name: string, signal: AbortSignal) => Promise<boolean>) | null>(null)
+  const renameOperation = useRef<AbortController>()
+  const [renameError, setRenameError] = useState(false)
+  const [renameName, setRenameName] = useState('')
+  const [renaming, setRenaming] = useState(false)
 
   const changeOpen = (open: boolean): void => {
     if (!open) {
+      setCopyError(false)
       setCreating(false)
+      setMenuOpen(false)
       setName('')
+      renameOperation.current?.abort()
+      renameOperation.current = undefined
+      setRename(null)
+      setRenameError(false)
+      setRenameName('')
+      setRenaming(false)
     }
     setOpen(open)
+  }
+  const copyVaultId = (): void => {
+    if (props.vault === null) return
+    setCopyError(false)
+    try {
+      const result = globalThis.navigator?.clipboard?.writeText(props.vault.id)
+      if (result === undefined) setCopyError(true)
+      else void result.catch(() => { setCopyError(true) })
+    } catch {
+      setCopyError(true)
+    }
+  }
+  const beginRename = (action: (name: string, signal: AbortSignal) => Promise<boolean>): void => {
+    renameOperation.current?.abort()
+    renameOperation.current = undefined
+    setCopyError(false)
+    setRename(() => action)
+    setRenaming(false)
+    setRenameError(false)
+    setRenameName(props.vaultName ?? '')
+  }
+  const submitRename = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    const normalized = renameName.trim()
+    if (rename === null || normalized === '') return
+    if (normalized === props.vaultName) {
+      setRename(null)
+      return
+    }
+    renameOperation.current?.abort()
+    const operation = new AbortController()
+    renameOperation.current = operation
+    setRenaming(true)
+    setRenameError(false)
+    void rename(normalized, operation.signal).then(success => {
+      if (operation.signal.aborted) return
+      if (success) setRename(null)
+      else setRenameError(true)
+    }, () => {
+      if (!operation.signal.aborted) setRenameError(true)
+    }).finally(() => {
+      if (!operation.signal.aborted) setRenaming(false)
+    })
   }
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault()
@@ -86,22 +149,47 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
             </DialogHeader>
             <div className="flex min-w-0 items-start gap-3">
               <div className="min-w-0 flex-1">
-                <p className="m-0 truncate font-medium">{props.vault === null ? 'No Vault Open' : props.vaultName ?? 'TockTutor Vault'}</p>
+                {rename === null
+                  ? <p className="m-0 truncate font-medium">{props.vault === null ? 'No Vault Open' : props.vaultName ?? 'TockTutor Vault'}</p>
+                  : (
+                      <form onSubmit={submitRename}>
+                        <Input
+                          aria-label="Vault Name"
+                          autoFocus
+                          disabled={renaming}
+                          maxLength={80}
+                          onChange={event => { setRenameName(event.target.value) }}
+                          onKeyDown={event => {
+                            if (event.key === 'Escape') {
+                              event.preventDefault()
+                              renameOperation.current?.abort()
+                              renameOperation.current = undefined
+                              setRename(null)
+                              setRenaming(false)
+                            }
+                          }}
+                          value={renameName}
+                        />
+                        <button className="sr-only" type="submit">Rename Vault</button>
+                        {renameError && <p className="mt-1 text-xs text-destructive" role="alert">The vault could not be renamed.</p>}
+                      </form>
+                    )}
                 <p className="mt-0.5 truncate text-xs text-[var(--tt-muted)]">{props.vault === null ? 'Open or create a local vault' : 'Local Markdown vault'}</p>
+                {copyError && <p className="mt-1 text-xs text-destructive" role="alert">The vault ID could not be copied.</p>}
               </div>
-              {props.vault !== null && (
-                <DropdownMenu>
+              {props.vault !== null && rename === null && (
+                <DropdownMenu onOpenChange={setMenuOpen} open={menuOpen}>
                   <DropdownMenuTrigger asChild>
                     <Button unstyled aria-label="More Vault Actions" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]" type="button">
                       <Ellipsis aria-hidden="true" className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52 border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[var(--tt-text)]" portalled={false}>
-                    <DropdownMenuItem onSelect={() => { void globalThis.navigator?.clipboard?.writeText(props.vault!.id) }}>
+                    <DropdownMenuItem onSelect={copyVaultId}>
                       <Copy aria-hidden="true" />
-                      <span>Copy Vault ID</span>
+                      <span>Copy vault ID</span>
                     </DropdownMenuItem>
-                    {props.renderVaultActions?.('menu', () => { changeOpen(false) })}
+                    {props.renderVaultActions?.('menu', () => { changeOpen(false) }, () => { setMenuOpen(false) }, beginRename)}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -117,36 +205,36 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
               </div>
 
               <div className="divide-y divide-[var(--tt-border)] rounded-xl border border-[var(--tt-border)] bg-[color-mix(in_srgb,var(--tt-panel)_82%,var(--tockteam-shell-chrome,var(--tt-panel)))]">
-              <div className="p-4" data-vault-action-row>
-                {creating
-                  ? (
-                      <form className="flex flex-col gap-3" onSubmit={submit}>
-                        <div>
-                          <h3 className="m-0 font-medium">Create New Vault</h3>
-                          <p className="mt-1 text-xs text-[var(--tt-muted)]">Give your new collection a name.</p>
+                <div className="p-4" data-vault-action-row>
+                  {creating
+                    ? (
+                        <form className="flex flex-col gap-3" onSubmit={submit}>
+                          <div>
+                            <h3 className="m-0 font-medium">Create New Vault</h3>
+                            <p className="mt-1 text-xs text-[var(--tt-muted)]">Give your new collection a name.</p>
+                          </div>
+                          <Label htmlFor="tocktutor-vault-name">Vault Name</Label>
+                          <Input autoFocus id="tocktutor-vault-name" maxLength={80} onChange={event => { setName(event.target.value) }} value={name} />
+                          <div className="flex justify-end gap-2">
+                            <Button onClick={() => { setCreating(false); setName('') }} type="button" variant="ghost">Cancel</Button>
+                            <Button disabled={name.trim() === ''} type="submit">Create Vault</Button>
+                          </div>
+                        </form>
+                      )
+                    : (
+                        <div className="flex items-center gap-4">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="m-0 font-medium">Create New Vault</h3>
+                            <p className="mt-1 text-xs text-[var(--tt-muted)]">Start a new collection of Markdown notes.</p>
+                          </div>
+                          <Button aria-label="Create New Vault" onClick={() => { setCreating(true) }} variant="outline">
+                            <Plus aria-hidden="true" data-icon="inline-start" />
+                            Create
+                          </Button>
                         </div>
-                        <Label htmlFor="tocktutor-vault-name">Vault Name</Label>
-                        <Input autoFocus id="tocktutor-vault-name" maxLength={80} onChange={event => { setName(event.target.value) }} value={name} />
-                        <div className="flex justify-end gap-2">
-                          <Button onClick={() => { setCreating(false); setName('') }} type="button" variant="ghost">Cancel</Button>
-                          <Button disabled={name.trim() === ''} type="submit">Create Vault</Button>
-                        </div>
-                      </form>
-                    )
-                  : (
-                      <div className="flex items-center gap-4">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="m-0 font-medium">Create New Vault</h3>
-                          <p className="mt-1 text-xs text-[var(--tt-muted)]">Start a new collection of Markdown notes.</p>
-                        </div>
-                        <Button aria-label="Create New Vault" onClick={() => { setCreating(true) }} variant="outline">
-                          <Plus aria-hidden="true" data-icon="inline-start" />
-                          Create
-                        </Button>
-                      </div>
-                    )}
-              </div>
-                {props.renderVaultActions?.('actions', () => { changeOpen(false) })}
+                      )}
+                </div>
+                {props.renderVaultActions?.('actions', () => { changeOpen(false) }, () => { setMenuOpen(false) }, beginRename)}
               </div>
             </div>
           </section>

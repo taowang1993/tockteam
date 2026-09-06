@@ -714,7 +714,8 @@ async function resolveRevealTarget(root, requestedPath) {
 }
 async function assertRevealTargetBound(root, target) {
     try {
-        await assertNoDirectorySymlinks(root, target.candidate);
+        if (target.candidate !== root)
+            await assertNoDirectorySymlinks(root, target.candidate);
         const current = await lstat(target.candidate, { bigint: true });
         const currentKind = current.isFile()
             ? 'file'
@@ -2141,6 +2142,7 @@ function parsePersistedRecentVaults(value, limit) {
         return [];
     const records = [];
     const seen = new Set();
+    const seenRoots = new Set();
     const now = Date.now();
     for (const candidate of value) {
         if (records.length >= limit)
@@ -2160,17 +2162,20 @@ function parsePersistedRecentVaults(value, limit) {
         catch {
             continue;
         }
-        const id = activeVaultState(root, 1);
-        if (!id.active || seen.has(id.id))
+        const id = typeof record.id === 'string' && /^vault:[0-9a-f]{64}$/u.test(record.id)
+            ? record.id
+            : activeVaultState(root, 1).id;
+        if (seen.has(id) || seenRoots.has(root))
             continue;
-        seen.add(id.id);
+        seen.add(id);
+        seenRoots.add(root);
         const timestamp = typeof record.lastOpenedAt === 'number'
             && Number.isFinite(record.lastOpenedAt)
             && record.lastOpenedAt >= 0
             && record.lastOpenedAt <= now + 24 * 60 * 60_000
             ? record.lastOpenedAt
             : 0;
-        records.push({ id: id.id, lastOpenedAt: timestamp, root });
+        records.push({ id, lastOpenedAt: timestamp, root });
     }
     return records;
 }
@@ -2238,12 +2243,12 @@ function loadPersistedVaultSelection(stateRoot, limit) {
         return null;
     try {
         const parsed = JSON.parse(raw);
-        if (typeof parsed.activeRoot !== 'string'
+        if (parsed.activeRoot !== null && (typeof parsed.activeRoot !== 'string'
             || parsed.activeRoot.length === 0
             || parsed.activeRoot.length > 32_768
-            || parsed.activeRoot.includes('\0'))
+            || parsed.activeRoot.includes('\0')))
             return null;
-        const activeRoot = resolveVaultRoot(parsed.activeRoot);
+        const activeRoot = parsed.activeRoot === null ? null : resolveVaultRoot(parsed.activeRoot);
         return {
             activeRoot,
             recents: parsePersistedRecentVaults(parsed.recents, limit),
@@ -2258,6 +2263,7 @@ function persistVaultSelection(stateRoot, activeRoot, recents) {
     writeStateTextSync(path.join(directory, 'selection.json'), `${JSON.stringify({
         activeRoot,
         recents: recents.map(record => ({
+            id: record.id,
             lastOpenedAt: record.lastOpenedAt,
             root: record.root,
         })),
@@ -2268,6 +2274,63 @@ function persistVaultSelection(stateRoot, activeRoot, recents) {
         }
         catch { /* absent or already migrated */ }
     }
+}
+function persistVaultRelocation(stateRoot, fromRoot, activeRoot, recents) {
+    const directory = vaultStateDirectorySync(stateRoot);
+    writeStateTextSync(path.join(directory, 'relocation.json'), `${JSON.stringify({
+        activeRoot,
+        fromRoot,
+        recents: recents.map(record => ({ id: record.id, lastOpenedAt: record.lastOpenedAt, root: record.root })),
+    }, null, 2)}\n`);
+}
+function recoverVaultRelocation(stateRoot, limit) {
+    const directory = vaultStateDirectorySync(stateRoot);
+    const journalPath = path.join(directory, 'relocation.json');
+    const raw = readStateTextSync(journalPath, 1024 * 1024);
+    if (raw === null)
+        return null;
+    let record;
+    try {
+        const parsed = JSON.parse(raw);
+        if (!hasExactKeys(parsed, ['activeRoot', 'fromRoot', 'recents']))
+            throw new Error();
+        if (![parsed.activeRoot, parsed.fromRoot].every(value => (typeof value === 'string' && value.length > 0 && value.length <= 32_768 && !value.includes('\0') && path.isAbsolute(value))) || parsed.activeRoot === parsed.fromRoot || !Array.isArray(parsed.recents))
+            throw new Error();
+        record = parsed;
+    }
+    catch {
+        throw new NoteVaultError('recovery-unavailable', 'Vault relocation recovery is invalid');
+    }
+    let fromRoot = null;
+    let activeRoot = null;
+    try {
+        fromRoot = resolveVaultRoot(record.fromRoot);
+    }
+    catch { /* moved or unavailable */ }
+    try {
+        activeRoot = resolveVaultRoot(record.activeRoot);
+    }
+    catch { /* not moved or unavailable */ }
+    if (fromRoot !== null && activeRoot === null) {
+        try {
+            unlinkSync(journalPath);
+        }
+        catch { /* recovery is idempotent */ }
+        return null;
+    }
+    if (fromRoot === null && activeRoot !== null) {
+        const recents = parsePersistedRecentVaults(record.recents, limit);
+        if (!recents.some(candidate => candidate.root === activeRoot)) {
+            throw new NoteVaultError('recovery-unavailable', 'Vault relocation recovery lost its active record');
+        }
+        persistVaultSelection(stateRoot, activeRoot, recents);
+        try {
+            unlinkSync(journalPath);
+        }
+        catch { /* recovery is idempotent */ }
+        return activeRoot;
+    }
+    throw new NoteVaultError('recovery-unavailable', 'Vault relocation requires manual recovery');
 }
 function resolveStateRoot(stateRoot) {
     if (stateRoot === null)
@@ -2291,6 +2354,13 @@ function resolveStateRoot(stateRoot) {
     catch {
         throw new NoteVaultError('invalid-vault', 'stateRoot must reference a safe directory');
     }
+}
+function normalizeVaultName(name) {
+    const normalized = name.trim();
+    if (normalized.length === 0 || normalized.length > 80 || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(normalized) || normalized === '.' || normalized === '..') {
+        throw new NoteVaultError('invalid-path', 'Vault name is invalid');
+    }
+    return normalized;
 }
 function resolveVaultRoot(vaultRoot) {
     try {
@@ -2316,11 +2386,11 @@ function resolveVaultRootBinding(vaultRoot) {
 function sameVaultRootIdentity(left, right) {
     return left.dev === right.dev && left.ino === right.ino;
 }
-function activeVaultState(vaultRoot, generation) {
+function activeVaultState(vaultRoot, generation, id) {
     return Object.freeze({
         active: true,
         generation,
-        id: `vault:${createHash('sha256').update(vaultRoot).digest('hex')}`,
+        id: id ?? `vault:${createHash('sha256').update(vaultRoot).digest('hex')}`,
     });
 }
 export class NoteVaultRuntime extends Service {
@@ -2347,6 +2417,7 @@ export class NoteVaultRuntime extends Service {
     searchIndexCleanup = new Set();
     vaultIdentity;
     vaultRoot;
+    vaultTransitionPending = false;
     watcher = null;
     watcherActive = false;
     watcherToken = 0;
@@ -2362,6 +2433,9 @@ export class NoteVaultRuntime extends Service {
         this.snapshotLimit = config.snapshotLimit;
         this.snapshotRetentionDays = config.snapshotRetentionDays;
         this.stateRoot = resolveStateRoot(config.stateRoot);
+        const recoveredVaultRoot = this.stateRoot === null
+            ? null
+            : recoverVaultRelocation(this.stateRoot, this.recentVaultLimit);
         this.treeConfig = {
             maxDepth: config.maxTreeDepth,
             maxEntries: config.maxTreeEntries,
@@ -2376,11 +2450,11 @@ export class NoteVaultRuntime extends Service {
                     const current = loadPersistedRecentVaults(this.stateRoot, this.recentVaultLimit);
                     return current.length > 0 ? current : loadLegacyRecentVaults(this.stateRoot, this.recentVaultLimit);
                 })());
-        const initialRoot = config.vaultRoot === null && config.restoreActiveVault && this.stateRoot !== null
-            ? persistedSelection?.activeRoot
-                ?? loadPersistedActiveVault(this.stateRoot)
-                ?? loadLegacyActiveVault(this.stateRoot)
-            : config.vaultRoot;
+        const initialRoot = recoveredVaultRoot ?? (config.vaultRoot === null && config.restoreActiveVault && this.stateRoot !== null
+            ? persistedSelection === null
+                ? loadPersistedActiveVault(this.stateRoot) ?? loadLegacyActiveVault(this.stateRoot)
+                : persistedSelection.activeRoot
+            : config.vaultRoot);
         if (initialRoot === null) {
             this.vaultIdentity = null;
             this.vaultRoot = null;
@@ -2390,7 +2464,7 @@ export class NoteVaultRuntime extends Service {
             const binding = resolveVaultRootBinding(initialRoot);
             this.vaultIdentity = binding.identity;
             this.vaultRoot = binding.root;
-            this.currentState = activeVaultState(this.vaultRoot, 1);
+            this.currentState = activeVaultState(this.vaultRoot, 1, this.recentVaults.find(record => record.root === this.vaultRoot)?.id);
             if (this.currentState.active) {
                 const current = {
                     id: this.currentState.id,
@@ -2459,6 +2533,14 @@ export class NoteVaultRuntime extends Service {
             };
         });
     }
+    emitVaultDeactivation(vault) {
+        try {
+            this.context.emit('note-vault/change', { action: 'deactivated', kind: 'vault', vault });
+        }
+        catch {
+            // Deactivation is already committed; observer failures cannot roll it back.
+        }
+    }
     emitVaultActivation(state) {
         try {
             this.context.emit('note-vault/change', {
@@ -2485,6 +2567,7 @@ export class NoteVaultRuntime extends Service {
         })();
         this.desktopSelectionCleanupOperations.add(cleanup);
         void cleanup.then(() => this.desktopSelectionCleanupOperations.delete(cleanup));
+        return cleanup;
     }
     openWatcher(root, state, token) {
         const watcher = watch(root, {
@@ -2671,16 +2754,37 @@ export class NoteVaultRuntime extends Service {
         const operationSignal = AbortSignal.any([signal, controller.signal]);
         const operationId = randomUUID();
         this.activeDesktopSelectionOperations.add(operation);
+        const releaseAdoptedClaim = async (result) => {
+            if (result.status !== 'bound' || !boundedDesktopText(result.claim, 1024))
+                return;
+            try {
+                await provider.release({ claim: result.claim, operationId: result.operationId });
+            }
+            catch { /* provider loss clears its claim */ }
+        };
         try {
-            const result = await awaitWithAbort(provider.adopt({
+            const adoption = Promise.resolve().then(async () => await provider.adopt({
                 canonicalPath: root,
                 operationId,
                 vaultGeneration: state.generation,
                 vaultId: state.id,
-            }, operationSignal), operationSignal);
-            operationSignal.throwIfAborted();
-            this.assertCapturedVault(state, root);
-            if (!hasExactKeys(result, ['operationId', 'status']) || result.operationId !== operationId) {
+            }, operationSignal));
+            let result;
+            try {
+                result = await awaitWithAbort(adoption, operationSignal);
+            }
+            catch (error) {
+                const lateCleanup = adoption.then(releaseAdoptedClaim).catch(() => undefined);
+                this.desktopSelectionCleanupOperations.add(lateCleanup);
+                void lateCleanup.then(() => this.desktopSelectionCleanupOperations.delete(lateCleanup));
+                throw error;
+            }
+            if (operationSignal.aborted) {
+                await releaseAdoptedClaim(result);
+                operationSignal.throwIfAborted();
+            }
+            if (!hasExactKeys(result, result?.status === 'bound' ? ['claim', 'operationId', 'status'] : ['operationId', 'status']) || result.operationId !== operationId) {
+                await releaseAdoptedClaim(result);
                 throw new NoteVaultError('unavailable', 'Desktop vault synchronization returned an invalid result');
             }
             if (result.status !== 'bound') {
@@ -2689,6 +2793,21 @@ export class NoteVaultRuntime extends Service {
                         ? result.status
                         : 'unavailable';
                 throw new NoteVaultError(code, 'Desktop vault synchronization failed');
+            }
+            if (!boundedDesktopText(result.claim, 1024)) {
+                throw new NoteVaultError('unavailable', 'Desktop vault synchronization returned an invalid claim');
+            }
+            try {
+                this.assertCapturedVault(state, root);
+            }
+            catch (error) {
+                await releaseAdoptedClaim(result);
+                throw error;
+            }
+            const previousSelectionClaim = this.activeDesktopSelectionClaim;
+            this.activeDesktopSelectionClaim = { claim: result.claim, operationId, provider };
+            if (previousSelectionClaim !== null && previousSelectionClaim.claim !== result.claim) {
+                this.queueDesktopSelectionClaimRelease(previousSelectionClaim);
             }
             return state;
         }
@@ -2816,7 +2935,7 @@ export class NoteVaultRuntime extends Service {
             const nextGeneration = target.canonicalPath === this.vaultRoot
                 ? state.generation
                 : state.generation + 1;
-            const nextState = activeVaultState(target.canonicalPath, nextGeneration);
+            const nextState = activeVaultState(target.canonicalPath, nextGeneration, this.recentVaults.find(record => record.root === target.canonicalPath)?.id);
             if (!nextState.active)
                 throw new Error('unreachable inactive vault state');
             let bound;
@@ -2890,10 +3009,113 @@ export class NoteVaultRuntime extends Service {
             this.activeDesktopSelectionOperations.delete(operation);
         }
     }
+    async moveDesktopSelection(request, signal) {
+        const identity = request?.identity;
+        if (!hasExactKeys(request, ['authorization', 'expectedVault', 'identity'])
+            || !boundedDesktopText(request.authorization, 1024)
+            || !hasExactKeys(identity, ['operationId', 'requestId', 'sessionId', 'vaultGeneration', 'vaultId', 'windowId'])
+            || !Number.isSafeInteger(identity.vaultGeneration)
+            || identity.vaultGeneration < 0
+            || [identity.operationId, identity.requestId, identity.sessionId, identity.windowId]
+                .some(value => !boundedDesktopText(value, 512))
+            || !boundedDesktopText(identity.vaultId, 512))
+            throw new NoteVaultError('denied', 'The Desktop vault move request is invalid');
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        if (identity.vaultId !== state.id || identity.vaultGeneration !== state.generation) {
+            throw new NoteVaultError('stale-vault', 'The active vault changed before the Desktop move');
+        }
+        signal.throwIfAborted();
+        const provider = this.context.get('tockTeamDesktopVaultSelection');
+        if (provider === undefined)
+            throw new NoteVaultError('unavailable', 'Desktop vault selection is unavailable in this runtime');
+        const controller = new AbortController();
+        let completeOperation;
+        const operation = {
+            complete: () => completeOperation?.(),
+            completion: new Promise(resolve => { completeOperation = resolve; }),
+            controller,
+        };
+        const operationSignal = AbortSignal.any([signal, controller.signal]);
+        this.activeDesktopSelectionOperations.add(operation);
+        let claim;
+        try {
+            const consumption = Promise.resolve().then(async () => await provider.consume({
+                authorization: request.authorization,
+                identity,
+                purpose: 'move',
+            }, operationSignal));
+            let consumed;
+            try {
+                consumed = await awaitWithAbort(consumption, operationSignal);
+            }
+            catch (error) {
+                const lateCleanup = consumption.then(async (result) => {
+                    if (result?.status === 'consumed' && boundedDesktopText(result.claim, 1024)) {
+                        try {
+                            await provider.release({ claim: result.claim, operationId: identity.operationId });
+                        }
+                        catch { /* provider loss clears its claim */ }
+                    }
+                }).catch(() => undefined);
+                this.desktopSelectionCleanupOperations.add(lateCleanup);
+                void lateCleanup.then(() => this.desktopSelectionCleanupOperations.delete(lateCleanup));
+                throw error;
+            }
+            if (consumed?.status === 'consumed' && boundedDesktopText(consumed.claim, 1024))
+                claim = consumed.claim;
+            operationSignal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            if (!hasExactKeys(consumed, consumed?.status === 'consumed'
+                ? ['canonicalPath', 'claim', 'identity', 'operationId', 'status']
+                : ['operationId', 'status']) || consumed.operationId !== identity.operationId) {
+                throw new NoteVaultError('unavailable', 'Desktop vault move returned an invalid result');
+            }
+            if (consumed.status !== 'consumed') {
+                const status = consumed.status === 'stale' ? 'stale-vault'
+                    : consumed.status === 'cancelled' || consumed.status === 'denied' || consumed.status === 'unavailable'
+                        ? consumed.status
+                        : 'unavailable';
+                throw new NoteVaultError(status, 'Desktop vault move could not be consumed');
+            }
+            if (!boundedDesktopText(consumed.claim, 1024) || !hasExactKeys(consumed.identity, ['dev', 'ino'])) {
+                throw new NoteVaultError('unavailable', 'Desktop vault move returned an invalid claim');
+            }
+            const target = await resolveDesktopVaultSelectionTarget(consumed.canonicalPath, consumed.identity);
+            operationSignal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            const moved = this.relocateVaultRoot(path.join(target.canonicalPath, path.basename(root)), request.expectedVault, target.identity, operation);
+            return {
+                operationId: identity.operationId,
+                status: 'moved',
+                vaultGeneration: moved.generation,
+                vaultId: moved.id,
+            };
+        }
+        catch (error) {
+            operationSignal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            if (error instanceof NoteVaultError)
+                throw error;
+            throw new NoteVaultError('unavailable', 'Desktop vault move failed safely');
+        }
+        finally {
+            if (claim !== undefined) {
+                try {
+                    await provider.release({ claim, operationId: identity.operationId });
+                }
+                catch { /* bounded claim expiry is the fallback */ }
+            }
+            operation.complete();
+            this.activeDesktopSelectionOperations.delete(operation);
+        }
+    }
     activate(vaultRoot, expectedGeneration) {
         return this.activateVault(vaultRoot, expectedGeneration);
     }
     activateVault(vaultRoot, expectedGeneration, expectedIdentity, preserveDesktopSelectionClaim = false, excludedOperation, emitActivation = true) {
+        if (this.vaultTransitionPending) {
+            throw new NoteVaultError('unavailable', 'A vault transition is already in progress');
+        }
         if (expectedGeneration !== this.currentState.generation) {
             throw new NoteVaultError('stale-vault', 'The active vault generation changed before activation');
         }
@@ -2906,7 +3128,7 @@ export class NoteVaultRuntime extends Service {
             && sameVaultRootIdentity(binding.identity, this.vaultIdentity))
             return this.currentState;
         const generation = this.currentState.generation + 1;
-        const nextState = activeVaultState(binding.root, generation);
+        const nextState = activeVaultState(binding.root, generation, this.recentVaults.find(record => record.root === binding.root)?.id);
         if (!nextState.active)
             throw new Error('unreachable inactive vault state');
         const nextToken = this.watcherToken + 1;
@@ -3012,10 +3234,7 @@ export class NoteVaultRuntime extends Service {
         if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0 || this.currentState.generation !== expectedGeneration) {
             throw new NoteVaultError('stale-vault', 'The active vault changed before managed-vault creation');
         }
-        const normalized = name.trim();
-        if (normalized.length === 0 || normalized.length > 80 || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(normalized) || normalized === '.' || normalized === '..') {
-            throw new NoteVaultError('invalid-path', 'Managed vault name is invalid');
-        }
+        const normalized = normalizeVaultName(name);
         if (this.stateRoot === null)
             throw new NoteVaultError('unavailable', 'Managed vault storage is unavailable');
         const parent = path.join(this.stateRoot, 'TockTutor Vaults');
@@ -3031,15 +3250,167 @@ export class NoteVaultRuntime extends Service {
         }
         return this.activate(root, expectedGeneration);
     }
-    async revealEntry(request, signal) {
-        const { root, state } = this.captureExpectedVault(request.expectedVault);
-        signal.throwIfAborted();
+    relocateVaultRoot(targetRoot, expectedVault, expectedParent, excludedOperation) {
+        const { root, state } = this.captureExpectedVault(expectedVault);
+        if (targetRoot === root)
+            return state;
+        if (isInside(root, targetRoot)) {
+            throw new NoteVaultError('invalid-path', 'A vault cannot be moved inside itself');
+        }
+        const parent = resolveVaultRootBinding(path.dirname(targetRoot));
+        if (parent.root !== path.dirname(targetRoot) || !sameVaultRootIdentity(parent.identity, expectedParent)) {
+            throw new NoteVaultError('changed', 'The vault destination changed before the move');
+        }
+        if (this.vaultIdentity === null || parent.identity.dev !== this.vaultIdentity.dev) {
+            throw new NoteVaultError('unavailable', 'Vault moves must stay on the same disk');
+        }
+        if (this.stateRoot === null) {
+            throw new NoteVaultError('recovery-unavailable', 'Vault relocation storage is unavailable');
+        }
+        try {
+            lstatSync(targetRoot);
+            throw new NoteVaultError('exists', 'A folder already exists at the destination');
+        }
+        catch (error) {
+            if (error instanceof NoteVaultError)
+                throw error;
+            if (error.code !== 'ENOENT') {
+                throw new NoteVaultError('unavailable', 'The vault destination could not be inspected');
+            }
+        }
+        const existing = this.recentVaults.find(record => record.id === state.id);
+        const nextRecent = [
+            { id: state.id, lastOpenedAt: existing?.lastOpenedAt ?? Date.now(), root: targetRoot },
+            ...this.recentVaults.filter(record => record.id !== state.id && record.root !== targetRoot),
+        ].slice(0, this.recentVaultLimit);
+        persistVaultRelocation(this.stateRoot, root, targetRoot, nextRecent);
+        const committedParent = resolveVaultRootBinding(path.dirname(targetRoot));
+        if (committedParent.root !== path.dirname(targetRoot) || !sameVaultRootIdentity(committedParent.identity, expectedParent)) {
+            try {
+                unlinkSync(path.join(vaultStateDirectorySync(this.stateRoot), 'relocation.json'));
+            }
+            catch { /* source remains authoritative */ }
+            throw new NoteVaultError('changed', 'The vault destination changed before the move');
+        }
+        const nextToken = this.watcherToken + 1;
+        this.watcherToken = nextToken;
+        const previousWatcher = this.watcher;
+        this.watcher = null;
+        previousWatcher?.close();
+        let moved = false;
+        let nextWatcher = null;
+        try {
+            renameSync(root, targetRoot);
+            moved = true;
+            const binding = resolveVaultRootBinding(targetRoot);
+            const verifiedParent = resolveVaultRootBinding(path.dirname(targetRoot));
+            if (!sameVaultRootIdentity(binding.identity, this.vaultIdentity)
+                || verifiedParent.root !== path.dirname(targetRoot)
+                || !sameVaultRootIdentity(verifiedParent.identity, expectedParent)) {
+                throw new NoteVaultError('changed', 'The vault changed while it was being moved');
+            }
+            const nextState = activeVaultState(binding.root, state.generation + 1, state.id);
+            nextWatcher = this.watcherActive ? this.openWatcher(binding.root, nextState, nextToken) : null;
+            persistVaultSelection(this.stateRoot, binding.root, nextRecent);
+            for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations]) {
+                if (operation !== excludedOperation && !operation.controller.signal.aborted) {
+                    operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault moved'));
+                }
+            }
+            const selectionClaim = this.activeDesktopSelectionClaim;
+            this.activeDesktopSelectionClaim = null;
+            if (selectionClaim !== null)
+                this.queueDesktopSelectionClaimRelease(selectionClaim);
+            this.vaultIdentity = binding.identity;
+            this.vaultRoot = binding.root;
+            this.currentState = nextState;
+            this.recentVaults = nextRecent;
+            this.watcherToken = nextToken;
+            this.watcher = nextWatcher;
+            nextWatcher = null;
+            this.replaceSearchIndex();
+            this.emitVaultActivation(nextState);
+            try {
+                unlinkSync(path.join(vaultStateDirectorySync(this.stateRoot), 'relocation.json'));
+            }
+            catch { /* recovery is idempotent */ }
+            return nextState;
+        }
+        catch (error) {
+            nextWatcher?.close();
+            if (moved) {
+                try {
+                    renameSync(targetRoot, root);
+                }
+                catch {
+                    this.invalidateActiveVault(state, root);
+                    throw new NoteVaultError('changed', 'The vault move could not be rolled back safely');
+                }
+            }
+            try {
+                unlinkSync(path.join(vaultStateDirectorySync(this.stateRoot), 'relocation.json'));
+            }
+            catch { /* recovery is idempotent */ }
+            this.watcher = this.watcherActive ? this.openWatcher(root, state, this.watcherToken) : null;
+            if (error instanceof NoteVaultError)
+                throw error;
+            const code = error.code;
+            if (code === 'EEXIST' || code === 'ENOTEMPTY') {
+                throw new NoteVaultError('exists', 'A folder already exists at the destination');
+            }
+            if (code === 'EXDEV')
+                throw new NoteVaultError('unavailable', 'Vault moves must stay on the same disk');
+            throw new NoteVaultError('recovery-unavailable', 'The vault move failed safely');
+        }
+    }
+    renameVault(name, expectedVault) {
+        const { root } = this.captureExpectedVault(expectedVault);
+        const parent = resolveVaultRootBinding(path.dirname(root));
+        return this.relocateVaultRoot(path.join(parent.root, normalizeVaultName(name)), expectedVault, parent.identity);
+    }
+    moveVault(destinationParent, expectedVault) {
+        const { root } = this.captureExpectedVault(expectedVault);
+        const destination = resolveVaultRootBinding(destinationParent);
+        if (isInside(root, destination.root)) {
+            throw new NoteVaultError('invalid-path', 'A vault cannot be moved inside itself');
+        }
+        return this.relocateVaultRoot(path.join(destination.root, path.basename(root)), expectedVault, destination.identity);
+    }
+    async removeVault(expectedVault) {
+        const { state } = this.captureExpectedVault(expectedVault);
+        const nextState = Object.freeze({ active: false, generation: state.generation + 1 });
+        const nextRecent = this.recentVaults.filter(record => record.id !== state.id);
+        if (this.stateRoot !== null)
+            persistVaultSelection(this.stateRoot, null, nextRecent);
+        for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations]) {
+            if (!operation.controller.signal.aborted) {
+                operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault was removed from the list'));
+            }
+        }
+        const selectionClaim = this.activeDesktopSelectionClaim;
+        this.activeDesktopSelectionClaim = null;
+        this.vaultIdentity = null;
+        this.vaultRoot = null;
+        this.currentState = nextState;
+        this.recentVaults = nextRecent;
+        this.watcherToken += 1;
+        const watcher = this.watcher;
+        this.watcher = null;
+        watcher?.close();
+        this.replaceSearchIndex();
+        this.vaultTransitionPending = true;
+        if (selectionClaim !== null)
+            await this.queueDesktopSelectionClaimRelease(selectionClaim);
+        this.emitVaultDeactivation({ id: state.id, generation: state.generation });
+        this.vaultTransitionPending = false;
+        return nextState;
+    }
+    async revealTarget(root, state, target, signal) {
         const controller = new AbortController();
         const operation = { controller };
         const operationSignal = AbortSignal.any([signal, controller.signal]);
         this.activeRevealOperations.add(operation);
         try {
-            const target = await resolveRevealTarget(root, request.path);
             operationSignal.throwIfAborted();
             this.assertCapturedVault(state, root);
             const provider = this.context.get('tockTeamDesktopReveal');
@@ -3083,15 +3454,10 @@ export class NoteVaultRuntime extends Service {
                 case 'stale':
                     throw new NoteVaultError('stale-vault', 'Desktop reveal failed with status stale');
                 case 'revealed':
-                    break;
+                    return;
                 default:
                     throw new NoteVaultError('unavailable', 'The Desktop reveal provider returned an invalid status');
             }
-            return {
-                generation: state.generation,
-                path: target.relativePath,
-                status: 'revealed',
-            };
         }
         catch (error) {
             operationSignal.throwIfAborted();
@@ -3103,6 +3469,27 @@ export class NoteVaultRuntime extends Service {
         finally {
             this.activeRevealOperations.delete(operation);
         }
+    }
+    async revealEntry(request, signal) {
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        signal.throwIfAborted();
+        const target = await resolveRevealTarget(root, request.path);
+        await this.revealTarget(root, state, target, signal);
+        return { generation: state.generation, path: target.relativePath, status: 'revealed' };
+    }
+    async revealVault(expectedVault, signal) {
+        const { root, state } = this.captureExpectedVault(expectedVault);
+        signal.throwIfAborted();
+        const identity = await lstat(root, { bigint: true });
+        const target = {
+            candidate: root,
+            canonicalPath: root,
+            identity,
+            kind: 'directory',
+            relativePath: '',
+        };
+        await this.revealTarget(root, state, target, signal);
+        return { generation: state.generation, status: 'revealed' };
     }
     activateRecentVault(id, expectedGeneration) {
         const recent = this.recentVaults.find(record => record.id === id);

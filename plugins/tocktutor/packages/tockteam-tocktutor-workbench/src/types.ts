@@ -94,7 +94,7 @@ export interface VaultTreePage {
 }
 
 export type NoteVaultChangeEvent = Readonly<
-  | { action: 'activated'; kind: 'vault'; vault: VaultReference }
+  | { action: 'activated' | 'deactivated'; kind: 'vault'; vault: VaultReference }
   | { action: 'changed' | 'watcher-error'; kind: 'tree'; vault: VaultReference }
   | {
       action: 'created' | 'external-change' | 'external-rename' | 'stored' | 'updated'

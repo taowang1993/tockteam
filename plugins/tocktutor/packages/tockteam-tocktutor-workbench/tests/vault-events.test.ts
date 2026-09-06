@@ -44,6 +44,7 @@ test('delivers only exact current-vault activation, tree, and entry events', () 
 
   const events: NoteVaultChangeEvent[] = [
     { action: 'activated', kind: 'vault', vault },
+    { action: 'deactivated', kind: 'vault', vault },
     { action: 'changed', kind: 'tree', vault },
     { action: 'watcher-error', kind: 'tree', vault },
     { action: 'created', kind: 'entry', path: 'Folder/Note.md', vault },

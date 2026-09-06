@@ -82,7 +82,7 @@ export interface VaultTreePage {
     warnings: string[];
 }
 export type NoteVaultChangeEvent = Readonly<{
-    action: 'activated';
+    action: 'activated' | 'deactivated';
     kind: 'vault';
     vault: VaultReference;
 } | {

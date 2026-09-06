@@ -391,6 +391,21 @@ test('loads the active vault name and generation without fetching recent vaults'
   controller.dispose()
 })
 
+test('an initially inactive route observes the next vault activation', async () => {
+  const remote = new FakeRemote()
+  remote.vault = null
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(controller.getSnapshot().phase, 'inactive')
+
+  remote.vault = firstVault
+  remote.emit({ action: 'activated', kind: 'vault', vault: firstVault })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.deepEqual(controller.getSnapshot().vault, firstVault)
+  assert.equal(controller.getSnapshot().phase, 'ready')
+  controller.dispose()
+})
+
 test('dispose flushes a draft scheduled immediately before true disposal', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
@@ -1568,5 +1583,18 @@ test('late note and vault completions cannot replace the active route identity',
   await new Promise(resolve => setTimeout(resolve, 0))
   assert.deepEqual(controller.getSnapshot().vault, secondVault)
   assert.equal(controller.getSnapshot().path, null)
+
+  remote.vault = null
+  remote.emit({ action: 'deactivated', kind: 'vault', vault: secondVault })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.equal(controller.getSnapshot().vault, null)
+
+  remote.vault = firstVault
+  remote.emit({ action: 'activated', kind: 'vault', vault: firstVault })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.deepEqual(controller.getSnapshot().vault, firstVault)
+  remote.emit({ action: 'deactivated', kind: 'vault', vault: secondVault })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.deepEqual(controller.getSnapshot().vault, firstVault)
   controller.dispose()
 })

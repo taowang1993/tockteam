@@ -1257,14 +1257,13 @@ export class WorkbenchRouteController {
   async reload(): Promise<void> {
     this.invalidateDispatch()
     const operation = this.nextOperation()
+    this.eventDispose ??= this.remote.$on('note-vault/change', event => { this.onVaultChange(event) })
     this.shellSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
     this.bookmarks = []
     this.vaultGeneration = 0
     this.recentlyClosed.length = 0
     this.historyBack.length = 0
     this.historyForward.length = 0
-    this.eventDispose?.()
-    this.eventDispose = null
     this.update({
       baseFiles: Object.freeze([]),
       bookmarks: Object.freeze([]),
@@ -1352,7 +1351,6 @@ export class WorkbenchRouteController {
         warnings: Object.freeze(page.warnings),
         workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
       })
-      this.eventDispose = this.remote.$on('note-vault/change', event => { this.onVaultChange(event) })
       const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null
       if (path !== null) await this.select(path, false)
     } catch (error) {
@@ -1363,8 +1361,11 @@ export class WorkbenchRouteController {
 
   private onVaultChange(value: NoteVaultChangeEvent): void {
     if (!isNoteVaultChangeEvent(value)) return
-    if (value.action === 'activated') {
-      if (!sameVault(this.snapshot.vault, value.vault)) void this.reload()
+    if (value.kind === 'vault') {
+      const changed = value.action === 'deactivated'
+        ? sameVault(this.snapshot.vault, value.vault)
+        : !sameVault(this.snapshot.vault, value.vault)
+      if (changed) void this.reload()
       return
     }
     if (!sameVault(this.snapshot.vault, value.vault)) return
@@ -2486,7 +2487,12 @@ export interface TockTutorRouteViewProps {
   onTrashCurrent?(): void
   onToggleTask(index: number): void
   active?: boolean
-  renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void) => ReactNode) | undefined
+  renderVaultActions?: ((
+    placement: 'actions' | 'menu',
+    close: () => void,
+    closeMenu: () => void,
+    beginRename: TockTutorVaultActionsOwnerProps['beginRename'],
+  ) => ReactNode) | undefined
   reviewPanel?: ReactNode
   snapshot: WorkbenchRouteSnapshot
   webViewerPanel?: ReactNode
@@ -3508,7 +3514,9 @@ function TockTutorNativeActionsOutlet(props: {
 }
 
 function TockTutorVaultActionsOutlet(props: {
+  beginRename: TockTutorVaultActionsOwnerProps['beginRename']
   close(): void
+  closeMenu(): void
   placement: TockTutorVaultActionsOwnerProps['placement']
   renderSlot: TockTutorRouteProps['renderSlot']
   saveCurrent(): Promise<boolean>
@@ -3516,7 +3524,9 @@ function TockTutorVaultActionsOutlet(props: {
   vaultName: string | null
 }): ReactNode {
   return props.renderSlot(TOCKTUTOR_VAULT_ACTIONS_SLOT, {
+    beginRename: props.beginRename,
     close: props.close,
+    closeMenu: props.closeMenu,
     placement: props.placement,
     saveCurrent: props.saveCurrent,
     vault: props.vault,
@@ -3682,9 +3692,11 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
           />
         )}
         active={active}
-        renderVaultActions={(placement, close) => (
+        renderVaultActions={(placement, close, closeMenu, beginRename) => (
           <TockTutorVaultActionsOutlet
+            beginRename={beginRename}
             close={close}
+            closeMenu={closeMenu}
             placement={placement}
             renderSlot={props.renderSlot}
             saveCurrent={() => controller.save()}

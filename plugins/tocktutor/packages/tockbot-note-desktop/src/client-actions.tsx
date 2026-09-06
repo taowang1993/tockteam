@@ -1,5 +1,7 @@
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
+import { DropdownMenuItem, DropdownMenuSeparator } from '@tockteam/ui/dropdown-menu'
+import { FolderOpen, FolderTree, PencilLine, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type {
@@ -62,9 +64,30 @@ export interface DesktopActionRemote {
       expectedVault: VaultReference,
       signal?: AbortSignal,
     ): Promise<RemoteResult<NativeActionResult>>
+    moveVault(
+      authorization: string,
+      expectedVault: VaultReference,
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<NativeActionResult>>
+    removeVault(
+      authorization: string,
+      expectedVault: VaultReference,
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<NativeActionResult>>
+    renameVault(
+      authorization: string,
+      name: string,
+      expectedVault: VaultReference,
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<NativeActionResult>>
     revealEntry(
       authorization: string,
       path: string,
+      expectedVault: VaultReference,
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<NativeActionResult>>
+    revealVault(
+      authorization: string,
       expectedVault: VaultReference,
       signal?: AbortSignal,
     ): Promise<RemoteResult<NativeActionResult>>
@@ -477,8 +500,10 @@ function resultMessage(result: NativeActionResult): string {
     case 'exported': return 'Note exported.'
     case 'focused': return 'Pop-out focused.'
     case 'granted': return 'Microphone ready.'
+    case 'moved': return 'Vault moved.'
     case 'opened': return 'Pop-out opened.'
     case 'printed': return 'Print request opened.'
+    case 'renamed': return 'Vault renamed.'
     case 'revealed': return 'Entry revealed.'
     case 'cancelled': return 'Action cancelled.'
     case 'denied': return 'Action denied.'
@@ -499,13 +524,93 @@ export async function openFolderAsVault(
   ))
 }
 
-/** Desktop-only vault picker contribution for the vault-management dialog. */
+export async function revealVault(
+  owner: TockTutorVaultActionsOwnerProps,
+  bridge: DesktopCallerBridge,
+  remote: DesktopActionRemote,
+  signal?: AbortSignal,
+): Promise<NativeActionResult | undefined> {
+  if (owner.vault === null) return undefined
+  return await nativeCall(bridge, 'reveal-vault', signal, (authorization, ownerSignal) => (
+    remote.tocktutorDesktop.revealVault(authorization, owner.vault!, ownerSignal)
+  ), owner.vault)
+}
+
+export async function renameVault(
+  owner: TockTutorVaultActionsOwnerProps,
+  name: string,
+  bridge: DesktopCallerBridge,
+  remote: DesktopActionRemote,
+  signal?: AbortSignal,
+): Promise<NativeActionResult | undefined> {
+  if (owner.vault === null || !await saveCurrent(owner)) return undefined
+  return await nativeCall(bridge, 'rename-vault', signal, (authorization, ownerSignal) => (
+    remote.tocktutorDesktop.renameVault(authorization, name, owner.vault!, ownerSignal)
+  ), owner.vault)
+}
+
+export async function moveVault(
+  owner: TockTutorVaultActionsOwnerProps,
+  bridge: DesktopCallerBridge,
+  remote: DesktopActionRemote,
+  signal?: AbortSignal,
+): Promise<NativeActionResult | undefined> {
+  if (owner.vault === null || !await saveCurrent(owner)) return undefined
+  return await nativeCall(bridge, 'move-vault', signal, (authorization, ownerSignal) => (
+    remote.tocktutorDesktop.moveVault(authorization, owner.vault!, ownerSignal)
+  ), owner.vault)
+}
+
+export async function removeVault(
+  owner: TockTutorVaultActionsOwnerProps,
+  bridge: DesktopCallerBridge,
+  remote: DesktopActionRemote,
+  signal?: AbortSignal,
+): Promise<NativeActionResult | undefined> {
+  if (owner.vault === null || !await saveCurrent(owner)) return undefined
+  const result = await nativeCall(bridge, 'remove-vault', signal, (authorization, ownerSignal) => (
+    remote.tocktutorDesktop.removeVault(authorization, owner.vault!, ownerSignal)
+  ), owner.vault)
+  if (result.status === 'closed') owner.close()
+  return result
+}
+
+/** Desktop-only vault picker and management contribution for the vault dialog. */
 export function TockTutorVaultActions(props: TockTutorVaultActionsProps): ReactNode {
   const operation = useRef<AbortController>()
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => () => { operation.current?.abort() }, [])
+
+  const runMenu = async (
+    pending: string,
+    failure: string,
+    action: (signal: AbortSignal) => Promise<NativeActionResult | undefined>,
+  ): Promise<void> => {
+    const controller = replaceActionController(operation.current)
+    operation.current = controller
+    setBusy(true)
+    setMessage(pending)
+    let closeMenu = false
+    try {
+      const result = await action(controller.signal)
+      if (!controller.signal.aborted) {
+        if (result === undefined) setMessage(failure)
+        else {
+          setMessage(resultMessage(result))
+          closeMenu = ['cancelled', 'closed', 'moved', 'revealed'].includes(result.status)
+        }
+      }
+    } catch {
+      if (!controller.signal.aborted) setMessage(failure)
+    } finally {
+      if (!controller.signal.aborted) {
+        setBusy(false)
+        if (closeMenu) props.closeMenu()
+      }
+    }
+  }
 
   const open = async (): Promise<void> => {
     const controller = replaceActionController(operation.current)
@@ -525,7 +630,69 @@ export function TockTutorVaultActions(props: TockTutorVaultActionsProps): ReactN
     }
   }
 
-  if (props.placement === 'menu') return null
+  if (props.placement === 'menu') {
+    return (
+      <>
+        <DropdownMenuItem
+          disabled={busy || props.vault === null}
+          onSelect={event => {
+            event.preventDefault()
+            props.beginRename(async (name, signal) => {
+              try {
+                return (await renameVault(props, name, props.bridge, props.remote, signal))?.status === 'renamed'
+              } catch {
+                return false
+              }
+            })
+            props.closeMenu()
+          }}
+        >
+          <PencilLine aria-hidden="true" />
+          <span>Rename vault...</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={busy || props.vault === null}
+          onSelect={event => {
+            event.preventDefault()
+            void runMenu('Moving vault…', 'The vault could not be moved.', signal => (
+              moveVault(props, props.bridge, props.remote, signal)
+            ))
+          }}
+        >
+          <FolderTree aria-hidden="true" />
+          <span>Move vault...</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={busy || props.vault === null}
+          onSelect={event => {
+            event.preventDefault()
+            void runMenu('Revealing vault…', 'The vault could not be revealed.', signal => (
+              revealVault(props, props.bridge, props.remote, signal)
+            ))
+          }}
+        >
+          <FolderOpen aria-hidden="true" />
+          <span>Reveal vault in Finder</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          disabled={busy || props.vault === null}
+          onSelect={event => {
+            event.preventDefault()
+            void runMenu('Removing vault…', 'The vault could not be removed.', signal => (
+              removeVault(props, props.bridge, props.remote, signal)
+            ))
+          }}
+        >
+          <X aria-hidden="true" />
+          <span>Remove from list</span>
+        </DropdownMenuItem>
+        {message !== '' && <DropdownMenuItem aria-live="polite" disabled>{message}</DropdownMenuItem>}
+      </>
+    )
+  }
   return (
     <div className="flex items-center gap-4 p-4" data-vault-action-row>
       <div className="min-w-0 flex-1">

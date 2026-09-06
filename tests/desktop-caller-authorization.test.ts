@@ -33,6 +33,9 @@ test('binds a new caller request to the browser-observed vault for later Host re
     vault: native,
   })
   assert.deepEqual(resolveDesktopCallerAuthorizationRequest('print', native), { operation: 'print', vault: native })
+  for (const operation of ['rename-vault', 'move-vault', 'reveal-vault', 'remove-vault'] satisfies DesktopCallerOperation[]) {
+    assert.deepEqual(resolveDesktopCallerAuthorizationRequest({ expectedVault, operation }, native), { operation, vault: expectedVault })
+  }
   assert.equal(resolveDesktopCallerAuthorizationRequest({ expectedVault: { ...expectedVault, id: 'forged' }, operation: 'print' }, native), undefined)
   assert.equal(resolveDesktopCallerAuthorizationRequest({ expectedVault, extra: true, operation: 'print' }, native), undefined)
 })

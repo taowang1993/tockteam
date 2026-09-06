@@ -39,7 +39,9 @@ export interface TockTutorNativeActionsOwnerProps {
     vault: VaultReference | null;
 }
 export interface TockTutorVaultActionsOwnerProps {
+    beginRename(rename: (name: string, signal: AbortSignal) => Promise<boolean>): void;
     close(): void;
+    closeMenu(): void;
     placement: 'actions' | 'menu';
     saveCurrent?(): Promise<boolean>;
     vault: VaultReference | null;
