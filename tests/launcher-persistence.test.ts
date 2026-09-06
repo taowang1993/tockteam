@@ -25,6 +25,52 @@ const item = {
   sourceExtension: 'TockTeam',
 }
 
+test('ranking persistence survives restart, recovers its validated backup, and resets independently', async () => {
+  const userDataPath = await root()
+  const now = 2_000_000
+  try {
+    const repository = await LauncherPersistenceRepository.open({ now: () => now, userDataPath })
+    await repository.updateSetting('general.language', 'fr-FR')
+    await repository.writeIndex([{ ...item, id: 'indexed' }])
+    await repository.recordUsage('recent')
+    await repository.recordUsage('recent')
+    await repository.flush()
+    assert.deepEqual(repository.readRanking().map(value => value.id), ['recent'])
+    assert.equal(repository.readRanking()[0]?.useCount, 2)
+    await repository.close()
+
+    const rankingPath = path.join(userDataPath, 'launcher', 'usage-ranking.json')
+    await writeFile(rankingPath, '{bad', 'utf8')
+    const recovered = await LauncherPersistenceRepository.open({ now: () => now, userDataPath })
+    assert.equal(recovered.readRanking()[0]?.useCount, 1)
+    assert.equal(recovered.getSetting('general.language', 'en-US'), 'fr-FR')
+    assert.equal(recovered.readIndex()[0]?.id, 'indexed')
+    await recovered.resetSettings()
+    assert.deepEqual(recovered.readRanking(), [])
+    await assert.rejects(readFile(rankingPath), /ENOENT/u)
+    await assert.rejects(readFile(`${rankingPath}.bak`), /ENOENT/u)
+    await recovered.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('invalid ranking persistence falls back to empty without damaging other launcher artifacts', async () => {
+  const userDataPath = await root()
+  try {
+    const launcherRoot = path.join(userDataPath, 'launcher')
+    await mkdir(launcherRoot, { recursive: true })
+    await writeFile(path.join(launcherRoot, 'usage-ranking.json'), JSON.stringify([{ id: 'bad', score: 'not-a-number', lastUsedAt: 1, useCount: 1 }]), 'utf8')
+    await writeFile(path.join(launcherRoot, 'usage-ranking.json.bak'), JSON.stringify([{ id: 'recovered', score: 1, lastUsedAt: 1, useCount: 1 }]), 'utf8')
+    const repository = await LauncherPersistenceRepository.open({ now: () => 1_000, userDataPath })
+    assert.deepEqual(repository.readRanking().map(value => value.id), ['recovered'])
+    await repository.close()
+
+    await writeFile(path.join(launcherRoot, 'usage-ranking.json'), 'x'.repeat(512 * 1024 + 1), 'utf8')
+    const oversized = await LauncherPersistenceRepository.open({ now: () => 1_000, userDataPath })
+    assert.deepEqual(oversized.readRanking().map(value => value.id), ['recovered'])
+    await oversized.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('persistence tolerates only unsupported Windows directory fsync after committing the file', () => {
   assert.match(persistenceSource, /process\.platform !== 'win32'[\s\S]+EPERM/u)
   assert.match(persistenceSource, /await handle\.sync\(\)/u)

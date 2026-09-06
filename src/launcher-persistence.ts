@@ -5,6 +5,13 @@ import path from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 import type { LauncherInternalResultItem } from './launcher-actions.ts'
 import {
+  LAUNCHER_RANKING_MAX_BYTES,
+  parseLauncherRanking,
+  pruneLauncherRanking,
+  recordLauncherUsage,
+  type LauncherRankingEntry,
+} from './launcher-ranking.ts'
+import {
   isLauncherRendererSettingValue,
   LAUNCHER_MAIN_OWNED_SETTING_KEYS,
   LAUNCHER_SENSITIVE_SETTING_KEYS,
@@ -55,6 +62,7 @@ export type LauncherSecretCodec = Readonly<{
 
 export type LauncherPersistenceOptions = Readonly<{
   externalWriteAvailable?: boolean
+  now?: () => number
   secretCodec?: LauncherSecretCodec
   secureStorageAvailable?: boolean
   userDataPath: string
@@ -301,18 +309,21 @@ export class LauncherPersistenceRepository {
   readonly #managedSettingsPath: string
   readonly #indexPath: string
   readonly #logsPath: string
+  readonly #rankingPath: string
   readonly #grantPath: string
   readonly #externalTransactionPath: string
   readonly #externalBackupRoot: string
   readonly #secretCodec: LauncherSecretCodec | undefined
   readonly #secureStorageAvailable: boolean | undefined
   readonly #externalWriteAvailable: boolean
+  readonly #now: () => number
   #settings: StoredSettings = {}
   #settingsSource: LauncherSettingsSnapshot['settingsSource'] = 'managed'
   #externalGrant: ExternalGrant | undefined
   #externalGrantStatus: LauncherSettingsSnapshot['externalGrantStatus'] = 'none'
   #index: LauncherInternalResultItem[] = []
   #logs: string[] = []
+  #ranking: readonly LauncherRankingEntry[] = Object.freeze([])
   #recoveredArtifacts = new Set<'external' | 'index' | 'logs' | 'settings'>()
   #recoveredSettings = false
   #mutationTail: Promise<void> = Promise.resolve()
@@ -323,11 +334,13 @@ export class LauncherPersistenceRepository {
     this.#managedSettingsPath = path.join(this.#rootPath, 'settings.json')
     this.#indexPath = path.join(this.#rootPath, 'search-index.json')
     this.#logsPath = path.join(this.#rootPath, 'logs.json')
+    this.#rankingPath = path.join(this.#rootPath, 'usage-ranking.json')
     this.#grantPath = path.join(this.#rootPath, 'external-settings-grant.json')
     this.#externalTransactionPath = path.join(this.#rootPath, 'external-settings-transaction.json')
     this.#externalBackupRoot = path.join(this.#rootPath, 'external-backups')
     this.#secretCodec = options.secretCodec
     this.#secureStorageAvailable = options.secureStorageAvailable
+    this.#now = options.now ?? Date.now
     this.#externalWriteAvailable = options.externalWriteAvailable ?? (HAS_NOFOLLOW && process.platform !== 'win32')
   }
 
@@ -349,6 +362,8 @@ export class LauncherPersistenceRepository {
     this.#logs = await this.#recoverJson(this.#logsPath, MAX_LAUNCHER_LOG_BYTES, parseLogs, [], recovered => {
       if (recovered) this.#recoveredArtifacts.add('logs')
     })
+    const ranking = await this.#recoverJson(this.#rankingPath, LAUNCHER_RANKING_MAX_BYTES, parseLauncherRanking, [])
+    this.#ranking = Object.freeze([...pruneLauncherRanking(ranking, this.#now())])
     if (await this.#recoverExternalReplacement()) {
       this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
       return
@@ -444,6 +459,19 @@ export class LauncherPersistenceRepository {
 
   readIndex(): readonly LauncherInternalResultItem[] { return Object.freeze(cloneJson(this.#index, MAX_LAUNCHER_INDEX_BYTES)) }
 
+  readRanking(): readonly LauncherRankingEntry[] { return Object.freeze(cloneJson(this.#ranking, LAUNCHER_RANKING_MAX_BYTES)) }
+
+  async recordUsage(itemId: string, now = this.#now()): Promise<void> {
+    await this.#enqueue(async () => {
+      const next = recordLauncherUsage(this.#ranking, itemId, now)
+      await atomicWrite(this.#rankingPath, JSON.stringify(next, null, 2), {
+        backupMaxBytes: LAUNCHER_RANKING_MAX_BYTES,
+        validateBackup: contents => { parseLauncherRanking(JSON.parse(contents) as unknown) },
+      })
+      this.#ranking = Object.freeze([...next])
+    })
+  }
+
   #secureStorageUsable(): boolean {
     try {
       if (this.#secureStorageAvailable === false) return false
@@ -503,7 +531,14 @@ export class LauncherPersistenceRepository {
 
   async resetSettings(signal?: AbortSignal): Promise<void> {
     throwIfAborted(signal)
-    await this.#enqueue(async () => { throwIfAborted(signal); await this.#writeSettings({}) })
+    await this.#enqueue(async () => {
+      throwIfAborted(signal)
+      await rm(this.#rankingPath, { force: true })
+      await rm(`${this.#rankingPath}.bak`, { force: true })
+      await syncDirectory(this.#rootPath)
+      await this.#writeSettings({})
+      this.#ranking = Object.freeze([])
+    })
   }
 
   async recordSearch(query: string, defaults: Readonly<{ historyEnabled: boolean; historyLimit: number }>): Promise<void> {

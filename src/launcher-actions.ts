@@ -53,10 +53,12 @@ export type LauncherActionRecord = Readonly<{
   actionId: string
   argument: string
   expiresAt: number
+  isDefaultAction?: boolean
   handlerKey: string
   hideWindowAfterInvocation: boolean
   owner: LauncherActionOwner
   requiresConfirmation: boolean
+  resultItemId?: string
   resultSetId: string
   sourceExtension: string
 }>
@@ -65,6 +67,7 @@ export type LauncherActionStoreOptions = Readonly<{
   cancel?: (record: LauncherActionRecord) => Promise<boolean>
   createId?: () => string
   execute: (record: LauncherActionRecord) => Promise<void>
+  onSuccessfulDefaultAction?: (record: LauncherActionRecord) => Promise<void>
   maxActions?: number
   now?: () => number
   ttlMs?: number
@@ -120,6 +123,7 @@ export class LauncherActionStore {
   private readonly execute: (record: LauncherActionRecord) => Promise<void>
   private readonly maxActions: number
   private readonly now: () => number
+  private readonly onSuccessfulDefaultAction: ((record: LauncherActionRecord) => Promise<void>) | undefined
   private readonly ttlMs: number
   private readonly ttlMsForSource: ((sourceExtension: string) => number | undefined) | undefined
   private nextResultSet = 1
@@ -130,6 +134,7 @@ export class LauncherActionStore {
     this.execute = options.execute
     this.maxActions = options.maxActions ?? DEFAULT_MAX_ACTIONS
     this.now = options.now ?? Date.now
+    this.onSuccessfulDefaultAction = options.onSuccessfulDefaultAction
     this.ttlMs = options.ttlMs ?? DEFAULT_ACTION_TTL_MS
     this.ttlMsForSource = options.ttlMsForSource
     if (!Number.isSafeInteger(this.maxActions) || this.maxActions < 1) {
@@ -195,6 +200,12 @@ export class LauncherActionStore {
     this.activeActions.set(input.actionId, record)
     try {
       await this.execute(record)
+      if (this.activeActions.get(record.actionId) === record && record.isDefaultAction === true && record.resultItemId !== undefined) {
+        try {
+          const pending = this.onSuccessfulDefaultAction?.(record)
+          void pending?.catch(() => undefined)
+        } catch { /* usage observation never changes invocation success */ }
+      }
     } finally {
       this.activeActions.delete(input.actionId)
     }
@@ -274,10 +285,12 @@ export class LauncherActionStore {
       && (!Array.isArray(item.additionalActions) || item.additionalActions.length > MAX_ACTIONS_PER_ITEM)) {
       throw new Error('TockLauncher result exceeds its action limit')
     }
-    const defaultAction = this.publishAction(item.defaultAction, item.sourceExtension, owner, resultSetId, stagedActions)
+    const defaultAction = this.publishAction(item.defaultAction, item.sourceExtension, item.id, true, owner, resultSetId, stagedActions)
     const additionalActions = item.additionalActions?.map(action => this.publishAction(
       action,
       item.sourceExtension,
+      item.id,
+      false,
       owner,
       resultSetId,
       stagedActions,
@@ -298,6 +311,8 @@ export class LauncherActionStore {
   private publishAction(
     action: LauncherInternalAction,
     sourceExtension: string,
+    resultItemId: string,
+    isDefaultAction: boolean,
     owner: LauncherActionOwner,
     resultSetId: string,
     stagedActions: Map<string, LauncherActionRecord>,
@@ -334,8 +349,10 @@ export class LauncherActionStore {
       expiresAt: this.now() + ttlMs,
       handlerKey: action.handlerKey,
       hideWindowAfterInvocation: action.hideWindowAfterInvocation === true,
+      isDefaultAction,
       owner: Object.freeze({ ...owner }),
       requiresConfirmation: action.requiresConfirmation === true,
+      resultItemId,
       resultSetId,
       sourceExtension,
     })

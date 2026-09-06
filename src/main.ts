@@ -2180,6 +2180,7 @@ function initializeLauncher(): void {
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
     initialIndexedItems: repository.readIndex(),
+    initialRanking: repository.readRanking(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async (signal, preserveSignal) => {
       const result = await createTockTeamDestinationResults('')
@@ -2198,6 +2199,7 @@ function initializeLauncher(): void {
       })
     },
     persistIndex: async items => { await repository.writeIndex(items) },
+    persistUsage: async (itemId, timestamp) => { await repository.recordUsage(itemId, timestamp) },
     persistSettings: async values => await runLauncherSettingsOperation(
       async () => await runLauncherMutation('launcher-core-settings-mutation', async signal => {
         await repository.updateSettings(values, signal)
@@ -2213,6 +2215,10 @@ function initializeLauncher(): void {
   const actions = new LauncherActionStore({
     ...(launcherWorkflowFixtureActionTtlMs === undefined ? {} : { ttlMsForSource: sourceExtension => sourceExtension === 'Workflow' ? launcherWorkflowFixtureActionTtlMs : undefined }),
     cancel: async record => await workflow.cancelAction(record),
+    onSuccessfulDefaultAction: async record => {
+      if (record.isDefaultAction !== true || record.resultItemId === undefined) return
+      await coreSearch.recordUsage(record.resultItemId)
+    },
     execute: async record => {
       let handled = await coreSearch.executeAction(record)
       if (!handled) handled = await terminal.executeAction(record)
