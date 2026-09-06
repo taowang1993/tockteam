@@ -883,9 +883,15 @@ try {
     const nav = document.querySelector('[data-tockteam-settings-page-surface] > nav')
     if (!(handle instanceof HTMLElement) || !(nav instanceof HTMLElement)) return null
     const rect = handle.getBoundingClientRect()
-    return { width: nav.getBoundingClientRect().width, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    return {
+      handleContent: getComputedStyle(handle, '::after').content,
+      width: nav.getBoundingClientRect().width,
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    }
   })()`)
   assert.ok(settingsResize)
+  assert.equal(settingsResize.handleContent, 'none')
   await workbenchConnection.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: settingsResize.x, y: settingsResize.y })
   await workbenchConnection.call('Input.dispatchMouseEvent', { type: 'mousePressed', x: settingsResize.x, y: settingsResize.y, button: 'left', buttons: 1, clickCount: 1 })
   await workbenchConnection.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: settingsResize.x + 24, y: settingsResize.y, button: 'left', buttons: 1 })

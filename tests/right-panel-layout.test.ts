@@ -81,6 +81,7 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.match(css, /data-tockteam-settings-page-close/)
   assert.match(css, /data-tockteam-settings-page-surface[^}]*> nav\s*\{[^}]*width: var\(--tockteam-primary-sidebar-width\) !important;/s)
   assert.match(css, /data-tockteam-settings-page-resize/)
+  assert.doesNotMatch(css, /data-tockteam-settings-page-resize\]::after/)
   assert.match(workspace, /dataset\.tockteamSettingsPageResize = 'true'/)
   assert.match(workspace, /closest<HTMLElement>\('\[data-side="sidebar"\], \[data-tockteam-settings-page-resize\]'\)/u)
   assert.match(workspace, /M10 5\.5C6\.96243 5\.5/)

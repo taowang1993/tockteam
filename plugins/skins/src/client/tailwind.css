@@ -326,23 +326,6 @@
     touch-action: none;
   }
 
-  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-resize]::after {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 3px;
-    height: 32px;
-    border-radius: 3px;
-    background: var(--dsw-alias-border-l2);
-    content: '';
-    opacity: 0;
-    transform: translate(-50%, -50%);
-  }
-
-  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-resize]:hover::after {
-    opacity: 1;
-  }
-
   &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] div:has(> [role='tabpanel'] [data-tockteam-plugin-marketplace-settings]) {
     width: 100%;
     max-width: none !important;
