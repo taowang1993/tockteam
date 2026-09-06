@@ -21,7 +21,8 @@ describe('CanvasBoard', () => {
     const onChange = vi.fn()
     render(<CanvasBoard source={source} revision="sha256:before" onChange={onChange} />)
 
-    expect(screen.getByRole('region', { name: 'Canvas Board' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Canvas Board' }).className).toContain('h-full')
+    expect(screen.getByLabelText('Canvas Board Surface').className).toContain('min-h-full')
     const sourceHandle = screen.getByRole('button', { name: 'Right Connection Handle for First' })
     const targetHandle = screen.getByRole('button', { name: 'Left Connection Handle for Notes/File.md' })
     expect(sourceHandle.tagName).toBe('BUTTON')

@@ -15209,7 +15209,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15224,7 +15224,7 @@ function clsx() {
   return n;
 }
 
-// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15912,7 +15912,7 @@ function TockTutorNativeActions(props) {
     Button,
     {
       unstyled: true,
-      className: "min-h-9 cursor-pointer rounded-lg border border-[var(--tt-border,#d9dde5)] bg-[var(--tt-bg,#f7f8fa)] px-2.5 py-[7px] text-left text-inherit enabled:hover:border-[var(--tt-accent,#2457d6)] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--tt-accent,#2457d6)_28%,transparent)] disabled:cursor-not-allowed disabled:opacity-50",
+      className: "min-h-9 cursor-pointer rounded-md border border-transparent bg-transparent px-2.5 py-[7px] text-left text-inherit enabled:hover:bg-[var(--tt-selected,color-mix(in_srgb,var(--tt-accent,#2457d6)_12%,transparent))] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:bg-[var(--tt-selected,color-mix(in_srgb,var(--tt-accent,#2457d6)_12%,transparent))] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       disabled: !enabled || busy !== null,
       onClick: () => {
         void action();
@@ -15956,7 +15956,7 @@ function TockTutorNativeActions(props) {
 var TOCKTEAM_SURFACE_SERVICE = "tockTeamSurface";
 function assertDesktopSurface(value) {
   if (typeof value !== "object" || value === null || value.kind !== "desktop") {
-    throw new Error("tockbot-note-desktop: TockTeam Desktop surface is required");
+    throw new Error("tockbot-note-desktop: a Desktop surface is required by TockTeam");
   }
 }
 

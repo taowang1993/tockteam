@@ -60,7 +60,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
         <aside
           aria-hidden={!open}
           aria-label="Workbench Utilities"
-          className="tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 auto-rows-max grid-rows-[40px] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(360px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(360px,calc(100vw-262px))]"
+          className="tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 auto-rows-max grid-rows-[40px] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(300px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(300px,calc(100vw-262px))]"
           data-open={open}
           data-view={props.view ?? undefined}
           {...(open ? {} : { inert: '' })}
@@ -160,7 +160,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             <div className="mt-2 grid gap-1">
               {(snapshot.bookmarks ?? []).map(bookmark => (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1" key={bookmark.id}>
-                  <Button unstyled className="truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" onClick={() => { props.onOpenBookmark?.(bookmark.id) }} type="button">{bookmark.title} · {bookmark.kind}{bookmark.missing === true ? ' · Missing' : ''}</Button>
+                  <Button unstyled className="truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" onClick={() => { props.onOpenBookmark?.(bookmark.id) }} type="button">{bookmark.title} · {bookmark.kind}{bookmark.missing === true ? ' · Missing' : ''}</Button>
                   <Button unstyled aria-label={`Remove Bookmark ${bookmark.title}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRemoveBookmark?.(bookmark.id) }} type="button">Remove</Button>
                 </div>
               ))}
@@ -171,7 +171,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             <h2 className="m-0 text-sm">Smart Views and Tags</h2>
             <div className="mt-2 grid grid-cols-2 gap-1">
               {(['recent', 'tasks', 'journals', 'favorites', 'collections', 'tags'] as const).map(kind => (
-                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={kind} onClick={() => { props.onOpenSmartView?.(kind) }} type="button">{kind[0]!.toLocaleUpperCase() + kind.slice(1)}</Button>
+                <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" key={kind} onClick={() => { props.onOpenSmartView?.(kind) }} type="button">{kind[0]!.toLocaleUpperCase() + kind.slice(1)}</Button>
               ))}
             </div>
             {(snapshot.facets?.tags.length ?? 0) > 0 && (
@@ -249,7 +249,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               </Label>
             </div>
             <div className="mt-2 grid gap-1">
-              {snapshot.entries.filter(entry => entry.kind === 'attachment').map(entry => <Button unstyled className="truncate rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={entry.path} onClick={() => { props.onPreviewAttachment?.(entry.path) }} type="button">{entry.path}</Button>)}
+              {snapshot.entries.filter(entry => entry.kind === 'attachment').map(entry => <Button unstyled className="truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" key={entry.path} onClick={() => { props.onPreviewAttachment?.(entry.path) }} type="button">{entry.path}</Button>)}
             </div>
             {snapshot.attachmentPreview !== null && snapshot.attachmentPreview !== undefined && (
               <div className="mt-2 rounded border border-[var(--tt-border)] p-2">
@@ -271,9 +271,9 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
           <section aria-label="Templates and Journals" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'tools'}>
             <h2 className="m-0 text-sm">Templates and Journals</h2>
             <div className="mt-2 grid grid-cols-2 gap-1">
-              {(Object.keys(BUILTIN_TEMPLATES) as Array<keyof typeof BUILTIN_TEMPLATES>).map(name => <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={name} onClick={() => { props.onCreateBuiltinTemplate?.(name) }} type="button">{name}</Button>)}
-              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={() => { props.onInsertCurrentDateTime?.('date') }} type="button">Insert Current Date</Button>
-              <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={() => { props.onInsertCurrentDateTime?.('time') }} type="button">Insert Current Time</Button>
+              {(Object.keys(BUILTIN_TEMPLATES) as Array<keyof typeof BUILTIN_TEMPLATES>).map(name => <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" key={name} onClick={() => { props.onCreateBuiltinTemplate?.(name) }} type="button">{name}</Button>)}
+              <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={() => { props.onInsertCurrentDateTime?.('date') }} type="button">Insert Current Date</Button>
+              <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" disabled={snapshot.documentKind !== 'markdown' || snapshot.mode === 'reading'} onClick={() => { props.onInsertCurrentDateTime?.('time') }} type="button">Insert Current Time</Button>
             </div>
           </section>
           <section aria-label="Capture Organization" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'tools'}>
@@ -310,7 +310,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             </div>
             <div className="mt-2 grid gap-1">
               {(snapshot.workspaces ?? []).map(workspace => (
-                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-left text-xs" key={workspace.id} onClick={() => { props.onLoadWorkspace?.(workspace.id) }} type="button">Load {workspace.name}</Button>
+                <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" key={workspace.id} onClick={() => { props.onLoadWorkspace?.(workspace.id) }} type="button">Load {workspace.name}</Button>
               ))}
               {(snapshot.workspaces?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No saved workspaces.</span>}
             </div>

@@ -67,9 +67,9 @@ declare global {
 
 export const inject = ['locale', 'slots']
 
-const BUTTON_CLASSES = 'min-h-9 cursor-pointer rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[15px] font-[inherit] text-xs font-[570] text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,#f4f4f4)] disabled:cursor-default disabled:opacity-45 data-[primary=true]:border-[#202124] data-[primary=true]:bg-[#202124] data-[primary=true]:text-white data-[danger=true]:border-[#e4b6b6] data-[danger=true]:text-[#b42318]'
-const ICON_BUTTON_CLASSES = 'grid size-9 cursor-pointer place-items-center rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background p-0 font-[inherit] text-inherit hover:bg-[var(--dsw-alias-interactive-bg-hover,#f4f4f4)] disabled:cursor-default disabled:opacity-45 [&_svg]:size-[18px]'
-const PILL_CLASSES = 'inline-flex min-h-[21px] items-center rounded-full bg-[var(--dsw-alias-interactive-bg-hover,#f1f2f3)] px-2 text-[9px] font-semibold text-muted-foreground data-[installed=true]:bg-[#e8f7ee] data-[installed=true]:text-[#147d3f] data-[update=true]:bg-[#e8f0ff] data-[update=true]:text-[#2f62bf] data-[unsupported=true]:bg-[#fff4df] data-[unsupported=true]:text-[#966211] data-[protected=true]:bg-[#f1eaff] data-[protected=true]:text-[#6741a5]'
+const BUTTON_CLASSES = 'min-h-9 cursor-pointer rounded-[8px] border border-border bg-surface px-[15px] font-[inherit] text-xs font-[570] text-inherit hover:bg-surface-muted disabled:cursor-default disabled:opacity-45 data-[primary=true]:border-brand data-[primary=true]:bg-brand data-[primary=true]:text-brand-foreground data-[danger=true]:border-destructive data-[danger=true]:text-destructive'
+const ICON_BUTTON_CLASSES = 'grid size-9 cursor-pointer place-items-center rounded-[8px] border border-border bg-surface p-0 font-[inherit] text-inherit hover:bg-surface-muted disabled:cursor-default disabled:opacity-45 [&_svg]:size-[18px]'
+const PILL_CLASSES = 'inline-flex min-h-[21px] items-center rounded-full bg-surface-muted px-2 text-[9px] font-semibold text-muted-foreground data-[installed=true]:bg-[color-mix(in_srgb,var(--dsw-alias-state-success-primary)_12%,transparent)] data-[installed=true]:text-success data-[update=true]:bg-[color-mix(in_srgb,var(--dsw-alias-brand-primary)_12%,transparent)] data-[update=true]:text-brand data-[unsupported=true]:bg-[color-mix(in_srgb,var(--dsw-alias-state-warn-primary)_12%,transparent)] data-[unsupported=true]:text-warning data-[protected=true]:bg-[color-mix(in_srgb,var(--dsw-alias-brand-primary)_12%,transparent)] data-[protected=true]:text-brand'
 
 function shortCommit(commit: string): string {
   return commit.slice(0, 10)
@@ -128,7 +128,7 @@ function PluginCard({
     <Button unstyled
       aria-controls={selected ? detailsId : undefined}
       aria-expanded={selected}
-      className="relative flex min-h-44 cursor-pointer flex-col rounded-2xl border border-border bg-background p-[17px] text-left text-inherit transition-[border-color,box-shadow,transform] duration-[120ms] ease-in-out hover:-translate-y-px hover:border-[#a8bff3] hover:shadow-[0_9px_28px_rgba(31,35,41,0.08)] data-[selected=true]:-translate-y-px data-[selected=true]:border-[#a8bff3] data-[selected=true]:shadow-[0_9px_28px_rgba(31,35,41,0.08)] motion-reduce:transition-none"
+      className="relative flex min-h-44 cursor-pointer flex-col rounded-xl border border-border bg-surface p-4 text-left text-inherit transition-[background-color,border-color] duration-[120ms] ease-out hover:bg-surface-muted data-[selected=true]:border-brand data-[selected=true]:bg-surface-muted motion-reduce:transition-none"
       data-selected={String(selected)}
       data-tockteam-marketplace-plugin={plugin.id}
       onClick={select}
@@ -213,7 +213,7 @@ function PluginDetail({
   return (
     <aside
       aria-label={t('details', { plugin: plugin.title })}
-      className="min-w-0 overflow-auto border-l border-border bg-background max-[820px]:border-t max-[820px]:border-l-0"
+      className="min-w-0 overflow-auto border-l border-border bg-surface max-[820px]:border-t max-[820px]:border-l-0"
       id={id}
     >
       <div className="px-6 pt-[25px] pb-[38px]">
@@ -510,7 +510,7 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
 
   return (
     <TooltipProvider>
-      <div className="min-w-0 bg-background text-foreground [-webkit-app-region:no-drag]" data-tockteam-plugin-marketplace-settings="">
+      <div className="min-w-0 bg-surface text-foreground [-webkit-app-region:no-drag]" data-tockteam-plugin-marketplace-settings="">
       <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)]">
         <div>
           <header className="flex min-h-14 items-center justify-end gap-3.5 border-b border-border">
@@ -558,7 +558,7 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
         <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_360px] data-[detail=false]:grid-cols-[minmax(0,1fr)] max-[1050px]:grid-cols-[minmax(0,1fr)_320px] max-[820px]:block max-[820px]:overflow-auto" data-detail={String(selected !== null)}>
           <main className="min-w-0 px-0 pt-6 pb-10">
             <div className="mb-5 flex flex-wrap items-center gap-2.5">
-              <div className="flex h-[38px] max-w-[460px] flex-[1_1_280px] items-center rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[13px] [&>svg]:mr-[9px] [&>svg]:size-4 [&>svg]:fill-none [&>svg]:stroke-[1.7] [&>svg]:stroke-subtle-foreground">
+              <div className="flex h-[38px] max-w-[460px] flex-[1_1_280px] items-center rounded-[8px] border border-border bg-surface-muted px-[13px] [&>svg]:mr-[9px] [&>svg]:size-4 [&>svg]:fill-none [&>svg]:stroke-[1.7] [&>svg]:stroke-subtle-foreground">
                 <Search aria-hidden="true" />
                 <Input unstyled
                   aria-label={t('search.label')}
@@ -576,7 +576,7 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
                   </Tooltip>
                 )}
               </div>
-              <ToggleGroup unstyled type="single" aria-label={t('installation-status')} className="flex h-[38px] max-w-full items-center overflow-x-auto rounded-[11px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-[var(--dsw-alias-interactive-bg-hover,#f3f4f5)] p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:flex [&_button]:h-[30px] [&_button]:cursor-pointer [&_button]:items-center [&_button]:gap-[5px] [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2.5 [&_button]:font-[inherit] [&_button]:text-[11px] [&_button]:text-muted-foreground [&_button[data-active=true]]:bg-background [&_button[data-active=true]]:font-semibold [&_button[data-active=true]]:text-foreground [&_button[data-active=true]]:shadow-[0_1px_4px_rgba(31,35,41,0.1)] [&_span]:text-[9px] [&_span]:text-subtle-foreground" value={statusFilter} onValueChange={value => { if (value !== '') setStatusFilter(value as MarketplaceStatusFilter) }}>
+              <ToggleGroup unstyled type="single" aria-label={t('installation-status')} className="flex h-[38px] max-w-full items-center overflow-x-auto rounded-[8px] bg-surface-muted p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:flex [&_button]:h-[30px] [&_button]:cursor-pointer [&_button]:items-center [&_button]:gap-[5px] [&_button]:whitespace-nowrap [&_button]:rounded-md [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-2.5 [&_button]:font-[inherit] [&_button]:text-[11px] [&_button]:text-muted-foreground [&_button[data-active=true]]:bg-surface [&_button[data-active=true]]:font-semibold [&_button[data-active=true]]:text-foreground [&_span]:text-[9px] [&_span]:text-subtle-foreground" value={statusFilter} onValueChange={value => { if (value !== '') setStatusFilter(value as MarketplaceStatusFilter) }}>
                 {([
                   ['all', t('all')],
                   ['installed', t('installed')],
@@ -591,7 +591,7 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
               </ToggleGroup>
               <NativeSelect unstyled
                 aria-label={t('plugin-category')}
-                className="h-[38px] rounded-[10px] border border-[var(--dsw-alias-border-l1,#ddd)] bg-background px-[11px] font-[inherit] text-xs text-inherit"
+                className="h-[38px] rounded-[8px] border border-border bg-surface-muted px-[11px] font-[inherit] text-xs text-inherit"
                 onChange={event => { setCategoryFilter(event.target.value) }}
                 value={catalogView.categoryFilter}
               >

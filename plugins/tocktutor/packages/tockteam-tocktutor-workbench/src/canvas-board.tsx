@@ -4,6 +4,7 @@ import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Textarea } from '@tockteam/ui/textarea'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { ZoomIn, ZoomOut } from 'lucide-react'
 import { createCanvasChange, type CanvasChange } from './canvas-change.ts'
 import {
   createCanvasEdge,
@@ -450,22 +451,22 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
   return (
     <section
       aria-label="Canvas Board"
-      className="relative min-h-0 overflow-auto bg-[var(--tt-bg)] text-[var(--tt-text)]"
+      className="relative h-full min-h-0 overflow-auto bg-[var(--tt-bg)] text-[var(--tt-text)]"
       data-canvas-revision={revision}
       onKeyDown={cancelConnection}
       role="region"
     >
       {armed !== null && <p className="sr-only" role="status">Choose a target side for {labels.get(armed.nodeId) ?? armed.nodeId}.</p>}
-      {error !== null && <p className="m-3 text-sm text-red-600" role="note">{error}</p>}
+      {error !== null && <p className="m-3 text-sm text-[var(--dsw-alias-state-error-primary)]" role="note">{error}</p>}
       {!disabled && (
         <div aria-label="Canvas Actions" className="sticky top-2 left-2 z-30 m-2 flex w-fit max-w-[calc(100%-16px)] flex-wrap gap-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 shadow-sm" role="toolbar">
           <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'text', mode: 'create' }) }} type="button">Add Text Card</Button>
           <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'link', mode: 'create' }) }} type="button">Add Link Card</Button>
           <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'file', mode: 'create' }) }} type="button">Add File Card</Button>
           <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'group', mode: 'create' }) }} type="button">Add Group</Button>
-          <Button unstyled aria-label="Zoom Canvas Out" className={controlClass} disabled={zoom <= 0.5} onClick={() => { setZoom(value => Math.max(0.5, value - 0.25)) }} type="button">−</Button>
+          <Button unstyled aria-label="Zoom Canvas Out" className={controlClass} disabled={zoom <= 0.5} onClick={() => { setZoom(value => Math.max(0.5, value - 0.25)) }} type="button"><ZoomOut aria-hidden="true" className="size-3.5" /></Button>
           <Button unstyled aria-label="Reset Canvas Zoom" className={controlClass} onClick={() => { setZoom(1) }} type="button">{String(Math.round(zoom * 100))}%</Button>
-          <Button unstyled aria-label="Zoom Canvas In" className={controlClass} disabled={zoom >= 2} onClick={() => { setZoom(value => Math.min(2, value + 0.25)) }} type="button">+</Button>
+          <Button unstyled aria-label="Zoom Canvas In" className={controlClass} disabled={zoom >= 2} onClick={() => { setZoom(value => Math.min(2, value + 0.25)) }} type="button"><ZoomIn aria-hidden="true" className="size-3.5" /></Button>
           {selectedNode !== undefined && (
             <>
               <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ mode: 'edit', nodeId: selectedNode.id }) }} type="button">Edit {selectedNode.type === 'group' ? 'Group' : 'Card'}</Button>
@@ -485,7 +486,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
       {edgeEditor !== null && <CanvasEdgeEditor document={document} edgeId={edgeEditor.edgeId} onCancel={() => { setEdgeEditor(null) }} onSubmit={submitEdgeEditor} />}
       <div
         aria-label="Canvas Board Surface"
-        className="relative"
+        className="relative min-h-full"
         onPointerDown={beginMarquee}
         style={{ height: bounds.height, width: bounds.width, zoom }}
       >

@@ -3,7 +3,7 @@ export const TOCKTEAM_SURFACE_SERVICE = 'tockTeamSurface';
 export function assertDesktopSurface(value) {
     if (typeof value !== 'object' || value === null
         || value.kind !== 'desktop') {
-        throw new Error('tockbot-note-desktop: TockTeam Desktop surface is required');
+        throw new Error('tockbot-note-desktop: a Desktop surface is required by TockTeam');
     }
 }
 //# sourceMappingURL=guard.js.map

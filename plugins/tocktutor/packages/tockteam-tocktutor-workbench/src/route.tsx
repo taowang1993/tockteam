@@ -30,7 +30,6 @@ import {
   BookmarkPlus,
   ChevronLeft,
   ChevronRight,
-  Ellipsis,
   FileClock,
   FileCode2,
   FileText,
@@ -39,10 +38,7 @@ import {
   ListTree,
   MessageSquare,
   Network,
-  PanelLeft,
-  PanelRight,
   PanelsTopLeft,
-  PanelTop,
   Paperclip,
   Pencil,
   Plus,
@@ -50,7 +46,6 @@ import {
   SlidersHorizontal,
   Tags,
   Trash2,
-  Upload,
   Wrench,
   X,
   type LucideIcon,
@@ -2525,11 +2520,11 @@ function NativeDispatchDialog(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onCancel() }}>
       <DialogContent
         unstyled
-        className="tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-[2147483647] w-[calc(100%-48px)] max-w-[480px] -translate-1/2"
-        overlayClassName="z-[2147483646]"
+        className="tocktutor-dispatch-dialog fixed top-1/2 left-1/2 z-[2147483647] w-[calc(100%-48px)] max-w-[480px] -translate-1/2 overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#27272a)_28%,transparent)]"
         showCloseButton={false}
       >
-        <form className="grid w-full gap-3.5 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:p-2 [&_textarea]:[font:inherit]" onSubmit={submit}>
+        <form className="grid w-full gap-3.5 p-5 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-[var(--tt-border)] [&_input]:bg-transparent [&_input]:p-2 [&_input]:[font:inherit] [&_label]:grid [&_label]:gap-[5px] [&_label]:font-[650] [&_textarea]:rounded-[5px] [&_textarea]:border [&_textarea]:border-[var(--tt-border)] [&_textarea]:bg-transparent [&_textarea]:p-2 [&_textarea]:[font:inherit]" onSubmit={submit}>
           <header><DialogTitle className="m-0 text-[17px]">{label}</DialogTitle></header>
           {props.kind === 'new' ? (
             <Label unstyled>
@@ -2819,7 +2814,7 @@ function WorkbenchCommandPalette(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
         unstyled
-        className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[600px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[900px] -translate-1/2 grid-rows-[60px_minmax(0,1fr)_44px] overflow-hidden rounded-[14px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        className="fixed top-[42%] left-1/2 z-[2147483647] grid h-[520px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[640px] -translate-x-1/2 -translate-y-[42%] grid-rows-[60px_minmax(0,1fr)_44px] overflow-hidden rounded-[12px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
         overlayClassName="z-[2147483646] !bg-transparent"
         showCloseButton={false}
       >
@@ -2838,12 +2833,9 @@ function WorkbenchCommandPalette(props: {
               value={query}
             />
           </Label>
-          <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_minmax(240px,32%)] gap-6 px-4 pb-4 max-sm:grid-cols-1">
-            <section className="grid min-h-0 grid-rows-[52px_minmax(0,1fr)]" aria-label="Command Results">
-              <header className="flex items-center justify-between gap-3 text-xs font-medium text-[var(--tt-muted)]">
-                <span>Search Results</span>
-                <span>Best Matches</span>
-              </header>
+          <div className="min-h-0 px-3 pb-3">
+            <section className="grid h-full min-h-0 grid-rows-[42px_minmax(0,1fr)]" aria-label="Command Results">
+              <header className="flex items-end px-2 pb-1.5 text-[11px] font-medium text-[var(--tt-muted)]">Commands</header>
               <CommandList unstyled className="overflow-auto" label="Command Search Results">
                 <CommandEmpty unstyled className="px-2.5 py-2 text-sm text-[var(--tt-muted)]">No matching commands.</CommandEmpty>
                 <CommandGroup unstyled className="grid auto-rows-max gap-1">
@@ -2862,12 +2854,6 @@ function WorkbenchCommandPalette(props: {
                   ))}
                 </CommandGroup>
               </CommandList>
-            </section>
-            <section className="mt-[52px] min-h-0 rounded-xl border border-[var(--tt-border)] p-5 max-sm:hidden" aria-label="Command Preview">
-            <div className="flex h-full flex-col justify-center gap-2">
-              <strong className="text-sm font-semibold">Command Preview</strong>
-              <p className="m-0 text-sm leading-5 text-[var(--tt-muted)]">Choose a command to run it in TockTutor.</p>
-            </div>
             </section>
           </div>
           <footer className="flex items-center gap-5 border-t border-[var(--tt-border)] px-4 text-xs text-[var(--tt-muted)]">
@@ -2904,19 +2890,21 @@ function TreeEntries(props: {
       return left.path.localeCompare(right.path, undefined, { sensitivity: 'base' })
     })
   return children.map(entry => entry.kind === 'directory' ? (
-    <li className="tocktutor-tree-directory" key={entry.path} role="treeitem" aria-expanded="true">
-      <div className="tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80" title={entry.path}>
-        <WorkbenchGlyph kind="collapse" />
-        <WorkbenchGlyph kind="folder" />
-        <span>{fileName(entry.path)}</span>
-        <WorkbenchGlyph kind="more" />
-      </div>
-      <ul className="m-0 list-none p-0 pl-4" role="group">
-        <TreeEntries entries={props.entries} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} />
-      </ul>
+    <li className="tocktutor-tree-directory" key={entry.path}>
+      <details className="group" open>
+        <summary className="tocktutor-tree-row grid min-h-8 w-full cursor-pointer list-none grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&::-webkit-details-marker]:hidden [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:first-child]:transition-transform group-open:[&>svg:first-child]:rotate-90 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80" title={entry.path}>
+          <WorkbenchGlyph kind="collapse" />
+          <WorkbenchGlyph kind="folder" />
+          <span>{fileName(entry.path)}</span>
+          <WorkbenchGlyph kind="more" />
+        </summary>
+        <ul className="m-0 list-none p-0 pl-4">
+          <TreeEntries entries={props.entries} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} />
+        </ul>
+      </details>
     </li>
   ) : (
-    <li key={entry.path} role="treeitem" aria-selected={entry.path === props.path}>
+    <li key={entry.path}>
       <Button unstyled
         aria-current={entry.path === props.path ? 'page' : undefined}
         className="tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded border-0 bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] aria-current:bg-[var(--tt-selected)] aria-current:[&>svg:last-child]:text-[var(--tt-text)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80"
@@ -3196,12 +3184,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           data-open={effectiveSidebarOpen}
           {...(effectiveSidebarOpen ? {} : { inert: '' })}
         >
-          <header className="tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5">
-            <h1 className="mr-auto my-0 text-sm font-semibold">Files</h1>
-            <span className="inline-flex items-center justify-center text-sm text-[var(--tt-muted)]"><WorkbenchGlyph kind="more" /></span>
-            <span className="inline-flex items-center justify-center text-sm text-[var(--tt-muted)]"><Upload aria-hidden="true" /></span>
-            <span className="inline-flex items-center justify-center text-sm text-[var(--tt-muted)]"><WorkbenchGlyph kind="folder" /></span>
-            <span className="inline-flex items-center justify-center text-sm text-[var(--tt-muted)]"><PanelTop aria-hidden="true" /></span>
+          <header className="tocktutor-sidebar-header flex items-center border-b border-[var(--tt-border)] px-2.5">
+            <h1 className="m-0 text-sm font-semibold">Files</h1>
           </header>
           <div className="tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]">
             <nav aria-label="Vault Notes">
@@ -3209,7 +3193,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {snapshot.phase === 'inactive' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">No Active Vault</Alert>}
               {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">{snapshot.message}</Alert>}
               {snapshot.phase === 'ready' && documents.length === 0 && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No supported notes found.</p>}
-              <ul className="tocktutor-tree m-0 list-none p-0" role={visibleTreeEntries.length > 0 ? 'tree' : undefined}>
+              <ul className="tocktutor-tree m-0 list-none p-0">
                 <TreeEntries entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} />
               </ul>
             </nav>
@@ -3427,7 +3411,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               aria-valuemax={MAX_ASSISTANT_PANEL_WIDTH}
               aria-valuemin={MIN_ASSISTANT_PANEL_WIDTH}
               aria-valuenow={assistantPanelWidth}
-              className="tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none before:absolute before:top-1/2 before:left-1/2 before:h-10 before:w-2 before:-translate-1/2 before:rounded-full before:border before:border-[color-mix(in_srgb,var(--tt-text)_32%,var(--tt-border)_68%)] before:bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-panel))] before:shadow-[0_4px_12px_-7px_color-mix(in_srgb,var(--tt-text)_42%,transparent),0_0_0_1px_color-mix(in_srgb,var(--tt-panel)_82%,transparent)] before:transition-colors before:duration-140 before:ease-[cubic-bezier(.16,1,.3,1)] before:content-[''] hover:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] active:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] focus-visible:before:border-[color-mix(in_srgb,var(--tt-accent)_58%,var(--tt-border)_42%)] hover:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]"
+              className="tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]"
               onKeyDown={resizeAssistantPanelWithKeyboard}
               onPointerDown={beginAssistantPanelResize}
               role="separator"

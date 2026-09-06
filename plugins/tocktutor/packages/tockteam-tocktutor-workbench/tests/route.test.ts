@@ -57,6 +57,12 @@ function tree(vault: VaultReference): VaultTreePage {
     cursor: null,
     entries: [
       {
+        kind: 'directory',
+        modifiedAt: 2,
+        path: 'Folder',
+        revision: firstRevision,
+      },
+      {
         createdAt: 1,
         kind: 'document',
         modifiedAt: 2,
@@ -99,7 +105,7 @@ function tree(vault: VaultReference): VaultTreePage {
       },
     ],
     generation: vault.generation,
-    scan: { entries: 5 },
+    scan: { entries: 6 },
     truncated: false,
     truncationReason: null,
     warnings: [],
@@ -812,6 +818,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.deepEqual(controller.getSnapshot().entries.map(entry => entry.path), [
     'Attachments/existing.png',
     'Board.canvas',
+    'Folder',
     'Folder/Note.md',
     'Second.md',
     'Tasks.base',
@@ -892,6 +899,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.doesNotMatch(html, /tocktutor-sidebar-resize[^>]+hover:after:bg-\[var\(--tt-accent\)\]/u)
   const sidebarHeader = html.match(/<header class="tocktutor-sidebar-header[^>]*>(?<content>.*?)<\/header>/u)?.groups?.content
   assert.ok(sidebarHeader)
+  assert.doesNotMatch(sidebarHeader, /<span/u)
   assert.doesNotMatch(sidebarHeader, /M15 3v18/u)
   assert.match(html, /\[--tt-footer-height:28px\]/u)
   assert.match(html, /grid-rows-\[40px_minmax\(0,1fr\)_var\(--tt-footer-height\)\]/u)
@@ -907,9 +915,12 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.match(html, /tocktutor-right-panel-assistant[^>]+border-l-0/u)
   assert.match(html, /data-\[open=true\]:overflow-visible/u)
   assert.match(html, /tocktutor-assistant-content[^>]+border-\[color-mix\(in_srgb,var\(--tt-text\)_8%,var\(--tt-border\)_92%\)\]/u)
-  assert.match(html, /data-\[open=true\]:w-\[min\(360px,calc\(100vw-262px\)\)\]/u)
+  assert.match(html, /data-\[open=true\]:w-\[min\(300px,calc\(100vw-262px\)\)\]/u)
   assert.match(html, /Assistant Surface/u)
   assert.match(html, /aria-label="Vault Notes"/u)
+  assert.match(html, /<details[^>]+open=""/u)
+  assert.match(html, /<summary[^>]+tocktutor-tree-row/u)
+  assert.doesNotMatch(html, /tocktutor-tree-directory[^>]+aria-expanded/u)
   assert.match(html, /aria-label="Reading View"/u)
   assert.match(html, /<section[^>]+aria-label="Note Editor"[^>]+role="tabpanel"/u)
   assert.match(html, /<footer[^>]+aria-label="TockTutor Status Bar"/u)
