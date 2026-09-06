@@ -334,7 +334,7 @@ test('Windows shortcut elevation carries its scan-bound digest through confirmat
   const [item] = await provider.loadIndexedItems(new AbortController().signal)
   const admin = item?.additionalActions?.find(action => action.description === 'Open application as administrator')
   assert.ok(item && admin)
-  await provider.executeAction(record(item, { argument: admin.argument, handlerKey: admin.handlerKey, requiresConfirmation: true }))
+  assert.equal(await provider.executeAction(record(item, { argument: admin.argument, handlerKey: admin.handlerKey, requiresConfirmation: true })), true)
   assert.deepEqual(elevated, [{ digest, target }])
   approved = false
   assert.deepEqual(await provider.executeAction(record(item, { argument: admin.argument, handlerKey: admin.handlerKey, requiresConfirmation: true })), { handled: true, succeeded: false })

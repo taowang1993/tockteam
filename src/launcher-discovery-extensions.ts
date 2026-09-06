@@ -620,11 +620,12 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
         if (options.platform !== 'Windows' || record.sourceExtension !== 'ApplicationSearch' || record.requiresConfirmation !== true || target === undefined || current === undefined || current.target !== target || !isApplicationTarget(target) || isWindowsStore(target)) throw new Error('Invalid application administrator action policy')
         if (current.identity === undefined) throw revalidationError('Application')
         if (options.revalidate?.application !== undefined && !await awaitEffect(options.revalidate.application(target, current.entry, current.identity))) throw revalidationError('Application')
-        if (await awaitEffect(options.effects.confirmOpenApplicationAsAdministrator({ name: current.name, target }, controller.signal))) {
+        const approved = await awaitEffect(options.effects.confirmOpenApplicationAsAdministrator({ name: current.name, target }, controller.signal))
+        if (approved) {
           if (options.revalidate?.application !== undefined && !await awaitEffect(options.revalidate.application(target, current.entry, current.identity))) throw revalidationError('Application')
           await awaitEffect(options.effects.openApplicationAsAdministrator(target, current.digest, controller.signal))
         }
-        return launcherActionCompletion(true, false)
+        return approved ? true : launcherActionCompletion(true, false)
       }
       if (record.handlerKey === HANDLERS.openApplication) {
         if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'application' || !bounded(value.target) || !isApplicationTarget(value.target)) throw new Error('Invalid application action')
