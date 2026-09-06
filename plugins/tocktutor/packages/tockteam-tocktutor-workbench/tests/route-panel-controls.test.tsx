@@ -365,6 +365,28 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onCreateManagedVault).toHaveBeenCalledWith('Research')
   })
 
+  it('mounts native vault actions in only the visible dialog placement', () => {
+    const placements: Array<'actions' | 'menu'> = []
+    renderRoute({
+      vault: { generation: 2, id: `vault:${'a'.repeat(64)}` },
+      vaultName: 'Research Vault',
+    }, {
+      renderVaultActions: placement => {
+        placements.push(placement)
+        return placement === 'menu'
+          ? <button role="menuitem" type="button">Rename vault...</button>
+          : <p>Open Folder as Vault</p>
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Research Vault' }))
+    expect(new Set(placements)).toEqual(new Set(['actions']))
+    placements.length = 0
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More Vault Actions' }), { button: 0, ctrlKey: false })
+    expect(new Set(placements)).toEqual(new Set(['menu']))
+    expect(screen.getByRole('menuitem', { name: 'Rename vault...' })).toBeTruthy()
+  })
+
   it('does not reserve an empty vault-action row when the active surface contributes nothing', () => {
     renderRoute({}, { renderVaultActions: () => null })
 

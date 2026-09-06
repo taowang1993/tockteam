@@ -2492,6 +2492,7 @@ export interface TockTutorRouteViewProps {
     close: () => void,
     closeMenu: () => void,
     beginRename: TockTutorVaultActionsOwnerProps['beginRename'],
+    renderMenuItem: TockTutorVaultActionsOwnerProps['renderMenuItem'],
   ) => ReactNode) | undefined
   reviewPanel?: ReactNode
   snapshot: WorkbenchRouteSnapshot
@@ -3518,20 +3519,25 @@ function TockTutorVaultActionsOutlet(props: {
   close(): void
   closeMenu(): void
   placement: TockTutorVaultActionsOwnerProps['placement']
+  renderMenuItem: TockTutorVaultActionsOwnerProps['renderMenuItem']
   renderSlot: TockTutorRouteProps['renderSlot']
   saveCurrent(): Promise<boolean>
   vault: VaultReference | null
   vaultName: string | null
 }): ReactNode {
-  return props.renderSlot(TOCKTUTOR_VAULT_ACTIONS_SLOT, {
-    beginRename: props.beginRename,
-    close: props.close,
-    closeMenu: props.closeMenu,
-    placement: props.placement,
-    saveCurrent: props.saveCurrent,
-    vault: props.vault,
-    vaultName: props.vaultName,
-  })
+  return props.renderSlot(
+    TOCKTUTOR_VAULT_ACTIONS_SLOT,
+    {
+      beginRename: props.beginRename,
+      close: props.close,
+      closeMenu: props.closeMenu,
+      placement: props.placement,
+      renderMenuItem: props.renderMenuItem,
+      saveCurrent: props.saveCurrent,
+      vault: props.vault,
+      vaultName: props.vaultName,
+    },
+  )
 }
 
 /** Root-scoped component contributed to TockTeam's exact Desktop route seat. */
@@ -3692,12 +3698,13 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
           />
         )}
         active={active}
-        renderVaultActions={(placement, close, closeMenu, beginRename) => (
+        renderVaultActions={(placement, close, closeMenu, beginRename, renderMenuItem) => (
           <TockTutorVaultActionsOutlet
             beginRename={beginRename}
             close={close}
             closeMenu={closeMenu}
             placement={placement}
+            renderMenuItem={renderMenuItem}
             renderSlot={props.renderSlot}
             saveCurrent={() => controller.save()}
             vault={snapshot.vault}

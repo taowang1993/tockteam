@@ -338,7 +338,7 @@ export interface TockTutorRouteViewProps {
     onTrashCurrent?(): void;
     onToggleTask(index: number): void;
     active?: boolean;
-    renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void, closeMenu: () => void, beginRename: TockTutorVaultActionsOwnerProps['beginRename']) => ReactNode) | undefined;
+    renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void, closeMenu: () => void, beginRename: TockTutorVaultActionsOwnerProps['beginRename'], renderMenuItem: TockTutorVaultActionsOwnerProps['renderMenuItem']) => ReactNode) | undefined;
     reviewPanel?: ReactNode;
     snapshot: WorkbenchRouteSnapshot;
     webViewerPanel?: ReactNode;

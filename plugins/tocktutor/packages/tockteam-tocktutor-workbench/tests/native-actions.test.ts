@@ -46,6 +46,7 @@ const exactVaultOwner = {
   close() {},
   closeMenu() {},
   placement: 'actions',
+  renderMenuItem() { return null },
   async saveCurrent() { return true },
   vault,
   vaultName: 'Research Vault',
@@ -97,7 +98,7 @@ test('exports a distinct bounded root list contract for native actions', async (
   assert.equal(exactOwner.activePath, 'Native/Actions.md')
   assert.equal(exactOwner.vault, vault)
   assert.deepEqual(Object.keys(exactOwner).sort(), ['activePath', 'handleDispatch', 'vault'])
-  assert.deepEqual(Object.keys(exactVaultOwner).sort(), ['beginRename', 'close', 'closeMenu', 'placement', 'saveCurrent', 'vault', 'vaultName'])
+  assert.deepEqual(Object.keys(exactVaultOwner).sort(), ['beginRename', 'close', 'closeMenu', 'placement', 'renderMenuItem', 'saveCurrent', 'vault', 'vaultName'])
 })
 
 test('route renders an accessible Native Actions area with bounded owner props', () => {

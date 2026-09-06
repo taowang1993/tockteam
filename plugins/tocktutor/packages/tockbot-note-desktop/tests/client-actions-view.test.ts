@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { DropdownMenu, DropdownMenuContent } from '@tockteam/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@tockteam/ui/dropdown-menu'
 import {
   TockTutorNativeActions,
   TockTutorVaultActions,
@@ -59,6 +59,7 @@ test('renders the vault folder picker as a dedicated action', () => {
     closeMenu() {},
     placement: 'actions',
     remote,
+    renderMenuItem() { return null },
     vault,
     vaultName: 'Research Vault',
   }))
@@ -77,6 +78,12 @@ test('renders the Obsidian-compatible native vault menu actions', () => {
       closeMenu() {},
       placement: 'menu',
       remote,
+      renderMenuItem(item) {
+        return createElement(DropdownMenuItem, {
+          disabled: item.disabled === true,
+          onSelect: item.select,
+        }, item.label)
+      },
       vault,
       vaultName: 'Research Vault',
     })),

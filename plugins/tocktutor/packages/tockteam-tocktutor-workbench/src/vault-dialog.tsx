@@ -11,12 +11,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@tockteam/ui/dropdown-menu'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
-import { Copy, Ellipsis, Plus } from 'lucide-react'
+import { Copy, Ellipsis, FolderOpen, FolderTree, PencilLine, Plus, X } from 'lucide-react'
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
+import type { TockTutorVaultMenuItem } from './native-actions.ts'
 import type { VaultReference } from './types.ts'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 
@@ -27,9 +29,37 @@ export interface WorkbenchVaultDialogProps {
     close: () => void,
     closeMenu: () => void,
     beginRename: (rename: (name: string, signal: AbortSignal) => Promise<boolean>) => void,
+    renderMenuItem: (item: TockTutorVaultMenuItem) => ReactNode,
   ) => ReactNode) | undefined
   vault: VaultReference | null
   vaultName: string | null
+}
+
+function vaultMenuIcon(icon: TockTutorVaultMenuItem['icon']): ReactNode {
+  switch (icon) {
+    case 'move': return <FolderTree aria-hidden="true" />
+    case 'remove': return <X aria-hidden="true" />
+    case 'rename': return <PencilLine aria-hidden="true" />
+    case 'reveal': return <FolderOpen aria-hidden="true" />
+    default: return null
+  }
+}
+
+function renderVaultMenuItem(item: TockTutorVaultMenuItem): ReactNode {
+  return (
+    <>
+      {item.separatorBefore && <DropdownMenuSeparator />}
+      <DropdownMenuItem
+        {...(item.live ? { 'aria-live': 'polite' as const } : {})}
+        className={item.destructive ? 'text-destructive focus:text-destructive' : ''}
+        disabled={item.disabled === true}
+        onSelect={event => { event.preventDefault(); item.select() }}
+      >
+        {vaultMenuIcon(item.icon)}
+        <span>{item.label}</span>
+      </DropdownMenuItem>
+    </>
+  )
 }
 
 function TockTeamLogo(): ReactNode {
@@ -180,7 +210,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
               {props.vault !== null && rename === null && (
                 <DropdownMenu onOpenChange={setMenuOpen} open={menuOpen}>
                   <DropdownMenuTrigger asChild>
-                    <Button unstyled aria-label="More Vault Actions" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]" type="button">
+                    <Button unstyled aria-label="More Vault Actions" className="inline-flex size-7 shrink-0 appearance-none items-center justify-center border-0 bg-transparent p-0 text-[var(--tt-muted)] hover:text-[var(--tt-text)] focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]" type="button">
                       <Ellipsis aria-hidden="true" className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -189,7 +219,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
                       <Copy aria-hidden="true" />
                       <span>Copy vault ID</span>
                     </DropdownMenuItem>
-                    {props.renderVaultActions?.('menu', () => { changeOpen(false) }, () => { setMenuOpen(false) }, beginRename)}
+                    {menuOpen && props.renderVaultActions?.('menu', () => { changeOpen(false) }, () => { setMenuOpen(false) }, beginRename, renderVaultMenuItem)}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -234,7 +264,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
                         </div>
                       )}
                 </div>
-                {props.renderVaultActions?.('actions', () => { changeOpen(false) }, () => { setMenuOpen(false) }, beginRename)}
+                {!menuOpen && props.renderVaultActions?.('actions', () => { changeOpen(false) }, () => { setMenuOpen(false) }, beginRename, renderVaultMenuItem)}
               </div>
             </div>
           </section>

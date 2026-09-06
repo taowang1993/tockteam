@@ -1,8 +1,6 @@
-import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { Fragment as _Fragment, jsxs as _jsxs, jsx as _jsx } from "react/jsx-runtime";
 import { Alert } from '@tockteam/ui/alert';
 import { Button } from '@tockteam/ui/button';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@tockteam/ui/dropdown-menu';
-import { FolderOpen, FolderTree, PencilLine, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 function responseWasLost(result) {
     return !result.ok && result.error.code === 'gateway/internal';
@@ -417,8 +415,12 @@ export function TockTutorVaultActions(props) {
         }
     };
     if (props.placement === 'menu') {
-        return (_jsxs(_Fragment, { children: [_jsxs(DropdownMenuItem, { disabled: busy || props.vault === null, onSelect: event => {
-                        event.preventDefault();
+        const disabled = busy || props.vault === null;
+        return (_jsxs(_Fragment, { children: [props.renderMenuItem({
+                    disabled,
+                    icon: 'rename',
+                    label: 'Rename vault...',
+                    select() {
                         props.beginRename(async (name, signal) => {
                             try {
                                 return (await renameVault(props, name, props.bridge, props.remote, signal))?.status === 'renamed';
@@ -428,16 +430,32 @@ export function TockTutorVaultActions(props) {
                             }
                         });
                         props.closeMenu();
-                    }, children: [_jsx(PencilLine, { "aria-hidden": "true" }), _jsx("span", { children: "Rename vault..." })] }), _jsxs(DropdownMenuItem, { disabled: busy || props.vault === null, onSelect: event => {
-                        event.preventDefault();
+                    },
+                }), props.renderMenuItem({
+                    disabled,
+                    icon: 'move',
+                    label: 'Move vault...',
+                    select() {
                         void runMenu('Moving vault…', 'The vault could not be moved.', signal => (moveVault(props, props.bridge, props.remote, signal)));
-                    }, children: [_jsx(FolderTree, { "aria-hidden": "true" }), _jsx("span", { children: "Move vault..." })] }), _jsx(DropdownMenuSeparator, {}), _jsxs(DropdownMenuItem, { disabled: busy || props.vault === null, onSelect: event => {
-                        event.preventDefault();
+                    },
+                }), props.renderMenuItem({
+                    disabled,
+                    icon: 'reveal',
+                    label: 'Reveal vault in Finder',
+                    select() {
                         void runMenu('Revealing vault…', 'The vault could not be revealed.', signal => (revealVault(props, props.bridge, props.remote, signal)));
-                    }, children: [_jsx(FolderOpen, { "aria-hidden": "true" }), _jsx("span", { children: "Reveal vault in Finder" })] }), _jsx(DropdownMenuSeparator, {}), _jsxs(DropdownMenuItem, { className: "text-destructive focus:text-destructive", disabled: busy || props.vault === null, onSelect: event => {
-                        event.preventDefault();
+                    },
+                    separatorBefore: true,
+                }), props.renderMenuItem({
+                    destructive: true,
+                    disabled,
+                    icon: 'remove',
+                    label: 'Remove from list',
+                    select() {
                         void runMenu('Removing vault…', 'The vault could not be removed.', signal => (removeVault(props, props.bridge, props.remote, signal)));
-                    }, children: [_jsx(X, { "aria-hidden": "true" }), _jsx("span", { children: "Remove from list" })] }), message !== '' && _jsx(DropdownMenuItem, { "aria-live": "polite", disabled: true, children: message })] }));
+                    },
+                    separatorBefore: true,
+                }), message !== '' && props.renderMenuItem({ disabled: true, label: message, live: true, select() { } })] }));
     }
     return (_jsxs("div", { className: "flex items-center gap-4 p-4", "data-vault-action-row": true, children: [_jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("h3", { className: "m-0 font-medium", children: "Open Folder as Vault" }), _jsx("p", { className: "mt-1 text-xs text-[var(--tt-muted)]", children: "Choose an existing folder of Markdown files." })] }), _jsx(Button, { "aria-label": "Open Folder as Vault", disabled: busy, onClick: () => { void open(); }, variant: "outline", children: busy ? 'Opening…' : 'Open' }), _jsx("span", { "aria-live": "polite", className: "sr-only", children: message })] }));
 }

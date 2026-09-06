@@ -1,7 +1,5 @@
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
-import { DropdownMenuItem, DropdownMenuSeparator } from '@tockteam/ui/dropdown-menu'
-import { FolderOpen, FolderTree, PencilLine, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type {
@@ -631,12 +629,14 @@ export function TockTutorVaultActions(props: TockTutorVaultActionsProps): ReactN
   }
 
   if (props.placement === 'menu') {
+    const disabled = busy || props.vault === null
     return (
       <>
-        <DropdownMenuItem
-          disabled={busy || props.vault === null}
-          onSelect={event => {
-            event.preventDefault()
+        {props.renderMenuItem({
+          disabled,
+          icon: 'rename',
+          label: 'Rename vault...',
+          select() {
             props.beginRename(async (name, signal) => {
               try {
                 return (await renameVault(props, name, props.bridge, props.remote, signal))?.status === 'renamed'
@@ -645,51 +645,42 @@ export function TockTutorVaultActions(props: TockTutorVaultActionsProps): ReactN
               }
             })
             props.closeMenu()
-          }}
-        >
-          <PencilLine aria-hidden="true" />
-          <span>Rename vault...</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={busy || props.vault === null}
-          onSelect={event => {
-            event.preventDefault()
+          },
+        })}
+        {props.renderMenuItem({
+          disabled,
+          icon: 'move',
+          label: 'Move vault...',
+          select() {
             void runMenu('Moving vault…', 'The vault could not be moved.', signal => (
               moveVault(props, props.bridge, props.remote, signal)
             ))
-          }}
-        >
-          <FolderTree aria-hidden="true" />
-          <span>Move vault...</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={busy || props.vault === null}
-          onSelect={event => {
-            event.preventDefault()
+          },
+        })}
+        {props.renderMenuItem({
+          disabled,
+          icon: 'reveal',
+          label: 'Reveal vault in Finder',
+          select() {
             void runMenu('Revealing vault…', 'The vault could not be revealed.', signal => (
               revealVault(props, props.bridge, props.remote, signal)
             ))
-          }}
-        >
-          <FolderOpen aria-hidden="true" />
-          <span>Reveal vault in Finder</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          disabled={busy || props.vault === null}
-          onSelect={event => {
-            event.preventDefault()
+          },
+          separatorBefore: true,
+        })}
+        {props.renderMenuItem({
+          destructive: true,
+          disabled,
+          icon: 'remove',
+          label: 'Remove from list',
+          select() {
             void runMenu('Removing vault…', 'The vault could not be removed.', signal => (
               removeVault(props, props.bridge, props.remote, signal)
             ))
-          }}
-        >
-          <X aria-hidden="true" />
-          <span>Remove from list</span>
-        </DropdownMenuItem>
-        {message !== '' && <DropdownMenuItem aria-live="polite" disabled>{message}</DropdownMenuItem>}
+          },
+          separatorBefore: true,
+        })}
+        {message !== '' && props.renderMenuItem({ disabled: true, label: message, live: true, select() {} })}
       </>
     )
   }
