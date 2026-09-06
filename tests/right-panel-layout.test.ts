@@ -76,6 +76,7 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.match(workspace, /navigate\(SETTINGS_ROUTE_PREFIX\)/)
   assert.match(workspace, /function adaptSettingsPage\([\s\S]*?dataset\.tockteamSettingsPageSurface = 'true'[\s\S]*?dataset\.tockteamSettingsPageShell = 'true'/u)
   assert.match(workspace, /function isolateSettingsPage\([\s\S]*?sibling\.inert = true[\s\S]*?element\.inert = inert/u)
+  assert.match(workspace, /function showSettingsPageTitle\([\s\S]*?aria-labelledby[\s\S]*?title\.textContent = label[\s\S]*?title\.textContent = previous/u)
   assert.match(workspace, /document\.querySelector\('\[data-slot="settings\.trigger"\]'\)/)
   assert.match(css, /data-tockteam-settings-page-surface/)
   assert.match(css, /data-tockteam-settings-page-mask/)

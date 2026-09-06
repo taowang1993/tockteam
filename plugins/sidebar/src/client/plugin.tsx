@@ -2020,6 +2020,18 @@ function settingsPageSurface(): HTMLElement | null {
     .find(dialog => dialog.querySelector('button[aria-current]') !== null) ?? null
 }
 
+function showSettingsPageTitle(surface: HTMLElement): () => void {
+  const title = document.querySelector<HTMLElement>('.tockteam-window-title')
+  const labelId = surface.getAttribute('aria-labelledby')
+  const label = labelId === null ? null : document.getElementById(labelId)?.textContent?.trim()
+  if (title === null || !label) return () => {}
+  const previous = title.textContent
+  title.textContent = label
+  return () => {
+    if (title.isConnected) title.textContent = previous
+  }
+}
+
 function isolateSettingsPage(surface: HTMLElement): () => void {
   const previous = new Map<HTMLElement, boolean>()
   let child = surface
@@ -2225,12 +2237,14 @@ function TockTutorRouteHost(
     let opened = false
     let returning = false
     let restoreBackground: (() => void) | undefined
+    let restoreTitle: (() => void) | undefined
     const sync = (): void => {
       const surface = settingsPageSurface()
       if (surface !== null) {
         opened = true
         adaptSettingsPage()
         restoreBackground ??= isolateSettingsPage(surface)
+        restoreTitle ??= showSettingsPageTitle(surface)
         return
       }
       if (!opened) {
@@ -2249,6 +2263,7 @@ function TockTutorRouteHost(
     return () => {
       observer.disconnect()
       restoreBackground?.()
+      restoreTitle?.()
       delete document.documentElement.dataset.tockteamSettingsPage
       if (settingsPageSurface() !== null) {
         document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))

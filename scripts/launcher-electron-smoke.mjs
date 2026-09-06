@@ -895,6 +895,7 @@ try {
       close: close === null ? null : getComputedStyle(close).display,
       mask: mask === null ? null : getComputedStyle(mask).display,
       pathname: location.pathname,
+      title: document.querySelector('.tockteam-window-title')?.textContent,
       viewport: { height: innerHeight, width: innerWidth },
     }
   })()`)
@@ -905,6 +906,7 @@ try {
     close: 'none',
     mask: 'none',
     pathname: '/settings',
+    title: 'Settings',
     viewport: settingsPageFacts.viewport,
   })
   await clearStartupDialogs(workbenchConnection)
