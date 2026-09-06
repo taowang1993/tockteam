@@ -327,11 +327,10 @@ let restartedChild
 let restartedWorkbenchConnection
 let restartedLauncherConnection
 try {
-  await waitFor(
+  let pages = await waitFor(
     () => electronPages(port),
     pages => pages.some(page => page.title === 'TockCoder'),
   )
-  let pages = await electronPages(port)
   workbench = pages.find(page => page.title === 'TockCoder')
   assert.ok(workbench)
   workbenchConnection = await CdpPage.connect(workbench.webSocketDebuggerUrl)
