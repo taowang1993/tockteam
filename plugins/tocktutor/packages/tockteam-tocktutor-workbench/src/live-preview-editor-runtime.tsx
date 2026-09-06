@@ -238,7 +238,7 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
     }
   }, [editor, loading, props.content])
 
-  const shellClass = useMemo(() => `tocktutor-live-preview-editor relative min-h-0 min-w-0 flex-1 overflow-auto [&_table]:my-4 [&_table]:border-collapse [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_.selectedCell]:bg-[var(--tt-selected)] ${props.className ?? ''}`, [props.className])
+  const shellClass = useMemo(() => `tocktutor-live-preview-editor relative min-h-0 min-w-0 flex-1 overflow-auto [&_table]:my-4 [&_table]:border-collapse [&_table_p]:m-0 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_.selectedCell]:bg-[var(--tt-selected)] ${props.className ?? ''}`, [props.className])
   return <div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={shellClass}><Milkdown /></div>
 }
 

@@ -134,6 +134,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(editor.className).toContain('[&_th]:border')
     expect(editor.className).toContain('[&_td]:border')
     expect(editor.className).toContain('border-[var(--dsw-alias-border-l2,var(--tt-border))]')
+    expect(editor.className).toContain('[&_table_p]:m-0')
   })
 
   it('keeps Reading tables compact and uses the same visible borders', () => {
