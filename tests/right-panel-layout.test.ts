@@ -70,6 +70,8 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.match(workspace, /<Blocks aria-hidden="true" \/>/)
   assert.match(workspace, /<Settings aria-hidden="true" \/>/)
   assert.match(workspace, /document\.querySelector\('\[data-tockteam-marketplace-nav\]'\)/)
+  assert.match(workspace, /function closePluginMarketplace\(\): void[\s\S]*?dataset\.tockteamMarketplaceOpen === 'true'[\s\S]*?target\.click\(\)/u)
+  assert.equal(workspace.match(/closePluginMarketplace\(\)/gu)?.length, 3)
   assert.match(workspace, /document\.querySelector\('\[data-slot="settings\.trigger"\]'\)/)
   assert.match(workspace, /M10 5\.5C6\.96243 5\.5/)
   assert.doesNotMatch(workspace, /location\.pathname !== '\/'/)

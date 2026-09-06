@@ -2005,6 +2005,12 @@ function AppRailIcon({ kind }: { kind: 'agent' | 'notebook' }): ReactNode {
   return <Notebook aria-hidden="true" />
 }
 
+function closePluginMarketplace(): void {
+  const target = document.querySelector('[data-tockteam-marketplace-nav]')
+  if (target instanceof HTMLButtonElement
+    && document.documentElement.dataset.tockteamMarketplaceOpen === 'true') target.click()
+}
+
 function DesktopAppRail({
   location,
   navigate,
@@ -2035,7 +2041,10 @@ function DesktopAppRail({
               type="button"
               aria-label="TockCoder"
               aria-current={tockCoderActive ? 'page' : undefined}
-              onClick={() => { navigate(TOCKCODER_ROUTE_PREFIX) }}
+              onClick={() => {
+                closePluginMarketplace()
+                navigate(TOCKCODER_ROUTE_PREFIX)
+              }}
             ><AppRailIcon kind="agent" /></Button>
           </TooltipTrigger>
           <TooltipContent side="right">TockCoder</TooltipContent>
@@ -2046,7 +2055,10 @@ function DesktopAppRail({
               type="button"
               aria-label="TockTutor"
               aria-current={tockTutorActive ? 'page' : undefined}
-              onClick={() => { navigate(TOCKTUTOR_ROUTE_PREFIX) }}
+              onClick={() => {
+                closePluginMarketplace()
+                navigate(TOCKTUTOR_ROUTE_PREFIX)
+              }}
             ><AppRailIcon kind="notebook" /></Button>
           </TooltipTrigger>
           <TooltipContent side="right">TockTutor</TooltipContent>

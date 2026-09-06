@@ -336,6 +336,30 @@ try {
   assert.ok(workbench)
   workbenchConnection = await CdpPage.connect(workbench.webSocketDebuggerUrl)
   await clearStartupDialogs(workbenchConnection)
+  await waitFor(
+    () => workbenchConnection.evaluate(`document.querySelector('#tockteam-rail-root button[aria-label="Plugins"]') !== null`),
+    available => available === true,
+  )
+  assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="Plugins"]'), true)
+  await waitFor(
+    () => workbenchConnection.evaluate(`document.documentElement.dataset.tockteamMarketplaceOpen`),
+    open => open === 'true',
+  )
+  assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="TockTutor"]'), true)
+  await waitFor(
+    () => workbenchConnection.evaluate(`({ open: document.documentElement.dataset.tockteamMarketplaceOpen, pathname: location.pathname })`),
+    state => state.open === undefined && state.pathname.startsWith('/tocktutor'),
+  )
+  assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="Plugins"]'), true)
+  await waitFor(
+    () => workbenchConnection.evaluate(`({ open: document.documentElement.dataset.tockteamMarketplaceOpen, pathname: location.pathname })`),
+    state => state.open === 'true' && state.pathname.startsWith('/tockcoder'),
+  )
+  assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="TockCoder"]'), true)
+  await waitFor(
+    () => workbenchConnection.evaluate(`document.documentElement.dataset.tockteamMarketplaceOpen`),
+    open => open === undefined,
+  )
   pages = await waitFor(
     () => electronPages(port),
     current => current.filter(page => page.title === 'TockLauncher').length === 1,
