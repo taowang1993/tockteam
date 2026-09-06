@@ -173,7 +173,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
         style={{ height: '560px', maxHeight: 'calc(100vh - 2rem)', maxWidth: '860px', width: 'calc(100% - 2rem)' }}
       >
         <div className="grid min-h-0 sm:h-full sm:grid-cols-[270px_minmax(0,1fr)]">
-          <section aria-label="Vault List" className="flex min-h-0 flex-col border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-5 sm:overflow-y-auto sm:border-r sm:border-b-0">
+          <section aria-label="Vault List" className="flex min-h-0 flex-col border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-5 sm:border-r sm:border-b-0">
             <DialogHeader className="sr-only">
               <DialogTitle>Vault Switcher</DialogTitle>
               <DialogDescription>Open a local Markdown vault or create a new one.</DialogDescription>
@@ -206,7 +206,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
                       </form>
                     )}
                 {(props.vault === null || props.vaultDisplayPath !== null) && (
-                  <p className="mt-0.5 truncate text-xs text-[var(--tt-muted)]" title={props.vaultDisplayPath ?? undefined}>
+                  <p className="mt-0.5 break-words text-xs text-[var(--tt-muted)]" title={props.vaultDisplayPath ?? undefined}>
                     {props.vault === null ? 'Open or create a local vault' : props.vaultDisplayPath}
                   </p>
                 )}
@@ -219,7 +219,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
                       <Ellipsis aria-hidden="true" className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent unstyled align="end" className="max-h-(--radix-dropdown-menu-content-available-height) w-52 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-sm text-[var(--tt-text)] shadow-md" portalled={false}>
+                  <DropdownMenuContent unstyled align="start" className="max-h-(--radix-dropdown-menu-content-available-height) w-52 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-sm text-[var(--tt-text)] shadow-md" portalled={false}>
                     <DropdownMenuItem onSelect={copyVaultId}>
                       <Copy aria-hidden="true" />
                       <span>Copy vault ID</span>
