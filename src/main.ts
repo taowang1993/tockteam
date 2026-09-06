@@ -1,4 +1,5 @@
 import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
+import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
 import { trustedRaycastCatalog, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_RESULT_ID } from './trusted-raycast-catalog.ts'
@@ -2206,6 +2207,27 @@ function initializeLauncher(): void {
   trustedRaycast = new TrustedRaycastManager({
     runtimeDir: join(currentDir, 'trusted-raycast'),
     nodePath: runtimePaths().nodeBinary,
+    copyText: async text => {
+      const proof = await copyTrustedRaycastText(text, clipboard,
+        !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_CLIPBOARD_FIXTURE === '1'
+          ? join(app.getAppPath(), 'scripts/trusted-raycast-clipboard-proof.swift') : undefined)
+      if (proof) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-clipboard-proof.json'), JSON.stringify(proof), { mode: 0o600 })
+    },
+    openGoogleTranslate: async url => {
+      // Bounded development proof owns this private browser; never touch the user's default browser.
+      if (!app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_BROWSER_FIXTURE === '1') {
+        const browser = new BrowserWindow({ width: 900, height: 650, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: `trusted-translate-proof-${randomBytes(16).toString('hex')}` } })
+        browser.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+        browser.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+        browser.webContents.session.setPermissionCheckHandler(() => false)
+        browser.webContents.on('will-navigate', (event, destination) => { if (new URL(destination).origin !== 'https://translate.google.com') event.preventDefault() })
+        const timer = setTimeout(() => { if (!browser.isDestroyed()) browser.destroy() }, 15000)
+        browser.once('closed', () => clearTimeout(timer))
+        try { await browser.loadURL(url) } catch (error) { browser.destroy(); throw error }
+        return
+      }
+      await shell.openExternal(url)
+    },
     onMessage: (owner, message) => {
       const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
       if (window !== undefined && !window.isDestroyed()) window.webContents.send(TRUSTED_RAYCAST_IPC_CHANNELS.patch, message)

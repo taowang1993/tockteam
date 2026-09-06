@@ -20,6 +20,7 @@ export async function buildTrustedRaycast(dist, artifact) {
     writeFileSync(join(work, 'child.ts'), child)
     // Only compatibility aliases are bundled; all third-party bare imports resolve in the private artifact.
     await build({ entryPoints: [join(work, 'child.ts')], outfile: join(output, 'child.mjs'), bundle: true, packages: 'external', format: 'esm', platform: 'node', target: 'node24', alias: {
+      '@tockteam/trusted-raycast-child-contract': join(repository, 'src/trusted-raycast-contract.ts'),
       '@raycast/api': join(repository, 'src/trusted-raycast-compat-api.ts'),
       '@raycast/utils': join(repository, 'src/trusted-raycast-compat-utils.ts'),
     }, logLevel: 'silent' })

@@ -43,6 +43,14 @@ test('preload filters malformed projections and rejects extra event arguments', 
   const receive = listeners.get(TRUSTED_RAYCAST_IPC_CHANNELS.patch)!
   receive({}, { type: 'patch', extra: true }); assert.equal(count, 0)
   receive({}, { type: 'ready', sessionId: 's', generation: 'g', revision: 0, root: { type: 'root', props: {}, children: [] } }); assert.equal(count, 1)
+  const outcome = { type: 'outcome', sessionId: 's', generation: 'g', revision: 0, eventId: 'copy', succeeded: false, message: 'Clipboard denied' }
+  receive({}, outcome); assert.equal(count, 2)
+  receive({}, { ...outcome, succeeded: 'true' }); assert.equal(count, 2)
+  receive({}, { ...outcome, native: { kind: 'copy', text: 'untrusted' } }); assert.equal(count, 2)
+  const toast = { type: 'toast', sessionId: 's', generation: 'g', revision: 0, querySequence: 0, style: 'failure', title: 'Could not translate', message: 'Service unavailable' }
+  receive({}, toast); assert.equal(count, 3)
+  receive({}, { ...toast, message: 'x'.repeat(4097) }); assert.equal(count, 3)
+  receive({}, { ...toast, style: 'execute' }); assert.equal(count, 3)
   remove()
   await assert.rejects((bridge.trustedRaycastEvent as (...args: unknown[]) => Promise<unknown>)({}, 'extra'), /arguments/)
 })

@@ -6,7 +6,7 @@ import { existsSync, readFileSync, mkdtempSync, mkdirSync, copyFileSync, symlink
 import { tmpdir } from 'node:os'
 import { join, isAbsolute } from 'node:path'
 import { admitTrustedRaycastArtifact, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from './trusted-raycast-artifact-admission.ts'
-import { isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
+import { isTrustedRaycastNativeRequest, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
 
 export type TrustedRaycastOwner = Readonly<{ webContentsId: number }>
 export type TrustedRaycastManagerOptions = Readonly<{
@@ -14,8 +14,10 @@ export type TrustedRaycastManagerOptions = Readonly<{
   nodePath: string
   onMessage: (owner: TrustedRaycastOwner, message: TrustedRaycastViewMessage) => void
   onError?: (owner: TrustedRaycastOwner, error: Error) => void
+  copyText?: (text: string) => void | Promise<void>
+  openGoogleTranslate?: (url: string) => Promise<void>
 }>
-type Session = { revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; eventId: string; reject: (error: Error) => void }
+type Session = { revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
 
 /** Main owns identity and the sole live child. Trusted code is not an OS sandbox. */
 export class TrustedRaycastManager {
@@ -60,7 +62,7 @@ export class TrustedRaycastManager {
       let resolveReady!: () => void
       let rejectReady!: (error: Error) => void
       const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
-      current = { child, owner, input, workspace, revision: -1, eventId: '', reject: rejectReady }
+      current = { child, owner, input, workspace, revision: -1, querySequence: 0, eventId: '', actions: new Map(), reject: rejectReady }
       this.session = current
       const session = current
       const fail = (error: Error): void => {
@@ -79,12 +81,39 @@ export class TrustedRaycastManager {
         while ((end = pending.indexOf('\n')) >= 0) {
           const line = pending.slice(0, end); pending = pending.slice(end + 1)
           try {
+            const raw: unknown = JSON.parse(line)
+            if ((raw as { type?: string })?.type === 'native') {
+              if (!isTrustedRaycastNativeRequest(raw)) throw new Error('Invalid Translate native request')
+              void this.native(session, raw)
+              continue
+            }
             const message = parseTrustedRaycastChildMessage(line, input, session.revision)
             if (message.type === 'error') throw new Error(message.message)
+            if (message.type === 'toast') {
+              if (message.querySequence === session.querySequence) this.options.onMessage(owner, message)
+              else if (message.querySequence! > session.querySequence) throw new Error('Invalid Translate toast query sequence')
+              continue
+            }
+            if (message.type === 'outcome') {
+              if (session.action?.eventId === message.eventId) { session.action = undefined; this.options.onMessage(owner, message) }
+              continue
+            }
             session.revision = message.revision
             session.eventId = randomUUID()
-            const root = message.root!
-            this.options.onMessage(owner, { ...message, root: { ...root, props: { ...root.props, searchEventId: session.eventId } } })
+            session.actions.clear()
+            const querySequence = message.root!.props.querySequence
+            if (!Number.isSafeInteger(querySequence) || (querySequence as number) < 0 || (querySequence as number) > session.querySequence) throw new Error('Invalid Translate query sequence')
+            const wrap = (node: TrustedRaycastViewNode): TrustedRaycastViewNode => {
+              const props = { ...node.props }
+              if (Object.hasOwn(props, 'actionEventId')) {
+                if (node.type !== 'raycast-action' || typeof props.actionEventId !== 'string') throw new Error('Invalid Translate action handle')
+                if (querySequence === session.querySequence) { const id = randomUUID(); session.actions.set(id, props.actionEventId); props.actionEventId = id }
+                else delete props.actionEventId
+              }
+              return { ...node, props, children: node.children.map(child => typeof child === 'string' ? child : wrap(child)) }
+            }
+            const root = wrap(message.root!)
+            this.options.onMessage(owner, { ...message, root: { ...root, props: { ...root.props, searchEventId: session.eventId, queryCurrent: querySequence === session.querySequence } } })
             resolveReady()
           } catch (error) { fail(error instanceof Error ? error : new Error('Invalid Translate output')); return }
         }
@@ -97,7 +126,7 @@ export class TrustedRaycastManager {
         let end: number
         while ((end = diagnostic.indexOf('\n')) >= 0) {
           const line = diagnostic.slice(0, end); diagnostic = diagnostic.slice(end + 1)
-          if (line.startsWith('TOAST ')) fail(new Error(line.slice(0, 512)))
+          // Diagnostics are bounded, but ordinary service failures use typed view toasts.
         }
       })
       child.stdin.on('error', () => fail(new Error('Translate input channel closed')))
@@ -113,10 +142,36 @@ export class TrustedRaycastManager {
   }
   send(owner: TrustedRaycastOwner, event: TrustedRaycastViewEvent): void {
     const session = this.session
-    if (!isTrustedRaycastViewEvent(event) || !session || session.revoked || owner.webContentsId !== session.owner.webContentsId || event.sessionId !== session.input.sessionId || event.generation !== session.input.generation || event.revision !== session.revision || event.eventId !== session.eventId) throw new Error('Translate event is stale')
-    if (event.kind !== 'searchChanged') throw new Error('This Translate action is not supported in this slice')
+    if (!isTrustedRaycastViewEvent(event) || !session || session.revoked || owner.webContentsId !== session.owner.webContentsId || event.sessionId !== session.input.sessionId || event.generation !== session.input.generation || event.revision !== session.revision) throw new Error('Translate event is stale')
     if (session.child.stdin.writableLength > 32768) throw new Error('Translate input is busy')
-    session.child.stdin.write(`${JSON.stringify({ kind: event.kind, value: event.value })}\n`)
+    if (event.kind === 'searchChanged') {
+      if (event.eventId !== session.eventId) throw new Error('Translate event is stale')
+      session.querySequence++
+      session.actions.clear(); session.action = undefined
+      session.child.stdin.write(`${JSON.stringify(event)}\n`)
+      return
+    }
+    if (event.kind !== 'action' || event.value !== undefined || !session.actions.has(event.eventId)) throw new Error('Translate event is stale')
+    if (session.action) throw new Error('Translate action is busy')
+    session.action = { eventId: event.eventId, revision: event.revision, nativeUsed: false }
+    session.child.stdin.write(`${JSON.stringify({ ...event, value: session.actions.get(event.eventId) })}\n`)
+  }
+  private async native(session: Session, request: TrustedRaycastNativeRequest): Promise<void> {
+    let succeeded = false
+    let message = ''
+    try {
+      if (this.session !== session || session.revoked || request.sessionId !== session.input.sessionId || request.generation !== session.input.generation || request.eventId !== session.action?.eventId || request.revision !== session.action.revision || session.action.nativeUsed) throw new Error('Translate native action is stale')
+      session.action.nativeUsed = true
+      if (request.kind === 'copy') {
+        if (!this.options.copyText) throw new Error('Clipboard Copy is unavailable')
+        await this.options.copyText(request.text)
+      } else {
+        if (!this.options.openGoogleTranslate) throw new Error('Browser opening is unavailable')
+        await this.options.openGoogleTranslate(request.url)
+      }
+      succeeded = true
+    } catch (error) { message = error instanceof Error ? error.message.slice(0, 512) : 'Native action failed' }
+    if (this.session === session && !session.revoked) session.child.stdin.write(`${JSON.stringify({ type: 'nativeOutcome', requestId: request.requestId, succeeded, message })}\n`)
   }
   async closeOwner(owner: TrustedRaycastOwner): Promise<void> {
     if (this.session?.owner.webContentsId === owner.webContentsId) await this.stop('owner-closed')

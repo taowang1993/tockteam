@@ -1,4 +1,5 @@
 import React from 'react'
+import { queryEpoch, queryText } from './trusted-raycast-compat-api.ts'
 
 const state = new Map<string, unknown>()
 export function useCachedState<T>(key: string, initial: T): readonly [T, (next: T | ((old: T) => T)) => void] {
@@ -7,14 +8,22 @@ export function useCachedState<T>(key: string, initial: T): readonly [T, (next: 
   return [value, update] as const
 }
 export function usePromise<T>(promise: (...args: any[]) => Promise<T>, args: readonly unknown[] = [], options?: { onError?: (error: unknown) => void }): { data: T | undefined; isLoading: boolean } {
-  const [state, setState] = React.useState<{ data?: T; loading: boolean }>({ loading: true })
+  const [state, setState] = React.useState<{ data?: T; loading: boolean; args?: string; epoch?: number }>({ loading: true })
   const revision = React.useRef(0)
   const stableArgs = JSON.stringify(args)
   React.useEffect(() => {
     const current = ++revision.current
-    setState({ loading: true })
-    Promise.resolve().then(() => promise(...args)).then(data => { if (current === revision.current) setState({ data, loading: false }) }).catch(error => { if (current === revision.current) { options?.onError?.(error); setState({ loading: false }) } })
+    const epoch = queryEpoch
+    // Both admitted translate.tsx calls receive the debounced query as their first argument.
+    if (args[0] !== queryText) return
+    setState({ loading: true, args: stableArgs, epoch })
+    Promise.resolve().then(() => promise(...args)).then(data => { if (current === revision.current && epoch === queryEpoch) setState({ data, loading: false, args: stableArgs, epoch }) }).catch(error => {
+      if (current !== revision.current || epoch !== queryEpoch) return
+      setState({ loading: false, args: stableArgs, epoch })
+      options?.onError?.(error)
+    })
     return () => { revision.current++ }
-  }, [stableArgs])
-  return { data: state.data, isLoading: state.loading }
+  }, [stableArgs, queryEpoch])
+  const stale = state.args !== stableArgs || state.epoch !== queryEpoch
+  return { data: stale ? undefined : state.data, isLoading: stale || state.loading }
 }

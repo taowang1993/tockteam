@@ -6,7 +6,7 @@ import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage } from '../src/
 
 class Element extends EventTarget {
   children: Element[] = []
-  value = ''; hidden = false; disabled = false; isConnected = true
+  value = ''; textContent = ''; hidden = false; disabled = false; isConnected = true
   append(...children: Element[]) { this.children.push(...children) }
   setAttribute() {}
   replaceChildren() { this.children = [] }
@@ -26,6 +26,8 @@ test('latest typed input is coalesced and retried when a newer projection overta
   const type = (value: string) => { input.value = value; input.dispatchEvent(new Event('input')) }
   view.update(projection(0))
   type('old'); type('intermediate'); type('latest')
+  view.update({ type: 'toast', sessionId: 's', generation: 'g', revision: 0, querySequence: 0, style: 'failure', title: 'Old Query Failed', message: 'obsolete' })
+  assert.equal(nodes[10]!.hidden, true, 'old service toast cannot overtake pending input')
   assert.equal(sent.length, 1, 'one in-flight input, not a queue of obsolete queries')
   completions[0]!.reject(new Error("Error invoking remote method: Translate event is stale"))
   await flush()
@@ -48,4 +50,22 @@ test('latest typed input is coalesced and retried when a newer projection overta
   completions[3]!.reject(new Error('Translate event is stale')); await flush()
   assert.equal(sent.length, 4)
   assert.equal(input.disabled, true)
+})
+
+test('source action outcomes remain visible when React commits after callback completion', async () => {
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const sent: TrustedRaycastViewEvent[] = []
+  const bridge = { async trustedRaycastEvent(event: TrustedRaycastViewEvent) { sent.push(event) } } as unknown as LauncherPreloadBridge
+  const view = createTrustedRaycastView(document, bridge, () => {})
+  const message: TrustedRaycastViewMessage = { ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [{ type: 'raycast-list-item', props: { title: '<img src=x onerror=alert(1)>' }, children: [{ type: 'raycast-action', props: { title: 'Copy Translation', actionEventId: 'copy' }, children: [] }] }] } }
+  view.update(message)
+  nodes.find(node => node.textContent === 'Copy Translation')!.dispatchEvent(new Event('click'))
+  await flush()
+  assert.equal(sent[0]?.eventId, 'copy')
+  view.update({ type: 'outcome', sessionId: 's', generation: 'g', revision: 0, eventId: 'copy', succeeded: true, message: '' })
+  assert.equal(nodes[7]!.textContent, 'Action Completed')
+  view.update({ ...message, type: 'patch', revision: 1, status: 'ready' })
+  assert.equal(nodes[7]!.textContent, 'Action Completed', 'outcome-before-commit must not disappear')
+  assert.ok(nodes.some(node => node.textContent === '<img src=x onerror=alert(1)>'), 'translation rendered as text, not HTML')
 })

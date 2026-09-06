@@ -46,6 +46,27 @@ test('configured unchanged component translates interactive input and revokes ow
     const deadline = Date.now() + 16000
     while (!messages.some(message => /[\u3400-\u9fff]/u.test(JSON.stringify(message))) && Date.now() < deadline && !errors.length) await new Promise(resolve => setTimeout(resolve, 50))
     assert.ok(messages.some(message => /[\u3400-\u9fff]/u.test(JSON.stringify(message))), JSON.stringify(errors))
+    const visit = (node: import('../src/trusted-raycast-contract.ts').TrustedRaycastViewNode): import('../src/trusted-raycast-contract.ts').TrustedRaycastViewNode[] => [node, ...node.children.flatMap(child => typeof child === 'string' ? [] : visit(child))]
+    const wait = async (predicate: () => boolean) => { const until = Date.now() + 4000; while (!predicate() && Date.now() < until) await new Promise(resolve => setTimeout(resolve, 20)); assert.ok(predicate(), JSON.stringify(errors)) }
+    const act = (title: string) => {
+      const latest = messages.findLast(message => message.root)!
+      const action = visit(latest.root!).find(node => node.type === 'raycast-action' && node.props.title === title)!
+      assert.ok(action?.props.actionEventId, title)
+      const eventId = String(action.props.actionEventId)
+      manager.send({ webContentsId: 1 }, { sessionId: 'test', generation: '1', revision: latest.revision, eventId, kind: 'action' })
+      return eventId
+    }
+    const copyId = act('Copy Translation')
+    await wait(() => messages.some(message => message.type === 'outcome' && message.eventId === copyId))
+    assert.equal(messages.find(message => message.type === 'outcome' && message.eventId === copyId)?.succeeded, false, 'native unavailability must not claim Copy success')
+    assert.equal(manager.active, true, 'ordinary native denial is recoverable')
+    const detailId = act('Toggle Full Text')
+    await wait(() => messages.some(message => message.type === 'outcome' && message.eventId === detailId))
+    await wait(() => visit(messages.findLast(message => message.root)!.root!).some(node => node.type === 'raycast-list' && node.props.isShowingDetail === true))
+    const browserId = act('Open in Google Translate')
+    await wait(() => messages.some(message => message.type === 'outcome' && message.eventId === browserId))
+    assert.match(messages.find(message => message.type === 'outcome' && message.eventId === browserId)?.message ?? '', /unavailable/)
+    assert.equal(manager.active, true)
     await manager.closeOwner({ webContentsId: 2 }); assert.equal(manager.active, true)
     await manager.closeOwner({ webContentsId: 1 }); assert.equal(manager.active, false)
     assert.throws(() => manager.send({ webContentsId: 1 }, event), /stale/)
