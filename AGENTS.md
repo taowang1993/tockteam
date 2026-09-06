@@ -72,6 +72,11 @@ Folder: `.agents/references/`
 | `tocktutor.md`     | TockTutor plugin and package contracts        |
 | `usage.md`         | Installation, operations, and troubleshooting |
 
+## UIUX
+
+- TockTutor comparison audit: `/Users/taowang/projects/worktrees/tutor/.agents/uiux/tocktutor`.
+- Capture comparable screenshots at `1512 × 949` CSS pixels with device pixel ratio `2`, producing `3024 × 1898` images. Set this geometry on every CDP target or window before capture, verify the raster dimensions programmatically, and never hide mismatches with CSS cropping.
+
 ## Development Guidelines
 
 - Must reuse `plugins/shared/surface.ts`. Never provide a TockTeam surface as `ctx.web`; DSH owns that service name.
