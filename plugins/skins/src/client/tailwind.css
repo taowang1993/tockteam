@@ -310,9 +310,38 @@
   }
 
   &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] > nav {
-    width: 240px !important;
+    width: var(--tockteam-primary-sidebar-width) !important;
     border-right: 1px solid var(--dsw-alias-border-l1) !important;
     background: var(--dsw-specific-sidebar-fill) !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-resize] {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    bottom: 0;
+    left: var(--tockteam-primary-sidebar-width);
+    width: 8px;
+    margin-left: -4px;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-resize]::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 3px;
+    height: 32px;
+    border-radius: 3px;
+    background: var(--dsw-alias-border-l2);
+    content: '';
+    opacity: 0;
+    transform: translate(-50%, -50%);
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-resize]:hover::after {
+    opacity: 1;
   }
 
   &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-mask],

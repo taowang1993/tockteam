@@ -909,6 +909,27 @@ try {
     title: 'Settings',
     viewport: settingsPageFacts.viewport,
   })
+  const settingsResize = await workbenchConnection.evaluate(`(() => {
+    const handle = document.querySelector('[data-tockteam-settings-page-resize]')
+    const nav = document.querySelector('[data-tockteam-settings-page-surface] > nav')
+    if (!(handle instanceof HTMLElement) || !(nav instanceof HTMLElement)) return null
+    const rect = handle.getBoundingClientRect()
+    return { width: nav.getBoundingClientRect().width, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+  })()`)
+  assert.ok(settingsResize)
+  await workbenchConnection.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: settingsResize.x, y: settingsResize.y })
+  await workbenchConnection.call('Input.dispatchMouseEvent', { type: 'mousePressed', x: settingsResize.x, y: settingsResize.y, button: 'left', buttons: 1, clickCount: 1 })
+  await workbenchConnection.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: settingsResize.x + 24, y: settingsResize.y, button: 'left', buttons: 1 })
+  await workbenchConnection.call('Input.dispatchMouseEvent', { type: 'mouseReleased', x: settingsResize.x + 24, y: settingsResize.y, button: 'left', buttons: 0, clickCount: 1 })
+  await waitFor(
+    () => workbenchConnection.evaluate(`(() => {
+      const nav = document.querySelector('[data-tockteam-settings-page-surface] > nav')
+      const titlebar = document.querySelector('.tockteam-titlebar-leading')
+      if (!(nav instanceof HTMLElement) || !(titlebar instanceof HTMLElement)) return null
+      return { navRight: nav.getBoundingClientRect().right, titlebarRight: titlebar.getBoundingClientRect().right, width: nav.getBoundingClientRect().width }
+    })()`),
+    state => state !== null && state.width >= settingsResize.width + 20 && Math.abs(state.navRight - state.titlebarRight) < 1,
+  )
   await clearStartupDialogs(workbenchConnection)
   const settingsFacts = await workbenchConnection.evaluate(`(async () => {
     const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()

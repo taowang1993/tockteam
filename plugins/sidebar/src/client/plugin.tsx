@@ -439,12 +439,20 @@ function installPrimarySidebarAdapter(): () => void {
 
   let stopActiveResize = (): void => {}
   const beginResize = (event: PointerEvent): void => {
-    const target = event.target instanceof Element
-      ? event.target.closest<HTMLElement>('[data-side="sidebar"]')
+    const pointerTarget = event.target instanceof Element
+      ? event.target.closest<HTMLElement>('[data-side="sidebar"], [data-tockteam-settings-page-resize]')
       : null
+    const settingsResize = pointerTarget?.dataset.tockteamSettingsPageResize === 'true'
+    const target = settingsResize
+      ? document.querySelector<HTMLElement>('#root [data-side="sidebar"]')
+      : pointerTarget
     const frame = target?.parentElement
-    if (target === null || !(frame instanceof HTMLElement)
+    if (pointerTarget === null || target === null || !(frame instanceof HTMLElement)
       || frame.closest('#root') === null) return
+    if (settingsResize) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
     const pointerId = event.pointerId
     const startX = event.clientX
     const sidebarColumn = frame.children.item(0)
@@ -463,7 +471,7 @@ function installPrimarySidebarAdapter(): () => void {
       animationFrame = 0
       // Keep DSH's upper and center-column limits while allowing TockTeam's denser minimum.
       width = Math.min(420, Math.max(TOCKTEAM_PRIMARY_SIDEBAR_MIN_WIDTH, Math.round(startWidth + latestX - startX)))
-      overriddenWidth = width < DSH_PRIMARY_SIDEBAR_MIN_WIDTH ? width : undefined
+      overriddenWidth = settingsResize || width < DSH_PRIMARY_SIDEBAR_MIN_WIDTH ? width : undefined
       let details = detailsWidth
       if (details > 0 && width + details + 640 > frameWidth) {
         details = Math.max(300, frameWidth - width - 640)
@@ -2067,6 +2075,10 @@ function adaptSettingsPage(): void {
   const closeSlot = surface.querySelector('[data-slot="settings.close"]')
   const closeButton = closeSlot?.closest('button')
   if (closeButton instanceof HTMLButtonElement) closeButton.dataset.tockteamSettingsPageClose = 'true'
+  const resize = document.createElement('div')
+  resize.dataset.tockteamSettingsPageResize = 'true'
+  resize.setAttribute('aria-hidden', 'true')
+  surface.append(resize)
   window.requestAnimationFrame(() => {
     surface.querySelector<HTMLButtonElement>('button[aria-current]')?.focus()
   })
