@@ -462,6 +462,7 @@ export declare class NoteVaultRuntime extends Service {
     private emitEntryChange;
     private emitFileMutation;
     get state(): NoteVaultState;
+    activeVaultName(): string | null;
     private invalidateActiveVault;
     private assertActiveVaultBound;
     private captureExpectedVault;

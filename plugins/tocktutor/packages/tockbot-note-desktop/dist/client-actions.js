@@ -327,6 +327,43 @@ function resultMessage(result) {
         case 'unavailable': return 'This native action is unavailable.';
     }
 }
+export async function openFolderAsVault(owner, bridge, remote, signal) {
+    if (!await saveCurrent(owner))
+        return undefined;
+    return await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (remote.tocktutorDesktop.activateVault(authorization, ownerSignal)));
+}
+/** Desktop-only vault picker contribution for the vault-management dialog. */
+export function TockTutorVaultActions(props) {
+    const operation = useRef();
+    const [busy, setBusy] = useState(false);
+    const [message, setMessage] = useState('');
+    useEffect(() => () => { operation.current?.abort(); }, []);
+    const open = async () => {
+        const controller = replaceActionController(operation.current);
+        operation.current = controller;
+        setBusy(true);
+        setMessage('Opening folder picker…');
+        try {
+            const result = await openFolderAsVault(props, props.bridge, props.remote, controller.signal);
+            if (!controller.signal.aborted && result !== undefined) {
+                setMessage(resultMessage(result));
+                if (result.status === 'activated')
+                    props.close();
+            }
+        }
+        catch {
+            if (!controller.signal.aborted)
+                setMessage('The folder picker could not be opened.');
+        }
+        finally {
+            if (!controller.signal.aborted)
+                setBusy(false);
+        }
+    };
+    if (props.placement === 'menu')
+        return null;
+    return (_jsxs("div", { className: "flex items-center gap-4 p-4", "data-vault-action-row": true, children: [_jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("h3", { className: "m-0 font-medium", children: "Open Folder as Vault" }), _jsx("p", { className: "mt-1 text-xs text-[var(--tt-muted)]", children: "Choose an existing folder of Markdown files." })] }), _jsx(Button, { "aria-label": "Open Folder as Vault", disabled: busy, onClick: () => { void open(); }, variant: "outline", children: busy ? 'Opening…' : 'Open' }), _jsx("span", { "aria-live": "polite", className: "sr-only", children: message })] }));
+}
 /** Accessible contribution for Workbench's root-scoped Native Actions seat. */
 export function TockTutorNativeActions(props) {
     const owner = useRef(props);
@@ -452,11 +489,7 @@ export function TockTutorNativeActions(props) {
         setBusy(null);
     };
     const button = (label, action, enabled = true) => (_jsx(Button, { unstyled: true, className: "min-h-9 cursor-pointer rounded-lg border border-[var(--tt-border,#d9dde5)] bg-[var(--tt-bg,#f7f8fa)] px-2.5 py-[7px] text-left text-inherit enabled:hover:border-[var(--tt-accent,#2457d6)] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--tt-accent,#2457d6)_28%,transparent)] disabled:cursor-not-allowed disabled:opacity-50", disabled: !enabled || busy !== null, onClick: () => { void action(); }, type: "button", children: busy === label ? `${label}…` : label }, label));
-    return (_jsxs("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [_jsxs("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [button('Choose Vault', async () => {
-                        if (!await saveCurrent(props))
-                            return;
-                        await run('Choosing Vault', 'activate-vault', (authorization, signal) => (props.remote.tocktutorDesktop.activateVault(authorization, signal)));
-                    }), button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal))), hasNote), button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)), true), hasNote), button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal))), hasNote), button('Close All Pop-Outs', async () => {
+    return (_jsxs("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [_jsxs("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal))), hasNote), button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)), true), hasNote), button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal))), hasNote), button('Close All Pop-Outs', async () => {
                         if (props.vault === null)
                             return;
                         await run('Closing Pop-Outs', 'popout-close-all', (authorization, signal) => (props.remote.tocktutorDesktop.closeAllPopOuts(authorization, props.vault, signal)), props.vault);

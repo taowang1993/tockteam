@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
   TockTutorNativeActions,
+  TockTutorVaultActions,
   type DesktopActionRemote,
   type DesktopCallerBridge,
 } from '../dist/client-actions.js'
@@ -26,7 +27,6 @@ test('renders keyboard-native actions with bounded availability and polite statu
   assert.match(active, /role="group"/u)
   assert.match(active, /data-slot="alert"[^>]*role="status"[^>]*aria-live="polite">Ready\.<\/div>/u)
   for (const label of [
-    'Choose Vault',
     'Reveal Entry',
     'Open Pop-Out',
     'Close Pop-Out',
@@ -46,6 +46,19 @@ test('renders keyboard-native actions with bounded availability and polite statu
     remote,
     vault: null,
   }))
-  assert.match(inactive, /<button[^>]*type="button">Choose Vault<\/button>/u)
+  assert.doesNotMatch(inactive, /Choose Vault/u)
   assert.equal([...inactive.matchAll(/<button[^>]*disabled=""/gu)].length, 9)
+})
+
+test('renders the vault folder picker as a dedicated action', () => {
+  const html = renderToStaticMarkup(createElement(TockTutorVaultActions, {
+    bridge,
+    close() {},
+    placement: 'actions',
+    remote,
+    vault,
+    vaultName: 'Research Vault',
+  }))
+  assert.match(html, /<button[^>]*aria-label="Open Folder as Vault"/u)
+  assert.match(html, />Open<\/button>/u)
 })

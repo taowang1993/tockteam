@@ -3,16 +3,10 @@ export interface VaultReference {
   id: string
 }
 
-export type ActiveVaultResult = VaultReference | null
-
-export interface RecentVaultInfo {
-  id: string
-  lastOpenedAt: number
-}
-
-export interface RecentVaultListResult {
+export interface ActiveVaultResult {
   generation: number
-  vaults: RecentVaultInfo[]
+  name: string | null
+  vault: VaultReference | null
 }
 
 export interface CreateManagedVaultRequest extends VaultGenerationRequest {
@@ -21,10 +15,6 @@ export interface CreateManagedVaultRequest extends VaultGenerationRequest {
 
 export interface VaultGenerationRequest {
   expectedGeneration: number
-}
-
-export interface RecentVaultRequest extends VaultGenerationRequest {
-  id: string
 }
 
 export interface OpenDocumentResult {

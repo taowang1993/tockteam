@@ -7,7 +7,7 @@ import { type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from
 import { type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts';
 import type { BaseHydratedFile } from './base-query.ts';
 import type { CanvasChange } from './canvas-change.ts';
-import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
+import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts';
 import { type PropertyValue } from './properties.ts';
@@ -20,15 +20,12 @@ import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } fro
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RecentVaultInfo, RecentVaultListResult, ReadSnapshotRequest, RecentVaultRequest, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
         currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>;
         createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
-        listRecentVaults(signal?: AbortSignal): Promise<RemoteResult<RecentVaultListResult>>;
-        activateRecentVault(request: RecentVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
-        removeRecentVault(request: RecentVaultRequest, signal?: AbortSignal): Promise<RemoteResult<RecentVaultListResult>>;
         openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
         listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>;
         createDocument(request: CreateDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
@@ -107,7 +104,6 @@ export interface WorkbenchRouteSnapshot {
     outline?: VaultOutlineResult | null;
     path: string | null;
     phase: RoutePhase;
-    recentVaults?: readonly RecentVaultInfo[];
     recentlyClosed?: readonly RouteTabSummary[];
     recoveryOpen?: boolean;
     revision: string | null;
@@ -126,6 +122,7 @@ export interface WorkbenchRouteSnapshot {
     trash?: readonly TrashEntryInfo[];
     panes: readonly RoutePaneSummary[];
     vault: VaultReference | null;
+    vaultName?: string | null;
     warnings: readonly string[];
     workspaces?: readonly NamedWorkspace[];
 }
@@ -218,8 +215,6 @@ export declare class WorkbenchRouteController {
     reload(): Promise<void>;
     private onVaultChange;
     private refreshTree;
-    activateRecentVault(id: string): Promise<boolean>;
-    removeRecentVault(id: string): Promise<boolean>;
     createManagedVault(name: string): Promise<boolean>;
     openSandboxVault(): Promise<boolean>;
     setRecoveryOpen(open: boolean): Promise<void>;
@@ -278,7 +273,6 @@ export declare class WorkbenchRouteController {
 export interface TockTutorRouteViewProps {
     assistantPanel?: ReactNode;
     nativeActions?: ReactNode;
-    onActivateRecentVault?(id: string): void;
     onAddBookmark?(): void;
     onAttachFiles?(files: FileList): void;
     onActivateTab(paneId: string, path: string): void;
@@ -325,7 +319,6 @@ export interface TockTutorRouteViewProps {
     onPreviewAttachment?(path: string): void;
     onReadSnapshot?(id: string): void;
     onRemoveBookmark?(id: string): void;
-    onRemoveRecentVault?(id: string): void;
     onReopenClosedTab?(): void;
     onRestoreSnapshot?(id: string): void;
     onRestoreSnapshotOverwrite?(id: string): void;
@@ -345,6 +338,7 @@ export interface TockTutorRouteViewProps {
     onTrashCurrent?(): void;
     onToggleTask(index: number): void;
     active?: boolean;
+    renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void) => ReactNode) | undefined;
     reviewPanel?: ReactNode;
     snapshot: WorkbenchRouteSnapshot;
     webViewerPanel?: ReactNode;
@@ -352,7 +346,7 @@ export interface TockTutorRouteViewProps {
 }
 /** Semantic, authority-free view for the route state machine. */
 export declare function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode;
-export type TockTutorRouteProps = TockTutorRouteOwnerProps & PropsRenderSlots<typeof TOCKTUTOR_ASSISTANT_PANEL_SLOT | typeof TOCKTUTOR_NATIVE_ACTIONS_SLOT | typeof TOCKTUTOR_REVIEW_PANEL_SLOT | typeof TOCKTUTOR_WEB_VIEWER_PANEL_SLOT> & {
+export type TockTutorRouteProps = TockTutorRouteOwnerProps & PropsRenderSlots<typeof TOCKTUTOR_ASSISTANT_PANEL_SLOT | typeof TOCKTUTOR_NATIVE_ACTIONS_SLOT | typeof TOCKTUTOR_REVIEW_PANEL_SLOT | typeof TOCKTUTOR_VAULT_ACTIONS_SLOT | typeof TOCKTUTOR_WEB_VIEWER_PANEL_SLOT> & {
     active?: boolean;
     remote: WorkbenchRouteRemote;
 };

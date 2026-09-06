@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   TockTutorRouteView,
@@ -29,7 +30,6 @@ afterEach(() => {
 })
 
 function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
-  onActivateRecentVault?(id: string): void
   onAttachFiles?(files: FileList): void
   onBack?(): void
   onCancelDispatch?(): void
@@ -44,7 +44,6 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onOpenRecovery?(): void
   onOpenSearch?(): void
   onReadSnapshot?(id: string): void
-  onRemoveRecentVault?(id: string): void
   onReopenClosedTab?(): void
   onRestoreSnapshot?(id: string): void
   onRestoreTrash?(id: string): void
@@ -56,6 +55,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onToggleFocusMode?(): void
   onToggleTask?(index: number): void
   onTrashCurrent?(): void
+  renderVaultActions?: (placement: 'actions' | 'menu', close: () => void) => ReactNode
 } = {}): void {
   render(<TockTutorRouteView
     onActivateTab={() => {}}
@@ -284,46 +284,71 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('button', { name: 'Collapse List' })).toBeTruthy()
   })
 
-  it('opens an Obsidian-like vault switcher without developer controls', () => {
+  it('opens a spacious Obsidian-like vault switcher with clean vault navigation', () => {
     const currentId = `vault:${'a'.repeat(64)}`
-    const recentId = `vault:${'b'.repeat(64)}`
-    const onActivateRecentVault = vi.fn()
     const onCreateManagedVault = vi.fn()
-    const onRemoveRecentVault = vi.fn()
+    const onOpenFolderAsVault = vi.fn()
     renderRoute({
-      recentVaults: [{ id: currentId, lastOpenedAt: 2 }, { id: recentId, lastOpenedAt: 1 }],
       vault: { generation: 2, id: currentId },
-    }, { onActivateRecentVault, onCreateManagedVault, onRemoveRecentVault })
+    }, {
+      onCreateManagedVault,
+      renderVaultActions: (placement, close) => placement === 'menu'
+        ? <button onClick={close} role="menuitem" type="button">Reveal Vault in Finder</button>
+        : (
+            <div>
+              <p>Open Folder as Vault</p>
+              <button onClick={() => { onOpenFolderAsVault(); close() }} type="button">Open</button>
+            </div>
+          ),
+    })
 
-    const vaultSwitcher = screen.getByRole('button', { name: /TockTutor Vault/u })
-    fireEvent.click(vaultSwitcher)
-    const dialog = screen.getByRole('dialog', { name: 'Vaults' })
+    fireEvent.click(screen.getByRole('button', { name: /TockTutor Vault/u }))
+    const dialog = screen.getByRole('dialog', { name: 'Vault Switcher' })
     const vaultList = screen.getByRole('region', { name: 'Vault List' })
     expect(dialog.className).toContain('bg-[var(--tt-panel)]')
     expect(dialog.className).toContain('text-[var(--tt-text)]')
     expect(dialog.className).toContain('[--tt-panel:var(--dsw-alias-bg-layer-1,#fff)]')
     expect(dialog.className).not.toContain('bg-popover')
     expect(dialog.className).not.toContain('p-4')
+    expect(dialog.style.height).toBe('560px')
+    expect(dialog.style.maxHeight).toBe('calc(100vh - 2rem)')
+    expect(dialog.style.maxWidth).toBe('860px')
     expect(vaultList.className).toContain('bg-[var(--tockteam-shell-chrome,var(--tt-panel))]')
+    expect(vaultList.textContent).toContain('TockTutor Vault')
+    expect(screen.getByText('Vault Switcher').parentElement?.className).toContain('sr-only')
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More Vault Actions' }), { button: 0, ctrlKey: false })
+    expect(screen.getByRole('menuitem', { name: 'Copy Vault ID' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Reveal Vault in Finder' })).toBeTruthy()
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+    expect(screen.getByRole('img', { name: 'TockTeam Logo' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Vault Actions' })).toBeTruthy()
-    expect(dialog.textContent).toContain('Current Vault')
-    expect(dialog.textContent).toContain('Recent Vault 1')
+    expect(dialog.textContent).not.toContain('Current Vault')
+    expect(dialog.textContent).not.toContain('Recent Vaults')
+    expect(dialog.textContent).not.toContain('No other vaults yet')
+    expect(screen.queryByRole('button', { name: /Recent Vault/u })).toBeNull()
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-open')).toBe('false')
     expect(screen.queryByText('Developer Options')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Open Demo Vault' })).toBeNull()
     expect(document.body.textContent).not.toContain(currentId)
-    expect(document.body.textContent).not.toContain(recentId)
-    fireEvent.click(screen.getByRole('button', { name: 'Forget Recent Vault 1' }))
-    expect(onRemoveRecentVault).toHaveBeenCalledWith(recentId)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(onOpenFolderAsVault).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('dialog', { name: 'Vault Switcher' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /TockTutor Vault/u }))
     fireEvent.click(screen.getByRole('button', { name: 'Create New Vault' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Vault Name' }), { target: { value: 'Research' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create Vault' }))
     expect(onCreateManagedVault).toHaveBeenCalledWith('Research')
+  })
 
-    fireEvent.click(vaultSwitcher)
-    fireEvent.click(screen.getByRole('button', { name: 'Open Recent Vault 1' }))
-    expect(onActivateRecentVault).toHaveBeenCalledWith(recentId)
+  it('does not reserve an empty vault-action row when the active surface contributes nothing', () => {
+    renderRoute({}, { renderVaultActions: () => null })
+
+    fireEvent.click(screen.getByRole('button', { name: /Choose Vault/u }))
+    const actions = screen.getByRole('region', { name: 'Vault Actions' })
+    expect(actions.textContent).not.toContain('Open Folder as Vault')
+    expect(actions.querySelectorAll('[data-vault-action-row]')).toHaveLength(1)
   })
 
   it('keeps the active tab bottom corners on the tab shell', () => {

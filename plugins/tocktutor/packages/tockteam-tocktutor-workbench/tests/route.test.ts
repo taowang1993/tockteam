@@ -108,6 +108,7 @@ function tree(vault: VaultReference): VaultTreePage {
 
 class FakeRemote implements WorkbenchRouteRemote {
   vault: VaultReference | null = firstVault
+  vaultName = 'Research Vault'
   saveFailure: { code: 'conflict'; message: string } | null = null
   draftContent: string | null = null
   draftFailure: { code: 'unavailable'; message: string } | null = null
@@ -126,12 +127,6 @@ class FakeRemote implements WorkbenchRouteRemote {
   saveOverride: (() => Promise<{ ok: true; value: WriteDocumentResult }>) | null = null
 
   readonly tocktutorWorkbench = {
-    activateRecentVault: (request: { expectedGeneration: number; id: string }, signal?: AbortSignal) => {
-      this.calls.push({ method: 'activateRecentVault', parameters: [request, signal] })
-      const target = request.id === secondVault.id ? secondVault : firstVault
-      this.vault = target
-      return success(target)
-    },
     createManagedVault: (request: { expectedGeneration: number; name: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'createManagedVault', parameters: [request, signal] })
       this.vault = sandboxVault
@@ -150,7 +145,11 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     currentVault: (signal?: AbortSignal) => {
       this.calls.push({ method: 'currentVault', parameters: [signal] })
-      return success(this.vault)
+      return success({
+        generation: this.vault?.generation ?? 0,
+        name: this.vault === null ? null : this.vaultName,
+        vault: this.vault,
+      })
     },
     captureSnapshot: (request: { content: string; expectedVault: VaultReference; path: string; reason?: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'captureSnapshot', parameters: [request, signal] })
@@ -168,13 +167,6 @@ class FakeRemote implements WorkbenchRouteRemote {
       const removed = this.snapshots.length
       this.snapshots = []
       return success({ generation: request.expectedVault.generation, removed })
-    },
-    listRecentVaults: (signal?: AbortSignal) => {
-      this.calls.push({ method: 'listRecentVaults', parameters: [signal] })
-      return success({
-        generation: this.vault?.generation ?? 0,
-        vaults: [firstVault, secondVault].map(vault => ({ id: vault.id, lastOpenedAt: vault.generation })),
-      })
     },
     listSnapshots: (request: { expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'listSnapshots', parameters: [request, signal] })
@@ -244,15 +236,6 @@ class FakeRemote implements WorkbenchRouteRemote {
         generation: expectedVault.generation,
         path,
         revision: firstRevision,
-      })
-    },
-    removeRecentVault: (request: { expectedGeneration: number; id: string }, signal?: AbortSignal) => {
-      this.calls.push({ method: 'removeRecentVault', parameters: [request, signal] })
-      return success({
-        generation: this.vault?.generation ?? request.expectedGeneration,
-        vaults: [firstVault, secondVault]
-          .filter(vault => vault.id !== request.id)
-          .map(vault => ({ id: vault.id, lastOpenedAt: vault.generation })),
       })
     },
     restoreSnapshot: (request: { expectedRevision: string; expectedVault: VaultReference; path: string; snapshotId: string }, signal?: AbortSignal) => {
@@ -395,6 +378,18 @@ class FakeRemote implements WorkbenchRouteRemote {
     for (const listener of this.listeners) listener(event)
   }
 }
+
+test('loads the active vault name and generation without fetching recent vaults', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+
+  await controller.syncLocation('/tocktutor')
+
+  assert.equal(controller.getSnapshot().phase, 'ready')
+  assert.equal(controller.getSnapshot().vaultName, 'Research Vault')
+  assert.equal(remote.calls.some(call => call.method === 'listRecentVaults'), false)
+  controller.dispose()
+})
 
 test('dispose flushes a draft scheduled immediately before true disposal', async () => {
   const remote = new FakeRemote()
@@ -1186,33 +1181,26 @@ test('loads bounded recovery state and drives preview, restore, trash, and recov
   controller.dispose()
 })
 
-test('dirty-gates opaque recent and sandbox vault transitions without browser paths', async () => {
+test('dirty-gates managed and sandbox vault transitions without browser paths', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
-  assert.equal(controller.getSnapshot().recentVaults?.length, 2)
   assert.equal(await controller.select('Folder/Note.md'), true)
   controller.edit('# Dirty vault switch\n')
   remote.saveFailure = { code: 'conflict', message: 'changed' }
-  assert.equal(await controller.activateRecentVault(secondVault.id), false)
-  assert.equal(remote.calls.some(call => call.method === 'activateRecentVault'), false)
+  assert.equal(await controller.createManagedVault('Class Notes'), false)
+  assert.equal(remote.calls.some(call => call.method === 'createManagedVault'), false)
 
   remote.saveFailure = null
-  assert.equal(await controller.activateRecentVault(secondVault.id), true)
-  assert.deepEqual(controller.getSnapshot().vault, secondVault)
-  assert.equal(await controller.removeRecentVault(firstVault.id), true)
-  assert.deepEqual(controller.getSnapshot().recentVaults?.map(vault => vault.id), [secondVault.id])
   assert.equal(await controller.createManagedVault('Class Notes'), true)
   assert.deepEqual(controller.getSnapshot().vault, sandboxVault)
   assert.equal(await controller.openSandboxVault(), true)
   assert.deepEqual(controller.getSnapshot().vault, sandboxVault)
   const requests = remote.calls
-    .filter(call => call.method === 'activateRecentVault' || call.method === 'removeRecentVault' || call.method === 'createManagedVault' || call.method === 'openSandboxVault')
+    .filter(call => call.method === 'createManagedVault' || call.method === 'openSandboxVault')
     .map(call => call.parameters[0])
   assert.deepEqual(requests, [
-    { expectedGeneration: firstVault.generation, id: secondVault.id },
-    { expectedGeneration: secondVault.generation, id: firstVault.id },
-    { expectedGeneration: secondVault.generation, name: 'Class Notes' },
+    { expectedGeneration: firstVault.generation, name: 'Class Notes' },
     { expectedGeneration: sandboxVault.generation },
   ])
   controller.dispose()

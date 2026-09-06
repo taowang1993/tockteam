@@ -1,1 +1,1 @@
-{"version":3,"file":"native-actions.js","sourceRoot":"","sources":["../src/native-actions.ts"],"names":[],"mappings":"AAEA,wFAAwF;AACxF,MAAM,CAAC,MAAM,6BAA6B,GAAG,6CAA6C,CAAA"}
+{"version":3,"file":"native-actions.js","sourceRoot":"","sources":["../src/native-actions.ts"],"names":[],"mappings":"AAEA,wFAAwF;AACxF,MAAM,CAAC,MAAM,6BAA6B,GAAG,6CAA6C,CAAA;AAE1F,mFAAmF;AACnF,MAAM,CAAC,MAAM,4BAA4B,GAAG,4CAA4C,CAAA"}

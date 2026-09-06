@@ -33,10 +33,12 @@ var client_exports = {};
 __export(client_exports, {
   TOCKTEAM_SURFACE_SERVICE: () => TOCKTEAM_SURFACE_SERVICE,
   TockTutorNativeActions: () => TockTutorNativeActions,
+  TockTutorVaultActions: () => TockTutorVaultActions,
   apply: () => apply,
   assertDesktopSurface: () => assertDesktopSurface,
   inject: () => inject,
   name: () => name,
+  openFolderAsVault: () => openFolderAsVault,
   replaceActionController: () => replaceActionController,
   requestMicrophoneAccess: () => requestMicrophoneAccess,
   runDesktopDispatchLoop: () => runDesktopDispatchLoop,
@@ -15016,7 +15018,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15031,7 +15033,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15468,6 +15470,46 @@ function resultMessage(result) {
       return "This native action is unavailable.";
   }
 }
+async function openFolderAsVault(owner, bridge, remote, signal) {
+  if (!await saveCurrent(owner)) return void 0;
+  return await nativeCall(bridge, "activate-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.activateVault(authorization, ownerSignal));
+}
+function TockTutorVaultActions(props) {
+  const operation = (0, import_react.useRef)();
+  const [busy, setBusy] = (0, import_react.useState)(false);
+  const [message, setMessage] = (0, import_react.useState)("");
+  (0, import_react.useEffect)(() => () => {
+    operation.current?.abort();
+  }, []);
+  const open = async () => {
+    const controller = replaceActionController(operation.current);
+    operation.current = controller;
+    setBusy(true);
+    setMessage("Opening folder picker\u2026");
+    try {
+      const result = await openFolderAsVault(props, props.bridge, props.remote, controller.signal);
+      if (!controller.signal.aborted && result !== void 0) {
+        setMessage(resultMessage(result));
+        if (result.status === "activated") props.close();
+      }
+    } catch {
+      if (!controller.signal.aborted) setMessage("The folder picker could not be opened.");
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  };
+  if (props.placement === "menu") return null;
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-4 p-4", "data-vault-action-row": true, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "min-w-0 flex-1", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { className: "m-0 font-medium", children: "Open Folder as Vault" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "mt-1 text-xs text-[var(--tt-muted)]", children: "Choose an existing folder of Markdown files." })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Button, { "aria-label": "Open Folder as Vault", disabled: busy, onClick: () => {
+      void open();
+    }, variant: "outline", children: busy ? "Opening\u2026" : "Open" }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { "aria-live": "polite", className: "sr-only", children: message })
+  ] });
+}
 function TockTutorNativeActions(props) {
   const owner = (0, import_react.useRef)(props);
   const lifetime = (0, import_react.useRef)();
@@ -15597,10 +15639,6 @@ function TockTutorNativeActions(props) {
   );
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [
-      button("Choose Vault", async () => {
-        if (!await saveCurrent(props)) return;
-        await run("Choosing Vault", "activate-vault", (authorization, signal) => props.remote.tocktutorDesktop.activateVault(authorization, signal));
-      }),
       button("Reveal Entry", withNote("Revealing Entry", "reveal-entry", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal)), hasNote),
       button("Open Pop-Out", withNote("Opening Pop-Out", "popout-open", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal), true), hasNote),
       button("Close Pop-Out", withNote("Closing Pop-Out", "popout-close", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal)), hasNote),
@@ -15640,6 +15678,7 @@ function assertDesktopSurface(value) {
 // src/client-api.ts
 var name = "tockbot-note-desktop";
 var TOCKTUTOR_NATIVE_ACTIONS_SLOT = "tockteam.tocktutor.workbench.native-actions";
+var TOCKTUTOR_VAULT_ACTIONS_SLOT = "tockteam.tocktutor.workbench.vault-actions";
 var inject = [TOCKTEAM_SURFACE_SERVICE, "remote", "slots"];
 async function disposeClient(bridge, disposeRemote) {
   try {
@@ -15685,7 +15724,7 @@ async function apply(ctx) {
           tocktutorDesktop: child.remote.tocktutorDesktop
         };
         const slots = child.slots;
-        return slots.inject(
+        const disposeNativeActions = slots.inject(
           TOCKTUTOR_NATIVE_ACTIONS_SLOT,
           () => slots.register({
             id: name,
@@ -15694,6 +15733,28 @@ async function apply(ctx) {
             registrant: name
           }, TockTutorNativeActions)
         );
+        let disposeVaultActions;
+        try {
+          disposeVaultActions = slots.inject(
+            TOCKTUTOR_VAULT_ACTIONS_SLOT,
+            () => slots.register({
+              id: name,
+              inject: () => ({ bridge, remote }),
+              name: TOCKTUTOR_VAULT_ACTIONS_SLOT,
+              registrant: name
+            }, TockTutorVaultActions)
+          );
+        } catch (error51) {
+          disposeNativeActions();
+          throw error51;
+        }
+        return () => {
+          try {
+            disposeVaultActions();
+          } finally {
+            disposeNativeActions();
+          }
+        };
       }
     );
     await slotFiber;

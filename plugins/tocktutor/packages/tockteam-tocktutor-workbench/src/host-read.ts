@@ -17,8 +17,6 @@ import type {
   ListTreeRequest,
   OpenDocumentResult,
   ReadSnapshotRequest,
-  RecentVaultListResult,
-  RecentVaultRequest,
   RestoreSnapshotOverwriteRequest,
   RestoreSnapshotRequest,
   RestoreTrashRequest,
@@ -57,7 +55,7 @@ export const MAX_TREE_PAGE_SIZE = 200
 
 export type NoteVaultCapability = Pick<
   NoteVaultRuntime,
-  | 'activateRecentVault'
+  | 'activeVaultName'
   | 'captureSnapshot'
   | 'clearDraft'
   | 'clearSnapshots'
@@ -66,7 +64,6 @@ export type NoteVaultCapability = Pick<
   | 'facets'
   | 'graph'
   | 'inspectAttachment'
-  | 'listRecentVaults'
   | 'listSnapshots'
   | 'listTrash'
   | 'links'
@@ -77,7 +74,6 @@ export type NoteVaultCapability = Pick<
   | 'previewAttachment'
   | 'readDraft'
   | 'readSnapshot'
-  | 'removeRecentVault'
   | 'restoreSnapshot'
   | 'restoreSnapshotAsNew'
   | 'restoreTrash'
@@ -183,13 +179,6 @@ function assertCreateManagedVaultRequest(value: CreateManagedVaultRequest): void
   assertExpectedGeneration(value)
   if (typeof value.name !== 'string' || value.name.trim().length === 0 || value.name.length > 80 || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(value.name.trim())) {
     throw new TypeError('Managed vault name is invalid.')
-  }
-}
-
-function assertRecentVaultRequest(value: RecentVaultRequest): void {
-  assertExpectedGeneration(value)
-  if (typeof value.id !== 'string' || !/^vault:[0-9a-f]{64}$/u.test(value.id)) {
-    throw new TypeError('Recent vault request must identify one opaque vault.')
   }
 }
 
@@ -367,10 +356,11 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
   async currentVault(signal: AbortSignal): Promise<ActiveVaultResult> {
     signal.throwIfAborted()
     const state = this.ctx.noteVault.state
-    if (!state.active) return null
+    if (!state.active) return { generation: state.generation, name: null, vault: null }
     const vault = activeReference(state)
+    const name = this.ctx.noteVault.activeVaultName()
     await synchronizeDesktopVault(this.ctx.noteVault, signal)
-    return vault
+    return { generation: vault.generation, name, vault }
   }
 
   @Remote
@@ -380,34 +370,6 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     const vault = activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration))
     await synchronizeDesktopVault(this.ctx.noteVault, signal)
     return vault
-  }
-
-  @Remote
-  async listRecentVaults(signal: AbortSignal): Promise<RecentVaultListResult> {
-    signal.throwIfAborted()
-    return {
-      generation: this.ctx.noteVault.state.generation,
-      vaults: this.ctx.noteVault.listRecentVaults(),
-    }
-  }
-
-  @Remote
-  async activateRecentVault(request: RecentVaultRequest, signal: AbortSignal): Promise<VaultReference> {
-    assertRecentVaultRequest(request)
-    signal.throwIfAborted()
-    const vault = activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration))
-    await synchronizeDesktopVault(this.ctx.noteVault, signal)
-    return vault
-  }
-
-  @Remote
-  async removeRecentVault(request: RecentVaultRequest, signal: AbortSignal): Promise<RecentVaultListResult> {
-    assertRecentVaultRequest(request)
-    signal.throwIfAborted()
-    return {
-      generation: this.ctx.noteVault.state.generation,
-      vaults: this.ctx.noteVault.removeRecentVault(request.id, request.expectedGeneration),
-    }
   }
 
   @Remote

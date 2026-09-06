@@ -1,11 +1,10 @@
 import { type ReactNode } from 'react';
-import type { RecentVaultInfo, VaultReference } from './types.ts';
+import type { VaultReference } from './types.ts';
 export interface WorkbenchVaultDialogProps {
-    onActivateRecentVault?: ((id: string) => void) | undefined;
     onCreateManagedVault?: ((name: string) => void) | undefined;
-    onRemoveRecentVault?: ((id: string) => void) | undefined;
-    recentVaults: readonly RecentVaultInfo[];
+    renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void) => ReactNode) | undefined;
     vault: VaultReference | null;
+    vaultName: string | null;
 }
 export declare function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNode;
 //# sourceMappingURL=vault-dialog.d.ts.map

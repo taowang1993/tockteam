@@ -11,6 +11,7 @@ import type {
   TockTutorNativeActionsDispatchEvent,
   TockTutorNativeActionsDispatchResult,
   TockTutorNativeActionsOwnerProps,
+  TockTutorVaultActionsOwnerProps,
   VaultReference,
 } from '@tockteam/tocktutor-workbench/client'
 import type { NativeActionResult } from './types.ts'
@@ -128,7 +129,7 @@ function dispatchStatus(result: NativeActionResult): TockTutorNativeActionsDispa
     : 'failed'
 }
 
-async function saveCurrent(owner: TockTutorNativeActionsOwnerProps): Promise<boolean> {
+async function saveCurrent(owner: Pick<TockTutorNativeActionsOwnerProps, 'saveCurrent'>): Promise<boolean> {
   return owner.saveCurrent === undefined ? true : await owner.saveCurrent()
 }
 
@@ -464,6 +465,11 @@ export type TockTutorNativeActionsProps = TockTutorNativeActionsOwnerProps & {
   remote: DesktopActionRemote
 }
 
+export type TockTutorVaultActionsProps = TockTutorVaultActionsOwnerProps & {
+  bridge: DesktopCallerBridge
+  remote: DesktopActionRemote
+}
+
 function resultMessage(result: NativeActionResult): string {
   switch (result.status) {
     case 'activated': return 'Vault selected.'
@@ -481,6 +487,58 @@ function resultMessage(result: NativeActionResult): string {
   }
 }
 
+export async function openFolderAsVault(
+  owner: TockTutorVaultActionsOwnerProps,
+  bridge: DesktopCallerBridge,
+  remote: DesktopActionRemote,
+  signal?: AbortSignal,
+): Promise<NativeActionResult | undefined> {
+  if (!await saveCurrent(owner)) return undefined
+  return await nativeCall(bridge, 'activate-vault', signal, (authorization, ownerSignal) => (
+    remote.tocktutorDesktop.activateVault(authorization, ownerSignal)
+  ))
+}
+
+/** Desktop-only vault picker contribution for the vault-management dialog. */
+export function TockTutorVaultActions(props: TockTutorVaultActionsProps): ReactNode {
+  const operation = useRef<AbortController>()
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+
+  useEffect(() => () => { operation.current?.abort() }, [])
+
+  const open = async (): Promise<void> => {
+    const controller = replaceActionController(operation.current)
+    operation.current = controller
+    setBusy(true)
+    setMessage('Opening folder picker…')
+    try {
+      const result = await openFolderAsVault(props, props.bridge, props.remote, controller.signal)
+      if (!controller.signal.aborted && result !== undefined) {
+        setMessage(resultMessage(result))
+        if (result.status === 'activated') props.close()
+      }
+    } catch {
+      if (!controller.signal.aborted) setMessage('The folder picker could not be opened.')
+    } finally {
+      if (!controller.signal.aborted) setBusy(false)
+    }
+  }
+
+  if (props.placement === 'menu') return null
+  return (
+    <div className="flex items-center gap-4 p-4" data-vault-action-row>
+      <div className="min-w-0 flex-1">
+        <h3 className="m-0 font-medium">Open Folder as Vault</h3>
+        <p className="mt-1 text-xs text-[var(--tt-muted)]">Choose an existing folder of Markdown files.</p>
+      </div>
+      <Button aria-label="Open Folder as Vault" disabled={busy} onClick={() => { void open() }} variant="outline">
+        {busy ? 'Opening…' : 'Open'}
+      </Button>
+      <span aria-live="polite" className="sr-only">{message}</span>
+    </div>
+  )
+}
 
 /** Accessible contribution for Workbench's root-scoped Native Actions seat. */
 export function TockTutorNativeActions(props: TockTutorNativeActionsProps): ReactNode {
@@ -632,12 +690,6 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
   return (
     <div aria-label="Desktop Note Actions" className="tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]" role="group">
       <div className="tocktutor-desktop-actions-grid grid grid-cols-2 gap-2">
-        {button('Choose Vault', async () => {
-          if (!await saveCurrent(props)) return
-          await run('Choosing Vault', 'activate-vault', (authorization, signal) => (
-            props.remote.tocktutorDesktop.activateVault(authorization, signal)
-          ))
-        })}
         {button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal)
         )), hasNote)}

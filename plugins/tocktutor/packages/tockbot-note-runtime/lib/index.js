@@ -2582,6 +2582,14 @@ export class NoteVaultRuntime extends Service {
         }
         return this.currentState;
     }
+    activeVaultName() {
+        const state = this.currentState;
+        const root = this.vaultRoot;
+        if (!state.active || root === null)
+            return null;
+        this.assertActiveVaultBound(state, root);
+        return path.basename(root);
+    }
     invalidateActiveVault(state, root) {
         if (this.currentState !== state || this.vaultRoot !== root)
             return;

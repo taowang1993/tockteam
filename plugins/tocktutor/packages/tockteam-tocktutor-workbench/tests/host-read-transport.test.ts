@@ -59,11 +59,6 @@ class FakeNoteVault extends Service {
     warnings: [],
   }
   failure: Error | null = null
-  recent = [
-    { id: vault.id, lastOpenedAt: 7 },
-    { id: `vault:${'d'.repeat(64)}`, lastOpenedAt: 6 },
-  ]
-
   constructor(ctx: Context) {
     super(ctx, 'noteVault')
   }
@@ -79,20 +74,9 @@ class FakeNoteVault extends Service {
     return { active: true as const, generation: expectedGeneration + 1, id: `vault:${'f'.repeat(64)}` }
   }
 
-  listRecentVaults() {
-    this.calls.push({ method: 'listRecentVaults', parameters: [] })
-    return this.recent
-  }
-
-  activateRecentVault(id: string, expectedGeneration: number) {
-    this.calls.push({ method: 'activateRecentVault', parameters: [id, expectedGeneration] })
-    return { active: true as const, generation: expectedGeneration + 1, id }
-  }
-
-  removeRecentVault(id: string, expectedGeneration: number) {
-    this.calls.push({ method: 'removeRecentVault', parameters: [id, expectedGeneration] })
-    this.recent = this.recent.filter(vault => vault.id !== id)
-    return this.recent
+  activeVaultName() {
+    this.calls.push({ method: 'activeVaultName', parameters: [] })
+    return 'Research Vault'
   }
 
   openSandboxVault(expectedGeneration: number) {
@@ -195,9 +179,6 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     assert.deepEqual(remoteMethods(state.gateway), [
       { invocation: { kind: 'direct' }, method: 'currentVault' },
       { invocation: { kind: 'direct' }, method: 'createManagedVault' },
-      { invocation: { kind: 'direct' }, method: 'listRecentVaults' },
-      { invocation: { kind: 'direct' }, method: 'activateRecentVault' },
-      { invocation: { kind: 'direct' }, method: 'removeRecentVault' },
       { invocation: { kind: 'direct' }, method: 'openSandboxVault' },
       { invocation: { kind: 'direct' }, method: 'inspectAttachment' },
       { invocation: { kind: 'direct' }, method: 'previewAttachment' },
@@ -226,17 +207,15 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     ])
 
     const signal = new AbortController().signal
-    assert.deepEqual(await state.gateway.currentVault(signal), vault)
+    assert.deepEqual(await state.gateway.currentVault(signal), {
+      generation: 7,
+      name: 'Research Vault',
+      vault,
+    })
     state.runtime.active = false
-    assert.equal(await state.gateway.currentVault(signal), null)
+    assert.deepEqual(await state.gateway.currentVault(signal), { generation: 7, name: null, vault: null })
     state.runtime.active = true
     assert.deepEqual(await state.gateway.createManagedVault({ expectedGeneration: 7, name: 'Class Notes' }, signal), { generation: 8, id: `vault:${'f'.repeat(64)}` })
-    assert.deepEqual(await state.gateway.listRecentVaults(signal), { generation: 7, vaults: state.runtime.recent })
-    assert.deepEqual(await state.gateway.activateRecentVault({ expectedGeneration: 7, id: state.runtime.recent[1]!.id }, signal), {
-      generation: 8,
-      id: state.runtime.recent[1]!.id,
-    })
-    assert.equal((await state.gateway.removeRecentVault({ expectedGeneration: 7, id: state.runtime.recent[1]!.id }, signal)).vaults.length, 1)
     assert.deepEqual(await state.gateway.openSandboxVault({ expectedGeneration: 7 }, signal), {
       generation: 8,
       id: `vault:${'e'.repeat(64)}`,
@@ -252,13 +231,10 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     assert.equal((await state.gateway.links({ expectedVault: vault, includeUnlinked: true, path: 'Folder/Note.md' }, signal)).path, 'Folder/Note.md')
     assert.equal((await state.gateway.search({ expectedVault: vault, mode: 'query', query: 'match' }, signal)).matches.length, 1)
     assert.deepEqual(state.runtime.calls, [
+      { method: 'activeVaultName', parameters: [] },
       { method: 'synchronizeDesktopSelection', parameters: [signal] },
       { method: 'createManagedVault', parameters: ['Class Notes', 7] },
       { method: 'synchronizeDesktopSelection', parameters: [signal] },
-      { method: 'listRecentVaults', parameters: [] },
-      { method: 'activateRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
-      { method: 'synchronizeDesktopSelection', parameters: [signal] },
-      { method: 'removeRecentVault', parameters: [`vault:${'d'.repeat(64)}`, 7] },
       { method: 'openSandboxVault', parameters: [7] },
       { method: 'synchronizeDesktopSelection', parameters: [signal] },
       { method: 'inspectAttachment', parameters: ['Attachments/a.png', vault, signal] },
@@ -305,8 +281,6 @@ test('fails closed on browser-controlled path, vault, cursor, and limit values',
     await assert.rejects(state.gateway.createManagedVault({ expectedGeneration: 7, name: '../escape' }, signal), /name/i)
     await assert.rejects(state.gateway.search({ expectedVault: vault, query: 'x'.repeat(1_001) }, signal), /query/i)
     await assert.rejects(state.gateway.search({ expectedVault: vault, query: 'ok', regex: 'yes' as unknown as boolean }, signal), /Boolean/i)
-    await assert.rejects(state.gateway.activateRecentVault({ expectedGeneration: -1, id: vault.id }, signal), /generation/i)
-    await assert.rejects(state.gateway.removeRecentVault({ expectedGeneration: 7, id: 'unsafe' }, signal), /recent vault/i)
     await assert.rejects(state.gateway.openSandboxVault({ expectedGeneration: -1 }, signal), /generation/i)
     for (const limit of [0, MAX_TREE_PAGE_SIZE + 1, 1.5]) {
       await assert.rejects(state.gateway.listTree({ expectedVault: vault, limit }, signal), /limit/i)

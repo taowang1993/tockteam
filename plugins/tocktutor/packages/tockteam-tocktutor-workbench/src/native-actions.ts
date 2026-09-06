@@ -3,6 +3,9 @@ import type { VaultReference } from './types.ts'
 /** Ordered UI seat for optional Desktop-native actions owned by the Workbench route. */
 export const TOCKTUTOR_NATIVE_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.native-actions'
 
+/** Ordered UI seat for vault-management actions supplied by the active surface. */
+export const TOCKTUTOR_VAULT_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.vault-actions'
+
 export type TockTutorProtocolRequest = {
   action: 'open' | 'new' | 'daily' | 'unique' | 'search' | 'choose-vault'
   /** Legacy Host-only selector; browser bridge requests use vaultId/vaultGeneration. */
@@ -42,12 +45,25 @@ export interface TockTutorNativeActionsOwnerProps {
   vault: VaultReference | null
 }
 
+export interface TockTutorVaultActionsOwnerProps {
+  close(): void
+  placement: 'actions' | 'menu'
+  saveCurrent?(): Promise<boolean>
+  vault: VaultReference | null
+  vaultName: string | null
+}
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     'tockteam.tocktutor.workbench.native-actions': {
       kind: 'list'
       scope: 'root'
       owner: TockTutorNativeActionsOwnerProps
+    }
+    'tockteam.tocktutor.workbench.vault-actions': {
+      kind: 'list'
+      scope: 'root'
+      owner: TockTutorVaultActionsOwnerProps
     }
   }
 }

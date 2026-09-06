@@ -3647,6 +3647,14 @@ export class NoteVaultRuntime extends Service {
     return this.currentState
   }
 
+  activeVaultName(): string | null {
+    const state = this.currentState
+    const root = this.vaultRoot
+    if (!state.active || root === null) return null
+    this.assertActiveVaultBound(state, root)
+    return path.basename(root)
+  }
+
   private invalidateActiveVault(state: Extract<NoteVaultState, { active: true }>, root: string): void {
     if (this.currentState !== state || this.vaultRoot !== root) return
     const invalidated = new NoteVaultError('stale-vault', 'The active vault identity changed')

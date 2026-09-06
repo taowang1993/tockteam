@@ -20,7 +20,7 @@ import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from "./assistant-panel.js";
 import { ExecutableBaseView } from "./base-executable-view.js";
 import { executableBasePropertyIdentity } from "./base-edit.js";
 import { CanvasBoard } from "./canvas-board.js";
-import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, } from "./native-actions.js";
+import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from "./web-viewer-panel.js";
 import { LivePreviewView, RichReadingView } from "./editor-surface.js";
@@ -151,14 +151,11 @@ function targetLine(source, fragment) {
     }
     return null;
 }
-function validRecentVaults(value) {
+function validActiveVault(value) {
     return Number.isSafeInteger(value?.generation)
         && value.generation >= 0
-        && Array.isArray(value.vaults)
-        && value.vaults.length <= 20
-        && value.vaults.every(vault => /^vault:[0-9a-f]{64}$/u.test(vault.id)
-            && Number.isFinite(vault.lastOpenedAt)
-            && vault.lastOpenedAt >= 0);
+        && (value.name === null || typeof value.name === 'string' && value.name.length > 0 && value.name.length <= 255)
+        && (value.vault === null || value.vault.generation === value.generation);
 }
 function validSearchResult(value, vault) {
     return value?.generation === vault.generation
@@ -257,7 +254,6 @@ function initialSnapshot() {
         organizationProposal: null,
         path: null,
         phase: 'loading',
-        recentVaults: Object.freeze([]),
         recentlyClosed: Object.freeze([]),
         recoveryOpen: false,
         revision: null,
@@ -279,6 +275,7 @@ function initialSnapshot() {
                 tabs: Object.freeze([]),
             })]),
         vault: null,
+        vaultName: null,
         warnings: Object.freeze([]),
         workspaces: Object.freeze([]),
     });
@@ -976,7 +973,6 @@ export class WorkbenchRouteController {
             outline: null,
             path: null,
             phase: 'loading',
-            recentVaults: Object.freeze([]),
             recentlyClosed: Object.freeze([]),
             revision: null,
             saveStatus: 'saved',
@@ -990,23 +986,19 @@ export class WorkbenchRouteController {
             source: '',
             panes: this.shellPanes(),
             vault: null,
+            vaultName: null,
             warnings: Object.freeze([]),
         });
         try {
-            const recent = remoteValue(await this.remote.tocktutorWorkbench.listRecentVaults(operation.signal));
-            if (!this.current(operation.id) || !validRecentVaults(recent))
+            const activeVault = remoteValue(await this.remote.tocktutorWorkbench.currentVault(operation.signal));
+            if (!this.current(operation.id) || !validActiveVault(activeVault))
                 return;
-            this.vaultGeneration = recent.generation;
-            const recentVaults = Object.freeze(recent.vaults.map(vault => Object.freeze({ ...vault })));
-            const vault = remoteValue(await this.remote.tocktutorWorkbench.currentVault(operation.signal));
-            if (!this.current(operation.id))
-                return;
-            if (vault === null) {
-                this.update({ message: 'No active TockTutor vault is available.', phase: 'inactive', recentVaults });
+            this.vaultGeneration = activeVault.generation;
+            const vault = activeVault.vault;
+            if (vault === null || activeVault.name === null) {
+                this.update({ message: 'No active TockTutor vault is available.', phase: 'inactive' });
                 return;
             }
-            if (vault.generation !== recent.generation)
-                return await this.reload();
             const page = remoteValue(await this.remote.tocktutorWorkbench.listTree({
                 expectedVault: vault,
                 limit: TREE_LIMIT,
@@ -1044,9 +1036,9 @@ export class WorkbenchRouteController {
                 message: page.truncated ? 'The vault tree is truncated to a bounded result.' : 'Vault ready.',
                 panes: this.shellPanes(),
                 phase: 'ready',
-                recentVaults,
                 ...(settings === undefined ? {} : { settings }),
                 vault,
+                vaultName: activeVault.name,
                 warnings: Object.freeze(page.warnings),
                 workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
             });
@@ -1121,45 +1113,6 @@ export class WorkbenchRouteController {
             if (this.current(operation.id, vault) && !operation.signal.aborted) {
                 this.update({ message: this.failureMessage(error, 'The vault tree could not be refreshed.') });
             }
-        }
-    }
-    async activateRecentVault(id) {
-        if (!/^vault:[0-9a-f]{64}$/u.test(id) || this.snapshot.recentVaults?.some(vault => vault.id === id) !== true)
-            return false;
-        if (this.snapshot.saveStatus !== 'saved' && !await this.save())
-            return false;
-        const operation = this.nextOperation();
-        const expectedGeneration = this.vaultGeneration;
-        try {
-            const vault = remoteValue(await this.remote.tocktutorWorkbench.activateRecentVault({
-                expectedGeneration,
-                id,
-            }, operation.signal));
-            if (!this.current(operation.id) || vault.generation < expectedGeneration || vault.id !== id)
-                return false;
-            await this.reload();
-            return sameVault(this.snapshot.vault, vault);
-        }
-        catch {
-            return false;
-        }
-    }
-    async removeRecentVault(id) {
-        if (!/^vault:[0-9a-f]{64}$/u.test(id) || this.snapshot.recentVaults?.some(vault => vault.id === id) !== true)
-            return false;
-        const operation = this.nextOperation();
-        try {
-            const result = remoteValue(await this.remote.tocktutorWorkbench.removeRecentVault({
-                expectedGeneration: this.vaultGeneration,
-                id,
-            }, operation.signal));
-            if (!this.current(operation.id) || !validRecentVaults(result) || result.generation !== this.vaultGeneration)
-                return false;
-            this.update({ recentVaults: Object.freeze(result.vaults.map(vault => Object.freeze({ ...vault }))) });
-            return true;
-        }
-        catch {
-            return false;
         }
     }
     async createManagedVault(name) {
@@ -2480,7 +2433,7 @@ export function TockTutorRouteView(props) {
     return (_jsx(TooltipProvider, { children: _jsxs("main", { "aria-label": "TockTutor Workbench", className: "tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0", "data-focus-mode": snapshot.focusMode === true, "data-phase": snapshot.phase, tabIndex: -1, children: [titlebar !== null && (props.titlebarTarget === undefined ? titlebar : createPortal(titlebar, props.titlebarTarget)), snapshot.dispatchDialog !== null && (_jsx(NativeDispatchDialog, { kind: snapshot.dispatchDialog, onCancel: () => { props.onCancelDispatch?.(); }, onSubmit: draft => { props.onSubmitDispatch?.(draft); } })), visiblePalette === 'commands' && (_jsx(WorkbenchCommandPalette, { canGoBack: snapshot.canGoBack === true, canGoForward: snapshot.canGoForward === true, canReopen: (snapshot.recentlyClosed?.length ?? 0) > 0, editorEnabled: snapshot.documentKind === 'markdown' && snapshot.mode !== 'reading', onBack: props.onBack, onClose: () => { setPaletteView(null); props.onCloseCommandPalette?.(); }, onEditorCommand: props.onEditorCommand, onForward: props.onForward, onNewNote: props.onNewNote, onReopen: props.onReopenClosedTab, onSearch: () => { setPaletteView('notes'); props.onOpenSearch?.(); }, onToggleFocus: props.onToggleFocusMode })), visiblePalette === 'notes' && (_jsx(WorkbenchNoteSearchPalette, { notePaths: documents.map(document => document.path), onClose: () => { setPaletteView(null); props.onCloseCommandPalette?.(); props.onCloseSearch?.(); }, onCommands: () => { setPaletteView('commands'); props.onOpenCommandPalette?.(); props.onCloseSearch?.(); }, onRunSearch: props.onRunSearch, onSearchChange: props.onSearchChange, onSearchMode: props.onSearchMode, onSelect: props.onSelect, snapshot: snapshot })), _jsxs("div", { className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out", style: {
                         gridTemplateColumns: contentColumns,
                         transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
-                    }, children: [_jsxs("aside", { "aria-hidden": !effectiveSidebarOpen, "aria-label": "Files", className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]", "data-open": effectiveSidebarOpen, ...(effectiveSidebarOpen ? {} : { inert: '' }), children: [_jsxs("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [_jsx("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(WorkbenchGlyph, { kind: "more" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(Upload, { "aria-hidden": "true" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(WorkbenchGlyph, { kind: "folder" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(PanelTop, { "aria-hidden": "true" }) })] }), _jsx("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: _jsxs("nav", { "aria-label": "Vault Notes", children: [snapshot.phase === 'loading' && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }), _jsx("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? 'tree' : undefined, children: _jsx(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })] }) }), _jsx(WorkbenchVaultDialog, { onActivateRecentVault: props.onActivateRecentVault, onCreateManagedVault: props.onCreateManagedVault, onRemoveRecentVault: props.onRemoveRecentVault, recentVaults: snapshot.recentVaults ?? [], vault: snapshot.vault })] }), _jsx(Button, { unstyled: true, "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`, className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]", hidden: !effectiveSidebarOpen, onKeyDown: resizeSidebarWithKeyboard, onPointerDown: beginSidebarResize, style: { left: sidebarWidth - 4 }, title: "Drag or Use Left and Right Arrow Keys", type: "button" }), _jsxs("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [_jsxs("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [_jsx("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }), _jsxs("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[26px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)]", children: [snapshot.documentKind === 'markdown' ? (_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View', disabled: snapshot.path === null, onClick: () => { props.onMode(snapshot.mode === 'reading' ? 'live-preview' : 'reading'); }, type: "button", children: snapshot.mode === 'reading' ? _jsx(Pencil, { "aria-hidden": "true" }) : _jsx(FileText, { "aria-hidden": "true" }) }) }), _jsx(TooltipContent, { children: snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View' })] })) : (_jsx(Button, { unstyled: true, "aria-label": snapshot.mode === 'source' ? previewLabel : sourceLabel, onClick: () => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "pencil" }) })), _jsxs(DropdownMenu, { modal: false, children: [_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(DropdownMenuTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "More Note Actions", className: "inline-flex h-7 w-[26px] items-center justify-center border-0 bg-transparent p-0 text-[var(--tt-muted)]", type: "button", children: _jsx(WorkbenchGlyph, { kind: "more" }) }) }) }), _jsx(TooltipContent, { children: "More Note Actions" })] }), _jsxs(DropdownMenuContent, { align: "end", className: "w-[260px] rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1,Canvas))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]", portalled: false, sideOffset: 6, unstyled: true, children: [snapshot.documentKind === 'markdown' && (_jsxs(_Fragment, { children: [_jsx(DropdownMenuRadioGroup, { "aria-label": "Editor Mode", value: snapshot.mode, children: [
+                    }, children: [_jsxs("aside", { "aria-hidden": !effectiveSidebarOpen, "aria-label": "Files", className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]", "data-open": effectiveSidebarOpen, ...(effectiveSidebarOpen ? {} : { inert: '' }), children: [_jsxs("header", { className: "tocktutor-sidebar-header flex items-center gap-2.5 border-b border-[var(--tt-border)] px-2.5 [&_svg]:size-3.5", children: [_jsx("h1", { className: "mr-auto my-0 text-sm font-semibold", children: "Files" }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(WorkbenchGlyph, { kind: "more" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(Upload, { "aria-hidden": "true" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(WorkbenchGlyph, { kind: "folder" }) }), _jsx("span", { className: "inline-flex items-center justify-center text-sm text-[var(--tt-muted)]", children: _jsx(PanelTop, { "aria-hidden": "true" }) })] }), _jsx("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: _jsxs("nav", { "aria-label": "Vault Notes", children: [snapshot.phase === 'loading' && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }), _jsx("ul", { className: "tocktutor-tree m-0 list-none p-0", role: visibleTreeEntries.length > 0 ? 'tree' : undefined, children: _jsx(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path }) })] }) }), _jsx(WorkbenchVaultDialog, { onCreateManagedVault: props.onCreateManagedVault, renderVaultActions: props.renderVaultActions, vault: snapshot.vault, vaultName: snapshot.vaultName ?? null })] }), _jsx(Button, { unstyled: true, "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`, className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]", hidden: !effectiveSidebarOpen, onKeyDown: resizeSidebarWithKeyboard, onPointerDown: beginSidebarResize, style: { left: sidebarWidth - 4 }, title: "Drag or Use Left and Right Arrow Keys", type: "button" }), _jsxs("section", { "aria-label": "Note Editor", className: "tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]", id: "tocktutor-note-editor", role: "tabpanel", children: [_jsxs("header", { className: "tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5", children: [_jsx("h2", { className: "m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]", children: noteTitle(snapshot.path) }), _jsxs("div", { className: "tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[26px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)]", children: [snapshot.documentKind === 'markdown' ? (_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View', disabled: snapshot.path === null, onClick: () => { props.onMode(snapshot.mode === 'reading' ? 'live-preview' : 'reading'); }, type: "button", children: snapshot.mode === 'reading' ? _jsx(Pencil, { "aria-hidden": "true" }) : _jsx(FileText, { "aria-hidden": "true" }) }) }), _jsx(TooltipContent, { children: snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View' })] })) : (_jsx(Button, { unstyled: true, "aria-label": snapshot.mode === 'source' ? previewLabel : sourceLabel, onClick: () => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "pencil" }) })), _jsxs(DropdownMenu, { modal: false, children: [_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(DropdownMenuTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "More Note Actions", className: "inline-flex h-7 w-[26px] items-center justify-center border-0 bg-transparent p-0 text-[var(--tt-muted)]", type: "button", children: _jsx(WorkbenchGlyph, { kind: "more" }) }) }) }), _jsx(TooltipContent, { children: "More Note Actions" })] }), _jsxs(DropdownMenuContent, { align: "end", className: "w-[260px] rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1,Canvas))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]", portalled: false, sideOffset: 6, unstyled: true, children: [snapshot.documentKind === 'markdown' && (_jsxs(_Fragment, { children: [_jsx(DropdownMenuRadioGroup, { "aria-label": "Editor Mode", value: snapshot.mode, children: [
                                                                                 ['reading', 'Reading view', FileText],
                                                                                 ['live-preview', 'Live Preview', Pencil],
                                                                                 ['source', 'Source mode', FileCode2],
@@ -2540,6 +2493,15 @@ function TockTutorNativeActionsOutlet(props) {
         vault: props.vault,
     }, {
         fallback: _jsx(Alert, { unstyled: true, role: "status", children: "No native actions are available." }),
+    });
+}
+function TockTutorVaultActionsOutlet(props) {
+    return props.renderSlot(TOCKTUTOR_VAULT_ACTIONS_SLOT, {
+        close: props.close,
+        placement: props.placement,
+        saveCurrent: props.saveCurrent,
+        vault: props.vault,
+        vaultName: props.vaultName,
     });
 }
 /** Root-scoped component contributed to TockTeam's exact Desktop route seat. */
@@ -2602,14 +2564,14 @@ export function TockTutorRoute(props) {
     }, [controller]);
     return (_jsx("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: _jsx(TockTutorRouteView, { assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, ...((snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0)
                     ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 10_000)) }
-                    : {}), vault: snapshot.vault })), nativeActions: (_jsx(TockTutorNativeActionsOutlet, { activePath: snapshot.path, handleDispatch: event => controller.handleDispatch(event), renderSlot: props.renderSlot, saveCurrent: () => controller.save(), storeAudio: (fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64), vault: snapshot.vault })), onActivateRecentVault: id => { void controller.activateRecentVault(id); }, onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: () => { controller.addActiveBookmark(); }, onAttachFiles: files => { void controller.attachFiles(Array.from(files).slice(0, 16)); }, onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: request => { void controller.applyBaseEdit(request); }, onBaseExport: request => {
+                    : {}), vault: snapshot.vault })), nativeActions: (_jsx(TockTutorNativeActionsOutlet, { activePath: snapshot.path, handleDispatch: event => controller.handleDispatch(event), renderSlot: props.renderSlot, saveCurrent: () => controller.save(), storeAudio: (fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64), vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: () => { controller.addActiveBookmark(); }, onAttachFiles: files => { void controller.attachFiles(Array.from(files).slice(0, 16)); }, onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: request => { void controller.applyBaseEdit(request); }, onBaseExport: request => {
                 const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }));
                 const anchor = document.createElement('a');
                 anchor.href = url;
                 anchor.download = request.filename;
                 anchor.click();
                 URL.revokeObjectURL(url);
-            }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCancelOrganization: () => { controller.cancelOrganization(); }, onCanvasChange: change => { void controller.applyCanvasChange(change); }, onCaptureSnapshot: () => { void controller.captureRecoverySnapshot(); }, onClearSnapshots: () => { void controller.clearRecoverySnapshots(); }, onCloseAttachmentPreview: () => { controller.closeAttachmentPreview(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onConvertActiveNote: () => { controller.convertActiveNote(); }, onCopyGraphPath: path => { void globalThis.navigator?.clipboard?.writeText(path); }, onCreateBuiltinTemplate: name => { void controller.createBuiltinTemplateNote(name); }, onCreateManagedVault: name => { void controller.createManagedVault(name); }, onEdit: source => { controller.edit(source); }, onEditorCommand: command => { controller.runEditorCommand(command); }, onExtractSelection: () => { void controller.extractActiveSelection(); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onInsertCurrentDateTime: kind => { controller.insertCurrentDateTime(kind); }, onJumpToLine: line => { controller.jumpToLine(line); }, onLoadGraph: mode => { void controller.loadGraph(mode); }, onLoadWorkspace: id => { void controller.loadWorkspace(id); }, onMode: mode => { controller.setMode(mode); }, onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenBookmark: id => { void controller.openBookmark(id); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenExternalUrl: url => { setExternalUrl(url); }, onOpenGraphNode: (path, mode) => { void controller.openGraphNode(path, mode); }, onOpenRecovery: () => { void controller.setRecoveryOpen(true); }, onOpenSearch: () => { controller.openSearch(''); }, onOpenSmartView: kind => { void controller.openSmartView(kind); }, onPrepareOrganization: () => { void controller.prepareOrganization(); }, onPreviewAttachment: path => { void controller.previewAttachment(path); }, onReadSnapshot: id => { void controller.readRecoverySnapshot(id); }, onRemoveBookmark: id => { controller.removeBookmark(id); }, onRemoveRecentVault: id => { void controller.removeRecentVault(id); }, onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onRestoreSnapshot: id => { void controller.restoreRecoverySnapshot(id); }, onRestoreSnapshotOverwrite: id => { void controller.restoreRecoverySnapshotOverwrite(id); }, onRestoreTrash: id => { void controller.restoreTrashEntry(id); }, onRunSearch: () => { void controller.runSearch(); }, onSave: () => { void controller.save(); }, onSaveWorkspace: () => { controller.saveCurrentWorkspace(); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSearchMode: mode => { controller.setSearchMode(mode); }, onSettingsChange: change => { controller.updateSettings(change); }, onSelect: path => { void controller.select(path); }, onSelectionChange: (start, end) => { controller.setSelection(start, end); }, onSetProperty: (key, value) => { controller.setProperty(key, value); }, onStoreAttachment: (fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onToggleTask: index => { controller.toggleTask(index); }, onTrashCurrent: () => { void controller.trashCurrent(); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), active: active, snapshot: snapshot, webViewerPanel: (_jsx(TockTutorWebViewerOutlet, { activePath: snapshot.path, addLinkBookmark: (title, url) => controller.addLinkBookmark(title, url), externalUrl: externalUrl, renderSlot: props.renderSlot, vault: snapshot.vault, webClipFolder: snapshot.settings?.webClipFolder ?? 'Clips' })), ...(active && typeof document !== 'undefined'
+            }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCancelOrganization: () => { controller.cancelOrganization(); }, onCanvasChange: change => { void controller.applyCanvasChange(change); }, onCaptureSnapshot: () => { void controller.captureRecoverySnapshot(); }, onClearSnapshots: () => { void controller.clearRecoverySnapshots(); }, onCloseAttachmentPreview: () => { controller.closeAttachmentPreview(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onConvertActiveNote: () => { controller.convertActiveNote(); }, onCopyGraphPath: path => { void globalThis.navigator?.clipboard?.writeText(path); }, onCreateBuiltinTemplate: name => { void controller.createBuiltinTemplateNote(name); }, onCreateManagedVault: name => { void controller.createManagedVault(name); }, onEdit: source => { controller.edit(source); }, onEditorCommand: command => { controller.runEditorCommand(command); }, onExtractSelection: () => { void controller.extractActiveSelection(); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onInsertCurrentDateTime: kind => { controller.insertCurrentDateTime(kind); }, onJumpToLine: line => { controller.jumpToLine(line); }, onLoadGraph: mode => { void controller.loadGraph(mode); }, onLoadWorkspace: id => { void controller.loadWorkspace(id); }, onMode: mode => { controller.setMode(mode); }, onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenBookmark: id => { void controller.openBookmark(id); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenExternalUrl: url => { setExternalUrl(url); }, onOpenGraphNode: (path, mode) => { void controller.openGraphNode(path, mode); }, onOpenRecovery: () => { void controller.setRecoveryOpen(true); }, onOpenSearch: () => { controller.openSearch(''); }, onOpenSmartView: kind => { void controller.openSmartView(kind); }, onPrepareOrganization: () => { void controller.prepareOrganization(); }, onPreviewAttachment: path => { void controller.previewAttachment(path); }, onReadSnapshot: id => { void controller.readRecoverySnapshot(id); }, onRemoveBookmark: id => { controller.removeBookmark(id); }, onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onRestoreSnapshot: id => { void controller.restoreRecoverySnapshot(id); }, onRestoreSnapshotOverwrite: id => { void controller.restoreRecoverySnapshotOverwrite(id); }, onRestoreTrash: id => { void controller.restoreTrashEntry(id); }, onRunSearch: () => { void controller.runSearch(); }, onSave: () => { void controller.save(); }, onSaveWorkspace: () => { controller.saveCurrentWorkspace(); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSearchMode: mode => { controller.setSearchMode(mode); }, onSettingsChange: change => { controller.updateSettings(change); }, onSelect: path => { void controller.select(path); }, onSelectionChange: (start, end) => { controller.setSelection(start, end); }, onSetProperty: (key, value) => { controller.setProperty(key, value); }, onStoreAttachment: (fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onToggleTask: index => { controller.toggleTask(index); }, onTrashCurrent: () => { void controller.trashCurrent(); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), active: active, renderVaultActions: (placement, close) => (_jsx(TockTutorVaultActionsOutlet, { close: close, placement: placement, renderSlot: props.renderSlot, saveCurrent: () => controller.save(), vault: snapshot.vault, vaultName: snapshot.vaultName ?? null })), snapshot: snapshot, webViewerPanel: (_jsx(TockTutorWebViewerOutlet, { activePath: snapshot.path, addLinkBookmark: (title, url) => controller.addLinkBookmark(title, url), externalUrl: externalUrl, renderSlot: props.renderSlot, vault: snapshot.vault, webClipFolder: snapshot.settings?.webClipFolder ?? 'Clips' })), ...(active && typeof document !== 'undefined'
                 ? { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body }
                 : {}) }) }));
 }

@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
 import type { TockTutorDesktopCallerBridge, TockTutorDesktopDispatchEvent } from '@tockteam/desktop/client';
-import type { TockTutorNativeActionsOwnerProps, VaultReference } from '@tockteam/tocktutor-workbench/client';
+import type { TockTutorNativeActionsOwnerProps, TockTutorVaultActionsOwnerProps, VaultReference } from '@tockteam/tocktutor-workbench/client';
 import type { NativeActionResult } from './types.ts';
 export type DesktopDispatchDelivery = TockTutorDesktopDispatchEvent;
 export type DesktopCallerBridge = TockTutorDesktopCallerBridge;
@@ -74,6 +74,13 @@ export type TockTutorNativeActionsProps = TockTutorNativeActionsOwnerProps & {
     bridge: DesktopCallerBridge;
     remote: DesktopActionRemote;
 };
+export type TockTutorVaultActionsProps = TockTutorVaultActionsOwnerProps & {
+    bridge: DesktopCallerBridge;
+    remote: DesktopActionRemote;
+};
+export declare function openFolderAsVault(owner: TockTutorVaultActionsOwnerProps, bridge: DesktopCallerBridge, remote: DesktopActionRemote, signal?: AbortSignal): Promise<NativeActionResult | undefined>;
+/** Desktop-only vault picker contribution for the vault-management dialog. */
+export declare function TockTutorVaultActions(props: TockTutorVaultActionsProps): ReactNode;
 /** Accessible contribution for Workbench's root-scoped Native Actions seat. */
 export declare function TockTutorNativeActions(props: TockTutorNativeActionsProps): ReactNode;
 //# sourceMappingURL=client-actions.d.ts.map

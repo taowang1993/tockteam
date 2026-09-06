@@ -3,6 +3,7 @@ import test from 'node:test'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { TockTutorNativeActionsOwnerProps } from '@tockteam/tocktutor-workbench/client'
 import {
+  openFolderAsVault,
   replaceActionController,
   requestMicrophoneAccess,
   startAudioRecording,
@@ -12,6 +13,28 @@ import {
 } from '../dist/client-actions.js'
 
 const vault = Object.freeze({ generation: 7, id: `vault:${'a'.repeat(64)}` })
+
+test('opens a folder as a vault through the caller-bound Desktop picker', async () => {
+  const calls: unknown[] = []
+  const result = await openFolderAsVault({
+    close() {},
+    placement: 'actions',
+    async saveCurrent() { calls.push('save'); return true },
+    vault,
+    vaultName: 'Research Vault',
+  }, {
+    async authorize(operation) { calls.push(operation); return { authorization: 'folder-authorization' } },
+  } as DesktopCallerBridge, {
+    tocktutorDesktop: {
+      async activateVault(authorization) {
+        calls.push(authorization)
+        return { ok: true, value: { status: 'activated' } }
+      },
+    },
+  } as DesktopActionRemote)
+  assert.deepEqual(calls, ['save', 'activate-vault', 'folder-authorization'])
+  assert.deepEqual(result, { status: 'activated' })
+})
 
 test('replaces an aborted action controller for a new dependency generation', () => {
   const first = replaceActionController()

@@ -6,6 +6,7 @@ import {
   type DesktopActionRemote,
   type DesktopCallerBridge,
   TockTutorNativeActions,
+  TockTutorVaultActions,
 } from './client-actions.tsx'
 import { assertDesktopSurface, TOCKTEAM_SURFACE_SERVICE } from './guard.ts'
 
@@ -13,6 +14,7 @@ type Context = CordisContext & { slots: TockTutorSlots }
 
 export const name = 'tockbot-note-desktop'
 const TOCKTUTOR_NATIVE_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.native-actions'
+const TOCKTUTOR_VAULT_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.vault-actions'
 export const inject = [TOCKTEAM_SURFACE_SERVICE, 'remote', 'slots']
 
 async function disposeClient(
@@ -78,7 +80,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
           tocktutorDesktop: (child.remote as unknown as DesktopActionRemote).tocktutorDesktop,
         }
         const slots = (child as Context).slots
-        return slots.inject(
+        const disposeNativeActions = slots.inject(
           TOCKTUTOR_NATIVE_ACTIONS_SLOT,
           () => slots.register({
             id: name,
@@ -87,6 +89,24 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
             registrant: name,
           }, TockTutorNativeActions),
         )
+        let disposeVaultActions: (() => void) | undefined
+        try {
+          disposeVaultActions = slots.inject(
+            TOCKTUTOR_VAULT_ACTIONS_SLOT,
+            () => slots.register({
+              id: name,
+              inject: () => ({ bridge, remote }),
+              name: TOCKTUTOR_VAULT_ACTIONS_SLOT,
+              registrant: name,
+            }, TockTutorVaultActions),
+          )
+        } catch (error) {
+          disposeNativeActions()
+          throw error
+        }
+        return () => {
+          try { disposeVaultActions() } finally { disposeNativeActions() }
+        }
       },
     )
     await slotFiber

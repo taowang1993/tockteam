@@ -1,7 +1,7 @@
 import { TOCKTUTOR_ROUTE_SLOT, } from '@tockteam/desktop/client';
 import workbenchRemote from '@tockteam/tocktutor-workbench/remote';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from "./assistant-panel.js";
-import { TOCKTUTOR_NATIVE_ACTIONS_SLOT } from "./native-actions.js";
+import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from "./web-viewer-panel.js";
 import { TockTutorRoute, waitForTockTutorRouteFlushes, } from "./route.js";
@@ -28,6 +28,7 @@ export async function apply(ctx) {
                 [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: 'single', scope: 'root' },
                 [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
                 [TOCKTUTOR_REVIEW_PANEL_SLOT]: { kind: 'list', scope: 'root' },
+                [TOCKTUTOR_VAULT_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
                 [TOCKTUTOR_WEB_VIEWER_PANEL_SLOT]: { kind: 'single', scope: 'root' },
             },
             inject: () => ({ remote }),
