@@ -271,7 +271,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     }
     this.lifetime.abort()
     if (this.sourceSessions.size !== 0 || this.destinationSessions.size !== 0 || this.destinationPlans.size !== 0 || cleanupFailed) {
-      throw new Error('TockTeam Desktop picker cleanup was incomplete')
+      throw new Error('TockTeam picker cleanup was incomplete')
     }
   }
 
@@ -327,7 +327,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
   }
 
   private async request(method: string, request: unknown, signal?: AbortSignal): Promise<unknown> {
-    if (this.endpoint === undefined || this.token === undefined) throw new Error('TockTeam Desktop picker owner is unavailable')
+    if (this.endpoint === undefined || this.token === undefined) throw new Error('TockTeam picker owner is unavailable')
     try {
       const response = await this.fetcher(this.endpoint, {
         method: 'POST',
@@ -353,7 +353,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     } catch (error) {
       if (error instanceof TockTeamDesktopGrantError) throw error
       if (isAbort(error) || signal?.aborted === true) throw new TockTeamDesktopGrantError('aborted')
-      throw new Error(`TockTeam Desktop picker owner failed: ${errorText(error)}`, { cause: error })
+      throw new Error(`TockTeam picker owner failed: ${errorText(error)}`, { cause: error })
     }
   }
 
@@ -363,7 +363,7 @@ export class DesktopPickerProvider implements TockTeamDesktopPickerService {
     signal?: AbortSignal,
     accept?: (result: unknown) => void,
   ): Promise<unknown> {
-    if (this.disposed) throw new Error('TockTeam Desktop picker owner is unavailable')
+    if (this.disposed) throw new Error('TockTeam picker owner is unavailable')
     const combined = signal === undefined ? this.lifetime.signal : AbortSignal.any([this.lifetime.signal, signal])
     combined.throwIfAborted()
     const work = this.request(method, request, combined).then(result => {

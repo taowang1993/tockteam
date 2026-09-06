@@ -37,6 +37,7 @@ test('the contract preserves the current TockTeam identity and configured packag
   assert.deepEqual(identity, {
     packageName: '@tockteam/desktop',
     productName: 'TockTeam Desktop',
+    displayName: 'TockTeam',
     appId: 'ai.deepseek.tockteam-desktop',
     executableName: 'tockteam-desktop',
     desktopName: 'tockteam-desktop.desktop',

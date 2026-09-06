@@ -1474,7 +1474,7 @@ export class DesktopPickerOwner {
     this.vaultSelectionClaims.clear()
     this.consumedPickOperations.clear()
     this.activeVault = undefined
-    if (cleanup.status === 'residual') throw new Error('TockTeam Desktop picker cleanup was incomplete')
+    if (cleanup.status === 'residual') throw new Error('TockTeam picker cleanup was incomplete')
   }
 
   private async destinationPath(rawPath: string, purpose: 'export-html' | 'export-pdf' | 'vault-backup'): Promise<{ path: string; label: string } | undefined> {

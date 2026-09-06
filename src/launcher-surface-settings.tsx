@@ -107,7 +107,7 @@ export function LauncherSurfaceSettingsSection({ busy, platform, save, section, 
     const disposition = launcherSettingDisposition(row.key, platform)
     const value = effectiveValue(snapshot, row.key)
     if (disposition === 'platform-disabled') return <Field key={row.key} label={labelFor(row.key)} description={`${launcherFixedText('Retained for compatibility; unused on')} ${platform}.`}><Badge variant="outline">{launcherFixedText('Unavailable on')} {platform}</Badge></Field>
-    if (disposition === 'status-only' || STATUS_ONLY.has(row.key)) return <Field key={row.key} label={labelFor(row.key)} description={launcherFixedText('Owned by TockTeam Desktop or the DSH appearance/locale service.')}><Badge variant="outline">{launcherFixedText('Managed by TockTeam')}</Badge></Field>
+    if (disposition === 'status-only' || STATUS_ONLY.has(row.key)) return <Field key={row.key} label={labelFor(row.key)} description={launcherFixedText('Owned by TockTeam or the DSH appearance/locale service.')}><Badge variant="outline">{launcherFixedText('Managed by TockTeam')}</Badge></Field>
     return <Field key={row.key} label={labelFor(row.key)}><SettingValue keyName={row.key} value={value} busy={busy} save={save} /></Field>
   })
   const sectionContent: Readonly<Record<LauncherSurfaceSection, ReactNode>> = {

@@ -501,7 +501,7 @@ const FIXED_ZH: Readonly<Record<string, string>> = Object.freeze({
   'Unsupported native materials remain visible as bounded compatibility status.': '不支持的原生材质仍以受限的兼容性状态显示。',
   'All accepted settings are classified as effective, platform-disabled, status-only, or internal. The complete catalog remains available to the owning provider sections.': '所有已接受的设置均分类为生效、平台禁用、仅状态或内部。完整目录仍可由所属提供方区域访问。',
   'Browser grants and global shortcuts are main-owned. Selection and revocation use native operations.': '浏览器授权和全局快捷键由主进程所有。选择和撤销使用原生操作。',
-  'Owned by TockTeam Desktop or the DSH appearance/locale service.': '由 TockTeam Desktop 或 DSH 外观/区域服务所有。',
+  'Owned by TockTeam or the DSH appearance/locale service.': '由 TockTeam 或 DSH 外观/区域服务所有。',
   'Managed by TockTeam': '由 TockTeam 管理',
   'Status-only': '仅状态',
   'DSH-owned': 'DSH 所有',

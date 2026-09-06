@@ -60,7 +60,7 @@ export class DesktopPopOutProvider implements TockTeamDesktopPopOut {
     try {
       if (this.endpoint !== undefined && this.token !== undefined) {
         const result = await this.request('disposeProvider', {}) as { status?: string }
-        if (result.status !== 'closed') throw new Error('TockTeam Desktop pop-out cleanup was incomplete')
+        if (result.status !== 'closed') throw new Error('TockTeam pop-out cleanup was incomplete')
       }
     } finally {
       this.lifetime.abort()

@@ -216,10 +216,10 @@
       "darkModeSupport": true,
       "minimumSystemVersion": "12.0.0",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "TockTeam Desktop uses Apple Events only when a TockTeam tool needs to interact with a Mac app.",
-        "NSDesktopFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select on the Desktop.",
-        "NSDocumentsFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select in Documents.",
-        "NSDownloadsFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select in Downloads."
+        "NSAppleEventsUsageDescription": "TockTeam uses Apple Events only when a TockTeam tool needs to interact with a Mac app.",
+        "NSDesktopFolderUsageDescription": "TockTeam needs access to workspaces you select on the Desktop.",
+        "NSDocumentsFolderUsageDescription": "TockTeam needs access to workspaces you select in Documents.",
+        "NSDownloadsFolderUsageDescription": "TockTeam needs access to workspaces you select in Downloads."
       }
     },
     "linux": {
@@ -241,7 +241,7 @@
       "icon": "assets/icons/512x512.png"
     },
     "dmg": {
-      "title": "TockTeam Desktop ${version}",
+      "title": "TockTeam ${version}",
       "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}",
       "window": {
         "width": 540,

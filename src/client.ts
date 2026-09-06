@@ -376,7 +376,7 @@ function dispatch(
 export function apply(ctx: ClientContext): void {
   const bridge = window.dshDesktop
   if (bridge === undefined) {
-    throw new Error('tockteam-desktop: preload bridge is unavailable outside TockTeam Desktop')
+    throw new Error('tockteam-desktop: preload bridge is unavailable outside TockTeam')
   }
   const workspaces = ctx.get('workspaces') as WorkspacesService
   const panels = ctx.get('desktopPanels') as DesktopPanels

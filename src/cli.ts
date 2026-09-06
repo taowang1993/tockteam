@@ -21,7 +21,7 @@ export function availableSurfaces(env: NodeJS.ProcessEnv = process.env): readonl
 export function cliHelp(env: NodeJS.ProcessEnv = process.env): string {
   const surfaces = availableSurfaces(env)
   const descriptions: Record<SurfaceName, string> = {
-    desktop: 'Start TockTeam Desktop',
+    desktop: 'Start TockTeam',
     web: 'Start TockTeam Web',
     tui: 'Start TockTeam TUI',
   }

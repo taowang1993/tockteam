@@ -193,7 +193,7 @@ import {
   stopLiveRuntimeForMarketplace,
 } from './runtime-lifecycle.ts'
 
-const PRODUCT_NAME = 'TockTeam Desktop'
+const PRODUCT_NAME = 'TockTeam'
 const DATA_DIRECTORY = 'TockTeam-Desktop'
 const DEFAULT_UI_ZOOM_FACTOR = 1.12
 const currentDir = dirname(fileURLToPath(import.meta.url))
@@ -3214,7 +3214,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
       appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
       await showSplash({
         error: true,
-        message: 'TockTeam Desktop 启动失败。',
+        message: 'TockTeam 启动失败。',
         detail: error instanceof Error ? error.message : String(error),
       })
     }
@@ -3989,9 +3989,9 @@ void bootstrap().catch(async (error: unknown) => {
   const detail = error instanceof Error ? error.stack ?? error.message : String(error)
   try { process.stderr.write(`[desktop] ${detail}\n`) } catch { /* stderr may be unavailable during shutdown */ }
   appendLog('desktop', detail)
-  if (app.isReady()) await showSplash({ error: true, message: 'TockTeam Desktop 启动失败。', detail })
+  if (app.isReady()) await showSplash({ error: true, message: 'TockTeam 启动失败。', detail })
   else {
     await app.whenReady()
-    await showSplash({ error: true, message: 'TockTeam Desktop 启动失败。', detail })
+    await showSplash({ error: true, message: 'TockTeam 启动失败。', detail })
   }
 })
