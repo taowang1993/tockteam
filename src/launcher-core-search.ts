@@ -6,6 +6,13 @@ import {
   type LauncherInternalAction,
   type LauncherInternalResultItem,
 } from './launcher-actions.ts'
+import {
+  LAUNCHER_RECENT_RESULT_LIMIT,
+  pruneLauncherRanking,
+  rankLauncherItems,
+  recordLauncherUsage,
+  type LauncherRankingEntry,
+} from './launcher-ranking.ts'
 
 export const LAUNCHER_CORE_ACTION_HANDLERS = Object.freeze({
   addFavorite: 'launcher-add-favorite',
@@ -71,10 +78,13 @@ export type LauncherCoreSearchOptions = Readonly<{
   initialExcludedItemIds?: readonly string[]
   initialFavoriteItemIds?: readonly string[]
   initialIndexedItems?: readonly LauncherInternalResultItem[]
+  initialRanking?: readonly LauncherRankingEntry[]
   getIndexedError?: () => string | undefined
   loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
+  now?: () => number
   persistIndex?: (items: readonly LauncherInternalResultItem[]) => Promise<void>
   persistSettings?: (values: Readonly<Record<string, unknown>>) => Promise<void>
+  persistUsage?: (itemId: string, now: number) => Promise<void>
   platform?: LauncherCorePlatform
   searchInstant?: (searchTerm: string) => Promise<Readonly<{
     after: readonly LauncherInternalResultItem[]
@@ -141,6 +151,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   flush: () => Promise<void>
+  recordUsage: (itemId: string) => Promise<void>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   replacePersistentSettings: (settings: Readonly<{
     excludedItemIds: readonly string[]
@@ -150,7 +161,9 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   search: (searchTerm: string, searchOptions: LauncherSearchOptions) => Promise<LauncherCoreSearchResult>
 }> {
   const commandModifier = options.platform === 'macOS' ? 'Cmd' : 'Ctrl'
+  const now = options.now ?? Date.now
   let indexedItems: readonly LauncherInternalResultItem[] = Object.freeze([...(options.initialIndexedItems ?? [])])
+  let ranking: readonly LauncherRankingEntry[] = pruneLauncherRanking(options.initialRanking ?? [], now())
   let indexLoaded = false
   let hasValidatedIndex = false
   let lastError: string | undefined
@@ -317,18 +330,25 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       beforeItems = beforeItems.slice(0, Math.min(searchOptions.maxSearchResultItems, LAUNCHER_MAX_RESULT_ITEMS))
       const pinnedIds = new Set(beforeItems.map(item => item.id))
       const uniqueAvailable = [...availableById.values()]
+      const remaining = Math.max(0, Math.min(searchOptions.maxSearchResultItems, LAUNCHER_MAX_RESULT_ITEMS) - beforeItems.length)
+      const recentItems = rankLauncherItems(
+        uniqueAvailable.filter(item => !pinnedIds.has(item.id)),
+        ranking,
+        now(),
+      ).slice(0, Math.min(LAUNCHER_RECENT_RESULT_LIMIT, remaining))
+      const recentIds = new Set(recentItems.map(item => item.id))
       const commands = uniqueAvailable
-        .filter(item => !pinnedIds.has(item.id) && openingSectionFor(item) === 'commands')
+        .filter(item => !pinnedIds.has(item.id) && !recentIds.has(item.id) && openingSectionFor(item) === 'commands')
         .toSorted(alphabetically)
       const applications = uniqueAvailable
-        .filter(item => !pinnedIds.has(item.id) && openingSectionFor(item) === 'applications')
+        .filter(item => !pinnedIds.has(item.id) && !recentIds.has(item.id) && openingSectionFor(item) === 'applications')
         .toSorted(alphabetically)
-      const remaining = Math.max(0, Math.min(searchOptions.maxSearchResultItems, LAUNCHER_MAX_RESULT_ITEMS) - beforeItems.length)
-      const commandItems = commands.slice(0, remaining)
-      const applicationItems = applications.slice(0, Math.max(0, remaining - commandItems.length))
-      afterItems = [...commandItems, ...applicationItems]
+      const commandItems = commands.slice(0, Math.max(0, remaining - recentItems.length))
+      const applicationItems = applications.slice(0, Math.max(0, remaining - recentItems.length - commandItems.length))
+      afterItems = [...recentItems, ...commandItems, ...applicationItems]
       sections = [
         { id: 'pinned' as const, items: beforeItems },
+        { id: 'recent' as const, items: recentItems },
         { id: 'commands' as const, items: commandItems },
         { id: 'applications' as const, items: applicationItems },
       ]
@@ -394,6 +414,12 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     return true
   }
 
+  const recordUsage = async (itemId: string): Promise<void> => {
+    const timestamp = now()
+    await options.persistUsage?.(itemId, timestamp)
+    ranking = recordLauncherUsage(ranking, itemId, timestamp)
+  }
+
   const invalidate = (reason = 'TockLauncher core search was invalidated', _preserveSignal?: AbortSignal): void => {
     ++indexGeneration
     latestSearchToken = undefined
@@ -443,6 +469,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     close,
     executeAction: (record: LauncherActionRecord) => track(async () => await executeAction(record)),
     flush,
+    recordUsage: (itemId: string) => track(async () => await recordUsage(itemId)),
     invalidate,
     replacePersistentSettings,
     rescan: (signal?: AbortSignal, preserveSignal?: AbortSignal) => track(async () => await rescan(signal, preserveSignal)),

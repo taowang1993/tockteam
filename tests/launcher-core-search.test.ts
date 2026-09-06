@@ -48,6 +48,44 @@ test('core search matches both engines, instant ordering, empty ordering, limits
   }
 })
 
+test('empty search publishes decayed recent items before deduplicated command and application sections', async () => {
+  const now = 1_000_000
+  const persisted: Array<Readonly<{ itemId: string; now: number }>> = []
+  const core = createLauncherCoreSearch({
+    initialFavoriteItemIds: ['pinned'],
+    initialIndexedItems: [item('pinned', 'Pinned'), item('recent-command', 'Recent Command'), item('recent-app', 'Recent App')],
+    initialRanking: [
+      { id: 'recent-command', lastUsedAt: now - 30 * 24 * 60 * 60 * 1000, score: 3, useCount: 3 },
+      { id: 'recent-app', lastUsedAt: now, score: 1, useCount: 1 },
+      { id: 'stale', lastUsedAt: 1, score: 0.01, useCount: 1 },
+    ],
+    loadIndexedItems: async () => [
+      { ...item('pinned', 'Pinned'), sourceExtension: 'BrowserBookmarks' },
+      { ...item('recent-command', 'Recent Command'), sourceExtension: 'SystemCommands' },
+      { ...item('recent-app', 'Recent App'), sourceExtension: 'ApplicationSearch' },
+      { ...item('later-command', 'Later Command'), sourceExtension: 'SystemCommands' },
+      { ...item('later-app', 'Later App'), sourceExtension: 'ApplicationSearch' },
+    ],
+    now: () => now,
+    persistUsage: async (itemId, timestamp) => { persisted.push({ itemId, now: timestamp }) },
+  })
+
+  const empty = await core.search('', { ...options, maxSearchResultItems: 5 })
+  assert.deepEqual(empty.sections.map(section => section.id), ['pinned', 'recent', 'commands', 'applications'])
+  assert.deepEqual(empty.sections.map(section => section.items.map(result => result.id)), [
+    ['pinned'],
+    ['recent-command', 'recent-app'],
+    ['later-command'],
+    ['later-app'],
+  ])
+  assert.equal(new Set([...empty.before, ...empty.after].map(result => result.id)).size, 5)
+
+  await core.recordUsage('later-app')
+  assert.deepEqual(persisted, [{ itemId: 'later-app', now }])
+  const updated = await core.search('', { ...options, maxSearchResultItems: 5 })
+  assert.deepEqual(updated.sections[1]?.items.map(result => result.id), ['recent-command', 'later-app', 'recent-app'])
+})
+
 test('empty search publishes ordered pinned, command, and application sections without content flood', async () => {
   const core = createLauncherCoreSearch({
     initialFavoriteItemIds: ['bookmark', 'app'],
