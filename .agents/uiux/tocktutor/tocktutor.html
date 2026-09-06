@@ -10,7 +10,6 @@
       color-scheme: dark;
       --page: #111214;
       --panel: #181a1d;
-      --panel-raised: #202226;
       --border: #30333a;
       --text: #f0f1f3;
       --muted: #a6aab2;
@@ -46,8 +45,18 @@
       text-transform: uppercase;
     }
     h1 { margin: 0; max-width: 900px; font-size: clamp(32px, 5vw, 64px); letter-spacing: -.045em; line-height: 1; }
-    .intro { max-width: 850px; margin: 20px 0 0; color: var(--muted); font-size: 16px; line-height: 1.65; }
-    .legend { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 24px; }
+    .intro { max-width: 920px; margin: 20px 0 0; color: var(--muted); font-size: 16px; line-height: 1.65; }
+    .capture-standard {
+      display: inline-flex;
+      margin-top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 8px 10px;
+      color: var(--muted);
+      font: 650 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .legend { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
     .legend span,
     .toc a,
     .badge {
@@ -69,26 +78,27 @@
 
     main { padding: 18px 0 80px; }
     .surface { padding: 48px 0 54px; border-bottom: 1px solid var(--border); scroll-margin-top: 12px; }
-    .surface:last-child { border-bottom: 0; }
+    .surface:last-of-type { border-bottom: 0; }
     .section-number { margin: 0 0 7px; color: var(--muted); font: 650 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; }
     h2 { margin: 0; font-size: clamp(24px, 3vw, 38px); letter-spacing: -.025em; }
     .section-note { max-width: 900px; margin: 10px 0 22px; color: var(--muted); font-size: 14px; line-height: 1.55; }
 
-    .comparison { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+    .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+    .comparison + .comparison { margin-top: 14px; }
     figure { min-width: 0; margin: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--panel); }
     figcaption { display: flex; align-items: center; justify-content: space-between; min-height: 45px; padding: 10px 12px; border-bottom: 1px solid var(--border); gap: 12px; }
     .caption-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
     .tocktutor .caption-title { color: var(--tocktutor); }
     .obsidian .caption-title { color: var(--obsidian); }
     .badge { flex: none; padding: 4px 8px; color: var(--muted); font-size: 10px; }
-    .screenshot-link { display: block; background: #0b0c0e; }
-    img { display: block; width: 100%; height: auto; }
+    .screenshot-link { display: block; aspect-ratio: 1512 / 949; overflow: hidden; background: #0b0c0e; }
+    img { display: block; width: 100%; height: 100%; object-fit: cover; }
     .screenshot-link:hover img { opacity: .94; }
     .screenshot-link:focus-visible { outline: 3px solid #7e9cff; outline-offset: -3px; }
 
     .missing-reference {
       display: grid;
-      min-height: 360px;
+      aspect-ratio: 1512 / 949;
       place-content: center;
       padding: 32px;
       text-align: center;
@@ -97,22 +107,14 @@
     .missing-reference strong { color: var(--missing); font-size: 14px; }
     .missing-reference p { max-width: 420px; margin: 8px auto 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 
-    details { margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
-    summary { padding: 12px 14px; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 700; }
-    summary:hover,
-    summary:focus-visible { color: var(--text); }
-    .archive-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 12px 12px; }
-
     .footer { padding: 30px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 
     @media (max-width: 900px) {
       .header-inner,
       main { width: min(100% - 24px, 1880px); }
       .header-inner { padding-top: 36px; }
-      .comparison,
-      .archive-grid { grid-template-columns: 1fr; }
+      .comparison { grid-template-columns: 1fr; }
       .surface { padding-block: 38px; }
-      .missing-reference { min-height: 220px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -123,223 +125,215 @@
 <body>
   <header class="page-header">
     <div class="header-inner">
-      <p class="eyebrow">Visual Design Audit · 49 Captures</p>
+      <p class="eyebrow">Visual Design Audit · 40 Captures</p>
       <h1>TockTutor and Obsidian</h1>
-      <p class="intro">A surface-by-surface comparison of the captured desktop experiences. Current TockTutor captures appear on the left and the closest available Obsidian reference appears on the right. Click any screenshot to inspect it at full resolution. Earlier TockTutor captures are retained under each surface for audit history.</p>
+      <p class="intro">A surface-by-surface comparison using one capture geometry. TockTutor appears on the left and the closest available Obsidian reference appears on the right. Click any screenshot to inspect its full-resolution pixels.</p>
+      <div class="capture-standard">1512 × 949 CSS pixels · 2× scale · 3024 × 1898 output</div>
       <div class="legend" aria-label="Comparison legend">
         <span class="tt">TockTutor</span>
         <span class="ob">Obsidian</span>
-        <span class="gap">Reference Not Captured</span>
+        <span class="gap">No Direct Reference</span>
       </div>
       <nav class="toc" aria-label="Surface index">
-        <a href="#workspace">Workspace</a><a href="#editor">Editor</a><a href="#command-palette">Command Palette</a><a href="#new-note">New Note</a><a href="#search">Search</a><a href="#utility-panels">Utility Panels</a><a href="#bookmarks">Bookmarks</a><a href="#recovery">Recovery</a><a href="#graph">Graph</a><a href="#vault">Vault</a><a href="#marketplace">Marketplace</a><a href="#settings">Settings</a><a href="#assistant">Assistant</a><a href="#reviews">Reviews</a><a href="#base">Base</a><a href="#canvas">Canvas</a><a href="#web-viewer">Web Viewer</a>
+        <a href="#workspace">Workspace</a><a href="#reading">Reading</a><a href="#live-preview">Live Preview</a><a href="#source">Source</a><a href="#note-actions">Note Actions</a><a href="#command-palette">Commands</a><a href="#new-note">New Note</a><a href="#search">Search</a><a href="#recovery">Recovery</a><a href="#properties">Properties</a><a href="#bookmarks">Bookmarks</a><a href="#graph">Graph</a><a href="#attachments">Attachments</a><a href="#note-tools">Note Tools</a><a href="#workspaces">Panes</a><a href="#vault">Vault</a><a href="#settings">Settings</a><a href="#marketplace">Marketplace</a><a href="#assistant">Assistant</a><a href="#reviews">Reviews</a><a href="#base">Base</a><a href="#canvas">Canvas</a><a href="#web-viewer">Web Viewer</a>
       </nav>
     </div>
   </header>
 
   <main>
     <section class="surface" id="workspace">
-      <p class="section-number">Surface 01</p>
-      <h2>Main Workspace</h2>
-      <p class="section-note">Primary navigation, file tree, document canvas, tabs, and utility-panel composition.</p>
+      <p class="section-number">Surface 01</p><h2>Main Workspace</h2><p class="section-note">Primary navigation, file tree, document canvas, tabs, and utility-panel composition.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Main Workspace</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-main-after.png"><img src="screenshots/tocktutor-main-after.png" alt="TockTutor main workspace"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Main Workspace</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-main-workspace.png"><img src="screenshots/tocktutor-main-workspace.png" alt="TockTutor main workspace"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Main Editor</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-main-editor.png"><img src="screenshots/obsidian-main-editor.png" alt="Obsidian main editor"></a></figure>
       </div>
-      <details><summary>Additional TockTutor Workspace Captures</summary><div class="archive-grid">
-        <figure class="tocktutor"><figcaption><span class="caption-title">Current Main</span><span class="badge">Earlier</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-current-main.png"><img loading="lazy" src="screenshots/tocktutor-current-main.png" alt="Earlier TockTutor main workspace"></a></figure>
-        <figure class="tocktutor"><figcaption><span class="caption-title">Workspaces and Panes</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-workspaces-panes.png"><img loading="lazy" src="screenshots/tocktutor-workspaces-panes.png" alt="TockTutor workspace and pane controls"></a></figure>
-        <figure class="tocktutor"><figcaption><span class="caption-title">Note Workspace</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-note-after.png"><img loading="lazy" src="screenshots/tocktutor-note-after.png" alt="TockTutor note workspace"></a></figure>
-      </div></details>
     </section>
 
-    <section class="surface" id="editor">
-      <p class="section-number">Surface 02</p>
-      <h2>Editor Modes</h2>
-      <p class="section-note">Reading, source editing, embedded content, and note-level actions compared with Obsidian’s document surface.</p>
+    <section class="surface" id="reading">
+      <p class="section-number">Surface 02</p><h2>Reading View</h2><p class="section-note">Rendered-note typography, measure, metadata, surrounding controls, and information density.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reading Mode</span><span class="badge">Captured</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-reading.png"><img src="screenshots/tocktutor-editor-reading.png" alt="TockTutor reading mode"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Main Editor</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-main-editor.png"><img src="screenshots/obsidian-main-editor.png" alt="Obsidian editor reference"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reading View</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-reading.png"><img src="screenshots/tocktutor-editor-reading.png" alt="TockTutor reading view"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Reading View</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-reading-view.png"><img src="screenshots/obsidian-reading-view.png" alt="Obsidian reading view"></a></figure>
       </div>
-      <details><summary>Additional TockTutor Editor Captures</summary><div class="archive-grid">
-        <figure class="tocktutor"><figcaption><span class="caption-title">Source Mode</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-source-mode.png"><img loading="lazy" src="screenshots/tocktutor-editor-source-mode.png" alt="TockTutor source mode"></a></figure>
-        <figure class="tocktutor"><figcaption><span class="caption-title">Source Editor</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-source.png"><img loading="lazy" src="screenshots/tocktutor-editor-source.png" alt="TockTutor source editor"></a></figure>
-        <figure class="tocktutor"><figcaption><span class="caption-title">Attachments and Embeds</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-attachments-embeds.png"><img loading="lazy" src="screenshots/tocktutor-attachments-embeds.png" alt="TockTutor attachments and embeds"></a></figure>
-        <figure class="tocktutor"><figcaption><span class="caption-title">Note Tools</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-note-tools.png"><img loading="lazy" src="screenshots/tocktutor-note-tools.png" alt="TockTutor note tools"></a></figure>
-        <figure class="tocktutor"><figcaption><span class="caption-title">Note Actions Menu</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-note-actions-menu.png"><img loading="lazy" src="screenshots/tocktutor-note-actions-menu.png" alt="TockTutor note actions menu"></a></figure>
-      </div></details>
+    </section>
+
+    <section class="surface" id="live-preview">
+      <p class="section-number">Surface 03</p><h2>Live Preview</h2><p class="section-note">In-place editing with rendered Markdown context.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Live Preview</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-live-preview.png"><img src="screenshots/tocktutor-editor-live-preview.png" alt="TockTutor live preview editor"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Editor</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-main-editor.png"><img src="screenshots/obsidian-main-editor.png" alt="Obsidian editor"></a></figure>
+      </div>
+    </section>
+
+    <section class="surface" id="source">
+      <p class="section-number">Surface 04</p><h2>Source Mode</h2><p class="section-note">Raw Markdown editing, line treatment, content measure, and editor chrome.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Source Mode</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-source.png"><img src="screenshots/tocktutor-editor-source.png" alt="TockTutor source editor"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Editor</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-main-editor.png"><img src="screenshots/obsidian-main-editor.png" alt="Obsidian editor reference"></a></figure>
+      </div>
+    </section>
+
+    <section class="surface" id="note-actions">
+      <p class="section-number">Surface 05</p><h2>Note Actions Menu</h2><p class="section-note">Editor modes and note-level utilities in TockTutor’s overflow menu.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Note Actions</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-note-actions-menu.png"><img src="screenshots/tocktutor-note-actions-menu.png" alt="TockTutor note actions menu"></a></figure>
+        <figure><figcaption><span class="caption-title">Obsidian · Note Actions</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>No Direct Capture</strong><p>A matching Obsidian overflow-menu state was not captured.</p></div></figure>
+      </div>
     </section>
 
     <section class="surface" id="command-palette">
-      <p class="section-number">Surface 03</p>
-      <h2>Command Palette</h2>
-      <p class="section-note">Search field, result density, selection treatment, and dialog scale.</p>
+      <p class="section-number">Surface 06</p><h2>Command Palette</h2><p class="section-note">Search field, result density, selection treatment, and dialog scale.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Command Palette</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-command-palette-after.png"><img src="screenshots/tocktutor-command-palette-after.png" alt="Current TockTutor command palette"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Command Palette</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-command-palette.png"><img src="screenshots/tocktutor-command-palette.png" alt="TockTutor command palette"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Command Palette</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-command-palette.png"><img src="screenshots/obsidian-command-palette.png" alt="Obsidian command palette"></a></figure>
       </div>
-      <details><summary>Earlier TockTutor Capture</summary><div class="archive-grid"><figure class="tocktutor"><figcaption><span class="caption-title">Command Palette</span><span class="badge">Earlier</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-command-palette.png"><img loading="lazy" src="screenshots/tocktutor-command-palette.png" alt="Earlier TockTutor command palette"></a></figure></div></details>
     </section>
 
     <section class="surface" id="new-note">
-      <p class="section-number">Surface 04</p>
-      <h2>New Note Dialog</h2>
-      <p class="section-note">TockTutor’s creation dialog beside Obsidian’s closest captured item-selection dialog.</p>
+      <p class="section-number">Surface 07</p><h2>New Note Dialog</h2><p class="section-note">Creation flow beside Obsidian’s closest captured item-selection dialog.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · New Note</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-new-note-after.png"><img src="screenshots/tocktutor-new-note-after.png" alt="Current TockTutor new note dialog"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · New Note</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-new-note.png"><img src="screenshots/tocktutor-new-note.png" alt="TockTutor new note dialog"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Quick Switcher</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-quick-switcher.png"><img src="screenshots/obsidian-quick-switcher.png" alt="Obsidian quick switcher"></a></figure>
       </div>
-      <details><summary>Earlier TockTutor Capture</summary><div class="archive-grid"><figure class="tocktutor"><figcaption><span class="caption-title">New Note</span><span class="badge">Earlier</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-new-note.png"><img loading="lazy" src="screenshots/tocktutor-new-note.png" alt="Earlier TockTutor new note dialog"></a></figure></div></details>
     </section>
 
     <section class="surface" id="search">
-      <p class="section-number">Surface 05</p>
-      <h2>Search</h2>
-      <p class="section-note">Query controls, result grouping, match emphasis, and panel density.</p>
+      <p class="section-number">Surface 08</p><h2>Search</h2><p class="section-note">Query controls, result grouping, match emphasis, and panel density.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Search</span><span class="badge">Captured</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-search.png"><img src="screenshots/tocktutor-search.png" alt="TockTutor search panel"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Search</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-search.png"><img src="screenshots/obsidian-search.png" alt="Obsidian search panel"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Search</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-search.png"><img src="screenshots/tocktutor-search.png" alt="TockTutor search"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Search</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-search.png"><img src="screenshots/obsidian-search.png" alt="Obsidian search"></a></figure>
       </div>
-    </section>
-
-    <section class="surface" id="utility-panels">
-      <p class="section-number">Surface 06</p>
-      <h2>Properties, Links, and Outline</h2>
-      <p class="section-note">TockTutor’s combined utility panel compared with the separate Obsidian panels captured during the audit.</p>
-      <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Properties and Links</span><span class="badge">Captured</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-properties-links.png"><img src="screenshots/tocktutor-properties-links.png" alt="TockTutor properties and links utility panel"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Properties</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-properties.png"><img src="screenshots/obsidian-properties.png" alt="Obsidian properties panel"></a></figure>
-      </div>
-      <details open><summary>Additional Obsidian Utility References</summary><div class="archive-grid">
-        <figure class="obsidian"><figcaption><span class="caption-title">Backlinks</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-backlinks.png"><img loading="lazy" src="screenshots/obsidian-backlinks.png" alt="Obsidian backlinks panel"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Outline</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-outline.png"><img loading="lazy" src="screenshots/obsidian-outline.png" alt="Obsidian outline panel"></a></figure>
-      </div></details>
-    </section>
-
-    <section class="surface" id="bookmarks">
-      <p class="section-number">Surface 07</p>
-      <h2>Bookmarks and Tags</h2>
-      <p class="section-note">Flat utility rows, selected states, counts, and surrounding panel chrome.</p>
-      <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Bookmarks and Tags</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-bookmarks-tags-after.png"><img src="screenshots/tocktutor-bookmarks-tags-after.png" alt="Current TockTutor bookmarks and tags panel"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Bookmarks</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-bookmarks.png"><img src="screenshots/obsidian-bookmarks.png" alt="Obsidian bookmarks panel"></a></figure>
-      </div>
-      <details><summary>Earlier TockTutor Capture</summary><div class="archive-grid"><figure class="tocktutor"><figcaption><span class="caption-title">Bookmarks and Tags</span><span class="badge">Earlier</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-bookmarks-tags.png"><img loading="lazy" src="screenshots/tocktutor-bookmarks-tags.png" alt="Earlier TockTutor bookmarks and tags panel"></a></figure></div></details>
     </section>
 
     <section class="surface" id="recovery">
-      <p class="section-number">Surface 08</p>
-      <h2>File Recovery</h2>
-      <p class="section-note">Recovery controls, explanation density, and restore-point presentation.</p>
+      <p class="section-number">Surface 09</p><h2>File Recovery</h2><p class="section-note">Recovery controls, explanation density, and restore-point presentation.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · File Recovery</span><span class="badge">Captured</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-file-recovery.png"><img src="screenshots/tocktutor-file-recovery.png" alt="TockTutor file recovery surface"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · File Recovery</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-file-recovery.png"><img src="screenshots/obsidian-file-recovery.png" alt="Obsidian file recovery settings"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · File Recovery</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-file-recovery.png"><img src="screenshots/tocktutor-file-recovery.png" alt="TockTutor file recovery"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · File Recovery</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-file-recovery.png"><img src="screenshots/obsidian-file-recovery.png" alt="Obsidian file recovery"></a></figure>
+      </div>
+    </section>
+
+    <section class="surface" id="properties">
+      <p class="section-number">Surface 10</p><h2>Properties and Links</h2><p class="section-note">TockTutor’s combined note-information panel beside Obsidian’s separate Properties and Backlinks references.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Properties and Links</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-properties-links.png"><img src="screenshots/tocktutor-properties-links.png" alt="TockTutor properties and links"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Properties</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-properties.png"><img src="screenshots/obsidian-properties.png" alt="Obsidian properties"></a></figure>
+      </div>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Combined Panel</span><span class="badge">Same Capture</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-properties-links.png"><img loading="lazy" src="screenshots/tocktutor-properties-links.png" alt="TockTutor combined note information panel"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Backlinks</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-backlinks.png"><img loading="lazy" src="screenshots/obsidian-backlinks.png" alt="Obsidian backlinks"></a></figure>
+      </div>
+    </section>
+
+    <section class="surface" id="bookmarks">
+      <p class="section-number">Surface 11</p><h2>Bookmarks and Tags</h2><p class="section-note">Flat utility rows, selected states, counts, and surrounding panel chrome.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Bookmarks and Tags</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-bookmarks-tags.png"><img src="screenshots/tocktutor-bookmarks-tags.png" alt="TockTutor bookmarks and tags"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Bookmarks</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-bookmarks.png"><img src="screenshots/obsidian-bookmarks.png" alt="Obsidian bookmarks"></a></figure>
       </div>
     </section>
 
     <section class="surface" id="graph">
-      <p class="section-number">Surface 09</p>
-      <h2>Global Graph</h2>
-      <p class="section-note">Canvas occupancy, controls, navigation context, and graph readability.</p>
+      <p class="section-number">Surface 12</p><h2>Graph</h2><p class="section-note">Global graph occupancy and the local graph’s controls compared with Obsidian’s captured graph.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Global Graph</span><span class="badge">Captured</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-graph-global.png"><img src="screenshots/tocktutor-graph-global.png" alt="TockTutor global graph"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Global Graph</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-graph-global.png"><img src="screenshots/tocktutor-graph-global.png" alt="TockTutor global graph"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Global Graph</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-graph-global.png"><img src="screenshots/obsidian-graph-global.png" alt="Obsidian global graph"></a></figure>
       </div>
-      <details><summary>Additional TockTutor Graph Capture</summary><div class="archive-grid"><figure class="tocktutor"><figcaption><span class="caption-title">Graph</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-graph.png"><img loading="lazy" src="screenshots/tocktutor-graph.png" alt="TockTutor graph view"></a></figure></div></details>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Local Graph</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-graph.png"><img loading="lazy" src="screenshots/tocktutor-graph.png" alt="TockTutor local graph"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Global Graph</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-graph-global.png"><img loading="lazy" src="screenshots/obsidian-graph-global.png" alt="Obsidian graph reference"></a></figure>
+      </div>
+    </section>
+
+    <section class="surface" id="attachments">
+      <p class="section-number">Surface 13</p><h2>Attachments and Embeds</h2><p class="section-note">Resolved embeds, attachments, and preview controls.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Attachments and Embeds</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-attachments-embeds.png"><img src="screenshots/tocktutor-attachments-embeds.png" alt="TockTutor attachments and embeds"></a></figure>
+        <figure><figcaption><span class="caption-title">Obsidian · Attachments</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>No Direct Capture</strong><p>A matching Obsidian attachment-management state was not captured.</p></div></figure>
+      </div>
+    </section>
+
+    <section class="surface" id="note-tools">
+      <p class="section-number">Surface 14</p><h2>Note Tools</h2><p class="section-note">Composition, conversion, templates, journals, and capture organization.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Note Tools</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-note-tools.png"><img src="screenshots/tocktutor-note-tools.png" alt="TockTutor note tools"></a></figure>
+        <figure><figcaption><span class="caption-title">Obsidian · Note Tools</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>No Direct Capture</strong><p>Obsidian distributes comparable actions across commands and plugins rather than one first-party panel.</p></div></figure>
+      </div>
+    </section>
+
+    <section class="surface" id="workspaces">
+      <p class="section-number">Surface 15</p><h2>Workspaces and Panes</h2><p class="section-note">TockTutor pane groups and workspace settings beside Obsidian’s captured outline and pane context.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Workspaces and Panes</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-workspaces-panes.png"><img src="screenshots/tocktutor-workspaces-panes.png" alt="TockTutor workspaces and panes"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Outline and Pane Context</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-outline.png"><img src="screenshots/obsidian-outline.png" alt="Obsidian outline and pane context"></a></figure>
+      </div>
     </section>
 
     <section class="surface" id="vault">
-      <p class="section-number">Surface 10</p>
-      <h2>Vault Switcher</h2>
-      <p class="section-note">Vault identity, full-path disclosure, primary actions, and management affordances.</p>
+      <p class="section-number">Surface 16</p><h2>Vault Switcher</h2><p class="section-note">Vault identity, path disclosure, primary actions, and management affordances.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Vault Switcher</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-vault-switcher.png"><img src="screenshots/tocktutor-vault-switcher.png" alt="TockTutor vault switcher"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Vault Switcher</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-vault-switcher.png"><img src="screenshots/obsidian-vault-switcher.png" alt="Obsidian vault switcher"></a></figure>
       </div>
     </section>
 
-    <section class="surface" id="marketplace">
-      <p class="section-number">Surface 11</p>
-      <h2>Plugin Marketplace</h2>
-      <p class="section-note">Catalog hierarchy, search and filter controls, plugin metadata, and Settings integration.</p>
+    <section class="surface" id="settings">
+      <p class="section-number">Surface 17</p><h2>Settings</h2><p class="section-note">Full workspace route, sidebar geometry, section navigation, and content density.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTeam · Plugin Marketplace</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-marketplace-after.png"><img src="screenshots/tocktutor-marketplace-after.png" alt="TockTeam plugin marketplace"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTeam · Settings</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-settings.png"><img src="screenshots/tocktutor-settings.png" alt="TockTeam Settings workspace"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · General Settings</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-settings-general.png"><img src="screenshots/obsidian-settings-general.png" alt="Obsidian general settings"></a></figure>
+      </div>
+    </section>
+
+    <section class="surface" id="marketplace">
+      <p class="section-number">Surface 18</p><h2>Plugin Marketplace</h2><p class="section-note">Catalog hierarchy, search and filter controls, plugin metadata, and Settings integration.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTeam · Plugin Marketplace</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-marketplace.png"><img src="screenshots/tocktutor-marketplace.png" alt="TockTeam plugin marketplace"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Community Plugins</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-settings-community-plugins.png"><img src="screenshots/obsidian-settings-community-plugins.png" alt="Obsidian community plugins settings"></a></figure>
       </div>
     </section>
 
-    <section class="surface" id="settings">
-      <p class="section-number">Surface 12</p>
-      <h2>Settings and About</h2>
-      <p class="section-note">The captured TockTeam About panel beside Obsidian’s general Settings shell. These are contextual references rather than equivalent content.</p>
-      <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTeam · About</span><span class="badge">Captured</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-about-final.png"><img src="screenshots/tocktutor-about-final.png" alt="TockTeam About panel"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · General Settings</span><span class="badge">Contextual Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-settings-general.png"><img src="screenshots/obsidian-settings-general.png" alt="Obsidian general settings"></a></figure>
-      </div>
-    </section>
-
     <section class="surface" id="assistant">
-      <p class="section-number">Surface 13</p>
-      <h2>Assistant</h2>
-      <p class="section-note">TockTutor-specific agent surface. No direct Obsidian counterpart was captured.</p>
+      <p class="section-number">Surface 19</p><h2>Assistant</h2><p class="section-note">TockTutor-specific agent surface with no direct first-party Obsidian counterpart.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Assistant</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-assistant-after.png"><img src="screenshots/tocktutor-assistant-after.png" alt="Current TockTutor assistant"></a></figure>
-        <figure><figcaption><span class="caption-title">Obsidian</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>No Direct Reference</strong><p>Obsidian does not provide an equivalent first-party agent pane in this audit set.</p></div></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Assistant</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-assistant.png"><img src="screenshots/tocktutor-assistant.png" alt="TockTutor assistant"></a></figure>
+        <figure><figcaption><span class="caption-title">Obsidian · Assistant</span><span class="badge">Not Applicable</span></figcaption><div class="missing-reference"><strong>No Direct Reference</strong><p>Obsidian has no equivalent first-party agent pane in this audit set.</p></div></figure>
       </div>
-      <details><summary>Earlier TockTutor Capture</summary><div class="archive-grid"><figure class="tocktutor"><figcaption><span class="caption-title">Assistant</span><span class="badge">Earlier</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-assistant.png"><img loading="lazy" src="screenshots/tocktutor-assistant.png" alt="Earlier TockTutor assistant"></a></figure></div></details>
     </section>
 
     <section class="surface" id="reviews">
-      <p class="section-number">Surface 14</p>
-      <h2>Reviews and Native Actions</h2>
-      <p class="section-note">TockTutor-specific import, export, review, and native-action workflow. No direct Obsidian counterpart was captured.</p>
+      <p class="section-number">Surface 20</p><h2>Reviews and Native Actions</h2><p class="section-note">TockTutor-specific import, export, review, and Host-owned native-action workflows.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reviews and Actions</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-reviews-actions-final.png"><img src="screenshots/tocktutor-reviews-actions-final.png" alt="Current TockTutor reviews and native actions"></a></figure>
-        <figure><figcaption><span class="caption-title">Obsidian</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>No Direct Reference</strong><p>The workflow is product-specific; comparison should focus on shared panel and list conventions.</p></div></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reviews and Actions</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-reviews-actions.png"><img src="screenshots/tocktutor-reviews-actions.png" alt="TockTutor reviews and native actions"></a></figure>
+        <figure><figcaption><span class="caption-title">Obsidian · Reviews and Actions</span><span class="badge">Not Applicable</span></figcaption><div class="missing-reference"><strong>No Direct Reference</strong><p>The workflow is product-specific; compare only shared panel and list conventions.</p></div></figure>
       </div>
-      <details><summary>Earlier TockTutor Captures</summary><div class="archive-grid">
-        <figure class="tocktutor"><figcaption><span class="caption-title">Reviews and Actions</span><span class="badge">Intermediate</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-reviews-actions-after.png"><img loading="lazy" src="screenshots/tocktutor-reviews-actions-after.png" alt="Intermediate TockTutor reviews and actions"></a></figure>
-        <figure class="tocktutor"><figcaption><span class="caption-title">Reviews and Actions</span><span class="badge">Earlier</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-reviews-actions.png"><img loading="lazy" src="screenshots/tocktutor-reviews-actions.png" alt="Earlier TockTutor reviews and actions"></a></figure>
-      </div></details>
     </section>
 
     <section class="surface" id="base">
-      <p class="section-number">Surface 15</p>
-      <h2>Base</h2>
-      <p class="section-note">Database-style note view. Obsidian Bases exists, but its matching surface was not captured during this audit.</p>
+      <p class="section-number">Surface 21</p><h2>Base</h2><p class="section-note">Equivalent database-style note files rendered by each application.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Base</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-base-after.png"><img src="screenshots/tocktutor-base-after.png" alt="Current TockTutor Base view"></a></figure>
-        <figure><figcaption><span class="caption-title">Obsidian · Bases</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>Reference Missing</strong><p>Capture the same table or card configuration in Obsidian before making a parity judgment.</p></div></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Base</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-base.png"><img src="screenshots/tocktutor-base.png" alt="TockTutor Base view"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Base</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-base.png"><img src="screenshots/obsidian-base.png" alt="Obsidian Base view"></a></figure>
       </div>
-      <details><summary>Additional TockTutor Base Capture</summary><div class="archive-grid"><figure class="tocktutor"><figcaption><span class="caption-title">Base View</span><span class="badge">State</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-base-view-after.png"><img loading="lazy" src="screenshots/tocktutor-base-view-after.png" alt="TockTutor Base view state"></a></figure></div></details>
     </section>
 
     <section class="surface" id="canvas">
-      <p class="section-number">Surface 16</p>
-      <h2>Canvas</h2>
-      <p class="section-note">Spatial canvas occupancy and zoom controls. Obsidian Canvas exists, but its matching surface was not captured during this audit.</p>
+      <p class="section-number">Surface 22</p><h2>Canvas</h2><p class="section-note">Equivalent spatial-canvas files with shared cards, links, and hierarchy.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Canvas</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-canvas-final.png"><img src="screenshots/tocktutor-canvas-final.png" alt="Current TockTutor Canvas"></a></figure>
-        <figure><figcaption><span class="caption-title">Obsidian · Canvas</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>Reference Missing</strong><p>Capture a comparable board, zoom level, and selection state in Obsidian for a useful side-by-side review.</p></div></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Canvas</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-canvas.png"><img src="screenshots/tocktutor-canvas.png" alt="TockTutor Canvas"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Canvas</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-canvas.png"><img src="screenshots/obsidian-canvas.png" alt="Obsidian Canvas"></a></figure>
       </div>
-      <details><summary>Earlier TockTutor Canvas Captures</summary><div class="archive-grid">
-        <figure class="tocktutor"><figcaption><span class="caption-title">Canvas</span><span class="badge">Intermediate</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-canvas-after.png"><img loading="lazy" src="screenshots/tocktutor-canvas-after.png" alt="Intermediate TockTutor Canvas"></a></figure>
-        <figure class="tocktutor"><figcaption><span class="caption-title">Canvas View</span><span class="badge">Earlier</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-canvas-view-after.png"><img loading="lazy" src="screenshots/tocktutor-canvas-view-after.png" alt="Earlier TockTutor Canvas view"></a></figure>
-      </div></details>
     </section>
 
     <section class="surface" id="web-viewer">
-      <p class="section-number">Surface 17</p>
-      <h2>Web Viewer</h2>
-      <p class="section-note">TockTutor-specific browsing and clipping surface. No equivalent first-party Obsidian surface was captured.</p>
+      <p class="section-number">Surface 23</p><h2>Web Viewer</h2><p class="section-note">TockTutor-specific browsing and clipping surface.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Web Viewer</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-web-viewer-after.png"><img src="screenshots/tocktutor-web-viewer-after.png" alt="Current TockTutor Web Viewer"></a></figure>
-        <figure><figcaption><span class="caption-title">Obsidian</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>No Direct Reference</strong><p>Use shared tab, toolbar, and pane conventions rather than feature parity for this comparison.</p></div></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Web Viewer</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-web-viewer.png"><img src="screenshots/tocktutor-web-viewer.png" alt="TockTutor Web Viewer"></a></figure>
+        <figure><figcaption><span class="caption-title">Obsidian · Web Viewer</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>No Direct Reference</strong><p>Use shared tab, toolbar, and pane conventions rather than feature parity.</p></div></figure>
       </div>
-      <details><summary>Earlier TockTutor Capture</summary><div class="archive-grid"><figure class="tocktutor"><figcaption><span class="caption-title">Web Viewer</span><span class="badge">Earlier</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-web-viewer.png"><img loading="lazy" src="screenshots/tocktutor-web-viewer.png" alt="Earlier TockTutor Web Viewer"></a></figure></div></details>
     </section>
 
-    <p class="footer">Source captures were collected during the TockTutor design audit. Missing-reference panels are intentional: they identify where the evidence set does not support a direct visual comparison.</p>
+    <p class="footer">Every screenshot file in this document uses the same viewport, device scale, pixel dimensions, and aspect ratio. Missing-reference panels are explicit evidence gaps rather than inferred comparisons.</p>
   </main>
 </body>
 </html>
