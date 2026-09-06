@@ -253,8 +253,7 @@
     display: none !important;
   }
 
-  & [data-slot='sidebar'] button:has([data-slot='settings.trigger']),
-  & [data-slot='sidebar'] [data-tockteam-marketplace-nav] {
+  & [data-slot='sidebar'] button:has([data-slot='settings.trigger']) {
     display: none !important;
   }
 
@@ -344,22 +343,13 @@
     opacity: 1;
   }
 
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] div:has(> [role='tabpanel'] [data-tockteam-plugin-marketplace-settings]) {
+    width: 100%;
+    max-width: none !important;
+  }
+
   &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-mask],
   &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-close] {
-    display: none !important;
-  }
-}
-
-/* The marketplace navigation is contributed inside the inherited DSH sidebar. */
-@utility tockteam-marketplace-shell {
-  & [data-tockteam-marketplace-footer-stack='true']:has([data-tockteam-marketplace-nav][data-collapsed='true']) {
-    display: flex !important;
-    align-items: center !important;
-    flex-direction: column !important;
-  }
-
-  &[data-tockteam-marketplace-open='true'] [data-tockteam-pinned-summary],
-  &[data-tockteam-marketplace-open='true'] #tockteam-sidebar-root {
     display: none !important;
   }
 }

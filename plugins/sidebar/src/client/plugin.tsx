@@ -19,7 +19,6 @@ import {
 } from 'react'
 import { defineStore } from '@deepseek-ai/dsh-client-store'
 import {
-  Blocks,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
@@ -2015,12 +2014,6 @@ function AppRailIcon({ kind }: { kind: 'agent' | 'notebook' }): ReactNode {
   return <Notebook aria-hidden="true" />
 }
 
-function closePluginMarketplace(): void {
-  const target = document.querySelector('[data-tockteam-marketplace-nav]')
-  if (target instanceof HTMLButtonElement
-    && document.documentElement.dataset.tockteamMarketplaceOpen === 'true') target.click()
-}
-
 function settingsPageSurface(): HTMLElement | null {
   const adapted = document.querySelector<HTMLElement>('[data-tockteam-settings-page-surface]')
   if (adapted !== null) return adapted
@@ -2096,16 +2089,6 @@ function DesktopAppRail({
   const settingsActive = isSettingsPath(location.pathname)
   const tockCoderActive = isTockCoderPath(location.pathname)
   const tockTutorActive = isTockTutorPath(location.pathname)
-  const [pluginsAvailable, setPluginsAvailable] = useState(false)
-  useEffect(() => {
-    const sync = (): void => {
-      setPluginsAvailable(document.querySelector('[data-tockteam-marketplace-nav]') !== null)
-    }
-    const observer = new MutationObserver(sync)
-    observer.observe(document.body, { childList: true, subtree: true })
-    sync()
-    return () => { observer.disconnect() }
-  }, [])
   return (
     <TooltipProvider>
       <nav className="tockteam-app-rail flex h-full box-border flex-col items-center gap-1 px-1 py-2 [&_button]:grid [&_button]:size-8 [&_button]:flex-none [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_62%,transparent)] [&_button:hover]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_7%,transparent)] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-current='page']]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_11%,transparent)] [&_button[aria-current='page']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-1 [&_button:focus-visible]:outline-[var(--dsw-alias-border-focus,#315efb)] [&_svg]:size-[18px]" aria-label="App Navigation">
@@ -2115,10 +2098,7 @@ function DesktopAppRail({
               type="button"
               aria-label="TockCoder"
               aria-current={tockCoderActive ? 'page' : undefined}
-              onClick={() => {
-                closePluginMarketplace()
-                navigate(TOCKCODER_ROUTE_PREFIX)
-              }}
+              onClick={() => { navigate(TOCKCODER_ROUTE_PREFIX) }}
             ><AppRailIcon kind="agent" /></Button>
           </TooltipTrigger>
           <TooltipContent side="right">TockCoder</TooltipContent>
@@ -2129,42 +2109,20 @@ function DesktopAppRail({
               type="button"
               aria-label="TockTutor"
               aria-current={tockTutorActive ? 'page' : undefined}
-              onClick={() => {
-                closePluginMarketplace()
-                navigate(TOCKTUTOR_ROUTE_PREFIX)
-              }}
+              onClick={() => { navigate(TOCKTUTOR_ROUTE_PREFIX) }}
             ><AppRailIcon kind="notebook" /></Button>
           </TooltipTrigger>
           <TooltipContent side="right">TockTutor</TooltipContent>
         </Tooltip>
         <div className="mt-auto flex flex-col gap-1 pb-1">
           <DesktopLauncherFallback t={t} />
-          {pluginsAvailable && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button unstyled
-                  type="button"
-                  aria-label="Plugins"
-                  onClick={() => {
-                    if (!tockCoderActive) navigate(TOCKCODER_ROUTE_PREFIX)
-                    const target = document.querySelector('[data-tockteam-marketplace-nav]')
-                    if (target instanceof HTMLButtonElement) target.click()
-                  }}
-                ><Blocks aria-hidden="true" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Plugins</TooltipContent>
-            </Tooltip>
-          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button unstyled
                 type="button"
                 aria-label="Settings"
                 aria-current={settingsActive ? 'page' : undefined}
-                onClick={() => {
-                  closePluginMarketplace()
-                  navigate(SETTINGS_ROUTE_PREFIX)
-                }}
+                onClick={() => { navigate(SETTINGS_ROUTE_PREFIX) }}
               ><Settings aria-hidden="true" /></Button>
             </TooltipTrigger>
             <TooltipContent side="right">Settings</TooltipContent>

@@ -32,10 +32,6 @@ import {
   type MarketplaceRuntime,
 } from '../plugins/plugin-marketplace/src/host/transaction-manager.ts'
 import { startMarketplaceAgentGateway } from '../plugins/plugin-marketplace/src/host/agent-gateway.ts'
-import {
-  initialSessionNavigationState,
-  transitionSessionNavigation,
-} from '../plugins/plugin-marketplace/src/client/session-navigation.ts'
 
 const COMMIT = '0123456789abcdef0123456789abcdef01234567'
 const UPDATED_COMMIT = 'fedcba9876543210fedcba9876543210fedcba98'
@@ -851,7 +847,7 @@ test('Agent gateway binds deferred apply to the acknowledged preview', async () 
   }
 })
 
-test('marketplace navigation preserves the Settings footer geometry', () => {
+test('marketplace is the leading Plugins settings tab', () => {
   const client = readFileSync(new URL(
     '../plugins/plugin-marketplace/src/client/plugin.tsx',
     import.meta.url,
@@ -864,26 +860,18 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
     '../plugins/plugin-marketplace/src/client/i18n.ts',
     import.meta.url,
   ), 'utf8')
-  assert.doesNotMatch(client, /--tockteam-marketplace-sidebar-height/)
-  assert.doesNotMatch(client, /SIDEBAR_BOTTOM_INSET/)
-  assert.doesNotMatch(tailwind, /data-tockteam-marketplace-sidebar-root/)
-  assert.match(client, /items-center gap-2/)
-  assert.match(client, /py-1\.5 pr-0\.5 pl-2\.5/)
-  assert.match(client, /\[&_svg\]:size-5/)
-  assert.match(tailwind, /data-tockteam-marketplace-footer-stack='true'/)
-  assert.match(tailwind, /flex-direction: column !important;/)
-  assert.match(client, /marketplaceFooter\(settings\)/)
-  assert.match(client, /removeAttribute\(FOOTER_STACK_ATTRIBUTE\)/)
-  assert.match(client, /export const inject = \['locale', 'sessions', 'slots'\]/)
-  assert.match(client, /ctx\.get\('sessions'\) as SessionsService/)
-  assert.match(client, /this\.#sessions\.list\.subscribe\(syncSessionNavigation\)/)
-  assert.match(client, /this\.#unsubscribeSessions\?\.\(\)/)
+  assert.match(client, /export const inject = \['locale', 'slots'\]/)
+  assert.doesNotMatch(client, /data-tockteam-marketplace-nav/)
+  assert.doesNotMatch(client, /tockteam-plugin-marketplace-root/)
+  assert.doesNotMatch(tailwind, /tockteam-marketplace-shell/)
   assert.match(client, /locale\.register\('tockteam\.plugin-marketplace'/)
   assert.match(client, /\['installed', t\('installed'\)\]/)
   assert.match(client, /\['available', t\('not-installed'\)\]/)
   assert.match(client, /\['updates', t\('updates'\)\]/)
   assert.match(client, /\['disabled', t\('disabled'\)\]/)
   assert.match(client, /type: 'prepare'/)
+  assert.match(client, /type: 'preview',[\s\S]*confirmations,[\s\S]*expectedPlan:/)
+  assert.match(client, /type: 'apply', expectedTransactionId: preview\.transactionId/)
   assert.match(client, /confirmations\.includes\(requirement\)/)
   assert.match(client, /snapshot\.auth\.status !== 'ready' && snapshot\.catalog\.length === 0/)
   assert.match(client, /source-review\.\$\{plan\.sourceReview\}/)
@@ -894,78 +882,17 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
   assert.match(messages, /'recovery-note': '应用时会原子替换/)
   assert.match(client, /grid-cols-3 gap-\[5px\]/)
   assert.match(client, /data-\[risk=high\]:bg-/)
-  assert.match(client, /settingsDialogOpen\(\)/)
-  assert.match(client, /document\.addEventListener\('click', this\.#handleDocumentClick, true\)/)
-  assert.match(client, /button === settingsButton\(\)/)
-  assert.match(client, /if \(disposed \|\| info\.preview !== null\) return/)
+  assert.match(client, /info\.preview === null/)
   assert.match(client, /const slots = ctx\.get\('slots'\) as SlotsService/)
-  assert.match(client, /slots\.inject\('sidebar\.footer\.action'/)
+  assert.match(client, /slots\.inject\('settings\.plugins\.tab'/)
+  assert.match(client, /id: 'tockteam-plugin-marketplace'/)
+  assert.match(client, /order: -10/)
+  assert.match(client, /data-tockteam-plugin-marketplace-settings=""/)
+  assert.match(client, /aria-expanded=\{selected\}/)
+  assert.match(client, /aria-controls=\{selected \? detailsId : undefined\}/)
+  assert.match(client, /requestAnimationFrame\(\(\) => document\.querySelector<HTMLButtonElement>/)
+  assert.match(tailwind, /:has\(> \[role='tabpanel'\] \[data-tockteam-plugin-marketplace-settings\]\)/)
   assert.doesNotMatch(client, /ctx\.slots/)
-  assert.doesNotMatch(client, /parent\.insertBefore\(this\.#entry, settings\)/)
-})
-
-test('marketplace closes instantly while retaining its opening transition', () => {
-  const client = readFileSync(new URL(
-    '../plugins/plugin-marketplace/src/client/plugin.tsx',
-    import.meta.url,
-  ), 'utf8')
-  assert.doesNotMatch(client, /opacity-0 transition-\[opacity,transform,visibility\]/)
-  assert.match(client, /data-\[open=true\]:transition-\[opacity,transform\]/)
-})
-
-test('marketplace closes after ready session navigation, not during startup', () => {
-  let state = initialSessionNavigationState()
-  let transition = transitionSessionNavigation(state, {
-    current: undefined,
-    phase: 'pending',
-  })
-  assert.equal(transition.close, false)
-  assert.deepEqual(transition.state, { current: undefined, ready: false })
-
-  state = transition.state
-  transition = transitionSessionNavigation(state, {
-    current: 'session-a',
-    phase: 'ready',
-  })
-  assert.equal(transition.close, false)
-  assert.deepEqual(transition.state, { current: 'session-a', ready: true })
-
-  state = transition.state
-  transition = transitionSessionNavigation(state, {
-    current: 'session-b',
-    phase: 'pending',
-  })
-  assert.equal(transition.close, false)
-  assert.deepEqual(transition.state, { current: 'session-a', ready: true })
-
-  state = transition.state
-  transition = transitionSessionNavigation(state, {
-    current: 'session-b',
-    phase: 'ready',
-  })
-  assert.equal(transition.close, true)
-  assert.deepEqual(transition.state, { current: 'session-b', ready: true })
-
-  state = transition.state
-  transition = transitionSessionNavigation(state, {
-    current: 'session-b',
-    phase: 'ready',
-  })
-  assert.equal(transition.close, false)
-})
-
-test('marketplace closes when an empty baseline activates a new session', () => {
-  let state = initialSessionNavigationState()
-  state = transitionSessionNavigation(state, {
-    current: undefined,
-    phase: 'ready',
-  }).state
-  const transition = transitionSessionNavigation(state, {
-    current: 'new-session',
-    phase: 'ready',
-  })
-  assert.equal(transition.close, true)
-  assert.deepEqual(transition.state, { current: 'new-session', ready: true })
 })
 
 test('bundle preview remains isolated until apply and supports undo', async () => {

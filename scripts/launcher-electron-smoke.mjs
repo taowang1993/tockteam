@@ -335,40 +335,9 @@ try {
   assert.ok(workbench)
   workbenchConnection = await CdpPage.connect(workbench.webSocketDebuggerUrl)
   await clearStartupDialogs(workbenchConnection)
-  await waitFor(
-    () => workbenchConnection.evaluate(`document.querySelector('#tockteam-rail-root button[aria-label="Plugins"]') !== null`),
-    available => available === true,
-  )
-  assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="Plugins"]'), true)
-  await waitFor(
-    () => workbenchConnection.evaluate(`document.documentElement.dataset.tockteamMarketplaceOpen`),
-    open => open === 'true',
-  )
-  assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="TockTutor"]'), true)
-  await waitFor(
-    () => workbenchConnection.evaluate(`(() => {
-      const surface = document.querySelector('#tockteam-plugin-marketplace-root > div')
-      return {
-        open: document.documentElement.dataset.tockteamMarketplaceOpen,
-        pathname: location.pathname,
-        transitionDuration: surface instanceof HTMLElement ? getComputedStyle(surface).transitionDuration : null,
-        visibility: surface instanceof HTMLElement ? getComputedStyle(surface).visibility : null,
-      }
-    })()`),
-    state => state.open === undefined
-      && state.pathname.startsWith('/tocktutor')
-      && state.transitionDuration === '0s'
-      && state.visibility === 'hidden',
-  )
-  assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="Plugins"]'), true)
-  await waitFor(
-    () => workbenchConnection.evaluate(`({ open: document.documentElement.dataset.tockteamMarketplaceOpen, pathname: location.pathname })`),
-    state => state.open === 'true' && state.pathname.startsWith('/tockcoder'),
-  )
-  assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="TockCoder"]'), true)
-  await waitFor(
-    () => workbenchConnection.evaluate(`document.documentElement.dataset.tockteamMarketplaceOpen`),
-    open => open === undefined,
+  assert.equal(
+    await workbenchConnection.evaluate(`document.querySelector('#tockteam-rail-root button[aria-label="Plugins"]') === null`),
+    true,
   )
   pages = await waitFor(
     () => electronPages(port),
@@ -929,6 +898,46 @@ try {
       return { navRight: nav.getBoundingClientRect().right, titlebarRight: titlebar.getBoundingClientRect().right, width: nav.getBoundingClientRect().width }
     })()`),
     state => state !== null && state.width >= settingsResize.width + 20 && Math.abs(state.navRight - state.titlebarRight) < 1,
+  )
+  assert.equal(await workbenchConnection.evaluate(`(() => {
+    const nav = document.querySelector('[data-tockteam-settings-page-surface] > nav')
+    const button = [...(nav?.querySelectorAll('button') ?? [])].find(item => item.textContent?.trim() === 'Plugins')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`), true)
+  const marketplaceSettingsFacts = await waitFor(
+    () => workbenchConnection.evaluate(`(() => {
+      const root = document.querySelector('[data-tockteam-plugin-marketplace-settings]')
+      const tab = [...document.querySelectorAll('[role="tab"]')].find(item => item.textContent?.trim() === 'Marketplace')
+      const section = root?.closest('[role="tabpanel"]')?.parentElement
+      return {
+        inSettings: root?.closest('[data-tockteam-settings-page-surface]') !== null,
+        railButton: document.querySelector('#tockteam-rail-root button[aria-label="Plugins"]') !== null,
+        sectionMaxWidth: section instanceof HTMLElement ? getComputedStyle(section).maxWidth : null,
+        selected: tab?.getAttribute('aria-selected') ?? null,
+        width: root instanceof HTMLElement ? root.getBoundingClientRect().width : 0,
+      }
+    })()`),
+    facts => facts.inSettings && !facts.railButton && facts.sectionMaxWidth === 'none' && facts.selected === 'true' && facts.width > 700,
+  )
+  assert.deepEqual(marketplaceSettingsFacts, {
+    inSettings: true,
+    railButton: false,
+    sectionMaxWidth: 'none',
+    selected: 'true',
+    width: marketplaceSettingsFacts.width,
+  })
+  assert.equal(await workbenchConnection.evaluate(`(() => {
+    const nav = document.querySelector('[data-tockteam-settings-page-surface] > nav')
+    const button = [...(nav?.querySelectorAll('button') ?? [])].find(item => item.textContent?.trim() === 'TockLauncher')
+    if (!(button instanceof HTMLButtonElement)) return false
+    button.click()
+    return true
+  })()`), true)
+  await waitFor(
+    () => workbenchConnection.evaluate('document.querySelector(\'[data-testid="tocklauncher-settings"]\') !== null'),
+    present => present === true,
   )
   await clearStartupDialogs(workbenchConnection)
   const settingsFacts = await workbenchConnection.evaluate(`(async () => {

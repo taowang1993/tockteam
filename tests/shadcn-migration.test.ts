@@ -116,7 +116,7 @@ test('icon-only actions use shared tooltips instead of native titles', () => {
     assert.match(source, /from '@tockteam\/ui\/tooltip'/)
     assert.match(source, /<TooltipProvider>/)
   }
-  assert.match(marketplace, /<TooltipContent>\{t\('close'\)\}<\/TooltipContent>/)
+  assert.match(marketplace, /<TooltipContent>\{t\('close-details'\)\}<\/TooltipContent>/)
   assert.match(marketplace, /<TooltipContent>\{t\('search\.clear'\)\}<\/TooltipContent>/)
   assert.doesNotMatch(marketplace, /title=\{t\('close'\)\}/)
   for (const message of ['side.back', 'workspace.refresh', 'workspace.add', 'workspace.close-review', 'workspace.remove-comment']) {
