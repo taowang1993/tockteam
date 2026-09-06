@@ -74,9 +74,11 @@ Folder: `.agents/references/`
 
 ## UIUX
 
-| Product | Audit Directory | Screenshot Capture Standard |
-| --- | --- | --- |
-| TockTutor | `/Users/taowang/projects/worktrees/tutor/.agents/uiux/tocktutor` | Use `1512 × 949` CSS pixels at device pixel ratio `2`, producing `3024 × 1898` images. Set this geometry on every CDP target or window, verify raster dimensions programmatically, and never hide mismatches with CSS cropping. |
+Folder: `.agents/uiux/`
+
+| Product   | Path                                    |
+| --------- | --------------------------------------- |
+| Tocktutor | `.agents/uiux/tocktutor/tocktutor.html` |
 
 ## Development Guidelines
 
