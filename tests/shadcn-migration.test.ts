@@ -16,7 +16,6 @@ const migratedReactFiles = [
   'plugins/tocktutor/packages/tockteam-tocktutor-import-export/src/review-panel.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base-executable-view.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/canvas-board.tsx',
-  'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor-runtime.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx',
   'src/launcher-discovery-settings.tsx',
   'src/launcher-file-search-settings.tsx',

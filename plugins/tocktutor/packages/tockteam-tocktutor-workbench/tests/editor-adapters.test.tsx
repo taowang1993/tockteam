@@ -7,7 +7,7 @@ import {
   shouldStartEditorRectangularSelection,
 } from '../src/source-editor.tsx'
 import { LivePreviewEditor, splitLivePreviewSource } from '../src/live-preview-editor.tsx'
-import { MarkdownSlidesView } from '../src/editor-surface.tsx'
+import { MarkdownSlidesView, RichReadingView } from '../src/editor-surface.tsx'
 import { projectEditorStaticWidgets, projectEditorWidgets } from '../src/editor-widgets.ts'
 
 afterEach(() => {
@@ -123,6 +123,26 @@ describe('Milkdown Live Preview editor', () => {
     expect(onChange).not.toHaveBeenCalled()
     expect(container.querySelector<HTMLElement>('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
     await waitFor(() => expect(onSelection).toHaveBeenCalled())
+  })
+
+  it('renders bordered tables without a persistent command strip', async () => {
+    const { container } = render(<LivePreviewEditor content={'| Surface | Status |\n| --- | --- |\n| Editor | Ready |\n'} onMarkdownChange={() => {}} />)
+
+    await waitFor(() => expect(container.querySelector('table')).toBeTruthy(), { timeout: 5_000 })
+    expect(screen.queryByLabelText('Live Preview Table Commands')).toBeNull()
+    const editor = screen.getByLabelText('Live Preview Editor')
+    expect(editor.className).toContain('[&_th]:border')
+    expect(editor.className).toContain('[&_td]:border')
+    expect(editor.className).toContain('border-[var(--dsw-alias-border-l2,var(--tt-border))]')
+  })
+
+  it('keeps Reading tables compact and uses the same visible borders', () => {
+    render(<RichReadingView source={'| Surface | Status |\n| --- | --- |\n| Editor | Ready |\n'} onToggleTask={() => {}} />)
+
+    const reading = screen.getByLabelText('Reading View')
+    expect(reading.querySelector('table')).toBeTruthy()
+    expect(reading.className).not.toContain('[&_table]:w-full')
+    expect(reading.className).toContain('border-[var(--dsw-alias-border-l2,var(--tt-border))]')
   })
 
   it('routes external Live Preview images through the isolated viewer callback', async () => {
