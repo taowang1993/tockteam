@@ -1,3 +1,8 @@
+import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
+import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
+import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
+import { trustedRaycastCatalog, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_RESULT_ID } from './trusted-raycast-catalog.ts'
+import { TRUSTED_RAYCAST_IPC_CHANNELS } from './trusted-raycast-contract.ts'
 import { randomBytes } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -533,6 +538,11 @@ let transitioning = false
 let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
+let trustedRaycast: TrustedRaycastManager | undefined
+const trustedRaycastChannel = new DesktopTrustedRaycastChannel(async active => {
+  if (!active) await trustedRaycast?.stop('activation-revoked')
+  if (!quitting) await launcherRescan?.().catch(error => appendLog('desktop', String(error).slice(0, 512)))
+})
 let launcherController: LauncherOverlayController | undefined
 let launcherLifecycle: LauncherLifecycleController | undefined
 let launcherUpdater: DesktopAppUpdater | undefined
@@ -1113,6 +1123,11 @@ function runtimeEnvironment(
     PATH: runtimeSearchPath(paths),
   }
   scrubDesktopAuthorityEnvironment(environment, [MARKETPLACE_AGENT_URL_ENV, MARKETPLACE_AGENT_TOKEN_ENV])
+  const trusted = overrides.preview === undefined ? trustedRaycastChannel.environment : undefined
+  if (trusted !== undefined) {
+    environment.DSH_DESKTOP_TRUSTED_RAYCAST_ENDPOINT = trusted.endpoint
+    environment.DSH_DESKTOP_TRUSTED_RAYCAST_TOKEN = trusted.token
+  }
   const reveal = overrides.preview === undefined ? desktopRevealChannel.environment : undefined
   if (reveal !== undefined) {
     environment.DSH_DESKTOP_REVEAL_ENDPOINT = reveal.endpoint
@@ -1626,6 +1641,12 @@ function createLauncherWindow(args: Readonly<{
     window.destroy()
     throw new Error('TockLauncher window was created with an unexpected session')
   }
+  const translateOwner = { webContentsId: window.webContents.id }
+  const closeTranslateOwner = (): void => { void trustedRaycast?.closeOwner(translateOwner).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
+  window.on('hide', closeTranslateOwner)
+  window.webContents.on('render-process-gone', closeTranslateOwner)
+  window.webContents.on('did-start-navigation', closeTranslateOwner)
+  window.on('closed', closeTranslateOwner)
   writeLauncherPackagedSmokeSecurity(window, args.launcherSession)
   window.removeMenu()
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -2182,15 +2203,24 @@ function initializeLauncher(): void {
     },
   })
   launcherOs = os
+  trustedRaycast = new TrustedRaycastManager({
+    runtimeDir: join(currentDir, 'trusted-raycast'),
+    nodePath: runtimePaths().nodeBinary,
+    onMessage: (owner, message) => {
+      const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
+      if (window !== undefined && !window.isDestroyed()) window.webContents.send(TRUSTED_RAYCAST_IPC_CHANNELS.patch, message)
+    },
+    onError: (_owner, error) => appendLog('desktop', error.message.slice(0, 512)),
+  })
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
-    initialIndexedItems: repository.readIndex(),
+    initialIndexedItems: repository.readIndex().filter(item => item.id !== TRUSTED_RAYCAST_RESULT_ID),
     initialRanking: repository.readRanking(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async (signal, preserveSignal) => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
+      return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycast?.available === true), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
       const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
@@ -2234,6 +2264,11 @@ function initializeLauncher(): void {
       if (!completion.handled) completion = normalizeLauncherActionResult(await fileSearch.executeAction(record))
       if (!completion.handled) completion = normalizeLauncherActionResult(await network.executeAction(record))
       if (!completion.handled) completion = normalizeLauncherActionResult(await os.executeAction(record))
+      if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRANSLATE_HANDLER) {
+        if (!trustedRaycastChannel.active || !trustedRaycast?.available || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
+        await trustedRaycast.start(record.owner, { sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: {} })
+        completion = launcherActionCompletion(true)
+      }
       if (!completion.handled) {
         await executeTockTeamDestination(record, () => {
           if (runtimeUrl === undefined) return false
@@ -2272,6 +2307,7 @@ function initializeLauncher(): void {
   launcherRescan = rescan
   const onWindowCleared = (window: { webContents: { id: number } }): void => {
     const owner = { role: 'launcher' as const, webContentsId: window.webContents.id }
+    void trustedRaycast?.closeOwner(owner)
     // Revoke every provider before clearing this renderer's public action owner.
     invalidateAllLauncherProviders('launcher-owner-clear', owner)
     const ownerGeneration = ++launcherOwnerGeneration
@@ -2318,6 +2354,7 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
+    await trustedRaycast?.close()
     await launcherCustomBrowser?.close()
     const discoveryClose = discovery.close()
     const fileClose = fileSearch.close()
@@ -2342,6 +2379,11 @@ function initializeLauncher(): void {
     resolveWindow: sender => launcherWindowRegistry.resolveWindow(sender),
     roleOf: window => launcherWindowRegistry.roleOf(window),
     urlPolicy,
+  })
+  const disposeTrustedRaycast = registerTrustedRaycastIpcHandlers({
+    guard: launcherGuard, ipcMain,
+    onEvent: (owner, event) => { if (!trustedRaycastChannel.active) throw new Error('Translate capability is inactive'); trustedRaycast?.send(owner, event) },
+    onClose: async owner => { await trustedRaycast?.closeOwner(owner) },
   })
   const disposeWindowIpc = registerLauncherWindowIpcHandlers({
     controller: nextController,
@@ -2373,9 +2415,11 @@ function initializeLauncher(): void {
     })
     launcherIpcDisposer = () => {
       disposeSearchIpc()
+      disposeTrustedRaycast()
       disposeWindowIpc()
     }
   } catch (error) {
+    disposeTrustedRaycast()
     disposeWindowIpc()
     throw error
   }
@@ -3061,6 +3105,7 @@ async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolea
       desktopCallerChannel.stop(),
       desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),
+      trustedRaycastChannel.stop(),
     ])
     const failed = results.find(result => result.status === 'rejected')
     if (failed?.status === 'rejected') throw failed.reason
@@ -3106,6 +3151,7 @@ async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>):
       await start()
       ensureCurrent()
     }
+    await startChannel(() => trustedRaycastChannel.start())
     await startChannel(() => desktopRevealChannel.start())
     await startChannel(() => desktopPickerChannel.start())
     await startChannel(() => desktopCallerChannel.start())

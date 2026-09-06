@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
+import { buildTrustedRaycast } from './trusted-raycast-build.mjs'
 import {
   LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES,
   LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS,
@@ -52,6 +53,11 @@ const launcherTailwindCss = await buildTailwindCss(root, [
   {
     base: root,
     negated: false,
+    pattern: 'src/trusted-raycast-renderer.ts',
+  },
+  {
+    base: root,
+    negated: false,
     pattern: 'src/launcher-file-search-tool.ts',
   },
   {
@@ -65,7 +71,10 @@ const tailwindDefine = {
   __TOCKTEAM_TAILWIND_CSS__: JSON.stringify(tailwindCss),
 }
 
+await buildTrustedRaycast(dist, process.env.TRUSTED_RAYCAST_ARTIFACT_TAR)
+
 const pluginPackages = [
+  { directory: 'trusted-raycast', hostOnly: true },
   { directory: 'better-sidebar-runtime', hostOnly: true },
   { directory: 'tui', hostOnly: true },
   { directory: 'skins', id: '@tockteam/skins' },
@@ -193,6 +202,10 @@ const builds = [
     footer: { js: 'return module.exports; } });' },
   }),
 ]
+
+for (const [entry, name] of [['trusted-raycast-contract', 'contract'], ['trusted-raycast-manager', 'runtime'], ['trusted-raycast-renderer', 'renderer']]) {
+  builds.push(build({ ...shared, entryPoints: [join(root, 'src', `${entry}.ts`)], outfile: join(dist, 'plugins/trusted-raycast', `${name}.js`), platform: name === 'renderer' ? 'browser' : 'node', format: 'esm' }))
+}
 
 for (const plugin of pluginPackages) {
   const source = join(root, 'plugins', plugin.directory, 'src')

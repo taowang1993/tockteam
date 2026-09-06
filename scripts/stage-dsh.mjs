@@ -813,6 +813,10 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
       ],
     },
     {
+      manifest: join(root, 'plugins', 'trusted-raycast', 'package.json'),
+      files: ['index', 'contract', 'runtime', 'renderer'].map(name => [join(root, 'dist/plugins/trusted-raycast', `${name}.js`), `dist/${name}.js`]),
+    },
+    {
       manifest: join(root, 'plugins', 'better-sidebar-runtime', 'package.json'),
       files: [
         [
@@ -972,6 +976,7 @@ for (const required of [
   'web/client.js.map',
   'web/cordis.patch.yml',
   'plugins/better-sidebar-runtime/index.js',
+  'plugins/trusted-raycast/index.js',
   'plugins/skins/index.js',
   'plugins/skins/client.js',
   'plugins/sidebar/index.js',

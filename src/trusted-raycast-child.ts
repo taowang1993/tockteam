@@ -1,28 +1,21 @@
 import React from 'react'
 // @ts-expect-error The approved child artifact supplies this runtime-only singleton.
 import Reconciler from 'react-reconciler'
-// @ts-expect-error The tracer rewrites this source-preserving path inside its private extraction.
+// @ts-expect-error The runtime replaces this source-preserving path during extraction.
 import Translate from '/tmp/trusted-raycast-source/src/translate'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
 const rootNode: Node = { type: 'root', props: {}, children: [] }
-const serialize = (node: Node | string): unknown => typeof node === 'string' ? node : ({ type: node.type, props: Object.fromEntries(Object.entries(node.props).filter(([key, value]) => key !== 'children' && typeof value !== 'function' && typeof value !== 'object')), children: node.children.map(serialize) })
-const input = 'TockTeam compatibility tracer: hello world'
-let succeeded = false
-let deadline: ReturnType<typeof setTimeout> | undefined
-const findItems = (node: Node): Node[] => [
-  ...(node.type === 'raycast-list-item' ? [node] : []),
-  ...node.children.filter((child): child is Node => typeof child !== 'string').flatMap(findItems),
-]
+const serialize = (node: Node | string): unknown => typeof node === 'string' ? node : ({ type: node.type, props: Object.fromEntries(Object.entries(node.props).filter(([key, value]) => key !== 'children' && typeof value !== 'function' && (typeof value !== 'object' || value === null))), children: node.children.map(serialize) })
+const sessionId = process.env.TRUSTED_RAYCAST_SESSION_ID!
+const generation = process.env.TRUSTED_RAYCAST_GENERATION!
+let revision = -1
+let ready = false
+let searchHandler: ((value: string) => void) | undefined
 const emit = () => {
-  const projection = serialize(rootNode)
-  process.stdout.write(`VIEW ${JSON.stringify(projection)}\n`)
-  const translated = findItems(rootNode).map(item => item.props.title).find(title => typeof title === 'string' && title !== input && /[\u3400-\u9fff]/u.test(title))
-  if (translated && !succeeded) {
-    succeeded = true
-    if (deadline) clearTimeout(deadline)
-    process.stdout.write(`RESULT ${JSON.stringify({ input, translated, target: 'zh-CN' })}\n`)
-  }
+  const root = serialize(rootNode)
+  process.stdout.write(`${JSON.stringify({ type: ready ? 'patch' : 'ready', sessionId, generation, revision: ++revision, root, ...(ready ? { status: 'ready' } : {}) })}\n`)
+  ready = true
 }
 const hostConfig: any = {
   supportsMutation: true,
@@ -69,15 +62,25 @@ const hostConfig: any = {
   commitMount: () => {},
 }
 const renderer = Reconciler(hostConfig)
-const container = renderer.createContainer(rootNode, 0, null, false, null, '', console.error, console.error, console.error)
+const reportError = (error: unknown): void => {
+  process.stdout.write(`${JSON.stringify({ type: 'error', sessionId, generation, revision: ++revision, message: String(error).slice(0, 128) })}\n`)
+}
+const container = renderer.createContainer(rootNode, 0, null, false, null, '', reportError, reportError, reportError)
 renderer.updateContainer(React.createElement(Translate), container, null, () => {
-  process.stdout.write('READY\n')
-  setTimeout(() => {
-    const search = (globalThis as any).__trustedRaycastSearch
-    if (typeof search !== 'function') throw new Error('translate List did not expose search handler')
-    if (process.env.TRUSTED_RAYCAST_FORCE_NO_RESULT !== '1') search(input)
-  }, 25)
+  searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
+  if (typeof searchHandler !== 'function') throw new Error('translate List did not expose search handler')
 })
-deadline = setTimeout(() => {
-  if (!succeeded) { process.stderr.write('trusted Raycast tracer deadline: no validated translation result\\n'); process.exitCode = 1 }
-}, Number(process.env.TRUSTED_RAYCAST_CHILD_DEADLINE_MS ?? 15000))
+process.stdin.setEncoding('utf8')
+let pending = ''
+process.stdin.on('data', chunk => {
+  pending += chunk
+  if (Buffer.byteLength(pending) > 32768) throw new Error('Translate input exceeded its bound')
+  let end: number
+  while ((end = pending.indexOf('\n')) >= 0) {
+    const line = pending.slice(0, end); pending = pending.slice(end + 1)
+    const message = JSON.parse(line)
+    if (message.kind !== 'searchChanged' || typeof message.value !== 'string' || Buffer.byteLength(message.value) > 16384) throw new Error('Unsupported Translate event')
+    searchHandler?.(message.value)
+  }
+})
+process.stdin.on('end', () => process.exit(0))

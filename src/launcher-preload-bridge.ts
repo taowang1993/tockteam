@@ -21,6 +21,7 @@ import {
 } from './launcher-window-contract.ts'
 import type { LauncherCoreStatus, LauncherSearchOptions } from './launcher-core-search.ts'
 import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
+import { TRUSTED_RAYCAST_IPC_CHANNELS, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
 
 type IpcInvoker = Readonly<{
   invoke: (channel: string, args?: unknown) => Promise<unknown>
@@ -41,6 +42,9 @@ export type LauncherPreloadBridge = Readonly<{
   rescan: () => Promise<LauncherCoreStatus>
   recordSearch: (query: string) => Promise<import('./launcher-contract.ts').LauncherSurfaceSettings>
   search: (searchTerm: string, options: LauncherSearchOptions) => Promise<LauncherSearchResponse>
+  onTrustedRaycastView: (listener: (message: TrustedRaycastViewMessage) => void) => () => void
+  trustedRaycastEvent: (event: TrustedRaycastViewEvent) => Promise<Readonly<{ ok: true }>>
+  trustedRaycastClose: () => Promise<Readonly<{ ok: true }>>
 }>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -54,6 +58,7 @@ function assertArity(method: string, args: readonly unknown[], expected: number)
 export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPreloadBridge {
   const localeListeners = new Set<(locale: import('./launcher-contract.ts').LauncherLocale) => void>()
   const themeListeners = new Set<(projection: LauncherThemeProjection) => void>()
+  const trustedRaycastListeners = new Set<(message: TrustedRaycastViewMessage) => void>()
   let latestLocale: import('./launcher-contract.ts').LauncherLocale | undefined
   let latestTheme: LauncherThemeProjection | undefined
   const receiveLocale = (_event: unknown, raw: unknown): void => {
@@ -75,6 +80,13 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
   }
   ipcRenderer.on?.(LAUNCHER_WINDOW_IPC_CHANNELS.locale, receiveLocale)
   ipcRenderer.on?.(LAUNCHER_WINDOW_IPC_CHANNELS.theme, receiveTheme)
+  const receiveTrustedRaycast = (_event: unknown, raw: unknown): void => {
+    if (!isTrustedRaycastViewMessage(raw)) return
+    for (const listener of trustedRaycastListeners) listener(raw)
+  }
+  ipcRenderer.on?.(TRUSTED_RAYCAST_IPC_CHANNELS.open, receiveTrustedRaycast)
+  ipcRenderer.on?.(TRUSTED_RAYCAST_IPC_CHANNELS.patch, receiveTrustedRaycast)
+  ipcRenderer.on?.(TRUSTED_RAYCAST_IPC_CHANNELS.error, receiveTrustedRaycast)
   return Object.freeze({
     dismiss: async (...args: unknown[]): Promise<void> => {
       assertArity('dismiss', args, 0)
@@ -126,6 +138,24 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
     rescan: async (...args: unknown[]): Promise<LauncherCoreStatus> => {
       assertArity('rescan', args, 0)
       return parseLauncherCoreStatus(await ipcRenderer.invoke(LAUNCHER_IPC_CHANNELS.rescan))
+    },
+    onTrustedRaycastView: (listener: (message: TrustedRaycastViewMessage) => void): (() => void) => {
+      if (typeof listener !== 'function') throw new Error('Trusted Translate view listener is invalid')
+      trustedRaycastListeners.add(listener)
+      return () => { trustedRaycastListeners.delete(listener) }
+    },
+    trustedRaycastEvent: async (event: TrustedRaycastViewEvent, ...extra: unknown[]): Promise<Readonly<{ ok: true }>> => {
+      assertArity('trustedRaycastEvent', [event, ...extra], 1)
+      if (!isTrustedRaycastViewEvent(event)) throw new Error('Trusted Translate view event is invalid')
+      const result = await ipcRenderer.invoke(TRUSTED_RAYCAST_IPC_CHANNELS.event, event)
+      if (!isRecord(result) || Object.keys(result).length !== 1 || result.ok !== true) throw new Error('Invalid Trusted Translate event acknowledgement')
+      return Object.freeze({ ok: true })
+    },
+    trustedRaycastClose: async (...args: unknown[]): Promise<Readonly<{ ok: true }>> => {
+      assertArity('trustedRaycastClose', args, 0)
+      const result = await ipcRenderer.invoke(TRUSTED_RAYCAST_IPC_CHANNELS.close)
+      if (!isRecord(result) || Object.keys(result).length !== 1 || result.ok !== true) throw new Error('Invalid Trusted Translate close acknowledgement')
+      return Object.freeze({ ok: true })
     },
     search: async (searchTerm: unknown, options: unknown, ...extra: unknown[]): Promise<LauncherSearchResponse> => {
       assertArity('search', [searchTerm, options, ...extra], 2)

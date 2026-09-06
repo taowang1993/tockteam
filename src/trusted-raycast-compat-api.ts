@@ -19,7 +19,7 @@ export const Icon = new Proxy({}, { get: (_target, key) => String(key) }) as Rec
 export const Color = new Proxy({}, { get: (_target, key) => String(key) }) as Record<string, string>
 export const Keyboard = { Shortcut: { Common: new Proxy({}, { get: (_target, key) => ({ key: String(key) }) }) } }
 export const Toast = { Style: { Failure: 'failure', Success: 'success', Animated: 'animated' } }
-export async function showToast(toast: unknown): Promise<void> { process.stdout.write(`TOAST ${JSON.stringify(toast)}\n`) }
+export async function showToast(toast: unknown): Promise<void> { process.stderr.write(`TOAST ${JSON.stringify(toast)}\n`) }
 export function useNavigation(): { push: (view: unknown) => never; pop: () => never } { return { push: () => { throw new Error('Raycast navigation is not admitted in the initial tracer') }, pop: () => { throw new Error('Raycast navigation is not admitted in the initial tracer') } } }
 const unsupported = (name: string): never => { throw new Error(`Raycast API ${name} is not admitted in the initial tracer`) }
 export async function clearSearchBar(): Promise<void> { return unsupported('clearSearchBar') }

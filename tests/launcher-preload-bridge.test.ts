@@ -8,7 +8,7 @@ test('launcher preload forwards validated theme events and ignores stale revisio
   let receive: ((event: unknown, value: unknown) => void) | undefined
   const bridge = createLauncherPreloadBridge({
     invoke: async () => ({ ok: true }),
-    on: (_channel, listener) => { receive = listener as typeof receive },
+    on: (channel, listener) => { if (channel === LAUNCHER_WINDOW_IPC_CHANNELS.theme) receive = listener as typeof receive },
   })
   const received: number[] = []
   const remove = bridge.onTheme(theme => { received.push(theme.revision) })
@@ -43,7 +43,7 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
       return { ok: true }
     },
   })
-  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'])
+  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'rescan', 'search', 'trustedRaycastClose', 'trustedRaycastEvent'])
   assert.equal(bridge.getLocalExtensionSettings.length, 0)
   assert.equal(bridge.getSurfaceSettings.length, 0)
   assert.equal(bridge.getTheme.length, 0)

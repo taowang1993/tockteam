@@ -1,0 +1,48 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { registerTrustedRaycastIpcHandlers } from '../src/trusted-raycast-ipc.ts'
+import { TRUSTED_RAYCAST_IPC_CHANNELS, isTrustedRaycastViewMessage, isTrustedRaycastViewEvent } from '../src/trusted-raycast-contract.ts'
+import { createLauncherPreloadBridge } from '../src/launcher-preload-bridge.ts'
+
+test('view IPC authenticates before parsing and disposes only its finite handlers', async () => {
+  const handlers = new Map<string, (...args: any[]) => unknown>()
+  const sender = {}
+  let sent = 0; let closed = 0
+  const dispose = registerTrustedRaycastIpcHandlers({
+    ipcMain: { handle: (channel, handler) => { handlers.set(channel, handler) }, removeHandler: channel => { handlers.delete(channel) } },
+    guard: { assert: event => { if (event !== sender) throw new Error('untrusted'); return { role: 'launcher', webContentsId: 7 } } },
+    onEvent: owner => { assert.equal(owner.webContentsId, 7); sent++ },
+    onClose: owner => { assert.equal(owner.webContentsId, 7); closed++ },
+  })
+  const event = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.event)!
+  const close = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.close)!
+  const input = { sessionId: 's', generation: 'g', revision: 0, eventId: 'e', kind: 'searchChanged', value: 'hello' }
+  await assert.rejects(Promise.resolve(event({}, input)), /untrusted/)
+  await assert.rejects(Promise.resolve(event(sender, { ...input, extra: true })), /Invalid/)
+  await assert.rejects(Promise.resolve(event(sender, input, 'extra')), /Invalid/)
+  await event(sender, input); assert.equal(sent, 1)
+  await assert.rejects(Promise.resolve(close(sender, {})), /arguments/)
+  await close(sender); assert.equal(closed, 1)
+  dispose(); dispose(); assert.equal(handlers.size, 0)
+})
+test('projection rejects unknown families, oversized text, nonfinite properties and foreign keys', () => {
+  const root = { type: 'root', props: {}, children: [] }
+  const message = { type: 'ready', sessionId: 's', generation: 'g', revision: 0, root }
+  assert.equal(isTrustedRaycastViewMessage(message), true)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, type: 'iframe' } }), false)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, props: { text: 'a'.repeat(262145) } } }), false)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, props: { number: Infinity } } }), false)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, token: 'not-public' }), false)
+  assert.equal(isTrustedRaycastViewEvent({ sessionId: 's', generation: 'g', revision: 0, eventId: 'e', kind: 'searchChanged', value: '中'.repeat(5462) }), false)
+})
+test('preload filters malformed projections and rejects extra event arguments', async () => {
+  const listeners = new Map<string, (...args: any[]) => void>()
+  let count = 0
+  const bridge = createLauncherPreloadBridge({ invoke: async () => ({ ok: true }), on: (name, handler) => listeners.set(name, handler) })
+  const remove = bridge.onTrustedRaycastView(() => count++)
+  const receive = listeners.get(TRUSTED_RAYCAST_IPC_CHANNELS.patch)!
+  receive({}, { type: 'patch', extra: true }); assert.equal(count, 0)
+  receive({}, { type: 'ready', sessionId: 's', generation: 'g', revision: 0, root: { type: 'root', props: {}, children: [] } }); assert.equal(count, 1)
+  remove()
+  await assert.rejects((bridge.trustedRaycastEvent as (...args: unknown[]) => Promise<unknown>)({}, 'extra'), /arguments/)
+})

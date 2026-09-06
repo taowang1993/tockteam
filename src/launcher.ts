@@ -1,3 +1,4 @@
+import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
 import {
   ArrowRight,
   History as HistoryIcon,
@@ -270,6 +271,7 @@ async function bootstrap(): Promise<void> {
   let cancellationPending = false
   let cancellationRequested = false
   let activeCancellation: Readonly<{ actionId: string; resultSetId: string }> | undefined
+  let trustedView: ReturnType<typeof createTrustedRaycastView> | undefined
   let activeLocalTool: HTMLElement | undefined
   let activeLocalToolId: LauncherLocalToolId | undefined
   let surfaceSettings: LauncherSurfaceSettings = Object.freeze({
@@ -363,11 +365,12 @@ async function bootstrap(): Promise<void> {
   const workflowInteractionBlocked = (): boolean => invokingWorkflow || activeCancellation !== undefined || cancellationPending
 
   const closeLocalTool = (): void => {
+    if (trustedView) { trustedView = undefined; void bridge.trustedRaycastClose().catch(() => undefined) }
     const tool = activeLocalTool
     activeLocalTool = undefined
     activeLocalToolId = undefined
     tool?.remove()
-    for (const element of [searchForm, providerStatuses, results, footer]) element.hidden = false
+    for (const element of [searchForm, providerStatuses, results, footer]) { element.hidden = false; element.classList.remove('hidden') }
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
@@ -379,8 +382,19 @@ async function bootstrap(): Promise<void> {
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
-    for (const element of [searchForm, providerStatuses, results, footer]) element.hidden = true
+    for (const element of [searchForm, providerStatuses, results, footer]) { element.hidden = true; element.classList.add('hidden') }
   }
+  bridge.onTrustedRaycastView(message => {
+    if (message.type === 'ready') {
+      activeLocalTool?.remove()
+      trustedView = createTrustedRaycastView(document, bridge, closeLocalTool, surfaceSettings.locale)
+      activeLocalTool = trustedView.element
+      activeLocalToolId = undefined
+      hideLauncherControls()
+      root.append(trustedView.element)
+    }
+    trustedView?.update(message)
+  })
   const openLocalTool = async (extensionId: LauncherLocalToolId): Promise<void> => {
     let localSettings: LauncherLocalExtensionSettings
     try { localSettings = await bridge.getLocalExtensionSettings() } catch { setStatus(messages().fileSearchUnavailable, 'error'); restoreSearchFocus(); return }
@@ -590,6 +604,7 @@ async function bootstrap(): Promise<void> {
         restoreSearchFocus()
         return
       }
+      if (trustedView !== undefined) return
       if (!surfaceSettings.preserveUserInput) search.value = ''
       if (toolId !== undefined) {
         await openLocalTool(toolId)

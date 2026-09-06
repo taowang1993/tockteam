@@ -278,6 +278,8 @@ importers:
         specifier: 4.3.3
         version: 4.3.3
 
+  plugins/trusted-raycast: {}
+
   plugins/tui: {}
 
   plugins/ui:

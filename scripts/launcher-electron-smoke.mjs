@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { ensureElectronInstalled } from './electron-runtime.mjs'
 import { stopChildProcess } from './process-cleanup.mjs'
+import { proveTrustedRaycast } from './trusted-raycast-electron-proof.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const launcherCsp = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'"
@@ -328,6 +329,7 @@ let restartedWorkbenchConnection
 let restartedLauncherConnection
 let resetWorkbenchConnection
 let resetLauncherConnection
+async function runSmoke() {
 try {
   await waitFor(
     () => electronPages(port),
@@ -377,6 +379,15 @@ try {
     () => launcherConnection.evaluate('document.documentElement.dataset.launcherReady'),
     ready => ready === 'true',
   )
+  if (process.argv.includes('--trusted-raycast')) {
+    console.log(`Trusted Raycast Electron root PID=${child.pid} CDP=${port}`)
+    await proveTrustedRaycast({ port, root, workbenchConnection })
+    const ranking = JSON.parse(await readFile(join(userData, 'launcher', 'usage-ranking.json'), 'utf8'))
+    assert.equal(ranking.find(entry => entry.id === 'trusted-raycast:google-translate:translate')?.useCount, 1)
+    console.log('Translate launch useCount=1 after two queries and view close')
+    console.log('trusted Raycast real Desktop/Playwright smoke passed')
+    return
+  }
   const facts = await launcherConnection.evaluate(`({
     ready: document.documentElement.dataset.launcherReady,
     width: innerWidth,
@@ -401,7 +412,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'],
+    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'rescan', 'search', 'trustedRaycastClose', 'trustedRaycastEvent'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -2540,6 +2551,10 @@ try {
 } catch (error) {
   throw new Error(`${error instanceof Error ? error.stack ?? error.message : String(error)}\nElectron output:\n${output}`)
 } finally {
+  if (process.argv.includes('--trusted-raycast')) {
+    await stopChildProcess(child, 1000, 1000)
+    console.log(`Trusted Raycast Electron process group ${child.pid} stopped`)
+  }
   launcherConnection?.close()
   workbenchConnection?.close()
   restartedLauncherConnection?.close()
@@ -2572,3 +2587,6 @@ try {
   await rm(discoveryFixture, { recursive: true, force: true })
   await rm(simpleSearchFixture, { recursive: true, force: true })
 }
+
+}
+await runSmoke()

@@ -100,3 +100,27 @@ The assets `linux-applications.png` and `linux-generic-app-icon.png` by GNOME Pr
 The Custom Web Search icon is designed by OpenMoji (<https://openmoji.org/>) and
 is licensed under CC BY-SA 4.0
 (<https://creativecommons.org/licenses/by-sa/4.0/>).
+
+## Trusted Raycast Google Translate Desktop pilot
+
+Optional build payload: the unchanged `translate` command from Raycast extensions
+revision `1063bfaa34be81528c4e397c91b57c42ec370d79`, Google Translate extension
+(MIT). Reviewed source/runtime archive SHA-256:
+`7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac`.
+
+`TRUSTED_RAYCAST_ARTIFACT_TAR` explicitly selects these approved bytes at build time.
+The build ships the original archive as `dist/trusted-raycast/artifact.tar`, including
+its `LICENSE-FILES`, `LICENSE-INVENTORY.json`, `PROVENANCE.txt`, source checksums,
+assets and dependency locks. The derived child bundle contains upstream extension
+source **and** TockTeam compatibility code. Its `build.json` records source archive
+identity; hashing the archive alone does not attest arbitrary derived application
+bundle bytes. No package installation or install scripts run in the application.
+
+The private child uses the archive's exact React 19.0.0 (MIT), react-reconciler
+0.31.0 (MIT), scheduler 0.25.0 (MIT), and reviewed upstream dependency closure,
+including axios 0.31.1 (MIT). Full applicable MIT/ISC and dependency notices remain
+inside the original archive and are extracted before execution. The launcher
+loads no extension code and no extension assets into its sandboxed renderer.
+Missing approved payload means no Translate catalog command. This is trusted
+local execution, not filesystem/network/process confinement or a general Raycast
+extension installer. Web and TUI do not activate this capability.
