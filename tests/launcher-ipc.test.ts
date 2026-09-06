@@ -32,7 +32,7 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
     rescan: async () => ({ indexedItemCount: 1, rescanStatus: 'idle' as const }),
     search: async term => {
       if (term === 'old') await old
-      return { after: [], before: [{ defaultAction: { argument: 'coder', description: 'Focus', handlerKey: 'focus-workbench' }, description: 'TockCoder', id: 'coder', name: 'TockCoder', sourceExtension: 'TockTeam' }], status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
+      return { after: [], before: [{ defaultAction: { argument: 'coder', description: 'Focus', handlerKey: 'focus-workbench' }, description: 'TockCoder', id: 'coder', name: 'TockCoder', sourceExtension: 'TockTeam' }], sections: [{ id: 'pinned', items: [{ defaultAction: { argument: 'coder', description: 'Focus', handlerKey: 'focus-workbench' }, description: 'TockCoder', id: 'coder', name: 'TockCoder', sourceExtension: 'TockTeam' }] }], status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
     },
   })
   const sender = {}
@@ -79,7 +79,7 @@ test('workflow invocation fences a pending search while preserving cancellation'
     rescan: async () => ({ indexedItemCount: 1, rescanStatus: 'idle' as const }),
     search: async () => {
       await pendingSearch
-      return { after: [], before: [], status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
+      return { after: [], before: [], sections: [], status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
     },
   })
   const event = { sender: {} }
@@ -123,7 +123,7 @@ test('launcher IPC rechecks ownership after search and maps expiry without expos
     rescan: async () => ({ indexedItemCount: 0, rescanStatus: 'idle' as const }),
     search: async () => {
       await pending
-      return { after: [], before: [], status: { indexedItemCount: 0, rescanStatus: 'idle' as const } }
+      return { after: [], before: [], sections: [], status: { indexedItemCount: 0, rescanStatus: 'idle' as const } }
     },
   })
   const search = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.search)!

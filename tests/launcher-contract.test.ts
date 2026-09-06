@@ -59,6 +59,13 @@ test('launcher public responses contain opaque action IDs only', () => {
     }],
     before: [],
     resultSetId: 'launcher-results:1',
+    sections: [{ id: 'results', items: [{
+      defaultAction: { actionId: 'launcher-action:abc', description: 'Focus' },
+      description: 'TockTeam composer',
+      id: 'tockteam:tockcoder',
+      name: 'TockCoder',
+      sourceExtension: 'TockTeam',
+    }] }],
     status: { indexedItemCount: 1, rescanStatus: 'idle' },
   })
   assert.equal(response.after[0]?.defaultAction.actionId, 'launcher-action:abc')
@@ -77,13 +84,23 @@ test('launcher public responses contain opaque action IDs only', () => {
     }],
     before: [],
     resultSetId: 'launcher-results:1',
+    sections: [{ id: 'results', items: [] }],
     status: { indexedItemCount: 1, rescanStatus: 'idle' },
   }), /action result/u)
   assert.deepEqual(parseLauncherInvokeResult({ ok: false, reason: 'expired' }), { ok: false, reason: 'expired' })
   const oversizedResultSetId = `launcher-results:${'1'.repeat(64)}`
   assert.throws(() => parseLauncherCancelActionArgs({ actionId: 'launcher-action:abc', resultSetId: oversizedResultSetId }), /cancellation/u)
   assert.throws(() => parseLauncherSearchResponse({
-    after: [], before: [], resultSetId: oversizedResultSetId,
+    after: [], before: [], resultSetId: oversizedResultSetId, sections: [],
     status: { indexedItemCount: 0, rescanStatus: 'idle' },
   }), /search response/u)
+  const emptyStatus = { indexedItemCount: 0, rescanStatus: 'idle' as const }
+  assert.throws(() => parseLauncherSearchResponse({
+    after: [], before: [], resultSetId: 'launcher-results:2',
+    sections: [{ id: 'applications', items: [] }, { id: 'commands', items: [] }], status: emptyStatus,
+  }), /out of order/u)
+  assert.throws(() => parseLauncherSearchResponse({
+    after: [], before: [], resultSetId: 'launcher-results:3',
+    sections: [{ id: 'commands', items: [] }, { id: 'results', items: [] }], status: emptyStatus,
+  }), /mixed/u)
 })

@@ -7,6 +7,7 @@ import type {
   LauncherCoreStatus,
   LauncherSearchEngineId,
   LauncherSearchOptions,
+  LauncherSearchSectionId,
 } from './launcher-core-search.ts'
 
 export const LAUNCHER_FILE_SEARCH_QUERY_PREFIX = 'tockteam:file-search:'
@@ -84,10 +85,16 @@ export const LAUNCHER_COMPOSITION = Object.freeze({
   ] as const),
 })
 
+export type LauncherSearchSection = Readonly<{
+  id: LauncherSearchSectionId
+  items: readonly LauncherPublicResultItem[]
+}>
+
 export type LauncherSearchResponse = Readonly<{
   after: readonly LauncherPublicResultItem[]
   before: readonly LauncherPublicResultItem[]
   resultSetId: string
+  sections: readonly LauncherSearchSection[]
   status: LauncherCoreStatus
 }>
 
@@ -142,6 +149,14 @@ const RESULT_LAYOUTS = new Set<LauncherResultLayout>(['compact', 'detailed'])
 const SCROLL_BEHAVIORS = new Set<LauncherScrollBehavior>(['auto', 'smooth', 'instant'])
 const CLICK_BEHAVIORS = new Set<LauncherClickBehavior>(['selectSearchResultItem', 'invokeSearchResultItem'])
 const HIDE_WINDOW_REASONS = new Set(['blur', 'afterInvocation', 'escapePressed'])
+const SEARCH_SECTION_IDS = new Set<LauncherSearchSectionId>(['pinned', 'recent', 'commands', 'applications', 'results'])
+const SEARCH_SECTION_ORDER: Readonly<Record<LauncherSearchSectionId, number>> = Object.freeze({
+  pinned: 0,
+  recent: 1,
+  commands: 2,
+  applications: 3,
+  results: 4,
+})
 export const LAUNCHER_MAX_SEARCH_TERM_LENGTH = 512
 export const LAUNCHER_MAX_SEARCH_INPUT_LENGTH = LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length + LAUNCHER_MAX_SEARCH_TERM_LENGTH
 
@@ -339,24 +354,66 @@ function parsePublicItem(value: unknown): asserts value is LauncherPublicResultI
   }
 }
 
+function parseLauncherSearchSection(value: unknown): LauncherSearchSection {
+  if (!isRecord(value)
+    || !hasExactKeys(value, ['id', 'items'])
+    || typeof value.id !== 'string'
+    || !SEARCH_SECTION_IDS.has(value.id as LauncherSearchSectionId)
+    || !Array.isArray(value.items)
+    || value.items.length > 200) {
+    throw new Error('Invalid launcher search section')
+  }
+  value.items.forEach(parsePublicItem)
+  return Object.freeze({
+    id: value.id as LauncherSearchSectionId,
+    items: Object.freeze(value.items),
+  })
+}
+
 export function parseLauncherSearchResponse(value: unknown): LauncherSearchResponse {
   if (!isRecord(value)
-    || !hasExactKeys(value, ['after', 'before', 'resultSetId', 'status'])
+    || !hasExactKeys(value, ['after', 'before', 'resultSetId', 'sections', 'status'])
     || typeof value.resultSetId !== 'string'
     || value.resultSetId.length > MAX_RESULT_SET_ID_LENGTH
     || !RESULT_SET_ID_PATTERN.test(value.resultSetId)
     || !Array.isArray(value.before)
     || !Array.isArray(value.after)
+    || !Array.isArray(value.sections)
+    || value.sections.length > SEARCH_SECTION_IDS.size
     || value.before.length + value.after.length > 200) {
     throw new Error('Invalid launcher search response')
   }
   value.before.forEach(parsePublicItem)
   value.after.forEach(parsePublicItem)
+  const sections = value.sections.map(parseLauncherSearchSection)
+  const sectionIds = new Set<LauncherSearchSectionId>()
+  const sectionItems = new Set<string>()
+  let previousSectionOrder = -1
+  for (const section of sections) {
+    if (sectionIds.has(section.id)) throw new Error('Duplicate launcher search section')
+    const sectionOrder = SEARCH_SECTION_ORDER[section.id]
+    if (sectionOrder < previousSectionOrder) throw new Error('Launcher search sections are out of order')
+    previousSectionOrder = sectionOrder
+    sectionIds.add(section.id)
+    for (const item of section.items) {
+      if (sectionItems.has(item.id)) throw new Error('Duplicate launcher search result item')
+      sectionItems.add(item.id)
+    }
+  }
+  if (sectionIds.has('results') && [...sectionIds].some(id => id !== 'pinned' && id !== 'results')) {
+    throw new Error('Launcher search results section is mixed with opening sections')
+  }
+  const orderedItems = sections.flatMap(section => section.items)
+  const legacyItems = [...value.before, ...value.after] as LauncherPublicResultItem[]
+  if (orderedItems.length !== legacyItems.length || orderedItems.some((item, index) => item.id !== legacyItems[index]?.id)) {
+    throw new Error('Launcher search sections do not match result ordering')
+  }
   const status = parseLauncherCoreStatus(value.status)
   return Object.freeze({
     after: Object.freeze(value.after),
     before: Object.freeze(value.before),
     resultSetId: value.resultSetId,
+    sections: Object.freeze(sections),
     status,
   })
 }

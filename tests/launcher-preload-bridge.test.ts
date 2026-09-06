@@ -28,6 +28,7 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
           after: [],
           before: [],
           resultSetId: 'launcher-results:1',
+          sections: [],
           status: { indexedItemCount: 1, rescanStatus: 'idle' },
         }
       }

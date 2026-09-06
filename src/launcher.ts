@@ -17,6 +17,7 @@ import {
   launcherEffectiveScrollBehavior,
   launcherShortcutAriaLabel,
   launcherShortcutMatches,
+  type LauncherSearchSection,
   type LauncherInvokeResult,
   type LauncherSurfacePlatform,
   type LauncherSurfaceSettings,
@@ -51,7 +52,9 @@ const FOCUS_SEARCH_EVENT = 'tockteam-launcher-focus-search'
 type LauncherMessages = Readonly<{
   actions: string
   actionsFor: string
+  applications: string
   cancel: string
+  commands: string
   cancelFailed: string
   canceling: string
   canceled: string
@@ -82,7 +85,9 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
   en: Object.freeze({
     actions: 'Actions',
     actionsFor: 'Actions for',
+    applications: 'Applications',
     cancel: 'Cancel',
+    commands: 'Commands',
     cancelFailed: 'Workflow could not be canceled.',
     canceling: 'Canceling workflow…',
     canceled: 'Workflow canceled.',
@@ -111,7 +116,9 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
   zh: Object.freeze({
     actions: '操作',
     actionsFor: '操作：',
+    applications: '应用程序',
     cancel: '取消',
+    commands: '命令',
     cancelFailed: '无法取消工作流。',
     canceling: '正在取消工作流…',
     canceled: '工作流已取消。',
@@ -254,8 +261,8 @@ async function bootstrap(): Promise<void> {
   let revision = 0
   let selectedItemId = ''
   let currentItems: LauncherPublicResultItem[] = []
+  let currentSections: LauncherSearchSection[] = []
   let currentResultSetId = ''
-  let pinnedCount = 0
   let actionMenuOpen = false
   let historyOpen = false
   let invoking = false
@@ -780,13 +787,13 @@ async function bootstrap(): Promise<void> {
     details.append(menu)
   }
 
-  const renderGroup = (name: string, items: readonly LauncherPublicResultItem[], start: number): void => {
+  const renderGroup = (id: string, name: string, items: readonly LauncherPublicResultItem[], start: number): void => {
     if (items.length === 0) return
     const group = document.createElement('li')
     group.className = 'mb-0.5'
     group.setAttribute('role', 'group')
     const heading = document.createElement('h2')
-    heading.id = `launcher-group-${name.toLocaleLowerCase('en-US')}`
+    heading.id = `launcher-group-${id}`
     heading.className = 'm-0 px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--dsw-alias-label-secondary,CanvasText)]'
     heading.textContent = name
     group.setAttribute('aria-labelledby', heading.id)
@@ -854,8 +861,20 @@ async function bootstrap(): Promise<void> {
   function renderResults(): void {
     results.replaceChildren()
     const copy = messages()
-    renderGroup(copy.pinned, currentItems.slice(0, pinnedCount), 0)
-    renderGroup(search.value.trim().length === 0 ? copy.recent : copy.results, currentItems.slice(pinnedCount), pinnedCount)
+    let start = 0
+    for (const section of currentSections) {
+      const name = section.id === 'pinned'
+        ? copy.pinned
+        : section.id === 'recent'
+          ? copy.recent
+          : section.id === 'commands'
+            ? copy.commands
+            : section.id === 'applications'
+              ? copy.applications
+              : copy.results
+      renderGroup(section.id, name, section.items, start)
+      start += section.items.length
+    }
     updateSelection()
   }
 
@@ -871,8 +890,8 @@ async function bootstrap(): Promise<void> {
       })
       if (currentRevision !== revision || workflowInteractionBlocked()) return false
       const previous = selectedItemId
-      pinnedCount = response.before.length
-      currentItems = [...response.before, ...response.after]
+      currentSections = [...response.sections]
+      currentItems = currentSections.flatMap(section => section.items)
       currentResultSetId = response.resultSetId
       selectedItemId = currentItems.some(item => item.id === previous) ? previous : currentItems[0]?.id ?? ''
       search.setAttribute('aria-expanded', String(currentItems.length > 0))
@@ -886,7 +905,7 @@ async function bootstrap(): Promise<void> {
     } catch {
       if (currentRevision !== revision || workflowInteractionBlocked()) return false
       currentItems = []
-      pinnedCount = 0
+      currentSections = []
       selectedItemId = ''
       search.setAttribute('aria-expanded', 'false')
       renderResults()

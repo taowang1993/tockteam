@@ -80,6 +80,13 @@ test('programmatic launcher scrolling is instant when reduced motion is active',
   assert.equal(launcherEffectiveScrollBehavior('smooth', false), 'smooth')
 })
 
+test('launcher renderer consumes only finite main-owned result sections', () => {
+  assert.match(launcherSource, /currentSections = \[\.\.\.response\.sections\]/u)
+  assert.match(launcherSource, /section\.id === 'commands'/u)
+  assert.match(launcherSource, /section\.id === 'applications'/u)
+  assert.doesNotMatch(launcherSource, /pinnedCount/u)
+})
+
 test('launcher renderer guards hidden tool focus from result shortcuts', () => {
   assert.match(launcherSource, /eventInsideTool && event\.key !== 'Escape'/u)
 })
