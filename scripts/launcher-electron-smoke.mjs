@@ -305,7 +305,7 @@ assert.match(mainSource, /launcherWorkflowFixtureMarker/u)
 assert.match(mainSource, /acceptedEffects/u)
 assert.match(mainSource, /Unexpected fixture effect/u)
 assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
-const fixtureEnvironment = { ...process.env, ...(process.argv.includes('--trusted-raycast') ? { TOCKTEAM_TRUSTED_RAYCAST_BROWSER_FIXTURE: '1' } : {}), TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_DISCOVERY_FIXTURE_ROOT: discoveryFixture, TOCKTEAM_FILE_SEARCH_FIXTURE_PATH: simpleSearchFile, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1', TOCKTEAM_WORKFLOW_ACTION_TTL_MS: '5000', TOCKTEAM_WORKFLOW_FIXTURE: '1', TOCKTEAM_WORKFLOW_SLOW_HISTORY: '1' }
+const fixtureEnvironment = { ...process.env, ...(process.argv.includes('--trusted-raycast') ? { TOCKTEAM_TRUSTED_RAYCAST_BROWSER_FIXTURE: '1', TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE: '1', TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE: '1' } : {}), TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_DISCOVERY_FIXTURE_ROOT: discoveryFixture, TOCKTEAM_FILE_SEARCH_FIXTURE_PATH: simpleSearchFile, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1', TOCKTEAM_WORKFLOW_ACTION_TTL_MS: '5000', TOCKTEAM_WORKFLOW_FIXTURE: '1', TOCKTEAM_WORKFLOW_SLOW_HISTORY: '1' }
 const child = spawn(electron, [
   '.',
   `--remote-debugging-port=${String(port)}`,
@@ -383,8 +383,8 @@ try {
     console.log(`Trusted Raycast Electron root PID=${child.pid} CDP=${port}`)
     await proveTrustedRaycast({ port, root, workbenchConnection, userData })
     const ranking = JSON.parse(await readFile(join(userData, 'launcher', 'usage-ranking.json'), 'utf8'))
-    assert.equal(ranking.find(entry => entry.id === 'trusted-raycast:google-translate:translate')?.useCount, 1)
-    console.log('Translate launch useCount=1 after two queries and view close')
+    assert.equal(ranking.find(entry => entry.id === 'trusted-raycast:google-translate:translate')?.useCount, 3)
+    console.log('Translate launch useCount=3 after three successful launches and view closes')
     console.log('trusted Raycast real Desktop/Playwright smoke passed')
     return
   }

@@ -2,10 +2,28 @@ const byteLength = (value: string): number => new TextEncoder().encode(value).by
 const MAX_TEXT = 16 * 1024
 const MAX_MESSAGE = 1024 * 1024
 const MAX_DEPTH = 32
-const MAX_NODES = 4096
+// Measured against the reviewed 250-language catalog: the nested AddLanguageForm projection
+// (3 x 251 dropdown entries plus form chrome) serializes to ~4.1k JSON nodes at the 4k ceiling.
+const MAX_NODES = 8192
 const MAX_PREFERENCES = 64
 const MAX_PREFERENCE_KEY = 128
 const MAX_PREFERENCE_TOTAL = 128 * 1024
+
+const LANGUAGE_CODE = /^[a-zA-Z]{2,5}(?:-[a-zA-Z0-9]{2,5})?$/
+const TRUSTED_RAYCAST_PREFERENCE_KEYS = ['langFrom', 'lang1', 'lang2', 'autoInput', 'defaultAction', 'prioritizeCrossLanguage', 'proxy'] as const
+export const TRUSTED_RAYCAST_PREFERENCE_DEFAULTS = Object.freeze({ langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' })
+
+export function isTrustedRaycastPreferences(value: unknown): value is Readonly<Record<(typeof TRUSTED_RAYCAST_PREFERENCE_KEYS)[number], TrustedRaycastPreference>> {
+  if (!isRecord(value) || !exactKeys(value, TRUSTED_RAYCAST_PREFERENCE_KEYS)) return false
+  const entries = value as Record<string, unknown>
+  if (typeof entries.autoInput !== 'boolean' || typeof entries.prioritizeCrossLanguage !== 'boolean') return false
+  if ((entries.defaultAction !== 'copy' && entries.defaultAction !== 'paste') || typeof entries.proxy !== 'string' || byteLength(entries.proxy) > 2048) return false
+  for (const key of ['langFrom', 'lang1', 'lang2'] as const) {
+    const code = entries[key]
+    if (typeof code !== 'string' || byteLength(code) > 16 || (code !== 'auto' && !LANGUAGE_CODE.test(code))) return false
+  }
+  return true
+}
 
 export const TRUSTED_RAYCAST_COMMAND = 'translate' as const
 export const TRUSTED_RAYCAST_IPC_CHANNELS = Object.freeze({
@@ -133,30 +151,35 @@ export function parseTrustedRaycastChildMessage(line: string, session: TrustedRa
   return message
 }
 
-export type TrustedRaycastNativeRequest = Readonly<{
-  type: 'native'; sessionId: string; generation: string; revision: number; eventId: string; requestId: string
-} & ({ kind: 'copy'; text: string } | { kind: 'openGoogleTranslate'; url: string })>
+export type TrustedRaycastNativeRequest = Readonly<
+  { type: 'native'; sessionId: string; generation: string; requestId: string } & ({ kind: 'selectedText' } | ({ revision: number; eventId: string } & ({ kind: 'copy'; text: string } | { kind: 'paste'; text: string } | { kind: 'openGoogleTranslate'; url: string })))
+>
 
-export type TrustedRaycastNativeOutcome = Readonly<{ type: 'nativeOutcome'; requestId: string; succeeded: boolean; message: string }>
+export type TrustedRaycastNativeOutcome = Readonly<{ type: 'nativeOutcome'; requestId: string; succeeded: boolean; message: string; result?: string }>
 
 export function isTrustedRaycastNativeRequest(value: unknown): value is TrustedRaycastNativeRequest {
-  if (!isRecord(value) || value.type !== 'native' || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.eventId, 128) || !boundedString(value.requestId, 128) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0) return false
-  const keys = ['type', 'sessionId', 'generation', 'revision', 'eventId', 'requestId', 'kind']
-  if (value.kind === 'copy') return exactKeys(value, [...keys, 'text']) && boundedString(value.text, 128 * 1024)
-  if (value.kind !== 'openGoogleTranslate' || !exactKeys(value, [...keys, 'url']) || !boundedString(value.url, 128 * 1024)) return false
+  if (!isRecord(value) || value.type !== 'native' || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.requestId, 128)) return false
+  const base = ['type', 'sessionId', 'generation', 'requestId', 'kind']
+  if (value.kind === 'selectedText') return exactKeys(value, base)
+  const scoped = ['revision', 'eventId']
+  const scopedValue = (keys: readonly string[]): boolean => exactKeys(value, keys) && boundedString(value.eventId, 128) && Number.isSafeInteger(value.revision) && (value.revision as number) >= 0
+  if (value.kind === 'copy' || value.kind === 'paste') return scopedValue([...base, ...scoped, 'text']) && boundedString(value.text, 128 * 1024)
+  if (value.kind !== 'openGoogleTranslate' || !scopedValue([...base, ...scoped, 'url']) || !boundedString(value.url, 128 * 1024)) return false
   try {
     const url = new URL(value.url)
     return url.origin === 'https://translate.google.com' && !url.username && !url.password && !url.hash && url.pathname === '/'
       && JSON.stringify([...url.searchParams.keys()].sort()) === JSON.stringify(['op', 'sl', 'text', 'tl'])
       && url.searchParams.get('op') === 'translate'
-      && /^[A-Za-z]{2,4}(?:-[A-Za-z]{2,4})?$/.test(url.searchParams.get('sl') ?? '')
-      && /^[A-Za-z]{2,4}(?:-[A-Za-z]{2,4})?$/.test(url.searchParams.get('tl') ?? '')
+      && LANGUAGE_CODE.test(url.searchParams.get('sl') ?? '')
+      && LANGUAGE_CODE.test(url.searchParams.get('tl') ?? '')
       && boundedString(url.searchParams.get('text'))
   } catch { return false }
 }
 
 export function isTrustedRaycastNativeOutcome(value: unknown): value is TrustedRaycastNativeOutcome {
-  return isRecord(value) && exactKeys(value, ['type', 'requestId', 'succeeded', 'message']) && value.type === 'nativeOutcome' && boundedString(value.requestId, 128) && typeof value.succeeded === 'boolean' && boundedString(value.message, 512)
+  if (!isRecord(value) || value.type !== 'nativeOutcome' || !boundedString(value.requestId, 128) || typeof value.succeeded !== 'boolean' || !boundedString(value.message, 512)) return false
+  const keys = ['type', 'requestId', 'succeeded', 'message', ...(Object.hasOwn(value, 'result') ? ['result'] : [])]
+  return exactKeys(value, keys) && (value.result === undefined || boundedString(value.result, MAX_TEXT))
 }
 
 export function isBoundedTrustedRaycastMessage(value: unknown): boolean {

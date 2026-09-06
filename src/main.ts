@@ -1,8 +1,10 @@
 import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
 import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
+import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastPriorApp, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
+import { loadTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
-import { trustedRaycastCatalog, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_RESULT_ID } from './trusted-raycast-catalog.ts'
+import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS } from './trusted-raycast-contract.ts'
 import { randomBytes } from 'node:crypto'
 import { execFile } from 'node:child_process'
@@ -540,6 +542,15 @@ let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 let trustedRaycast: TrustedRaycastManager | undefined
+let trustedRaycastPriorApp: TrustedRaycastPriorApp | undefined
+let trustedRaycastPriorCaptureTimer: ReturnType<typeof setTimeout> | undefined
+const execFilePromise = promisify(execFile)
+const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
+  execFile: (file, args, options) => execFilePromise(file, args, { timeout: options?.timeout, maxBuffer: options?.maxBuffer }) as Promise<{ stdout: string }>,
+  readClipboard: () => clipboard.readText(),
+  writeClipboard: (text: string) => clipboard.writeText(text),
+  ownAppNames: Object.freeze(app.isPackaged ? [app.name] : [app.name, 'Electron']),
+})
 const trustedRaycastChannel = new DesktopTrustedRaycastChannel(async active => {
   if (!active) await trustedRaycast?.stop('activation-revoked')
   if (!quitting) await launcherRescan?.().catch(error => appendLog('desktop', String(error).slice(0, 512)))
@@ -1644,7 +1655,15 @@ function createLauncherWindow(args: Readonly<{
   }
   const translateOwner = { webContentsId: window.webContents.id }
   const closeTranslateOwner = (): void => { void trustedRaycast?.closeOwner(translateOwner).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
-  window.on('hide', closeTranslateOwner)
+  const captureTranslatePriorApp = (): void => {
+    if (trustedRaycastPriorCaptureTimer !== undefined) return
+    trustedRaycastPriorCaptureTimer = setTimeout(() => {
+      trustedRaycastPriorCaptureTimer = undefined
+      void captureTrustedRaycastPriorApp(trustedRaycastNativeDeps).then(prior => { if (prior !== undefined) trustedRaycastPriorApp = prior }).catch(() => undefined)
+    }, 400)
+  }
+  window.on('blur', captureTranslatePriorApp)
+  window.on('hide', () => { closeTranslateOwner(); captureTranslatePriorApp() })
   window.webContents.on('render-process-gone', closeTranslateOwner)
   window.webContents.on('did-start-navigation', closeTranslateOwner)
   window.on('closed', closeTranslateOwner)
@@ -2204,9 +2223,22 @@ function initializeLauncher(): void {
     },
   })
   launcherOs = os
+  const translatePreferencesPath = join(app.getPath('userData'), 'launcher', 'trusted-raycast-preferences.json')
+  const selectionFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE === '1'
+  const pasteFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE === '1'
   trustedRaycast = new TrustedRaycastManager({
     runtimeDir: join(currentDir, 'trusted-raycast'),
     nodePath: runtimePaths().nodeBinary,
+    stateFile: join(app.getPath('userData'), 'launcher', 'trusted-raycast-state.json'),
+    readSelectedText: async () => {
+      const result = await readTrustedRaycastSelectedText(trustedRaycastPriorApp, { ...trustedRaycastNativeDeps, ...(selectionFixture ? { fixture: 'selection' as const } : {}) })
+      if (selectionFixture && 'text' in result) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-selection-proof.json'), JSON.stringify({ fixture: true }), { mode: 0o600 })
+      return result
+    },
+    pasteText: async text => {
+      const result = await pasteTrustedRaycastText(text, trustedRaycastPriorApp, { ...trustedRaycastNativeDeps, ...(pasteFixture ? { fixture: 'paste' as const } : {}) })
+      if (!app.isPackaged) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-paste-proof.json'), JSON.stringify({ target: result.target, fixture: result.fixture, restoration: 'RESTORED' }), { mode: 0o600 })
+    },
     copyText: async text => {
       const proof = await copyTrustedRaycastText(text, clipboard,
         !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_CLIPBOARD_FIXTURE === '1'
@@ -2220,7 +2252,7 @@ function initializeLauncher(): void {
         browser.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
         browser.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
         browser.webContents.session.setPermissionCheckHandler(() => false)
-        browser.webContents.on('will-navigate', (event, destination) => { if (new URL(destination).origin !== 'https://translate.google.com') event.preventDefault() })
+        browser.webContents.on('will-navigate', (event, destination) => { if (!isTrustedTranslateProofUrl(destination)) event.preventDefault() })
         const timer = setTimeout(() => { if (!browser.isDestroyed()) browser.destroy() }, 15000)
         browser.once('closed', () => clearTimeout(timer))
         try { await browser.loadURL(url) } catch (error) { browser.destroy(); throw error }
@@ -2288,7 +2320,7 @@ function initializeLauncher(): void {
       if (!completion.handled) completion = normalizeLauncherActionResult(await os.executeAction(record))
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRANSLATE_HANDLER) {
         if (!trustedRaycastChannel.active || !trustedRaycast?.available || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
-        await trustedRaycast.start(record.owner, { sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: {} })
+        await trustedRaycast.start(record.owner, { sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
         completion = launcherActionCompletion(true)
       }
       if (!completion.handled) {

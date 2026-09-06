@@ -16,7 +16,10 @@ test('native translation requests admit only bounded Copy and the exact Google T
   for (const bad of [url.replace('https:', 'http:'), url.replace('google.com', 'google.com.evil'), url + '&extra=1', url + '#fragment', url.replace('/?', '/other?'), url.replace('https://', 'https://user@')]) {
     assert.equal(valid({ ...base, kind: 'openGoogleTranslate', url: bad }), false, bad)
   }
-  assert.equal(valid({ ...base, kind: 'paste', text: 'hello' }), false)
+  assert.equal(valid({ ...base, kind: 'paste', text: 'hello' }), true)
+  assert.equal(valid({ sessionId: 's', generation: 'g', requestId: 'n', type: 'native', kind: 'selectedText' }), true)
+  assert.equal(valid({ ...base, kind: 'selectedText' }), false)
+  assert.equal(valid({ sessionId: 's', generation: 'g', requestId: 'n', type: 'native', kind: 'selectedText', text: 'leak' }), false)
 })
 
 test('native denial is correlated, replay and query replacement cannot perform effects', async () => {
@@ -25,7 +28,7 @@ test('native denial is correlated, replay and query replacement cannot perform e
   const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage() {}, copyText: async text => { effects.push(text); await new Promise<void>(resolve => { finish = resolve }) }, openGoogleTranslate: async url => { effects.push(url); throw new Error('Browser denied') } })
   const stdin = new PassThrough(); stdin.on('data', chunk => writes.push(String(chunk)))
   const owner = { webContentsId: 1 }
-  const session = { child: { stdin }, owner, input: { sessionId: 's', generation: 'g', command: 'translate', preferences: {} }, revision: 2, querySequence: 0, eventId: 'search', actions: new Map([['action', 'source-action']]), action: undefined as { eventId: string; revision: number; nativeUsed: boolean } | undefined }
+  const session = { child: { stdin }, owner, input: { sessionId: 's', generation: 'g', command: 'translate', preferences: {} }, revision: 2, querySequence: 0, eventId: 'search', actions: new Map([['action', 'source-action']]), fields: new Map(), action: undefined as { eventId: string; revision: number; nativeUsed: boolean } | undefined }
   Reflect.set(manager, 'session', session)
   const action = { sessionId: 's', generation: 'g', revision: 2, eventId: 'action', kind: 'action' as const }
   assert.throws(() => manager.send({ webContentsId: 9 }, action), /stale/)

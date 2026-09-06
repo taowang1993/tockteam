@@ -8,3 +8,8 @@ export function trustedRaycastCatalog(active: boolean, admitted: boolean): reado
     defaultAction: { handlerKey: TRUSTED_RAYCAST_TRANSLATE_HANDLER, argument: 'translate', description: 'Open Translate', hideWindowAfterInvocation: false, requiresConfirmation: false },
   }] : []
 }
+
+/** Bounded development proof browser admits only the exact Google Translate origin; unparsable destinations are always denied. */
+export function isTrustedTranslateProofUrl(raw: string): boolean {
+  try { return new URL(raw).origin === 'https://translate.google.com' } catch { return false }
+}

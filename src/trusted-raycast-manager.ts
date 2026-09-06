@@ -4,9 +4,9 @@ import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from 'node:c
 import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, mkdtempSync, mkdirSync, copyFileSync, symlinkSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, isAbsolute } from 'node:path'
+import { join, isAbsolute, dirname } from 'node:path'
 import { admitTrustedRaycastArtifact, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from './trusted-raycast-artifact-admission.ts'
-import { isTrustedRaycastNativeRequest, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
+import { isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
 
 export type TrustedRaycastOwner = Readonly<{ webContentsId: number }>
 export type TrustedRaycastManagerOptions = Readonly<{
@@ -16,8 +16,11 @@ export type TrustedRaycastManagerOptions = Readonly<{
   onError?: (owner: TrustedRaycastOwner, error: Error) => void
   copyText?: (text: string) => void | Promise<void>
   openGoogleTranslate?: (url: string) => Promise<void>
+  readSelectedText?: () => Promise<Readonly<{ text?: string; unavailable?: string }>>
+  pasteText?: (text: string) => void | Promise<void>
+  stateFile?: string
 }>
-type Session = { revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
+type Session = { revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
 
 /** Main owns identity and the sole live child. Trusted code is not an OS sandbox. */
 export class TrustedRaycastManager {
@@ -40,7 +43,7 @@ export class TrustedRaycastManager {
     const startedAt = Date.now()
     if (this.disposed || this.session || this.stopping) throw new Error('Translate runtime is busy or closed')
     if (!isTrustedRaycastViewOpen(input)) throw new Error('Invalid Translate session')
-    if (Object.keys(input.preferences).length !== 0) throw new Error('Custom Translate preferences are not supported in this slice')
+    if (Object.keys(input.preferences).length !== 0 && !isTrustedRaycastPreferences(input.preferences)) throw new Error('Unsupported Translate preferences')
     if (!isAbsolute(this.options.nodePath) || !existsSync(this.options.nodePath)) throw new Error('Packaged Node is unavailable')
     const metadata = JSON.parse(readFileSync(join(this.options.runtimeDir, 'build.json'), 'utf8'))
     if (metadata.artifactSha256 !== TRUSTED_RAYCAST_ARTIFACT_SHA256 || metadata.command !== 'translate' || metadata.react !== '19.0.0' || metadata.reconciler !== '0.31.0') throw new Error('Translate build identity mismatch')
@@ -54,15 +57,16 @@ export class TrustedRaycastManager {
       copyFileSync(join(this.options.runtimeDir, 'child.mjs'), join(workspace, 'child.mjs'))
       copyFileSync(join(this.options.runtimeDir, 'resolution.mjs'), join(workspace, 'resolution.mjs'))
       mkdirSync(join(workspace, 'tmp'))
+      if (this.options.stateFile !== undefined) mkdirSync(dirname(this.options.stateFile), { recursive: true })
       const child = spawn(this.options.nodePath, ['--import', join(workspace, 'resolution.mjs'), join(workspace, 'child.mjs')], {
         cwd: workspace, detached: true,
-        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation },
+        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? TRUSTED_RAYCAST_PREFERENCE_DEFAULTS : input.preferences), ...(this.options.stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: this.options.stateFile }) },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
       let resolveReady!: () => void
       let rejectReady!: (error: Error) => void
       const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
-      current = { child, owner, input, workspace, revision: -1, querySequence: 0, eventId: '', actions: new Map(), reject: rejectReady }
+      current = { child, owner, input, workspace, revision: -1, querySequence: 0, eventId: '', actions: new Map(), fields: new Map(), reject: rejectReady }
       this.session = current
       const session = current
       const fail = (error: Error): void => {
@@ -99,8 +103,9 @@ export class TrustedRaycastManager {
               continue
             }
             session.revision = message.revision
-            session.eventId = randomUUID()
+            session.eventId = ''
             session.actions.clear()
+            session.fields.clear()
             const querySequence = message.root!.props.querySequence
             if (!Number.isSafeInteger(querySequence) || (querySequence as number) < 0 || (querySequence as number) > session.querySequence) throw new Error('Invalid Translate query sequence')
             const wrap = (node: TrustedRaycastViewNode): TrustedRaycastViewNode => {
@@ -110,10 +115,15 @@ export class TrustedRaycastManager {
                 if (querySequence === session.querySequence) { const id = randomUUID(); session.actions.set(id, props.actionEventId); props.actionEventId = id }
                 else delete props.actionEventId
               }
+              if (Object.hasOwn(props, 'fieldEventId')) {
+                if ((node.type !== 'raycast-form-dropdown' && node.type !== 'raycast-dropdown') || typeof props.fieldEventId !== 'string') throw new Error('Invalid Translate field handle')
+                if (querySequence === session.querySequence) { const id = randomUUID(); session.fields.set(id, props.fieldEventId); props.fieldEventId = id }
+                else delete props.fieldEventId
+              }
               return { ...node, props, children: node.children.map(child => typeof child === 'string' ? child : wrap(child)) }
             }
             const root = wrap(message.root!)
-            this.options.onMessage(owner, { ...message, root: { ...root, props: { ...root.props, searchEventId: session.eventId, queryCurrent: querySequence === session.querySequence } } })
+            this.options.onMessage(owner, { ...message, root: { ...root, props: { ...root.props, ...(root.props.searchable === true ? { searchEventId: session.eventId = randomUUID() } : {}), queryCurrent: querySequence === session.querySequence } } })
             resolveReady()
           } catch (error) { fail(error instanceof Error ? error : new Error('Invalid Translate output')); return }
         }
@@ -145,9 +155,18 @@ export class TrustedRaycastManager {
     if (!isTrustedRaycastViewEvent(event) || !session || session.revoked || owner.webContentsId !== session.owner.webContentsId || event.sessionId !== session.input.sessionId || event.generation !== session.input.generation || event.revision !== session.revision) throw new Error('Translate event is stale')
     if (session.child.stdin.writableLength > 32768) throw new Error('Translate input is busy')
     if (event.kind === 'searchChanged') {
-      if (event.eventId !== session.eventId) throw new Error('Translate event is stale')
+      if (event.eventId !== session.eventId || session.eventId === '') throw new Error('Translate event is stale')
       session.querySequence++
-      session.actions.clear(); session.action = undefined
+      session.actions.clear(); session.fields.clear(); session.action = undefined
+      session.child.stdin.write(`${JSON.stringify(event)}\n`)
+      return
+    }
+    if (event.kind === 'fieldChanged') {
+      if (!session.fields.has(event.eventId)) throw new Error('Translate event is stale')
+      session.child.stdin.write(`${JSON.stringify({ ...event, eventId: session.fields.get(event.eventId) })}\n`)
+      return
+    }
+    if (event.kind === 'navigation') {
       session.child.stdin.write(`${JSON.stringify(event)}\n`)
       return
     }
@@ -159,19 +178,31 @@ export class TrustedRaycastManager {
   private async native(session: Session, request: TrustedRaycastNativeRequest): Promise<void> {
     let succeeded = false
     let message = ''
+    let result: string | undefined
     try {
-      if (this.session !== session || session.revoked || request.sessionId !== session.input.sessionId || request.generation !== session.input.generation || request.eventId !== session.action?.eventId || request.revision !== session.action.revision || session.action.nativeUsed) throw new Error('Translate native action is stale')
-      session.action.nativeUsed = true
-      if (request.kind === 'copy') {
-        if (!this.options.copyText) throw new Error('Clipboard Copy is unavailable')
-        await this.options.copyText(request.text)
+      if (this.session !== session || session.revoked || request.sessionId !== session.input.sessionId || request.generation !== session.input.generation) throw new Error('Translate native action is stale')
+      if (request.kind === 'selectedText') {
+        if (!this.options.readSelectedText) throw new Error('Selected text is unavailable')
+        const selection = await this.options.readSelectedText()
+        if (selection.text !== undefined) result = selection.text
+        else throw new Error(selection.unavailable ?? 'Selected text is unavailable')
       } else {
-        if (!this.options.openGoogleTranslate) throw new Error('Browser opening is unavailable')
-        await this.options.openGoogleTranslate(request.url)
+        if (request.eventId !== session.action?.eventId || request.revision !== session.action.revision || session.action.nativeUsed) throw new Error('Translate native action is stale')
+        session.action.nativeUsed = true
+        if (request.kind === 'copy') {
+          if (!this.options.copyText) throw new Error('Clipboard Copy is unavailable')
+          await this.options.copyText(request.text)
+        } else if (request.kind === 'paste') {
+          if (!this.options.pasteText) throw new Error('Paste is unavailable')
+          await this.options.pasteText(request.text)
+        } else {
+          if (!this.options.openGoogleTranslate) throw new Error('Browser opening is unavailable')
+          await this.options.openGoogleTranslate(request.url)
+        }
       }
       succeeded = true
     } catch (error) { message = error instanceof Error ? error.message.slice(0, 512) : 'Native action failed' }
-    if (this.session === session && !session.revoked) session.child.stdin.write(`${JSON.stringify({ type: 'nativeOutcome', requestId: request.requestId, succeeded, message })}\n`)
+    if (this.session === session && !session.revoked) session.child.stdin.write(`${JSON.stringify({ type: 'nativeOutcome', requestId: request.requestId, succeeded, message, ...(result === undefined ? {} : { result }) })}\n`)
   }
   async closeOwner(owner: TrustedRaycastOwner): Promise<void> {
     if (this.session?.owner.webContentsId === owner.webContentsId) await this.stop('owner-closed')

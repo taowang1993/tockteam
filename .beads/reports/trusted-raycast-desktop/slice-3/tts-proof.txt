@@ -1,0 +1,3 @@
+afplay processes observed with private workspace paths (live 13:41 GREEN Desktop/Playwright run):
+20709 afplay /var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-trusted-raycast-QNiqPE/tmp/translation.mp3
+20710 afplay /var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-trusted-raycast-QNiqPE/tmp/translation.mp3

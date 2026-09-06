@@ -1,6 +1,6 @@
 import React from 'react'
 // @ts-expect-error Build-time first-party alias, shared with unchanged source.
-import { configureCompatibility, advanceQuery, queryText } from '@raycast/api'
+import { configureCompatibility, advanceQuery, queryText, registerNavigationRenderer, popView, viewSearchable, navigationDepth } from '@raycast/api'
 // @ts-expect-error Build-time first-party contract alias.
 import { isTrustedRaycastNativeOutcome, isTrustedRaycastViewEvent } from '@tockteam/trusted-raycast-child-contract'
 // @ts-expect-error The approved child artifact supplies this runtime-only singleton.
@@ -11,6 +11,7 @@ import Translate from '/tmp/trusted-raycast-source/src/translate'
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
 const rootNode: Node = { type: 'root', props: {}, children: [] }
 let handles = new Map<string, () => unknown>()
+let fieldHandles = new Map<string, (value: string) => void>()
 const serialize = (node: Node | string): unknown => {
   if (typeof node === 'string') return node
   const props = Object.fromEntries(Object.entries(node.props).filter(([key, value]) => key !== 'children' && typeof value !== 'function' && (typeof value !== 'object' || value === null)))
@@ -18,6 +19,9 @@ const serialize = (node: Node | string): unknown => {
     const id = `action-${handles.size}`
     handles.set(id, node.props.onAction as () => unknown)
     props.actionEventId = id
+  }
+  if ((node.type === 'raycast-form-dropdown' || node.type === 'raycast-dropdown') && typeof node.props.onChange === 'function' && typeof node.props.fieldEventId === 'string') {
+    fieldHandles.set(node.props.fieldEventId, node.props.onChange as (value: string) => void)
   }
   return { type: node.type, props, children: node.children.map(serialize) }
 }
@@ -29,21 +33,30 @@ let ready = false
 let searchHandler: ((value: string) => void) | undefined
 const emit = () => {
   handles = new Map()
+  fieldHandles = new Map()
   rootNode.props.querySequence = querySequence
+  rootNode.props.searchable = viewSearchable()
+  rootNode.props.navigationDepth = navigationDepth()
   const root = serialize(rootNode)
   process.stdout.write(`${JSON.stringify({ type: ready ? 'patch' : 'ready', sessionId, generation, revision: ++revision, root, ...(ready ? { status: 'ready' } : {}) })}\n`)
   ready = true
 }
 let activeAction: { eventId: string; revision: number } | undefined
 let nativeSequence = 0
-const nativePending = new Map<string, { resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
+const nativePending = new Map<string, { resolve: (result?: string) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
+const requestNative = (request: object, resolve: (result?: string) => void, reject: (error: Error) => void): void => {
+  const requestId = `native-${++nativeSequence}`
+  const timer = setTimeout(() => { nativePending.delete(requestId); reject(new Error('Native action timed out')) }, 10000)
+  nativePending.set(requestId, { resolve, reject, timer })
+  process.stdout.write(`${JSON.stringify({ type: 'native', sessionId, generation, requestId, ...request })}\n`)
+}
 configureCompatibility({
-  native: (request: { kind: 'copy'; text: string } | { kind: 'openGoogleTranslate'; url: string }) => new Promise<void>((resolve, reject) => {
+  native: (request: { kind: 'copy' | 'paste'; text?: string } | { kind: 'openGoogleTranslate'; url?: string }) => new Promise<void>((resolve, reject) => {
     if (!activeAction) { reject(new Error('Native effect requires a current source action')); return }
-    const requestId = `native-${++nativeSequence}`
-    const timer = setTimeout(() => { nativePending.delete(requestId); reject(new Error('Native action timed out')) }, 10000)
-    nativePending.set(requestId, { resolve, reject, timer })
-    process.stdout.write(`${JSON.stringify({ type: 'native', sessionId, generation, ...activeAction, requestId, ...request })}\n`)
+    requestNative({ revision: activeAction.revision, eventId: activeAction.eventId, ...request }, () => resolve(), reject)
+  }),
+  selection: () => new Promise<string>((resolve, reject) => {
+    requestNative({ kind: 'selectedText' }, result => { if (typeof result === 'string') resolve(result); else reject(new Error('Selected text was not returned')) }, reject)
   }),
   toast: (toast: { title: string; message: string; style: string }) => {
     process.stdout.write(`${JSON.stringify({ type: 'toast', sessionId, generation, revision, querySequence, ...toast })}\n`)
@@ -98,10 +111,15 @@ const reportError = (error: unknown): void => {
   process.stdout.write(`${JSON.stringify({ type: 'error', sessionId, generation, revision: ++revision, message: String(error).slice(0, 128) })}\n`)
 }
 const container = renderer.createContainer(rootNode, 0, null, false, null, '', reportError, reportError, reportError)
-renderer.updateContainer(React.createElement(Translate), container, null, () => {
-  searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
-  if (typeof searchHandler !== 'function') throw new Error('translate List did not expose search handler')
-})
+const translateRoot = React.createElement(Translate)
+const mount = (view: unknown): void => {
+  renderer.updateContainer(view === undefined ? translateRoot : view, container, null, () => {
+    searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
+    if (view === undefined && typeof searchHandler !== 'function') throw new Error('translate List did not expose search handler')
+  })
+}
+registerNavigationRenderer(mount)
+mount(undefined)
 process.stdin.setEncoding('utf8')
 let pending = ''
 process.stdin.on('data', chunk => {
@@ -115,7 +133,7 @@ process.stdin.on('data', chunk => {
       const waiting = nativePending.get(message.requestId)
       if (!waiting) continue
       clearTimeout(waiting.timer); nativePending.delete(message.requestId)
-      if (message.succeeded) waiting.resolve(); else waiting.reject(new Error(message.message))
+      if (message.succeeded) waiting.resolve(message.result); else waiting.reject(new Error(message.message))
       continue
     }
     if (!isTrustedRaycastViewEvent(message) || message.sessionId !== sessionId || message.generation !== generation) throw new Error('Unsupported Translate event')
@@ -123,6 +141,16 @@ process.stdin.on('data', chunk => {
       querySequence++
       if (message.value === queryText) emit()
       else { advanceQuery(message.value); searchHandler?.(message.value) }
+      continue
+    }
+    if (message.kind === 'navigation') {
+      if (message.value !== 'language:pop') throw new Error('Unsupported Translate navigation')
+      popView()
+      continue
+    }
+    if (message.kind === 'fieldChanged') {
+      const callback = message.revision === revision ? fieldHandles.get(message.eventId) : undefined
+      if (typeof callback === 'function') callback(message.value!)
       continue
     }
     if (message.kind !== 'action') throw new Error('Unsupported Translate event')
