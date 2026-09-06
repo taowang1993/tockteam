@@ -53,6 +53,18 @@ test('ranking persistence survives restart, recovers its validated backup, and r
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
+test('reset fences a queued ranking write from restoring cleared usage', async () => {
+  const userDataPath = await root()
+  try {
+    const repository = await LauncherPersistenceRepository.open({ userDataPath })
+    const usage = repository.recordUsage('stale')
+    const reset = repository.resetSettings()
+    await Promise.all([reset, usage])
+    assert.deepEqual(repository.readRanking(), [])
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('invalid ranking persistence falls back to empty without damaging other launcher artifacts', async () => {
   const userDataPath = await root()
   try {

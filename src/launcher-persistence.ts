@@ -324,6 +324,8 @@ export class LauncherPersistenceRepository {
   #index: LauncherInternalResultItem[] = []
   #logs: string[] = []
   #ranking: readonly LauncherRankingEntry[] = Object.freeze([])
+  #rankingGeneration = 0
+  #rankingResetInProgress = false
   #recoveredArtifacts = new Set<'external' | 'index' | 'logs' | 'settings'>()
   #recoveredSettings = false
   #mutationTail: Promise<void> = Promise.resolve()
@@ -471,14 +473,20 @@ export class LauncherPersistenceRepository {
   readRanking(): readonly LauncherRankingEntry[] { return Object.freeze(cloneJson(this.#ranking, LAUNCHER_RANKING_MAX_BYTES)) }
 
   async recordUsage(itemId: string, now = this.#now()): Promise<void> {
-    await this.#enqueue(async () => {
-      const next = recordLauncherUsage(this.#ranking, itemId, now)
-      await atomicWrite(this.#rankingPath, JSON.stringify(next, null, 2), {
-        backupMaxBytes: LAUNCHER_RANKING_MAX_BYTES,
-        validateBackup: contents => { parseLauncherRanking(JSON.parse(contents) as unknown) },
+    if (this.#closed) throw new Error('TockLauncher persistence repository is closed')
+    if (this.#rankingResetInProgress) return
+    const generation = this.#rankingGeneration
+    const next = recordLauncherUsage(this.#ranking, itemId, now)
+    this.#ranking = Object.freeze([...next])
+    try {
+      await this.#enqueue(async () => {
+        if (generation !== this.#rankingGeneration) return
+        await atomicWrite(this.#rankingPath, JSON.stringify(next, null, 2), {
+          backupMaxBytes: LAUNCHER_RANKING_MAX_BYTES,
+          validateBackup: contents => { parseLauncherRanking(JSON.parse(contents) as unknown) },
+        })
       })
-      this.#ranking = Object.freeze([...next])
-    })
+    } catch { /* usage remains available in memory when ranking persistence fails */ }
   }
 
   #secureStorageUsable(): boolean {
@@ -540,14 +548,22 @@ export class LauncherPersistenceRepository {
 
   async resetSettings(signal?: AbortSignal): Promise<void> {
     throwIfAborted(signal)
-    await this.#enqueue(async () => {
-      throwIfAborted(signal)
-      await rm(this.#rankingPath, { force: true })
-      await rm(`${this.#rankingPath}.bak`, { force: true })
-      await syncDirectory(this.#rootPath)
-      await this.#writeSettings({})
-      this.#ranking = Object.freeze([])
-    })
+    if (this.#closed) throw new Error('TockLauncher persistence repository is closed')
+    const generation = ++this.#rankingGeneration
+    this.#rankingResetInProgress = true
+    this.#ranking = Object.freeze([])
+    try {
+      await this.#enqueue(async () => {
+        throwIfAborted(signal)
+        await rm(this.#rankingPath, { force: true })
+        await rm(`${this.#rankingPath}.bak`, { force: true })
+        await syncDirectory(this.#rootPath)
+        await this.#writeSettings({})
+        this.#ranking = Object.freeze([])
+      })
+    } finally {
+      if (this.#rankingGeneration === generation) this.#rankingResetInProgress = false
+    }
   }
 
   async recordSearch(query: string, defaults: Readonly<{ historyEnabled: boolean; historyLimit: number }>): Promise<void> {

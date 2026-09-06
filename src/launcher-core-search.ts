@@ -417,8 +417,10 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
 
   const recordUsage = async (itemId: string): Promise<void> => {
     const timestamp = now()
-    await options.persistUsage?.(itemId, timestamp)
     ranking = recordLauncherUsage(ranking, itemId, timestamp)
+    try {
+      await options.persistUsage?.(itemId, timestamp)
+    } catch { /* ranking remains available in memory when persistence is unavailable */ }
   }
 
   const replaceRanking = (next: readonly LauncherRankingEntry[]): void => {

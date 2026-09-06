@@ -120,6 +120,28 @@ test('empty search publishes ordered pinned, command, and application sections w
   assert.deepEqual(typed.after.map(result => result.id), ['bookmark-2'])
 })
 
+test('successful usage updates the opening screen before persistence settles', async () => {
+  let release!: () => void
+  let persistenceStarted = false
+  const persisted = new Promise<void>(resolve => { release = resolve })
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [item('first', 'First'), item('second', 'Second')],
+    loadIndexedItems: async () => [item('first', 'First'), item('second', 'Second')],
+    persistUsage: async () => {
+      persistenceStarted = true
+      await persisted
+    },
+  })
+  await core.search('', { ...options, maxSearchResultItems: 2 })
+  const usage = core.recordUsage('second')
+  while (!persistenceStarted) await new Promise<void>(resolve => { setImmediate(resolve) })
+  const immediate = await core.search('', { ...options, maxSearchResultItems: 2 })
+  assert.deepEqual(immediate.sections.map(section => section.id), ['recent', 'commands'])
+  assert.deepEqual(immediate.sections[0]?.items.map(result => result.id), ['second'])
+  release()
+  await usage
+})
+
 test('core search serializes a stale in-flight index write before publishing the newest write', async () => {
   const persisted: string[][] = []
   let load = 0
