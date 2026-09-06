@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { LauncherActionExpiredError, LauncherActionStore } from '../src/launcher-actions.ts'
+import { LauncherActionExpiredError, LauncherActionStore, launcherActionCompletion } from '../src/launcher-actions.ts'
+import { createLauncherCoreSearch } from '../src/launcher-core-search.ts'
 
-function item(id = 'coder') {
+function item(id = 'coder', name = 'TockCoder') {
   return {
     defaultAction: { argument: id, description: 'Focus', handlerKey: 'focus-workbench' },
     description: 'TockTeam composer',
     id,
-    name: 'TockCoder',
+    name,
     sourceExtension: 'TockTeam',
   }
 }
@@ -154,6 +155,59 @@ test('usage observation failures do not fail a successful invocation', async () 
   const published = store.publish({ items: [item('observed')], owner })
   await store.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
   assert.equal(executed, true)
+})
+
+test('successful default actions remain observable after invalidation clears active actions', async () => {
+  const observed: string[] = []
+  let store!: LauncherActionStore
+  store = new LauncherActionStore({
+    execute: async () => { store.clear() },
+    onSuccessfulDefaultAction: record => { observed.push(record.resultItemId ?? 'missing'); return Promise.resolve() },
+  })
+  const owner = { role: 'launcher' as const, webContentsId: 41 }
+  const published = store.publish({ items: [item('self-invalidating')], owner })
+  await store.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
+  assert.deepEqual(observed, ['self-invalidating'])
+})
+
+test('denied default action completions do not report usage', async () => {
+  const observed: string[] = []
+  const store = new LauncherActionStore({
+    execute: async () => launcherActionCompletion(true, false),
+    onSuccessfulDefaultAction: record => { observed.push(record.resultItemId ?? 'missing'); return Promise.resolve() },
+  })
+  const owner = { role: 'launcher' as const, webContentsId: 41 }
+  const published = store.publish({ items: [item('denied')], owner })
+  await store.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
+  assert.deepEqual(observed, [])
+})
+
+test('invocation resolves with in-memory Recent while ranking persistence is deferred', async () => {
+  let release!: () => void
+  let persistenceStarted = false
+  const persisted = new Promise<void>(resolve => { release = resolve })
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [item('first', 'First'), item('second', 'Second')],
+    loadIndexedItems: async () => [item('first', 'First'), item('second', 'Second')],
+    persistUsage: async () => {
+      persistenceStarted = true
+      await persisted
+    },
+  })
+  await core.search('', { fuzziness: 0.5, maxSearchResultItems: 2, searchEngineId: 'fuzzysort' })
+  const store = new LauncherActionStore({
+    execute: async () => undefined,
+    onSuccessfulDefaultAction: record => core.recordUsage(record.resultItemId ?? ''),
+  })
+  const owner = { role: 'launcher' as const, webContentsId: 41 }
+  const published = store.publish({ items: [item('second', 'Second')], owner })
+  const invocation = store.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
+  while (!persistenceStarted) await new Promise<void>(resolve => { setImmediate(resolve) })
+  await invocation
+  const immediate = await core.search('', { fuzziness: 0.5, maxSearchResultItems: 2, searchEngineId: 'fuzzysort' })
+  assert.deepEqual(immediate.sections[0]?.items.map(result => result.id), ['second'])
+  release()
+  await core.flush()
 })
 
 test('canceled default actions do not report successful usage', async () => {

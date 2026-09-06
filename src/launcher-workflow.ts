@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { lstat, realpath } from 'node:fs/promises'
 import path from 'node:path'
-import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
+import { launcherActionCompletion, type LauncherActionRecord, type LauncherInternalAction, type LauncherInternalResultItem, type LauncherProviderActionResult } from './launcher-actions.ts'
 import {
   LAUNCHER_WORKFLOW_ID_PATTERN,
   LAUNCHER_WORKFLOW_SETTING_KEY,
@@ -373,7 +373,7 @@ function isPlatform(value: unknown): value is LauncherTerminalPlatform {
 export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
   cancelAction: (record: LauncherActionRecord) => Promise<boolean>
   close: () => Promise<void>
-  executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  executeAction: (record: LauncherActionRecord) => Promise<LauncherProviderActionResult>
   getLastError: () => string | undefined
   getProviderErrors: () => ReadonlyMap<'Workflow', string>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
@@ -519,7 +519,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
     } catch { return undefined }
   }
 
-  const executeAction = (record: LauncherActionRecord): Promise<boolean> => track((async () => {
+  const executeAction = (record: LauncherActionRecord): Promise<LauncherProviderActionResult> => track((async () => {
     if (record.handlerKey !== HANDLER) return false
     if (record.sourceExtension !== 'Workflow') throw new Error('Invalid TockLauncher Workflow action policy')
     if (closed) throw new Error('TockLauncher Workflow provider is closed')
@@ -626,7 +626,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
         await validateAction(action)
         if (!await confirm(action)) {
           await audit('denied')
-          return true
+          return launcherActionCompletion(true, false)
         }
         await validateAction(action)
       }

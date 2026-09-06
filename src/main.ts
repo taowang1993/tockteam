@@ -92,7 +92,13 @@ import {
   createLauncherWebPreferences,
   type LauncherUrlPolicy,
 } from './launcher-security.ts'
-import { LauncherActionStore, type LauncherActionOwner } from './launcher-actions.ts'
+import {
+  LauncherActionStore,
+  launcherActionCompletion,
+  normalizeLauncherActionResult,
+  type LauncherActionExecutionResult,
+  type LauncherActionOwner,
+} from './launcher-actions.ts'
 import { resolveMacOSApplicationIconPath } from './launcher-application-icons.ts'
 import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
 import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
@@ -2220,15 +2226,15 @@ function initializeLauncher(): void {
       await coreSearch.recordUsage(record.resultItemId)
     },
     execute: async record => {
-      let handled = await coreSearch.executeAction(record)
-      if (!handled) handled = await terminal.executeAction(record)
-      if (!handled) handled = await workflow.executeAction(record)
-      if (!handled) handled = await local.executeAction(record)
-      if (!handled) handled = await discovery.executeAction(record)
-      if (!handled) handled = await fileSearch.executeAction(record)
-      if (!handled) handled = await network.executeAction(record)
-      if (!handled) handled = await os.executeAction(record)
-      if (!handled) {
+      let completion: LauncherActionExecutionResult = normalizeLauncherActionResult(await coreSearch.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await terminal.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await workflow.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await local.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await discovery.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await fileSearch.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await network.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await os.executeAction(record))
+      if (!completion.handled) {
         await executeTockTeamDestination(record, () => {
           if (runtimeUrl === undefined) return false
           return mainWindow === undefined || mainWindow.isDestroyed()
@@ -2237,8 +2243,10 @@ function initializeLauncher(): void {
         }, destination => {
           dispatchWorkbenchRoute({ destination })
         })
+        completion = launcherActionCompletion(true)
       }
       if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+      return completion
     },
   })
   launcherCore = coreSearch

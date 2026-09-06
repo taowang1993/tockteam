@@ -63,10 +63,26 @@ export type LauncherActionRecord = Readonly<{
   sourceExtension: string
 }>
 
+export type LauncherActionExecutionResult =
+  | Readonly<{ handled: false; succeeded: false }>
+  | Readonly<{ handled: true; succeeded: boolean }>
+
+export type LauncherProviderActionResult = boolean | LauncherActionExecutionResult
+
+export function launcherActionCompletion(handled: boolean, succeeded = handled): LauncherActionExecutionResult {
+  return Object.freeze(handled
+    ? { handled: true as const, succeeded }
+    : { handled: false as const, succeeded: false as const })
+}
+
+export function normalizeLauncherActionResult(value: LauncherProviderActionResult): LauncherActionExecutionResult {
+  return typeof value === 'boolean' ? launcherActionCompletion(value) : value
+}
+
 export type LauncherActionStoreOptions = Readonly<{
   cancel?: (record: LauncherActionRecord) => Promise<boolean>
   createId?: () => string
-  execute: (record: LauncherActionRecord) => Promise<void>
+  execute: (record: LauncherActionRecord) => Promise<void | LauncherActionExecutionResult>
   onSuccessfulDefaultAction?: (record: LauncherActionRecord) => Promise<void>
   maxActions?: number
   now?: () => number
@@ -117,10 +133,11 @@ function sameOwner(left: LauncherActionOwner, right: LauncherActionOwner): boole
 export class LauncherActionStore {
   private readonly actions = new Map<string, LauncherActionRecord>()
   private readonly activeActions = new Map<string, LauncherActionRecord>()
+  private readonly invalidatedActions = new Map<string, LauncherActionRecord>()
   private readonly cancelEffect: (record: LauncherActionRecord) => Promise<boolean>
   private readonly currentResultSets = new Map<string, string>()
   private readonly createId: () => string
-  private readonly execute: (record: LauncherActionRecord) => Promise<void>
+  private readonly execute: (record: LauncherActionRecord) => Promise<void | LauncherActionExecutionResult>
   private readonly maxActions: number
   private readonly now: () => number
   private readonly onSuccessfulDefaultAction: ((record: LauncherActionRecord) => Promise<void>) | undefined
@@ -199,15 +216,19 @@ export class LauncherActionStore {
     this.actions.delete(input.actionId)
     this.activeActions.set(input.actionId, record)
     try {
-      await this.execute(record)
-      if (this.activeActions.get(record.actionId) === record && record.isDefaultAction === true && record.resultItemId !== undefined) {
+      const completion = await this.execute(record)
+      const succeeded = completion === undefined || completion.succeeded === true
+      const canReportSuccess = this.activeActions.get(record.actionId) === record
+        || this.invalidatedActions.get(record.actionId) === record
+      if (succeeded && canReportSuccess && record.isDefaultAction === true && record.resultItemId !== undefined) {
         try {
           const pending = this.onSuccessfulDefaultAction?.(record)
           void pending?.catch(() => undefined)
         } catch { /* usage observation never changes invocation success */ }
       }
     } finally {
-      this.activeActions.delete(input.actionId)
+      if (this.activeActions.get(input.actionId) === record) this.activeActions.delete(input.actionId)
+      if (this.invalidatedActions.get(input.actionId) === record) this.invalidatedActions.delete(input.actionId)
     }
     return Object.freeze({ ok: true as const })
   }
@@ -239,6 +260,7 @@ export class LauncherActionStore {
 
   clear(): void {
     this.actions.clear()
+    for (const [actionId, record] of this.activeActions) this.invalidatedActions.set(actionId, record)
     this.activeActions.clear()
     this.currentResultSets.clear()
   }
@@ -251,6 +273,9 @@ export class LauncherActionStore {
     this.currentResultSets.delete(key)
     for (const [actionId, record] of this.activeActions) {
       if (sameOwner(record.owner, owner)) this.activeActions.delete(actionId)
+    }
+    for (const [actionId, record] of this.invalidatedActions) {
+      if (sameOwner(record.owner, owner)) this.invalidatedActions.delete(actionId)
     }
   }
 

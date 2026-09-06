@@ -314,6 +314,7 @@ test('VSCode and JetBrains launch effects receive the provider signal before own
 test('Windows shortcut elevation carries its scan-bound digest through confirmation', async () => {
   const target = 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk'
   const digest = 'a'.repeat(64)
+  let approved = true
   const elevated: Array<{ digest: string; target: string }> = []
   const provider = createLauncherDiscoveryExtensions({
     ...baseOptions,
@@ -321,7 +322,7 @@ test('Windows shortcut elevation carries its scan-bound digest through confirmat
     captureApplicationDigest: async () => digest,
     enabledExtensionIds: () => ['ApplicationSearch'],
     effects: {
-      confirmOpenApplicationAsAdministrator: async () => true,
+      confirmOpenApplicationAsAdministrator: async () => approved,
       copyText: () => {}, launchExecutable: () => {}, openApplication: () => {},
       openApplicationAsAdministrator: async (applicationTarget, applicationDigest) => { elevated.push({ digest: applicationDigest, target: applicationTarget }) },
       openExternal: () => {}, revealPath: () => {},
@@ -335,6 +336,8 @@ test('Windows shortcut elevation carries its scan-bound digest through confirmat
   assert.ok(item && admin)
   await provider.executeAction(record(item, { argument: admin.argument, handlerKey: admin.handlerKey, requiresConfirmation: true }))
   assert.deepEqual(elevated, [{ digest, target }])
+  approved = false
+  assert.deepEqual(await provider.executeAction(record(item, { argument: admin.argument, handlerKey: admin.handlerKey, requiresConfirmation: true })), { handled: true, succeeded: false })
 })
 
 test('Windows applications expose confirmed elevation and store IDs omit reveal', async () => {

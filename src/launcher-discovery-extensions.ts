@@ -3,7 +3,7 @@ import path from 'node:path'
 import { isAllowedLauncherVSCodeExecutable } from './launcher-settings-contract.ts'
 import { resolveLauncherExecutable } from './launcher-discovery-process.ts'
 import { isLauncherImageUrl } from './launcher-image-url.ts'
-import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
+import { launcherActionCompletion, type LauncherActionRecord, type LauncherInternalAction, type LauncherInternalResultItem, type LauncherProviderActionResult } from './launcher-actions.ts'
 
 export const LAUNCHER_DISCOVERY_EXTENSION_IDS = Object.freeze([
   'ApplicationSearch',
@@ -267,7 +267,7 @@ async function withTimeout<T>(operation: Promise<T>, signal: AbortSignal, timeou
 
 export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOptions): Readonly<{
   close: () => Promise<void>
-  executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  executeAction: (record: LauncherActionRecord) => Promise<LauncherProviderActionResult>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   getProviderErrors: () => ReadonlyMap<LauncherDiscoveryExtensionId, string>
   loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
@@ -591,7 +591,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     }
   }
 
-  const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
+  const executeAction = async (record: LauncherActionRecord): Promise<LauncherProviderActionResult> => {
     if (!(Object.values(HANDLERS) as readonly string[]).includes(record.handlerKey)) return false
     if (!LAUNCHER_DISCOVERY_EXTENSION_IDS.includes(record.sourceExtension as LauncherDiscoveryExtensionId)) throw new Error('Invalid discovery action source')
     if (!knownActionArguments.has(record.argument)) throw new Error('Discovery action is not from the current main-owned scan')
@@ -624,7 +624,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
           if (options.revalidate?.application !== undefined && !await awaitEffect(options.revalidate.application(target, current.entry, current.identity))) throw revalidationError('Application')
           await awaitEffect(options.effects.openApplicationAsAdministrator(target, current.digest, controller.signal))
         }
-        return true
+        return launcherActionCompletion(true, false)
       }
       if (record.handlerKey === HANDLERS.openApplication) {
         if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'application' || !bounded(value.target) || !isApplicationTarget(value.target)) throw new Error('Invalid application action')
