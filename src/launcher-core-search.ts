@@ -392,7 +392,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
         const nextFavorites = [...favoriteOrder, record.argument]
         await options.persistSettings?.({ favorites: nextFavorites })
         favorites.add(record.argument)
-        favoriteOrder.push(record.argument)
+        if (!favoriteOrder.includes(record.argument)) favoriteOrder.push(record.argument)
         return
       }
       if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.removeFavorite) {

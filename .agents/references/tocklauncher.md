@@ -32,6 +32,10 @@ TockLauncher is TockTeam Desktop's native keystroke launcher. It selectively por
 
 The pin in `LAUNCHER_COMPOSITION`, the package lock, `scripts/ueli/desktop-release-contract.json`, the asset ledgers, and package-feasibility tests are the local sources of truth. A research checkout is never a runtime dependency.
 
+### Opening-Screen Ranking Provenance
+
+The bounded opening-screen ranking and section-order behavior were reviewed against SuperCmd at commit `2da7b9e5dec0199a972a59cece402c85f729d5d7` (`/Users/taowang/research/launcher/SuperCmd`). TockTeam reimplements only that small ranking reference locally; it does not ship SuperCmd source or runtime code. Raycast extension execution, installation, manifests, and the privileged Raycast extension runtime are explicitly unsupported.
+
 ## Deliberate TockTeam Scope
 
 The Tockbot source reference names nine product destinations. TockTeam implements only the two real workspaces present in this product:

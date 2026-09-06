@@ -249,6 +249,31 @@ test('core search persists a queued snapshot after its successor fails', async (
   assert.deepEqual(persisted, [['seed'], ['a']])
 })
 
+test('favorite persistence remains unique when settings are synchronized during the write', async () => {
+  let synchronizeFavorites: ((favoriteItemIds: readonly string[]) => void) | undefined
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [item('a', 'A')],
+    loadIndexedItems: async () => [item('a', 'A')],
+    persistSettings: async values => {
+      synchronizeFavorites?.(Array.isArray(values.favorites) ? values.favorites.filter((id): id is string => typeof id === 'string') : [])
+    },
+  })
+  synchronizeFavorites = favoriteItemIds => core.replacePersistentSettings({ excludedItemIds: [], favoriteItemIds })
+  await core.search('', { ...options, maxSearchResultItems: 50 })
+  await core.executeAction({
+    actionId: 'launcher-action:add',
+    argument: 'a',
+    expiresAt: 2_000,
+    handlerKey: LAUNCHER_CORE_ACTION_HANDLERS.addFavorite,
+    hideWindowAfterInvocation: false,
+    owner: { role: 'launcher', webContentsId: 1 },
+    requiresConfirmation: false,
+    resultSetId: 'launcher-results:1',
+    sourceExtension: 'TockTeam',
+  })
+  assert.deepEqual((await core.search('', { ...options, maxSearchResultItems: 50 })).before.map(value => value.id), ['a'])
+})
+
 test('core search serializes concurrent favorite and exclusion persistence', async () => {
   const persisted: Array<Readonly<Record<string, unknown>>> = []
   let releaseFirst: (() => void) | undefined

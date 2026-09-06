@@ -244,6 +244,16 @@ test('launcher Electron smoke enforces fresh build and DSH staging', () => {
   assert.match(packageJson.scripts?.['test:launcher:electron'] ?? '', /stage-dsh\.mjs --quick/gu)
 })
 
+test('launcher Electron smoke covers the opening-screen lifecycle', () => {
+  for (const marker of ['openingFlowFacts', 'recentFlowFacts', 'pinFlowFacts', 'excludeFlowFacts', 'resetFlowFacts', 'typedSearchFacts']) {
+    assert.match(smoke, new RegExp(`const ${marker}\\b`, 'u'), marker)
+  }
+  assert.match(smoke, /Add to Favorites/u)
+  assert.match(smoke, /Exclude from Search Results/u)
+  assert.match(smoke, /tocklauncher-reset-trigger/u)
+  assert.match(smoke, /Confirm reset/u)
+})
+
 test('launcher smoke stops its Electron child on every host platform', () => {
   assert.match(smoke, /process\.platform === 'win32'[\s\S]*stopChildProcess\(child/u)
   assert.match(smoke, /process\.kill\(-child\.pid/u)
