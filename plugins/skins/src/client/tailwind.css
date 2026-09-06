@@ -289,6 +289,36 @@
   &:has(#root [role='presentation'] > [role='dialog']) #tockteam-chrome-layer {
     z-index: 999 !important;
   }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-shell] {
+    position: fixed !important;
+    z-index: 1000 !important;
+    inset: var(--tockteam-titlebar-height) 0 0 var(--tockteam-rail-width) !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    background: var(--dsw-alias-bg-base) !important;
+    backdrop-filter: none !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    background: var(--dsw-alias-bg-layer-1) !important;
+    box-shadow: none !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] > nav {
+    width: 240px !important;
+    border-right: 1px solid var(--dsw-alias-border-l1) !important;
+    background: var(--dsw-specific-sidebar-fill) !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-mask],
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-close] {
+    display: none !important;
+  }
 }
 
 /* The marketplace navigation is contributed inside the inherited DSH sidebar. */

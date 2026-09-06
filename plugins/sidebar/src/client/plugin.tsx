@@ -118,12 +118,14 @@ import {
 } from './runtime-settings.ts'
 import {
   canonicalTockTeamPath,
+  isSettingsPath,
   isTockCoderPath,
   isTockTutorPath,
   readLastTockTutorPath,
   readTockTutorRouteLocation,
   rememberTockTutorPath,
   resolveTockTutorNavigation,
+  SETTINGS_ROUTE_PREFIX,
   TOCKCODER_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_SLOT,
@@ -2011,6 +2013,31 @@ function closePluginMarketplace(): void {
     && document.documentElement.dataset.tockteamMarketplaceOpen === 'true') target.click()
 }
 
+function settingsPageSurface(): HTMLElement | null {
+  const adapted = document.querySelector<HTMLElement>('[data-tockteam-settings-page-surface]')
+  if (adapted !== null) return adapted
+  return [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')]
+    .find(dialog => dialog.querySelector('button[aria-current]') !== null) ?? null
+}
+
+function adaptSettingsPage(): void {
+  const surface = settingsPageSurface()
+  if (surface === null || surface.dataset.tockteamSettingsPageSurface === 'true') return
+  surface.dataset.tockteamSettingsPageSurface = 'true'
+  const shell = surface.parentElement
+  if (shell !== null) {
+    shell.dataset.tockteamSettingsPageShell = 'true'
+    const mask = [...shell.children].find(child => child !== surface && child.getAttribute('aria-hidden') === 'true')
+    if (mask instanceof HTMLElement) mask.dataset.tockteamSettingsPageMask = 'true'
+  }
+  const closeSlot = surface.querySelector('[data-slot="settings.close"]')
+  const closeButton = closeSlot?.closest('button')
+  if (closeButton instanceof HTMLButtonElement) closeButton.dataset.tockteamSettingsPageClose = 'true'
+  window.requestAnimationFrame(() => {
+    surface.querySelector<HTMLButtonElement>('button[aria-current]')?.focus()
+  })
+}
+
 function DesktopAppRail({
   location,
   navigate,
@@ -2020,6 +2047,7 @@ function DesktopAppRail({
   navigate: (path: string) => void
   t: Translate<WorkspaceMessage>
 }): ReactNode {
+  const settingsActive = isSettingsPath(location.pathname)
   const tockCoderActive = isTockCoderPath(location.pathname)
   const tockTutorActive = isTockTutorPath(location.pathname)
   const [pluginsAvailable, setPluginsAvailable] = useState(false)
@@ -2086,10 +2114,10 @@ function DesktopAppRail({
               <Button unstyled
                 type="button"
                 aria-label="Settings"
+                aria-current={settingsActive ? 'page' : undefined}
                 onClick={() => {
-                  if (!tockCoderActive) navigate(TOCKCODER_ROUTE_PREFIX)
-                  document.querySelector('[data-slot="settings.trigger"]')
-                    ?.closest<HTMLButtonElement>('button')?.click()
+                  closePluginMarketplace()
+                  navigate(SETTINGS_ROUTE_PREFIX)
                 }}
               ><Settings aria-hidden="true" /></Button>
             </TooltipTrigger>
@@ -2168,6 +2196,40 @@ function TockTutorRouteHost(
     window.addEventListener('popstate', onPopState)
     return () => { window.removeEventListener('popstate', onPopState) }
   }, [props.actions])
+  const settingsActive = isSettingsPath(location.pathname)
+  useEffect(() => {
+    if (!settingsActive) return
+    document.documentElement.dataset.tockteamSettingsPage = 'true'
+    let opened = false
+    let returning = false
+    const sync = (): void => {
+      const surface = settingsPageSurface()
+      if (surface !== null) {
+        opened = true
+        adaptSettingsPage()
+        return
+      }
+      if (!opened) {
+        document.querySelector('[data-slot="settings.trigger"]')
+          ?.closest<HTMLButtonElement>('button')?.click()
+        return
+      }
+      if (!returning) {
+        returning = true
+        window.history.back()
+      }
+    }
+    const observer = new MutationObserver(sync)
+    observer.observe(document.body, { childList: true, subtree: true })
+    sync()
+    return () => {
+      observer.disconnect()
+      delete document.documentElement.dataset.tockteamSettingsPage
+      if (settingsPageSurface() !== null) {
+        document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
+      }
+    }
+  }, [settingsActive])
   const active = routeEntries > 0 && isTockTutorPath(location.pathname)
   useEffect(() => {
     const bridge = window.dshDesktop

@@ -53,6 +53,7 @@ export interface TockTutorDesktopCallerBridge {
   completeDispatch(request: TockTutorDesktopDispatchCompletionRequest): Promise<'handled' | 'stale' | 'unavailable'>
   nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
 }
+export declare const SETTINGS_ROUTE_PREFIX: '/settings'
 export declare const TOCKCODER_ROUTE_PREFIX: '/tockcoder'
 export declare const TOCKTUTOR_ROUTE_PREFIX: '/tocktutor'
 export declare const TOCKTUTOR_ROUTE_SLOT: 'tockteam.tocktutor.route'
@@ -68,6 +69,7 @@ export interface TockTutorRouteOwnerProps {
   navigate: (path: string, mode?: TockTutorNavigationMode) => void
 }
 export declare function canonicalTockTeamPath(pathname: string): string
+export declare function isSettingsPath(pathname: string): boolean
 export declare function isTockCoderPath(pathname: string): boolean
 export declare function isTockTutorPath(pathname: string): boolean
 export declare function readTockTutorRouteLocation(): TockTutorRouteLocation

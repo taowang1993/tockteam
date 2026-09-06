@@ -126,6 +126,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /stopLiveRuntimeForMarketplace/u)
   assert.match(client, /unsubscribeTheme\(\)[\s\S]+unsubscribeRoute\(\)[\s\S]+unsubscribeCommand\(\)/u)
   assert.match(client, /deferSettingsOpen\([\s\S]+requestAnimationFrame[\s\S]+queueMicrotask/u)
+  assert.match(client, /#tockteam-rail-root button\[aria-label="Settings"\]/u)
   assert.doesNotMatch(main, /createWindow\([^)]*launcher/u)
 })
 
