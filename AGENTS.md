@@ -74,8 +74,9 @@ Folder: `.agents/references/`
 
 ## UIUX
 
-- TockTutor comparison audit: `/Users/taowang/projects/worktrees/tutor/.agents/uiux/tocktutor`.
-- Capture comparable screenshots at `1512 × 949` CSS pixels with device pixel ratio `2`, producing `3024 × 1898` images. Set this geometry on every CDP target or window before capture, verify the raster dimensions programmatically, and never hide mismatches with CSS cropping.
+| Product | Audit Directory | Screenshot Capture Standard |
+| --- | --- | --- |
+| TockTutor | `/Users/taowang/projects/worktrees/tutor/.agents/uiux/tocktutor` | Use `1512 × 949` CSS pixels at device pixel ratio `2`, producing `3024 × 1898` images. Set this geometry on every CDP target or window, verify raster dimensions programmatically, and never hide mismatches with CSS cropping. |
 
 ## Development Guidelines
 
