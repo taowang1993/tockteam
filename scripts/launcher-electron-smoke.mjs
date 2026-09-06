@@ -873,7 +873,7 @@ try {
   )
   await waitFor(
     () => workbenchConnection.evaluate('location.pathname'),
-    pathname => pathname === '/tockcoder',
+    pathname => pathname === '/settings',
   )
   await waitFor(
     () => workbenchConnection.evaluate(`document.querySelectorAll('[role="dialog"]').length`),
@@ -883,6 +883,30 @@ try {
     () => workbenchConnection.evaluate('document.querySelector(\'[data-testid="tocklauncher-settings"]\') !== null'),
     present => present === true,
   )
+  const settingsPageFacts = await workbenchConnection.evaluate(`(() => {
+    const surface = document.querySelector('[data-tockteam-settings-page-surface]')
+    const mask = document.querySelector('[data-tockteam-settings-page-mask]')
+    const close = document.querySelector('[data-tockteam-settings-page-close]')
+    const rect = surface?.getBoundingClientRect()
+    return {
+      active: document.querySelector('#tockteam-rail-root button[aria-label="Settings"]')?.getAttribute('aria-current'),
+      bounds: rect === undefined ? null : { bottom: rect.bottom, left: rect.left, right: rect.right, top: rect.top },
+      backgroundInert: document.querySelector('[data-composer-input="true"]')?.closest('[inert]') !== null,
+      close: close === null ? null : getComputedStyle(close).display,
+      mask: mask === null ? null : getComputedStyle(mask).display,
+      pathname: location.pathname,
+      viewport: { height: innerHeight, width: innerWidth },
+    }
+  })()`)
+  assert.deepEqual(settingsPageFacts, {
+    active: 'page',
+    bounds: { bottom: settingsPageFacts.viewport.height, left: 40, right: settingsPageFacts.viewport.width, top: 40 },
+    backgroundInert: true,
+    close: 'none',
+    mask: 'none',
+    pathname: '/settings',
+    viewport: settingsPageFacts.viewport,
+  })
   await clearStartupDialogs(workbenchConnection)
   const settingsFacts = await workbenchConnection.evaluate(`(async () => {
     const snapshot = await window.dshDesktop?.launcher?.settings?.getSnapshot()

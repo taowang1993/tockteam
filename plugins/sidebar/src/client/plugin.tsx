@@ -2020,6 +2020,28 @@ function settingsPageSurface(): HTMLElement | null {
     .find(dialog => dialog.querySelector('button[aria-current]') !== null) ?? null
 }
 
+function isolateSettingsPage(surface: HTMLElement): () => void {
+  const previous = new Map<HTMLElement, boolean>()
+  let child = surface
+  while (child.parentElement !== null) {
+    const parent = child.parentElement
+    for (const sibling of parent.children) {
+      if (!(sibling instanceof HTMLElement) || sibling === child
+        || sibling.id === 'tockteam-rail-root'
+        || sibling.querySelector('#tockteam-rail-root') !== null) continue
+      previous.set(sibling, sibling.inert)
+      sibling.inert = true
+    }
+    if (parent === document.body) break
+    child = parent
+  }
+  return () => {
+    for (const [element, inert] of previous) {
+      if (element.isConnected) element.inert = inert
+    }
+  }
+}
+
 function adaptSettingsPage(): void {
   const surface = settingsPageSurface()
   if (surface === null || surface.dataset.tockteamSettingsPageSurface === 'true') return
@@ -2202,11 +2224,13 @@ function TockTutorRouteHost(
     document.documentElement.dataset.tockteamSettingsPage = 'true'
     let opened = false
     let returning = false
+    let restoreBackground: (() => void) | undefined
     const sync = (): void => {
       const surface = settingsPageSurface()
       if (surface !== null) {
         opened = true
         adaptSettingsPage()
+        restoreBackground ??= isolateSettingsPage(surface)
         return
       }
       if (!opened) {
@@ -2224,6 +2248,7 @@ function TockTutorRouteHost(
     sync()
     return () => {
       observer.disconnect()
+      restoreBackground?.()
       delete document.documentElement.dataset.tockteamSettingsPage
       if (settingsPageSurface() !== null) {
         document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
