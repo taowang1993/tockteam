@@ -87,6 +87,15 @@ test('launcher renderer consumes only finite main-owned result sections', () => 
   assert.doesNotMatch(launcherSource, /pinnedCount/u)
 })
 
+test('launcher sections keep localized accessible headings and keyboard traversal order', () => {
+  assert.match(launcherSource, /applications: 'Applications'/u)
+  assert.match(launcherSource, /applications: '应用程序'/u)
+  assert.match(launcherSource, /const heading = document\.createElement\('h2'\)/u)
+  assert.match(launcherSource, /group\.setAttribute\('aria-labelledby', heading\.id\)/u)
+  assert.match(launcherSource, /else if \(event\.key === 'Home' \|\| event\.key === 'End'\)/u)
+  assert.match(launcherSource, /const item = currentItems\[Number\(event\.key\) - 1\]/u)
+})
+
 test('launcher renderer guards hidden tool focus from result shortcuts', () => {
   assert.match(launcherSource, /eventInsideTool && event\.key !== 'Escape'/u)
 })

@@ -1018,6 +1018,12 @@ async function bootstrap(): Promise<void> {
         selectedItemId = currentItems[(Math.max(index, 0) - 1 + currentItems.length) % currentItems.length]?.id ?? ''
         updateSelection()
       }
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault()
+      if (currentItems.length > 0) {
+        selectedItemId = currentItems[event.key === 'Home' ? 0 : currentItems.length - 1]?.id ?? ''
+        updateSelection()
+      }
     } else if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
       event.preventDefault()
       const item = selectedItem()
