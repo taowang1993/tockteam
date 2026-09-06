@@ -1,6 +1,7 @@
 import { Button } from '@tockteam/ui/button'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -170,8 +171,14 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
         unstyled
         className="fixed top-1/2 left-1/2 z-[2147483647] grid w-full -translate-x-1/2 -translate-y-1/2 gap-0 overflow-y-auto rounded-xl border border-[var(--tt-border)] bg-[var(--tt-panel)] p-0 text-[var(--tt-text)] shadow-[0_18px_48px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)] outline-none sm:overflow-hidden [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]"
         overlayClassName="z-[2147483646]"
+        showCloseButton={false}
         style={{ height: '560px', maxHeight: 'calc(100vh - 2rem)', maxWidth: '860px', width: 'calc(100% - 2rem)' }}
       >
+        <DialogClose asChild>
+          <Button unstyled aria-label="Close" className="absolute top-2 right-2 z-10 inline-flex size-7 cursor-pointer appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 text-[var(--tt-muted)] hover:bg-transparent hover:text-[var(--tt-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]" type="button">
+            <X aria-hidden="true" className="size-4" />
+          </Button>
+        </DialogClose>
         <div className="grid min-h-0 sm:h-full sm:grid-cols-[270px_minmax(0,1fr)]">
           <section aria-label="Vault List" className="flex min-h-0 flex-col border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-5 sm:border-r sm:border-b-0">
             <DialogHeader className="sr-only">
@@ -219,7 +226,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
                       <Ellipsis aria-hidden="true" className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent unstyled align="start" className="max-h-(--radix-dropdown-menu-content-available-height) w-52 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-sm text-[var(--tt-text)] shadow-md" portalled={false}>
+                  <DropdownMenuContent unstyled align="start" alignOffset={16} className="max-h-(--radix-dropdown-menu-content-available-height) w-52 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-sm text-[var(--tt-text)] shadow-md" data-vault-menu-align-offset="16" portalled={false}>
                     <DropdownMenuItem onSelect={copyVaultId}>
                       <Copy aria-hidden="true" />
                       <span>Copy vault ID</span>
@@ -269,7 +276,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
                         </div>
                       )}
                 </div>
-                {!menuOpen && props.renderVaultActions?.('actions', () => { changeOpen(false) }, () => { setMenuOpen(false) }, beginRename, renderVaultMenuItem)}
+                {props.renderVaultActions?.('actions', () => { changeOpen(false) }, () => { setMenuOpen(false) }, beginRename, renderVaultMenuItem)}
               </div>
             </div>
           </section>

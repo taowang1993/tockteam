@@ -336,12 +336,15 @@ describe('TockTutor titlebar panel controls', () => {
     expect(vaultPath.className).toContain('break-words')
     expect(vaultPath.className).not.toContain('truncate')
     expect(screen.getByText('Vault Switcher').parentElement?.className).toContain('sr-only')
+    expect(screen.getByRole('button', { name: 'Close' }).className).toContain('bg-transparent')
     fireEvent.pointerDown(screen.getByRole('button', { name: 'More Vault Actions' }), { button: 0, ctrlKey: false })
     const vaultMenu = screen.getByRole('menu')
     expect(vaultMenu.getAttribute('data-align')).toBe('start')
+    expect(vaultMenu.getAttribute('data-vault-menu-align-offset')).toBe('16')
     expect(vaultMenu.className).toContain('bg-[var(--tt-panel)]')
     expect(vaultMenu.className).not.toContain('bg-popover')
     expect(screen.getByRole('menuitem', { name: 'Reveal vault in Finder' })).toBeTruthy()
+    expect(screen.getByText('Open Folder as Vault')).toBeTruthy()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Copy vault ID' }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(currentId))
     writeText.mockRejectedValueOnce(new Error('denied'))
@@ -375,7 +378,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onCreateManagedVault).toHaveBeenCalledWith('Research')
   })
 
-  it('mounts native vault actions in only the visible dialog placement', () => {
+  it('keeps the folder action mounted while the vault menu opens', () => {
     const placements: Array<'actions' | 'menu'> = []
     renderRoute({
       vault: { generation: 2, id: `vault:${'a'.repeat(64)}` },
@@ -393,7 +396,8 @@ describe('TockTutor titlebar panel controls', () => {
     expect(new Set(placements)).toEqual(new Set(['actions']))
     placements.length = 0
     fireEvent.pointerDown(screen.getByRole('button', { name: 'More Vault Actions' }), { button: 0, ctrlKey: false })
-    expect(new Set(placements)).toEqual(new Set(['menu']))
+    expect(new Set(placements)).toEqual(new Set(['actions', 'menu']))
+    expect(screen.getByText('Open Folder as Vault')).toBeTruthy()
     expect(screen.getByRole('menuitem', { name: 'Rename vault...' })).toBeTruthy()
   })
 
