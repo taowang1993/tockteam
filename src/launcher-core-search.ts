@@ -152,6 +152,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   flush: () => Promise<void>
   recordUsage: (itemId: string) => Promise<void>
+  replaceRanking: (ranking: readonly LauncherRankingEntry[]) => void
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   replacePersistentSettings: (settings: Readonly<{
     excludedItemIds: readonly string[]
@@ -420,6 +421,10 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     ranking = recordLauncherUsage(ranking, itemId, timestamp)
   }
 
+  const replaceRanking = (next: readonly LauncherRankingEntry[]): void => {
+    ranking = pruneLauncherRanking(next, now())
+  }
+
   const invalidate = (reason = 'TockLauncher core search was invalidated', _preserveSignal?: AbortSignal): void => {
     ++indexGeneration
     latestSearchToken = undefined
@@ -470,6 +475,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     executeAction: (record: LauncherActionRecord) => track(async () => await executeAction(record)),
     flush,
     recordUsage: (itemId: string) => track(async () => await recordUsage(itemId)),
+    replaceRanking,
     invalidate,
     replacePersistentSettings,
     rescan: (signal?: AbortSignal, preserveSignal?: AbortSignal) => track(async () => await rescan(signal, preserveSignal)),

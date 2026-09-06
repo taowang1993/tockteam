@@ -71,6 +71,21 @@ test('invalid ranking persistence falls back to empty without damaging other lau
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
+test('startup removes stale negligible ranking entries from the managed artifact', async () => {
+  const userDataPath = await root()
+  const now = 121 * 24 * 60 * 60 * 1000
+  try {
+    const launcherRoot = path.join(userDataPath, 'launcher')
+    await mkdir(launcherRoot, { recursive: true })
+    const rankingPath = path.join(launcherRoot, 'usage-ranking.json')
+    await writeFile(rankingPath, JSON.stringify([{ id: 'stale', lastUsedAt: 1, score: 0.01, useCount: 1 }]), 'utf8')
+    const repository = await LauncherPersistenceRepository.open({ now: () => now, userDataPath })
+    assert.deepEqual(repository.readRanking(), [])
+    assert.deepEqual(JSON.parse(await readFile(rankingPath, 'utf8')), [])
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('persistence tolerates only unsupported Windows directory fsync after committing the file', () => {
   assert.match(persistenceSource, /process\.platform !== 'win32'[\s\S]+EPERM/u)
   assert.match(persistenceSource, /await handle\.sync\(\)/u)

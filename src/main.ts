@@ -2689,6 +2689,7 @@ async function resetLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ c
   assertLauncherSignal(signal)
   await launcherCustomBrowser?.revoke(signal)
   await repository.resetSettings(signal)
+  launcherCore?.replaceRanking(repository.readRanking())
   assertLauncherSignal(signal)
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()

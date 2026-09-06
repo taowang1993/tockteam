@@ -363,7 +363,16 @@ export class LauncherPersistenceRepository {
       if (recovered) this.#recoveredArtifacts.add('logs')
     })
     const ranking = await this.#recoverJson(this.#rankingPath, LAUNCHER_RANKING_MAX_BYTES, parseLauncherRanking, [])
-    this.#ranking = Object.freeze([...pruneLauncherRanking(ranking, this.#now())])
+    const prunedRanking = pruneLauncherRanking(ranking, this.#now())
+    this.#ranking = Object.freeze([...prunedRanking])
+    if (!isDeepStrictEqual(ranking, prunedRanking) && await exists(this.#rankingPath)) {
+      try {
+        await atomicWrite(this.#rankingPath, JSON.stringify(prunedRanking, null, 2), {
+          backupMaxBytes: LAUNCHER_RANKING_MAX_BYTES,
+          validateBackup: contents => { parseLauncherRanking(JSON.parse(contents) as unknown) },
+        })
+      } catch { /* stale ranking is already removed from the in-memory source of truth */ }
+    }
     if (await this.#recoverExternalReplacement()) {
       this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
       return

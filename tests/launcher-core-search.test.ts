@@ -84,6 +84,9 @@ test('empty search publishes decayed recent items before deduplicated command an
   assert.deepEqual(persisted, [{ itemId: 'later-app', now }])
   const updated = await core.search('', { ...options, maxSearchResultItems: 5 })
   assert.deepEqual(updated.sections[1]?.items.map(result => result.id), ['recent-command', 'later-app', 'recent-app'])
+  core.replaceRanking([])
+  const reset = await core.search('', { ...options, maxSearchResultItems: 5 })
+  assert.equal(reset.sections.some(section => section.id === 'recent'), false)
 })
 
 test('empty search publishes ordered pinned, command, and application sections without content flood', async () => {
