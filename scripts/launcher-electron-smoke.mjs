@@ -346,8 +346,19 @@ try {
   )
   assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="TockTutor"]'), true)
   await waitFor(
-    () => workbenchConnection.evaluate(`({ open: document.documentElement.dataset.tockteamMarketplaceOpen, pathname: location.pathname })`),
-    state => state.open === undefined && state.pathname.startsWith('/tocktutor'),
+    () => workbenchConnection.evaluate(`(() => {
+      const surface = document.querySelector('#tockteam-plugin-marketplace-root > div')
+      return {
+        open: document.documentElement.dataset.tockteamMarketplaceOpen,
+        pathname: location.pathname,
+        transitionDuration: surface instanceof HTMLElement ? getComputedStyle(surface).transitionDuration : null,
+        visibility: surface instanceof HTMLElement ? getComputedStyle(surface).visibility : null,
+      }
+    })()`),
+    state => state.open === undefined
+      && state.pathname.startsWith('/tocktutor')
+      && state.transitionDuration === '0s'
+      && state.visibility === 'hidden',
   )
   assert.equal(await workbenchConnection.clickSelector('#tockteam-rail-root button[aria-label="Plugins"]'), true)
   await waitFor(

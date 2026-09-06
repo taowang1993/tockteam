@@ -809,7 +809,7 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
 
   return (
     <TooltipProvider>
-      <div className="absolute inset-y-0 right-0 left-[var(--tockteam-marketplace-left,0px)] z-[8800] box-border translate-y-1 overflow-hidden invisible pointer-events-none border-l border-border bg-background text-foreground opacity-0 transition-[opacity,transform,visibility] [transition-duration:140ms,160ms,0s] [transition-timing-function:ease,ease,linear] [transition-delay:0s,0s,160ms] [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] motion-reduce:transition-none" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
+      <div className="absolute inset-y-0 right-0 left-[var(--tockteam-marketplace-left,0px)] z-[8800] box-border translate-y-1 overflow-hidden invisible pointer-events-none border-l border-border bg-background text-foreground opacity-0 [-webkit-app-region:no-drag] data-[open=true]:visible data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 data-[open=true]:transition-[opacity,transform] data-[open=true]:duration-[140ms] data-[open=true]:ease-in-out motion-reduce:transition-none" data-open={String(viewState.open)} aria-hidden={!viewState.open}>
       <div className="grid h-full grid-rows-[auto_minmax(0,1fr)]">
         <div>
           <header className="flex min-h-[68px] items-center gap-3.5 border-b border-border px-7">

@@ -904,6 +904,15 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
   assert.doesNotMatch(client, /parent\.insertBefore\(this\.#entry, settings\)/)
 })
 
+test('marketplace closes instantly while retaining its opening transition', () => {
+  const client = readFileSync(new URL(
+    '../plugins/plugin-marketplace/src/client/plugin.tsx',
+    import.meta.url,
+  ), 'utf8')
+  assert.doesNotMatch(client, /opacity-0 transition-\[opacity,transform,visibility\]/)
+  assert.match(client, /data-\[open=true\]:transition-\[opacity,transform\]/)
+})
+
 test('marketplace closes after ready session navigation, not during startup', () => {
   let state = initialSessionNavigationState()
   let transition = transitionSessionNavigation(state, {
