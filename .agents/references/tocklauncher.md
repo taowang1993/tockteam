@@ -78,7 +78,7 @@ TockTeam Electron Main
 | `src/launcher-window-ipc.ts` | Registers overlay controls and settings operations. |
 | `src/launcher-window-controller.ts` | Owns shortcut registration, placement, reuse, dismissal, and post-invocation hiding. |
 | `src/launcher-lifecycle.ts` | Projects dock, tray, startup, shortcut, relaunch, and quit settings onto Desktop. |
-| `src/launcher-core-search.ts` | Combines the cached index, instant providers, favorites, exclusions, and provider status. |
+| `src/launcher-core-search.ts` | Combines the cached index, instant providers, favorites, exclusions, opening-screen sections, usage ranking, and provider status. |
 | `src/launcher-provider-lifecycle.ts` | Invalidates providers and drains bounded in-flight work. |
 | `src/launcher-persistence.ts` | Owns settings, index, logs, grants, backups, transactions, and encrypted values. |
 | `src/launcher-navigation.ts` | Defines the finite TockCoder and TockTutor destination contract. |
@@ -94,9 +94,9 @@ TockTeam Electron Main
 3. `LauncherLifecycleController.sync()` applies lifecycle settings. The global shortcut is `Option+Space` on macOS and `Alt+Space` on Windows/Linux.
 4. The workbench is created first. The overlay is created lazily from the shortcut or workbench title-bar button and then reused.
 5. The renderer obtains only the fixed composition and sanitized settings projection, then sends a bounded search term and search options over typed IPC.
-6. Main combines indexed results, instant results, and the two TockTeam destinations. The search and publication layers are latest-request-wins.
+6. Main combines indexed results, instant results, and the two TockTeam destinations. Empty queries publish bounded `Pinned`, `Recent`, `Commands`, and `Applications` sections; typed queries retain the ordinary `Results` ordering. The search and publication layers are latest-request-wins.
 7. `LauncherActionStore` publishes a new result-set ID and opaque action IDs for the current launcher `webContents` owner.
-8. Invocation validates and consumes one action ID before dispatching the finite provider effect. Electron main alone applies `hideWindowAfterInvocation`.
+8. Invocation validates and consumes one action ID before dispatching the finite provider effect. Only successful default completions update the main-owned usage ranking; Electron main alone applies `hideWindowAfterInvocation`.
 9. Provider invalidation, window clearing, navigation, settings changes, and teardown revoke stale actions and abort owned work.
 10. TockCoder or TockTutor actions focus/reuse the canonical workbench and deliver a validated route after its main-frame readiness handshake.
 
@@ -112,7 +112,7 @@ TockTeam Electron Main
 
 The renderer provides:
 
-- one semantic search combobox and grouped `Pinned`, `Recent`, and `Results` options;
+- one semantic search combobox and grouped `Pinned`, `Recent`, `Commands`, and `Applications` options for an empty query, with typed `Results`;
 - Enter, arrows, Home/End, Ctrl/Cmd+number, Ctrl/Cmd+K, Ctrl/Cmd+F, Ctrl/Cmd+Delete, F5, history, and layered Escape behavior;
 - keyboard-navigable additional-action, file-search, and network-tool menus;
 - finite Base64, Rowland, UUID, file-search, and network tools;
@@ -213,6 +213,8 @@ Sensitive values use Electron `safeStorage`. Main-owned browser path/name fields
   search-index.json.bak
   logs.json
   logs.json.bak
+  usage-ranking.json
+  usage-ranking.json.bak
   external-settings-grant.json
   external-settings-transaction.json
   external-backups/
@@ -223,9 +225,9 @@ Sensitive values use Electron `safeStorage`. Main-owned browser path/name fields
 Persistence rules:
 
 - the managed launcher root must be a real owner-only directory, never a pre-existing symlink;
-- settings, index, logs, grants, and transactions are bounded and independently validated;
+- settings, index, logs, usage ranking, grants, and transactions are bounded and independently validated;
 - managed writes use exclusive no-follow temporary files, file synchronization, atomic rename, directory synchronization, and validated backups;
-- mutations are serialized, and in-memory state changes only at defined commit points;
+- mutations are serialized; usage ranking updates in memory before best-effort persistence so opening-screen search never waits on disk, and reset fencing prevents stale writes from restoring cleared usage;
 - the inert cached index drops dynamic image data and acquires no authority until current actions are republished;
 - external grants bind canonical path, canonical parent, device, and inode;
 - startup revalidates path/handle identity and canonical parent metadata;

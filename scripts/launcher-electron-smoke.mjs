@@ -496,10 +496,13 @@ try {
     const declined = first(await read('>fixture declined'))
     if (declined?.sourceExtension !== 'TerminalLauncher') return null
     const declinedResult = await window.tockteamLauncher?.invokeAction(declined.defaultAction.actionId)
+    const afterDecline = await read('')
+    const recent = afterDecline?.sections?.find(section => section.id === 'recent')
     return {
       accepted: acceptedResult?.ok === true,
       confirmation: accepted.defaultAction.requiresConfirmation === true,
       declined: declinedResult?.ok === true,
+      declinedInRecent: recent?.items?.some(item => item.id === declined.id) ?? false,
       details: accepted.details ?? null,
       image: accepted.imageKey ?? null,
       replay: await (async () => { try { await window.tockteamLauncher?.invokeAction(accepted.defaultAction.actionId); return false } catch { return true } })(),
@@ -509,6 +512,7 @@ try {
     accepted: true,
     confirmation: true,
     declined: true,
+    declinedInRecent: false,
     details: `Terminal: Terminal\nWorking directory: ${homedir()}\nApproval: Always required`,
     image: 'terminal-macos',
     replay: true,
@@ -742,20 +746,28 @@ try {
   )
   const lifecycleFixtureFacts = await launcherConnection.evaluate(`(async () => {
     const options = { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' }
+    const invokedIds = []
     const invoke = async term => {
       const response = await window.tockteamLauncher?.search(term, options)
       const action = response?.after?.[0]?.defaultAction ?? response?.before?.[0]?.defaultAction
       if (action === undefined) return false
+      const item = response?.after?.find(candidate => candidate.defaultAction.actionId === action.actionId)
+        ?? response?.before?.find(candidate => candidate.defaultAction.actionId === action.actionId)
+      if (item === undefined) return false
+      invokedIds.push(item.id)
       await window.tockteamLauncher?.invokeAction(action.actionId)
       return true
     }
-    return {
+    const result = {
       rescan: await invoke('Rescan extensions'),
       disableHotkey: await invoke('Disable hotkey'),
       enableHotkey: await invoke('Enable hotkey'),
     }
+    const opening = await window.tockteamLauncher?.search('', options)
+    const recentIds = opening?.sections?.find(section => section.id === 'recent')?.items?.map(item => item.id) ?? []
+    return { ...result, selfInvalidatingRecent: invokedIds.every(id => recentIds.includes(id)) }
   })()`)
-  assert.deepEqual(lifecycleFixtureFacts, { rescan: true, disableHotkey: true, enableHotkey: true })
+  assert.deepEqual(lifecycleFixtureFacts, { rescan: true, disableHotkey: true, enableHotkey: true, selfInvalidatingRecent: true })
 
   await launcherConnection.evaluate(`(() => {
     const input = document.getElementById('launcher-search')
@@ -2396,6 +2408,9 @@ try {
       && snapshot?.recoveredArtifacts?.includes('settings') === true,
   )
   assert.equal(persistedSettings.values['extension[DeeplTranslator].apiKey'], undefined)
+  await restartedWorkbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 50)
+  })()`)
   await restartedWorkbenchConnection.evaluate('window.dshDesktop?.launcher?.show()')
   const restartedLauncherPages = await waitFor(
     () => electronPages(restartPort),
@@ -2405,6 +2420,22 @@ try {
   assert.ok(restartedLauncher)
   restartedLauncherConnection = await CdpPage.connect(restartedLauncher.webSocketDebuggerUrl)
   await waitFor(() => restartedLauncherConnection.evaluate('document.documentElement.dataset.launcherReady'), ready => ready === 'true')
+  const restartedRecentFacts = await waitFor(
+    () => restartedLauncherConnection.evaluate(`(async () => {
+      const response = await window.tockteamLauncher?.search('', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
+      const recent = response?.sections?.find(section => section.id === 'recent')
+      return {
+        hasTockTutor: recent?.items?.some(item => item.name === 'TockTutor') ?? false,
+        noDuplicates: new Set(response?.sections?.flatMap(section => section.items.map(item => item.id)) ?? []).size
+          === (response?.sections?.flatMap(section => section.items.map(item => item.id)) ?? []).length,
+      }
+    })()`),
+    facts => facts.hasTockTutor && facts.noDuplicates,
+  )
+  assert.deepEqual(restartedRecentFacts, { hasTockTutor: true, noDuplicates: true })
+  await restartedWorkbenchConnection.evaluate(`(async () => {
+    await window.dshDesktop?.launcher?.settings?.updateSetting('searchEngine.maxResultLength', 1)
+  })()`)
   const disabledHistory = await restartedLauncherConnection.evaluate(`(async () => ({
     history: (await window.tockteamLauncher?.getSurfaceSettings())?.history,
     hidden: document.getElementById('launcher-history-toggle')?.hidden,

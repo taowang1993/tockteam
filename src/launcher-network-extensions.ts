@@ -420,7 +420,7 @@ function mapCustomResult(
     defaultAction: action(HANDLERS.open, value, `Search ${engine.name}`),
     description: `Search in ${engine.name}`,
     details: value,
-    id: `${engine.id}:instantResult`,
+    id: `custom-web-search:${engine.id}:instantResult`,
     imageKey: 'custom-web-search',
     name: engine.name,
     sourceExtension: 'CustomWebSearch',
