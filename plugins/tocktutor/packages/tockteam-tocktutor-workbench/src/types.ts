@@ -4,6 +4,8 @@ export interface VaultReference {
 }
 
 export interface ActiveVaultResult {
+  /** UI-only path; never accepted as filesystem authority. */
+  displayPath: string | null
   generation: number
   name: string | null
   vault: VaultReference | null

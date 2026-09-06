@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { closeSync, constants as fsConstants, fstatSync, fsyncSync, lstatSync, mkdirSync, openSync, readSync, realpathSync, renameSync, unlinkSync, watch, writeSync, } from 'node:fs';
 import { copyFile, link, lstat, mkdir, open, opendir, readlink, realpath, rename, rm, symlink, unlink } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
@@ -2664,6 +2665,24 @@ export class NoteVaultRuntime extends Service {
             catch { /* return the invalidated state */ }
         }
         return this.currentState;
+    }
+    activeVaultDisplayPath() {
+        const state = this.currentState;
+        const root = this.vaultRoot;
+        if (!state.active || root === null)
+            return null;
+        this.assertActiveVaultBound(state, root);
+        let home = homedir();
+        try {
+            home = realpathSync(home);
+        }
+        catch { /* retain the platform home */ }
+        const relative = path.relative(home, root);
+        return relative === ''
+            ? '~'
+            : !path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`)
+                ? path.join('~', relative)
+                : root;
     }
     activeVaultName() {
         const state = this.currentState;

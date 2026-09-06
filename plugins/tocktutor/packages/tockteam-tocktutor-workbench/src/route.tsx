@@ -306,6 +306,7 @@ export interface WorkbenchRouteSnapshot {
   trash?: readonly TrashEntryInfo[]
   panes: readonly RoutePaneSummary[]
   vault: VaultReference | null
+  vaultDisplayPath?: string | null
   vaultName?: string | null
   warnings: readonly string[]
   workspaces?: readonly NamedWorkspace[]
@@ -433,10 +434,11 @@ function targetLine(source: string, fragment: string): number | null {
 }
 
 function validActiveVault(value: ActiveVaultResult): boolean {
-  return Number.isSafeInteger(value?.generation)
-    && value.generation >= 0
-    && (value.name === null || typeof value.name === 'string' && value.name.length > 0 && value.name.length <= 255)
-    && (value.vault === null || value.vault.generation === value.generation)
+  if (!Number.isSafeInteger(value?.generation) || value.generation < 0) return false
+  if (value.vault === null) return value.name === null && value.displayPath === null
+  return value.vault.generation === value.generation
+    && typeof value.name === 'string' && value.name.length > 0 && value.name.length <= 255
+    && typeof value.displayPath === 'string' && value.displayPath.length > 0 && value.displayPath.length <= 32_768
 }
 
 function validSearchResult(value: VaultSearchResult, vault: VaultReference): boolean {
@@ -555,6 +557,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
       tabs: Object.freeze([]),
     })]),
     vault: null,
+    vaultDisplayPath: null,
     vaultName: null,
     warnings: Object.freeze([]),
     workspaces: Object.freeze([]),
@@ -1298,6 +1301,7 @@ export class WorkbenchRouteController {
       source: '',
       panes: this.shellPanes(),
       vault: null,
+      vaultDisplayPath: null,
       vaultName: null,
       warnings: Object.freeze([]),
     })
@@ -1347,6 +1351,7 @@ export class WorkbenchRouteController {
         phase: 'ready',
         ...(settings === undefined ? {} : { settings }),
         vault,
+        vaultDisplayPath: activeVault.displayPath,
         vaultName: activeVault.name,
         warnings: Object.freeze(page.warnings),
         workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
@@ -3213,6 +3218,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             onCreateManagedVault={props.onCreateManagedVault}
             renderVaultActions={props.renderVaultActions}
             vault={snapshot.vault}
+            vaultDisplayPath={snapshot.vaultDisplayPath ?? null}
             vaultName={snapshot.vaultName ?? null}
           />
         </aside>

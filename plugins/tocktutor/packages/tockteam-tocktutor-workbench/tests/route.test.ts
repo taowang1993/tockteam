@@ -108,6 +108,7 @@ function tree(vault: VaultReference): VaultTreePage {
 
 class FakeRemote implements WorkbenchRouteRemote {
   vault: VaultReference | null = firstVault
+  vaultDisplayPath = '~/Documents/Research Vault'
   vaultName = 'Research Vault'
   saveFailure: { code: 'conflict'; message: string } | null = null
   draftContent: string | null = null
@@ -146,6 +147,7 @@ class FakeRemote implements WorkbenchRouteRemote {
     currentVault: (signal?: AbortSignal) => {
       this.calls.push({ method: 'currentVault', parameters: [signal] })
       return success({
+        displayPath: this.vault === null ? null : this.vaultDisplayPath,
         generation: this.vault?.generation ?? 0,
         name: this.vault === null ? null : this.vaultName,
         vault: this.vault,
@@ -379,13 +381,14 @@ class FakeRemote implements WorkbenchRouteRemote {
   }
 }
 
-test('loads the active vault name and generation without fetching recent vaults', async () => {
+test('loads the active vault name, display path, and generation without fetching recent vaults', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
 
   await controller.syncLocation('/tocktutor')
 
   assert.equal(controller.getSnapshot().phase, 'ready')
+  assert.equal(controller.getSnapshot().vaultDisplayPath, '~/Documents/Research Vault')
   assert.equal(controller.getSnapshot().vaultName, 'Research Vault')
   assert.equal(remote.calls.some(call => call.method === 'listRecentVaults'), false)
   controller.dispose()
@@ -1579,9 +1582,12 @@ test('late note and vault completions cannot replace the active route identity',
   assert.equal(controller.getSnapshot().source, '# Current\n')
 
   remote.vault = secondVault
+  remote.vaultDisplayPath = '~/Documents/Second Vault'
+  remote.vaultName = 'Second Vault'
   remote.emit({ action: 'activated', kind: 'vault', vault: secondVault })
   await new Promise(resolve => setTimeout(resolve, 0))
   assert.deepEqual(controller.getSnapshot().vault, secondVault)
+  assert.equal(controller.getSnapshot().vaultDisplayPath, '~/Documents/Second Vault')
   assert.equal(controller.getSnapshot().path, null)
 
   remote.vault = null
@@ -1590,6 +1596,8 @@ test('late note and vault completions cannot replace the active route identity',
   assert.equal(controller.getSnapshot().vault, null)
 
   remote.vault = firstVault
+  remote.vaultDisplayPath = '~/Documents/Research Vault'
+  remote.vaultName = 'Research Vault'
   remote.emit({ action: 'activated', kind: 'vault', vault: firstVault })
   await new Promise(resolve => setTimeout(resolve, 0))
   assert.deepEqual(controller.getSnapshot().vault, firstVault)

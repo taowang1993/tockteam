@@ -4350,6 +4350,31 @@ test('active vault recent identity and drafts survive a bounded runtime restart'
   }
 })
 
+test('active vault display paths abbreviate the home folder', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'note-vault-display-home-'))
+  const vault = join(home, 'Class Notes')
+  const previousHome = process.env.HOME
+  const previousUserProfile = process.env.USERPROFILE
+  try {
+    await mkdir(vault)
+    const canonicalHome = await realpath(home)
+    process.env.HOME = canonicalHome
+    process.env.USERPROFILE = canonicalHome
+    const loaded = await load(`vaultRoot: ${JSON.stringify(vault)}`)
+    try {
+      assert.equal(loaded.context.noteVault.activeVaultDisplayPath(), join('~', 'Class Notes'))
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    if (previousHome === undefined) delete process.env.HOME
+    else process.env.HOME = previousHome
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE
+    else process.env.USERPROFILE = previousUserProfile
+    await rm(home, { recursive: true, force: true })
+  }
+})
+
 test('vault root rename, move, and removal preserve Obsidian filesystem semantics', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'note-vault-root-management-'))
   const stateRoot = await mkdtemp(join(tmpdir(), 'note-vault-root-state-'))
@@ -4374,6 +4399,7 @@ test('vault root rename, move, and removal preserve Obsidian filesystem semantic
       const renamed = loaded.context.noteVault.renameVault('Beta', { id, generation: initial.generation })
       if (!renamed.active) assert.fail('renamed vault must remain active')
       assert.deepEqual(renamed, { active: true, generation: 2, id })
+      assert.equal(loaded.context.noteVault.activeVaultDisplayPath(), await realpath(join(workspace, 'Beta')))
       assert.equal(loaded.context.noteVault.activeVaultName(), 'Beta')
       assert.equal(await lstat(original).then(() => true, () => false), false)
       assert.equal(await readFile(join(workspace, 'Beta', '.obsidian', 'app.json'), 'utf8'), '{}')
@@ -4395,6 +4421,7 @@ test('vault root rename, move, and removal preserve Obsidian filesystem semantic
       if (!movedState.active) assert.fail('moved vault must remain active')
       moved = join(destination, 'Beta')
       assert.deepEqual(movedState, { active: true, generation: 3, id })
+      assert.equal(loaded.context.noteVault.activeVaultDisplayPath(), await realpath(moved))
       assert.equal(await readFile(join(moved, 'Note.md'), 'utf8'), '# Test\n')
       assert.throws(
         () => loaded.context.noteVault.moveVault(moved, { id, generation: movedState.generation }),
@@ -4413,6 +4440,7 @@ test('vault root rename, move, and removal preserve Obsidian filesystem semantic
     try {
       const restored = activeRestart.context.noteVault.state
       assert.deepEqual(restored, { active: true, generation: 1, id })
+      assert.equal(activeRestart.context.noteVault.activeVaultDisplayPath(), await realpath(moved))
       assert.equal(activeRestart.context.noteVault.activeVaultName(), 'Beta')
       if (!restored.active) assert.fail('moved vault must restore')
       const removed = await activeRestart.context.noteVault.removeVault({ id, generation: restored.generation })

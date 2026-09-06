@@ -74,6 +74,11 @@ class FakeNoteVault extends Service {
     return { active: true as const, generation: expectedGeneration + 1, id: `vault:${'f'.repeat(64)}` }
   }
 
+  activeVaultDisplayPath() {
+    this.calls.push({ method: 'activeVaultDisplayPath', parameters: [] })
+    return '~/Documents/Research Vault'
+  }
+
   activeVaultName() {
     this.calls.push({ method: 'activeVaultName', parameters: [] })
     return 'Research Vault'
@@ -208,12 +213,13 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
 
     const signal = new AbortController().signal
     assert.deepEqual(await state.gateway.currentVault(signal), {
+      displayPath: '~/Documents/Research Vault',
       generation: 7,
       name: 'Research Vault',
       vault,
     })
     state.runtime.active = false
-    assert.deepEqual(await state.gateway.currentVault(signal), { generation: 7, name: null, vault: null })
+    assert.deepEqual(await state.gateway.currentVault(signal), { displayPath: null, generation: 7, name: null, vault: null })
     state.runtime.active = true
     assert.deepEqual(await state.gateway.createManagedVault({ expectedGeneration: 7, name: 'Class Notes' }, signal), { generation: 8, id: `vault:${'f'.repeat(64)}` })
     assert.deepEqual(await state.gateway.openSandboxVault({ expectedGeneration: 7 }, signal), {
@@ -232,6 +238,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     assert.equal((await state.gateway.search({ expectedVault: vault, mode: 'query', query: 'match' }, signal)).matches.length, 1)
     assert.deepEqual(state.runtime.calls, [
       { method: 'activeVaultName', parameters: [] },
+      { method: 'activeVaultDisplayPath', parameters: [] },
       { method: 'synchronizeDesktopSelection', parameters: [signal] },
       { method: 'createManagedVault', parameters: ['Class Notes', 7] },
       { method: 'synchronizeDesktopSelection', parameters: [signal] },

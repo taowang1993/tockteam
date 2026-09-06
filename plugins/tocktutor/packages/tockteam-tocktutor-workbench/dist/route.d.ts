@@ -122,6 +122,7 @@ export interface WorkbenchRouteSnapshot {
     trash?: readonly TrashEntryInfo[];
     panes: readonly RoutePaneSummary[];
     vault: VaultReference | null;
+    vaultDisplayPath?: string | null;
     vaultName?: string | null;
     warnings: readonly string[];
     workspaces?: readonly NamedWorkspace[];

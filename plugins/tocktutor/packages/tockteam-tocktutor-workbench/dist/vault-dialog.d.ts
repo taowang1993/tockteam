@@ -5,6 +5,7 @@ export interface WorkbenchVaultDialogProps {
     onCreateManagedVault?: ((name: string) => void) | undefined;
     renderVaultActions?: ((placement: 'actions' | 'menu', close: () => void, closeMenu: () => void, beginRename: (rename: (name: string, signal: AbortSignal) => Promise<boolean>) => void, renderMenuItem: (item: TockTutorVaultMenuItem) => ReactNode) => ReactNode) | undefined;
     vault: VaultReference | null;
+    vaultDisplayPath: string | null;
     vaultName: string | null;
 }
 export declare function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNode;

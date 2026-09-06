@@ -6,7 +6,7 @@ export type * from './types.ts';
 export declare const MAX_DOCUMENT_CONTENT_BYTES = 2000000;
 export declare const MAX_TREE_CURSOR_LENGTH = 512;
 export declare const MAX_TREE_PAGE_SIZE = 200;
-export type NoteVaultCapability = Pick<NoteVaultRuntime, 'activeVaultName' | 'captureSnapshot' | 'clearDraft' | 'clearSnapshots' | 'createDocument' | 'createManagedVault' | 'facets' | 'graph' | 'inspectAttachment' | 'listSnapshots' | 'listTrash' | 'links' | 'listTree' | 'openDocument' | 'outline' | 'openSandboxVault' | 'previewAttachment' | 'readDraft' | 'readSnapshot' | 'restoreSnapshot' | 'restoreSnapshotAsNew' | 'restoreTrash' | 'saveDocument' | 'saveDraft' | 'search' | 'state' | 'storeAttachment' | 'trashEntry'>;
+export type NoteVaultCapability = Pick<NoteVaultRuntime, 'activeVaultDisplayPath' | 'activeVaultName' | 'captureSnapshot' | 'clearDraft' | 'clearSnapshots' | 'createDocument' | 'createManagedVault' | 'facets' | 'graph' | 'inspectAttachment' | 'listSnapshots' | 'listTrash' | 'links' | 'listTree' | 'openDocument' | 'outline' | 'openSandboxVault' | 'previewAttachment' | 'readDraft' | 'readSnapshot' | 'restoreSnapshot' | 'restoreSnapshotAsNew' | 'restoreTrash' | 'saveDocument' | 'saveDraft' | 'search' | 'state' | 'storeAttachment' | 'trashEntry'>;
 declare module '@deepseek-ai/cordis' {
     interface Context {
         tocktutorWorkbench: TockTutorWorkbenchGateway;

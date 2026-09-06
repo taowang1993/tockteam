@@ -17,6 +17,7 @@ import {
 } from 'node:fs'
 import { copyFile, link, lstat, mkdir, open, opendir, readlink, realpath, rename, rm, symlink, unlink, type FileHandle } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { homedir } from 'node:os'
 import path from 'node:path'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-typert-protocol'
@@ -3743,6 +3744,21 @@ export class NoteVaultRuntime extends Service {
       try { this.assertActiveVaultBound(state, root) } catch { /* return the invalidated state */ }
     }
     return this.currentState
+  }
+
+  activeVaultDisplayPath(): string | null {
+    const state = this.currentState
+    const root = this.vaultRoot
+    if (!state.active || root === null) return null
+    this.assertActiveVaultBound(state, root)
+    let home = homedir()
+    try { home = realpathSync(home) } catch { /* retain the platform home */ }
+    const relative = path.relative(home, root)
+    return relative === ''
+      ? '~'
+      : !path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`)
+        ? path.join('~', relative)
+        : root
   }
 
   activeVaultName(): string | null {

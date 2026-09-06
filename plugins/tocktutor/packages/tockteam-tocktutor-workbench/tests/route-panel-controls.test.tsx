@@ -298,6 +298,7 @@ describe('TockTutor titlebar panel controls', () => {
     Object.defineProperty(window.navigator, 'clipboard', { configurable: true, value: { writeText } })
     renderRoute({
       vault: { generation: 2, id: currentId },
+      vaultDisplayPath: '~/Documents/Research Vault',
       vaultName: 'Research Vault',
     }, {
       onCreateManagedVault,
@@ -329,8 +330,12 @@ describe('TockTutor titlebar panel controls', () => {
     expect(dialog.style.maxWidth).toBe('860px')
     expect(vaultList.className).toContain('bg-[var(--tockteam-shell-chrome,var(--tt-panel))]')
     expect(vaultList.textContent).toContain('Research Vault')
+    expect(screen.getByText('~/Documents/Research Vault').getAttribute('title')).toBe('~/Documents/Research Vault')
     expect(screen.getByText('Vault Switcher').parentElement?.className).toContain('sr-only')
     fireEvent.pointerDown(screen.getByRole('button', { name: 'More Vault Actions' }), { button: 0, ctrlKey: false })
+    const vaultMenu = screen.getByRole('menu')
+    expect(vaultMenu.className).toContain('bg-[var(--tt-panel)]')
+    expect(vaultMenu.className).not.toContain('bg-popover')
     expect(screen.getByRole('menuitem', { name: 'Reveal vault in Finder' })).toBeTruthy()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Copy vault ID' }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(currentId))

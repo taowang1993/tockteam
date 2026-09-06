@@ -32,6 +32,7 @@ export interface WorkbenchVaultDialogProps {
     renderMenuItem: (item: TockTutorVaultMenuItem) => ReactNode,
   ) => ReactNode) | undefined
   vault: VaultReference | null
+  vaultDisplayPath: string | null
   vaultName: string | null
 }
 
@@ -204,7 +205,11 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
                         {renameError && <p className="mt-1 text-xs text-destructive" role="alert">The vault could not be renamed.</p>}
                       </form>
                     )}
-                <p className="mt-0.5 truncate text-xs text-[var(--tt-muted)]">{props.vault === null ? 'Open or create a local vault' : 'Local Markdown vault'}</p>
+                {(props.vault === null || props.vaultDisplayPath !== null) && (
+                  <p className="mt-0.5 truncate text-xs text-[var(--tt-muted)]" title={props.vaultDisplayPath ?? undefined}>
+                    {props.vault === null ? 'Open or create a local vault' : props.vaultDisplayPath}
+                  </p>
+                )}
                 {copyError && <p className="mt-1 text-xs text-destructive" role="alert">The vault ID could not be copied.</p>}
               </div>
               {props.vault !== null && rename === null && (
@@ -214,7 +219,7 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
                       <Ellipsis aria-hidden="true" className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52 border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[var(--tt-text)]" portalled={false}>
+                  <DropdownMenuContent unstyled align="end" className="max-h-(--radix-dropdown-menu-content-available-height) w-52 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-sm text-[var(--tt-text)] shadow-md" portalled={false}>
                     <DropdownMenuItem onSelect={copyVaultId}>
                       <Copy aria-hidden="true" />
                       <span>Copy vault ID</span>

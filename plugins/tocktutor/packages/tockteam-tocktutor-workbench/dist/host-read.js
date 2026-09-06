@@ -368,11 +368,12 @@ let TockTutorWorkbenchGateway = (() => {
             signal.throwIfAborted();
             const state = this.ctx.noteVault.state;
             if (!state.active)
-                return { generation: state.generation, name: null, vault: null };
+                return { displayPath: null, generation: state.generation, name: null, vault: null };
             const vault = activeReference(state);
             const name = this.ctx.noteVault.activeVaultName();
+            const displayPath = this.ctx.noteVault.activeVaultDisplayPath();
             await synchronizeDesktopVault(this.ctx.noteVault, signal);
-            return { generation: vault.generation, name, vault };
+            return { displayPath, generation: vault.generation, name, vault };
         }
         async createManagedVault(request, signal) {
             assertCreateManagedVaultRequest(request);
