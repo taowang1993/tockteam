@@ -93,7 +93,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
         <aside
           aria-hidden={!open}
           aria-label="Workbench Utilities"
-          className={`tocktutor-right-panel invisible grid min-h-0 min-w-0 w-0 translate-x-6 auto-rows-max grid-rows-[40px] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] data-[open=false]:border-l-0 opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(300px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(300px,calc(100vw-262px))] ${props.view === 'graph' ? 'z-20 !absolute !inset-y-0 !right-0 !left-[var(--tocktutor-sidebar-width)] !h-auto !w-auto !translate-x-0 !visible !overflow-hidden !border-l-0 !opacity-100 !pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-0' : ''}`}
+          className={`tocktutor-right-panel invisible grid min-h-0 min-w-0 w-0 translate-x-6 auto-rows-max grid-rows-[40px] overflow-x-hidden overflow-y-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] data-[open=false]:border-l-0 opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(300px,calc(100vw-262px))] data-[view=recovery]:w-[min(560px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(300px,calc(100vw-262px))] ${props.view === 'graph' ? 'z-20 !absolute !inset-y-0 !right-0 !left-[var(--tocktutor-sidebar-width)] !h-auto !w-auto !translate-x-0 !visible !overflow-hidden !border-l-0 !opacity-100 !pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-0' : ''}`}
           data-open={open}
           data-view={props.view ?? undefined}
           {...(open ? {} : { inert: '' })}
@@ -119,7 +119,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             <div className="mt-2 flex gap-2">
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={props.onTrashCurrent} type="button">Move Current File to Trash</Button>
             </div>
-            <div className="mt-3 grid min-w-0 gap-3 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] max-[380px]:grid-cols-1">
+            <div className="mt-3 grid min-w-0 gap-3 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] max-[640px]:grid-cols-1">
               <section aria-label="Snapshot Selector" className="min-w-0">
                 <h3 className="mb-1 text-xs">Snapshots</h3>
                 {(snapshot.snapshots?.length ?? 0) > 0 ? (

@@ -523,7 +523,10 @@ describe('TockTutor titlebar panel controls', () => {
 
     openNoteActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
-    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('recovery')
+    const recoveryPanel = screen.getByLabelText('Workbench Utilities')
+    expect(recoveryPanel.getAttribute('data-view')).toBe('recovery')
+    expect(recoveryPanel.className).toContain('data-[view=recovery]:w-[min(560px,calc(100vw-262px))]')
+    expect(recoveryPanel.className).toContain('overflow-x-hidden')
     expect(onOpenRecovery).toHaveBeenCalledOnce()
     expect(screen.queryByRole('heading', { name: 'Web Viewer' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
