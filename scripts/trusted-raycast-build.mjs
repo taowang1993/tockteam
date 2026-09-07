@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,7 +10,10 @@ import { admitTrustedRaycastArtifact, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from '..
 export async function buildTrustedRaycast(dist, artifact) {
   if (!artifact) return
   const bytes = admitTrustedRaycastArtifact(artifact)
-  const work = mkdtempSync(join(tmpdir(), 'tockteam-raycast-build-'))
+  // ponytail: per-process work dir (parallel test files) plus comment normalization keeps rebuilds byte-identical.
+  const work = join(tmpdir(), `tockteam-raycast-build-work-${process.pid}`)
+  rmSync(work, { recursive: true, force: true })
+  mkdirSync(work, { recursive: true })
   try {
     execFileSync('/usr/bin/tar', ['xf', '-', '-C', work], { input: bytes, timeout: 15000 })
     const source = join(work, 'tockteam-raycast-artifact', 'source')
@@ -25,6 +28,9 @@ export async function buildTrustedRaycast(dist, artifact) {
       '@raycast/utils': join(repository, 'src/trusted-raycast-compat-utils.ts'),
     }, logLevel: 'silent' })
     await build({ entryPoints: [join(repository, 'src/trusted-raycast-resolution.ts')], outfile: join(output, 'resolution.mjs'), bundle: true, format: 'esm', platform: 'node', target: 'node24', logLevel: 'silent' })
+    // esbuild annotates every bundled file with its path; normalize the build-work prefix so rebuilds are byte-identical.
+    const emitted = readFileSync(join(output, 'child.mjs'), 'utf8').replace(/\/\/ [^\n]*tockteam-raycast-build-work-\d+\//g, '// tockteam-raycast-build-work/')
+    writeFileSync(join(output, 'child.mjs'), emitted)
     mkdirSync(output, { recursive: true })
     writeFileSync(join(output, 'artifact.tar'), bytes)
     writeFileSync(join(output, 'build.json'), JSON.stringify({ artifactSha256: TRUSTED_RAYCAST_ARTIFACT_SHA256, command: 'translate', react: '19.0.0', reconciler: '0.31.0' }))

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { closeSync, fstatSync, openSync, readSync } from 'node:fs'
+import { TRUSTED_RAYCAST_RUNTIME } from './trusted-raycast-artifact.ts'
 
 export const TRUSTED_RAYCAST_ARTIFACT_SHA256 = '7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac'
 
@@ -20,4 +21,12 @@ export function admitTrustedRaycastArtifact(path: string, expected = TRUSTED_RAY
     if (digest !== expected) throw new Error(`trusted Raycast artifact digest mismatch: ${digest}`)
     return bytes
   } finally { closeSync(file) }
+}
+
+/** Every load path shares this admission: pinned digest plus the reviewed command/runtime pairing. */
+export function assertTrustedRaycastBuildIdentity(metadata: unknown, expected = TRUSTED_RAYCAST_ARTIFACT_SHA256): string {
+  if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) throw new Error('Translate build identity is missing')
+  const record = metadata as Record<string, unknown>
+  if (record.artifactSha256 !== expected || record.command !== 'translate' || record.react !== TRUSTED_RAYCAST_RUNTIME.react || record.reconciler !== TRUSTED_RAYCAST_RUNTIME.reconciler) throw new Error('Translate build identity mismatch')
+  return expected
 }

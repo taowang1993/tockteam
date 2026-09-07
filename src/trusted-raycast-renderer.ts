@@ -55,7 +55,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   }
   const invoke = (action: TrustedRaycastViewNode | undefined): boolean => {
     if (!action || !current?.root || current.type === 'error' || pending !== undefined || sending || actionPending) return false
-    if (!action.props.actionEventId || action.props.unavailable) { fail(zh ? '此操作暂不可用。' : 'This action is not available in this slice.'); return false }
+    if (!action.props.actionEventId || action.props.unavailable) { fail(zh ? '此操作不可用。' : 'This action is unavailable.'); return false }
     const eventId = String(action.props.actionEventId)
     actionPending = eventId
     actionFeedback = zh ? '正在执行操作…' : 'Running Action…'
@@ -140,7 +140,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     for (const action of descendants(root, 'raycast-action')) {
       if (itemActions.has(action)) continue
       const button = document.createElement('button'); button.type = 'button'; button.className = buttonClass
-      button.textContent = String(action.props.title ?? '') + (action.props.unavailable ? (zh ? '（暂不可用）' : ' (Unavailable)') : '')
+      button.textContent = String(action.props.title ?? '') + (action.props.unavailable ? (zh ? '（不可用）' : ' (Unavailable)') : '')
       button.disabled = !action.props.actionEventId || action.props.unavailable === true
       button.addEventListener('click', () => invoke(action)); panelActions.append(button)
     }
@@ -159,7 +159,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       const panel = document.createElement('div'); panel.className = 'flex flex-col items-start gap-1 py-2'; menu.append(panel)
       for (const action of actions) {
         const button = document.createElement('button'); button.type = 'button'; button.className = buttonClass
-        button.textContent = String(action.props.title ?? '') + (action.props.unavailable ? (zh ? '（暂不可用）' : ' (Unavailable)') : '')
+        button.textContent = String(action.props.title ?? '') + (action.props.unavailable ? (zh ? '（不可用）' : ' (Unavailable)') : '')
         button.disabled = !action.props.actionEventId || action.props.unavailable === true
         button.addEventListener('click', () => { menu.open = false; summary.focus(); invoke(action) }); panel.append(button)
       }

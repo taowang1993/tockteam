@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -35,5 +36,32 @@ test('configured build records exact original archive identity', async t => {
     const metadata = JSON.parse(readFileSync(join(root, 'trusted-raycast', 'build.json'), 'utf8'))
     assert.equal(metadata.artifactSha256, '7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac')
     assert.equal(existsSync(join(root, 'trusted-raycast', 'child.mjs')), true)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+test('configured rebuilds are byte-identical: fixed work root keeps every emitted file deterministic', async t => {
+  const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
+  if (!artifact) return t.skip('set TRUSTED_RAYCAST_ARTIFACT_TAR')
+  const root = mkdtempSync(join(tmpdir(), 'raycast-repro-test-'))
+  const digestOf = (dir: string): string => {
+    const hash = createHash('sha256')
+    for (const file of ['artifact.tar', 'child.mjs', 'resolution.mjs', 'build.json']) hash.update(readFileSync(join(dir, 'trusted-raycast', file)))
+    return hash.digest('hex')
+  }
+  try {
+    const first = join(root, 'first'); const second = join(root, 'second')
+    await buildTrustedRaycast(first, artifact)
+    await buildTrustedRaycast(second, artifact)
+    const firstDigest = digestOf(first)
+    const secondDigest = digestOf(second)
+    assert.equal(firstDigest, secondDigest, 'rebuild must produce the identical digest')
+    assert.ok(readFileSync(join(first, 'trusted-raycast', 'artifact.tar')).equals(readFileSync(artifact)))
+    assert.equal(readFileSync(join(first, 'trusted-raycast', 'child.mjs'), 'utf8'), readFileSync(join(second, 'trusted-raycast', 'child.mjs'), 'utf8'))
+    // No machine-local paths leak into the emitted bundle.
+    assert.doesNotMatch(readFileSync(join(first, 'trusted-raycast', 'child.mjs'), 'utf8'), /(?:\/private\/var|\/var\/folders)/)
+    const metadata = JSON.parse(readFileSync(join(second, 'trusted-raycast', 'build.json'), 'utf8'))
+    assert.equal(metadata.artifactSha256, '7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac')
+    assert.equal(metadata.command, 'translate')
+    assert.equal(metadata.react, '19.0.0')
+    assert.equal(metadata.reconciler, '0.31.0')
   } finally { rmSync(root, { recursive: true, force: true }) }
 })

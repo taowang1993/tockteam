@@ -7,11 +7,17 @@ import { BUNDLED_DESKTOP_HOST_PLUGINS, BUNDLED_DESKTOP_CLIENT_PLUGINS } from '..
 import { DesktopTrustedRaycastChannel } from '../src/trusted-raycast-channel.ts'
 import { scrubDesktopAuthorityEnvironment } from '../src/desktop-runtime-environment.ts'
 
-test('catalog requires both live Host capability and admitted artifact and never hides on invoke', () => {
-  for (const [active, admitted] of [[false, false], [false, true], [true, false]]) assert.deepEqual(trustedRaycastCatalog(active!, admitted!), [])
-  const item = trustedRaycastCatalog(true, true)[0]!
-  assert.equal(item.defaultAction.hideWindowAfterInvocation, false)
-  assert.equal(item.id.startsWith('tockteam-route:'), false)
+test('catalog requires live Host capability, an installed enabled candidate, and the trust surface is gated only on activation', () => {
+  for (const [active, trust] of [[false, { installed: false, enabled: false }], [false, { installed: true, enabled: true }]] as const) assert.deepEqual(trustedRaycastCatalog(active, trust), [])
+  for (const trust of [{ installed: false, enabled: false }, { installed: true, enabled: false }, { installed: false, enabled: true }]) {
+    const items = trustedRaycastCatalog(true, trust)
+    assert.equal(items.length, 1)
+    assert.equal(items[0]!.id, 'trusted-raycast:trust')
+  }
+  const [item, trustItem] = trustedRaycastCatalog(true, { installed: true, enabled: true })
+  assert.equal(item!.defaultAction.hideWindowAfterInvocation, false)
+  assert.equal(item!.id.startsWith('tockteam-route:'), false)
+  assert.equal(trustItem!.id, 'trusted-raycast:trust')
 })
 test('Desktop Host effect alone owns activation and disposal', async () => {
   const channel = new DesktopTrustedRaycastChannel(async () => {})

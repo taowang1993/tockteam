@@ -28,6 +28,16 @@ test('manager has no default artifact fallback and rejects events without a live
   await assert.rejects(manager.start({ webContentsId: 1 }, { sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }))
   await manager.close()
 })
+test('install-store runtime resolution fails closed before any child can load', async () => {
+  const unresolved = new TrustedRaycastManager({ runtimeDir: () => undefined, nodePath: process.execPath, onMessage() {} })
+  assert.equal(unresolved.available, false)
+  await assert.rejects(unresolved.start({ webContentsId: 1 }, { sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }), /not installed/)
+  await unresolved.close()
+  const missing = new TrustedRaycastManager({ runtimeDir: () => '/nonexistent/tockteam-runtime', nodePath: process.execPath, onMessage() {} })
+  assert.equal(missing.available, false)
+  await assert.rejects(missing.start({ webContentsId: 1 }, { sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }))
+  await missing.close()
+})
 test('configured unchanged component translates interactive input and revokes owner', { timeout: 30000 }, async t => {
   const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
   if (!artifact) return t.skip('set TRUSTED_RAYCAST_ARTIFACT_TAR for real Google integration')
@@ -74,4 +84,20 @@ test('configured unchanged component translates interactive input and revokes ow
     await new Promise(resolve => setTimeout(resolve, 100))
     assert.equal(messages.length, count)
   } finally { await manager.close(); rmSync(work, { recursive: true, force: true }) }
+})
+
+test('configured isolated preview boots the staged runtime to first readiness and tears down cleanly', { timeout: 40000 }, async t => {
+  const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
+  if (!artifact) return t.skip('set TRUSTED_RAYCAST_ARTIFACT_TAR for the real preview boot')
+  const work = mkdtempSync(join(tmpdir(), 'raycast-preview-test-'))
+  const manager = new TrustedRaycastManager({ runtimeDir: () => join(work, 'trusted-raycast'), nodePath: process.execPath, onMessage() {} })
+  try {
+    await buildTrustedRaycast(work, artifact)
+    assert.equal(manager.available, true)
+    assert.equal(await manager.previewRuntime(join(work, 'trusted-raycast')), '')
+    assert.equal(manager.active, false, 'preview owns its child and never publishes a live session')
+  } finally {
+    await manager.close()
+    rmSync(work, { recursive: true, force: true })
+  }
 })

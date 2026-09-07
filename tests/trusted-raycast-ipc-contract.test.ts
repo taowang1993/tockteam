@@ -1,18 +1,21 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { registerTrustedRaycastIpcHandlers } from '../src/trusted-raycast-ipc.ts'
-import { TRUSTED_RAYCAST_IPC_CHANNELS, isTrustedRaycastViewMessage, isTrustedRaycastViewEvent } from '../src/trusted-raycast-contract.ts'
+import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastViewMessage, isTrustedRaycastViewEvent } from '../src/trusted-raycast-contract.ts'
 import { createLauncherPreloadBridge } from '../src/launcher-preload-bridge.ts'
 
 test('view IPC authenticates before parsing and disposes only its finite handlers', async () => {
   const handlers = new Map<string, (...args: any[]) => unknown>()
   const sender = {}
   let sent = 0; let closed = 0
+  const trustState: import('../src/trusted-raycast-contract.ts').TrustedRaycastTrustState = { active: true, candidateAvailable: true, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '', staged: false }
   const dispose = registerTrustedRaycastIpcHandlers({
     ipcMain: { handle: (channel, handler) => { handlers.set(channel, handler) }, removeHandler: channel => { handlers.delete(channel) } },
     guard: { assert: event => { if (event !== sender) throw new Error('untrusted'); return { role: 'launcher', webContentsId: 7 } } },
     onEvent: owner => { assert.equal(owner.webContentsId, 7); sent++ },
     onClose: owner => { assert.equal(owner.webContentsId, 7); closed++ },
+    getTrust: () => trustState,
+    onTrustAction: action => ({ ok: true, state: { ...trustState, ...(action === 'enable' ? { enabled: true } : null) } }),
   })
   const event = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.event)!
   const close = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.close)!
@@ -23,6 +26,12 @@ test('view IPC authenticates before parsing and disposes only its finite handler
   await event(sender, input); assert.equal(sent, 1)
   await assert.rejects(Promise.resolve(close(sender, {})), /arguments/)
   await close(sender); assert.equal(closed, 1)
+  const trust = handlers.get(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.action)!
+  await assert.rejects(Promise.resolve(trust({}, 'enable')), /untrusted/)
+  await assert.rejects(Promise.resolve(trust(sender, 'launch')), /Invalid/)
+  await assert.rejects(Promise.resolve(trust(sender, 'enable', 'extra')), /Invalid/)
+  const enabled = (await trust(sender, 'enable')) as Readonly<{ ok: true; state: { enabled: boolean } }>
+  assert.equal(enabled.state.enabled, true)
   dispose(); dispose(); assert.equal(handlers.size, 0)
 })
 test('projection rejects unknown families, oversized text, nonfinite properties and foreign keys', () => {

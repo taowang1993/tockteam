@@ -21,7 +21,7 @@ import {
 } from './launcher-window-contract.ts'
 import type { LauncherCoreStatus, LauncherSearchOptions } from './launcher-core-search.ts'
 import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
-import { TRUSTED_RAYCAST_IPC_CHANNELS, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
+import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastTrustAction, isTrustedRaycastTrustResult, isTrustedRaycastTrustState, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastTrustAction, type TrustedRaycastTrustResult, type TrustedRaycastTrustState, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
 
 type IpcInvoker = Readonly<{
   invoke: (channel: string, args?: unknown) => Promise<unknown>
@@ -43,6 +43,8 @@ export type LauncherPreloadBridge = Readonly<{
   recordSearch: (query: string) => Promise<import('./launcher-contract.ts').LauncherSurfaceSettings>
   search: (searchTerm: string, options: LauncherSearchOptions) => Promise<LauncherSearchResponse>
   onTrustedRaycastView: (listener: (message: TrustedRaycastViewMessage) => void) => () => void
+  getTrustedRaycastTrust: (...args: unknown[]) => Promise<TrustedRaycastTrustState>
+  trustedRaycastTrustAction: (action: TrustedRaycastTrustAction) => Promise<TrustedRaycastTrustResult>
   trustedRaycastEvent: (event: TrustedRaycastViewEvent) => Promise<Readonly<{ ok: true }>>
   trustedRaycastClose: () => Promise<Readonly<{ ok: true }>>
 }>
@@ -143,6 +145,19 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       if (typeof listener !== 'function') throw new Error('Trusted Translate view listener is invalid')
       trustedRaycastListeners.add(listener)
       return () => { trustedRaycastListeners.delete(listener) }
+    },
+    getTrustedRaycastTrust: async (...args: unknown[]): Promise<TrustedRaycastTrustState> => {
+      assertArity('getTrustedRaycastTrust', args, 0)
+      const state = await ipcRenderer.invoke(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.state)
+      if (!isTrustedRaycastTrustState(state)) throw new Error('Invalid Trusted Extensions state')
+      return state
+    },
+    trustedRaycastTrustAction: async (action: unknown, ...extra: unknown[]): Promise<TrustedRaycastTrustResult> => {
+      assertArity('trustedRaycastTrustAction', [action, ...extra], 1)
+      if (!isTrustedRaycastTrustAction(action)) throw new Error('Invalid Trusted Extensions action')
+      const result = await ipcRenderer.invoke(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.action, action)
+      if (!isTrustedRaycastTrustResult(result)) throw new Error('Invalid Trusted Extensions action result')
+      return result
     },
     trustedRaycastEvent: async (event: TrustedRaycastViewEvent, ...extra: unknown[]): Promise<Readonly<{ ok: true }>> => {
       assertArity('trustedRaycastEvent', [event, ...extra], 1)

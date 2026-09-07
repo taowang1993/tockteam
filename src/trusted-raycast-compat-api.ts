@@ -98,7 +98,7 @@ export const Action = Object.assign(action, {
 })
 export const ActionPanel = Object.assign(component('raycast-action-panel'), { Section: component('raycast-action-section') })
 
-const unsupported = (name: string): never => { throw new Error(`Raycast API ${name} is not admitted in the initial tracer`) }
+const unsupported = (name: string): never => { throw new Error(`Raycast API ${name} is not admitted by this capability`) }
 export async function clearSearchBar(): Promise<void> { return unsupported('clearSearchBar') }
 export async function showHUD(_message: string): Promise<void> { return unsupported('showHUD') }
 export const Clipboard = { copy: async (text: string) => compatibility.native({ kind: 'copy', text }), paste: async (_value: string) => unsupported('Clipboard.paste') }

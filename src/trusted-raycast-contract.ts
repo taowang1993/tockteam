@@ -33,6 +33,55 @@ export const TRUSTED_RAYCAST_IPC_CHANNELS = Object.freeze({
   open: 'trusted-raycast:view-open',
   patch: 'trusted-raycast:view-patch',
 })
+export const TRUSTED_RAYCAST_TRUST_IPC_CHANNELS = Object.freeze({
+  action: 'trusted-raycast:trust-action',
+  state: 'trusted-raycast:trust-state',
+})
+export type TrustedRaycastTrustAction = 'disable' | 'enable' | 'install' | 'recover' | 'remove'
+export type TrustedRaycastTrustRecovery = '' | 'invalid-install' | 'interrupted-rotation'
+/** Renderer-facing trust projection: installed and enabled are separate user-owned states. */
+export type TrustedRaycastTrustState = Readonly<{
+  active: boolean
+  candidateAvailable: boolean
+  candidateDigest: string
+  digest: string
+  digestApproved: boolean
+  enabled: boolean
+  hasPrevious: boolean
+  installed: boolean
+  previewed: boolean
+  recovery: TrustedRaycastTrustRecovery
+  staged: boolean
+}>
+export type TrustedRaycastTrustResult = Readonly<
+  | { error: string; ok: false; state: TrustedRaycastTrustState }
+  | { ok: true; state: TrustedRaycastTrustState }
+>
+
+export function isTrustedRaycastTrustAction(value: unknown): value is TrustedRaycastTrustAction {
+  return value === 'disable' || value === 'enable' || value === 'install' || value === 'recover' || value === 'remove'
+}
+
+export function isTrustedRaycastTrustState(value: unknown): value is TrustedRaycastTrustState {
+  if (!isRecord(value) || !exactKeys(value, ['active', 'candidateAvailable', 'candidateDigest', 'digest', 'digestApproved', 'enabled', 'hasPrevious', 'installed', 'previewed', 'recovery', 'staged'])) return false
+  return typeof value.active === 'boolean'
+    && typeof value.candidateAvailable === 'boolean'
+    && typeof value.candidateDigest === 'string' && value.candidateDigest.length <= 64
+    && typeof value.digest === 'string' && value.digest.length <= 64
+    && typeof value.digestApproved === 'boolean'
+    && typeof value.enabled === 'boolean'
+    && typeof value.hasPrevious === 'boolean'
+    && typeof value.installed === 'boolean'
+    && typeof value.previewed === 'boolean'
+    && (value.recovery === '' || value.recovery === 'invalid-install' || value.recovery === 'interrupted-rotation')
+    && typeof value.staged === 'boolean'
+}
+
+export function isTrustedRaycastTrustResult(value: unknown): value is TrustedRaycastTrustResult {
+  if (!isRecord(value) || !isTrustedRaycastTrustState(value.state)) return false
+  if (value.ok === true) return exactKeys(value, ['ok', 'state'])
+  return value.ok === false && exactKeys(value, ['error', 'ok', 'state']) && boundedString(value.error, 512)
+}
 export type TrustedRaycastPreference = boolean | string
 export type TrustedRaycastViewOpen = Readonly<{
   sessionId: string

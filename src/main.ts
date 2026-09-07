@@ -1,11 +1,12 @@
 import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
+import { TrustedRaycastTrustStore } from './trusted-raycast-trust.ts'
 import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastPriorApp, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
 import { loadTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
-import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_RESULT_ID } from './trusted-raycast-catalog.ts'
-import { TRUSTED_RAYCAST_IPC_CHANNELS } from './trusted-raycast-contract.ts'
+import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER, TRUSTED_RAYCAST_RESULT_ID, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
+import { TRUSTED_RAYCAST_IPC_CHANNELS, type TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
 import { randomBytes } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
@@ -543,8 +544,10 @@ let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 let trustedRaycast: TrustedRaycastManager | undefined
+let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastPriorApp: TrustedRaycastPriorApp | undefined
 let trustedRaycastPriorCaptureTimer: ReturnType<typeof setTimeout> | undefined
+let trustActionBusy = false
 const execFilePromise = promisify(execFile)
 const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
   execFile: (file, args, options) => execFilePromise(file, args, { timeout: options?.timeout, maxBuffer: options?.maxBuffer }) as Promise<{ stdout: string }>,
@@ -2230,8 +2233,14 @@ function initializeLauncher(): void {
   const translatePreferencesPath = join(app.getPath('userData'), 'launcher', 'trusted-raycast-preferences.json')
   const selectionFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE === '1'
   const pasteFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE === '1'
+  trustedRaycastTrust = new TrustedRaycastTrustStore({
+    installRoot: join(app.getPath('userData'), 'launcher', 'trusted-raycast-install'),
+    candidateDir: join(currentDir, 'trusted-raycast'),
+    stateFile: join(app.getPath('userData'), 'launcher', 'trusted-raycast-trust.json'),
+    preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Translate runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir),
+  })
   trustedRaycast = new TrustedRaycastManager({
-    runtimeDir: join(currentDir, 'trusted-raycast'),
+    runtimeDir: () => trustedRaycastTrust?.runtimeDir(),
     nodePath: runtimePaths().nodeBinary,
     stateFile: join(app.getPath('userData'), 'launcher', 'trusted-raycast-state.json'),
     readSelectedText: async () => {
@@ -2273,12 +2282,12 @@ function initializeLauncher(): void {
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
-    initialIndexedItems: repository.readIndex().filter(item => item.id !== TRUSTED_RAYCAST_RESULT_ID),
+    initialIndexedItems: repository.readIndex().filter(item => item.id !== TRUSTED_RAYCAST_RESULT_ID && item.id !== TRUSTED_RAYCAST_TRUST_RESULT_ID),
     initialRanking: repository.readRanking(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async (signal, preserveSignal) => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycast?.available === true), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
+      return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust?.status() ?? { enabled: false, installed: false }), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
       const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
@@ -2323,8 +2332,12 @@ function initializeLauncher(): void {
       if (!completion.handled) completion = normalizeLauncherActionResult(await network.executeAction(record))
       if (!completion.handled) completion = normalizeLauncherActionResult(await os.executeAction(record))
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRANSLATE_HANDLER) {
-        if (!trustedRaycastChannel.active || !trustedRaycast?.available || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
+        if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
         await trustedRaycast.start(record.owner, { sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
+        completion = launcherActionCompletion(true)
+      }
+      if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRUST_HANDLER) {
+        if (!trustedRaycastChannel.active || record.argument !== 'manage') throw new Error('Trusted Extensions capability is inactive')
         completion = launcherActionCompletion(true)
       }
       if (!completion.handled) {
@@ -2442,6 +2455,27 @@ function initializeLauncher(): void {
     guard: launcherGuard, ipcMain,
     onEvent: (owner, event) => { if (!trustedRaycastChannel.active) throw new Error('Translate capability is inactive'); trustedRaycast?.send(owner, event) },
     onClose: async owner => { await trustedRaycast?.closeOwner(owner) },
+    getTrust: () => Object.freeze({ ...(trustedRaycastTrust?.status() ?? Object.freeze({ candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '', staged: false })), active: trustedRaycastChannel.active }),
+    onTrustAction: async action => {
+      const store = trustedRaycastTrust
+      if (store === undefined) throw new Error('Trusted Extensions are unavailable')
+      if (trustActionBusy) throw new Error('A Trusted Extensions action is already running')
+      trustActionBusy = true
+      try {
+        if (action === 'disable') await trustedRaycast?.stop('capability-disabled')
+        if (action === 'remove') await trustedRaycast?.stop('capability-removed')
+        if (action === 'recover') await trustedRaycast?.stop('capability-recovery')
+        const state = (): TrustedRaycastTrustState => Object.freeze({ ...store.status(), active: trustedRaycastChannel.active })
+        if (action === 'install') { store.stage(); await store.preview(); store.apply() }
+        else if (action === 'enable') store.enable()
+        else if (action === 'disable') store.disable()
+        else if (action === 'remove') store.remove()
+        else store.recover()
+        return Object.freeze({ ok: true as const, state: state() })
+      } catch (error) {
+        return Object.freeze({ ok: false as const, state: Object.freeze({ ...store.status(), active: trustedRaycastChannel.active }), error: error instanceof Error ? error.message.slice(0, 512) : 'Trusted Extensions action failed' })
+      } finally { trustActionBusy = false }
+    },
   })
   const disposeWindowIpc = registerLauncherWindowIpcHandlers({
     controller: nextController,

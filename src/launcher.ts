@@ -1,4 +1,6 @@
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
+import { createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
+import { TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import {
   ArrowRight,
   History as HistoryIcon,
@@ -426,6 +428,13 @@ async function bootstrap(): Promise<void> {
     hideLauncherControls()
     root.append(tool)
   }
+  const openTrustedRaycastTrustView = (): void => {
+    const tool = createTrustedRaycastTrustView(document, bridge, closeLocalTool, surfaceSettings.locale)
+    activeLocalTool = tool.element
+    activeLocalToolId = undefined
+    hideLauncherControls()
+    root.append(tool.element)
+  }
 
   const updateSelection = (): void => {
     for (const button of results.querySelectorAll<HTMLElement>('[data-result-id]')) {
@@ -558,6 +567,9 @@ async function bootstrap(): Promise<void> {
       && (candidate.id === 'ueli-network:DeeplTranslator' || candidate.id === 'ueli-network:WebSearch')
       && candidate.sourceExtension === (candidate.id.endsWith('DeeplTranslator') ? 'DeeplTranslator' : 'WebSearch')
       && action.actionId === candidate.defaultAction.actionId
+    const trustTool = candidate !== undefined
+      && candidate.id === TRUSTED_RAYCAST_TRUST_RESULT_ID
+      && action.actionId === candidate.defaultAction.actionId
     invoking = true
     invokingWorkflow = isWorkflowAction
     if (invokingWorkflow) {
@@ -616,6 +628,10 @@ async function bootstrap(): Promise<void> {
       }
       if (networkTool) {
         await openNetworkTool(candidate!.sourceExtension as 'DeeplTranslator' | 'WebSearch')
+        return
+      }
+      if (trustTool) {
+        openTrustedRaycastTrustView()
         return
       }
       search.value = invocationSearchTerm()

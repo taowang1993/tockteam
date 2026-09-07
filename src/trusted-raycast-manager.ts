@@ -10,7 +10,8 @@ import { isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, TRUSTED_RAY
 
 export type TrustedRaycastOwner = Readonly<{ webContentsId: number }>
 export type TrustedRaycastManagerOptions = Readonly<{
-  runtimeDir: string
+  /** The live runtime directory, or a main-owned resolver when the install store owns it. */
+  runtimeDir: string | (() => string | undefined)
   nodePath: string
   onMessage: (owner: TrustedRaycastOwner, message: TrustedRaycastViewMessage) => void
   onError?: (owner: TrustedRaycastOwner, error: Error) => void
@@ -30,32 +31,33 @@ export class TrustedRaycastManager {
   private readonly options: TrustedRaycastManagerOptions
   constructor(options: TrustedRaycastManagerOptions) { this.options = options }
   get active(): boolean { return this.session !== undefined && !this.session.revoked }
+  private resolveRuntimeDir(): string | undefined {
+    const resolved = typeof this.options.runtimeDir === 'function' ? this.options.runtimeDir() : this.options.runtimeDir
+    return resolved === '' ? undefined : resolved
+  }
   get available(): boolean {
-    if (process.platform !== 'darwin' || !existsSync(join(this.options.runtimeDir, 'child.mjs'))) return false
+    if (process.platform !== 'darwin') return false
+    const runtimeDir = this.resolveRuntimeDir()
+    if (runtimeDir === undefined || !existsSync(join(runtimeDir, 'child.mjs'))) return false
     try {
-      const metadata = JSON.parse(readFileSync(join(this.options.runtimeDir, 'build.json'), 'utf8'))
+      const metadata = JSON.parse(readFileSync(join(runtimeDir, 'build.json'), 'utf8'))
       if (metadata.artifactSha256 !== TRUSTED_RAYCAST_ARTIFACT_SHA256) return false
-      admitTrustedRaycastArtifact(join(this.options.runtimeDir, 'artifact.tar'))
+      admitTrustedRaycastArtifact(join(runtimeDir, 'artifact.tar'))
       return true
     } catch { return false }
   }
-  async start(owner: TrustedRaycastOwner, input: TrustedRaycastViewOpen): Promise<void> {
-    const startedAt = Date.now()
-    if (this.disposed || this.session || this.stopping) throw new Error('Translate runtime is busy or closed')
-    if (!isTrustedRaycastViewOpen(input)) throw new Error('Invalid Translate session')
-    if (Object.keys(input.preferences).length !== 0 && !isTrustedRaycastPreferences(input.preferences)) throw new Error('Unsupported Translate preferences')
-    if (!isAbsolute(this.options.nodePath) || !existsSync(this.options.nodePath)) throw new Error('Packaged Node is unavailable')
-    const metadata = JSON.parse(readFileSync(join(this.options.runtimeDir, 'build.json'), 'utf8'))
+  /** Shared admission and workspace staging; main calls this before any child can load. */
+  private createWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen): { child: ChildProcessWithoutNullStreams; workspace: string } {
+    const metadata = JSON.parse(readFileSync(join(runtimeDir, 'build.json'), 'utf8'))
     if (metadata.artifactSha256 !== TRUSTED_RAYCAST_ARTIFACT_SHA256 || metadata.command !== 'translate' || metadata.react !== '19.0.0' || metadata.reconciler !== '0.31.0') throw new Error('Translate build identity mismatch')
-    const bytes = admitTrustedRaycastArtifact(join(this.options.runtimeDir, 'artifact.tar'))
+    const bytes = admitTrustedRaycastArtifact(join(runtimeDir, 'artifact.tar'))
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-trusted-raycast-'))
-    let current: Session | undefined
     try {
       execFileSync('/usr/bin/tar', ['xf', '-', '-C', workspace], { input: bytes, timeout: 15000 })
       const runtime = join(workspace, 'tockteam-raycast-artifact', 'runtime', 'node_modules')
       symlinkSync(runtime, join(workspace, 'node_modules'))
-      copyFileSync(join(this.options.runtimeDir, 'child.mjs'), join(workspace, 'child.mjs'))
-      copyFileSync(join(this.options.runtimeDir, 'resolution.mjs'), join(workspace, 'resolution.mjs'))
+      copyFileSync(join(runtimeDir, 'child.mjs'), join(workspace, 'child.mjs'))
+      copyFileSync(join(runtimeDir, 'resolution.mjs'), join(workspace, 'resolution.mjs'))
       mkdirSync(join(workspace, 'tmp'))
       if (this.options.stateFile !== undefined) mkdirSync(dirname(this.options.stateFile), { recursive: true })
       const child = spawn(this.options.nodePath, ['--import', join(workspace, 'resolution.mjs'), join(workspace, 'child.mjs')], {
@@ -63,6 +65,69 @@ export class TrustedRaycastManager {
         env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? TRUSTED_RAYCAST_PREFERENCE_DEFAULTS : input.preferences), ...(this.options.stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: this.options.stateFile }) },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
+      return { child, workspace }
+    } catch (error) {
+      rmSync(workspace, { recursive: true, force: true })
+      throw error
+    }
+  }
+  /** Isolated bounded boot of a staged install: first valid readiness or a typed failure, then teardown. */
+  async previewRuntime(runtimeDir: string): Promise<string> {
+    const input: TrustedRaycastViewOpen = Object.freeze({ sessionId: randomUUID(), generation: randomUUID(), command: 'translate', preferences: Object.freeze({}) })
+    const { child, workspace } = this.createWorkspace(runtimeDir, input)
+    try {
+      await new Promise<void>((resolve, reject) => {
+        let pending = ''
+        let finished = false
+        const finish = (error?: Error): void => {
+          if (finished) return
+          finished = true
+          clearTimeout(timer)
+          // Drain the pipes to EOF: paused stdio would keep the child 'close' event from ever firing.
+          child.stdout.removeAllListeners('data'); child.stdout.resume()
+          child.stderr.resume()
+          child.stdin.removeAllListeners()
+          child.removeAllListeners()
+          if (error) reject(error); else resolve()
+        }
+        const timer = setTimeout(() => finish(new Error('Translate preview readiness timed out')), 15000)
+        child.stdout.setEncoding('utf8')
+        child.stdout.on('data', (chunk: string) => {
+          pending += chunk
+          if (Buffer.byteLength(pending) > 1024 * 1024) { finish(new Error('Translate preview output exceeded its bound')); return }
+          let end: number
+          while ((end = pending.indexOf('\n')) >= 0) {
+            const line = pending.slice(0, end); pending = pending.slice(end + 1)
+            try {
+              const message = parseTrustedRaycastChildMessage(line, input, -1)
+              if (message.type === 'ready') { finish(); return }
+              if (message.type === 'error') { finish(new Error(message.message)); return }
+            } catch (error) { finish(error instanceof Error ? error : new Error('Invalid Translate preview output')); return }
+          }
+        })
+        child.once('error', () => finish(new Error('Translate preview failed to start')))
+        child.once('close', () => finish(new Error('Translate preview closed before readiness')))
+      })
+      return ''
+    } finally {
+      await stopOwnedChild(child, 250, true)
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  }
+  async start(owner: TrustedRaycastOwner, input: TrustedRaycastViewOpen): Promise<void> {
+    const startedAt = Date.now()
+    if (this.disposed || this.session || this.stopping) throw new Error('Translate runtime is busy or closed')
+    if (!isTrustedRaycastViewOpen(input)) throw new Error('Invalid Translate session')
+    if (Object.keys(input.preferences).length !== 0 && !isTrustedRaycastPreferences(input.preferences)) throw new Error('Unsupported Translate preferences')
+    if (!isAbsolute(this.options.nodePath) || !existsSync(this.options.nodePath)) throw new Error('Packaged Node is unavailable')
+    const runtimeDir = this.resolveRuntimeDir()
+    if (runtimeDir === undefined) throw new Error('Translate capability is not installed')
+    let current: Session | undefined
+    let workspace = ''
+    try {
+      const created = this.createWorkspace(runtimeDir, input)
+      workspace = created.workspace
+      const child = created.child
       let resolveReady!: () => void
       let rejectReady!: (error: Error) => void
       const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
@@ -146,7 +211,7 @@ export class TrustedRaycastManager {
       try { await ready } finally { clearTimeout(timer) }
     } catch (error) {
       if (current) await this.stop('startup-failed')
-      else rmSync(workspace, { recursive: true, force: true })
+      else if (workspace) rmSync(workspace, { recursive: true, force: true })
       throw error
     }
   }
