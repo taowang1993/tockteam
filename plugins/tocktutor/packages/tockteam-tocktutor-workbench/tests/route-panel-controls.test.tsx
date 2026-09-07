@@ -84,7 +84,7 @@ function openNoteActions(): HTMLElement {
 }
 
 describe('TockTutor titlebar panel controls', () => {
-  it('opens note search in the command palette dialog instead of the Files sidebar', () => {
+  it('opens note search in a persistent Files sidebar without replacing the active editor', () => {
     const revision = '1'.repeat(64)
     renderRoute({
       entries: [
@@ -96,14 +96,15 @@ describe('TockTutor titlebar panel controls', () => {
       searchQuery: 'second',
     })
 
-    const dialog = screen.getByRole('dialog', { name: 'Search Notes' })
+    const search = screen.getByRole('region', { name: 'Search Notes' })
     const query = screen.getByRole('searchbox', { name: 'Search Notes Query' })
-    expect(dialog.contains(query)).toBe(true)
+    expect(search.contains(query)).toBe(true)
     expect(query.getAttribute('placeholder')).toBe('Search notes...')
-    expect(document.querySelector('aside[aria-label="Files"]')?.contains(query)).toBe(false)
-    expect(document.querySelector('button[aria-label="Command Palette"]')).toBeNull()
+    expect(document.querySelector('aside[aria-label="Files"]')?.contains(query)).toBe(true)
+    expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()
     expect(screen.getByRole('list', { name: 'Matching Note Paths' }).textContent).toContain('Second.md')
     expect(screen.queryByText('Folder/Note.md')).toBeNull()
+    expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
   })
 
   it('opens and closes the Files sidebar and Assistant panel', () => {
@@ -613,6 +614,18 @@ describe('TockTutor titlebar panel controls', () => {
 
     expect(onSearchChange).toHaveBeenCalledWith('lesson path:')
     await waitFor(() => { expect(document.activeElement).toBe(query) })
+  })
+
+  it('restores a collapsed sidebar after closing Search', () => {
+    renderRoute({}, { onOpenSearch: vi.fn() })
+    const sidebarButton = screen.getByRole('button', { name: 'Toggle Files Sidebar' })
+    fireEvent.click(sidebarButton)
+    expect(document.querySelector('aside[aria-label="Files"]')?.getAttribute('data-open')).toBe('false')
+    fireEvent.click(screen.getByRole('button', { name: 'Search Notes' }))
+    expect(screen.getByRole('region', { name: 'Search Notes' })).toBeTruthy()
+    expect(document.querySelector('aside[aria-label="Files"]')?.getAttribute('data-open')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Close Search' }))
+    expect(document.querySelector('aside[aria-label="Files"]')?.getAttribute('data-open')).toBe('false')
   })
 
   it('hides query operators in Related mode', () => {
