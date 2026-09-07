@@ -59,7 +59,11 @@ The Playwright flow proved:
 
 The first installed-smoke attempt at `894cc71` omitted `TRUSTED_RAYCAST_ARTIFACT_TAR`. The build correctly omitted the unconfigured candidate, then package inventory failed with `ASAR is missing dist/trusted-raycast/**`. No installed artifact launched. The smoke now admits the absolute configured artifact and verifies its pinned digest before the expensive build.
 
-The configured attempt at `164772d` packaged and launched the app but exposed two stale package-contract assumptions: the smoke/checker still expected the pre-Translate finite preload key set, and its hermetic environment selected the default Node 26 runtime despite the proven Translate TTS requirement for Node 24.20.0. The app and its children were cleaned up. The finite expected bridge keys are now updated in both live inspection and report validation, and the packaged Node default is pinned to 24.20.0 with a source-level regression test. The final installed run is performed only after those fixes are committed.
+The configured attempt at `164772d` packaged and launched the app but exposed two stale package-contract assumptions: the smoke/checker still expected the pre-Translate finite preload key set, and its hermetic environment selected the default Node 26 runtime despite the proven Translate TTS requirement for Node 24.20.0. The app and its children were cleaned up. The finite expected bridge keys are now updated in both live inspection and report validation, and the packaged Node default is pinned to 24.20.0 with a source-level regression test.
+
+### Final Installed Result
+
+The single installed smoke for final code commit `9add0dffc88a8baa68e13921bba9463315a75b58` passed on macOS arm64 from a private `.noindex` root. It verified the ASAR/resource/notices inventory (including the configured trusted candidate), the exact finite preload bridge, renderer sandbox/CSP/permission denial, bundled Node `v24.20.0`, ad-hoc local identity, workbench and launcher action, settings preservation across reinstall, rollback recovery, single-instance behavior, and complete process/install-root cleanup. `installed-smoke.json` passes `scripts/check-installed-report.mjs`; the installed-evidence catalog now references its SHA-256 and `scripts/ueli/installed-evidence.mjs` passes all 27 rows.
 
 ## Honest Boundaries
 
