@@ -12,11 +12,15 @@ function embedLabel(embed: ResolvedEmbedNode): string {
   return `${embed.target.path}${embed.target.fragment === null ? '' : `#${embed.target.fragment}`}`
 }
 
+export interface ReadingLinkResult {
+  fragment: string | null
+}
+
 function handleRenderedClick(
   event: ReactMouseEvent<HTMLElement>,
   onOpenExternalUrl?: (url: string) => void,
-  onOpenInternalLink?: (target: string) => void,
-): void {
+  onOpenInternalLink?: (target: string) => void | Promise<ReadingLinkResult | null>,
+): void | Promise<ReadingLinkResult | null> {
   const target = event.target instanceof Element ? event.target : null
   const url = target?.closest<HTMLElement>('[data-external-url]')?.dataset.externalUrl
   if (url !== undefined) {
@@ -29,7 +33,7 @@ function handleRenderedClick(
   if (internalTarget !== undefined) {
     event.preventDefault()
     event.stopPropagation()
-    onOpenInternalLink?.(internalTarget)
+    return onOpenInternalLink?.(internalTarget)
   } else if (target?.closest('a') !== null) {
     event.preventDefault()
   }
@@ -86,11 +90,29 @@ export function MarkdownSlidesView(props: {
   )
 }
 
+function normalizedFragment(value: string): string {
+  try {
+    return decodeURIComponent(value).replace(/^#+/u, '').replace(/^\^/u, '').trim().replace(/\s+/gu, ' ').toLocaleLowerCase()
+  } catch {
+    return value.replace(/^#+/u, '').replace(/^\^/u, '').trim().replace(/\s+/gu, ' ').toLocaleLowerCase()
+  }
+}
+
+function scrollReadingFragment(fragment: string): void {
+  if (typeof document === 'undefined') return
+  const wanted = normalizedFragment(fragment)
+  if (wanted === '') return
+  const root = document.querySelector<HTMLElement>('[aria-label="Reading View"] .tocktutor-reading')
+  const heading = Array.from(root?.querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6') ?? [])
+    .find(candidate => normalizedFragment(candidate.textContent ?? '') === wanted)
+  heading?.scrollIntoView({ block: 'start' })
+}
+
 export function RichReadingView(props: {
   embeds?: readonly ResolvedEmbedNode[] | undefined
   onAddProperty?: ((key: string) => boolean) | undefined
   onOpenExternalUrl?: ((url: string) => void) | undefined
-  onOpenInternalLink?: ((target: string) => void) | undefined
+  onOpenInternalLink?: ((target: string) => void | Promise<ReadingLinkResult | null>) | undefined
   onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined
   onToggleTask(index: number): void
   source: string
@@ -109,7 +131,17 @@ export function RichReadingView(props: {
       if (Number.isSafeInteger(index) && index >= 0) props.onToggleTask(index)
       return
     }
-    handleRenderedClick(event, props.onOpenExternalUrl, props.onOpenInternalLink)
+    const result = handleRenderedClick(event, props.onOpenExternalUrl, props.onOpenInternalLink)
+    if (result instanceof Promise) {
+      void result.then(value => {
+        const fragment = value?.fragment
+        if (fragment !== null && fragment !== undefined) {
+          const scroll = () => { scrollReadingFragment(fragment) }
+          if (typeof globalThis.requestAnimationFrame === 'function') globalThis.requestAnimationFrame(scroll)
+          else setTimeout(scroll, 0)
+        }
+      }).catch(() => undefined)
+    }
   }
   return (
     <section aria-label="Reading View" className="min-h-full" tabIndex={-1}>

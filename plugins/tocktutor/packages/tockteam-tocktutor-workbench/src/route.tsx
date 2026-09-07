@@ -71,7 +71,7 @@ import {
 } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
-import { LivePreviewView, RichReadingView } from './editor-surface.tsx'
+import { LivePreviewView, RichReadingView, type ReadingLinkResult } from './editor-surface.tsx'
 import { SourceEditor } from './source-editor.tsx'
 import { WorkbenchUtilities, type WorkbenchUtilityView } from './utility-panel.tsx'
 import { WorkbenchVaultDialog } from './vault-dialog.tsx'
@@ -944,22 +944,22 @@ export class WorkbenchRouteController {
     return mode === 'note' ? true : await this.loadGraph('local')
   }
 
-  async openInternalLink(target: string): Promise<boolean> {
+  async openInternalLink(target: string): Promise<ReadingLinkResult | null> {
     const vault = this.snapshot.vault
     const path = this.snapshot.path
     if (vault === null || path === null || this.snapshot.documentKind !== 'markdown'
-      || target.length === 0 || target.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(target)) return false
+      || target.length === 0 || target.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(target)) return null
     let links = this.snapshot.links
     if (links === null || links === undefined || links.path !== path || links.generation !== vault.generation) {
-      if (!await this.loadRelationships()) return false
+      if (!await this.loadRelationships()) return null
       links = this.snapshot.links
     }
-    if (links === null || links === undefined) return false
+    if (links === null || links === undefined) return null
     const record = links.outgoingDetails.find(candidate => candidate.kind === 'wiki' && candidate.authoredTarget === target)
-    if (record?.status !== 'resolved' || record.resolvedPath === null) return false
-    if (!await this.select(record.resolvedPath)) return false
+    if (record?.status !== 'resolved' || record.resolvedPath === null) return null
+    if (!await this.select(record.resolvedPath)) return null
     this.setMode('reading')
-    return true
+    return { fragment: record.fragment }
   }
 
   async openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean> {
@@ -2593,7 +2593,7 @@ export interface TockTutorRouteViewProps {
   onOpenBookmark?(id: string): void
   onOpenCommandPalette?(): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
-  onOpenInternalLink?(target: string): void
+  onOpenInternalLink?(target: string): void | Promise<ReadingLinkResult | null>
   onOpenRecovery?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenExternalUrl?(url: string): void

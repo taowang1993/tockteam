@@ -544,11 +544,11 @@ test('opens a Reading View wikilink only through Host-resolved path and fragment
   const controller = new WorkbenchRouteController(remote, path => { navigations.push(path) })
 
   await controller.syncLocation('/tocktutor/Folder/Note.md')
-  assert.equal(await controller.openInternalLink('Alias Target#Details'), true)
+  assert.deepEqual(await controller.openInternalLink('Alias Target#Details'), { fragment: 'Details' })
   assert.equal(controller.getSnapshot().path, 'Notes/Alias Target.md')
   assert.equal(controller.getSnapshot().mode, 'reading')
   assert.equal(navigations.at(-1), '/tocktutor/Notes/Alias%20Target.md')
-  assert.equal(await controller.openInternalLink('Unresolved'), false)
+  assert.equal(await controller.openInternalLink('Unresolved'), null)
   assert.equal(controller.getSnapshot().path, 'Notes/Alias Target.md')
   controller.dispose()
 })
