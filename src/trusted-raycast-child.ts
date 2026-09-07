@@ -11,6 +11,8 @@ import Translate from '/tmp/trusted-raycast-source/src/translate'
 import extensionManifest from '/tmp/trusted-raycast-source/package.json'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
+// stdout is the authenticated JSON protocol; preserve source diagnostics on stderr.
+console.log = (...values: unknown[]) => console.error(...values)
 const rootNode: Node = { type: 'root', props: {}, children: [] }
 let handles = new Map<string, () => unknown>()
 let fieldHandles = new Map<string, (value: string) => void>()

@@ -358,8 +358,14 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       if (current && message.revision <= current.revision) return
       const restoreRow = rows.some(row => row.item.contains?.(document.activeElement))
       current = message
-      if (message.type === 'error') { pending = undefined; queryPending = false; setActionPending(); input.disabled = true; fail(message.message ?? 'Translate runtime failed'); return }
-      input.disabled = false
+      if (message.type === 'error') {
+        pending = undefined; queryPending = false; setActionPending()
+        input.disabled = true; languageSelect.disabled = true; status.textContent = ''; setHidden(status, true)
+        results.replaceChildren(); setHidden(panelActions, true); footerActions.replaceChildren()
+        error.className = 'launcher-local-tool-error flex min-h-44 items-center justify-center text-center'
+        fail(message.message ?? 'Translate runtime failed'); return
+      }
+      input.disabled = false; languageSelect.disabled = false
       status.textContent = toastText === '' ? actionFeedback : toastText
       results.replaceChildren()
       if (message.root) render(message.root)

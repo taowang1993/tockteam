@@ -208,6 +208,9 @@ test('bundled artifact: first command shows required preferences, saves them in 
     const submit = view.action(setup.root, 'Continue')
     manager.send({ webContentsId: 1 }, { sessionId: 'setup', generation: '1', revision: setup.revision, eventId: submit.props.actionEventId, kind: 'action' })
     await view.waitRoot(root => root.props.preferenceSetup === false)
+    await wait(250)
+    assert.equal(manager.active, true, 'an unavailable selected-text lookup must not corrupt the child protocol')
+    assert.equal(messages.some(message => message.type === 'error'), false)
     assert.deepEqual(saved, [{ langFrom: 'auto', lang1: 'en', lang2: 'zh-CN', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }])
   } finally { await manager.close(); rmSync(work, { recursive: true, force: true }) }
 })

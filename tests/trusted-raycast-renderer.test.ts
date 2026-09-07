@@ -168,11 +168,13 @@ test('terminal errors clear query and action busy state', () => {
   const queryNodes: Element[] = []
   const queryDocument = { createElement() { const node = new Element(); queryNodes.push(node); return node } } as unknown as Document
   const queryView = createTrustedRaycastView(queryDocument, { trustedRaycastEvent: () => new Promise<void>(() => {}) } as unknown as LauncherPreloadBridge, () => {})
-  queryView.update(projection(0))
-  inputOf(queryNodes).dispatchEvent(new Event('input'))
+  queryView.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search', queryCurrent: false }, children: [{ type: 'raycast-empty', props: { title: 'Translating…', icon: 'Hourglass' }, children: [] }] } })
+  const queryResults = queryNodes.find(node => node.getAttribute('aria-label') === 'Translations')!
+  assert.equal(queryResults.children.length, 1)
   assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'true')
   queryView.update({ type: 'error', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
   assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'false')
+  assert.equal(queryResults.children.length, 0, 'terminal errors replace the stale translating projection')
 })
 
 test('internal stale or busy action rejections surface as a neutral retry message, not runtime text', async () => {
