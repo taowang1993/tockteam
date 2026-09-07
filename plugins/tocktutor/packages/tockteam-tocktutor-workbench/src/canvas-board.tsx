@@ -144,6 +144,21 @@ function sideHandleStyle(side: CanvasSide): CSSProperties {
   }
 }
 
+function canvasConnectionPoint(
+  node: CanvasDocument['nodes'][number],
+  bounds: { minX: number; minY: number },
+  side: unknown,
+  fallback: CanvasSide,
+): { x: number; y: number } {
+  const resolvedSide: CanvasSide = side === 'top' || side === 'right' || side === 'bottom' || side === 'left' ? side : fallback
+  const left = node.x - bounds.minX + BOARD_PADDING
+  const top = node.y - bounds.minY + BOARD_PADDING
+  return {
+    x: resolvedSide === 'left' ? left : resolvedSide === 'right' ? left + node.width : left + node.width / 2,
+    y: resolvedSide === 'top' ? top : resolvedSide === 'bottom' ? top + node.height : top + node.height / 2,
+  }
+}
+
 /**
  * Controlled, browser-only Canvas seam. It never saves or owns optimistic
  * source; every edit carries the exact previous source and expected revision.
@@ -491,6 +506,23 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
         style={{ height: bounds.height, width: bounds.width, zoom }}
       >
         {marquee !== null && <div aria-label="Canvas Marquee Selection" className="pointer-events-none absolute z-20 border border-[var(--tt-accent)] bg-[color-mix(in_srgb,var(--tt-accent)_12%,transparent)]" role="img" style={marquee} />}
+        {(document.edges?.length ?? 0) > 0 && (
+          <svg aria-label="Canvas Connection Lines" className="pointer-events-none absolute inset-0 z-10 size-full overflow-visible" fill="none" role="img" viewBox={`0 0 ${String(bounds.width)} ${String(bounds.height)}`}>
+            <defs>
+              <marker id="tocktutor-canvas-arrow" markerHeight="6" markerWidth="6" orient="auto-start-reverse" refX="5" refY="3" viewBox="0 0 6 6">
+                <path d="M 0 0 L 6 3 L 0 6 z" fill="var(--tt-accent)" />
+              </marker>
+            </defs>
+            {document.edges?.map(edge => {
+              const from = document.nodes.find(node => node.id === edge.fromNode)
+              const to = document.nodes.find(node => node.id === edge.toNode)
+              if (from === undefined || to === undefined) return null
+              const start = canvasConnectionPoint(from, bounds, edge.fromSide, 'right')
+              const end = canvasConnectionPoint(to, bounds, edge.toSide, 'left')
+              return <line data-canvas-edge={edge.id} key={edge.id} markerEnd={edge.toEnd === 'arrow' ? 'url(#tocktutor-canvas-arrow)' : undefined} stroke="var(--tt-accent)" strokeLinecap="round" strokeWidth="2" x1={start.x} x2={end.x} y1={start.y} y2={end.y} />
+            })}
+          </svg>
+        )}
         {document.nodes.map(node => {
           const label = labels.get(node.id) ?? node.id
           const connectable = isConnectableCanvasNode(node)
@@ -500,6 +532,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
             left: node.x - bounds.minX + BOARD_PADDING,
             top: node.y - bounds.minY + BOARD_PADDING,
             width: node.width,
+            zIndex: node.type === 'group' ? 0 : 20,
           }
           return (
             <article

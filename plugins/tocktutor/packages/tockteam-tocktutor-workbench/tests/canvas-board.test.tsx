@@ -49,6 +49,31 @@ describe('CanvasBoard', () => {
     }])
   })
 
+  it('keeps grouped card bodies above groups and renders persisted edge connectors', () => {
+    const grouped = JSON.stringify({
+      nodes: [
+        { id: 'text', type: 'text', x: 0, y: 0, width: 240, height: 120, text: 'First' },
+        { id: 'file', type: 'file', x: 320, y: 0, width: 240, height: 120, file: 'Notes/File.md' },
+        { id: 'group', type: 'group', x: -20, y: -20, width: 600, height: 180, label: 'Lesson' },
+      ],
+      edges: [{ id: 'edge-1', fromNode: 'text', fromSide: 'right', toNode: 'file', toSide: 'left', toEnd: 'arrow', label: 'opens' }],
+    })
+    render(<CanvasBoard source={grouped} revision="sha256:visible" onChange={() => {}} />)
+
+    const card = screen.getByRole('article', { name: 'Canvas Card First' })
+    const group = screen.getByRole('article', { name: 'Canvas Group Lesson' })
+    expect(card.textContent).toContain('First')
+    expect(group.textContent).toContain('Lesson')
+    expect(Number(card.getAttribute('style')?.match(/z-index:\s*(\d+)/u)?.[1] ?? 0)).toBeGreaterThan(Number(group.getAttribute('style')?.match(/z-index:\s*(\d+)/u)?.[1] ?? 0))
+
+    const lines = screen.getByRole('img', { name: 'Canvas Connection Lines' })
+    const line = lines.querySelector('[data-canvas-edge="edge-1"]')
+    expect(line).toBeTruthy()
+    expect(line?.getAttribute('x1')).toBe('300')
+    expect(line?.getAttribute('x2')).toBe('380')
+    expect(line?.getAttribute('marker-end')).toContain('tocktutor-canvas-arrow')
+  })
+
   it('cancels an armed connection with Escape and keeps unsafe persisted links inert', () => {
     const onChange = vi.fn()
     render(<CanvasBoard source={source} revision="sha256:before" onChange={onChange} />)
