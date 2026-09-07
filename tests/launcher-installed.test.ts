@@ -92,6 +92,8 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedReportCheck, /process\.exit\(1\)/u, 'invalid installed reports must fail their workflow step')
   assert.match(installedSmoke, /replaceMacBundle/u)
   assert.match(installedSmoke, /TOCKTEAM_INSTALLED_SMOKE/u)
+  assert.match(installedSmoke, /assertTrustedRaycastInstalledSmokeArtifact\(process\.env\.TRUSTED_RAYCAST_ARTIFACT_TAR\)/u)
+  assert.ok(installedSmoke.indexOf('assertTrustedRaycastInstalledSmokeArtifact(process.env.TRUSTED_RAYCAST_ARTIFACT_TAR)') < installedSmoke.indexOf('preparePackagedArtifact({ smokeRoot })'), 'exact reviewed artifact admission must fail before expensive packaging')
   assert.match(installedSmoke, /rollback|reinstall/iu)
   assert.match(installedSmoke, /unsigned|notarized/iu)
   assert.match(installedSmoke, /cp.*-cR/u)

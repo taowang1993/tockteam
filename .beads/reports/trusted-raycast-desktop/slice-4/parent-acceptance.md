@@ -55,6 +55,10 @@ The Playwright flow proved:
 - Real Electron trust-flow smoke: passed.
 - Cleanup: no owned Electron, CDP, Translate child, `afplay`, or private Translate workspace remained.
 
+## Installed Smoke Configuration
+
+The first installed-smoke attempt at `894cc71` omitted `TRUSTED_RAYCAST_ARTIFACT_TAR`. The build correctly omitted the unconfigured candidate, then the package inventory failed with `ASAR is missing dist/trusted-raycast/**`. No installed artifact launched. The smoke now admits the absolute configured artifact and verifies its pinned digest before starting the expensive package build, making this explicit proof requirement fail early rather than after packaging. The final installed run is performed only after that fix is committed and supplies the exact approved artifact path.
+
 ## Honest Boundaries
 
 - Google TTS produced no fresh observable `afplay` during this final run. The bounded outside-child probe/fallback recorded this honestly; prior live afplay evidence and current deterministic lifecycle tests remain in Slice 3 evidence.

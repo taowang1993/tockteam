@@ -39,6 +39,7 @@ export {
   writeWindowsPortableArchiveMetadata,
 } from './windows-portable-archive.mjs'
 import { assertOwnedProcessGone } from './process-cleanup.mjs'
+import { admitTrustedRaycastArtifact } from '../src/trusted-raycast-artifact-admission.ts'
 
 const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -47,6 +48,13 @@ const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'
 const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/electron/package.json'), 'utf8'))
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
+
+/** Installed/package proof is an explicit artifact check, never an ambient or fixture-only build. */
+export function assertTrustedRaycastInstalledSmokeArtifact(path) {
+  assert.ok(typeof path === 'string' && isAbsolute(path.trim()), 'TRUSTED_RAYCAST_ARTIFACT_TAR must point to the absolute reviewed artifact')
+  admitTrustedRaycastArtifact(path.trim())
+  return path.trim()
+}
 
 function trustedWindowsTool(name) {
   const systemRoot = process.env.SystemRoot?.trim()
@@ -756,6 +764,7 @@ async function runNonMacInstalledSmoke(artifact) {
 }
 
 async function main() {
+  assertTrustedRaycastInstalledSmokeArtifact(process.env.TRUSTED_RAYCAST_ARTIFACT_TAR)
   if (process.platform === 'darwin' && process.arch !== 'arm64' && process.arch !== 'x64') throw new Error(`Unsupported macOS architecture: ${process.arch}`)
   const parent = process.env.TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT?.trim() || tmpdir()
   await mkdir(parent, { recursive: true })
