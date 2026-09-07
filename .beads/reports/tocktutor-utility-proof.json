@@ -14,7 +14,11 @@
     ".agents/uiux/tocktutor/screenshots/tocktutor-tags.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-tags.png",
     ".agents/uiux/tocktutor/screenshots/tocktutor-bookmarks.png",
-    ".agents/uiux/tocktutor/screenshots/obsidian-bookmarks.png"
+    ".agents/uiux/tocktutor/screenshots/obsidian-bookmarks.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-base.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-base.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-canvas.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-canvas.png"
   ],
   "graphs": {
     "fixture": {
@@ -67,6 +71,82 @@
         "activeNodeScale": 0.16703293088490065,
         "maxNeighborScale": 0.08,
         "filtersClosed": true
+      }
+    }
+  },
+  "baseCanvas": {
+    "fixture": "plugins/tocktutor/parity/fixtures/vault",
+    "sameIsolatedFixture": true,
+    "hashes": {
+      "base": "sha256:28e19c6066f86fd84b56f2d71748069dad2a0d5d80bb686a02662789254319dd",
+      "canvas": "sha256:cd79b2a20ed9ce2b65921a3db8fc2031c49f94f0617d1ebf622981ddc1990170"
+    },
+    "viewport": {
+      "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+      "pixels": { "width": 3024, "height": 1898 }
+    },
+    "base": {
+      "tockTutor": {
+        "sourceRevision": "tutor@4634d296",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-base.png",
+        "view": "Lessons",
+        "viewType": "table",
+        "resultCount": 2,
+        "visibleRows": ["Alias Target", "Welcome"],
+        "sourceControlAvailable": true,
+        "pristine": true,
+        "interaction": {
+          "action": "switch Base View",
+          "from": "Lessons",
+          "to": "Drafts",
+          "resultCount": 1,
+          "firstResult": "Alias Target"
+        }
+      },
+      "obsidian": {
+        "version": "1.13.7",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-base.png",
+        "resultCount": 2,
+        "columns": ["file name", "status", "scoreLabel"],
+        "error": null,
+        "sameNormalizedFixture": true
+      }
+    },
+    "canvas": {
+      "tockTutor": {
+        "sourceRevision": "tutor@4634d296",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-canvas.png",
+        "cardCount": 3,
+        "groupCount": 1,
+        "edgeCount": 1,
+        "defaultZoom": "100%",
+        "sourceControlAvailable": true,
+        "pristine": true,
+        "connectorPath": "M 300 120 C 324 96 336 96 360 120",
+        "connectorScreenPoints": {
+          "start": { "x": 620, "y": 256.296875 },
+          "end": { "x": 680, "y": 256.296875 }
+        },
+        "handleCenters": {
+          "start": { "x": 620, "y": 256.296875 },
+          "end": { "x": 680, "y": 256.296875 }
+        },
+        "alignmentTolerancePx": 1,
+        "interaction": {
+          "action": "select card and zoom",
+          "selected": "Notes/Alias Target.md",
+          "zoomAfter": "125%",
+          "edgeCountAfter": 1
+        }
+      },
+      "obsidian": {
+        "version": "1.13.7",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-canvas.png",
+        "nodeCount": 4,
+        "groupCount": 1,
+        "connectorPathCount": 44,
+        "edgeLabel": "opens",
+        "sameNormalizedFixture": true
       }
     }
   },
@@ -126,6 +206,8 @@
     "properties": ".agents/uiux/tocktutor/screenshots/obsidian-properties.png",
     "backlinks": ".agents/uiux/tocktutor/screenshots/obsidian-backlinks.png",
     "tags": ".agents/uiux/tocktutor/screenshots/obsidian-tags.png",
-    "bookmarks": ".agents/uiux/tocktutor/screenshots/obsidian-bookmarks.png"
+    "bookmarks": ".agents/uiux/tocktutor/screenshots/obsidian-bookmarks.png",
+    "base": ".agents/uiux/tocktutor/screenshots/obsidian-base.png",
+    "canvas": ".agents/uiux/tocktutor/screenshots/obsidian-canvas.png"
   }
 }
