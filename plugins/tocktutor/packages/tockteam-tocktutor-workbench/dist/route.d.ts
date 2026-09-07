@@ -314,7 +314,7 @@ export interface TockTutorRouteViewProps {
     onNewNote?(): void;
     onOpenBookmark?(id: string): void;
     onOpenCommandPalette?(): void;
-    onOpenGraphNode?(path: string, mode: 'local' | 'note'): void;
+    onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>;
     onOpenRecovery?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenExternalUrl?(url: string): void;
