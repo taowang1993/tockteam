@@ -1,0 +1,65 @@
+{
+  "bead": "tockteam-62k",
+  "sourceCommit": "0b11a94ea8f4696ca6d76ec5e07852215c4e5875",
+  "logicalViewport": {
+    "width": 750,
+    "height": 475
+  },
+  "browserFixture": {
+    "boundary": "Built production launcher HTML, JavaScript, CSS, and command renderers with a finite mocked host projection; no native effects or network requests.",
+    "dark": [
+      "root-dark.png",
+      "local-tool-dark.png",
+      "network-tool-dark.png",
+      "trust-dark.png"
+    ],
+    "light": [
+      "root-light.png",
+      "local-tool-light.png",
+      "network-tool-light.png",
+      "trust-light.png"
+    ],
+    "dimensions": "750x475 CSS pixels",
+    "horizontalOverflow": false
+  },
+  "electronProof": {
+    "command": "pnpm run build:tocktutor && env -u TRUSTED_RAYCAST_ARTIFACT_TAR pnpm run build && node scripts/stage-dsh.mjs --quick && node scripts/launcher-electron-smoke.mjs --trusted-raycast",
+    "result": "passed",
+    "placement": {
+      "screenX": 1820,
+      "screenY": 149,
+      "extendedDisplay": true
+    },
+    "retinaDimensions": "1500x950 device pixels for 750x475 logical pixels",
+    "evidenceDirectory": "../trusted-raycast-desktop/slice-4",
+    "covered": [
+      "preference setup in dark and light",
+      "empty, translated, nested form, detail, action panel, and terminal close states",
+      "keyboard focus and Cmd+K action navigation",
+      "sandboxed renderer with no Node globals",
+      "native Copy and Paste policy",
+      "private proof browser placement",
+      "narrow reflow and all launcher themes",
+      "final process-tree cleanup"
+    ]
+  },
+  "installedSmoke": {
+    "command": "TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=/tmp/tockteam-62k-installed-final.noindex pnpm test:launcher:installed",
+    "sourceCommit": "0b11a94ea8f4696ca6d76ec5e07852215c4e5875",
+    "result": "passed",
+    "platform": "darwin-arm64",
+    "processTreesGone": true,
+    "temporaryInstallRemoved": true
+  },
+  "checks": {
+    "pnpm test": "972 passed, 14 skipped, 0 failed",
+    "pnpm typecheck": "passed",
+    "pnpm build": "passed",
+    "git diff --check": "passed"
+  },
+  "trustedArtifact": {
+    "path": "plugins/trusted-raycast/vendor/google-translate.tar",
+    "sha256": "7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac",
+    "sourceOrArtifactDiffFrom83a22162": false
+  }
+}
