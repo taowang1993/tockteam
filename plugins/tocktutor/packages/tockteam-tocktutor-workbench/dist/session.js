@@ -221,6 +221,20 @@ export function openNoteTab(source, groupId, path, options = {}) {
     group.activeTabId = tab.id;
     return session;
 }
+export function renameNoteTabPath(source, fromPath, toPath) {
+    if (!isSafeVaultRelativePath(fromPath) || !isSafeVaultRelativePath(toPath) || fromPath === toPath)
+        return cloneSession(source);
+    if (source.groups.some(group => group.tabs.some(tab => tab.path === toPath && tab.path !== fromPath)))
+        return cloneSession(source);
+    const session = cloneSession(source);
+    for (const group of session.groups) {
+        for (const tab of group.tabs) {
+            if (tab.path === fromPath)
+                tab.path = toPath;
+        }
+    }
+    return session;
+}
 export function markTabDirty(source, groupId, path, dirty) {
     const session = cloneSession(source);
     const group = groupOf(session, groupId);

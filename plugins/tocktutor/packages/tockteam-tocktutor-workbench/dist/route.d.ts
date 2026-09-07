@@ -20,7 +20,7 @@ import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } fro
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -30,6 +30,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>;
         createDocument(request: CreateDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         openDocument(path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<OpenDocumentResult>>;
+        renameDocument(request: RenameDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<RenameDocumentResult>>;
         saveDocument(request: SaveDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         readDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftResult>>;
         saveDraft(request: SaveDraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftMutationResult>>;
@@ -170,6 +171,7 @@ export declare class WorkbenchRouteController {
     private draftTimer;
     private eventDispose;
     private pendingDispatch;
+    private pendingRename;
     private pathname;
     private started;
     private disposed;
@@ -244,6 +246,7 @@ export declare class WorkbenchRouteController {
     removeBookmark(id: string): boolean;
     openBookmark(id: string): Promise<boolean>;
     loadWorkspace(id: string): Promise<boolean>;
+    renameActiveTitle(title: string): Promise<boolean>;
     select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean): Promise<boolean>;
     edit(source: string): void;
     setSelection(start: number, end: number): void;
@@ -319,6 +322,7 @@ export interface TockTutorRouteViewProps {
     onPrepareOrganization?(): void;
     onPreviewAttachment?(path: string): void;
     onReadSnapshot?(id: string): void;
+    onRenameTitle?(title: string): Promise<boolean>;
     onRemoveBookmark?(id: string): void;
     onReopenClosedTab?(): void;
     onRestoreSnapshot?(id: string): void;

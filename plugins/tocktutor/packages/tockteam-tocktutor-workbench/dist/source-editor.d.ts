@@ -27,6 +27,7 @@ export interface SourceEditorProps {
     id?: string;
     insertTextRequest?: SourceEditorInsertTextRequest | null;
     onContentChange?: (content: string) => void;
+    onRenameTitle?: (title: string) => Promise<boolean> | boolean;
     onSelectionChange?: (selection: SourceEditorSelection) => void;
     onWidgetState?: (widgets: readonly import('./editor-widgets.ts').EditorWidgetTarget[]) => void;
     placeholder?: string;

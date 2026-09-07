@@ -141,6 +141,13 @@ function assertSaveRequest(value) {
     assertCreateRequest(value);
     assertRevision(value.expectedRevision);
 }
+function assertRenameRequest(value) {
+    assertRecord(value, 'Rename request');
+    assertVaultReference(value.expectedVault);
+    assertDocumentPath(value.fromPath);
+    assertDocumentPath(value.toPath);
+    assertRevision(value.expectedRevision);
+}
 function assertGraphRequest(value) {
     assertRecord(value, 'Graph request');
     assertVaultReference(value.expectedVault);
@@ -283,6 +290,7 @@ let TockTutorWorkbenchGateway = (() => {
     let _listTree_decorators;
     let _createDocument_decorators;
     let _saveDocument_decorators;
+    let _renameDocument_decorators;
     let _graph_decorators;
     let _facets_decorators;
     let _outline_decorators;
@@ -313,6 +321,7 @@ let TockTutorWorkbenchGateway = (() => {
             _listTree_decorators = [Remote];
             _createDocument_decorators = [Remote];
             _saveDocument_decorators = [Remote];
+            _renameDocument_decorators = [Remote];
             _graph_decorators = [Remote];
             _facets_decorators = [Remote];
             _outline_decorators = [Remote];
@@ -340,6 +349,7 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _listTree_decorators, { kind: "method", name: "listTree", static: false, private: false, access: { has: obj => "listTree" in obj, get: obj => obj.listTree }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDocument_decorators, { kind: "method", name: "saveDocument", static: false, private: false, access: { has: obj => "saveDocument" in obj, get: obj => obj.saveDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _renameDocument_decorators, { kind: "method", name: "renameDocument", static: false, private: false, access: { has: obj => "renameDocument" in obj, get: obj => obj.renameDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _graph_decorators, { kind: "method", name: "graph", static: false, private: false, access: { has: obj => "graph" in obj, get: obj => obj.graph }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _facets_decorators, { kind: "method", name: "facets", static: false, private: false, access: { has: obj => "facets" in obj, get: obj => obj.facets }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _outline_decorators, { kind: "method", name: "outline", static: false, private: false, access: { has: obj => "outline" in obj, get: obj => obj.outline }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -431,6 +441,14 @@ let TockTutorWorkbenchGateway = (() => {
             assertSaveRequest(request);
             signal.throwIfAborted();
             return this.ctx.noteVault.saveDocument(request, signal);
+        }
+        async renameDocument(request, signal) {
+            assertRenameRequest(request);
+            signal.throwIfAborted();
+            const result = await this.ctx.noteVault.moveFileWithLinkRewrite(request, signal);
+            if (result.status !== 'moved')
+                throw new Error('The vault move returned an invalid status.');
+            return { ...result, status: 'moved' };
         }
         async graph(request, signal) {
             assertGraphRequest(request);

@@ -417,6 +417,28 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_readSnapshot_result$schem
   'size': z.number(),
 }),
 })
+const _tockteam_tocktutor_workbench_tocktutorWorkbench_renameDocument_parameter_0$schema = z.object({
+  'expectedRevision': z.string(),
+  'expectedVault': z.object({
+  'generation': z.number(),
+  'id': z.string(),
+}),
+  'fromPath': z.string(),
+  'toPath': z.string(),
+})
+const _tockteam_tocktutor_workbench_tocktutorWorkbench_renameDocument_result$schema = z.object({
+  'fromPath': z.string(),
+  'generation': z.number(),
+  'path': z.string(),
+  'revision': z.string(),
+  'rewriteError': z.string().optional(),
+  'rewriteSnapshots': z.array(z.object({
+  'path': z.string(),
+  'snapshotId': z.string(),
+})),
+  'rewrittenPaths': z.array(z.string()),
+  'status': z.literal("moved"),
+})
 const _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreSnapshot_parameter_0$schema = z.object({
   'expectedRevision': z.string(),
   'snapshotId': z.string(),
@@ -619,7 +641,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#SnapshotMutationResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_captureSnapshot_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":514,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":537,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/clearDraft',
@@ -645,7 +667,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#DraftMutationResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_clearDraft_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":507,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":530,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/clearSnapshots',
@@ -671,7 +693,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#SnapshotMutationResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_clearSnapshots_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":521,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":544,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/createDocument',
@@ -697,7 +719,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#WriteDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_createDocument_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":433,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":444,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/createManagedVault',
@@ -723,7 +745,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultReference',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_createManagedVault_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":369,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":380,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/currentVault',
@@ -739,7 +761,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#ActiveVaultResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_currentVault_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":357,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":368,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/facets',
@@ -765,7 +787,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultFacetsResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_facets_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":461,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":484,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/graph',
@@ -791,7 +813,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultGraphResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_graph_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":453,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":476,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/inspectAttachment',
@@ -827,7 +849,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#AttachmentMetadataResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_inspectAttachment_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":387,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":398,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/links',
@@ -853,7 +875,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultLinksResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_links_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":477,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":500,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/listSnapshots',
@@ -879,7 +901,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#SnapshotListResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listSnapshots_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":528,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":551,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/listTrash',
@@ -905,7 +927,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#TrashListResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listTrash_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":578,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":601,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/listTree',
@@ -931,7 +953,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultTreePage',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_listTree_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":426,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":437,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/openDocument',
@@ -967,7 +989,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#OpenDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_openDocument_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":414,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":425,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/openSandboxVault',
@@ -993,7 +1015,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultReference',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_openSandboxVault_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":378,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":389,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/outline',
@@ -1019,7 +1041,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultOutlineResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_outline_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":469,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":492,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/previewAttachment',
@@ -1055,7 +1077,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#AttachmentPreviewResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_previewAttachment_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":395,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":406,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/readDraft',
@@ -1081,7 +1103,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#DraftResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readDraft_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":493,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":516,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/readSnapshot',
@@ -1107,7 +1129,33 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#SnapshotContentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_readSnapshot_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":538,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":561,"column":9},
+    },
+    {
+      id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/renameDocument',
+      service: 'tocktutorWorkbench',
+      namespace: 'tocktutorWorkbench',
+      method: 'renameDocument',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@tockteam/tocktutor-workbench/client#RenameDocumentRequest',
+            schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_renameDocument_parameter_0$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: '@tockteam/tocktutor-workbench/client#RenameDocumentResult',
+        schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_renameDocument_result$schema,
+      },
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":464,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreSnapshot',
@@ -1133,7 +1181,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#WriteDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreSnapshot_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":548,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":571,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreSnapshotAsNew',
@@ -1159,7 +1207,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#WriteDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreSnapshotAsNew_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":558,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":581,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/restoreTrash',
@@ -1185,7 +1233,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#RestoreTrashResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_restoreTrash_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":585,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":608,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/saveDocument',
@@ -1211,7 +1259,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#WriteDocumentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDocument_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":443,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":454,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/saveDraft',
@@ -1237,7 +1285,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#DraftMutationResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_saveDraft_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":500,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":523,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/search',
@@ -1263,7 +1311,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#VaultSearchResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":485,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":508,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/storeAttachment',
@@ -1289,7 +1337,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#StoreAttachmentResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_storeAttachment_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":405,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":416,"column":9},
     },
     {
       id: '@tockteam/tocktutor-workbench#tocktutorWorkbench/trashEntry',
@@ -1315,7 +1363,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-workbench/client#TrashMutationResult',
         schema: _tockteam_tocktutor_workbench_tocktutorWorkbench_trashEntry_result$schema,
       },
-      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":568,"column":9},
+      sourceLocation: {"file":"packages/workbench/src/host-read.ts","line":591,"column":9},
     },
   ],
 }
