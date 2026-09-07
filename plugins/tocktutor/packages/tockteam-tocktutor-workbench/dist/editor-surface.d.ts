@@ -15,6 +15,7 @@ export declare function RichReadingView(props: {
     embeds?: readonly ResolvedEmbedNode[] | undefined;
     onAddProperty?: ((key: string) => boolean) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
+    onOpenInternalLink?: ((target: string) => void) | undefined;
     onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined;
     onToggleTask(index: number): void;
     source: string;

@@ -191,6 +191,7 @@ export declare class WorkbenchRouteController {
     loadFacets(): Promise<boolean>;
     loadGraph(mode: 'global' | 'local'): Promise<boolean>;
     openGraphNode(path: string, mode: 'local' | 'note'): Promise<boolean>;
+    openInternalLink(target: string): Promise<boolean>;
     openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean>;
     loadRelationships(): Promise<boolean>;
     jumpToLine(line: number): boolean;
@@ -317,6 +318,7 @@ export interface TockTutorRouteViewProps {
     onOpenBookmark?(id: string): void;
     onOpenCommandPalette?(): void;
     onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>;
+    onOpenInternalLink?(target: string): void;
     onOpenRecovery?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenExternalUrl?(url: string): void;
