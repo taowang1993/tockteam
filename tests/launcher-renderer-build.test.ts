@@ -155,6 +155,7 @@ test('launcher renderer uses the compact Tockbot composition', () => {
   assert.match(html, /<body class="[^"]*overflow-hidden[^"]*bg-transparent/u)
   assert.match(html, /<main[^>]+id="launcher-root"[^>]+class="[^"]*launcher-command-surface/u)
   assert.match(tailwind, /@utility launcher-command-surface[\s\S]+bg-overlay/u)
+  assert.match(tailwind, /@utility launcher-command-surface\s*\{\s*box-sizing: border-box/u)
   assert.match(html, /id="launcher-search-form"[^>]+class="[^"]*launcher-command-header/u)
   assert.match(tailwind, /@utility launcher-command-header[\s\S]+height: 3rem/u)
   assert.match(html, /id="launcher-search-icon"[^>]+class="[^"]*hidden[^"]*"[^>]+hidden/u)

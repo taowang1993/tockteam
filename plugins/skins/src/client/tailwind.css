@@ -63,6 +63,7 @@
 /* The Desktop bridge has no component seam for the inherited DSH shell. */
 /* TockLauncher command views share Raycast-like density and material without sharing behavior or authority. */
 @utility launcher-command-surface {
+  box-sizing: border-box;
   position: relative;
   display: flex;
   min-width: 0;
