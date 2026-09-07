@@ -3053,8 +3053,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [paletteView, setPaletteView] = useState<'commands' | 'notes' | null>(null)
   const visiblePalette = paletteView ?? (snapshot.searchOpen ? 'notes' : snapshot.commandPaletteOpen === true ? 'commands' : null)
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
+  const [baseView, setBaseView] = useState<string | null>(null)
+  const [baseSearches, setBaseSearches] = useState<Record<string, string>>({})
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  useEffect(() => {
+    setBaseView(null)
+    setBaseSearches({})
+  }, [snapshot.path])
   // Search remains available in focus mode and temporarily occupies the hidden sidebar.
   const effectiveSidebarOpen = (sidebarOpen || visiblePalette === 'notes') && (snapshot.focusMode !== true || visiblePalette === 'notes')
   const previousSidebarOpen = useRef(effectiveSidebarOpen)
@@ -3474,7 +3480,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               />
             ) : snapshot.documentKind === 'base' ? (
               <ExecutableBaseView
+                activeView={baseView}
                 files={snapshot.baseFiles ?? []}
+                onActiveViewChange={setBaseView}
+                onSearchChange={(view, search) => { setBaseSearches(current => ({ ...current, [view]: search })) }}
+                searches={baseSearches}
                 {...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy })}
                 {...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit })}
                 {...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport })}

@@ -86,6 +86,28 @@ function openNoteActions(): HTMLElement {
 }
 
 describe('TockTutor titlebar panel controls', () => {
+  it('keeps the executable Base view selector interactive in the route', () => {
+    renderRoute({
+      baseFiles: [{
+        path: 'Notes/Task.md',
+        revision: 'file:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        source: '---\nstatus: draft\n---\n# Task\n',
+      }],
+      documentKind: 'base',
+      entries: [{ createdAt: 1, kind: 'document', modifiedAt: 2, path: 'Tasks.base', revision: 'file:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', size: 80 }],
+      path: 'Tasks.base',
+      phase: 'ready',
+      revision: 'file:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      source: `views:\n  - type: table\n    name: Ranked\n    order: [file.name]\n  - type: list\n    name: Drafts\n    filters: 'note.status == "draft"'\n    order: [file.name]\n`,
+      vault: { generation: 1, id: 'vault:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+    })
+
+    expect(screen.getByRole('grid', { name: 'Ranked Results' })).toBeTruthy()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Base View' }), { target: { value: 'Drafts' } })
+    expect(screen.getByRole('list', { name: 'Drafts Results' })).toBeTruthy()
+    expect(screen.getByText('1 Result')).toBeTruthy()
+  })
+
   it('opens note search in a persistent Files sidebar without replacing the active editor', () => {
     const revision = '1'.repeat(64)
     renderRoute({
