@@ -222,7 +222,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       const owner: ActionOwner = { item, actions, buttons, menu }
       for (const action of actions) {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'launcher-command-menu-item grid-cols-[minmax(0,1fr)_auto] text-sm'
-        button.textContent = String(action.props.title ?? '') + (action.props.unavailable ? (zh ? '（不可用）' : ' (Unavailable)') : '')
+        const actionTitle = String(action.props.title ?? '')
+        button.textContent = actionTitle + (action.props.unavailable ? (zh ? '（不可用）' : ' (Unavailable)') : '')
+        button.setAttribute('aria-label', actionTitle)
         const shortcut = shortcutText(action.props.shortcut)
         if (shortcut) { const key = document.createElement('kbd'); key.className = 'ml-3 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = shortcut; button.append(key) }
         button.disabled = !action.props.actionEventId || action.props.unavailable === true

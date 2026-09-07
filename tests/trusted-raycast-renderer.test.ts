@@ -99,7 +99,7 @@ test('footer actions follow selection, open by pointer, and clamp after results 
   const item = (title: string, action: string, eventId: string): NonNullable<TrustedRaycastViewMessage['root']> => ({ type: 'raycast-list-item', props: { title }, children: [{ type: 'raycast-action', props: { title: action, actionEventId: eventId, shortcut: JSON.stringify({ macOS: { key: 'c', modifiers: ['cmd', 'shift'] } }) }, children: [] }] })
   view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [item('Hello', 'Copy Translation', 'copy-translation'), item('Source', 'Copy', 'copy')] } })
   const resultRows = nodes.filter(node => node.className.includes('launcher-command-row'))
-  let primary = nodes.find(node => node.getAttribute('aria-label') === 'Copy Translation')!
+  let primary = nodes.find(node => node.getAttribute('aria-label') === 'Copy Translation' && node.className.includes('launcher-command-footer-action'))!
   resultRows[1]!.dispatchEvent(new Event('focusin'))
   assert.equal(primary.getAttribute('aria-label'), 'Copy')
   const trigger = nodes.find(node => node.textContent === 'Actions' && node.className.includes('launcher-command-footer-action'))!
@@ -107,8 +107,9 @@ test('footer actions follow selection, open by pointer, and clamp after results 
   trigger.dispatchEvent(new Event('click', { bubbles: true }))
   assert.equal(menus[1]!.open, true)
   assert.ok(nodes.some(node => node.textContent === '⌘ ⇧ C'), 'action panels show Raycast-like trailing shortcuts')
+  assert.equal(nodes.find(node => node.getAttribute('aria-label') === 'Copy' && node.className.includes('launcher-command-menu-item'))?.textContent, 'Copy', 'shortcut glyphs do not change the accessible action name')
   view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [item('Hello', 'Copy Translation', 'copy-translation')] } })
-  primary = nodes.findLast(node => node.getAttribute('aria-label') === 'Copy Translation')!
+  primary = nodes.findLast(node => node.getAttribute('aria-label') === 'Copy Translation' && node.className.includes('launcher-command-footer-action'))!
   assert.equal(primary.disabled, false)
 })
 
