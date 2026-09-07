@@ -24,7 +24,9 @@
     ".agents/uiux/tocktutor/screenshots/tocktutor-command-palette.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-command-palette.png",
     ".agents/uiux/tocktutor/screenshots/tocktutor-file-recovery.png",
-    ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png"
+    ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png"
   ],
   "graphs": {
     "fixture": {
@@ -231,6 +233,57 @@
       }
     }
   },
+  "reading": {
+    "fixture": "plugins/tocktutor/parity/fixtures/vault",
+    "sourceRevision": "tutor@c39c53f3",
+    "viewport": {
+      "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+      "pixels": { "width": 3024, "height": 1898 }
+    },
+    "tockTutor": {
+      "path": "Notes/Welcome.md",
+      "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
+      "screenshotSha256": "sha256:2018c5dbbf3e4c523a20a5410a3b1860ddab9b76a9e5e54eb4e4fded15cf7525",
+      "sameIsolatedFixture": true,
+      "pristine": true,
+      "link": {
+        "authoredTarget": "Alias Target#Details",
+        "resolvedPath": "Notes/Alias Target.md",
+        "fragment": "Details",
+        "activeAfterClick": "Notes/Alias Target.md",
+        "fragmentY": 400.5,
+        "readingModeAfterClick": true
+      },
+      "task": {
+        "path": "Notes/Welcome.md",
+        "index": 0,
+        "initial": "- [ ] Review the lesson",
+        "unsavedStatus": "Unsaved changes.",
+        "savedStatus": "Notes/Welcome.md saved.",
+        "revisionBefore": "file:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
+        "revisionAfter": "file:70d39ca4bf3cb7c427b4ffba7ae8b4d3c55c40d37a62d580cff460c8704a7185",
+        "revisionChanged": true,
+        "persisted": true
+      }
+    },
+    "obsidian": {
+      "version": "1.13.7",
+      "path": "Notes/Welcome.md",
+      "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png",
+      "screenshotSha256": "sha256:c83fcb60931f84631732d2e42b0a2a8f83dc259bd7201b6a2e49a715b3d6e74a",
+      "sameIsolatedFixture": true,
+      "pristine": true,
+      "link": {
+        "authoredTarget": "Alias Target#Details",
+        "activeAfterClick": "Alias Target",
+        "fragment": "Details",
+        "fragmentY": 356.703125,
+        "readingModeAfterClick": true
+      }
+    },
+    "resolutionCoverage": ["path", "basename", "alias", "fragment"],
+    "interactionOrder": ["capture pristine pair", "toggle task and save through Host", "open internal wikilink and scroll fragment"]
+  },
   "checks": {
     "properties": {
       "vaultIndex": true,
@@ -306,6 +359,7 @@
     "canvas": ".agents/uiux/tocktutor/screenshots/obsidian-canvas.png",
     "source": ".agents/uiux/tocktutor/screenshots/obsidian-source-mode.png",
     "commandPalette": ".agents/uiux/tocktutor/screenshots/obsidian-command-palette.png",
-    "recovery": ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png"
+    "recovery": ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png",
+    "reading": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png"
   }
 }
