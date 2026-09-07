@@ -183,6 +183,9 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.className).toContain('[&_blockquote]:pl-3')
     expect(readingSurface.className).toContain('[&_ul:not(.task-list)]:list-disc')
     expect(readingSurface.className).toContain('[&_code]:bg-[var(--dsw-specific-markdown-inline-code)]')
+    expect(readingSurface.className).toContain('[&_code]:rounded-sm')
+    expect(readingSurface.className).toContain('[&_code]:py-0.5')
+    expect(readingSurface.className).toContain('[&_pre_code]:p-0')
   })
 
   it('presents wikilinks without source brackets and shares Reading View link styling', async () => {
@@ -215,6 +218,9 @@ describe('Milkdown Live Preview editor', () => {
     expect(editor.className).toContain('[&_li>p]:m-0')
     expect(editor.className).toContain('[&_ul]:list-disc')
     expect(editor.className).toContain('[&_code]:bg-[var(--dsw-specific-markdown-inline-code)]')
+    expect(editor.className).toContain('[&_code]:rounded-sm')
+    expect(editor.className).toContain('[&_code]:py-0.5')
+    expect(editor.className).toContain('[&_pre_code]:p-0')
     expect(editor.className).toContain('[&_.tocktutor-live-fold]:absolute')
     expect(editor.className).toContain('[&_li>ul]:!pl-4')
   })
