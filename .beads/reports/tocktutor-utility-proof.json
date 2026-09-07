@@ -16,6 +16,60 @@
     ".agents/uiux/tocktutor/screenshots/tocktutor-bookmarks.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-bookmarks.png"
   ],
+  "graphs": {
+    "fixture": {
+      "activePath": "Graph Root.md",
+      "localDepth": 2,
+      "localDirection": "both",
+      "sameIsolatedFixture": true
+    },
+    "global": {
+      "tockTutor": {
+        "scope": "global",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-graph-global.png",
+        "nodeCount": 21,
+        "edgeCount": 8,
+        "bounded": true
+      },
+      "obsidian": {
+        "scope": "global",
+        "version": "1.13.7",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-graph-global.png",
+        "pairedReference": true
+      }
+    },
+    "local": {
+      "tockTutor": {
+        "scope": "local",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-graph.png",
+        "activePath": "Graph Root.md",
+        "nodeCount": 5,
+        "edgeCount": 8,
+        "bounded": true,
+        "activeNodeVisible": true,
+        "tooltipAbsent": true,
+        "interaction": {
+          "target": "Graph Notes/Alpha.md",
+          "activeAfterClick": "Graph Notes/Alpha.md",
+          "panelAfterClick": null
+        }
+      },
+      "obsidian": {
+        "scope": "local",
+        "version": "1.13.7",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-graph-local.png",
+        "activePath": "Graph Root.md",
+        "depth": 2,
+        "nodeCount": 5,
+        "edgeCount": 8,
+        "bounded": true,
+        "activeNodeVisible": true,
+        "activeNodeScale": 0.16703293088490065,
+        "maxNeighborScale": 0.08,
+        "filtersClosed": true
+      }
+    }
+  },
   "checks": {
     "properties": {
       "vaultIndex": true,
@@ -58,8 +112,8 @@
     "duplicateUtilityHeading": false
   },
   "gallery": {
-    "uniqueImageSources": 45,
-    "captureCountLabel": "Visual Design Audit · 45 Captures",
+    "uniqueImageSources": 46,
+    "captureCountLabel": "Visual Design Audit · 46 Captures",
     "linkExistenceCheck": true,
     "checkCommand": "node --test tests/tocktutor-gallery.test.ts"
   },
