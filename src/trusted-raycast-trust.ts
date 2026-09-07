@@ -177,10 +177,14 @@ export class TrustedRaycastTrustStore {
     try { lstatSync(this.options.stateFile); decided = true } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
     }
-    if (decided || !current.candidateAvailable || current.recovery !== '') return current
+    const candidate = this.candidateIdentity()
+    const installed = current.installed ? this.readIdentity(this.currentDir(), current.digest) : undefined
+    const hostRefresh = decided && candidate !== undefined && installed !== undefined
+      && candidate.artifactSha256 === installed.artifactSha256 && !sameIdentity(candidate, installed)
+    if ((decided && !hostRefresh) || !current.candidateAvailable || current.recovery !== '') return current
     this.stage()
     await this.preview()
-    return this.apply(true)
+    return this.apply(decided ? undefined : true)
   }
 
   private setEnabled(enabled: boolean): TrustedRaycastDiskTrustState {

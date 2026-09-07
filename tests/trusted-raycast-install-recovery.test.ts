@@ -79,6 +79,16 @@ test('bundled reviewed Translate installs enabled on first run and preserves lat
     const restarted = await fixture.store().installBundledDefault()
     assert.equal(restarted.enabled, false, 'an explicit user disable survives restart')
     assert.equal(previews, 1, 'a healthy existing install is not previewed again')
+
+    writeFileSync(join(fixture.candidate, 'child.mjs'), 'child-v1-host-fix')
+    const refreshedIdentity = { artifactSha256: DIGEST_V1, childSha256: digestOf('child-v1-host-fix'), command: 'translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v1') }
+    writeFileSync(join(fixture.candidate, 'build.json'), JSON.stringify({ ...refreshedIdentity, metadataSha256: attestTrustedRaycastBuildIdentity(refreshedIdentity) }))
+    const refreshed = await fixture.store().installBundledDefault()
+    assert.equal(readFileSync(join(fixture.install, 'current', 'child.mjs'), 'utf8'), 'child-v1-host-fix', 'a shipped host-runner fix replaces stale derived bytes for the same reviewed artifact')
+    assert.equal(refreshed.enabled, false, 'refreshing host-owned code preserves explicit disablement')
+    assert.equal(previews, 2, 'the refreshed derived runtime still passes isolated preview')
+    await fixture.store().installBundledDefault()
+    assert.equal(previews, 2, 'an already refreshed runtime is not previewed again')
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
 })
 
