@@ -577,6 +577,33 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onReadSnapshot).toHaveBeenLastCalledWith(firstId)
   })
 
+  it('uses the first snapshot as the roving tab stop until one is selected', async () => {
+    const firstId = '2026-08-22T18-00-00-000Z-first'
+    const secondId = '2026-08-22T18-01-00-000Z-second'
+    const onReadSnapshot = vi.fn()
+    renderRoute({
+      path: 'Note.md',
+      selectedSnapshot: null,
+      snapshots: [
+        { createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: firstId, path: 'Note.md', reason: 'save', size: 15 },
+        { createdAt: 2, digest: `sha256:${'b'.repeat(64)}`, id: secondId, path: 'Note.md', reason: 'manual', size: 18 },
+      ],
+    }, { onReadSnapshot })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
+    const options = within(screen.getByRole('listbox', { name: 'Recovery Snapshots' })).getAllByRole('option')
+    expect(options[0]?.getAttribute('tabindex')).toBe('0')
+    expect(options[1]?.getAttribute('tabindex')).toBe('-1')
+    options[0]?.focus()
+    fireEvent.keyDown(options[0]!, { key: 'ArrowDown' })
+    await waitFor(() => expect(document.activeElement).toBe(options[1]))
+    expect(onReadSnapshot).toHaveBeenCalledWith(secondId)
+    fireEvent.keyDown(options[1]!, { key: 'ArrowDown' })
+    await waitFor(() => expect(document.activeElement).toBe(options[0]))
+    expect(onReadSnapshot).toHaveBeenLastCalledWith(firstId)
+  })
+
   it('keeps Properties and Backlinks as separate utility views', () => {
     const onLoadFacets = vi.fn()
     renderRoute({
