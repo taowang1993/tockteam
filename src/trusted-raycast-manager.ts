@@ -2,10 +2,10 @@
 import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, mkdtempSync, mkdirSync, copyFileSync, symlinkSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, isAbsolute, dirname } from 'node:path'
-import { admitTrustedRaycastArtifact, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from './trusted-raycast-artifact-admission.ts'
+import { admitTrustedRaycastArtifact, readTrustedRaycastBuildIdentity, readTrustedRaycastDerivedFile, readTrustedRaycastFile, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from './trusted-raycast-artifact-admission.ts'
 import { isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
 
 export type TrustedRaycastOwner = Readonly<{ webContentsId: number }>
@@ -38,26 +38,21 @@ export class TrustedRaycastManager {
   get available(): boolean {
     if (process.platform !== 'darwin') return false
     const runtimeDir = this.resolveRuntimeDir()
-    if (runtimeDir === undefined || !existsSync(join(runtimeDir, 'child.mjs'))) return false
-    try {
-      const metadata = JSON.parse(readFileSync(join(runtimeDir, 'build.json'), 'utf8'))
-      if (metadata.artifactSha256 !== TRUSTED_RAYCAST_ARTIFACT_SHA256) return false
-      admitTrustedRaycastArtifact(join(runtimeDir, 'artifact.tar'))
-      return true
-    } catch { return false }
+    if (runtimeDir === undefined) return false
+    try { readTrustedRaycastBuildIdentity(runtimeDir, TRUSTED_RAYCAST_ARTIFACT_SHA256); return true } catch { return false }
   }
   /** Shared admission and workspace staging; main calls this before any child can load. */
   private createWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen): { child: ChildProcessWithoutNullStreams; workspace: string } {
-    const metadata = JSON.parse(readFileSync(join(runtimeDir, 'build.json'), 'utf8'))
-    if (metadata.artifactSha256 !== TRUSTED_RAYCAST_ARTIFACT_SHA256 || metadata.command !== 'translate' || metadata.react !== '19.0.0' || metadata.reconciler !== '0.31.0') throw new Error('Translate build identity mismatch')
-    const bytes = admitTrustedRaycastArtifact(join(runtimeDir, 'artifact.tar'))
+    const identity = readTrustedRaycastBuildIdentity(runtimeDir, TRUSTED_RAYCAST_ARTIFACT_SHA256)
+    const bytes = admitTrustedRaycastArtifact(join(runtimeDir, 'artifact.tar'), identity.artifactSha256)
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-trusted-raycast-'))
     try {
       execFileSync('/usr/bin/tar', ['xf', '-', '-C', workspace], { input: bytes, timeout: 15000 })
       const runtime = join(workspace, 'tockteam-raycast-artifact', 'runtime', 'node_modules')
       symlinkSync(runtime, join(workspace, 'node_modules'))
-      copyFileSync(join(runtimeDir, 'child.mjs'), join(workspace, 'child.mjs'))
-      copyFileSync(join(runtimeDir, 'resolution.mjs'), join(workspace, 'resolution.mjs'))
+      // Read through checked descriptors, then execute the exact bytes that were verified.
+      writeFileSync(join(workspace, 'child.mjs'), readTrustedRaycastDerivedFile(join(runtimeDir, 'child.mjs'), identity.childSha256))
+      writeFileSync(join(workspace, 'resolution.mjs'), readTrustedRaycastDerivedFile(join(runtimeDir, 'resolution.mjs'), identity.resolutionSha256))
       mkdirSync(join(workspace, 'tmp'))
       if (this.options.stateFile !== undefined) mkdirSync(dirname(this.options.stateFile), { recursive: true })
       const child = spawn(this.options.nodePath, ['--import', join(workspace, 'resolution.mjs'), join(workspace, 'child.mjs')], {

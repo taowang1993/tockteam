@@ -8,13 +8,14 @@ import { DesktopTrustedRaycastChannel } from '../src/trusted-raycast-channel.ts'
 import { scrubDesktopAuthorityEnvironment } from '../src/desktop-runtime-environment.ts'
 
 test('catalog requires live Host capability, an installed enabled candidate, and the trust surface is gated only on activation', () => {
-  for (const [active, trust] of [[false, { installed: false, enabled: false }], [false, { installed: true, enabled: true }]] as const) assert.deepEqual(trustedRaycastCatalog(active, trust), [])
-  for (const trust of [{ installed: false, enabled: false }, { installed: true, enabled: false }, { installed: false, enabled: true }]) {
+  const approved = { digest: 'a'.repeat(64), digestApproved: true }
+  for (const [active, trust] of [[false, { ...approved, installed: false, enabled: false }], [false, { ...approved, installed: true, enabled: true }]] as const) assert.deepEqual(trustedRaycastCatalog(active, trust), [])
+  for (const trust of [{ ...approved, installed: false, enabled: false }, { ...approved, installed: true, enabled: false }, { ...approved, installed: false, enabled: true }, { digest: 'b'.repeat(64), digestApproved: false, installed: true, enabled: true }]) {
     const items = trustedRaycastCatalog(true, trust)
     assert.equal(items.length, 1)
     assert.equal(items[0]!.id, 'trusted-raycast:trust')
   }
-  const [item, trustItem] = trustedRaycastCatalog(true, { installed: true, enabled: true })
+  const [item, trustItem] = trustedRaycastCatalog(true, { ...approved, installed: true, enabled: true })
   assert.equal(item!.defaultAction.hideWindowAfterInvocation, false)
   assert.equal(item!.id.startsWith('tockteam-route:'), false)
   assert.equal(trustItem!.id, 'trusted-raycast:trust')

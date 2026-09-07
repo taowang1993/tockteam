@@ -1,10 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, truncateSync, existsSync, renameSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, truncateSync, existsSync, renameSync, symlinkSync, statSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { TrustedRaycastTrustStore } from '../src/trusted-raycast-trust.ts'
+import { attestTrustedRaycastBuildIdentity } from '../src/trusted-raycast-artifact-admission.ts'
 
 import type { TrustedRaycastTrustState } from '../src/trusted-raycast-contract.ts'
 
@@ -33,7 +34,8 @@ function makeFixture(expectedSha256 = DIGEST_V1, preview: ((dir: string) => Prom
   writeFileSync(join(candidate, 'artifact.tar'), ARTIFACT_V1)
   writeFileSync(join(candidate, 'child.mjs'), 'child-v1')
   writeFileSync(join(candidate, 'resolution.mjs'), 'resolution-v1')
-  writeFileSync(join(candidate, 'build.json'), JSON.stringify({ artifactSha256: expectedSha256, command: 'translate', react: '19.0.0', reconciler: '0.31.0' }))
+  const identity = { artifactSha256: expectedSha256, childSha256: digestOf('child-v1'), command: 'translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v1') }
+  writeFileSync(join(candidate, 'build.json'), JSON.stringify({ ...identity, metadataSha256: attestTrustedRaycastBuildIdentity(identity) }))
   return Object.freeze({
     root, candidate, install, state, userData,
     store: () => new TrustedRaycastTrustStore({ installRoot: install, candidateDir: candidate, stateFile: state, expectedSha256, ...(preview === undefined ? {} : { preview }) }),
@@ -102,6 +104,7 @@ test('install lifecycle: stage -> pinned candidate -> isolated preview -> explic
     // Remove deletes the install but retains the trust record for re-install/re-enable.
     const removed = fixture.store().remove()
     assert.equal(removed.installed, false)
+    assert.equal(existsSync(join(fixture.install, 'rotation.json')), false)
     assert.equal(removed.enabled, true, 'enable preference survives removal')
     assert.equal(removed.recovery, '')
     assert.equal(fixture.store().runtimeDir(), undefined)
@@ -138,14 +141,18 @@ test('current and previous are retained across an explicit reviewed upgrade; onl
     await install(fixture)
     // A newly reviewed pin (code change = review gate) becomes the candidate; upgrade stays explicit.
     writeFileSync(join(fixture.candidate, 'artifact.tar'), ARTIFACT_V2)
-    writeFileSync(join(fixture.candidate, 'build.json'), JSON.stringify({ artifactSha256: DIGEST_V2, command: 'translate', react: '19.0.0', reconciler: '0.31.0' }))
+    writeFileSync(join(fixture.candidate, 'child.mjs'), 'child-v2')
+    writeFileSync(join(fixture.candidate, 'resolution.mjs'), 'resolution-v2')
+    const identityV2 = { artifactSha256: DIGEST_V2, childSha256: digestOf('child-v2'), command: 'translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v2') }
+    writeFileSync(join(fixture.candidate, 'build.json'), JSON.stringify({ ...identityV2, metadataSha256: attestTrustedRaycastBuildIdentity(identityV2) }))
     const upgraded = new TrustedRaycastTrustStore({ installRoot: fixture.install, candidateDir: fixture.candidate, stateFile: fixture.state, expectedSha256: DIGEST_V2 })
-    // No automatic upgrade: the old digest is no longer the pinned identity, so nothing loads from it.
+    // A newer candidate never replaces the still-approved current install.
     const before = upgraded.status()
-    assert.equal(before.installed, false)
+    assert.equal(before.installed, true)
+    assert.equal(before.digest, DIGEST_V1)
     assert.equal(before.candidateAvailable, true)
     assert.equal(before.candidateDigest, DIGEST_V2)
-    assert.equal(upgraded.runtimeDir(), undefined)
+    assert.equal(upgraded.runtimeDir(), join(fixture.install, 'current'))
     // The explicit user install (approve & apply) records the new approval.
     upgraded.stage()
     await upgraded.preview()
@@ -153,11 +160,22 @@ test('current and previous are retained across an explicit reviewed upgrade; onl
     assert.equal(applied.digest, DIGEST_V2)
     assert.equal(applied.digestApproved, true)
     assert.equal(applied.installed, true)
-    // The previous install is retained on disk but a non-pinned digest never loads or rolls back.
+    // The previous approved identity is retained for exact cross-digest recovery.
     assert.equal(readFileSync(join(fixture.install, 'previous', 'artifact.tar'), 'utf8'), ARTIFACT_V1)
-    assert.equal(applied.hasPrevious, false)
+    assert.equal(applied.hasPrevious, true)
+    // Recovery on a healthy install is a no-op and must not roll back the current.
+    assert.equal(upgraded.recover().digest, DIGEST_V2)
+    assert.equal(readFileSync(join(fixture.install, 'current', 'artifact.tar'), 'utf8'), ARTIFACT_V2)
     rmSync(join(fixture.install, 'current'), { recursive: true, force: true })
-    assert.equal(upgraded.recover().installed, false)
+    assert.equal(upgraded.recover().installed, true)
+    assert.equal(upgraded.status().digest, DIGEST_V1)
+    // A corrupt current rolls back only to the persisted, exact prior approval.
+    upgraded.stage(); await upgraded.preview(); upgraded.apply()
+    writeFileSync(join(fixture.install, 'current', 'child.mjs'), 'corrupt-current')
+    assert.equal(upgraded.status().recovery, 'interrupted-rotation')
+    const repaired = upgraded.recover()
+    assert.equal(repaired.installed, true)
+    assert.equal(repaired.digest, DIGEST_V1)
     // Within one pin, interruption rolls back to the retained previous install.
     upgraded.stage()
     await upgraded.preview()
@@ -274,18 +292,86 @@ test('staging copies the admitted bytes verbatim and never executes install scri
     assert.equal(readFileSync(join(staged, 'artifact.tar'), 'utf8'), ARTIFACT_V1)
     assert.equal(readFileSync(join(staged, 'child.mjs'), 'utf8'), 'child-v1')
     assert.equal(readFileSync(join(staged, 'resolution.mjs'), 'utf8'), 'resolution-v1')
-    assert.deepEqual(JSON.parse(readFileSync(join(staged, 'build.json'), 'utf8')), { artifactSha256: DIGEST_V1, command: 'translate', react: '19.0.0', reconciler: '0.31.0' })
+    assert.equal(JSON.parse(readFileSync(join(staged, 'build.json'), 'utf8')).artifactSha256, DIGEST_V1)
+    assert.equal(typeof JSON.parse(readFileSync(join(staged, 'build.json'), 'utf8')).metadataSha256, 'string')
     assert.deepEqual(JSON.parse(readFileSync(join(staged, 'stage.json'), 'utf8')), { digest: DIGEST_V1, previewed: false })
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
 })
 
-test('status is stable across repeated reads and refreshes only when the install changes', () => {
+test('atomic trust writes do not follow a preexisting predictable temp symlink', () => {
+  const fixture = makeFixture()
+  const outside = join(fixture.root, 'outside')
+  try {
+    writeFileSync(outside, 'untouched')
+    symlinkSync(outside, `${fixture.state}.tmp`)
+    fixture.store().enable()
+    assert.equal(readFileSync(outside, 'utf8'), 'untouched')
+    assert.equal(existsSync(`${fixture.state}.tmp`), true)
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
+test('rotation journal blocks exposure until a crash recovery decision is complete', async () => {
+  const fixture = makeFixture()
+  try {
+    await install(fixture)
+    const identity = JSON.parse(readFileSync(join(fixture.install, 'current', 'build.json'), 'utf8'))
+    writeFileSync(join(fixture.install, 'rotation.json'), JSON.stringify({ candidate: identity }))
+    assert.equal(fixture.store().status().installed, false)
+    assert.equal(fixture.store().runtimeDir(), undefined)
+    assert.equal(fixture.store().recover().installed, true)
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
+test('same-size same-mtime derived tampering invalidates a previously read install', async () => {
+  const fixture = makeFixture()
+  try {
+    await install(fixture)
+    const child = join(fixture.install, 'current', 'child.mjs')
+    const before = statSync(child)
+    assert.equal(fixture.store().status().installed, true)
+    writeFileSync(child, 'child-v2')
+    utimesSync(child, before.atime, before.mtime)
+    assert.equal(fixture.store().status().installed, false)
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
+test('derived child tampering invalidates the install before runtime resolution', async () => {
+  const fixture = makeFixture()
+  try {
+    await install(fixture)
+    writeFileSync(join(fixture.install, 'current', 'child.mjs'), 'tampered-child')
+    assert.equal(fixture.store().status().installed, false)
+    assert.equal(fixture.store().runtimeDir(), undefined)
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
+test('symlinked derived files and install roots are rejected before staging or loading', async () => {
+  const fixture = makeFixture()
+  try {
+    symlinkSync(join(fixture.candidate, 'child.mjs'), join(fixture.candidate, 'child-link.mjs'))
+    rmSync(join(fixture.candidate, 'child.mjs'))
+    symlinkSync(join(fixture.root, 'outside'), join(fixture.candidate, 'child.mjs'))
+    assert.throws(() => fixture.store().stage())
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
+test('derived resolution tampering invalidates the install before runtime resolution', async () => {
+  const fixture = makeFixture()
+  try {
+    await install(fixture)
+    writeFileSync(join(fixture.install, 'current', 'resolution.mjs'), 'tampered-resolution')
+    assert.equal(fixture.store().status().installed, false)
+    assert.equal(fixture.store().runtimeDir(), undefined)
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
+test('status is equivalent across repeated reads and reflects current install bytes', () => {
   const fixture = makeFixture()
   try {
     const store = fixture.store()
     const first = store.status()
     const second = store.status()
-    assert.equal(first, second)
+    assert.deepEqual(first, second)
     fixture.store().stage()
     const staged = store.status()
     assert.equal(staged.staged, true)

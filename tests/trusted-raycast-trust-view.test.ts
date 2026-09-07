@@ -46,6 +46,7 @@ async function makeView(state: TrustedRaycastTrustState, actionResult?: { ok: bo
     getTrustedRaycastTrust: async () => current,
     trustedRaycastTrustAction: async (action: string) => {
       actions.push(action)
+      if (actionResult === undefined && action === 'prepare') current = { ...current, staged: true, previewed: true }
       return actionResult === undefined ? { ok: true, state: current } : { ok: actionResult.ok, state: current, error: actionResult.error ?? '' }
     },
   } as unknown as LauncherPreloadBridge
@@ -71,9 +72,11 @@ test('trust surface installs through the explicit two-step approve and keeps ena
   assert.equal(harness.status().textContent, 'Not Installed')
   assert.deepEqual(harness.buttons().map(button => button.textContent), ['Install Reviewed Extension'])
   harness.buttons()[0]!.dispatchEvent(new Event('click'))
-  assert.deepEqual(harness.buttons().map(button => button.textContent), ['Approve & Install', 'Cancel'])
+  await flush()
+  assert.deepEqual(harness.buttons().map(button => button.textContent), ['Approve & Install'])
   harness.buttons()[0]!.dispatchEvent(new Event('click'))
-  assert.deepEqual(harness.actions, ['install'])
+  await flush()
+  assert.deepEqual(harness.actions, ['prepare', 'apply'])
   assert.equal(harness.status().textContent, 'Not Installed')
 })
 

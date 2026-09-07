@@ -37,7 +37,7 @@ export const TRUSTED_RAYCAST_TRUST_IPC_CHANNELS = Object.freeze({
   action: 'trusted-raycast:trust-action',
   state: 'trusted-raycast:trust-state',
 })
-export type TrustedRaycastTrustAction = 'disable' | 'enable' | 'install' | 'recover' | 'remove'
+export type TrustedRaycastTrustAction = 'disable' | 'enable' | 'prepare' | 'apply' | 'recover' | 'remove'
 export type TrustedRaycastTrustRecovery = '' | 'invalid-install' | 'interrupted-rotation'
 /** Renderer-facing trust projection: installed and enabled are separate user-owned states. */
 export type TrustedRaycastTrustState = Readonly<{
@@ -59,7 +59,7 @@ export type TrustedRaycastTrustResult = Readonly<
 >
 
 export function isTrustedRaycastTrustAction(value: unknown): value is TrustedRaycastTrustAction {
-  return value === 'disable' || value === 'enable' || value === 'install' || value === 'recover' || value === 'remove'
+  return value === 'disable' || value === 'enable' || value === 'prepare' || value === 'apply' || value === 'recover' || value === 'remove'
 }
 
 export function isTrustedRaycastTrustState(value: unknown): value is TrustedRaycastTrustState {

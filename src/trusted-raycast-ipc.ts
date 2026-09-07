@@ -16,7 +16,7 @@ export function registerTrustedRaycastIpcHandlers(args: Readonly<{
   guard: LauncherIpcGuard
   ipcMain: LauncherIpcMain
   getTrust: () => TrustedRaycastTrustState
-  onTrustAction: (action: 'disable' | 'enable' | 'install' | 'recover' | 'remove') => Promise<TrustedRaycastTrustResult> | TrustedRaycastTrustResult
+  onTrustAction: (action: 'disable' | 'enable' | 'prepare' | 'apply' | 'recover' | 'remove') => Promise<TrustedRaycastTrustResult> | TrustedRaycastTrustResult
   onClose: (owner: Readonly<{ webContentsId: number }>) => Promise<void> | void
   onEvent: (owner: Readonly<{ webContentsId: number }>, event: TrustedRaycastViewEvent) => Promise<void> | void
 }>): () => void {

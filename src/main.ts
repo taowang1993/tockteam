@@ -4,6 +4,7 @@ import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastPriorApp, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
 import { loadTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
+import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
 import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
 import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER, TRUSTED_RAYCAST_RESULT_ID, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, type TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
@@ -547,7 +548,7 @@ let trustedRaycast: TrustedRaycastManager | undefined
 let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastPriorApp: TrustedRaycastPriorApp | undefined
 let trustedRaycastPriorCaptureTimer: ReturnType<typeof setTimeout> | undefined
-let trustActionBusy = false
+const trustedRaycastMutex = createTrustedRaycastMutex()
 const execFilePromise = promisify(execFile)
 const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
   execFile: (file, args, options) => execFilePromise(file, args, { timeout: options?.timeout, maxBuffer: options?.maxBuffer }) as Promise<{ stdout: string }>,
@@ -559,7 +560,7 @@ const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
   ownAppNames: Object.freeze(app.isPackaged ? [app.name] : [app.name, 'Electron']),
 })
 const trustedRaycastChannel = new DesktopTrustedRaycastChannel(async active => {
-  if (!active) await trustedRaycast?.stop('activation-revoked')
+  if (!active) await trustedRaycastMutex(async () => await trustedRaycast?.stop('activation-revoked'))
   if (!quitting) await launcherRescan?.().catch(error => appendLog('desktop', String(error).slice(0, 512)))
 })
 let launcherController: LauncherOverlayController | undefined
@@ -1661,7 +1662,7 @@ function createLauncherWindow(args: Readonly<{
     throw new Error('TockLauncher window was created with an unexpected session')
   }
   const translateOwner = { webContentsId: window.webContents.id }
-  const closeTranslateOwner = (): void => { void trustedRaycast?.closeOwner(translateOwner).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
+  const closeTranslateOwner = (): void => { void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(translateOwner)).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
   const captureTranslatePriorApp = (): void => {
     if (trustedRaycastPriorCaptureTimer !== undefined) return
     trustedRaycastPriorCaptureTimer = setTimeout(() => {
@@ -2287,7 +2288,7 @@ function initializeLauncher(): void {
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async (signal, preserveSignal) => {
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust?.status() ?? { enabled: false, installed: false }), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
+      return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust?.status() ?? { digest: '', digestApproved: false, enabled: false, installed: false }), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
       const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
@@ -2332,8 +2333,10 @@ function initializeLauncher(): void {
       if (!completion.handled) completion = normalizeLauncherActionResult(await network.executeAction(record))
       if (!completion.handled) completion = normalizeLauncherActionResult(await os.executeAction(record))
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRANSLATE_HANDLER) {
-        if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
-        await trustedRaycast.start(record.owner, { sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
+        await trustedRaycastMutex(async () => {
+          if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || trustedRaycastTrust?.status().digestApproved !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
+          await trustedRaycast.start(record.owner, { sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
+        })
         completion = launcherActionCompletion(true)
       }
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRUST_HANDLER) {
@@ -2378,7 +2381,7 @@ function initializeLauncher(): void {
   launcherRescan = rescan
   const onWindowCleared = (window: { webContents: { id: number } }): void => {
     const owner = { role: 'launcher' as const, webContentsId: window.webContents.id }
-    void trustedRaycast?.closeOwner(owner)
+    void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)).catch(error => appendLog('desktop', String(error).slice(0, 512)))
     // Revoke every provider before clearing this renderer's public action owner.
     invalidateAllLauncherProviders('launcher-owner-clear', owner)
     const ownerGeneration = ++launcherOwnerGeneration
@@ -2425,7 +2428,7 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
-    await trustedRaycast?.close()
+    await trustedRaycastMutex(async () => await trustedRaycast?.close())
     await launcherCustomBrowser?.close()
     const discoveryClose = discovery.close()
     const fileClose = fileSearch.close()
@@ -2454,27 +2457,31 @@ function initializeLauncher(): void {
   const disposeTrustedRaycast = registerTrustedRaycastIpcHandlers({
     guard: launcherGuard, ipcMain,
     onEvent: (owner, event) => { if (!trustedRaycastChannel.active) throw new Error('Translate capability is inactive'); trustedRaycast?.send(owner, event) },
-    onClose: async owner => { await trustedRaycast?.closeOwner(owner) },
+    onClose: async owner => { await trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)) },
     getTrust: () => Object.freeze({ ...(trustedRaycastTrust?.status() ?? Object.freeze({ candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '', staged: false })), active: trustedRaycastChannel.active }),
     onTrustAction: async action => {
       const store = trustedRaycastTrust
       if (store === undefined) throw new Error('Trusted Extensions are unavailable')
-      if (trustActionBusy) throw new Error('A Trusted Extensions action is already running')
-      trustActionBusy = true
       try {
-        if (action === 'disable') await trustedRaycast?.stop('capability-disabled')
-        if (action === 'remove') await trustedRaycast?.stop('capability-removed')
-        if (action === 'recover') await trustedRaycast?.stop('capability-recovery')
-        const state = (): TrustedRaycastTrustState => Object.freeze({ ...store.status(), active: trustedRaycastChannel.active })
-        if (action === 'install') { store.stage(); await store.preview(); store.apply() }
-        else if (action === 'enable') store.enable()
-        else if (action === 'disable') store.disable()
-        else if (action === 'remove') store.remove()
-        else store.recover()
-        return Object.freeze({ ok: true as const, state: state() })
+        return await trustedRaycastMutex(async () => {
+          if (action === 'disable') await trustedRaycast?.stop('capability-disabled')
+          if (action === 'remove') await trustedRaycast?.stop('capability-removed')
+          if (action === 'recover') await trustedRaycast?.stop('capability-recovery')
+          if (action === 'apply') await trustedRaycast?.stop('capability-rotation')
+          const state = (): TrustedRaycastTrustState => Object.freeze({ ...store.status(), active: trustedRaycastChannel.active })
+          if (action === 'prepare') { store.stage(); await store.preview() }
+          else if (action === 'apply') store.apply()
+          else if (action === 'enable') store.enable()
+          else if (action === 'disable') store.disable()
+          else if (action === 'remove') store.remove()
+          else store.recover()
+          // Trust mutations change the main-owned catalog; successful mutations must not leave its index stale.
+          await rescan(undefined, undefined, 'trusted-raycast-mutation')
+          return Object.freeze({ ok: true as const, state: state() })
+        })
       } catch (error) {
         return Object.freeze({ ok: false as const, state: Object.freeze({ ...store.status(), active: trustedRaycastChannel.active }), error: error instanceof Error ? error.message.slice(0, 512) : 'Trusted Extensions action failed' })
-      } finally { trustActionBusy = false }
+      }
     },
   })
   const disposeWindowIpc = registerLauncherWindowIpcHandlers({

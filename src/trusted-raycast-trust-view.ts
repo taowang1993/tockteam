@@ -56,7 +56,7 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   const copy = zh ? COPY.zh : COPY.en
   let state: TrustedRaycastTrustState | undefined
   let busy = false
-  let confirmStep: 'install' | 'remove' | undefined
+  let confirmStep: 'remove' | undefined
 
   const element = document.createElement('section')
   element.className = 'launcher-local-tool p-4 text-sm'
@@ -116,10 +116,8 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
       return
     }
     if (!next.candidateAvailable) return
-    if (confirmStep === 'install') {
-      renderButton(copy.approveInstall, () => { confirmStep = undefined; runAction('install') })
-      renderButton(copy.cancel, () => { confirmStep = undefined; render(next) })
-    } else renderButton(copy.install, () => { confirmStep = 'install'; render(next) })
+    if (next.staged && next.previewed) renderButton(copy.approveInstall, () => runAction('apply'))
+    else renderButton(copy.install, () => runAction('prepare'))
   }
 
   void bridge.getTrustedRaycastTrust().then(render).catch(failure => {

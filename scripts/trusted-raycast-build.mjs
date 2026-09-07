@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
-import { admitTrustedRaycastArtifact, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from '../src/trusted-raycast-artifact-admission.ts'
+import { admitTrustedRaycastArtifact, attestTrustedRaycastBuildIdentity, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from '../src/trusted-raycast-artifact-admission.ts'
 
 /** Build upstream source from the same admitted bytes we ship; never install packages. */
 export async function buildTrustedRaycast(dist, artifact) {
@@ -33,6 +34,7 @@ export async function buildTrustedRaycast(dist, artifact) {
     writeFileSync(join(output, 'child.mjs'), emitted)
     mkdirSync(output, { recursive: true })
     writeFileSync(join(output, 'artifact.tar'), bytes)
-    writeFileSync(join(output, 'build.json'), JSON.stringify({ artifactSha256: TRUSTED_RAYCAST_ARTIFACT_SHA256, command: 'translate', react: '19.0.0', reconciler: '0.31.0' }))
+    const identity = { artifactSha256: TRUSTED_RAYCAST_ARTIFACT_SHA256, childSha256: createHash('sha256').update(readFileSync(join(output, 'child.mjs'))).digest('hex'), command: 'translate', react: '19.0.0', reconciler: '0.31.0', resolutionSha256: createHash('sha256').update(readFileSync(join(output, 'resolution.mjs'))).digest('hex') }
+    writeFileSync(join(output, 'build.json'), JSON.stringify({ ...identity, metadataSha256: attestTrustedRaycastBuildIdentity(identity) }))
   } finally { rmSync(work, { recursive: true, force: true }) }
 }
