@@ -664,22 +664,22 @@ export class WorkbenchRouteController {
         const path = this.snapshot.path;
         if (vault === null || path === null || this.snapshot.documentKind !== 'markdown'
             || target.length === 0 || target.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(target))
-            return false;
+            return null;
         let links = this.snapshot.links;
         if (links === null || links === undefined || links.path !== path || links.generation !== vault.generation) {
             if (!await this.loadRelationships())
-                return false;
+                return null;
             links = this.snapshot.links;
         }
         if (links === null || links === undefined)
-            return false;
+            return null;
         const record = links.outgoingDetails.find(candidate => candidate.kind === 'wiki' && candidate.authoredTarget === target);
         if (record?.status !== 'resolved' || record.resolvedPath === null)
-            return false;
+            return null;
         if (!await this.select(record.resolvedPath))
-            return false;
+            return null;
         this.setMode('reading');
-        return true;
+        return { fragment: record.fragment };
     }
     async openSmartView(kind) {
         this.openSearch('');

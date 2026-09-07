@@ -18,7 +18,7 @@ function handleRenderedClick(event, onOpenExternalUrl, onOpenInternalLink) {
     if (internalTarget !== undefined) {
         event.preventDefault();
         event.stopPropagation();
-        onOpenInternalLink?.(internalTarget);
+        return onOpenInternalLink?.(internalTarget);
     }
     else if (target?.closest('a') !== null) {
         event.preventDefault();
@@ -42,6 +42,25 @@ export function MarkdownSlidesView(props) {
     const slides = useMemo(() => buildMarkdownSlides(props.source, { externalEmbedMode: 'viewer' }), [props.source]);
     return (_jsxs("section", { "aria-label": "Slides Preview", className: "grid gap-3", children: [slides.map((slide, index) => (_jsxs("article", { className: "rounded border border-[var(--tt-border)] p-3", "data-slide-index": index, children: [_jsxs("div", { className: "mb-2 text-xs text-[var(--tt-muted)]", children: ["Slide ", index + 1] }), _jsx("div", { dangerouslySetInnerHTML: { __html: slide }, onClick: event => { handleRenderedClick(event, props.onOpenExternalUrl); } })] }, index))), _jsx(ResolvedEmbedsView, { embeds: props.embeds, onOpenExternalUrl: props.onOpenExternalUrl })] }));
 }
+function normalizedFragment(value) {
+    try {
+        return decodeURIComponent(value).replace(/^#+/u, '').replace(/^\^/u, '').trim().replace(/\s+/gu, ' ').toLocaleLowerCase();
+    }
+    catch {
+        return value.replace(/^#+/u, '').replace(/^\^/u, '').trim().replace(/\s+/gu, ' ').toLocaleLowerCase();
+    }
+}
+function scrollReadingFragment(fragment) {
+    if (typeof document === 'undefined')
+        return;
+    const wanted = normalizedFragment(fragment);
+    if (wanted === '')
+        return;
+    const root = document.querySelector('[aria-label="Reading View"] .tocktutor-reading');
+    const heading = Array.from(root?.querySelectorAll('h1,h2,h3,h4,h5,h6') ?? [])
+        .find(candidate => normalizedFragment(candidate.textContent ?? '') === wanted);
+    heading?.scrollIntoView({ block: 'start' });
+}
 export function RichReadingView(props) {
     const html = useMemo(() => {
         const warning = /<\/?(?:script|style|iframe|object|embed|form|svg|link|meta)\b/iu.test(props.source)
@@ -57,7 +76,19 @@ export function RichReadingView(props) {
                 props.onToggleTask(index);
             return;
         }
-        handleRenderedClick(event, props.onOpenExternalUrl, props.onOpenInternalLink);
+        const result = handleRenderedClick(event, props.onOpenExternalUrl, props.onOpenInternalLink);
+        if (result instanceof Promise) {
+            void result.then(value => {
+                const fragment = value?.fragment;
+                if (fragment !== null && fragment !== undefined) {
+                    const scroll = () => { scrollReadingFragment(fragment); };
+                    if (typeof globalThis.requestAnimationFrame === 'function')
+                        globalThis.requestAnimationFrame(scroll);
+                    else
+                        setTimeout(scroll, 0);
+                }
+            }).catch(() => undefined);
+        }
     };
     return (_jsxs("section", { "aria-label": "Reading View", className: "min-h-full", tabIndex: -1, children: [_jsx(MarkdownDocumentHeader, { className: "mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]", ...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), source: props.source, title: props.title }), _jsxs("article", { className: "tocktutor-reading mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px] pb-[72px] text-base leading-6 [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:m-0 [&_.task-list]:list-none [&_.task-list]:pl-1 [&_.task-list_li]:min-h-6 [&_.task-list_li]:leading-6 [&_.task-list_input]:mr-2 [&_.task-list_input]:size-3.5 [&_.task-list_input]:accent-[var(--dsw-specific-markdown-accent)] [&_.task-list_li:has(input:checked)]:text-[var(--tt-muted)] [&_.task-list_li:has(input:checked)]:line-through [&_blockquote]:mx-0 [&_blockquote]:my-4 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--dsw-specific-markdown-accent)] [&_blockquote]:pl-3 [&_blockquote_p]:m-0 [&_a]:text-[var(--dsw-specific-markdown-accent)] [&_a.internal-link]:no-underline [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[26px] [&_h1]:leading-[31px] [&_h1]:font-bold [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_ol]:my-2 [&_ol]:pl-[30px] [&_ul:not(.task-list)]:my-2 [&_ul:not(.task-list)]:list-disc [&_ul:not(.task-list)]:pl-[30px] [&_li>ul]:!my-0 [&_li>ul]:!pl-4 [&_li>ul]:border-l [&_li>ul]:border-[var(--tt-border)] [&_li>ol]:!my-0 [&_li>ol]:!pl-4 [&_li>ol]:border-l [&_li>ol]:border-[var(--tt-border)] [&_mark]:bg-[var(--dsw-specific-markdown-highlight)] [&_mark]:text-inherit [&_code]:rounded-sm [&_code]:bg-[var(--dsw-specific-markdown-inline-code)] [&_code]:px-1 [&_code]:py-0.5 [&_pre_code]:rounded-none [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_p]:mt-0 [&_p]:mb-4 [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold", onClick: onClick, children: [_jsx("div", { dangerouslySetInnerHTML: { __html: html } }), _jsx(ResolvedEmbedsView, { embeds: props.embeds, onOpenExternalUrl: props.onOpenExternalUrl })] })] }));
 }

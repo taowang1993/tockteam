@@ -10,6 +10,7 @@ import type { CanvasChange } from './canvas-change.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult, type TockTutorVaultActionsOwnerProps } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts';
+import { type ReadingLinkResult } from './editor-surface.tsx';
 import { type PropertyValue } from './properties.ts';
 import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
 import { type GraphPosition } from './graph.ts';
@@ -191,7 +192,7 @@ export declare class WorkbenchRouteController {
     loadFacets(): Promise<boolean>;
     loadGraph(mode: 'global' | 'local'): Promise<boolean>;
     openGraphNode(path: string, mode: 'local' | 'note'): Promise<boolean>;
-    openInternalLink(target: string): Promise<boolean>;
+    openInternalLink(target: string): Promise<ReadingLinkResult | null>;
     openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean>;
     loadRelationships(): Promise<boolean>;
     jumpToLine(line: number): boolean;
@@ -318,7 +319,7 @@ export interface TockTutorRouteViewProps {
     onOpenBookmark?(id: string): void;
     onOpenCommandPalette?(): void;
     onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>;
-    onOpenInternalLink?(target: string): void;
+    onOpenInternalLink?(target: string): void | Promise<ReadingLinkResult | null>;
     onOpenRecovery?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenExternalUrl?(url: string): void;

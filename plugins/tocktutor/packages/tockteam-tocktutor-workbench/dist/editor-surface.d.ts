@@ -2,6 +2,9 @@ import { type ReactNode } from 'react';
 import type { ResolvedEmbedNode } from './embeds.ts';
 import { type LivePreviewSelection } from './live-preview-editor.tsx';
 import type { PropertyValue } from './properties.ts';
+export interface ReadingLinkResult {
+    fragment: string | null;
+}
 export declare function ResolvedEmbedsView(props: {
     embeds?: readonly ResolvedEmbedNode[] | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
@@ -15,7 +18,7 @@ export declare function RichReadingView(props: {
     embeds?: readonly ResolvedEmbedNode[] | undefined;
     onAddProperty?: ((key: string) => boolean) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
-    onOpenInternalLink?: ((target: string) => void) | undefined;
+    onOpenInternalLink?: ((target: string) => void | Promise<ReadingLinkResult | null>) | undefined;
     onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined;
     onToggleTask(index: number): void;
     source: string;
