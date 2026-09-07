@@ -50,7 +50,7 @@ const sourceIdentity = npmRelease
   ? `npm:${DSH_SOURCE_SPEC.version}:${DSH_SOURCE_SPEC.integrity}`
   : `source:${DSH_SOURCE_SPEC.version}:${dshSource}`
 const cache = join(root, '.cache')
-const nodeVersion = process.env.DSH_DESKTOP_NODE_VERSION ?? '26.0.0'
+const nodeVersion = process.env.DSH_DESKTOP_NODE_VERSION ?? '24.20.0'
 // Node.js distribution triples use `linux`/`darwin`/`win` and `x64`/`arm64`.
 // Stage a Node runtime for the current host unless an override asks for a
 // specific platform (used for cross-packaging).
@@ -464,7 +464,7 @@ function walk(rootPath, visit) {
 
 /**
  * fetch-blob 3 imports the deprecated node-domexception shim for Node 12.
- * TockTeam ships Node 26 and supports Node 24+, both of which expose the same
+ * TockTeam ships Node 24.20.0 and supports Node 24+, which exposes the
  * Web-standard DOMException globally. Patch only this reviewed import, then
  * remove the now-unreferenced shim from the portable runtime.
  */

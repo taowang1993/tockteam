@@ -10,6 +10,8 @@ import { join, resolve } from 'node:path'
 import { buildTrustedRaycast } from '../scripts/trusted-raycast-build.mjs'
 
 test('trusted Translate child runtime pins Node 24: the unchanged playTTS download stalls on Node 26', () => {
+  const stagingSource = readFileSync(join(resolve('.'), 'scripts', 'stage-dsh.mjs'), 'utf8')
+  assert.match(stagingSource, /process\.env\.DSH_DESKTOP_NODE_VERSION \?\? '24\.20\.0'/, 'the packaged default must remain on the proven Node 24 runtime')
   const staged = join(resolve('.'), '.stage', 'node-runtime', 'bin', process.platform === 'win32' ? 'node.exe' : 'node')
   if (!existsSync(staged)) return
   const version = execFileSync(staged, ['--version'], { encoding: 'utf8', timeout: 10000 }).trim()

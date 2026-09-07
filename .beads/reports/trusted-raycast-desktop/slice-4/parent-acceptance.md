@@ -57,7 +57,9 @@ The Playwright flow proved:
 
 ## Installed Smoke Configuration
 
-The first installed-smoke attempt at `894cc71` omitted `TRUSTED_RAYCAST_ARTIFACT_TAR`. The build correctly omitted the unconfigured candidate, then the package inventory failed with `ASAR is missing dist/trusted-raycast/**`. No installed artifact launched. The smoke now admits the absolute configured artifact and verifies its pinned digest before starting the expensive package build, making this explicit proof requirement fail early rather than after packaging. The final installed run is performed only after that fix is committed and supplies the exact approved artifact path.
+The first installed-smoke attempt at `894cc71` omitted `TRUSTED_RAYCAST_ARTIFACT_TAR`. The build correctly omitted the unconfigured candidate, then package inventory failed with `ASAR is missing dist/trusted-raycast/**`. No installed artifact launched. The smoke now admits the absolute configured artifact and verifies its pinned digest before the expensive build.
+
+The configured attempt at `164772d` packaged and launched the app but exposed two stale package-contract assumptions: the smoke/checker still expected the pre-Translate finite preload key set, and its hermetic environment selected the default Node 26 runtime despite the proven Translate TTS requirement for Node 24.20.0. The app and its children were cleaned up. The finite expected bridge keys are now updated in both live inspection and report validation, and the packaged Node default is pinned to 24.20.0 with a source-level regression test. The final installed run is performed only after those fixes are committed.
 
 ## Honest Boundaries
 

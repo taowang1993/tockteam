@@ -96,13 +96,18 @@ const launcherApiKeys = Object.freeze([
   'getLocalExtensionSettings',
   'getSurfaceSettings',
   'getTheme',
+  'getTrustedRaycastTrust',
   'invokeAction',
   'onLocale',
   'onTheme',
+  'onTrustedRaycastView',
   'openSettings',
   'recordSearch',
   'rescan',
   'search',
+  'trustedRaycastClose',
+  'trustedRaycastEvent',
+  'trustedRaycastTrustAction',
 ])
 
 const smokeOverrideKeys = Object.freeze([
