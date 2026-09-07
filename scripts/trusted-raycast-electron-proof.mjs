@@ -473,7 +473,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.evaluate(() => window.tockteamLauncher.dismiss()); return { dismissedForCapture: true }; }`)
     await new Promise(resolve => setTimeout(resolve, 600))
     await workbenchConnection.evaluate(`window.dshDesktop.launcher.show()`)
-    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.visibilityState === 'visible'); const placement = await launcher.evaluate(() => ({ screenX: window.screenX, screenY: window.screenY, availLeft: window.screen.availLeft })); if (${String(!process.env.CI)} && placement.availLeft === 0) throw new Error('Reshown launcher left the extended display: ' + JSON.stringify(placement)); return { reshownForPaste: true, placement }; }`)
+    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.visibilityState === 'visible'); const placement = await launcher.evaluate(() => ({ screenX: window.screenX, screenY: window.screenY, availLeft: window.screen.availLeft })); if (${String(!process.env.CI)} && placement.screenX < ${Number(launcherPlacement.availLeft)}) throw new Error('Reshown launcher left the extended display: ' + JSON.stringify(placement)); return { reshownForPaste: true, placement }; }`)
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       await launcher.bringToFront();
