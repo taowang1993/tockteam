@@ -7,6 +7,9 @@ export type TrustedRaycastNativeDeps = Readonly<{
   execFile: (file: string, args: string[], options?: { timeout?: number; maxBuffer?: number }) => Promise<Readonly<{ stdout: string }>>
   readClipboard: () => string
   writeClipboard: (text: string) => void
+  readClipboardFormats: () => string[]
+  readClipboardBuffer: (format: string) => Buffer
+  writeClipboardBuffer: (format: string, data: Buffer) => void
   ownAppNames: readonly string[]
   fixture?: 'selection' | 'paste'
   wait?: (ms: number) => Promise<void>
@@ -45,29 +48,53 @@ export async function readTrustedRaycastSelectedText(priorApp: TrustedRaycastPri
   }
 }
 
-export type TrustedRaycastPasteResult = Readonly<{ target: string; fixture: boolean }>
+export type TrustedRaycastPasteResult = Readonly<{ target: string; fixture: boolean; restoration: 'restored' | 'external-change-preserved' }>
 
-/** Main-owned paste policy: restore the captured target app, paste, and always restore the prior clipboard. */
+type ClipboardSnapshot = Readonly<{ formats: string[]; data: Map<string, Buffer> }>
+const MAX_CLIPBOARD_SNAPSHOT = 16 * 1024 * 1024
+
+const captureClipboardSnapshot = (deps: TrustedRaycastNativeDeps): ClipboardSnapshot => {
+  const formats = [...new Set(deps.readClipboardFormats())].sort()
+  const data = new Map<string, Buffer>()
+  let bytes = 0
+  for (const format of formats) {
+    const buffer = deps.readClipboardBuffer(format)
+    bytes += format.length + buffer.length
+    if (bytes > MAX_CLIPBOARD_SNAPSHOT) throw new Error('Clipboard exceeds its preservation bound')
+    data.set(format, buffer)
+  }
+  return { formats, data }
+}
+
+const restoreClipboardSnapshot = (deps: TrustedRaycastNativeDeps, snapshot: ClipboardSnapshot): void => {
+  deps.writeClipboard('')
+  for (const [format, data] of snapshot.data) deps.writeClipboardBuffer(format, data)
+  const restored = [...new Set(deps.readClipboardFormats())].sort()
+  if (restored.length !== snapshot.formats.length || restored.some((format, index) => format !== snapshot.formats[index])) throw new Error('Clipboard restoration failed')
+}
+
+/** The clipboard still carries this paste's own write: safe to restore the captured snapshot. */
+const stillOwnsPasteWrite = (deps: TrustedRaycastNativeDeps, text: string): boolean => deps.readClipboard() === text
+
+/** Main-owned paste policy: restore the captured target app, paste, and always preserve the prior clipboard. */
 export async function pasteTrustedRaycastText(text: string, priorApp: TrustedRaycastPriorApp | undefined, deps: TrustedRaycastNativeDeps): Promise<TrustedRaycastPasteResult> {
   if (byteLength(text) > MAX_PASTE_TEXT) throw new Error('Paste text exceeds its bound')
   if (priorApp === undefined) throw new Error('No prior application captured. Paste requires a captured target application.')
+  // Capture every clipboard format in memory before any mutation; deny the paste instead of clobbering.
+  const snapshot = captureClipboardSnapshot(deps)
   const wait = deps.wait ?? (ms => new Promise(resolve => setTimeout(resolve, ms)))
-  const original = deps.readClipboard()
-  const restore = async (): Promise<void> => {
-    deps.writeClipboard(original)
-    if (deps.readClipboard() !== original) throw new Error('Clipboard restoration failed')
-  }
   deps.writeClipboard(text)
-  if (deps.readClipboard() !== text) { await restore(); throw new Error('Clipboard was not accepted') }
+  if (deps.readClipboard() !== text) { restoreClipboardSnapshot(deps, snapshot); throw new Error('Clipboard was not accepted') }
+  const restore = async (): Promise<'restored' | 'external-change-preserved'> => {
+    if (!stillOwnsPasteWrite(deps, text)) return 'external-change-preserved'
+    restoreClipboardSnapshot(deps, snapshot)
+    return 'restored'
+  }
   try {
-    if (deps.fixture === 'paste') {
-      await restore()
-      return Object.freeze({ target: priorApp.name, fixture: true })
-    }
+    if (deps.fixture === 'paste') return Object.freeze({ target: priorApp.name, fixture: true, restoration: await restore() })
     await deps.execFile('/usr/bin/osascript', ['-e', `tell application "System Events"\ntell process "${applescriptString(priorApp.name)}" to set frontmost to true\ndelay 0.15\nkeystroke "v" using command down\nend tell`], { timeout: 6000, maxBuffer: 4096 })
     await wait(250)
-    await restore()
-    return Object.freeze({ target: priorApp.name, fixture: false })
+    return Object.freeze({ target: priorApp.name, fixture: false, restoration: await restore() })
   } catch (error) {
     try { await restore() } catch { throw new Error('Paste failed and the prior clipboard could not be restored') }
     const message = error instanceof Error ? error.message : 'Paste failed'

@@ -11,7 +11,8 @@ import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 const exec = promisify(execFile)
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 const prior = Object.freeze({ name: 'Notes', capturedAt: Date.now() })
-const deps = (overrides: Partial<TrustedRaycastNativeDeps> = {}): TrustedRaycastNativeDeps => ({ execFile: async () => ({ stdout: '' }), readClipboard: () => 'original clipboard', writeClipboard: () => {}, ownAppNames: ['TockTeam Desktop'], ...overrides })
+const defaultClipboardFormats = ['text/plain']
+const deps = (overrides: Partial<TrustedRaycastNativeDeps> = {}): TrustedRaycastNativeDeps => ({ execFile: async () => ({ stdout: '' }), readClipboard: () => 'original clipboard', writeClipboard: () => {}, readClipboardFormats: () => defaultClipboardFormats, readClipboardBuffer: (format: string) => Buffer.from(format === 'text/plain' ? 'original clipboard' : 'bytes'), writeClipboardBuffer: () => {}, ownAppNames: ['TockTeam Desktop'], ...overrides })
 
 test('native request admission accepts bounded Paste and selected text and rejects the rest', () => {
   const valid = isTrustedRaycastNativeRequest
@@ -52,9 +53,10 @@ test('selected text reads honestly: fixture, permission denial, no selection, an
 test('fixture paste never synthesizes keystrokes and always restores the prior clipboard', async () => {
   const writes: string[] = []
   let current = 'user clipboard bytes'
-  const result = await pasteTrustedRaycastText('fixture paste text', prior, deps({ fixture: 'paste', readClipboard: () => current, writeClipboard: text => { current = text; writes.push(text) } }))
-  assert.deepEqual(result, { target: 'Notes', fixture: true })
-  assert.deepEqual(writes, ['fixture paste text', 'user clipboard bytes'], 'write, verify, restore: original bytes are the final clipboard state')
+  const result = await pasteTrustedRaycastText('fixture paste text', prior, deps({ fixture: 'paste', readClipboard: () => current, readClipboardBuffer: () => Buffer.from('user clipboard bytes'), writeClipboard: text => { current = text; writes.push(text) }, writeClipboardBuffer: (format, data) => { current = data.toString(); writes.push(`buffer:${format}`) } }))
+  assert.deepEqual(result, { target: 'Notes', fixture: true, restoration: 'restored' })
+  assert.equal(current, 'user clipboard bytes', 'all-format restoration ends with the original clipboard bytes')
+  assert.deepEqual(writes, ['fixture paste text', '', 'buffer:text/plain'], 'write, verify, clear, restore')
 })
 
 test('real paste restores focus via the target app and restores the clipboard on denial', async () => {
@@ -62,21 +64,66 @@ test('real paste restores focus via the target app and restores the clipboard on
   let current = 'user clipboard bytes'
   const keystrokes: string[] = []
   const result = await pasteTrustedRaycastText('pasted translation', prior, deps({
-    readClipboard: () => current, writeClipboard: text => { current = text; writes.push(text) },
+    readClipboard: () => current, readClipboardBuffer: () => Buffer.from('user clipboard bytes'), writeClipboard: text => { current = text; writes.push(text) }, writeClipboardBuffer: (_format, data) => { current = data.toString() },
     execFile: async (_file, args) => { keystrokes.push(args.join(' ')); return { stdout: '' } },
     wait: async () => {},
   }))
-  assert.deepEqual(result, { target: 'Notes', fixture: false })
-  assert.equal(writes.at(-1), 'user clipboard bytes')
+  assert.deepEqual(result, { target: 'Notes', fixture: false, restoration: 'restored' })
+  assert.equal(current, 'user clipboard bytes')
   assert.ok(keystrokes.some(args => args.includes('keystroke "v" using command down')), 'target app focus is restored before the keystroke')
-  const deniedWrites: string[] = []
   let deniedCurrent = 'user clipboard bytes'
   await assert.rejects(pasteTrustedRaycastText('x', prior, deps({
-    readClipboard: () => deniedCurrent, writeClipboard: text => { deniedCurrent = text; deniedWrites.push(text) },
+    readClipboard: () => deniedCurrent, writeClipboard: text => { deniedCurrent = text }, readClipboardBuffer: () => Buffer.from('user clipboard bytes'), writeClipboardBuffer: (_format, data) => { deniedCurrent = data.toString() },
     execFile: async () => { throw new Error('osascript is not allowed assistive access (-1719)') },
     wait: async () => {},
   })), /Accessibility permission/)
-  assert.equal(deniedWrites.at(-1), 'user clipboard bytes', 'denial path restores the prior clipboard')
+  assert.equal(deniedCurrent, 'user clipboard bytes', 'denial path restores the prior clipboard')
+})
+
+test('paste preserves every clipboard format and denies before mutating an unpreservable clipboard', async () => {
+  // Multi-format clipboard: an image item must survive a text paste intact.
+  const formats = ['public.png', 'text/plain']
+  const buffers = new Map<string, string>([[ 'public.png', '\x89PNG-image-bytes' ], [ 'text/plain', 'user clipboard bytes' ]])
+  let currentFormats = [...formats]
+  let currentText = 'user clipboard bytes'
+  let writes: string[] = []
+  const result = await pasteTrustedRaycastText('pasted translation', prior, deps({
+    fixture: 'paste',
+    readClipboardFormats: () => currentFormats,
+    readClipboardBuffer: format => Buffer.from(buffers.get(format) ?? ''),
+    writeClipboardBuffer: (format, data) => { buffers.set(format, data.toString()); if (format === 'text/plain') currentText = data.toString(); writes.push(format) },
+    readClipboard: () => currentText,
+    writeClipboard: text => { currentText = text },
+  }))
+  assert.equal(result.restoration, 'restored')
+  assert.equal(buffers.get('public.png'), '\x89PNG-image-bytes', 'image bytes restored')
+  assert.equal(currentText, 'user clipboard bytes')
+  // Oversized snapshot: deny BEFORE any write, leaving every format untouched.
+  const oversized = new Map<string, Buffer>([['text/plain', Buffer.from('user')], ['big', Buffer.alloc(16 * 1024 * 1024 + 1)]])
+  let oversizedText = 'user'
+  let mutated = false
+  await assert.rejects(pasteTrustedRaycastText('x', prior, deps({
+    fixture: 'paste',
+    readClipboardFormats: () => [...oversized.keys()],
+    readClipboardBuffer: format => oversized.get(format)!,
+    writeClipboard: () => { mutated = true },
+    writeClipboardBuffer: () => { mutated = true },
+    readClipboard: () => oversizedText,
+  })), /preservation bound/)
+  assert.equal(mutated, false, 'denial happens before any clipboard mutation')
+  // User changes the clipboard during the paste: never overwrite the newer content.
+  let live = 'pasted translation'
+  const liveWrites: string[] = []
+  const liveResult = await pasteTrustedRaycastText('pasted translation', prior, deps({
+    readClipboard: () => live,
+    writeClipboard: text => { live = text; liveWrites.push(text) },
+    writeClipboardBuffer: (format) => { liveWrites.push(`buffer:${format}`) },
+    execFile: async () => { live = 'user copied something newer'; return { stdout: '' } },
+    wait: async () => {},
+  }))
+  assert.equal(liveResult.restoration, 'external-change-preserved')
+  assert.equal(live, 'user copied something newer', 'newer external clipboard content is preserved')
+  assert.ok(!liveWrites.some(write => write === ''), 'no restore ran over the newer content')
 })
 
 test('paste policy denials: no captured target, clipboard refusal, and oversized text', async () => {
@@ -84,7 +131,8 @@ test('paste policy denials: no captured target, clipboard refusal, and oversized
   await assert.rejects(pasteTrustedRaycastText('x'.repeat(128 * 1024 + 1), prior, deps()), /exceeds its bound/)
   const writes: string[] = []
   await assert.rejects(pasteTrustedRaycastText('x', prior, deps({ readClipboard: () => 'original', writeClipboard: text => writes.push(text), fixture: 'paste' })), /Clipboard was not accepted|Clipboard restoration failed/)
-  assert.equal(writes.at(-1), 'original', 'refusal restores the original clipboard')
+  assert.ok(writes.includes('x'), 'the paste write was attempted')
+  assert.ok(writes.includes(''), 'the snapshot restore cleared and rewrote the clipboard')
 })
 
 test('the child TMPDIR governs os.tmpdir(), keeping translation.mp3 inside the private workspace', async () => {

@@ -7,6 +7,7 @@ import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
 import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS } from './trusted-raycast-contract.ts'
 import { randomBytes } from 'node:crypto'
+import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import {
@@ -549,6 +550,9 @@ const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
   execFile: (file, args, options) => execFilePromise(file, args, { timeout: options?.timeout, maxBuffer: options?.maxBuffer }) as Promise<{ stdout: string }>,
   readClipboard: () => clipboard.readText(),
   writeClipboard: (text: string) => clipboard.writeText(text),
+  readClipboardFormats: () => clipboard.availableFormats(),
+  readClipboardBuffer: (format: string) => clipboard.readBuffer(format),
+  writeClipboardBuffer: (format: string, data: Buffer) => clipboard.writeBuffer(format, data),
   ownAppNames: Object.freeze(app.isPackaged ? [app.name] : [app.name, 'Electron']),
 })
 const trustedRaycastChannel = new DesktopTrustedRaycastChannel(async active => {
@@ -2237,7 +2241,7 @@ function initializeLauncher(): void {
     },
     pasteText: async text => {
       const result = await pasteTrustedRaycastText(text, trustedRaycastPriorApp, { ...trustedRaycastNativeDeps, ...(pasteFixture ? { fixture: 'paste' as const } : {}) })
-      if (!app.isPackaged) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-paste-proof.json'), JSON.stringify({ target: result.target, fixture: result.fixture, restoration: 'RESTORED' }), { mode: 0o600 })
+      if (!app.isPackaged) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-paste-proof.json'), JSON.stringify({ target: result.target, fixture: result.fixture, restoration: result.restoration }), { mode: 0o600 })
     },
     copyText: async text => {
       const proof = await copyTrustedRaycastText(text, clipboard,
