@@ -3809,7 +3809,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
         onOpenExternalUrl={url => { setExternalUrl(url) }}
         onOpenGraphNode={(path, mode) => controller.openGraphNode(path, mode)}
-        onOpenInternalLink={target => { void controller.openInternalLink(target) }}
+        onOpenInternalLink={target => controller.openInternalLink(target)}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
         onOpenSearch={() => { controller.openSearch('') }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}

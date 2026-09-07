@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  TockTutorRoute,
   TockTutorRouteView,
   type WorkbenchRouteSnapshot,
 } from '../src/route.tsx'
@@ -43,6 +44,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
+  onOpenInternalLink?(target: string): void | Promise<{ fragment: string | null } | null>
   onOpenRecovery?(): void
   onOpenSearch?(): void
   onReadSnapshot?(id: string): void
@@ -313,6 +315,79 @@ describe('TockTutor titlebar panel controls', () => {
     expect(callout).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Collapse Heading' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Collapse List' })).toBeTruthy()
+  })
+
+  it('returns the resolved Reading View fragment through the mounted route and scrolls it after navigation', { timeout: 20_000 }, async () => {
+    const vault = { generation: 1, id: `vault:${'a'.repeat(64)}` }
+    const revision = `file:${'b'.repeat(64)}`
+    const sources: Record<string, string> = {
+      'Notes/Alias Target.md': '# Alias Target\n\n## Details\nA resolved target.\n',
+      'Notes/Welcome.md': '# Welcome\n\n- [ ] Review the lesson\n\n[[Alias Target#Details|the alias note]]\n',
+    }
+    const remote = {
+      $on: () => () => {},
+      tocktutorWorkbench: {
+        currentVault: async () => ({ ok: true, value: { displayPath: '~/TockTutor', generation: vault.generation, name: 'TockTutor', vault } }),
+        listTree: async () => ({ ok: true, value: {
+          complete: true,
+          cursor: null,
+          entries: Object.keys(sources).map(path => ({ createdAt: 1, kind: 'document' as const, modifiedAt: 1, path, revision, size: sources[path]!.length })),
+          generation: vault.generation,
+          scan: { entries: Object.keys(sources).length },
+          truncated: false,
+          truncationReason: null,
+          warnings: [],
+        } }),
+        openDocument: async (path: string) => ({ ok: true, value: { content: sources[path]!, digest: `sha256:${'c'.repeat(64)}`, generation: vault.generation, path, revision } }),
+        readDraft: async () => ({ ok: true, value: { draft: null, generation: vault.generation } }),
+        outline: async (request: { path: string }) => ({ ok: true, value: { generation: vault.generation, headings: [], path: request.path, truncated: false } }),
+        links: async (request: { path: string }) => ({ ok: true, value: {
+          backlinkDetails: [],
+          backlinks: [],
+          cursor: null,
+          generation: vault.generation,
+          outgoing: request.path === 'Notes/Welcome.md' ? ['Notes/Alias Target.md'] : [],
+          outgoingDetails: request.path === 'Notes/Welcome.md' ? [{
+            authoredTarget: 'Alias Target#Details',
+            displayText: 'the alias note',
+            fragment: 'Details',
+            kind: 'wiki' as const,
+            line: 5,
+            normalizedTarget: 'alias target',
+            resolvedPath: 'Notes/Alias Target.md',
+            sourcePath: request.path,
+            status: 'resolved' as const,
+          }] : [],
+          path: request.path,
+          scan: { bytes: sources[request.path]!.length, entries: Object.keys(sources).length, files: Object.keys(sources).length },
+          tagRelations: [],
+          truncated: false,
+          truncationReason: null,
+          warnings: [],
+        } }),
+      },
+    }
+    const scrollIntoView = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scrollIntoView })
+    try {
+      render(<TockTutorRoute
+        location={{ hash: '', pathname: '/tocktutor/Notes/Welcome.md', search: '' }}
+        navigate={() => {}}
+        remote={remote as never}
+        renderSlot={() => null}
+      />)
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Switch to Reading View' })).toBeTruthy(), { timeout: 5_000 })
+      fireEvent.click(screen.getByRole('button', { name: 'Switch to Reading View' }))
+      await waitFor(() => expect(screen.getByLabelText('Reading View').querySelector('article h1')?.textContent).toBe('Welcome'), { timeout: 5_000 })
+      fireEvent.click(screen.getByRole('link', { name: 'the alias note' }))
+      await waitFor(() => expect(screen.getByLabelText('Reading View').querySelector('article h1')?.textContent).toBe('Alias Target'), { timeout: 5_000 })
+      await waitFor(() => expect(screen.getByLabelText('Reading View').querySelector('article h2')?.textContent).toBe('Details'), { timeout: 5_000 })
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' }), { timeout: 5_000 })
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: originalScrollIntoView })
+    }
   })
 
   it('opens a spacious Obsidian-like vault switcher with clean vault navigation', async () => {
