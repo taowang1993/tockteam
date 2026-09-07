@@ -64,6 +64,15 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const [graphZoom, setGraphZoom] = useState(1)
   const open = props.view !== null
   const [graphPan, setGraphPan] = useState({ x: 0, y: 0 })
+  const [rovingSnapshotId, setRovingSnapshotId] = useState<string | null>(null)
+  const recoverySnapshots = (snapshot.snapshots ?? []).filter(entry => snapshot.path !== null && entry.path === snapshot.path)
+  const selectedSnapshot = snapshot.path !== null
+    && snapshot.selectedSnapshot?.snapshot.path === snapshot.path
+    ? snapshot.selectedSnapshot
+    : null
+  const rovingId = recoverySnapshots.some(entry => entry.id === rovingSnapshotId)
+    ? rovingSnapshotId
+    : selectedSnapshot?.snapshot.id ?? recoverySnapshots[0]?.id ?? null
   const graphQuery = (snapshot.settings?.graphQuery ?? '').trim().toLocaleLowerCase()
   const graphNodes = (snapshot.graphLayout ?? []).filter(node => graphQuery === '' || node.path.toLocaleLowerCase().includes(graphQuery))
   const graphPaths = new Set(graphNodes.map(node => node.path))
@@ -86,6 +95,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const unlinkedMentions = snapshot.links?.unlinkedMentions ?? []
   const snapshotOptionRefs = useRef(new Map<string, HTMLButtonElement>())
   const selectSnapshot = (id: string): void => {
+    setRovingSnapshotId(id)
     props.onReadSnapshot?.(id)
     snapshotOptionRefs.current.get(id)?.focus()
   }
@@ -111,7 +121,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             <div className="flex items-center justify-end gap-2">
               <span className="flex gap-1">
                 <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={props.onCaptureSnapshot} type="button">Capture</Button>
-                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={(snapshot.snapshots?.length ?? 0) === 0} onClick={props.onClearSnapshots} type="button">Clear</Button>
+                <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={recoverySnapshots.length === 0} onClick={props.onClearSnapshots} type="button">Clear</Button>
                 <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={props.onOpenRecovery} type="button">Refresh</Button>
               </span>
             </div>
@@ -122,13 +132,10 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             <div className="mt-3 grid min-w-0 gap-3 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] max-[640px]:grid-cols-1">
               <section aria-label="Snapshot Selector" className="min-w-0">
                 <h3 className="mb-1 text-xs">Snapshots</h3>
-                {(snapshot.snapshots?.length ?? 0) > 0 ? (
+                {recoverySnapshots.length > 0 ? (
                   <div aria-label="Recovery Snapshots" className="grid min-w-0 gap-1 overflow-auto" role="listbox">
-                    {(snapshot.snapshots ?? []).map((snapshotEntry, index) => {
-                      const selected = snapshot.selectedSnapshot?.snapshot.id === snapshotEntry.id
-                      const selectedId = snapshot.selectedSnapshot?.snapshot.id
-                      const selectedIndex = snapshot.snapshots?.findIndex(entry => entry.id === selectedId) ?? -1
-                      const rovingIndex = selectedIndex >= 0 ? selectedIndex : 0
+                    {recoverySnapshots.map((snapshotEntry, index) => {
+                      const selected = selectedSnapshot?.snapshot.id === snapshotEntry.id
                       return (
                         <div className="grid min-w-0 gap-1 rounded-md" key={snapshotEntry.id}>
                           <Button
@@ -140,8 +147,8 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
                               if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
                               event.preventDefault()
                               const offset = event.key === 'ArrowDown' ? 1 : -1
-                              const next = (index + offset + (snapshot.snapshots?.length ?? 0)) % (snapshot.snapshots?.length ?? 1)
-                              const nextSnapshot = snapshot.snapshots?.[next]
+                              const next = (index + offset + recoverySnapshots.length) % recoverySnapshots.length
+                              const nextSnapshot = recoverySnapshots[next]
                               if (nextSnapshot !== undefined) selectSnapshot(nextSnapshot.id)
                             }}
                             ref={element => {
@@ -149,7 +156,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
                               else snapshotOptionRefs.current.set(snapshotEntry.id, element)
                             }}
                             role="option"
-                            tabIndex={index === rovingIndex ? 0 : -1}
+                            tabIndex={snapshotEntry.id === rovingId ? 0 : -1}
                             type="button"
                           >
                             <span className="truncate font-medium">Snapshot {String(index + 1)} · {snapshotEntry.reason}</span>
@@ -163,13 +170,13 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               </section>
               <section aria-label="Selected Snapshot Content" className="grid min-w-0 content-start gap-2">
                 <h3 className="mb-0 text-xs">Snapshot Preview</h3>
-                {snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== undefined ? (
+                {selectedSnapshot !== null ? (
                   <>
-                    <div className="truncate text-[10px] text-[var(--tt-muted)]">{snapshotDateLabel(snapshot.selectedSnapshot.snapshot.createdAt)} · rev {snapshotRevisionLabel(snapshot.selectedSnapshot.snapshot.digest)}</div>
-                    <pre aria-label="Snapshot Preview" className="m-0 max-h-48 min-h-24 overflow-auto whitespace-pre-wrap break-words rounded-md border border-[var(--tt-border)] bg-[color-mix(in_srgb,var(--tt-text)_3%,transparent)] p-2 text-[11px] leading-4">{snapshot.selectedSnapshot.content}</pre>
+                    <div className="truncate text-[10px] text-[var(--tt-muted)]">{snapshotDateLabel(selectedSnapshot.snapshot.createdAt)} · rev {snapshotRevisionLabel(selectedSnapshot.snapshot.digest)}</div>
+                    <pre aria-label="Snapshot Preview" className="m-0 max-h-48 min-h-24 overflow-auto whitespace-pre-wrap break-words rounded-md border border-[var(--tt-border)] bg-[color-mix(in_srgb,var(--tt-text)_3%,transparent)] p-2 text-[11px] leading-4">{selectedSnapshot.content}</pre>
                     <div className="flex min-w-0 flex-wrap gap-1">
-                      <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[11px] text-inherit" onClick={() => { props.onRestoreSnapshotOverwrite?.(snapshot.selectedSnapshot!.snapshot.id) }} type="button">Restore Original</Button>
-                      <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[11px] text-inherit" onClick={() => { props.onRestoreSnapshot?.(snapshot.selectedSnapshot!.snapshot.id) }} type="button">Restore as New</Button>
+                      <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[11px] text-inherit" onClick={() => { props.onRestoreSnapshotOverwrite?.(selectedSnapshot.snapshot.id) }} type="button">Restore Original</Button>
+                      <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[11px] text-inherit" onClick={() => { props.onRestoreSnapshot?.(selectedSnapshot.snapshot.id) }} type="button">Restore as New</Button>
                     </div>
                   </>
                 ) : <span className="text-xs text-[var(--tt-muted)]">Select a snapshot to inspect its content.</span>}

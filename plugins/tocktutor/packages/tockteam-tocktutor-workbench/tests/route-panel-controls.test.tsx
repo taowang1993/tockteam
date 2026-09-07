@@ -257,6 +257,17 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onCloseCommandPalette).toHaveBeenCalledOnce()
   })
 
+  it('activates the highlighted command with ArrowDown and Enter', async () => {
+    const onOpenSearch = vi.fn()
+    renderRoute({ commandPaletteOpen: true }, { onOpenSearch })
+    const input = screen.getByRole('combobox', { name: 'Search Commands' })
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Search Notes' }).getAttribute('aria-selected')).toBe('true'))
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onOpenSearch).toHaveBeenCalledOnce()
+    expect(screen.getByRole('region', { name: 'Search Notes' })).toBeTruthy()
+  })
+
   it('renders editable source-preserving Live Preview chrome', async () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
@@ -617,6 +628,26 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByLabelText('Snapshot Preview').textContent).toContain('# Before')
   })
 
+  it('hides a snapshot preview when its path is not the active note', () => {
+    const onRestoreSnapshot = vi.fn()
+    renderRoute({
+      path: 'Note.md',
+      selectedSnapshot: {
+        content: '# Stale\n',
+        generation: 1,
+        snapshot: { createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: 'stale', path: 'Other.md', reason: 'save', size: 8 },
+      },
+      snapshots: [{ createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: 'stale', path: 'Other.md', reason: 'save', size: 8 }],
+    }, { onRestoreSnapshot })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
+    expect(screen.getByRole('region', { name: 'Selected Snapshot Content' }).textContent).toContain('Select a snapshot')
+    expect(screen.queryByLabelText('Snapshot Preview')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Restore as New' })).toBeNull()
+    expect(onRestoreSnapshot).not.toHaveBeenCalled()
+  })
+
   it('selects a bounded snapshot in the recovery list and shows its content beside the selector', async () => {
     const firstId = '2026-08-22T18-00-00-000Z-first'
     const secondId = '2026-08-22T18-01-00-000Z-second'
@@ -672,6 +703,9 @@ describe('TockTutor titlebar panel controls', () => {
     expect(options[1]?.getAttribute('tabindex')).toBe('-1')
     options[0]?.focus()
     fireEvent.keyDown(options[0]!, { key: 'ArrowDown' })
+    expect(options[0]?.getAttribute('tabindex')).toBe('-1')
+    expect(options[1]?.getAttribute('tabindex')).toBe('0')
+    expect(document.activeElement).toBe(options[1])
     await waitFor(() => expect(document.activeElement).toBe(options[1]))
     expect(onReadSnapshot).toHaveBeenCalledWith(secondId)
     fireEvent.keyDown(options[1]!, { key: 'ArrowDown' })

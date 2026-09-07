@@ -1383,6 +1383,118 @@ test('loads bounded recovery state and drives preview, restore, trash, and recov
   controller.dispose()
 })
 
+test('drops delayed recovery previews when the active note changes', async () => {
+  const remote = new FakeRemote()
+  const snapshotId = '2026-08-22T18-00-00-000Z-deadbeef'
+  remote.snapshots = [{ createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: snapshotId, path: 'Folder/Note.md', reason: 'save', size: 11 }]
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  await controller.setRecoveryOpen(true)
+  const gate = deferred<Awaited<ReturnType<typeof remote.tocktutorWorkbench.readSnapshot>>>()
+  const readSnapshot = remote.tocktutorWorkbench.readSnapshot
+  remote.tocktutorWorkbench.readSnapshot = request => gate.promise
+  const pending = controller.readRecoverySnapshot(snapshotId)
+  await controller.select('Second.md')
+  gate.resolve(await readSnapshot({ expectedVault: firstVault, path: 'Folder/Note.md', snapshotId }))
+  assert.equal(await pending, false)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.equal(controller.getSnapshot().selectedSnapshot, null)
+  remote.tocktutorWorkbench.readSnapshot = readSnapshot
+  controller.dispose()
+})
+
+test('does not let delayed recovery mutations clear or close a newer note', async () => {
+  const remote = new FakeRemote()
+  const snapshotId = '2026-08-22T18-00-00-000Z-deadbeef'
+  remote.snapshots = [{ createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: snapshotId, path: 'Folder/Note.md', reason: 'save', size: 11 }]
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  await controller.setRecoveryOpen(true)
+  const restoreGate = deferred<Awaited<ReturnType<typeof remote.tocktutorWorkbench.restoreSnapshot>>>()
+  const restoreSnapshot = remote.tocktutorWorkbench.restoreSnapshot
+  remote.tocktutorWorkbench.restoreSnapshot = request => restoreGate.promise
+  const pendingRestore = controller.restoreRecoverySnapshotOverwrite(snapshotId)
+  await controller.select('Second.md')
+  restoreGate.resolve(await restoreSnapshot({ expectedRevision: firstRevision, expectedVault: firstVault, path: 'Folder/Note.md', snapshotId }))
+  assert.equal(await pendingRestore, false)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+
+  await controller.select('Folder/Note.md')
+  const trashGate = deferred<Awaited<ReturnType<typeof remote.tocktutorWorkbench.trashEntry>>>()
+  const trashEntry = remote.tocktutorWorkbench.trashEntry
+  remote.tocktutorWorkbench.trashEntry = request => trashGate.promise
+  const pendingTrash = controller.trashCurrent()
+  await controller.select('Second.md')
+  trashGate.resolve(await trashEntry({ expectedRevision: firstRevision, expectedVault: firstVault, path: 'Folder/Note.md' }))
+  assert.equal(await pendingTrash, false)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  remote.tocktutorWorkbench.restoreSnapshot = restoreSnapshot
+  remote.tocktutorWorkbench.trashEntry = trashEntry
+  controller.dispose()
+})
+
+test('rejects delayed capture, restore, and trash completions after identity changes', async () => {
+  const remote = new FakeRemote()
+  const snapshotId = '2026-08-22T18-00-00-000Z-deadbeef'
+  remote.snapshots = [{ createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: snapshotId, path: 'Folder/Note.md', reason: 'save', size: 11 }]
+  remote.trashEntries = [{ createdAt: 2, id: 'trash-123e4567-e89b-42d3-a456-426614174000', kind: 'document', originalPath: 'Deleted.md' }]
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  await controller.setRecoveryOpen(true)
+
+  const captureGate = deferred<Awaited<ReturnType<typeof remote.tocktutorWorkbench.captureSnapshot>>>()
+  const captureSnapshot = remote.tocktutorWorkbench.captureSnapshot
+  remote.tocktutorWorkbench.captureSnapshot = request => captureGate.promise
+  const pendingCapture = controller.captureRecoverySnapshot()
+  await controller.select('Second.md')
+  captureGate.resolve(await captureSnapshot({ content: '# Before\n', expectedVault: firstVault, path: 'Folder/Note.md', reason: 'manual' }))
+  assert.equal(await pendingCapture, false)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  remote.tocktutorWorkbench.captureSnapshot = captureSnapshot
+
+  await controller.select('Folder/Note.md')
+  await controller.setRecoveryOpen(true)
+  const clearGate = deferred<Awaited<ReturnType<typeof remote.tocktutorWorkbench.clearSnapshots>>>()
+  const clearSnapshots = remote.tocktutorWorkbench.clearSnapshots
+  remote.tocktutorWorkbench.clearSnapshots = request => clearGate.promise
+  const pendingClear = controller.clearRecoverySnapshots()
+  await controller.select('Second.md')
+  clearGate.resolve(await clearSnapshots({ expectedVault: firstVault, path: 'Folder/Note.md' }))
+  assert.equal(await pendingClear, false)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  remote.tocktutorWorkbench.clearSnapshots = clearSnapshots
+
+  await controller.select('Folder/Note.md')
+  await controller.setRecoveryOpen(true)
+  const restoreGate = deferred<Awaited<ReturnType<typeof remote.tocktutorWorkbench.restoreSnapshotAsNew>>>()
+  const restoreSnapshotAsNew = remote.tocktutorWorkbench.restoreSnapshotAsNew
+  remote.tocktutorWorkbench.restoreSnapshotAsNew = request => restoreGate.promise
+  const pendingRestore = controller.restoreRecoverySnapshot(snapshotId)
+  await controller.select('Second.md')
+  restoreGate.resolve(await restoreSnapshotAsNew({ expectedVault: firstVault, path: 'Folder/Note.md', snapshotId, toPath: 'Recovered/Note Recovery.md' }))
+  assert.equal(await pendingRestore, false)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  remote.tocktutorWorkbench.restoreSnapshotAsNew = restoreSnapshotAsNew
+
+  await controller.setRecoveryOpen(true)
+  const trashId = remote.trashEntries[0]!.id
+  const restoreTrashGate = deferred<Awaited<ReturnType<typeof remote.tocktutorWorkbench.restoreTrash>>>()
+  const restoreTrash = remote.tocktutorWorkbench.restoreTrash
+  remote.tocktutorWorkbench.restoreTrash = request => restoreTrashGate.promise
+  const pendingTrashRestore = controller.restoreTrashEntry(trashId)
+  remote.vault = secondVault
+  await controller.reload()
+  restoreTrashGate.resolve(await restoreTrash({ expectedVault: firstVault, id: trashId }))
+  assert.equal(await pendingTrashRestore, false)
+  assert.deepEqual(controller.getSnapshot().vault, secondVault)
+  assert.equal(controller.getSnapshot().path, null)
+  remote.tocktutorWorkbench.restoreTrash = restoreTrash
+  controller.dispose()
+})
+
 test('dirty-gates managed and sandbox vault transitions without browser paths', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

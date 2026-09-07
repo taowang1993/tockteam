@@ -324,6 +324,13 @@ interface PendingNativeDispatch {
   vault: VaultReference
 }
 
+interface RecoveryIdentity {
+  path: string | null
+  revision: string | null
+  source: string
+  vault: VaultReference
+}
+
 export interface NativeDispatchDraft {
   path?: string
   text?: string
@@ -580,6 +587,8 @@ export class WorkbenchRouteController {
   private bookmarks: TockTutorBookmark[] = []
   private workspaces: NamedWorkspace[] = []
   private operation = 0
+  private recoveryOperation = 0
+  private recoveryAbort: AbortController | null = null
   private embedOperation = 0
   private embedTargets: readonly string[] = Object.freeze([])
   private dispatchRevision = 0
@@ -727,6 +736,11 @@ export class WorkbenchRouteController {
   ): Promise<TockTutorNativeActionsDispatchResult> {
     if (!isSafeVaultRelativePath(path) || !/\.md$/iu.test(path) || !boundedSource(content)) return 'failed'
     const previousPath = this.snapshot.path
+    const recoveryWasOpen = this.snapshot.recoveryOpen === true
+    if (recoveryWasOpen) {
+      this.cancelRecoveryOperations()
+      this.update({ selectedSnapshot: null, snapshots: Object.freeze([]) })
+    }
     if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return 'failed'
     if (!this.dispatchCurrent(revision, vault)) return 'stale'
     try {
@@ -774,6 +788,7 @@ export class WorkbenchRouteController {
       })
       this.recordOpen(path, true, previousPath)
       this.navigate(routeForPath(path))
+      if (recoveryWasOpen) void this.setRecoveryOpen(true)
       return 'handled'
     } catch {
       return this.dispatchCurrent(revision, vault) ? 'failed' : 'stale'
@@ -1220,13 +1235,56 @@ export class WorkbenchRouteController {
       organizationProposal: null,
       outline: null,
       path: null,
+      recoveryOpen: false,
       revision: null,
       saveStatus: 'saved',
+      selectedSnapshot: null,
+      snapshots: Object.freeze([]),
       source: '',
+      trash: Object.freeze([]),
     })
   }
 
+  private recoveryIdentity(): RecoveryIdentity | null {
+    const vault = this.snapshot.vault
+    if (vault === null) return null
+    return {
+      path: this.snapshot.path,
+      revision: this.snapshot.revision,
+      source: this.snapshot.source,
+      vault,
+    }
+  }
+
+  private cancelRecoveryOperations(): void {
+    this.recoveryAbort?.abort()
+    this.recoveryAbort = null
+    this.recoveryOperation += 1
+  }
+
+  private nextRecoveryOperation(): { id: number; signal: AbortSignal } {
+    this.cancelRecoveryOperations()
+    const abort = new AbortController()
+    this.recoveryAbort = abort
+    return { id: this.recoveryOperation, signal: abort.signal }
+  }
+
+  private recoveryIdentityMatches(identity: RecoveryIdentity, requireRevision = true): boolean {
+    return !this.disposed
+      && sameVault(this.snapshot.vault, identity.vault)
+      && this.snapshot.path === identity.path
+      && this.snapshot.source === identity.source
+      && (!requireRevision || this.snapshot.revision === identity.revision)
+  }
+
+  private recoveryCurrent(id: number, identity: RecoveryIdentity): boolean {
+    return this.recoveryOperation === id
+      && this.recoveryAbort?.signal.aborted === false
+      && this.recoveryIdentityMatches(identity)
+  }
+
   private nextOperation(): { id: number; signal: AbortSignal } {
+    this.cancelRecoveryOperations()
     this.operationAbort?.abort()
     this.operationAbort = new AbortController()
     this.operation += 1
@@ -1313,6 +1371,7 @@ export class WorkbenchRouteController {
       path: null,
       phase: 'loading',
       recentlyClosed: Object.freeze([]),
+      recoveryOpen: false,
       revision: null,
       saveStatus: 'saved',
       searchLoading: false,
@@ -1320,9 +1379,12 @@ export class WorkbenchRouteController {
       searchMode: 'query',
       searchOpen: false,
       searchQuery: '',
+      selectedSnapshot: null,
       selectionEnd: 0,
       selectionStart: 0,
+      snapshots: Object.freeze([]),
       source: '',
+      trash: Object.freeze([]),
       panes: this.shellPanes(),
       vault: null,
       vaultDisplayPath: null,
@@ -1483,38 +1545,49 @@ export class WorkbenchRouteController {
   }
 
   async setRecoveryOpen(open: boolean): Promise<void> {
-    this.update({ recoveryOpen: open, selectedSnapshot: open ? this.snapshot.selectedSnapshot ?? null : null })
-    if (!open) return
-    const vault = this.snapshot.vault
-    if (vault === null) return
-    const path = this.snapshot.path
-    const operation = this.nextOperation()
+    const identity = this.recoveryIdentity()
+    if (!open || identity === null) {
+      this.cancelRecoveryOperations()
+      this.update({ recoveryOpen: false, selectedSnapshot: null, snapshots: Object.freeze([]), trash: Object.freeze([]) })
+      return
+    }
+    const selected = this.snapshot.selectedSnapshot?.snapshot.path === identity.path
+      && this.snapshot.snapshots?.some(snapshot => snapshot.id === this.snapshot.selectedSnapshot?.snapshot.id && snapshot.path === identity.path) === true
+      ? this.snapshot.selectedSnapshot
+      : null
+    const operation = this.nextRecoveryOperation()
+    this.update({ recoveryOpen: true, selectedSnapshot: selected, snapshots: Object.freeze([]) })
     try {
-      const trash = remoteValue(await this.remote.tocktutorWorkbench.listTrash({ expectedVault: vault }, operation.signal))
-      if (!this.current(operation.id, vault) || trash.generation !== vault.generation || !Array.isArray(trash.entries)) return
+      const trash = remoteValue(await this.remote.tocktutorWorkbench.listTrash({ expectedVault: identity.vault }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity) || trash.generation !== identity.vault.generation || !Array.isArray(trash.entries)) return
       let snapshots: SnapshotInfo[] = []
-      if (path !== null) {
-        const result = remoteValue(await this.remote.tocktutorWorkbench.listSnapshots({ expectedVault: vault, path }, operation.signal))
-        if (!this.current(operation.id, vault) || result.generation !== vault.generation || !Array.isArray(result.snapshots)) return
-        snapshots = result.snapshots
+      if (identity.path !== null) {
+        const result = remoteValue(await this.remote.tocktutorWorkbench.listSnapshots({ expectedVault: identity.vault, path: identity.path }, operation.signal))
+        if (!this.recoveryCurrent(operation.id, identity) || result.generation !== identity.vault.generation || !Array.isArray(result.snapshots)) return
+        snapshots = result.snapshots.filter(snapshot => snapshot.path === identity.path)
       }
+      if (!this.recoveryCurrent(operation.id, identity)) return
       this.update({
+        selectedSnapshot: selected !== null && snapshots.some(snapshot => snapshot.id === selected.snapshot.id) ? selected : null,
         snapshots: Object.freeze(snapshots.map(snapshot => Object.freeze({ ...snapshot }))),
         trash: Object.freeze(trash.entries.map(entry => Object.freeze({ ...entry }))),
       })
     } catch {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) this.update({ message: 'Recovery data could not be loaded.' })
+      if (this.recoveryCurrent(operation.id, identity)) this.update({ message: 'Recovery data could not be loaded.' })
     }
   }
 
   async readRecoverySnapshot(snapshotId: string): Promise<boolean> {
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    if (vault === null || path === null || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId) !== true) return false
-    const operation = this.nextOperation()
+    const identity = this.recoveryIdentity()
+    if (identity === null || identity.path === null
+      || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId && snapshot.path === identity.path) !== true) return false
+    const operation = this.nextRecoveryOperation()
     try {
-      const snapshot = remoteValue(await this.remote.tocktutorWorkbench.readSnapshot({ expectedVault: vault, path, snapshotId }, operation.signal))
-      if (!this.current(operation.id, vault) || snapshot.generation !== vault.generation || snapshot.snapshot.id !== snapshotId) return false
+      const snapshot = remoteValue(await this.remote.tocktutorWorkbench.readSnapshot({ expectedVault: identity.vault, path: identity.path, snapshotId }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity)
+        || snapshot.generation !== identity.vault.generation
+        || snapshot.snapshot.id !== snapshotId
+        || snapshot.snapshot.path !== identity.path) return false
       this.update({ selectedSnapshot: snapshot })
       return true
     } catch {
@@ -1523,18 +1596,22 @@ export class WorkbenchRouteController {
   }
 
   async captureRecoverySnapshot(): Promise<boolean> {
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    if (vault === null || path === null) return false
+    const initial = this.recoveryIdentity()
+    if (initial === null || initial.path === null) return false
+    const operation = this.nextRecoveryOperation()
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.captureSnapshot({
-        content: this.snapshot.source,
-        expectedVault: vault,
-        path,
+        content: initial.source,
+        expectedVault: initial.vault,
+        path: initial.path,
         reason: 'manual',
-      }))
-      if (result.generation !== vault.generation || result.snapshot?.path !== path || result.snapshot === undefined) return false
+      }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, initial)
+        || result.generation !== initial.vault.generation
+        || result.snapshot?.path !== initial.path
+        || result.snapshot === undefined) return false
       await this.setRecoveryOpen(true)
+      if (!this.recoveryIdentityMatches(initial)) return false
       return await this.readRecoverySnapshot(result.snapshot.id)
     } catch {
       return false
@@ -1542,12 +1619,12 @@ export class WorkbenchRouteController {
   }
 
   async clearRecoverySnapshots(): Promise<boolean> {
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    if (vault === null || path === null) return false
+    const identity = this.recoveryIdentity()
+    if (identity === null || identity.path === null) return false
+    const operation = this.nextRecoveryOperation()
     try {
-      const result = remoteValue(await this.remote.tocktutorWorkbench.clearSnapshots({ expectedVault: vault, path }))
-      if (result.generation !== vault.generation) return false
+      const result = remoteValue(await this.remote.tocktutorWorkbench.clearSnapshots({ expectedVault: identity.vault, path: identity.path }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity) || result.generation !== identity.vault.generation) return false
       this.update({ selectedSnapshot: null, snapshots: Object.freeze([]) })
       return true
     } catch {
@@ -1556,58 +1633,69 @@ export class WorkbenchRouteController {
   }
 
   async restoreRecoverySnapshotOverwrite(snapshotId: string): Promise<boolean> {
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    const revision = this.snapshot.revision
-    if (vault === null || path === null || revision === null || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId) !== true) return false
+    const identity = this.recoveryIdentity()
+    if (identity === null || identity.path === null || identity.revision === null || this.snapshot.saveStatus !== 'saved'
+      || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId && snapshot.path === identity.path) !== true) return false
+    const operation = this.nextRecoveryOperation()
     try {
       const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreSnapshot({
-        expectedRevision: revision,
-        expectedVault: vault,
-        path,
+        expectedRevision: identity.revision,
+        expectedVault: identity.vault,
+        path: identity.path,
         snapshotId,
-      }))
-      if (restored.status !== 'saved' || restored.generation !== vault.generation || restored.path !== path) return false
+      }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity)
+        || restored.status !== 'saved'
+        || restored.generation !== identity.vault.generation
+        || restored.path !== identity.path) return false
       this.clearDocument()
-      return await this.select(path, false)
+      return await this.select(identity.path, false)
     } catch {
       return false
     }
   }
 
   async restoreRecoverySnapshot(snapshotId: string): Promise<boolean> {
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    if (vault === null || path === null || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId) !== true) return false
-    const basename = path.split('/').at(-1) ?? 'Recovered.md'
+    const identity = this.recoveryIdentity()
+    if (identity === null || identity.path === null
+      || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId && snapshot.path === identity.path) !== true) return false
+    const basename = identity.path.split('/').at(-1) ?? 'Recovered.md'
     const stem = basename.replace(/\.(?:base|canvas|markdown|md)$/iu, '')
     const extension = basename.slice(stem.length) || '.md'
     const toPath = `Recovered/${stem} Recovery${extension}`
+    const operation = this.nextRecoveryOperation()
     try {
       const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreSnapshotAsNew({
-        expectedVault: vault,
-        path,
+        expectedVault: identity.vault,
+        path: identity.path,
         snapshotId,
         toPath,
-      }))
-      if (restored.status !== 'created' || restored.generation !== vault.generation || restored.path !== toPath) return false
+      }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity)
+        || restored.status !== 'created'
+        || restored.generation !== identity.vault.generation
+        || restored.path !== toPath) return false
       this.update({ message: `${toPath} restored.` })
-      await this.refreshTree(vault)
-      return true
+      await this.refreshTree(identity.vault)
+      return this.recoveryIdentityMatches(identity)
     } catch {
       return false
     }
   }
 
   async trashCurrent(): Promise<boolean> {
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    const revision = this.snapshot.revision
-    if (vault === null || path === null || revision === null) return false
+    const initial = this.recoveryIdentity()
+    const routeOperation = this.operation
+    if (initial === null || initial.path === null || initial.revision === null) return false
     if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    if (this.operation !== routeOperation || !this.recoveryIdentityMatches(initial, false)) return false
+    const identity = this.recoveryIdentity() ?? initial
+    if (identity.path === null || identity.revision === null) return false
+    const operation = this.nextRecoveryOperation()
     try {
-      remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: revision, expectedVault: vault, path }))
-      const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, path)
+      remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: identity.revision, expectedVault: identity.vault, path: identity.path }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity)) return false
+      const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, identity.path)
       this.shellSession = closed.session
       this.syncShell()
       this.clearDocument()
@@ -1620,13 +1708,16 @@ export class WorkbenchRouteController {
   }
 
   async restoreTrashEntry(id: string): Promise<boolean> {
-    const vault = this.snapshot.vault
-    if (vault === null || this.snapshot.trash?.some(entry => entry.id === id) !== true) return false
+    const identity = this.recoveryIdentity()
+    if (identity === null || this.snapshot.trash?.some(entry => entry.id === id) !== true) return false
+    const operation = this.nextRecoveryOperation()
     try {
-      remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: vault, id }))
+      remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: identity.vault, id }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity)) return false
+      await this.refreshTree(identity.vault)
+      if (!this.recoveryIdentityMatches(identity)) return false
       await this.setRecoveryOpen(true)
-      await this.refreshTree(vault)
-      return true
+      return this.recoveryIdentityMatches(identity)
     } catch {
       return false
     }
@@ -1897,6 +1988,9 @@ export class WorkbenchRouteController {
     const toPath = directory === '' ? `${normalized}${extension}` : `${directory}/${normalized}${extension}`
     if (!isSafeVaultRelativePath(toPath)) return false
     if (toPath === fromPath) return true
+    const recoveryWasOpen = this.snapshot.recoveryOpen === true
+    this.cancelRecoveryOperations()
+    this.update({ selectedSnapshot: null, snapshots: Object.freeze([]) })
     if (this.pendingRename !== null) return false
     if (this.snapshot.entries.some(entry => entry.path === toPath)
       || this.shellSession.groups.some(group => group.tabs.some(tab => tab.path === toPath))) return false
@@ -1952,6 +2046,8 @@ export class WorkbenchRouteController {
         message: renameWarnings.length === 0 ? `${toPath} renamed.` : `${toPath} renamed; ${renameWarnings.join(' ')}`,
         outline: null,
         path: toPath,
+        selectedSnapshot: null,
+        snapshots: Object.freeze([]),
         revision: renamed.revision,
         saveStatus: 'saved',
         warnings: Object.freeze([...this.snapshot.warnings, ...renameWarnings].slice(-32)),
@@ -1966,6 +2062,7 @@ export class WorkbenchRouteController {
         void this.loadRelationships()
         if (this.embedTargets.length > 0) void this.loadEmbeds()
       }
+      if (recoveryWasOpen) void this.setRecoveryOpen(true)
       return true
     } catch (error) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
@@ -1989,6 +2086,9 @@ export class WorkbenchRouteController {
     if (dispatchRevision === undefined) this.invalidateDispatch()
     else if (!this.dispatchCurrent(dispatchRevision, activeVault)) return false
     if (path === this.snapshot.path) return true
+    const recoveryWasOpen = this.snapshot.recoveryOpen === true
+    this.cancelRecoveryOperations()
+    this.update({ selectedSnapshot: null, snapshots: Object.freeze([]) })
     const pane = this.pane()
     const activeTab = pane?.tabs.find(tab => tab.path === pane.activePath)
     if (pane === undefined
@@ -2053,6 +2153,7 @@ export class WorkbenchRouteController {
           if (await this.loadRelationships() && this.snapshot.path === path && this.snapshot.source === content) await this.loadEmbeds()
         })()
       } else if (documentKind(path) === 'base') void this.hydrateBaseRows(path)
+      if (recoveryWasOpen) void this.setRecoveryOpen(true)
       return true
     } catch (error) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
@@ -2069,6 +2170,10 @@ export class WorkbenchRouteController {
       return
     }
     if (source === this.snapshot.source) return
+    if (this.snapshot.recoveryOpen === true) {
+      this.cancelRecoveryOperations()
+      this.update({ selectedSnapshot: null, snapshots: Object.freeze([]) })
+    }
     this.invalidateDispatch()
     const nextEmbedTargets = embedTargetSources(source)
     const embedsChanged = !sameStrings(this.embedTargets, nextEmbedTargets)
@@ -2474,7 +2579,12 @@ export class WorkbenchRouteController {
     const abort = new AbortController()
     this.saveAbort?.abort()
     this.saveAbort = abort
-    this.update({ message: `Saving ${path}.`, saveStatus: 'saving' })
+    if (this.snapshot.recoveryOpen === true) {
+      this.cancelRecoveryOperations()
+      this.update({ message: `Saving ${path}.`, saveStatus: 'saving', selectedSnapshot: null, snapshots: Object.freeze([]) })
+    } else {
+      this.update({ message: `Saving ${path}.`, saveStatus: 'saving' })
+    }
     const request: SaveDocumentRequest = {
       content: source,
       expectedRevision: revision,
@@ -2539,6 +2649,7 @@ export class WorkbenchRouteController {
     this.dispatchRevision += 1
     this.operation += 1
     this.operationAbort?.abort()
+    this.cancelRecoveryOperations()
     this.cancelEmbedOperation()
     this.saveAbort?.abort()
     if (this.draftAbort === null) this.draftTimer = null
