@@ -257,6 +257,68 @@ function paragraphHtml(lines: string[], strict: boolean, footnotes: ReadonlyMap<
   return `<p>${html}</p>`
 }
 
+interface MarkdownListItem {
+  checked: boolean | null
+  content: string
+  indent: number
+  marker: string
+  ordered: boolean
+}
+
+function parseMarkdownListItem(line: string): MarkdownListItem | null {
+  const match = line.match(/^( {0,64})([-+*]|\d{1,9}[.)])\s+(.*)$/u)
+  if (match === null) return null
+  const ordered = /^\d/u.test(match[2]!)
+  const task = ordered ? null : match[3]!.match(/^\[([^\]])\]\s*(.*)$/u)
+  return {
+    checked: task === null ? null : task[1] !== ' ',
+    content: task?.[2] ?? match[3]!,
+    indent: match[1]!.length,
+    marker: match[2]!,
+    ordered,
+  }
+}
+
+function renderMarkdownList(
+  items: readonly MarkdownListItem[],
+  start: number,
+  indent: number,
+  taskIndex: number,
+  footnotes: ReadonlyMap<string, number>,
+  externalEmbedMode: 'inert' | 'viewer',
+): { html: string; next: number; taskIndex: number } {
+  const ordered = items[start]!.ordered
+  const children: string[] = []
+  let cursor = start
+  let nextTaskIndex = taskIndex
+  let hasTasks = false
+  while (cursor < items.length) {
+    const item = items[cursor]!
+    if (item.indent !== indent || item.ordered !== ordered) break
+    cursor += 1
+    let input = ''
+    if (item.checked !== null) {
+      hasTasks = true
+      input = `<input aria-label="Task" data-task-index="${String(nextTaskIndex)}" type="checkbox"${item.checked ? ' checked' : ''}> `
+      nextTaskIndex += 1
+    }
+    let nested = ''
+    while (cursor < items.length && items[cursor]!.indent > indent) {
+      const result = renderMarkdownList(items, cursor, items[cursor]!.indent, nextTaskIndex, footnotes, externalEmbedMode)
+      nested += result.html
+      cursor = result.next
+      nextTaskIndex = result.taskIndex
+    }
+    children.push(`<li>${input}${renderInline(item.content, footnotes, externalEmbedMode)}${nested}</li>`)
+  }
+  const tag = ordered ? 'ol' : 'ul'
+  const startValue = ordered ? Number.parseInt(items[start]!.marker, 10) : 1
+  const attributes = ordered && startValue !== 1
+    ? ` start="${String(startValue)}"`
+    : !ordered && hasTasks ? ' class="task-list"' : ''
+  return { html: `<${tag}${attributes}>${children.join('')}</${tag}>`, next: cursor, taskIndex: nextTaskIndex }
+}
+
 export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOptions = {}): string {
   if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`
   const source = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n')
@@ -343,7 +405,10 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
         index += 1
         body.push(lines[index]!.replace(/^ {0,3}> ?/u, ''))
       }
-      blocks.push(`<blockquote>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</blockquote>`)
+      const content = body.join('\n').split(/\n[ \t]*\n/u)
+        .map(value => paragraphHtml(value.split('\n'), options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode))
+        .join('')
+      blocks.push(`<blockquote>${content}</blockquote>`)
       continue
     }
     if (index + 1 < lines.length && line.includes('|') && tableDelimiter(lines[index + 1]!)) {
@@ -358,18 +423,25 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
       blocks.push(`<table><thead><tr>${headers.map(cell => `<th>${renderInline(cell, footnotes.numbers, externalEmbedMode)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_header, cell) => `<td>${renderInline(row[cell] ?? '', footnotes.numbers, externalEmbedMode)}</td>`).join('')}</tr>`).join('')}</tbody></table>`)
       continue
     }
-    const task = line.match(/^\s{0,64}[-+*]\s+\[([^\]])\]\s*(.*)$/u)
-    if (task !== null) {
-      flush()
-      blocks.push(`<ul class="task-list"><li><input aria-label="Task" data-task-index="${String(taskIndex)}" type="checkbox"${task[1] === ' ' ? '' : ' checked'}> ${renderInline(task[2]!, footnotes.numbers, externalEmbedMode)}</li></ul>`)
-      taskIndex += 1
-      continue
-    }
-    const list = line.match(/^\s{0,64}([-+*]|\d{1,9}[.)])\s+(.*)$/u)
+    const list = parseMarkdownListItem(line)
     if (list !== null) {
       flush()
-      const ordered = /^\d/u.test(list[1]!)
-      blocks.push(`<${ordered ? 'ol' : 'ul'}><li>${renderInline(list[2]!, footnotes.numbers, externalEmbedMode)}</li></${ordered ? 'ol' : 'ul'}>`)
+      const items = [list]
+      while (index + 1 < lines.length) {
+        const next = parseMarkdownListItem(lines[index + 1]!)
+        if (next === null) break
+        items.push(next)
+        index += 1
+      }
+      let cursor = 0
+      let html = ''
+      while (cursor < items.length) {
+        const result = renderMarkdownList(items, cursor, items[cursor]!.indent, taskIndex, footnotes.numbers, externalEmbedMode)
+        html += result.html
+        cursor = result.next
+        taskIndex = result.taskIndex
+      }
+      blocks.push(html)
       continue
     }
     if (/^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(line)) {

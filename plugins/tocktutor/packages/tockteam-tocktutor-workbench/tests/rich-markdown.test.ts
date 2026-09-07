@@ -42,11 +42,25 @@ test('renders bounded rich Markdown without executing raw HTML or unsafe URLs', 
 })
 
 test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {
-  const html = renderMarkdownHtml('> First line\n> second line\n\nOpen [[Welcome]] and [[Study Guide|start here]].\n')
-  assert.match(html, /<blockquote><p>First line<br>second line<\/p><\/blockquote>/u)
+  const html = renderMarkdownHtml('> First line\n>\n> second line\n\nOpen [[Welcome]] and [[Study Guide|start here]].\n')
+  assert.match(html, /<blockquote><p>First line<\/p><p>second line<\/p><\/blockquote>/u)
   assert.match(html, /data-target="Welcome" href="#">Welcome<\/a>/u)
   assert.match(html, /data-target="Study Guide" href="#">start here<\/a>/u)
   assert.doesNotMatch(html, /&gt; First line|\[\[Study Guide/u)
+})
+
+test('groups contiguous and nested list items into semantic lists', () => {
+  const html = renderMarkdownHtml([
+    '1. First',
+    '2. Second',
+    '   - Nested one',
+    '   - Nested two',
+    '- [x] Done',
+    '- [ ] Next',
+  ].join('\n'))
+
+  assert.match(html, /<ol><li>First<\/li><li>Second<ul><li>Nested one<\/li><li>Nested two<\/li><\/ul><\/li><\/ol>/u)
+  assert.match(html, /<ul class="task-list"><li><input[^>]+checked[^>]*> Done<\/li><li><input[^>]+data-task-index="1"[^>]*> Next<\/li><\/ul>/u)
 })
 
 test('honors strict line breaks and builds fenced-aware slides', () => {

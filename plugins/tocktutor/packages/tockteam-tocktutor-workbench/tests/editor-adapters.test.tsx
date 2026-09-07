@@ -184,14 +184,29 @@ describe('Milkdown Live Preview editor', () => {
     expect([...live.container.querySelectorAll('.tocktutor-live-internal-link')].map(link => link.textContent)).toEqual(['Welcome', 'start here'])
     expect([...live.container.querySelectorAll('.tocktutor-live-link-markup')].map(markup => markup.textContent).join('')).toBe('[[]][[Guide|]]')
     const liveSurface = screen.getByLabelText('Live Preview Editor')
-    expect(liveSurface.className).toContain('[&_.tocktutor-live-internal-link]:underline')
+    expect(liveSurface.className).toContain('[&_.tocktutor-live-internal-link]:text-[var(--dsw-specific-markdown-accent)]')
+    expect(liveSurface.className).not.toContain('[&_.tocktutor-live-internal-link]:underline')
     live.unmount()
 
     render(<RichReadingView source={'Review [[Welcome]].\n'} onToggleTask={() => {}} title="Links" />)
     const readingSurface = screen.getByLabelText('Reading View').querySelector<HTMLElement>('.tocktutor-reading')!
     expect(readingSurface.querySelector('a.internal-link')?.textContent).toBe('Welcome')
-    expect(readingSurface.className).toContain('[&_a]:underline')
-    expect(readingSurface.className).toContain('[&_a]:text-[var(--dsw-alias-brand-primary)]')
+    expect(readingSurface.className).not.toContain('[&_a]:underline')
+    expect(readingSurface.className).toContain('[&_a.internal-link]:no-underline')
+    expect(readingSurface.className).toContain('[&_a]:text-[var(--dsw-specific-markdown-accent)]')
+    expect(readingSurface.className).toContain('[&_mark]:text-inherit')
+  })
+
+  it('renders highlights and nested lists with compact Live Preview flow', async () => {
+    const { container } = render(<LivePreviewEditor content={'Read ==carefully==.\n\n1. First\n2. Second\n   - Nested\n'} onMarkdownChange={() => {}} />)
+
+    await waitFor(() => expect(container.querySelector('.tocktutor-live-highlight')?.textContent).toBe('carefully'), { timeout: 5_000 })
+    expect([...container.querySelectorAll('.tocktutor-live-highlight-markup')].map(markup => markup.textContent).join('')).toBe('====')
+    const editor = screen.getByLabelText('Live Preview Editor')
+    expect(editor.className).toContain('[&_.tocktutor-live-highlight]:bg-[var(--dsw-specific-markdown-highlight)]')
+    expect(editor.className).toContain('[&_li>p]:m-0')
+    expect(editor.className).toContain('[&_.tocktutor-live-fold]:absolute')
+    expect(editor.className).toContain('[&_li>ul]:!pl-4')
   })
 
   it('renders compact Obsidian-style task rows in Live Preview', async () => {
@@ -202,7 +217,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(editor.className).toContain('[&_ul:has(li[data-item-type=task])]:list-none')
     expect(editor.className).toContain('[&_li[data-item-type=task]>p]:inline')
     expect(editor.className).toContain('[&_li[data-checked=true]>p]:line-through')
-    expect(container.querySelector<HTMLInputElement>('.tocktutor-live-task')?.className).toContain('accent-[var(--dsw-alias-brand-primary)]')
+    expect(container.querySelector<HTMLInputElement>('.tocktutor-live-task')?.className).toContain('accent-[var(--dsw-specific-markdown-accent)]')
   })
 
   it('renders bordered tables without a persistent command strip', async () => {
@@ -232,7 +247,7 @@ describe('Milkdown Live Preview editor', () => {
     render(<RichReadingView source={'- [x] Done\n- [ ] Next\n'} onToggleTask={() => {}} title="Tasks" />)
 
     const reading = screen.getByLabelText('Reading View')
-    expect(reading.querySelectorAll('.task-list')).toHaveLength(2)
+    expect(reading.querySelectorAll('.task-list')).toHaveLength(1)
     expect(reading.querySelector('.tocktutor-reading')?.className).toContain('[&_.task-list]:m-0')
     expect(reading.querySelector('.tocktutor-reading')?.className).toContain('[&_.task-list_li:has(input:checked)]:line-through')
   })

@@ -75,7 +75,7 @@ function calloutFoldButton(pos: number, index: number, collapsed: boolean, title
 function taskCheckbox(pos: number, index: number, checked: boolean): HTMLInputElement {
   const input = document.createElement('input')
   input.type = 'checkbox'
-  input.className = 'tocktutor-live-task mr-2 size-3.5 accent-[var(--dsw-alias-brand-primary)] align-middle'
+  input.className = 'tocktutor-live-task mr-2 size-3.5 accent-[var(--dsw-specific-markdown-accent)] align-middle'
   input.checked = checked
   input.dataset.taskPos = String(pos)
   input.dataset.taskIndex = String(index)
@@ -144,6 +144,16 @@ function decorations(state, folded: ReadonlySet<number>): DecorationSet {
         Decoration.inline(from, labelFrom, { class: 'tocktutor-live-link-markup hidden' }),
         Decoration.inline(labelFrom, labelTo, { class: 'tocktutor-live-internal-link' }),
         Decoration.inline(labelTo, to, { class: 'tocktutor-live-link-markup hidden' }),
+      )
+    }
+    for (const match of node.text.matchAll(/==([^=\n]{1,20000})==/gu)) {
+      const from = pos + (match.index ?? 0)
+      const to = from + match[0].length
+      if (state.selection.from <= to && state.selection.to >= from) continue
+      values.push(
+        Decoration.inline(from, from + 2, { class: 'tocktutor-live-highlight-markup hidden' }),
+        Decoration.inline(from + 2, to - 2, { class: 'tocktutor-live-highlight' }),
+        Decoration.inline(to - 2, to, { class: 'tocktutor-live-highlight-markup hidden' }),
       )
     }
     for (const match of node.text.matchAll(/\$\$(.{1,20000})\$\$/gu)) {

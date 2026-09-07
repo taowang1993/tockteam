@@ -346,6 +346,9 @@
   }
 
   & body {
+    /* Pinned Obsidian-compatible document roles; shell actions keep the active DSH brand. */
+    --dsw-specific-markdown-accent: light-dark(#705dcf, #a68af9);
+    --dsw-specific-markdown-highlight: rgb(255 208 0 / 40%);
     --tockteam-main-pane: var(--dsw-alias-bg-layer-1, var(--dsw-alias-bg-base, #fff));
     --tockteam-shell-chrome: color-mix(in srgb, var(--dsw-alias-bg-base, #fff) 96%, var(--dsw-alias-label-primary, #1f2328));
     --tockteam-shell-divider: color-mix(in srgb, var(--dsw-alias-label-primary, #1f2328) 9%, transparent);
