@@ -12,13 +12,24 @@ function embedLabel(embed: ResolvedEmbedNode): string {
   return `${embed.target.path}${embed.target.fragment === null ? '' : `#${embed.target.fragment}`}`
 }
 
-function handleRenderedClick(event: ReactMouseEvent<HTMLElement>, onOpenExternalUrl?: (url: string) => void): void {
+function handleRenderedClick(
+  event: ReactMouseEvent<HTMLElement>,
+  onOpenExternalUrl?: (url: string) => void,
+  onOpenInternalLink?: (target: string) => void,
+): void {
   const target = event.target instanceof Element ? event.target : null
   const url = target?.closest<HTMLElement>('[data-external-url]')?.dataset.externalUrl
   if (url !== undefined) {
     event.preventDefault()
     event.stopPropagation()
     onOpenExternalUrl?.(url)
+    return
+  }
+  const internalTarget = target?.closest<HTMLElement>('a.internal-link')?.dataset.target
+  if (internalTarget !== undefined) {
+    event.preventDefault()
+    event.stopPropagation()
+    onOpenInternalLink?.(internalTarget)
   } else if (target?.closest('a') !== null) {
     event.preventDefault()
   }
@@ -79,6 +90,7 @@ export function RichReadingView(props: {
   embeds?: readonly ResolvedEmbedNode[] | undefined
   onAddProperty?: ((key: string) => boolean) | undefined
   onOpenExternalUrl?: ((url: string) => void) | undefined
+  onOpenInternalLink?: ((target: string) => void) | undefined
   onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined
   onToggleTask(index: number): void
   source: string
@@ -97,7 +109,7 @@ export function RichReadingView(props: {
       if (Number.isSafeInteger(index) && index >= 0) props.onToggleTask(index)
       return
     }
-    handleRenderedClick(event, props.onOpenExternalUrl)
+    handleRenderedClick(event, props.onOpenExternalUrl, props.onOpenInternalLink)
   }
   return (
     <section aria-label="Reading View" className="min-h-full" tabIndex={-1}>

@@ -256,6 +256,14 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.className).toContain('[&_mark]:text-inherit')
   })
 
+  it('opens a Reading View wikilink through its resolved-target callback', () => {
+    const onOpenInternalLink = vi.fn()
+    render(<RichReadingView onOpenInternalLink={onOpenInternalLink} onToggleTask={() => {}} source={'Review [[Alias Target#Details|the alias note]].\n'} title="Links" />)
+
+    fireEvent.click(screen.getByRole('link', { name: 'the alias note' }))
+    expect(onOpenInternalLink).toHaveBeenCalledWith('Alias Target#Details')
+  })
+
   it('renders highlights and nested lists with compact Live Preview flow', async () => {
     const { container } = render(<LivePreviewEditor content={'Read ==carefully==.\n\n1. First\n2. Second\n   - Nested\n'} onMarkdownChange={() => {}} />)
 
