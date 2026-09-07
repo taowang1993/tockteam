@@ -596,6 +596,8 @@ test('launched smoke environments use disposable user roots and bounded tools', 
   const environment = smokeEnvironment({ NODE_OPTIONS: '--require=evil', NODE_PATH: '/tmp/evil', PATH: '/tmp/evil' }, smokeRoot)
   assert.equal(environment.NODE_OPTIONS, undefined)
   assert.equal(environment.NODE_PATH, undefined)
+  assert.equal(environment.TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY, '1')
+  assert.equal(environment.TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY, process.env.CI ? undefined : '1')
   assert.equal(environment.HOME, join(smokeRoot, 'home'))
   assert.equal(environment.USERPROFILE, join(smokeRoot, 'home'))
   assert.equal(environment.XDG_CONFIG_HOME, join(smokeRoot, 'xdg', 'config'))

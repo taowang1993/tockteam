@@ -3,13 +3,19 @@ import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage, TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
 
 /** First-party finite DOM projection. Source callbacks stay in the child; native effects stay in main. */
-export function createTrustedRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void, locale = 'en-US'): { element: HTMLElement; update(message: TrustedRaycastViewMessage): void } {
+export function createTrustedRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void, locale = 'en-US'): { element: HTMLElement; focus(): void; update(message: TrustedRaycastViewMessage): void } {
   const zh = locale.startsWith('zh')
   const setHidden = (target: HTMLElement, hidden: boolean): void => { target.hidden = hidden; target.classList?.toggle('!hidden', hidden) }
   const icon = (definition: IconNode): Element => {
     if (typeof document.createElementNS !== 'function') return document.createElement('span')
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'size-7 opacity-60')
-    for (const [tag, attributes] of definition as unknown as Array<[string, Record<string, unknown>]>) { const child = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [name, value] of Object.entries(attributes)) child.setAttribute(name, String(value)); svg.append(child) }
+    type SvgTuple = [string, Record<string, unknown>, SvgTuple[]?]
+    const render = ([tag, attributes, children = []]: SvgTuple): Element => {
+      const node = document.createElementNS('http://www.w3.org/2000/svg', tag)
+      for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, String(value))
+      for (const child of children) node.append(render(child))
+      return node
+    }
+    const svg = render(definition as unknown as SvgTuple); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'size-7 opacity-60')
     return svg
   }
   let current: TrustedRaycastViewMessage | undefined
@@ -23,7 +29,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (depth <= 0) return
     sendEvent({ kind: 'navigation', eventId: 'language-nav', value: 'language:pop' })
   }
-  const element = document.createElement('section'); element.className = 'launcher-local-tool !gap-0 overflow-hidden text-sm'; element.setAttribute('aria-label', 'Google Translate'); element.setAttribute('data-view', 'translate')
+  const element = document.createElement('section'); element.className = 'launcher-local-tool !gap-0 overflow-hidden text-sm'; element.setAttribute('aria-label', 'Google Translate'); element.setAttribute('aria-busy', 'false'); element.setAttribute('data-view', 'translate')
   const header = document.createElement('header'); header.className = 'flex h-12 min-w-0 shrink-0 items-center gap-3 px-4'
   const close = document.createElement('button'); close.type = 'button'; close.className = 'inline-flex size-9 items-center justify-center rounded-lg border-0 bg-transparent text-2xl leading-none text-[var(--dsw-alias-label-secondary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; close.textContent = '‹'; close.setAttribute('aria-label', zh ? '返回结果' : 'Back to Results'); close.addEventListener('click', onClose)
   const titleIcon = document.createElement('img'); titleIcon.setAttribute('src', './trusted-raycast/google-translate.png'); titleIcon.setAttribute('alt', ''); titleIcon.className = 'size-6 rounded-md'
@@ -62,6 +68,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const footerActions = document.createElement('div'); footerActions.className = 'flex items-center gap-2'
   commandFooter.append(extensionLabel, footerActions); element.append(header, hero, content, commandFooter)
   let actionPending: string | undefined
+  let queryPending = false
+  const syncBusy = (): void => element.setAttribute('aria-busy', String(actionPending !== undefined || queryPending))
+  const setActionPending = (eventId?: string): void => { actionPending = eventId; syncBusy() }
   let preferenceAction: string | undefined
   let actionFeedback = ''
   let selected = 0
@@ -93,12 +102,12 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (!action || !current?.root || current.type === 'error' || pending !== undefined || sending || actionPending) return false
     if (!action.props.actionEventId || action.props.unavailable) { fail(zh ? '此操作不可用。' : 'This action is unavailable.'); return false }
     const eventId = String(action.props.actionEventId)
-    actionPending = eventId
+    setActionPending(eventId)
     if (preferenceSetup) preferenceAction = eventId
     actionFeedback = zh ? '正在执行操作…' : 'Running Action…'
     status.textContent = actionFeedback
     void bridge.trustedRaycastEvent({ sessionId: current.sessionId, generation: current.generation, revision: current.revision, eventId, kind: 'action' }).catch(error => {
-      if (actionPending === eventId) { actionPending = undefined; preferenceAction = undefined; actionFeedback = ''; status.textContent = ''; fail(userActionMessage(error instanceof Error ? error.message : 'Translate action failed')) }
+      if (actionPending === eventId) { setActionPending(); preferenceAction = undefined; actionFeedback = ''; status.textContent = ''; fail(userActionMessage(error instanceof Error ? error.message : 'Translate action failed')) }
     })
     return true
   }
@@ -126,10 +135,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (!current?.root || input.disabled) return
     toastText = ''
     pending = input.value
-    actionPending = undefined
+    setActionPending()
     actionFeedback = ''
     setHidden(error, true)
     status.textContent = zh ? '正在翻译…' : 'Translating…'
+    queryPending = true; syncBusy()
     sendLatest()
   })
   input.addEventListener('compositionstart', () => { composing = true })
@@ -182,6 +192,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     input.placeholder = typeof list.props.searchBarPlaceholder === 'string' ? list.props.searchBarPlaceholder.slice(0, 256) : (zh ? '输入要翻译的文本' : 'Enter text to translate')
     if (!preferenceSetup && preferenceAction !== undefined) status.textContent = ''
     const waiting = root.props.queryCurrent === false
+    queryPending = waiting; syncBusy()
     const emptyProjection = descendants(root, 'raycast-empty')[0]
     const emptyTitle = waiting ? (zh ? '正在翻译…' : 'Translating…') : String(emptyProjection?.props.title ?? '')
     const showingDetail = descendants(root, 'raycast-list').some(list => list.props.isShowingDetail === true)
@@ -327,8 +338,10 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   element.addEventListener('click', event => {
     for (const owner of [...rows, ...(rootActionOwner ? [rootActionOwner] : [])]) if (!owner.menu.contains(event.target as globalThis.Node)) owner.menu.open = false
   })
+  const focus = (): void => { if (preferenceSetup) firstFormControl?.focus(); else if (!searchRow.hidden) input.focus() }
   return {
     element,
+    focus,
     update(message) {
       if (current && (message.sessionId !== current.sessionId || message.generation !== current.generation)) return
       if (message.type === 'toast') {
@@ -336,7 +349,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         if (message.style === 'failure') fail(`${message.title}: ${message.message}`); else showToastText(message.message ? `${message.title}: ${message.message}` : String(message.title ?? '')); return }
       if (message.type === 'outcome') {
         if (actionPending !== message.eventId) return
-        actionPending = undefined
+        setActionPending()
         if (preferenceAction === message.eventId) { preferenceAction = undefined; actionFeedback = ''; status.textContent = ''; if (message.succeeded) setHidden(error, true); else fail(userActionMessage(message.message ?? 'Translate action failed')); return }
         if (message.succeeded) { setHidden(error, true); actionFeedback = zh ? '操作已完成' : 'Action Completed'; if (toastText === '') status.textContent = actionFeedback }
         else { actionFeedback = ''; status.textContent = ''; fail(userActionMessage(message.message ?? 'Translate action failed')) }
@@ -345,14 +358,14 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       if (current && message.revision <= current.revision) return
       const restoreRow = rows.some(row => row.item.contains?.(document.activeElement))
       current = message
-      if (message.type === 'error') { pending = undefined; input.disabled = true; fail(message.message ?? 'Translate runtime failed'); return }
+      if (message.type === 'error') { pending = undefined; queryPending = false; setActionPending(); input.disabled = true; fail(message.message ?? 'Translate runtime failed'); return }
       input.disabled = false
       status.textContent = toastText === '' ? actionFeedback : toastText
       results.replaceChildren()
       if (message.root) render(message.root)
       if (restoreRow) rows[selected]?.item.focus()
       sendLatest()
-      if (message.type === 'ready') queueMicrotask(() => { if (message.root?.props.preferenceSetup === true) firstFormControl?.focus(); else if (!searchRow.hidden) input.focus() })
+      if (message.type === 'ready') { focus(); document.defaultView?.requestAnimationFrame(() => focus()) }
     },
   }
 }

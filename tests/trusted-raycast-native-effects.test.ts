@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path'
 import { spawn, execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastNativeDeps } from '../src/trusted-raycast-native.ts'
-import { isTrustedRaycastNativeRequest, isTrustedRaycastNativeOutcome } from '../src/trusted-raycast-contract.ts'
+import { isTrustedRaycastNativeRequest, isTrustedRaycastNativeOutcome, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS } from '../src/trusted-raycast-contract.ts'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 const exec = promisify(execFile)
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -146,8 +146,8 @@ test('the child TMPDIR governs os.tmpdir(), keeping translation.mp3 inside the p
   } finally { rmSync(privateTemp, { recursive: true, force: true }) }
 })
 
-const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
-const configured = artifact !== undefined ? { skip: false } : { skip: 'TRUSTED_RAYCAST_ARTIFACT_TAR is not configured' }
+const configuredArtifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
+const artifact = configuredArtifact ?? join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
 
 /** Latest projection-bearing message plus helpers shared by the configured integration tests. */
 const projections = (messages: any[]) => {
@@ -212,7 +212,7 @@ test('bundled artifact: first command shows required preferences, saves them in 
   } finally { await manager.close(); rmSync(work, { recursive: true, force: true }) }
 })
 
-test('configured artifact: language sets, nested AddLanguageForm, and restart persistence', configured, async () => {
+test('reviewed artifact: language sets, nested AddLanguageForm, and restart persistence', async () => {
   // @ts-expect-error JavaScript helper owns the configured artifact build.
   const { buildTrustedRaycast } = await import('../scripts/trusted-raycast-build.mjs')
   const work = mkdtempSync(join(tmpdir(), 'raycast-slice3-language-'))
@@ -222,7 +222,7 @@ test('configured artifact: language sets, nested AddLanguageForm, and restart pe
     await buildTrustedRaycast(work, artifact)
     messages = []
     const manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath: process.execPath, stateFile, onMessage: (_owner, message) => messages.push(message) })
-    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: {} })
+    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, lang1: 'zh-CN', autoInput: false } })
     return manager
   }
   let manager: TrustedRaycastManager | undefined
@@ -299,7 +299,7 @@ test('configured artifact: language sets, nested AddLanguageForm, and restart pe
   }
 })
 
-test('configured artifact: TTS runs the upstream https.get + afplay flow in private temp and cleans up', { skip: process.platform !== 'darwin' ? 'macOS afplay proof' : configured.skip, timeout: 90000 }, async () => {
+test('configured artifact: TTS runs the upstream https.get + afplay flow in private temp and cleans up', { skip: process.platform !== 'darwin' ? 'macOS afplay proof' : configuredArtifact === undefined ? 'set TRUSTED_RAYCAST_ARTIFACT_TAR for live TTS proof' : false, timeout: 90000 }, async () => {
   // @ts-expect-error JavaScript helper owns the configured artifact build.
   const { buildTrustedRaycast } = await import('../scripts/trusted-raycast-build.mjs')
   const work = mkdtempSync(join(tmpdir(), 'raycast-slice3-tts-'))
@@ -308,7 +308,7 @@ test('configured artifact: TTS runs the upstream https.get + afplay flow in priv
   try {
     await buildTrustedRaycast(work, artifact)
     manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath: process.execPath, onMessage: (_owner, message) => messages.push(message) })
-    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: {} })
+    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, autoInput: false } })
     const session = Reflect.get(manager, 'session')!
     const mp3 = join(session.workspace, 'tmp', 'translation.mp3')
     const { latestRoot, waitRoot, action } = projections(messages)
@@ -351,7 +351,7 @@ test('configured artifact: TTS runs the upstream https.get + afplay flow in priv
   }
 })
 
-test('configured artifact: debounce coalesces keystrokes into one final translation', { ...configured, timeout: 60000 }, async () => {
+test('reviewed artifact: debounce coalesces keystrokes into one final translation', { timeout: 60000 }, async () => {
   // @ts-expect-error JavaScript helper owns the configured artifact build.
   const { buildTrustedRaycast } = await import('../scripts/trusted-raycast-build.mjs')
   const work = mkdtempSync(join(tmpdir(), 'raycast-slice3-debounce-'))
@@ -360,12 +360,12 @@ test('configured artifact: debounce coalesces keystrokes into one final translat
   try {
     await buildTrustedRaycast(work, artifact)
     manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath: process.execPath, onMessage: (_owner, message) => messages.push(message) })
-    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: {} })
+    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, autoInput: false } })
     const { latestRoot, waitRoot } = projections(messages)
     const ready = latestRoot()
     const send = (value: string) => {
-      const message = latestRoot()
-      manager!.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: message.revision, eventId: message.root.props.searchEventId, kind: 'searchChanged', value })
+      const session = Reflect.get(manager!, 'session')!
+      manager!.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: session.revision, eventId: session.eventId, kind: 'searchChanged', value })
     }
     send('ab')
     await wait(60)

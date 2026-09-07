@@ -10,18 +10,30 @@ class Element extends EventTarget {
   value = ''; textContent = ''; placeholder = ''; hidden = false; disabled = false; isConnected = true; tabIndex = 0; open = false
   className = ''
   id = ''
+  focused = false
   get options(): Element[] { return this.children }
   append(...children: Element[]) { this.children.push(...children) }
   setAttribute(name: string, value: string) { this.attributes.set(name, value) }
   getAttribute(name: string) { return this.attributes.get(name) ?? null }
   replaceChildren() { this.children = [] }
-  focus() {}
+  focus() { this.focused = true }
   contains() { return false }
 }
 const flush = () => new Promise(resolve => setImmediate(resolve))
 const projection = (revision: number): TrustedRaycastViewMessage => ({ type: revision ? 'patch' : 'ready', sessionId: 's', generation: 'g', revision, root: { type: 'raycast-list', props: { searchEventId: `e${revision}` }, children: [] } })
 const inputOf = (nodes: Element[]): Element => nodes.find(node => node.id === 'trusted-raycast-search')!
 const errorOf = (nodes: Element[]): Element => nodes.find(node => node.getAttribute('role') === 'alert')!
+
+test('launcher focus requests target the visible Translate search control', () => {
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, {} as LauncherPreloadBridge, () => {})
+  view.update(projection(0))
+  const input = inputOf(nodes)
+  input.focused = false
+  view.focus()
+  assert.equal(input.focused, true)
+})
 
 test('latest typed input is coalesced and retried when a newer projection overtakes delivery', async () => {
   const nodes: Element[] = []
@@ -69,9 +81,11 @@ test('source action outcomes remain visible when React commits after callback co
   const message: TrustedRaycastViewMessage = { ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [{ type: 'raycast-list-item', props: { title: '<img src=x onerror=alert(1)>' }, children: [{ type: 'raycast-action', props: { title: 'Copy Translation', actionEventId: 'copy' }, children: [] }] }] } }
   view.update(message)
   nodes.find(node => node.textContent === 'Copy Translation')!.dispatchEvent(new Event('click'))
+  assert.equal((view.element as unknown as Element).getAttribute('aria-busy'), 'true')
   await flush()
   assert.equal(sent[0]?.eventId, 'copy')
   view.update({ type: 'outcome', sessionId: 's', generation: 'g', revision: 0, eventId: 'copy', succeeded: true, message: '' })
+  assert.equal((view.element as unknown as Element).getAttribute('aria-busy'), 'false')
   assert.ok(nodes.some(node => node.textContent === 'Action Completed'), 'completion status is visible')
   view.update({ ...message, type: 'patch', revision: 1, status: 'ready' })
   assert.ok(nodes.some(node => node.textContent === 'Action Completed'), 'outcome-before-commit must not disappear')
@@ -114,6 +128,20 @@ test('empty results stay centered and retain root language-set actions', () => {
   assert.equal(menu.open, true)
 })
 
+test('EmptyView renders explicit Hourglass and neutral implicit search icons', () => {
+  const nodes: Element[] = []
+  const document = {
+    createElement() { const node = new Element(); nodes.push(node); return node },
+    createElementNS(_namespace: string, tag: string) { const node = new Element(); node.setAttribute('tag', tag); nodes.push(node); return node },
+  } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [{ type: 'raycast-empty', props: { title: 'Translating…', icon: 'Hourglass' }, children: [] }] } })
+  assert.equal(nodes.filter(node => node.getAttribute('tag') === 'path').length, 4)
+  assert.equal(nodes.some(node => node.getAttribute('tag') === 'circle'), false)
+  view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [{ type: 'raycast-empty', props: { title: 'No Results' }, children: [] }] } })
+  assert.equal(nodes.some(node => node.getAttribute('tag') === 'circle'), true)
+})
+
 test('result accessories are bounded text and malformed values stay inert', () => {
   const nodes: Element[] = []
   const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
@@ -125,6 +153,26 @@ test('result accessories are bounded text and malformed values stay inert', () =
   const oversized = 'x'.repeat(257)
   view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [row(JSON.stringify([{ text: oversized }]))] } })
   assert.equal(nodes.some(node => node.textContent === oversized), false)
+})
+
+test('terminal errors clear query and action busy state', () => {
+  const actionNodes: Element[] = []
+  const actionDocument = { createElement() { const node = new Element(); actionNodes.push(node); return node } } as unknown as Document
+  const actionView = createTrustedRaycastView(actionDocument, { trustedRaycastEvent: () => new Promise<void>(() => {}) } as unknown as LauncherPreloadBridge, () => {})
+  actionView.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [{ type: 'raycast-list-item', props: { title: 'result' }, children: [{ type: 'raycast-action', props: { title: 'Copy', actionEventId: 'copy' }, children: [] }] }] } })
+  actionNodes.find(node => node.textContent === 'Copy')!.dispatchEvent(new Event('click'))
+  assert.equal((actionView.element as unknown as Element).getAttribute('aria-busy'), 'true')
+  actionView.update({ type: 'error', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
+  assert.equal((actionView.element as unknown as Element).getAttribute('aria-busy'), 'false')
+
+  const queryNodes: Element[] = []
+  const queryDocument = { createElement() { const node = new Element(); queryNodes.push(node); return node } } as unknown as Document
+  const queryView = createTrustedRaycastView(queryDocument, { trustedRaycastEvent: () => new Promise<void>(() => {}) } as unknown as LauncherPreloadBridge, () => {})
+  queryView.update(projection(0))
+  inputOf(queryNodes).dispatchEvent(new Event('input'))
+  assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'true')
+  queryView.update({ type: 'error', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
+  assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'false')
 })
 
 test('internal stale or busy action rejections surface as a neutral retry message, not runtime text', async () => {

@@ -7,6 +7,7 @@ import type { LauncherActionRecord, LauncherInternalResultItem } from '../src/la
 import {
   LauncherOverlayController,
   resolveLauncherBounds,
+  resolveLauncherDisplayWorkArea,
   resolveLauncherShortcut,
 } from '../src/launcher-window-controller.ts'
 
@@ -148,6 +149,16 @@ test('launcher shortcut and geometry use the platform contract', () => {
     x: -4,
     y: 6,
   })
+})
+
+test('smoke placement prefers a connected non-primary display with a safe cursor-display fallback', () => {
+  const primary = { x: 0, y: 0, width: 1440, height: 900 }
+  const extended = { x: 1440, y: 0, width: 1920, height: 1080 }
+  const displays = [{ id: 1, workArea: primary }, { id: 2, workArea: extended }]
+  assert.deepEqual(resolveLauncherDisplayWorkArea(displays, 1, primary, true), extended)
+  assert.deepEqual(resolveLauncherDisplayWorkArea(displays.slice(0, 1), 1, primary, true), primary)
+  assert.throws(() => resolveLauncherDisplayWorkArea(displays.slice(0, 1), 1, primary, true, true), /requires a connected extended display/)
+  assert.deepEqual(resolveLauncherDisplayWorkArea(displays, 1, primary, false), primary)
 })
 
 test('macOS activates the app before showing the launcher', async () => {

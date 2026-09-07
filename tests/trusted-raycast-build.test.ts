@@ -36,9 +36,8 @@ test('build omits absent candidate and rejects unapproved bytes before compilati
     assert.equal(existsSync(join(root, 'trusted-raycast')), false)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
-test('configured build records exact original archive identity', async t => {
-  const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
-  if (!artifact) return t.skip('set TRUSTED_RAYCAST_ARTIFACT_TAR')
+test('reviewed build records exact original archive identity', async () => {
+  const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR ?? join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
   const root = mkdtempSync(join(tmpdir(), 'raycast-build-test-'))
   try {
     await buildTrustedRaycast(root, artifact)
@@ -49,9 +48,8 @@ test('configured build records exact original archive identity', async t => {
     assert.equal(existsSync(join(root, 'trusted-raycast', 'google-translate.png')), true)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
-test('configured rebuilds are byte-identical: fixed work root keeps every emitted file deterministic', async t => {
-  const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
-  if (!artifact) return t.skip('set TRUSTED_RAYCAST_ARTIFACT_TAR')
+test('reviewed rebuilds are byte-identical: fixed work root keeps every emitted file deterministic', async () => {
+  const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR ?? join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
   const root = mkdtempSync(join(tmpdir(), 'raycast-repro-test-'))
   const digestOf = (dir: string): string => {
     const hash = createHash('sha256')

@@ -200,6 +200,9 @@ export function smokeEnvironment(overrides = {}, disposableRoot = undefined, tem
   const environment = { ...process.env, ...overrides }
   for (const key of smokeOverrideKeys) delete environment[key]
   delete environment.ELECTRON_RUN_AS_NODE
+  environment.TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY = '1'
+  if (process.env.CI) delete environment.TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY
+  else environment.TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY = '1'
   if (disposableRoot !== undefined) {
     Object.assign(environment, disposableEnvironmentPaths(disposableRoot, temporaryRoot))
     environment.PATH = trustedPath()

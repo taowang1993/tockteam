@@ -209,7 +209,7 @@ async function syncDirectory(directory: string): Promise<void> {
   finally { await handle.close() }
 }
 
-async function ensurePrivateDirectory(directory: string): Promise<void> {
+export async function ensurePrivateDirectory(directory: string): Promise<void> {
   await mkdir(path.dirname(directory), { recursive: true, mode: 0o700 })
   try { await mkdir(directory, { mode: 0o700 }) }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
@@ -226,14 +226,13 @@ async function ensurePrivateDirectory(directory: string): Promise<void> {
 }
 
 /** Managed app-owned atomic file writer. It never follows a temporary symlink. */
-async function atomicWrite(filePath: string, contents: string, options: Readonly<{
+export async function atomicWrite(filePath: string, contents: string, options: Readonly<{
   backup?: boolean
   backupMaxBytes?: number
   validateBackup?: (contents: string) => void
 }> = {}): Promise<void> {
   const directory = path.dirname(filePath)
-  await mkdir(directory, { recursive: true, mode: 0o700 })
-  await chmod(directory, 0o700)
+  await ensurePrivateDirectory(directory)
   if (options.backup !== false && await exists(filePath)) {
     try {
       const previous = await readBoundedRegularFile(filePath, options.backupMaxBytes ?? MAX_LAUNCHER_INDEX_BYTES)

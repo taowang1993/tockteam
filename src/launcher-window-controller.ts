@@ -15,6 +15,19 @@ export const TOCKLAUNCHER_WINDOW_SIZE = Object.freeze({
   width: 750,
 })
 
+export function resolveLauncherDisplayWorkArea(
+  displays: readonly Readonly<{ id: number; workArea: Rectangle }>[],
+  primaryId: number,
+  cursorWorkArea: Rectangle,
+  preferExtended: boolean,
+  requireExtended = false,
+): Rectangle {
+  if (!preferExtended) return cursorWorkArea
+  const extended = displays.find(display => display.id !== primaryId)
+  if (extended === undefined && requireExtended) throw new Error('TockLauncher smoke requires a connected extended display')
+  return extended?.workArea ?? cursorWorkArea
+}
+
 type LauncherWebContents = Readonly<{
   id: number
   on: (...args: any[]) => unknown

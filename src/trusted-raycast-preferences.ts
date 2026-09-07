@@ -1,7 +1,6 @@
-import { randomUUID } from 'node:crypto'
-import { closeSync, constants, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { lstatSync, readFileSync } from 'node:fs'
 import { isTrustedRaycastPreferences, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastPreference } from './trusted-raycast-contract.ts'
+import { atomicWrite } from './launcher-persistence.ts'
 
 export type TrustedRaycastPreferences = Readonly<Record<string, TrustedRaycastPreference>>
 export type TrustedRaycastPreferenceState = Readonly<{ configured: boolean; values: TrustedRaycastPreferences }>
@@ -20,23 +19,10 @@ export function loadTrustedRaycastPreferences(path: string): TrustedRaycastPrefe
 }
 
 /** Persist only a renderer-independent, fully validated preference projection. */
-export function saveTrustedRaycastPreferences(path: string, values: unknown): void {
+export async function saveTrustedRaycastPreferences(path: string, values: unknown): Promise<void> {
   if (!isTrustedRaycastPreferences(values)) throw new Error('Invalid Translate preferences')
   try { if (lstatSync(path).isSymbolicLink()) throw new Error('Translate preferences path is a symlink') } catch (error) {
     if (error instanceof Error && !('code' in error && error.code === 'ENOENT')) throw error
   }
-  const directory = dirname(path)
-  mkdirSync(directory, { recursive: true })
-  const temporary = join(directory, `.${basename(path)}.${randomUUID()}.tmp`)
-  let descriptor: number | undefined
-  try {
-    descriptor = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0), 0o600)
-    writeFileSync(descriptor, `${JSON.stringify(values)}\n`)
-    fsyncSync(descriptor)
-    closeSync(descriptor); descriptor = undefined
-    renameSync(temporary, path)
-  } finally {
-    if (descriptor !== undefined) closeSync(descriptor)
-    rmSync(temporary, { force: true })
-  }
+  await atomicWrite(path, `${JSON.stringify(values)}\n`, { backup: false })
 }

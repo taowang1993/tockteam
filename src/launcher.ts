@@ -354,6 +354,7 @@ async function bootstrap(): Promise<void> {
   )
 
   const restoreSearchFocus = (): void => {
+    if (trustedView !== undefined) { trustedView.focus(); return }
     search.focus()
     search.select()
   }
@@ -506,6 +507,7 @@ async function bootstrap(): Promise<void> {
   }
 
   focusSearchHandler = (): void => {
+    if (trustedView !== undefined) { trustedView.focus(); return }
     actionMenuOpen = false
     historyOpen = false
     historyPanel.hidden = true
@@ -616,7 +618,7 @@ async function bootstrap(): Promise<void> {
         restoreSearchFocus()
         return
       }
-      if (trustedView !== undefined) return
+      if (trustedView !== undefined) { trustedView.focus(); return }
       if (!surfaceSettings.preserveUserInput) search.value = ''
       if (toolId !== undefined) {
         await openLocalTool(toolId)

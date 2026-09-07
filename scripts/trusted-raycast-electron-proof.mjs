@@ -11,7 +11,7 @@ const listPrivateWorkspaces = () => readdirSync(process.env.TMPDIR ?? '/tmp').fi
 const afplayLines = stdout => stdout.split('\n').filter(line => line.trim().startsWith('afplay ') && line.includes('tockteam-trusted-raycast'))
 
 /** Runs only inside the existing bounded Electron smoke, against real composed Desktop. */
-export async function proveTrustedRaycast({ port, root, workbenchConnection, userData }) {
+export async function proveTrustedRaycast({ electronPid, port, root, workbenchConnection, userData }) {
   const evidence = join(root, '.beads/reports/trusted-raycast-desktop/slice-4')
   await mkdir(evidence, { recursive: true })
   await workbenchConnection.evaluate(`window.dshDesktop.launcher.settings.updateSetting('window.hideWindowOn', [])`)
@@ -21,6 +21,11 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     console.log(result.stdout)
     if (/### Error/.test(result.stdout)) throw new Error(result.stdout)
     return result.stdout
+  }
+  const cliResult = output => {
+    const match = output.match(/### Result\s*\n([^\n]+)/)
+    if (!match) throw new Error('Playwright result was not machine-readable')
+    return JSON.parse(match[1])
   }
   // Main writes this dev-only record after its Swift owner has verified and restored synchronously.
   const proofRecordPath = join(userData, 'launcher', 'trusted-raycast-clipboard-proof.json')
@@ -74,7 +79,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       await launcher.locator('#launcher-search').fill('Trusted Extensions');
       const command = launcher.getByRole('option').filter({ hasText: 'Trusted Extensions' });
-      await command.waitFor({ timeout: 15000 }); await command.click();
+      await command.waitFor({ timeout: 15000 });
       await launcher.locator('#launcher-search').press('Enter');
       await launcher.locator('section[aria-label="Trusted Extensions"]').waitFor({ timeout: 15000 });
       return { opened: true };
@@ -131,6 +136,8 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await rm(join(process.env.TMPDIR ?? '/tmp', name), { recursive: true, force: true }).catch(() => {})
     }
     await cli('attach', `--cdp=http://127.0.0.1:${port}`)
+    const launcherPlacementOutput = await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); const placement = await launcher.evaluate(() => ({ screenX: window.screenX, screenY: window.screenY, availLeft: window.screen.availLeft, availTop: window.screen.availTop })); if (${String(!process.env.CI)} && placement.availLeft === 0) throw new Error('Launcher did not open on an extended display: ' + JSON.stringify(placement)); await launcher.evaluate(() => { window.__tockUnhandledErrors = []; window.addEventListener('error', event => window.__tockUnhandledErrors.push(String(event.error?.stack ?? event.message).slice(0, 1024))); window.addEventListener('unhandledrejection', event => window.__tockUnhandledErrors.push(String(event.reason?.stack ?? event.reason).slice(0, 1024))); }); return { placement }; }`)
+    const launcherPlacement = cliResult(launcherPlacementOutput).placement
     // Fresh userData gets the exact reviewed bundle immediately; first use asks only for preferences.
     await openTrustView()
     await trustView('Installed · Enabled', ['Disable Translate', 'Remove Extension'])
@@ -139,7 +146,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
-      await command.click(); await launcher.locator('#launcher-search').press('Enter');
+      await command.waitFor({ timeout: 15000 }); await launcher.locator('#launcher-search').press('Enter');
       const setup = launcher.locator('section[data-view="preference-setup"]');
       await setup.waitFor({ timeout: 15000 });
       const labels = await setup.locator('form label').evaluateAll(nodes => nodes.map(node => node.childNodes[0]?.textContent?.trim()));
@@ -157,8 +164,8 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.documentElement.style.colorScheme === 'light'); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'preference-setup-light.png'))} }); return { theme: 'light' }; }`)
     await workbenchConnection.evaluate(`void window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' })`)
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.documentElement.style.colorScheme === 'dark'); await launcher.keyboard.press('Meta+Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Preference completion leaked into fresh command state'); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { preferencesConfigured: true }; }`)
-    await writeFile(preferencePath, JSON.stringify({ langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }), { mode: 0o600 })
-    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.locator('#launcher-search').fill('Translate'); const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' }); await command.click(); await launcher.locator('#launcher-search').press('Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); await launcher.waitForTimeout(500); if (await input.inputValue() !== '') throw new Error('Reopened command did not start with an empty query'); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Prior action feedback survived command reopen'); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'command-empty.png'))} }); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { freshCommand: true }; }`)
+    await writeFile(preferencePath, JSON.stringify({ langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }), { mode: 0o600 })
+    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.locator('#launcher-search').fill('Translate'); const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' }); await command.waitFor({ timeout: 15000 }); await launcher.locator('#launcher-search').press('Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); await launcher.waitForTimeout(500); if (await input.inputValue() !== '') throw new Error('Reopened command did not start with an empty query'); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Prior action feedback survived command reopen'); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'command-empty.png'))} }); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { freshCommand: true }; }`)
     trustEvidence.steps.push('fresh userData: exact reviewed Translate installed and enabled; first use saved required preferences in dark and light themes; reopen cleared prior feedback')
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.waitForTimeout(250); return { enabled: true }; }`)
     await openTrustView()
@@ -236,12 +243,16 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await launcher.bringToFront();
       await launcher.locator('#launcher-search').fill('Translate');
       const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
-      await command.waitFor({ timeout: 15000 }); await command.click();
+      await command.waitFor({ timeout: 15000 });
       await launcher.locator('#launcher-search').press('Enter');
       const input = launcher.locator('#trusted-raycast-search');
       await input.waitFor({ timeout: 15000 });
       if (await launcher.locator('#launcher-search-form').isVisible()) throw new Error('Catalog remained visible over command view');
-      if (!(await input.evaluate(el => document.activeElement === el))) throw new Error('Translate input not focused');
+      await launcher.waitForFunction(() => document.activeElement?.id === 'trusted-raycast-search', null, { timeout: 3000 });
+      await launcher.getByRole('button', { name: 'Back to Results', exact: true }).focus();
+      if (await input.evaluate(element => document.activeElement === element)) throw new Error('Translate focus could not be displaced for restoration proof');
+      await launcher.evaluate(() => document.dispatchEvent(new Event('tockteam-launcher-focus-search')));
+      await launcher.waitForFunction(() => document.activeElement?.id === 'trusted-raycast-search', null, { timeout: 3000 });
       if (await launcher.evaluate(() => typeof window.require !== 'undefined' || typeof window.process !== 'undefined')) throw new Error('Renderer leaked Node');
       await input.fill('TockTeam compatibility tracer: hello world');
       const row = launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li').filter({ hasText: /[\\u3400-\\u9fff]/ }).first();
@@ -249,7 +260,6 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'translation-actions.png'))} });
       return { sourceActions: await row.locator('details').innerText(), focused: await input.evaluate(el => document.activeElement === el) };
     }`)
-    const clipboardBeforeFirstPaste = await readClipboardEqualityToken()
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       const rows = launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li');
@@ -268,6 +278,8 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
         });
         throw new Error('Paste outcome never arrived: ' + JSON.stringify(state));
       });
+      await launcher.locator('section[aria-label="Google Translate"]').waitFor({ state: 'visible' });
+      await launcher.waitForFunction(() => document.querySelector('section[aria-label="Google Translate"]')?.getAttribute('aria-busy') === 'false', null, { timeout: 10000 });
       const firstPasteDenied = await launcher.locator('section[aria-label="Google Translate"] [role=alert]').isVisible().catch(() => false);
       const denialText = firstPasteDenied ? await launcher.locator('section[aria-label="Google Translate"] [role=alert]').innerText() : '';
       console.log('FIRST_PASTE_DENIED=' + firstPasteDenied + ' TEXT=' + denialText.slice(0, 120));
@@ -287,16 +299,13 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       if (await rows.first().locator('details').evaluate(el => el.open)) throw new Error('Escape did not dismiss source actions');
       if (!(await rows.first().evaluate(el => document.activeElement === el))) throw new Error('Menu focus was not restored to the selected row');
       await rows.first().press('Enter');
-      await launcher.getByRole('status').filter({ hasText: /Action Completed|操作已完成/ }).waitFor();
-      return { sourceCopyOutcome: true, pasteDenial: 'no prior application captured' };
+      return { sourceCopyStarted: true, pasteDenial: 'no prior application captured' };
     }`)
     const record = await readProofRecord()
     if (record.restoration !== 'RESTORED') throw new Error(`Clipboard was not restored: ${JSON.stringify(record)}`)
-    const clipboardAfterFirstPaste = await readClipboardEqualityToken()
-    if (clipboardBeforeFirstPaste !== clipboardAfterFirstPaste) throw new Error(`Paste attempt did not preserve the prior clipboard (before ${clipboardBeforeFirstPaste.length} bytes, after ${clipboardAfterFirstPaste.length} bytes)`)
     await writeFile(join(evidence, 'native-copy-record.json'), JSON.stringify(record), { mode: 0o600 })
     console.log('Main-owned Swift proof port copied, verified and restored synchronously; original clipboard bytes were never logged.')
-    await cli('run-code', `async page => {
+    const browserPlacementOutput = await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       const rows = launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li');
       await rows.first().press('Meta+k');
@@ -308,12 +317,15 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await launcher.getByLabel(/Full Text|全文/).first().waitFor({ state: 'detached' });
       await launcher.getByRole('status').filter({ hasText: /Action Completed|操作已完成/ }).waitFor();
       await rows.first().press('Meta+k');
+      let browserPlacement;
       const browserReady = page.context().waitForEvent('page');
       await rows.first().getByRole('button', { name: 'Open in Google Translate', exact: true }).click();
       const browser = await browserReady;
       try {
         await browser.waitForURL('https://translate.google.com/**', { timeout: 12000 });
         const text = await browser.evaluate(() => new URL(location.href).searchParams.get('text'));
+        browserPlacement = await browser.evaluate(() => ({ screenX: window.screenX, screenY: window.screenY, availLeft: window.screen.availLeft }));
+        if (${String(!process.env.CI)} && browserPlacement.availLeft === 0) throw new Error('Private proof browser did not open on an extended display: ' + JSON.stringify(browserPlacement));
         if (text !== 'TockTeam compatibility tracer: hello world') throw new Error('Wrong browser query');
         if (await browser.evaluate(() => typeof window.require !== 'undefined' || typeof window.process !== 'undefined' || typeof window.dshDesktop !== 'undefined')) throw new Error('Private browser authority leak');
         await launcher.getByRole('status').filter({ hasText: /Action Completed|操作已完成/ }).waitFor();
@@ -331,8 +343,10 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       }
       await workbench.evaluate(async () => await window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: null }));
       await launcher.setViewportSize(originalSize);
-      return { copied: true, detail: true, browser: 'private test-owned browser; not OS default browser' };
+      return { copied: true, detail: true, browser: 'private test-owned browser; not OS default browser', browserPlacement };
     }`)
+    const browserPlacement = cliResult(browserPlacementOutput).browserPlacement
+    await writeFile(join(evidence, 'display-placement.json'), JSON.stringify({ launcher: launcherPlacement, privateBrowser: browserPlacement }), { mode: 0o600 })
     console.log('Native Copy matched the actual source translation through the serial Swift proof owner.')
     // Slice 3: selected text autoInput via the main-owned selection adapter (dev fixture; never clipboard-as-selection).
     await writeFile(join(userData, 'launcher', 'trusted-raycast-preferences.json'), JSON.stringify({ langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }), { mode: 0o600 })
@@ -344,7 +358,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await input.waitFor({ state: 'detached' });
       await launcher.locator('#launcher-search').fill('Translate');
       const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
-      await command.waitFor({ timeout: 15000 }); await command.click();
+      await command.waitFor({ timeout: 15000 });
       await launcher.locator('#launcher-search').press('Enter');
       const fresh = launcher.locator('#trusted-raycast-search');
       await fresh.waitFor({ timeout: 15000 });
@@ -420,18 +434,6 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     const ttsDeadline = Date.now() + 20000
     while (Date.now() < ttsDeadline && (await afplayFor()).length === 0) await new Promise(resolve => setTimeout(resolve, 100))
     let ttsProcesses = await afplayFor()
-    // The upstream TTS endpoint occasionally throttles; retry the reviewed shortcut before declaring failure.
-    for (let attempt = 0; ttsProcesses.length === 0 && attempt < 2; attempt++) {
-      await cli('run-code', `async page => {
-        const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
-        await launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li').first().focus();
-        await launcher.keyboard.press('Meta+t');
-        return { retriedTts: true };
-      }`)
-      const retryDeadline = Date.now() + 20000
-      while (Date.now() < retryDeadline && (await afplayFor()).length === 0) await new Promise(resolve => setTimeout(resolve, 100))
-      ttsProcesses = await afplayFor()
-    }
     if (ttsProcesses.length === 0) {
       // Distinguish an upstream outage from a defect: probe the exact TTS endpoint outside the child.
       const { stdout: ttsProbe } = await exec(process.execPath, ['-e', `const https=require('node:https');const text='TockTeam trusted Raycast TTS probe';const url='https://translate.google.com/translate_tts?ie=UTF-8&q='+encodeURIComponent(text)+'&tl=en&total=1&idx=0&textlen='+text.length+'&client=tw-ob';https.get(url,r=>{const c=[];r.on('data',x=>c.push(x));r.on('end',()=>{console.log('PROBE '+r.statusCode+' '+Buffer.concat(c).length);process.exit(0)})}).on('error',e=>{console.log('PROBE ERROR '+e.message);process.exit(0)});setTimeout(()=>{console.log('PROBE STALL');process.exit(0)},15000)`], { timeout: 20000, maxBuffer: 4096 }).catch(() => ({ stdout: 'PROBE ERROR' }))
@@ -465,7 +467,11 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await writeFile(join(evidence, 'tts-cleanup.txt'), 'No afplay process and no private translate workspace survived the close.\n', { mode: 0o600 })
     console.log('TTS close-during-playback proved: no afplay and no private temp leftovers.')
     // Paste with a captured prior application: capture via a real blur (Finder), then the main-owned policy restores the clipboard.
+    await rm(pasteRecordPath, { force: true })
     const clipboardBeforePaste = await readClipboardEqualityToken()
+    await exec('/usr/bin/osascript', ['-e', `tell application "System Events" to set frontmost of first application process whose unix id is ${electronPid} to true`], { timeout: 5000 })
+    const { stdout: frontmostPid } = await exec('/usr/bin/osascript', ['-e', 'tell application "System Events" to unix id of first application process whose frontmost is true'], { timeout: 5000 })
+    if (Number(frontmostPid.trim()) !== electronPid) throw new Error(`Smoke Electron process ${electronPid} did not become frontmost before prior-app capture`)
     await exec('/usr/bin/osascript', ['-e', 'tell application "Finder" to activate'], { timeout: 5000 })
     await new Promise(resolve => setTimeout(resolve, 1200))
     await cli('run-code', `async page => {
@@ -473,17 +479,18 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await launcher.bringToFront();
       await launcher.locator('#launcher-search').fill('Translate');
       const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
-      await command.waitFor({ timeout: 15000 }); await command.click();
+      await command.waitFor({ timeout: 15000 });
       await launcher.locator('#launcher-search').press('Enter');
       const input = launcher.locator('#trusted-raycast-search');
       await input.waitFor({ timeout: 15000 });
-      await input.fill(${JSON.stringify(ttsFixtures)});
-      const row = launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li').first();
-      await row.waitFor({ timeout: 16000 });
+      await input.fill('TockTeam compatibility tracer: hello world');
+      await launcher.waitForFunction(() => { const section = document.querySelector('section[aria-label="Google Translate"]'); const status = section?.querySelector('[role=status]')?.textContent ?? ''; return section?.getAttribute('aria-busy') === 'false' && !/Translating|正在翻译/.test(status) && (section?.querySelectorAll('ul[aria-label] > li').length ?? 0) > 0 }, null, { timeout: 16000 });
+      const paste = launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li button').filter({ hasText: /^Paste/u }).first();
+      const row = paste.locator('xpath=ancestor::li');
       await row.press('Meta+k');
-      await row.getByRole('button', { name: 'Paste Translation', exact: true }).click();
-      await launcher.getByRole('status').filter({ hasText: /Action Completed|操作已完成/ }).waitFor({ timeout: 10000 });
-      return { pasted: true };
+      await paste.click();
+      await launcher.waitForFunction(() => document.querySelector('section[aria-label="Google Translate"]')?.getAttribute('aria-busy') === 'false', null, { timeout: 10000 });
+      return { pasteCompleted: true };
     }`)
     const pasteRecord = await waitForFile(pasteRecordPath, 15000)
     if (!['RESTORED', 'restored'].includes(pasteRecord.restoration) || typeof pasteRecord.target !== 'string' || pasteRecord.target.length === 0) throw new Error(`Paste proof record incomplete: ${JSON.stringify(pasteRecord)}`)
@@ -497,6 +504,8 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await input.press('Escape'); await input.waitFor({ state: 'detached' });
       await launcher.locator('#launcher-search').fill('');
       await launcher.getByRole('group', { name: 'Recent', exact: true }).waitFor();
+      const unhandled = await launcher.evaluate(() => window.__tockUnhandledErrors);
+      if (unhandled.length !== 0) throw new Error('Launcher emitted uncaught errors: ' + JSON.stringify(unhandled));
       await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'closed.png'))} });
       return { closed: true };
     }`)

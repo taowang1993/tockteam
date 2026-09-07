@@ -171,7 +171,7 @@ import {
   executeTockTeamDestination,
   createTockTeamDestinationResults,
 } from './launcher-specialists.ts'
-import { LauncherOverlayController } from './launcher-window-controller.ts'
+import { LauncherOverlayController, resolveLauncherDisplayWorkArea } from './launcher-window-controller.ts'
 import {
   registerLauncherWindowIpcHandlers,
   registerWorkbenchLauncherIpcHandlers,
@@ -2265,7 +2265,11 @@ function initializeLauncher(): void {
     openGoogleTranslate: async url => {
       // Bounded development proof owns this private browser; never touch the user's default browser.
       if (!app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_BROWSER_FIXTURE === '1') {
-        const browser = new BrowserWindow({ width: 900, height: 650, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: `trusted-translate-proof-${randomBytes(16).toString('hex')}` } })
+        const extended = process.env.TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY === '1'
+          ? screen.getAllDisplays().find(display => display.id !== screen.getPrimaryDisplay().id)?.workArea
+          : undefined
+        if (extended === undefined && process.env.TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY === '1') throw new Error('Trusted Translate browser proof requires a connected extended display')
+        const browser = new BrowserWindow({ width: 900, height: 650, ...(extended === undefined ? {} : { x: extended.x + Math.max(0, Math.floor((extended.width - 900) / 2)), y: extended.y + Math.max(0, Math.floor((extended.height - 650) / 2)) }), webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: `trusted-translate-proof-${randomBytes(16).toString('hex')}` } })
         browser.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
         browser.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
         browser.webContents.session.setPermissionCheckHandler(() => false)
@@ -2402,7 +2406,13 @@ function initializeLauncher(): void {
   const nextController = new LauncherOverlayController({
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
     focusApp: () => app.focus({ steal: true }),
-    getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+    getDisplayWorkArea: () => resolveLauncherDisplayWorkArea(
+      screen.getAllDisplays(),
+      screen.getPrimaryDisplay().id,
+      screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+      process.env.TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY === '1',
+      process.env.TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY === '1',
+    ),
     getLocale: () => launcherLocale,
     getHideWindowOn: () => {
       const configured = repository.getSetting<unknown>('window.hideWindowOn', LAUNCHER_HIDE_WINDOW_ON_DEFAULT)
