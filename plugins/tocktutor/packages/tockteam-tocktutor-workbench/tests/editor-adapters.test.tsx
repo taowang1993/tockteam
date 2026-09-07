@@ -50,6 +50,20 @@ describe('CodeMirror Source editor', () => {
     expect(onSelection).toHaveBeenCalled()
   })
 
+  it('cancels a title edit on Escape even when the resulting blur fires immediately', async () => {
+    const onRenameTitle = vi.fn(async () => true)
+    render(<SourceEditor content={'# Keep\n'} onRenameTitle={onRenameTitle} title="Keep" />)
+    const title = await screen.findByRole('textbox', { name: 'Note title' }) as HTMLInputElement
+
+    fireEvent.change(title, { target: { value: 'Renamed' } })
+    title.focus()
+    fireEvent.keyDown(title, { key: 'Escape' })
+    fireEvent.blur(title)
+
+    expect(onRenameTitle).not.toHaveBeenCalled()
+    expect(title.value).toBe('Keep')
+  })
+
   it('rejects invalid titles and restores the authoritative title after a failed rename', async () => {
     const onRenameTitle = vi.fn(async () => false)
     render(<SourceEditor content={'# Keep\n'} onRenameTitle={onRenameTitle} title="Keep" />)

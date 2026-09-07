@@ -96,6 +96,7 @@ function SourceTitleEditor(props: { onRenameTitle?: (title: string) => Promise<b
   const [pending, setPending] = useState(false)
   const [value, setValue] = useState(props.title)
   const pendingRef = useRef(false)
+  const skipBlurRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -158,11 +159,18 @@ function SourceTitleEditor(props: { onRenameTitle?: (title: string) => Promise<b
         className="h-auto w-full border-0 bg-transparent p-0 text-[30px] leading-tight font-[650] tracking-[-.01em] text-[var(--tt-text)] outline-none focus-visible:ring-0"
         disabled={pending}
         readOnly={props.onRenameTitle === undefined}
-        onBlur={event => { commit(event.currentTarget.value) }}
+        onBlur={event => {
+          if (skipBlurRef.current) {
+            skipBlurRef.current = false
+            return
+          }
+          commit(event.currentTarget.value)
+        }}
         onChange={event => { setValue(event.currentTarget.value); setError(null) }}
         onKeyDown={event => {
           if (event.key === 'Escape') {
             event.preventDefault()
+            skipBlurRef.current = true
             restore()
             inputRef.current?.blur()
           } else if (event.key === 'Enter') {
