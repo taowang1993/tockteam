@@ -1004,6 +1004,7 @@ test('Canvas board and executable Base preserve bounded source identities', asyn
 
   assert.equal(await controller.select('Board.canvas'), true)
   assert.equal(controller.getSnapshot().documentKind, 'canvas')
+  assert.equal(controller.getSnapshot().mode, 'reading')
   controller.setMode('reading')
   controller.moveCanvasNode('node-1', 20, 0)
   const changed = JSON.parse(controller.getSnapshot().source) as {
@@ -1033,6 +1034,7 @@ test('Canvas board and executable Base preserve bounded source identities', asyn
 
   assert.equal(await controller.select('Tasks.base'), true)
   assert.equal(controller.getSnapshot().documentKind, 'base')
+  assert.equal(controller.getSnapshot().mode, 'reading')
   controller.setMode('reading')
   await new Promise(resolve => setImmediate(resolve))
   html = renderToStaticMarkup(createElement(TockTutorRouteView, {

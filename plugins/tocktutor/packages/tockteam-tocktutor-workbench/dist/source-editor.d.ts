@@ -33,6 +33,7 @@ export interface SourceEditorProps {
     resolvedEmbeds?: readonly import('./embeds.ts').ResolvedEmbedNode[];
     showFoldGutter?: boolean;
     spellCheck?: boolean;
+    title?: string;
     editorViewRef?: MutableRefObject<unknown | null>;
 }
 export type SelectionMouseEvent = Pick<MouseEvent, 'altKey' | 'shiftKey'>;

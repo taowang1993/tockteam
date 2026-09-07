@@ -1898,7 +1898,7 @@ export class WorkbenchRouteController {
         }
       }
       const mode = pane.tabs.find(tab => tab.path === path)?.mode
-        ?? (documentKind(path) === 'markdown' ? this.snapshot.settings?.defaultEditingMode ?? 'live-preview' : 'source')
+        ?? (documentKind(path) === 'markdown' ? this.snapshot.settings?.defaultEditingMode ?? 'live-preview' : 'reading')
       this.cancelEmbedOperation()
       this.embedTargets = embedTargetSources(content)
       this.update({
@@ -3335,6 +3335,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   onSelectionChange={selection => { props.onSelectionChange?.(selection.main.from, selection.main.to) }}
                   {...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds })}
                   spellCheck
+                  title={noteTitle(snapshot.path)}
                 />
               </div>
             ) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (

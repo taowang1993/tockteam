@@ -21,12 +21,18 @@ describe('CodeMirror Source editor', () => {
     const onSelection = vi.fn()
     const editorViewRef = { current: null }
     const { container } = render(
-      <SourceEditor content={source} editorViewRef={editorViewRef} onContentChange={onChange} onSelectionChange={onSelection} />,
+      <SourceEditor content={source} editorViewRef={editorViewRef} onContentChange={onChange} onSelectionChange={onSelection} title="Keep" />,
     )
 
     await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
-    expect(screen.getByLabelText('Markdown Source Editor').className).toContain('[&_.cm-editor]:[font:16px/1.5_ui-monospace,SFMono-Regular,Consolas,monospace]')
+    const sourceEditor = screen.getByLabelText('Markdown Source Editor')
+    expect(sourceEditor.className).toContain("[&_.cm-editor]:[font:16px/1.5_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]")
+    expect(sourceEditor.className).not.toContain('ui-monospace')
+    expect(sourceEditor.className).toContain('[&_.cm-content]:max-w-3xl')
+    expect(sourceEditor.className).toContain('[&_.cm-gutters]:hidden')
+    expect(sourceEditor.className).toContain('[&_.cm-activeLine]:bg-transparent')
     expect(screen.getByLabelText('Markdown Source Editor').className).toContain('[&_.cm-scroller]:leading-6')
+    expect(container.querySelector('.cm-content')?.getAttribute('data-inline-title')).toBe('Keep')
     expect(editorViewRef.current?.state.doc.toString()).toBe(source.replace(/\r\n?/gu, '\n'))
     expect(preserveEditorLineEndings(source, `${source.replace(/\r\n?/gu, '\n')}Tail`)).toBe(`${source}Tail`)
     editorViewRef.current?.dispatch({ changes: { from: editorViewRef.current.state.doc.length, insert: 'Tail' } })

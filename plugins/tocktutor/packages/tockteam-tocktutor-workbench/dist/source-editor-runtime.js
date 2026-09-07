@@ -4,7 +4,7 @@ import { minimalSetup } from 'codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { foldAll, foldCode, foldGutter, unfoldAll, unfoldCode } from '@codemirror/language';
 import { EditorSelection, EditorState } from '@codemirror/state';
-import { Decoration, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, rectangularSelection, scrollPastEnd, } from '@codemirror/view';
+import { Decoration, EditorView, keymap, rectangularSelection, scrollPastEnd, } from '@codemirror/view';
 import { projectEditorWidgets } from "./editor-widgets.js";
 import { useEffect, useMemo, useRef, } from 'react';
 import { buildSourceChange, preserveEditorLineEndings, shouldAddEditorSelectionRange, shouldStartEditorRectangularSelection, } from "./source-editor.js";
@@ -137,10 +137,7 @@ function buildEditorExtensions(props) {
     const extensions = [
         minimalSetup,
         markdown(),
-        lineNumbers(),
         ...(props.showFoldGutter ? [foldGutter()] : []),
-        highlightActiveLine(),
-        highlightActiveLineGutter(),
         scrollPastEnd(),
         EditorState.readOnly.of(!props.editable),
         EditorView.editable.of(props.editable),
@@ -158,7 +155,10 @@ function buildEditorExtensions(props) {
             ]),
         ] : []),
         EditorView.lineWrapping,
-        EditorView.contentAttributes.of({ spellcheck: props.spellCheck ? 'true' : 'false' }),
+        EditorView.contentAttributes.of({
+            spellcheck: props.spellCheck ? 'true' : 'false',
+            ...(props.title === undefined ? {} : { 'data-inline-title': props.title }),
+        }),
         EditorView.decorations.compute(['doc'], sourceDecorations),
         EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -225,7 +225,7 @@ export function SourceEditorRuntime(props) {
     const lastInsertIdRef = useRef(null);
     const lastFoldIdRef = useRef(null);
     const editable = props.editable !== false;
-    const showFoldGutter = props.showFoldGutter !== false;
+    const showFoldGutter = props.showFoldGutter === true;
     const userExtensions = props.extraExtensions ?? EMPTY_EXTENSIONS;
     const chromeExtensions = useMemo(() => [
         ...buildSourceEmbedWidgetExtension(() => embedsRef.current),
@@ -249,7 +249,8 @@ export function SourceEditorRuntime(props) {
         showFoldGutter,
         sourceRef,
         spellCheck: props.spellCheck !== false,
-    }), [editable, extraExtensions, showFoldGutter, props.spellCheck]);
+        ...(props.title === undefined ? {} : { title: props.title }),
+    }), [editable, extraExtensions, showFoldGutter, props.spellCheck, props.title]);
     useEffect(() => {
         const parent = parentRef.current;
         if (!parent)
@@ -310,6 +311,6 @@ export function SourceEditorRuntime(props) {
             unfoldCode(view);
         view.focus();
     }, [props.foldRequest]);
-    return _jsx("div", { "aria-label": props.ariaLabel ?? 'Markdown Source Editor', className: `tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_ui-monospace,SFMono-Regular,Consolas,monospace] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:border-0 [&_.cm-gutters]:bg-transparent [&_.cm-content]:pt-[30px] [&_.cm-content]:pr-7 [&_.cm-content]:pb-[72px] [&_.cm-lineNumbers]:text-[var(--tt-muted)] [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`, id: props.id, children: _jsx("div", { className: "min-h-0 min-w-0 flex-1", ref: parentRef }) });
+    return _jsx("div", { "aria-label": props.ariaLabel ?? 'Markdown Source Editor', className: `tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-content[data-inline-title]::before]:mb-4 [&_.cm-content[data-inline-title]::before]:block [&_.cm-content[data-inline-title]::before]:text-[30px] [&_.cm-content[data-inline-title]::before]:leading-tight [&_.cm-content[data-inline-title]::before]:font-[650] [&_.cm-content[data-inline-title]::before]:content-[attr(data-inline-title)] [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`, id: props.id, children: _jsx("div", { className: "min-h-0 min-w-0 flex-1", ref: parentRef }) });
 }
 //# sourceMappingURL=source-editor-runtime.js.map
