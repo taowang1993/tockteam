@@ -18,7 +18,13 @@
     ".agents/uiux/tocktutor/screenshots/tocktutor-base.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-base.png",
     ".agents/uiux/tocktutor/screenshots/tocktutor-canvas.png",
-    ".agents/uiux/tocktutor/screenshots/obsidian-canvas.png"
+    ".agents/uiux/tocktutor/screenshots/obsidian-canvas.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-editor-source.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-source-mode.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-command-palette.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-command-palette.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-file-recovery.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png"
   ],
   "graphs": {
     "fixture": {
@@ -150,6 +156,81 @@
       }
     }
   },
+  "sourceCommandRecovery": {
+    "fixture": "plugins/tocktutor/parity/fixtures/vault",
+    "sameIsolatedFixtureFor": ["source", "recovery"],
+    "commandPaletteReferenceException": "Obsidian command-palette image restored from HEAD after an invalid recapture; it remains an installed Obsidian reference.",
+    "fixtureBytes": 222,
+    "fixtureSha256": "sha256:a487cc40dd7e711233a178c2b7bda7620dfaddcd9e50f4bee9f17d2d7b208284",
+    "trackedAndCopiedFixtureHashesMatched": true,
+    "viewport": {
+      "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+      "pixels": { "width": 3024, "height": 1898 }
+    },
+    "source": {
+      "tockTutor": {
+        "mode": "source",
+        "path": "Notes/Alias Target.md",
+        "sourceBytes": 222,
+        "sourceSha256": "sha256:a487cc40dd7e711233a178c2b7bda7620dfaddcd9e50f4bee9f17d2d7b208284",
+        "exactRawSource": true,
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-source.png",
+        "pristine": true,
+        "visibleTooltips": 0
+      },
+      "obsidian": {
+        "version": "1.13.7",
+        "mode": "Source mode",
+        "path": "Notes/Alias Target.md",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-source-mode.png",
+        "sameIsolatedFixture": true,
+        "pristine": true,
+        "visibleTooltips": 0
+      }
+    },
+    "commandPalette": {
+      "tockTutor": {
+        "itemCount": 14,
+        "initialSelection": "New Note",
+        "keyboardSelection": "Search Notes",
+        "activated": true,
+        "cancelled": true,
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-command-palette.png",
+        "pristine": true,
+        "visibleTooltips": 0
+      },
+      "obsidian": {
+        "version": "1.13.7",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-command-palette.png",
+        "pairedReference": true,
+        "referenceRestoredFromHead": true
+      }
+    },
+    "recovery": {
+      "tockTutor": {
+        "snapshotCount": 1,
+        "selected": "Snapshot 1 · manual",
+        "previewIncludes": ["status: draft", "# Alias Target"],
+        "postCaptureSnapshotCount": 2,
+        "selectedPreEdit": "Snapshot 2 · manual",
+        "restoreBoundToRevision": true,
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-file-recovery.png",
+        "pristine": true,
+        "visibleTooltips": 0
+      },
+      "obsidian": {
+        "version": "1.13.7",
+        "path": "Notes/Alias Target.md",
+        "snapshotCount": 1,
+        "selected": true,
+        "previewIncludes": ["status: draft", "# Alias Target"],
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png",
+        "sameIsolatedFixture": true,
+        "pristine": true,
+        "visibleTooltips": 0
+      }
+    }
+  },
   "checks": {
     "properties": {
       "vaultIndex": true,
@@ -199,7 +280,21 @@
   },
   "captureEnvironment": {
     "tockTutor": { "temporaryProfile": true, "temporaryVault": true, "darkSkin": "tockteam-skin-deep-current" },
-    "obsidian": { "version": "1.13.7", "temporaryProfile": true, "temporaryVault": true, "darkTheme": true },
+    "obsidian": {
+      "version": "1.13.7",
+      "temporaryProfile": true,
+      "temporaryVault": true,
+      "darkTheme": true,
+      "displayPlacement": {
+        "display": { "x": 1512, "y": -42, "width": 1366, "height": 1024, "primary": false },
+        "standardWindow": { "x": 1512, "y": 30, "width": 1366, "height": 900 },
+        "dialogWindow": { "x": 1580, "y": 80, "width": 260, "height": 240 },
+        "displayCoordinateSystem": "AppKit NSScreen frame",
+        "windowCoordinateSystem": "Accessibility window bounds",
+        "verifiedBy": "non-primary display x-range",
+        "allWindowsOnExtendedDisplay": true
+      }
+    },
     "cleanup": { "electronTreesStopped": true, "temporaryProfilesRemoved": true, "agentBrowserDoctorPassed": true }
   },
   "authoritativeReferences": {
@@ -208,6 +303,9 @@
     "tags": ".agents/uiux/tocktutor/screenshots/obsidian-tags.png",
     "bookmarks": ".agents/uiux/tocktutor/screenshots/obsidian-bookmarks.png",
     "base": ".agents/uiux/tocktutor/screenshots/obsidian-base.png",
-    "canvas": ".agents/uiux/tocktutor/screenshots/obsidian-canvas.png"
+    "canvas": ".agents/uiux/tocktutor/screenshots/obsidian-canvas.png",
+    "source": ".agents/uiux/tocktutor/screenshots/obsidian-source-mode.png",
+    "commandPalette": ".agents/uiux/tocktutor/screenshots/obsidian-command-palette.png",
+    "recovery": ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png"
   }
 }
