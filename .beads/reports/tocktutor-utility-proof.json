@@ -1,0 +1,77 @@
+{
+  "capturedAt": "2026-09-07",
+  "viewport": {
+    "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+    "pixels": { "width": 3024, "height": 1898 }
+  },
+  "skin": "tockteam-skin-deep-current",
+  "screenshots": [
+    ".agents/uiux/tocktutor/screenshots/tocktutor-properties.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-properties.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-backlinks.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-backlinks.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-backlinks-unlinked-expanded.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-tags.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-tags.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-bookmarks.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-bookmarks.png"
+  ],
+  "checks": {
+    "properties": {
+      "vaultIndex": true,
+      "columns": ["Property", "Type", "Count"],
+      "duplicateUtilityHeading": false,
+      "footerBacklinkLabel": "1 backlink"
+    },
+    "backlinks": {
+      "linkedMentions": { "count": 1, "openByDefault": true },
+      "unlinkedMentions": { "count": 2, "openByDefault": false },
+      "duplicateUtilityHeading": false
+    },
+    "navigation": {
+      "linkedMention": {
+        "source": "Linked Source.md",
+        "activeAfterClick": "Linked Source.md",
+        "panelAfterClick": "backlinks",
+        "refreshedCount": "0"
+      },
+      "returnToTarget": {
+        "activeAfterClick": "Target.md",
+        "panelAfterClick": "backlinks",
+        "refreshedCounts": { "linked": 1, "unlinked": 2 }
+      },
+      "unlinkedMention": {
+        "source": "Unlinked Source.md",
+        "activeAfterClick": "Unlinked Source.md",
+        "panelAfterClick": "backlinks",
+        "refreshedCount": "0"
+      }
+    },
+    "tags": {
+      "vaultTags": ["#comparison · 2", "#utility · 1"],
+      "duplicateUtilityHeading": false
+    }
+  },
+  "bookmarks": {
+    "bookmarksOnly": true,
+    "activeEntry": "Target · note",
+    "duplicateUtilityHeading": false
+  },
+  "gallery": {
+    "uniqueImageSources": 45,
+    "captureCountLabel": "Visual Design Audit · 45 Captures",
+    "linkExistenceCheck": true,
+    "checkCommand": "node --test tests/tocktutor-gallery.test.ts"
+  },
+  "captureEnvironment": {
+    "tockTutor": { "temporaryProfile": true, "temporaryVault": true, "darkSkin": "tockteam-skin-deep-current" },
+    "obsidian": { "version": "1.13.7", "temporaryProfile": true, "temporaryVault": true, "darkTheme": true },
+    "cleanup": { "electronTreesStopped": true, "temporaryProfilesRemoved": true, "agentBrowserDoctorPassed": true }
+  },
+  "authoritativeReferences": {
+    "properties": ".agents/uiux/tocktutor/screenshots/obsidian-properties.png",
+    "backlinks": ".agents/uiux/tocktutor/screenshots/obsidian-backlinks.png",
+    "tags": ".agents/uiux/tocktutor/screenshots/obsidian-tags.png",
+    "bookmarks": ".agents/uiux/tocktutor/screenshots/obsidian-bookmarks.png"
+  }
+}

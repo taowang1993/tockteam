@@ -306,7 +306,9 @@ export interface TockTutorRouteViewProps {
     onForward?(): void;
     onInsertCurrentDateTime?(kind: 'date' | 'time'): void;
     onJumpToLine?(line: number): void;
+    onLoadFacets?(): void;
     onLoadGraph?(mode: 'global' | 'local'): void;
+    onLoadRelationships?(): void;
     onLoadWorkspace?(id: string): void;
     onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void;
     onMoveTab?(paneId: string, path: string, direction: -1 | 1): void;

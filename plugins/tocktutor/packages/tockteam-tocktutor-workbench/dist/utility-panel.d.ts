@@ -1,9 +1,7 @@
 import { type ReactNode } from 'react';
-import { parseFrontmatterProperties } from './properties.ts';
 import type { TockTutorRouteViewProps } from './route.tsx';
 export type WorkbenchUtilityView = 'attachments' | 'backlinks' | 'bookmarks' | 'extensions' | 'graph' | 'properties' | 'recovery' | 'tags' | 'tools' | 'web' | 'workspace';
 export type WorkbenchUtilitiesProps = TockTutorRouteViewProps & {
-    activeProperties: ReturnType<typeof parseFrontmatterProperties>;
     onClose(): void;
     view: WorkbenchUtilityView | null;
 };
