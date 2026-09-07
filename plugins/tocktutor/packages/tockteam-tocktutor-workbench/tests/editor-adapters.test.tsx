@@ -166,6 +166,7 @@ describe('Milkdown Live Preview editor', () => {
     const liveSurface = screen.getByLabelText('Live Preview Editor')
     expect(liveSurface.className).toContain('text-base')
     expect(liveSurface.className).toContain('[&_blockquote]:border-l-2')
+    expect(liveSurface.className).toContain('[&_blockquote]:pl-3')
     live.unmount()
 
     render(<RichReadingView source={'> Quoted lesson\n'} onToggleTask={() => {}} title="Quote" />)
@@ -173,6 +174,24 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.querySelector('blockquote')?.textContent).toBe('Quoted lesson')
     expect(readingSurface.className).toContain('text-base')
     expect(readingSurface.className).toContain('[&_blockquote]:border-l-2')
+    expect(readingSurface.className).toContain('[&_blockquote]:pl-3')
+  })
+
+  it('presents wikilinks without source brackets and shares Reading View link styling', async () => {
+    const live = render(<LivePreviewEditor content={'Review [[Welcome]] and [[Guide|start here]].\n'} onMarkdownChange={() => {}} />)
+
+    await waitFor(() => expect(live.container.querySelectorAll('.tocktutor-live-internal-link')).toHaveLength(2), { timeout: 5_000 })
+    expect([...live.container.querySelectorAll('.tocktutor-live-internal-link')].map(link => link.textContent)).toEqual(['Welcome', 'start here'])
+    expect([...live.container.querySelectorAll('.tocktutor-live-link-markup')].map(markup => markup.textContent).join('')).toBe('[[]][[Guide|]]')
+    const liveSurface = screen.getByLabelText('Live Preview Editor')
+    expect(liveSurface.className).toContain('[&_.tocktutor-live-internal-link]:underline')
+    live.unmount()
+
+    render(<RichReadingView source={'Review [[Welcome]].\n'} onToggleTask={() => {}} title="Links" />)
+    const readingSurface = screen.getByLabelText('Reading View').querySelector<HTMLElement>('.tocktutor-reading')!
+    expect(readingSurface.querySelector('a.internal-link')?.textContent).toBe('Welcome')
+    expect(readingSurface.className).toContain('[&_a]:underline')
+    expect(readingSurface.className).toContain('[&_a]:text-[var(--dsw-alias-brand-primary)]')
   })
 
   it('renders compact Obsidian-style task rows in Live Preview', async () => {

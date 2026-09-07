@@ -41,10 +41,12 @@ test('renders bounded rich Markdown without executing raw HTML or unsafe URLs', 
   assert.match(html, />A<\/span><span aria-hidden="true"> → <\/span><span class="mermaid-node">B</u)
 })
 
-test('renders ordinary blockquotes as semantic quoted content', () => {
-  const html = renderMarkdownHtml('> First line\n> second line\n')
+test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {
+  const html = renderMarkdownHtml('> First line\n> second line\n\nOpen [[Welcome]] and [[Study Guide|start here]].\n')
   assert.match(html, /<blockquote><p>First line<br>second line<\/p><\/blockquote>/u)
-  assert.doesNotMatch(html, /&gt; First line/u)
+  assert.match(html, /data-target="Welcome" href="#">Welcome<\/a>/u)
+  assert.match(html, /data-target="Study Guide" href="#">start here<\/a>/u)
+  assert.doesNotMatch(html, /&gt; First line|\[\[Study Guide/u)
 })
 
 test('honors strict line breaks and builds fenced-aware slides', () => {

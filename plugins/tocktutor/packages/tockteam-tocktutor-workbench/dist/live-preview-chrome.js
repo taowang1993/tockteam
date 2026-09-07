@@ -120,6 +120,16 @@ function decorations(state, folded) {
         }
         if (!node.isText || !node.text || node.marks.some(mark => mark.type.name === 'code'))
             return;
+        for (const match of node.text.matchAll(/\[\[([^\]|\n]{1,2000})(?:\|([^\]\n]{1,2000}))?\]\]/gu)) {
+            const from = pos + (match.index ?? 0);
+            const to = from + match[0].length;
+            if (state.selection.from <= to && state.selection.to >= from)
+                continue;
+            const label = match[2] ?? match[1];
+            const labelFrom = match[2] === undefined ? from + 2 : from + match[0].indexOf('|') + 1;
+            const labelTo = labelFrom + label.length;
+            values.push(Decoration.inline(from, labelFrom, { class: 'tocktutor-live-link-markup hidden' }), Decoration.inline(labelFrom, labelTo, { class: 'tocktutor-live-internal-link' }), Decoration.inline(labelTo, to, { class: 'tocktutor-live-link-markup hidden' }));
+        }
         for (const match of node.text.matchAll(/\$\$(.{1,20000})\$\$/gu)) {
             const from = pos + (match.index ?? 0);
             const to = from + match[0].length;

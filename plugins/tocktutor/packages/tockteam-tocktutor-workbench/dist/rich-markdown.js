@@ -1,4 +1,5 @@
 import { classifyExternalEmbed, externalEmbedButtonHtml, externalEmbedInertHtml, } from "./external-embeds.js";
+import { isSafeVaultRelativePath } from "./session.js";
 // Bounded TockTeam renderer informed by Tockbot's source-detached NotesExportHtml contract.
 export const MAX_RICH_MARKDOWN_BYTES = 2000_000;
 export const MAX_RICH_MARKDOWN_BLOCKS = 20000;
@@ -135,8 +136,9 @@ function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
             ? escapeMarkdownHtml(match)
             : `<a href="${escapeMarkdownHtml(url)}" rel="noopener noreferrer">${label}</a>`;
     });
-    text = text.replace(/\[\[([^\]\n]{1,2000})(?:\|([^\]\n]{0,2000}))?\]\]/gu, (_match, target, alias) => {
-        const path = safeUrl(target);
+    text = text.replace(/\[\[([^\]|\n]{1,2000})(?:\|([^\]\n]{1,2000}))?\]\]/gu, (_match, target, alias) => {
+        const candidate = target.trim();
+        const path = isSafeVaultRelativePath(candidate) ? candidate : null;
         return path === null
             ? escapeMarkdownHtml(`[[${target}${alias === undefined ? '' : `|${alias}`}]]`)
             : `<a class="internal-link" data-target="${escapeMarkdownHtml(path)}" href="#">${escapeMarkdownHtml(alias ?? target)}</a>`;
