@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -529,7 +529,9 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Properties' }))
     expect(onLoadFacets).toHaveBeenCalledOnce()
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('properties')
-    expect(screen.getByRole('region', { name: 'Properties' })).toBeTruthy()
+    const properties = screen.getByRole('region', { name: 'Properties' })
+    expect(properties).toBeTruthy()
+    expect(within(properties).queryByRole('heading', { name: 'Properties' })).toBeNull()
     expect(screen.getByRole('table', { name: 'Vault Properties' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Property' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Type' })).toBeTruthy()
@@ -587,6 +589,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(backlinks.textContent).toContain('The note appears in this context.')
     fireEvent.click(screen.getByRole('button', { name: 'Open Unlinked Mention Mention.md' }))
     expect(onSelect).toHaveBeenCalledWith('Mention.md')
+    expect(within(backlinks).queryByRole('heading', { name: 'Backlinks' })).toBeNull()
     expect(backlinks.textContent).not.toContain('Outline')
     expect(backlinks.textContent).not.toContain('Footnotes')
     expect(backlinks.textContent).not.toContain('Outgoing Links')
@@ -598,6 +601,8 @@ describe('TockTutor titlebar panel controls', () => {
 
     openNoteActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+    const bookmarks = screen.getByRole('region', { name: 'Bookmarks' })
+    expect(within(bookmarks).queryByRole('heading', { name: 'Bookmarks' })).toBeNull()
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('bookmarks')
     expect(screen.getByRole('region', { name: 'Bookmarks' }).textContent).toContain('Note')
     expect(screen.queryByRole('region', { name: 'Tags' })).toBeNull()
@@ -607,6 +612,7 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Tags' }))
     expect(onLoadFacets).toHaveBeenCalledOnce()
     const tags = screen.getByRole('region', { name: 'Tags' })
+    expect(within(tags).queryByRole('heading', { name: 'Tags' })).toBeNull()
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('tags')
     expect(tags.textContent).toContain('#lesson')
     expect(tags.textContent).toContain('2')

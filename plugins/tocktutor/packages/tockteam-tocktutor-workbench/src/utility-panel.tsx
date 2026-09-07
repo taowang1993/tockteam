@@ -196,8 +196,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             </details>
           </section>
           <section aria-label="Bookmarks" className="p-3" hidden={props.view !== 'bookmarks'}>
-            <h2 className="m-0 text-sm">Bookmarks</h2>
-            <div className="mt-2 grid gap-1">
+            <div className="grid gap-1">
               {(snapshot.bookmarks ?? []).map(bookmark => (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1" key={bookmark.id}>
                   <Button unstyled className="truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" onClick={() => { props.onOpenBookmark?.(bookmark.id) }} type="button">{bookmark.title} · {bookmark.kind}{bookmark.missing === true ? ' · Missing' : ''}</Button>
@@ -208,8 +207,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             </div>
           </section>
           <section aria-label="Tags" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'tags'}>
-            <h2 className="m-0 text-sm">Tags</h2>
-            <div aria-label="Vault Tags" className="mt-2 grid gap-0.5" role="list">
+            <div aria-label="Vault Tags" className="grid gap-0.5" role="list">
               {vaultTags.map(tag => (
                 <div className="min-w-0" key={tag.tag.toLocaleLowerCase()} role="listitem">
                   <Button unstyled className="w-full truncate rounded border-0 bg-transparent px-1 py-1 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" onClick={() => { props.onSearchChange?.(`tag:${tag.tag}`); props.onRunSearch?.() }} type="button">#{tag.tag} · {String(tag.count)}</Button>
@@ -219,8 +217,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             </div>
           </section>
           <section aria-label="Properties" className="p-3" hidden={props.view !== 'properties'}>
-            <h2 className="m-0 text-sm">Properties</h2>
-            <table aria-label="Vault Properties" className="mt-2 w-full table-fixed border-collapse text-xs">
+            <table aria-label="Vault Properties" className="w-full table-fixed border-collapse text-xs">
               <thead>
                 <tr className="border-b border-[var(--tt-border)] text-left text-[var(--tt-muted)]">
                   <th className="w-[46%] px-1 py-1 font-medium" scope="col">Property</th>
@@ -243,8 +240,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             </table>
           </section>
           <section aria-label="Backlinks" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'backlinks'}>
-            <h2 className="m-0 text-sm">Backlinks</h2>
-            <details className="mt-2 rounded border border-[var(--tt-border)]" open>
+            <details className="rounded border border-[var(--tt-border)]" open>
               <summary className="cursor-pointer list-none px-2 py-1.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]">Linked Mentions ({String(linkedMentions.length)})</summary>
               <div className="grid gap-1 border-t border-[var(--tt-border)] p-2">
                 {linkedMentions.map((link, index) => (
