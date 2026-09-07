@@ -175,6 +175,7 @@ test('terminal errors clear query and action busy state', () => {
   const status = queryNodes.find(node => node.getAttribute('role') === 'status')!
   const panelActions = queryNodes.find(node => node.className.startsWith('flex flex-wrap items-start'))!
   const footerActions = queryNodes.find(node => node.getAttribute('aria-label') === 'Command Actions')!
+  assert.equal(footerActions.getAttribute('role'), 'group')
   assert.equal(queryResults.children.length, 1)
   assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'true')
   queryView.update({ type: 'error', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
