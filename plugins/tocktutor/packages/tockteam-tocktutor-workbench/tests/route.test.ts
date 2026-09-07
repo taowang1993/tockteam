@@ -135,6 +135,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   renameRewriteError: string | undefined
   renamedPath: string | null = null
   saveOverride: (() => Promise<{ ok: true; value: WriteDocumentResult }>) | null = null
+  linksGate: Promise<void> | null = null
 
   readonly tocktutorWorkbench = {
     createManagedVault: (request: { expectedGeneration: number; name: string }, signal?: AbortSignal) => {
@@ -327,6 +328,21 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     links: (request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'links', parameters: [request, signal] })
+      if (this.linksGate !== null) return this.linksGate.then(() => success({
+        backlinkDetails: [{ authoredTarget: request.path, displayText: 'Note', fragment: null, kind: 'wiki' as const, line: 3, normalizedTarget: request.path, resolvedPath: request.path, sourcePath: 'Second.md', status: 'resolved' as const }],
+        backlinks: ['Second.md'],
+        cursor: null,
+        generation: request.expectedVault.generation,
+        outgoing: ['Second.md'],
+        outgoingDetails: [{ authoredTarget: 'Second', displayText: 'Second', fragment: null, kind: 'wiki' as const, line: 2, normalizedTarget: 'Second.md', resolvedPath: 'Second.md', sourcePath: request.path, status: 'resolved' as const }],
+        path: request.path,
+        scan: { bytes: 30, entries: 2, files: 2 },
+        tagRelations: [],
+        truncated: false,
+        truncationReason: null,
+        unlinkedMentions: [],
+        warnings: [],
+      }))
       return success({
         backlinkDetails: [{ authoredTarget: request.path, displayText: 'Note', fragment: null, kind: 'wiki' as const, line: 3, normalizedTarget: request.path, resolvedPath: request.path, sourcePath: 'Second.md', status: 'resolved' as const }],
         backlinks: ['Second.md'],
@@ -1497,6 +1513,24 @@ test('loads generation-bound outline, footnotes, backlinks, and outgoing links',
   assert.equal(controller.jumpToLine(2), true)
   assert.equal(controller.getSnapshot().mode, 'source')
   assert.equal(controller.getSnapshot().selectionStart, '# Before\n'.length)
+  controller.dispose()
+})
+
+test('clears stale relationship projections before refreshing the active note', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.ok(controller.getSnapshot().links)
+
+  const gate = deferred<void>()
+  remote.linksGate = gate.promise
+  const refresh = controller.loadRelationships()
+  assert.equal(controller.getSnapshot().links, null)
+  assert.equal(controller.getSnapshot().outline, null)
+  gate.resolve()
+  assert.equal(await refresh, true)
   controller.dispose()
 })
 

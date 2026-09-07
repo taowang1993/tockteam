@@ -969,6 +969,7 @@ export class WorkbenchRouteController {
     const vault = this.snapshot.vault
     const path = this.snapshot.path
     if (vault === null || path === null || this.snapshot.documentKind !== 'markdown') return false
+    this.update({ links: null, outline: null })
     const operation = this.nextOperation()
     try {
       const [outlineResult, linksResult] = await Promise.all([
@@ -2563,7 +2564,9 @@ export interface TockTutorRouteViewProps {
   onForward?(): void
   onInsertCurrentDateTime?(kind: 'date' | 'time'): void
   onJumpToLine?(line: number): void
+  onLoadFacets?(): void
   onLoadGraph?(mode: 'global' | 'local'): void
+  onLoadRelationships?(): void
   onLoadWorkspace?(id: string): void
   onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
@@ -3034,7 +3037,6 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     ? 'Canvas Source'
     : snapshot.documentKind === 'base' ? 'Base Source' : 'Markdown Source'
   const query = snapshot.searchQuery.trim().toLocaleLowerCase()
-  const activeProperties = snapshot.documentKind === 'markdown' ? parseFrontmatterProperties(snapshot.source) : []
   const documents = snapshot.entries.filter(entry => entry.kind === 'document'
     && supportedDocument(entry.path)
     && (query === '' || entry.path.toLocaleLowerCase().includes(query)))
@@ -3368,9 +3370,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                     <>
                       <DropdownMenuRadioGroup aria-label="Editor Mode" value={snapshot.mode}>
                         {([
-                          ['reading', 'Reading view', FileText],
+                          ['reading', 'Reading View', FileText],
                           ['live-preview', 'Live Preview', Pencil],
-                          ['source', 'Source mode', FileCode2],
+                          ['source', 'Source Mode', FileCode2],
                         ] as const).map(([mode, label, Icon]) => (
                           <DropdownMenuRadioItem className={NOTE_ACTION_CLASS} key={mode} onSelect={() => { props.onMode(mode) }} value={mode}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuRadioItem>
                         ))}
@@ -3379,30 +3381,34 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                     </>
                   )}
                   <DropdownMenuGroup>
-                    <DropdownMenuCheckboxItem checked={snapshot.settings?.backlinksInDocument ?? false} className={NOTE_ACTION_CLASS} disabled={snapshot.settings === undefined} onSelect={() => { props.onSettingsChange?.({ backlinksInDocument: !(snapshot.settings?.backlinksInDocument ?? false) }) }}><Link2 aria-hidden="true" /><span>Backlinks in document</span></DropdownMenuCheckboxItem>
-                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || props.onAddBookmark === undefined} onSelect={() => { props.onAddBookmark?.() }}><BookmarkPlus aria-hidden="true" /><span>Bookmark note</span></DropdownMenuItem>
+                    <DropdownMenuCheckboxItem checked={snapshot.settings?.backlinksInDocument ?? false} className={NOTE_ACTION_CLASS} disabled={snapshot.settings === undefined} onSelect={() => { props.onSettingsChange?.({ backlinksInDocument: !(snapshot.settings?.backlinksInDocument ?? false) }) }}><Link2 aria-hidden="true" /><span>Backlinks in Document</span></DropdownMenuCheckboxItem>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || props.onAddBookmark === undefined} onSelect={() => { props.onAddBookmark?.() }}><BookmarkPlus aria-hidden="true" /><span>Bookmark Note</span></DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     {([
-                      ['recovery', 'File recovery', FileClock],
+                      ['recovery', 'File Recovery', FileClock],
                       ['properties', 'Properties', ListTree],
                       ['backlinks', 'Backlinks', Link2],
-                      ['graph', 'Graph view', Network],
-                      ['web', 'Web viewer', Globe2],
+                      ['graph', 'Graph View', Network],
+                      ['web', 'Web Viewer', Globe2],
                       ['bookmarks', 'Bookmarks', BookmarkPlus],
                       ['tags', 'Tags', Tags],
-                      ['attachments', 'Attachments and embeds', Paperclip],
-                      ['tools', 'Note tools', Wrench],
-                      ['workspace', 'Workspaces and panes', PanelsTopLeft],
-                      ['extensions', 'Reviews and actions', MessageSquare],
+                      ['attachments', 'Attachments and Embeds', Paperclip],
+                      ['tools', 'Note Tools', Wrench],
+                      ['workspace', 'Workspaces and Panes', PanelsTopLeft],
+                      ['extensions', 'Reviews and Actions', MessageSquare],
                     ] as const).map(([view, label, Icon]) => (
-                      <DropdownMenuItem className={NOTE_ACTION_CLASS} key={view} onSelect={() => { setPanel(view) }}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuItem>
+                      <DropdownMenuItem className={NOTE_ACTION_CLASS} key={view} onSelect={() => {
+                        setPanel(view)
+                        if (view === 'properties' || view === 'tags') props.onLoadFacets?.()
+                        if (view === 'backlinks') props.onLoadRelationships?.()
+                      }}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuItem>
                     ))}
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    <DropdownMenuItem className={`${NOTE_ACTION_CLASS} text-[var(--dsw-alias-state-error-primary,#dc2626)]`} disabled={snapshot.path === null || props.onTrashCurrent === undefined} onSelect={() => { props.onTrashCurrent?.() }}><Trash2 aria-hidden="true" /><span>Move file to trash</span></DropdownMenuItem>
+                    <DropdownMenuItem className={`${NOTE_ACTION_CLASS} text-[var(--dsw-alias-state-error-primary,#dc2626)]`} disabled={snapshot.path === null || props.onTrashCurrent === undefined} onSelect={() => { props.onTrashCurrent?.() }}><Trash2 aria-hidden="true" /><span>Move File to Trash</span></DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -3531,7 +3537,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           )}
           <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]">{props.assistantPanel}</div>
         </aside>
-        <WorkbenchUtilities {...props} activeProperties={activeProperties} onClose={() => { setPanel(null) }} onOpenGraphNode={(path, mode) => {
+        <WorkbenchUtilities {...props} onClose={() => { setPanel(null) }} onOpenGraphNode={(path, mode) => {
           const result = props.onOpenGraphNode?.(path, mode)
           if (mode !== 'note' || result === undefined) return
           void Promise.resolve(result).then(success => { if (success === true) setPanel(null) })
@@ -3759,7 +3765,9 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onForward={() => { void controller.goForward() }}
         onInsertCurrentDateTime={kind => { controller.insertCurrentDateTime(kind) }}
         onJumpToLine={line => { controller.jumpToLine(line) }}
+        onLoadFacets={() => { void controller.loadFacets() }}
         onLoadGraph={mode => { void controller.loadGraph(mode) }}
+        onLoadRelationships={() => { void controller.loadRelationships() }}
         onLoadWorkspace={id => { void controller.loadWorkspace(id) }}
         onMode={mode => { controller.setMode(mode) }}
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}

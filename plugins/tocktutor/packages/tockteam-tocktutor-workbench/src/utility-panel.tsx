@@ -9,11 +9,9 @@ import { useState, type ReactNode } from 'react'
 import { ExecutableBaseView } from './base-executable-view.tsx'
 import { CanvasBoard } from './canvas-board.tsx'
 import { BUILTIN_TEMPLATES } from './capture.ts'
-import { parseFrontmatterProperties } from './properties.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import type { TockTutorRouteViewProps } from './route.tsx'
 import { MAX_PANE_GROUPS } from './session.ts'
-import type { VaultHeading } from './types.ts'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 
 export type WorkbenchUtilityView = 'attachments' | 'backlinks' | 'bookmarks' | 'extensions' | 'graph' | 'properties' | 'recovery' | 'tags' | 'tools' | 'web' | 'workspace'
@@ -33,7 +31,6 @@ const UTILITY_TITLES: Record<WorkbenchUtilityView, string> = {
 }
 
 export type WorkbenchUtilitiesProps = TockTutorRouteViewProps & {
-  activeProperties: ReturnType<typeof parseFrontmatterProperties>
   onClose(): void
   view: WorkbenchUtilityView | null
 }
@@ -54,7 +51,7 @@ function graphCoordinate(value: number, minimum: number, maximum: number): numbe
 }
 
 export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
-  const { activeProperties, snapshot } = props
+  const { snapshot } = props
   const [graphZoom, setGraphZoom] = useState(1)
   const open = props.view !== null
   const [graphPan, setGraphPan] = useState({ x: 0, y: 0 })
@@ -74,6 +71,10 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const graphEdges = (snapshot.graph?.edges ?? []).filter(edge => graphPaths.has(edge.sourcePath) && graphPaths.has(edge.targetPath))
   const graphGroups = Object.entries(Object.groupBy(graphNodes, node => snapshot.settings?.graphGroupBy === 'folder' ? graphFolder(node.path) : 'All Notes'))
     .toSorted(([left], [right]) => left.localeCompare(right))
+  const vaultProperties = snapshot.facets?.properties ?? []
+  const vaultTags = snapshot.facets?.tags ?? []
+  const linkedMentions = snapshot.links?.backlinkDetails ?? []
+  const unlinkedMentions = snapshot.links?.unlinkedMentions ?? []
   return (
         <aside
           aria-hidden={!open}
@@ -208,57 +209,65 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
           </section>
           <section aria-label="Tags" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'tags'}>
             <h2 className="m-0 text-sm">Tags</h2>
-            <div className="mt-2 grid grid-cols-2 gap-1">
-              {(['recent', 'tasks', 'journals', 'favorites', 'collections', 'tags'] as const).map(kind => (
-                <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" key={kind} onClick={() => { props.onOpenSmartView?.(kind) }} type="button">{kind[0]!.toLocaleUpperCase() + kind.slice(1)}</Button>
+            <div aria-label="Vault Tags" className="mt-2 grid gap-0.5" role="list">
+              {vaultTags.map(tag => (
+                <div className="min-w-0" key={tag.tag.toLocaleLowerCase()} role="listitem">
+                  <Button unstyled className="w-full truncate rounded border-0 bg-transparent px-1 py-1 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" onClick={() => { props.onSearchChange?.(`tag:${tag.tag}`); props.onRunSearch?.() }} type="button">#{tag.tag} · {String(tag.count)}</Button>
+                </div>
               ))}
+              {vaultTags.length === 0 && <span className="text-xs text-[var(--tt-muted)]">No tags.</span>}
             </div>
-            {(snapshot.facets?.tags.length ?? 0) > 0 && (
-              <div className="mt-2 grid gap-1" aria-label="Tags">
-                {snapshot.facets?.tags.map(tag => (
-                  <Button unstyled className="rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={tag.tag.toLocaleLowerCase()} onClick={() => { props.onSearchChange?.(`tag:${tag.tag}`); props.onRunSearch?.() }} type="button">#{tag.tag} · {String(tag.count)}</Button>
-                ))}
-              </div>
-            )}
           </section>
           <section aria-label="Properties" className="p-3" hidden={props.view !== 'properties'}>
             <h2 className="m-0 text-sm">Properties</h2>
-            <h3 className="mt-2 mb-1 text-xs">File</h3>
-            <div className="grid gap-1">
-              {activeProperties.map(property => (
-                <Label unstyled className="grid grid-cols-[minmax(80px,.4fr)_minmax(0,1fr)] items-center gap-2 text-xs" key={property.key}>
-                  <span className="truncate">{property.key} · {property.type}</span>
-                  {property.type === 'checkbox' ? (
-                    <Checkbox aria-label={`${property.key} Property`} checked={property.value === true} onCheckedChange={checked => { props.onSetProperty?.(property.key, checked === true) }} />
-                  ) : (
-                    <Input unstyled aria-label={`${property.key} Property`} className="min-w-0 rounded border border-[var(--tt-border)] bg-transparent p-1" defaultValue={Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')} onBlur={event => { props.onSetProperty?.(property.key, property.type === 'list' ? event.target.value.split(',').map(value => value.trim()).filter(Boolean) : property.type === 'number' && Number.isFinite(Number(event.target.value)) ? Number(event.target.value) : event.target.value) }} />
-                  )}
-                </Label>
-              ))}
-              {activeProperties.length === 0 && <span className="text-xs text-[var(--tt-muted)]">No file properties.</span>}
-            </div>
-            <h3 className="mt-2 mb-1 text-xs">All</h3>
-            <div className="grid gap-1">
-              {(snapshot.facets?.properties ?? []).map(property => <Button unstyled className="rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={property.key.toLocaleLowerCase()} onClick={() => { props.onSearchChange?.(`[${property.key}]`); props.onRunSearch?.() }} type="button">{property.key} · {String(property.count)} · {property.types.join(', ')}</Button>)}
-            </div>
+            <table aria-label="Vault Properties" className="mt-2 w-full table-fixed border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-[var(--tt-border)] text-left text-[var(--tt-muted)]">
+                  <th className="w-[46%] px-1 py-1 font-medium" scope="col">Property</th>
+                  <th className="w-[34%] px-1 py-1 font-medium" scope="col">Type</th>
+                  <th className="w-[20%] px-1 py-1 text-right font-medium" scope="col">Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vaultProperties.map(property => (
+                  <tr className="border-b border-[color-mix(in_srgb,var(--tt-border)_60%,transparent)] last:border-0" key={property.key.toLocaleLowerCase()}>
+                    <th className="truncate px-1 py-1 text-left font-medium" scope="row">
+                      <Button unstyled aria-label={`Search Property ${property.key}`} className="max-w-full truncate rounded border-0 bg-transparent p-0 text-left text-xs hover:text-[var(--tt-accent)] focus-visible:text-[var(--tt-accent)]" onClick={() => { props.onSearchChange?.(`[${property.key}]`); props.onRunSearch?.() }} type="button">{property.key}</Button>
+                    </th>
+                    <td className="truncate px-1 py-1 text-[var(--tt-muted)]">{property.types.join(', ') || 'Unknown'}</td>
+                    <td className="px-1 py-1 text-right tabular-nums">{String(property.count)}</td>
+                  </tr>
+                ))}
+                {vaultProperties.length === 0 && <tr><td className="px-1 py-2 text-[var(--tt-muted)]" colSpan={3}>No properties.</td></tr>}
+              </tbody>
+            </table>
           </section>
           <section aria-label="Backlinks" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'backlinks'}>
             <h2 className="m-0 text-sm">Backlinks</h2>
-            <h3 className="mt-2 mb-1 text-xs">Outline</h3>
-            <div className="grid gap-1">
-              {(snapshot.outline?.headings ?? []).map((heading: VaultHeading) => (
-                <Button unstyled className="rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={`${heading.line}-${heading.selector}`} onClick={() => { props.onJumpToLine?.(heading.line) }} type="button">{'·'.repeat(Math.max(1, heading.level))} {heading.text}</Button>
-              ))}
-              {(snapshot.outline?.headings.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No headings.</span>}
-            </div>
-            <h3 className="mt-2 mb-1 text-xs">Footnotes</h3>
-            {(snapshot.outline?.footnotes ?? []).map(footnote => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={`${footnote.line}-${footnote.ordinal}`} onClick={() => { props.onJumpToLine?.(footnote.line) }} type="button">{footnote.content}</Button>)}
-            <h3 className="mt-2 mb-1 text-xs">Incoming Links</h3>
-            {(snapshot.links?.backlinkDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={`${link.sourcePath}-${String(link.line)}-${String(index)}`} onClick={() => { props.onSelect(link.sourcePath) }} type="button">{link.sourcePath}:{String(link.line)}</Button>)}
-            {(snapshot.links?.backlinkDetails.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No backlinks.</span>}
-            <h3 className="mt-2 mb-1 text-xs">Outgoing Links</h3>
-            {(snapshot.links?.outgoingDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" disabled={link.resolvedPath === null} key={`${link.authoredTarget}-${String(link.line)}-${String(index)}`} onClick={() => { if (link.resolvedPath !== null) props.onSelect(link.resolvedPath) }} type="button">{link.displayText || link.authoredTarget}</Button>)}
-            {(snapshot.links?.unlinkedMentions ?? []).map((mention, index) => <span className="block text-xs text-[var(--tt-muted)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`}>Mention: {mention.matchedText}</span>)}
+            <details className="mt-2 rounded border border-[var(--tt-border)]" open>
+              <summary className="cursor-pointer list-none px-2 py-1.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]">Linked Mentions ({String(linkedMentions.length)})</summary>
+              <div className="grid gap-1 border-t border-[var(--tt-border)] p-2">
+                {linkedMentions.map((link, index) => (
+                  <Button unstyled aria-label={`Open Linked Mention ${link.sourcePath}`} className="grid min-w-0 gap-0.5 rounded border-0 bg-transparent px-1 py-1 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" key={`${link.sourcePath}-${String(link.line)}-${String(index)}`} onClick={() => { props.onSelect(link.sourcePath) }} type="button">
+                    <span className="truncate">{link.sourcePath} · line {String(link.line)}</span>
+                    <span className="truncate text-[var(--tt-muted)]">{link.displayText || link.authoredTarget}</span>
+                  </Button>
+                ))}
+                {linkedMentions.length === 0 && <span className="text-xs text-[var(--tt-muted)]">No linked mentions.</span>}
+              </div>
+            </details>
+            <details className="mt-2 rounded border border-[var(--tt-border)]">
+              <summary className="cursor-pointer list-none px-2 py-1.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]">Unlinked Mentions ({String(unlinkedMentions.length)})</summary>
+              <div className="grid gap-2 border-t border-[var(--tt-border)] p-2">
+                {unlinkedMentions.map((mention, index) => (
+                  <Button unstyled aria-label={`Open Unlinked Mention ${mention.sourcePath}`} className="grid min-w-0 gap-0.5 rounded border-0 bg-transparent px-1 py-1 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`} onClick={() => { props.onSelect(mention.sourcePath) }} type="button">
+                    <span className="truncate">{mention.sourcePath} · line {String(mention.line)}</span>
+                    <span className="text-[var(--tt-muted)]">{mention.snippet || mention.matchedText}</span>
+                  </Button>
+                ))}
+                {unlinkedMentions.length === 0 && <span className="text-xs text-[var(--tt-muted)]">No unlinked mentions.</span>}
+              </div>
+            </details>
           </section>
           <section aria-label="Resolved Embeds" className="p-3" hidden={props.view !== 'attachments'}>
             <h2 className="m-0 text-sm">Resolved Embeds</h2>

@@ -38,6 +38,8 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onCopyGraphPath?(path: string): void
   onCreateManagedVault?(name: string): void
   onEdit?(source: string): void
+  onLoadFacets?(): void
+  onLoadRelationships?(): void
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
@@ -256,7 +258,7 @@ describe('TockTutor titlebar panel controls', () => {
     const menu = screen.getByRole('menu', { name: 'More Note Actions' })
     expect(menu.getAttribute('data-slot')).toBe('dropdown-menu-content')
     expect(menu.closest('[aria-hidden="true"]')).toBeNull()
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Reading view' })))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Reading View' })))
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Live Preview' })))
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
@@ -264,7 +266,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(noteActions.getAttribute('aria-expanded')).toBe('false')
     await waitFor(() => expect(document.activeElement).toBe(noteActions))
     openNoteActions()
-    const sourceMode = await screen.findByRole('menuitemradio', { name: 'Source mode' })
+    const sourceMode = await screen.findByRole('menuitemradio', { name: 'Source Mode' })
     expect(sourceMode.getAttribute('aria-checked')).toBe('false')
     fireEvent.click(sourceMode)
     expect(onMode).toHaveBeenCalledWith('source')
@@ -468,7 +470,7 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.drop(dropZone, { dataTransfer: { files } })
     fireEvent.paste(dropZone, { clipboardData: { files } })
     openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Attachments and embeds' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Attachments and Embeds' }))
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('attachments')
     expect(screen.queryByRole('heading', { name: 'Graph View' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Add Files'), { target: { files } })
@@ -498,7 +500,7 @@ describe('TockTutor titlebar panel controls', () => {
     }, { onOpenRecovery, onReadSnapshot, onRestoreSnapshot, onRestoreTrash, onTrashCurrent })
 
     openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'File recovery' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('recovery')
     expect(screen.queryByRole('heading', { name: 'Web Viewer' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
@@ -515,12 +517,29 @@ describe('TockTutor titlebar panel controls', () => {
   })
 
   it('keeps Properties and Backlinks as separate utility views', () => {
-    renderRoute({ documentKind: 'markdown', path: 'Note.md', source: '---\nstatus: active\n---\n# Note\n' })
+    const onLoadFacets = vi.fn()
+    renderRoute({
+      documentKind: 'markdown',
+      facets: { complete: true, cursor: null, generation: 1, properties: [{ count: 4, key: 'status', types: ['string'] }], scan: { bytes: 10, entries: 1, files: 1 }, tags: [], truncated: false, truncationReason: null, warnings: [] },
+      path: 'Note.md',
+      source: '---\nstatus: active\n---\n# Note\n',
+    }, { onLoadFacets })
 
     openNoteActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Properties' }))
+    expect(onLoadFacets).toHaveBeenCalledOnce()
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('properties')
     expect(screen.getByRole('region', { name: 'Properties' })).toBeTruthy()
+    expect(screen.getByRole('table', { name: 'Vault Properties' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Property' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Type' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Count' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Properties' }).textContent).toContain('status')
+    expect(screen.getByRole('region', { name: 'Properties' }).textContent).toContain('string')
+    expect(screen.getByRole('region', { name: 'Properties' }).textContent).toContain('4')
+    expect(screen.queryByRole('textbox', { name: 'status Property' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Properties' }).textContent).not.toContain('File')
+    expect(screen.getByRole('region', { name: 'Properties' }).textContent).not.toContain('All')
     expect(screen.queryByRole('region', { name: 'Backlinks' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Utility Panel' }))
@@ -531,8 +550,51 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.queryByRole('region', { name: 'Properties' })).toBeNull()
   })
 
+  it('renders only collapsible linked and unlinked mentions in Backlinks', () => {
+    const onLoadRelationships = vi.fn()
+    const onSelect = vi.fn()
+    renderRoute({
+      links: {
+        backlinkDetails: [{ authoredTarget: 'Note.md', displayText: 'Note', fragment: null, kind: 'wiki', line: 4, normalizedTarget: 'Note.md', resolvedPath: 'Note.md', sourcePath: 'Other.md', status: 'resolved' }],
+        backlinks: ['Other.md'],
+        complete: true,
+        cursor: null,
+        generation: 1,
+        outgoing: ['Else.md'],
+        outgoingDetails: [{ authoredTarget: 'Else.md', displayText: 'Else', fragment: null, kind: 'wiki', line: 9, normalizedTarget: 'Else.md', resolvedPath: 'Else.md', sourcePath: 'Note.md', status: 'resolved' }],
+        path: 'Note.md',
+        scan: { bytes: 10, entries: 3, files: 3 },
+        tagRelations: [],
+        truncated: false,
+        truncationReason: null,
+        unlinkedMentions: [{ identifierKind: 'basename', line: 8, matchedText: 'Note', snippet: 'The note appears in this context.', sourcePath: 'Mention.md' }],
+        warnings: [],
+      },
+    }, { onLoadRelationships, onSelect })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Backlinks' }))
+    expect(onLoadRelationships).toHaveBeenCalledOnce()
+    const backlinks = screen.getByRole('region', { name: 'Backlinks' })
+    const linkedMentions = screen.getByText('Linked Mentions (1)', { selector: 'summary' }).parentElement as HTMLDetailsElement
+    const unlinkedMentions = screen.getByText('Unlinked Mentions (1)', { selector: 'summary' }).parentElement as HTMLDetailsElement
+    expect(linkedMentions.tagName).toBe('DETAILS')
+    expect(linkedMentions.open).toBe(true)
+    expect(unlinkedMentions.tagName).toBe('DETAILS')
+    expect(unlinkedMentions.open).toBe(false)
+    expect(backlinks.textContent).toContain('Other.md')
+    expect(backlinks.textContent).toContain('Mention.md')
+    expect(backlinks.textContent).toContain('The note appears in this context.')
+    fireEvent.click(screen.getByRole('button', { name: 'Open Unlinked Mention Mention.md' }))
+    expect(onSelect).toHaveBeenCalledWith('Mention.md')
+    expect(backlinks.textContent).not.toContain('Outline')
+    expect(backlinks.textContent).not.toContain('Footnotes')
+    expect(backlinks.textContent).not.toContain('Outgoing Links')
+  })
+
   it('keeps Bookmarks and Tags as compact separate utility views', () => {
-    renderRoute({ bookmarks: [{ createdAt: 1, id: 'bookmark-1', kind: 'note', missing: false, path: 'Note.md', title: 'Note' }], facets: { properties: [], tags: [{ count: 2, tag: 'lesson' }] } })
+    const onLoadFacets = vi.fn()
+    renderRoute({ bookmarks: [{ createdAt: 1, id: 'bookmark-1', kind: 'note', missing: false, path: 'Note.md', title: 'Note' }], facets: { properties: [], tags: [{ count: 2, tag: 'lesson' }] } }, { onLoadFacets })
 
     openNoteActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
@@ -543,8 +605,17 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close Utility Panel' }))
     openNoteActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Tags' }))
+    expect(onLoadFacets).toHaveBeenCalledOnce()
+    const tags = screen.getByRole('region', { name: 'Tags' })
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('tags')
-    expect(screen.getByRole('region', { name: 'Tags' }).textContent).toContain('#lesson')
+    expect(tags.textContent).toContain('#lesson')
+    expect(tags.textContent).toContain('2')
+    expect(screen.getByRole('list', { name: 'Vault Tags' })).toBeTruthy()
+    expect(tags.textContent).not.toContain('Recent')
+    expect(tags.textContent).not.toContain('Tasks')
+    expect(tags.textContent).not.toContain('Journals')
+    expect(tags.textContent).not.toContain('Favorites')
+    expect(tags.textContent).not.toContain('Collections')
     expect(screen.queryByRole('region', { name: 'Bookmarks' })).toBeNull()
   })
 
@@ -565,7 +636,7 @@ describe('TockTutor titlebar panel controls', () => {
     }, { onCopyGraphPath, onOpenGraphNode, onSettingsChange })
 
     openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph view' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph View' }))
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('graph')
     expect(screen.getByLabelText('Workbench Utilities').className).toContain('!absolute')
     expect(screen.getByLabelText('Global Graph Canvas')).toBeTruthy()
@@ -616,7 +687,7 @@ describe('TockTutor titlebar panel controls', () => {
     }, { onOpenGraphNode })
 
     openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph view' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph View' }))
     fireEvent.click(screen.getByLabelText('Note.md Graph Node'))
     await waitFor(() => { expect(screen.getByLabelText('Workbench Utilities').getAttribute('aria-hidden')).toBe('true') })
     expect(onOpenGraphNode).toHaveBeenCalledWith('Note.md', 'note')
@@ -633,7 +704,7 @@ describe('TockTutor titlebar panel controls', () => {
     }, { onOpenGraphNode })
 
     openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph view' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph View' }))
     fireEvent.click(screen.getByLabelText('Note.md Graph Node'))
     await waitFor(() => { expect(onOpenGraphNode).toHaveBeenCalledWith('Note.md', 'note') })
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('aria-hidden')).toBe('false')
