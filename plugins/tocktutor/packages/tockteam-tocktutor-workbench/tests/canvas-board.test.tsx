@@ -67,6 +67,8 @@ describe('CanvasBoard', () => {
     expect(Number(card.getAttribute('style')?.match(/z-index:\s*(\d+)/u)?.[1] ?? 0)).toBeGreaterThan(Number(group.getAttribute('style')?.match(/z-index:\s*(\d+)/u)?.[1] ?? 0))
 
     const lines = screen.getByRole('img', { name: 'Canvas Connection Lines' })
+    expect(lines.getAttribute('style')).toContain('height: 500px')
+    expect(lines.getAttribute('style')).toContain('width: 800px')
     const line = lines.querySelector('[data-canvas-edge="edge-1"]')
     expect(line).toBeTruthy()
     expect(line?.getAttribute('d')).toContain('M 300 120 C')

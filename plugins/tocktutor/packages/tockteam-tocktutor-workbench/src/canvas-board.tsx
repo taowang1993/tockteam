@@ -507,7 +507,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
       >
         {marquee !== null && <div aria-label="Canvas Marquee Selection" className="pointer-events-none absolute z-20 border border-[var(--tt-accent)] bg-[color-mix(in_srgb,var(--tt-accent)_12%,transparent)]" role="img" style={marquee} />}
         {(document.edges?.length ?? 0) > 0 && (
-          <svg aria-label="Canvas Connection Lines" className="pointer-events-none absolute inset-0 z-10 overflow-visible" fill="none" role="img" style={{ height: '100%', width: '100%' }} viewBox={`0 0 ${String(bounds.width)} ${String(bounds.height)}`}>
+          <svg aria-label="Canvas Connection Lines" className="pointer-events-none absolute top-0 left-0 z-10 overflow-visible" fill="none" role="img" style={{ height: bounds.height, width: bounds.width }} viewBox={`0 0 ${String(bounds.width)} ${String(bounds.height)}`}>
             <defs>
               <marker id="tocktutor-canvas-arrow" markerHeight="6" markerWidth="6" orient="auto-start-reverse" refX="5" refY="3" viewBox="0 0 6 6">
                 <path d="M 0 0 L 6 3 L 0 6 z" fill="var(--tt-accent)" />
