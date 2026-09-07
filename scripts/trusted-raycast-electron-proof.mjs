@@ -11,7 +11,7 @@ const listPrivateWorkspaces = () => readdirSync(process.env.TMPDIR ?? '/tmp').fi
 const afplayLines = stdout => stdout.split('\n').filter(line => line.trim().startsWith('afplay ') && line.includes('tockteam-trusted-raycast'))
 
 /** Runs only inside the existing bounded Electron smoke, against real composed Desktop. */
-export async function proveTrustedRaycast({ electronPid, port, root, workbenchConnection, userData }) {
+export async function proveTrustedRaycast({ port, root, workbenchConnection, userData }) {
   const evidence = join(root, '.beads/reports/trusted-raycast-desktop/slice-4')
   await mkdir(evidence, { recursive: true })
   await workbenchConnection.evaluate(`window.dshDesktop.launcher.settings.updateSetting('window.hideWindowOn', [])`)
@@ -469,11 +469,11 @@ export async function proveTrustedRaycast({ electronPid, port, root, workbenchCo
     // Paste with a captured prior application: capture via a real blur (Finder), then the main-owned policy restores the clipboard.
     await rm(pasteRecordPath, { force: true })
     const clipboardBeforePaste = await readClipboardEqualityToken()
-    await exec('/usr/bin/osascript', ['-e', `tell application "System Events" to set frontmost of first application process whose unix id is ${electronPid} to true`], { timeout: 5000 })
-    const { stdout: frontmostPid } = await exec('/usr/bin/osascript', ['-e', 'tell application "System Events" to unix id of first application process whose frontmost is true'], { timeout: 5000 })
-    if (Number(frontmostPid.trim()) !== electronPid) throw new Error(`Smoke Electron process ${electronPid} did not become frontmost before prior-app capture`)
     await exec('/usr/bin/osascript', ['-e', 'tell application "Finder" to activate'], { timeout: 5000 })
-    await new Promise(resolve => setTimeout(resolve, 1200))
+    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.evaluate(() => window.tockteamLauncher.dismiss()); return { dismissedForCapture: true }; }`)
+    await new Promise(resolve => setTimeout(resolve, 600))
+    await workbenchConnection.evaluate(`window.dshDesktop.launcher.show()`)
+    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.visibilityState === 'visible'); const placement = await launcher.evaluate(() => ({ screenX: window.screenX, screenY: window.screenY, availLeft: window.screen.availLeft })); if (${String(!process.env.CI)} && placement.availLeft === 0) throw new Error('Reshown launcher left the extended display: ' + JSON.stringify(placement)); return { reshownForPaste: true, placement }; }`)
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       await launcher.bringToFront();

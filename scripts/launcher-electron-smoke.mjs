@@ -381,7 +381,7 @@ try {
   )
   if (process.argv.includes('--trusted-raycast')) {
     console.log(`Trusted Raycast Electron root PID=${child.pid} CDP=${port}`)
-    await proveTrustedRaycast({ electronPid: child.pid, port, root, workbenchConnection, userData })
+    await proveTrustedRaycast({ port, root, workbenchConnection, userData })
     const ranking = JSON.parse(await readFile(join(userData, 'launcher', 'usage-ranking.json'), 'utf8'))
     assert.equal(ranking.find(entry => entry.id === 'trusted-raycast:google-translate:translate')?.useCount, 5)
     console.log('Translate launch useCount=5 after preference setup, empty-state reopen, and three successful launches')
