@@ -3037,6 +3037,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     ? 'Canvas Source'
     : snapshot.documentKind === 'base' ? 'Base Source' : 'Markdown Source'
   const query = snapshot.searchQuery.trim().toLocaleLowerCase()
+  const backlinkCount = snapshot.links?.backlinkDetails.length ?? 0
+  const backlinkLabel = `${String(backlinkCount)} backlink${backlinkCount === 1 ? '' : 's'}`
   const documents = snapshot.entries.filter(entry => entry.kind === 'document'
     && supportedDocument(entry.path)
     && (query === '' || entry.path.toLocaleLowerCase().includes(query)))
@@ -3489,7 +3491,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <div className="tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
               {snapshot.path !== null && (
                 <>
-                  <span>0 backlinks</span>
+                  <span>{backlinkLabel}</span>
                   <span>{snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source'}</span>
                 </>
               )}

@@ -556,6 +556,7 @@ describe('TockTutor titlebar panel controls', () => {
     const onLoadRelationships = vi.fn()
     const onSelect = vi.fn()
     renderRoute({
+      documentKind: 'markdown',
       links: {
         backlinkDetails: [{ authoredTarget: 'Note.md', displayText: 'Note', fragment: null, kind: 'wiki', line: 4, normalizedTarget: 'Note.md', resolvedPath: 'Note.md', sourcePath: 'Other.md', status: 'resolved' }],
         backlinks: ['Other.md'],
@@ -572,8 +573,12 @@ describe('TockTutor titlebar panel controls', () => {
         unlinkedMentions: [{ identifierKind: 'basename', line: 8, matchedText: 'Note', snippet: 'The note appears in this context.', sourcePath: 'Mention.md' }],
         warnings: [],
       },
+      path: 'Note.md',
     }, { onLoadRelationships, onSelect })
 
+    const statusBar = screen.getByLabelText('TockTutor Status Bar')
+    expect(statusBar.textContent).toContain('1 backlink')
+    expect(statusBar.textContent).not.toContain('0 backlinks')
     openNoteActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Backlinks' }))
     expect(onLoadRelationships).toHaveBeenCalledOnce()
