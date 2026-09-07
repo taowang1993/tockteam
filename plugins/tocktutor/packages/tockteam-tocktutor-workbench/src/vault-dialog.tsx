@@ -185,7 +185,8 @@ export function WorkbenchVaultDialog(props: WorkbenchVaultDialogProps): ReactNod
               <DialogTitle>Vault Switcher</DialogTitle>
               <DialogDescription>Open a local Markdown vault or create a new one.</DialogDescription>
             </DialogHeader>
-            <div className="flex min-w-0 items-start gap-3">
+            <p className="mb-2 text-[10px] font-semibold tracking-[.08em] text-[var(--tt-muted)] uppercase">Current Vault</p>
+            <div className="flex min-w-0 items-start gap-3 rounded-lg bg-[var(--tt-selected)] p-2" data-active-vault="true">
               <div className="min-w-0 flex-1">
                 {rename === null
                   ? <p className="m-0 truncate font-medium">{props.vault === null ? 'No Vault Open' : props.vaultName ?? 'TockTutor Vault'}</p>
