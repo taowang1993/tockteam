@@ -12,6 +12,7 @@ export declare function MarkdownSlidesView(props: {
 }): ReactNode;
 export declare function RichReadingView(props: {
     embeds?: readonly ResolvedEmbedNode[] | undefined;
+    onAddProperty?: ((key: string) => boolean) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
     onToggleTask(index: number): void;
     source: string;
@@ -20,6 +21,7 @@ export declare function RichReadingView(props: {
 export declare function LivePreviewView(props: {
     documentKey: string;
     embeds?: readonly ResolvedEmbedNode[] | undefined;
+    onAddProperty?: ((key: string) => boolean) | undefined;
     onEdit(source: string): void;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
     onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined;

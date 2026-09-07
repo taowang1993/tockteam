@@ -113,6 +113,35 @@ describe('Milkdown Live Preview editor', () => {
     expect(screen.getByLabelText('Document Properties').textContent).toContain('statusactive')
   })
 
+  it('adds a validated property from Live Preview without overwriting an existing key', () => {
+    const onAddProperty = vi.fn(() => true)
+    render(<LivePreviewEditor content={'---\nstatus: active\n---\n# Lesson\n'} onAddProperty={onAddProperty} onMarkdownChange={() => {}} title="Lesson note" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Property' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Property Name' }), { target: { value: 'effort' } })
+    fireEvent.submit(screen.getByRole('form', { name: 'Add Property' }))
+    expect(onAddProperty).toHaveBeenCalledWith('effort')
+    expect(screen.queryByRole('form', { name: 'Add Property' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Property' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Property Name' }), { target: { value: 'STATUS' } })
+    fireEvent.submit(screen.getByRole('form', { name: 'Add Property' }))
+    expect(screen.getByRole('alert').textContent).toContain('already exists')
+    expect(onAddProperty).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(screen.getByRole('form', { name: 'Add Property' }), { key: 'Escape' })
+    expect(screen.queryByRole('form', { name: 'Add Property' })).toBeNull()
+  })
+
+  it('adds a property from Reading View', () => {
+    const onAddProperty = vi.fn(() => true)
+    render(<RichReadingView onAddProperty={onAddProperty} onToggleTask={() => {}} source="# Lesson\n" title="Lesson note" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Property' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Property Name' }), { target: { value: 'area' } })
+    fireEvent.submit(screen.getByRole('form', { name: 'Add Property' }))
+    expect(onAddProperty).toHaveBeenCalledWith('area')
+  })
+
   it('mounts one editable ProseMirror surface and keeps source untouched until edited', { timeout: 20_000 }, async () => {
     const source = '# Lesson\r\n\r\n- [ ] Review\r\n'
     const onChange = vi.fn()
@@ -126,6 +155,17 @@ describe('Milkdown Live Preview editor', () => {
     expect(onChange).not.toHaveBeenCalled()
     expect(container.querySelector<HTMLElement>('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
     await waitFor(() => expect(onSelection).toHaveBeenCalled())
+  })
+
+  it('renders compact Obsidian-style task rows in Live Preview', async () => {
+    const { container } = render(<LivePreviewEditor content={'- [x] Done\n- [ ] Next\n'} onMarkdownChange={() => {}} />)
+
+    await waitFor(() => expect(container.querySelector('li[data-item-type="task"]')).toBeTruthy(), { timeout: 5_000 })
+    const editor = screen.getByLabelText('Live Preview Editor')
+    expect(editor.className).toContain('[&_ul:has(li[data-item-type=task])]:list-none')
+    expect(editor.className).toContain('[&_li[data-item-type=task]>p]:inline')
+    expect(editor.className).toContain('[&_li[data-checked=true]>p]:line-through')
+    expect(container.querySelector<HTMLInputElement>('.tocktutor-live-task')?.className).toContain('accent-[var(--dsw-alias-brand-primary)]')
   })
 
   it('renders bordered tables without a persistent command strip', async () => {
@@ -149,6 +189,15 @@ describe('Milkdown Live Preview editor', () => {
     expect(reading.querySelector('table')).toBeTruthy()
     expect(readingSurface.className).not.toContain('[&_table]:w-full')
     expect(readingSurface.className).toContain('border-[var(--dsw-alias-border-l2,var(--tt-border))]')
+  })
+
+  it('renders compact completed tasks in Reading View', () => {
+    render(<RichReadingView source={'- [x] Done\n- [ ] Next\n'} onToggleTask={() => {}} title="Tasks" />)
+
+    const reading = screen.getByLabelText('Reading View')
+    expect(reading.querySelectorAll('.task-list')).toHaveLength(2)
+    expect(reading.querySelector('.tocktutor-reading')?.className).toContain('[&_.task-list]:m-0')
+    expect(reading.querySelector('.tocktutor-reading')?.className).toContain('[&_.task-list_li:has(input:checked)]:line-through')
   })
 
   it('routes external Live Preview images through the isolated viewer callback', async () => {

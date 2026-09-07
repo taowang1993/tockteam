@@ -75,7 +75,7 @@ function calloutFoldButton(pos: number, index: number, collapsed: boolean, title
 function taskCheckbox(pos: number, index: number, checked: boolean): HTMLInputElement {
   const input = document.createElement('input')
   input.type = 'checkbox'
-  input.className = 'tocktutor-live-task mr-1 align-middle'
+  input.className = 'tocktutor-live-task mr-2 size-3.5 accent-[var(--dsw-alias-brand-primary)] align-middle'
   input.checked = checked
   input.dataset.taskPos = String(pos)
   input.dataset.taskIndex = String(index)

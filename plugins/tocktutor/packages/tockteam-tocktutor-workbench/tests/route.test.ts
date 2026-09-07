@@ -1308,6 +1308,19 @@ test('persists Reading, Live Preview, and Source mode independently per explicit
   controller.dispose()
 })
 
+test('adds a document property while Reading View is active', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Second.md'), true)
+  controller.setMode('reading')
+
+  assert.equal(controller.setProperty('effort', ''), true)
+  assert.match(controller.getSnapshot().source, /effort: ""/u)
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+  controller.dispose()
+})
+
 test('runs editor commands against the captured Source selection', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

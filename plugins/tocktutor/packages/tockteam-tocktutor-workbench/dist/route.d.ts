@@ -332,7 +332,7 @@ export interface TockTutorRouteViewProps {
     onSettingsChange?(change: Partial<TockTutorSettings>): void;
     onSelectionChange?(start: number, end: number): void;
     onStoreAttachment?(fileName: string, dataBase64: string): void;
-    onSetProperty?(key: string, value: PropertyValue): void;
+    onSetProperty?(key: string, value: PropertyValue): boolean;
     onSelect(path: string): void;
     onSubmitDispatch?(draft: NativeDispatchDraft): void;
     onToggleFocusMode?(): void;

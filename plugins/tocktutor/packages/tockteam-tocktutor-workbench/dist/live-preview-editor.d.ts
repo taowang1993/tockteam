@@ -15,6 +15,7 @@ export interface LivePreviewEditorProps {
     className?: string;
     content: string;
     editorViewRef?: MutableRefObject<unknown | null>;
+    onAddProperty?: (key: string) => boolean;
     onMarkdownChange: (markdown: string) => void;
     onOpenExternalUrl?: (url: string) => void;
     resolvedEmbeds?: readonly import('./embeds.ts').ResolvedEmbedNode[];
@@ -26,6 +27,7 @@ export interface LivePreviewEditorProps {
 }
 export declare function MarkdownDocumentHeader(props: {
     className?: string;
+    onAddProperty?: (key: string) => boolean;
     source: string;
     title?: string;
 }): ReactNode;

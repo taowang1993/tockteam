@@ -1962,7 +1962,7 @@ export class WorkbenchRouteController {
   }
 
   setProperty(key: string, value: PropertyValue): boolean {
-    if (this.snapshot.documentKind !== 'markdown' || this.snapshot.path === null || this.snapshot.mode === 'reading') return false
+    if (this.snapshot.documentKind !== 'markdown' || this.snapshot.path === null) return false
     try {
       const source = setFrontmatterProperty(this.snapshot.source, key, value)
       if (source === this.snapshot.source) return false
@@ -2480,7 +2480,7 @@ export interface TockTutorRouteViewProps {
   onSettingsChange?(change: Partial<TockTutorSettings>): void
   onSelectionChange?(start: number, end: number): void
   onStoreAttachment?(fileName: string, dataBase64: string): void
-  onSetProperty?(key: string, value: PropertyValue): void
+  onSetProperty?(key: string, value: PropertyValue): boolean
   onSelect(path: string): void
   onSubmitDispatch?(draft: NativeDispatchDraft): void
   onToggleFocusMode?(): void
@@ -3341,6 +3341,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <LivePreviewView
                 documentKey={snapshot.path}
                 embeds={snapshot.embeds}
+                onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
                 onEdit={props.onEdit}
                 onOpenExternalUrl={props.onOpenExternalUrl}
                 onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
@@ -3364,7 +3365,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 source={snapshot.source}
               />
             ) : snapshot.documentKind === 'markdown' ? (
-              <RichReadingView embeds={snapshot.embeds} onOpenExternalUrl={props.onOpenExternalUrl} onToggleTask={props.onToggleTask} source={snapshot.source} title={noteTitle(snapshot.path)} />
+              <RichReadingView embeds={snapshot.embeds} key={snapshot.path} onAddProperty={key => props.onSetProperty?.(key, '') ?? false} onOpenExternalUrl={props.onOpenExternalUrl} onToggleTask={props.onToggleTask} source={snapshot.source} title={noteTitle(snapshot.path)} />
             ) : (
               <Alert unstyled>Reading view is unavailable.</Alert>
             )}
@@ -3675,7 +3676,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onSettingsChange={change => { controller.updateSettings(change) }}
         onSelect={path => { void controller.select(path) }}
         onSelectionChange={(start, end) => { controller.setSelection(start, end) }}
-        onSetProperty={(key, value) => { controller.setProperty(key, value) }}
+        onSetProperty={(key, value) => controller.setProperty(key, value)}
         onStoreAttachment={(fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64) }}
         onSubmitDispatch={draft => { void controller.submitDispatchDialog(draft) }}
         onToggleFocusMode={() => { controller.toggleFocusMode() }}
