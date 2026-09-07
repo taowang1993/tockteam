@@ -132,6 +132,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   }>) | null = null
   openOverride: ((path: string) => Promise<{ ok: true; value: OpenDocumentResult }>) | null = null
   renameFailure: { code: 'conflict'; message: string } | null = null
+  renameRewriteError: string | undefined
   renamedPath: string | null = null
   saveOverride: (() => Promise<{ ok: true; value: WriteDocumentResult }>) | null = null
 
@@ -269,6 +270,7 @@ class FakeRemote implements WorkbenchRouteRemote {
         fromPath: request.fromPath,
         generation: request.expectedVault.generation,
         path: request.toPath,
+        ...(this.renameRewriteError === undefined ? {} : { rewriteError: this.renameRewriteError }),
         rewriteSnapshots: [],
         rewrittenPaths: [],
         revision: secondRevision,
@@ -476,6 +478,19 @@ test('keeps the active note authoritative when a title rename fails', async () =
   assert.equal(await controller.renameActiveTitle('Renamed Note'), false)
   assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
   assert.match(controller.getSnapshot().message, /destination changed|Save Conflict/u)
+  controller.dispose()
+})
+
+test('reports incomplete link rewrites without hiding a committed note rename', async () => {
+  const remote = new FakeRemote()
+  remote.renameRewriteError = 'Referrer Second.md changed after the move'
+  const controller = new WorkbenchRouteController(remote, () => {})
+
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  assert.equal(await controller.renameActiveTitle('Renamed Note'), true)
+  assert.equal(controller.getSnapshot().path, 'Folder/Renamed Note.md')
+  assert.match(controller.getSnapshot().message, /renamed; Some note links could not be updated: Referrer Second\.md/u)
+  assert.ok(controller.getSnapshot().warnings.some(warning => warning.includes('Some note links could not be updated')))
   controller.dispose()
 })
 
