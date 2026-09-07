@@ -70,7 +70,7 @@ test('File Search exposes keyboard-first results and semantic list items', () =>
   assert.match(source, /ArrowDown/u)
   assert.match(source, /event\.key === 'Enter'/u)
   assert.match(source, /event\.key === 'Tab'/u)
-  assert.match(source, /launcher-local-tool-status/u)
+  assert.match(source, /launcher-command-status/u)
   assert.match(source, /data-\[tone=error\]/u)
 })
 

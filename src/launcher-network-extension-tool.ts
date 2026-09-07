@@ -38,27 +38,27 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   const prefix = isDeepL ? LAUNCHER_DEEPL_QUERY_PREFIX : LAUNCHER_WEB_SEARCH_QUERY_PREFIX
   const tool = element(document, 'section', 'launcher-local-tool')
   tool.setAttribute('aria-label', `${title} ${text('tool', 'Tool').toLocaleLowerCase('en-US')}`)
-  const header = element(document, 'header', 'launcher-local-tool-header')
-  const identity = element(document, 'div', 'launcher-local-tool-identity')
-  const image = element(document, 'img')
+  const header = element(document, 'header', 'launcher-command-header justify-between')
+  const identity = element(document, 'div', 'flex min-w-0 items-center gap-2')
+  const image = element(document, 'img', 'launcher-command-row-icon')
   image.alt = ''
   image.src = launcherNetworkAssetUrl(isDeepL ? 'deepl-translator' : 'web-search') ?? ''
-  const heading = element(document, 'h2')
+  const heading = element(document, 'h2', 'm-0 text-sm font-semibold')
   heading.textContent = title
   identity.append(image, heading)
-  const close = element(document, 'button', 'launcher-secondary-button')
+  const close = element(document, 'button', 'launcher-command-footer-action')
   close.type = 'button'
   close.textContent = text('back', 'Back to Results')
   close.setAttribute('aria-label', `${text('closeTool', 'Close')} ${title} ${text('tool', 'Tool').toLocaleLowerCase('en-US')}`)
   close.addEventListener('click', closeTool)
   header.append(identity, close)
 
-  const content = element(document, 'div', 'launcher-local-tool-content min-w-0 overflow-auto')
+  const content = element(document, 'div', 'launcher-command-content')
   const disclosure = element(document, 'p', 'text-xs text-muted-foreground')
   disclosure.textContent = isDeepL
     ? text('disclosureDeepL', 'Text is sent to api-free.deepl.com for translation. Your saved key stays in Desktop secure storage.')
     : text('disclosureWebSearch', 'Queries are sent to the selected Google or DuckDuckGo provider for suggestions.')
-  const label = element(document, 'label', 'launcher-local-tool-field')
+  const label = element(document, 'label', 'launcher-command-field')
   const labelText = element(document, 'span')
   labelText.textContent = isDeepL ? text('textToTranslate', 'Text to translate') : text('searchTerm', 'Search term')
   const input = element(document, isDeepL ? 'textarea' : 'input')
@@ -67,14 +67,14 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
   input.setAttribute('aria-controls', `launcher-${extensionId.toLocaleLowerCase('en-US')}-results`)
   input.setAttribute('aria-autocomplete', 'list')
   input.maxLength = LAUNCHER_NETWORK_TOOL_INPUT_LENGTH
-  input.className = 'min-w-0 w-full max-w-full'
+  input.className = 'launcher-command-control'
   if (!isDeepL) input.setAttribute('type', 'search')
   label.append(labelText, input)
-  const status = element(document, 'p', 'launcher-local-tool-status data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)]')
+  const status = element(document, 'p', 'launcher-command-status data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)]')
   status.setAttribute('role', 'status')
   status.setAttribute('aria-live', 'polite')
   status.textContent = isDeepL ? text('enterTranslation', 'Enter text to translate.') : text('enterWebSearch', 'Enter a web search.')
-  const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0')
+  const list = element(document, 'ul', 'launcher-command-list')
   list.id = `launcher-${extensionId.toLocaleLowerCase('en-US')}-results`
   list.setAttribute('aria-label', `${title} ${text('resultsLabel', 'results')}`)
   list.setAttribute('role', 'list')
@@ -99,7 +99,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
       row.setAttribute('role', 'listitem')
       const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
       const line = element(document, 'div', 'flex min-w-0 items-center gap-1')
-      const button = element(document, 'button', 'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left')
+      const button = element(document, 'button', 'launcher-command-row flex-1')
       button.type = 'button'
       button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
       const name = element(document, 'strong', 'min-w-0 flex-1 truncate text-sm font-medium')
@@ -118,7 +118,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
       row.append(line)
       if (actions.length > 1) {
         const menuId = `launcher-network-actions-${index}`
-        const toggle = element(document, 'button', 'shrink-0 rounded-md px-2 py-2 text-xs')
+        const toggle = element(document, 'button', 'launcher-command-footer-action shrink-0')
         toggle.type = 'button'
         toggle.textContent = text('actions', 'Actions')
         toggle.setAttribute('aria-label', `${text('actionsFor', 'Actions for')} ${item.name}`)
@@ -126,14 +126,14 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
         toggle.setAttribute('aria-expanded', 'false')
         toggle.setAttribute('aria-controls', menuId)
         toggle.dataset.networkResultId = item.id
-        const menu = element(document, 'div', 'absolute right-0 top-full z-10 mt-1 w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full rounded-lg border bg-background py-1 shadow-lg')
+        const menu = element(document, 'div', 'launcher-command-menu right-0 top-full mt-1')
         menu.id = menuId
         menu.hidden = true
         menu.setAttribute('role', 'menu')
         menu.setAttribute('aria-label', `${text('actionsFor', 'Actions for')} ${item.name}`)
         const menuButtons: HTMLButtonElement[] = []
         for (const action of actions) {
-          const actionButton = element(document, 'button', 'flex w-full items-center px-3 py-2 text-left text-sm')
+          const actionButton = element(document, 'button', 'launcher-command-menu-item')
           actionButton.type = 'button'
           actionButton.setAttribute('role', 'menuitem')
           actionButton.setAttribute('aria-label', actionLabel(action))

@@ -11,11 +11,32 @@ import {
 } from '../src/launcher-local-tools.ts'
 
 const source = readFileSync(new URL('../src/launcher-local-tools.ts', import.meta.url), 'utf8')
+const fileSearchSource = readFileSync(new URL('../src/launcher-file-search-tool.ts', import.meta.url), 'utf8')
+const networkSource = readFileSync(new URL('../src/launcher-network-extension-tool.ts', import.meta.url), 'utf8')
+const trustSource = readFileSync(new URL('../src/trusted-raycast-trust-view.ts', import.meta.url), 'utf8')
+const styles = readFileSync(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
 
 test('local tool output is announced and tools reflow at narrow widths', () => {
   assert.match(source, /aria-live/u)
-  assert.match(source, /launcher-local-tool-content[\s\S]*min-w-0/u)
+  assert.match(source, /launcher-command-content/u)
+  assert.match(styles, /@utility launcher-command-content[\s\S]*min-width: 0/u)
   assert.match(source, /role.*status/u)
+})
+
+test('every local command view uses the shared Raycast-like recipes', () => {
+  for (const name of ['content', 'field', 'control', 'status', 'error']) assert.match(styles, new RegExp(`@utility launcher-command-${name}`, 'u'))
+  for (const owner of [source, fileSearchSource, networkSource, trustSource]) {
+    assert.match(owner, /launcher-command-header/u)
+    assert.match(owner, /launcher-command-content/u)
+  }
+  for (const owner of [fileSearchSource, networkSource]) {
+    assert.match(owner, /launcher-command-list/u)
+    assert.match(owner, /launcher-command-row/u)
+    assert.match(owner, /launcher-command-menu/u)
+    assert.match(owner, /launcher-command-menu-item/u)
+  }
+  assert.match(source, /launcher-command-control/u)
+  assert.match(trustSource, /launcher-command-footer-action/u)
 })
 
 test('browser-safe Base64 and finite Rowland tools preserve deterministic vectors', () => {

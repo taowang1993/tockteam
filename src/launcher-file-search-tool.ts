@@ -22,18 +22,18 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const tool = element(document, 'section', 'launcher-local-tool')
   const toolName = text('fileSearch', 'File Search')
   tool.setAttribute('aria-label', `${toolName} ${text('tool', 'Tool')}`)
-  const header = element(document, 'header', 'launcher-local-tool-header')
-  const title = element(document, 'h2')
+  const header = element(document, 'header', 'launcher-command-header justify-between')
+  const title = element(document, 'h2', 'm-0 text-sm font-semibold')
   title.textContent = toolName
-  const close = element(document, 'button', 'launcher-secondary-button')
+  const close = element(document, 'button', 'launcher-command-footer-action')
   close.type = 'button'; close.textContent = text('back', 'Back to Results'); close.setAttribute('aria-label', `${text('closeTool', 'Close')} ${toolName} ${text('tool', 'Tool')}`); close.addEventListener('click', options.onClose)
   header.append(title, close); tool.append(header)
-  const content = element(document, 'div', 'launcher-local-tool-content'); tool.append(content)
+  const content = element(document, 'div', 'launcher-command-content'); tool.append(content)
   const input = element(document, 'input')
   const maxInputLength = LAUNCHER_MAX_SEARCH_TERM_LENGTH
-  input.type = 'search'; input.className = 'min-w-0 w-full max-w-full'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.setAttribute('aria-controls', 'launcher-file-search-results'); input.setAttribute('aria-autocomplete', 'list'); input.autocomplete = 'off'
-  const status = element(document, 'p', 'launcher-local-tool-status data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)]'); status.setAttribute('role', 'status'); status.textContent = text('enterFile', 'Enter a file name to search.')
-  const list = element(document, 'ul', 'm-0 min-w-0 list-none overflow-auto p-0'); list.id = 'launcher-file-search-results'; list.setAttribute('aria-label', text('fileSearchResults', 'File Search Results')); list.setAttribute('role', 'list')
+  input.type = 'search'; input.className = 'launcher-command-control'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.setAttribute('aria-controls', 'launcher-file-search-results'); input.setAttribute('aria-autocomplete', 'list'); input.autocomplete = 'off'
+  const status = element(document, 'p', 'launcher-command-status data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)]'); status.setAttribute('role', 'status'); status.textContent = text('enterFile', 'Enter a file name to search.')
+  const list = element(document, 'ul', 'launcher-command-list'); list.id = 'launcher-file-search-results'; list.setAttribute('aria-label', text('fileSearchResults', 'File Search Results')); list.setAttribute('role', 'list')
   content.append(input, status, list)
 
   let requestRevision = 0
@@ -48,7 +48,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
       const row = element(document, 'li', 'relative min-w-0'); row.setAttribute('role', 'listitem')
       const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
       const content = element(document, 'div', 'flex min-w-0 items-center gap-1')
-      const button = element(document, 'button', 'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
+      const button = element(document, 'button', 'launcher-command-row flex-1')
       button.type = 'button'; button.setAttribute('aria-label', `${item.name} — ${actionLabel(item.defaultAction)}`)
       const name = element(document, 'strong', 'min-w-0 flex-1 truncate text-sm font-medium'); name.textContent = item.name
       const description = element(document, 'span', 'shrink-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'); description.textContent = item.description
@@ -70,13 +70,13 @@ export function createLauncherFileSearchTool(options: Readonly<{
       content.append(button)
       if (actions.length > 1) {
         const menuId = `launcher-file-search-actions-${index}`
-        const toggle = element(document, 'button', 'shrink-0 rounded-md px-2 py-2 text-xs hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
+        const toggle = element(document, 'button', 'launcher-command-footer-action shrink-0')
         toggle.type = 'button'; toggle.textContent = text('actions', 'Actions'); toggle.setAttribute('aria-label', `${text('actionsFor', 'Actions for')} ${item.name}`); toggle.setAttribute('aria-haspopup', 'menu'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', menuId); toggle.setAttribute('data-file-search-result-id', item.id)
-        const menu = element(document, 'div', 'absolute right-0 top-full z-10 mt-1 w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] py-1 shadow-lg')
+        const menu = element(document, 'div', 'launcher-command-menu right-0 top-full mt-1')
         menu.id = menuId; menu.hidden = true; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', `${text('actionsFor', 'Actions for')} ${item.name}`)
         const menuButtons: HTMLButtonElement[] = []
         for (const action of actions) {
-          const actionButton = element(document, 'button', 'flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))]')
+          const actionButton = element(document, 'button', 'launcher-command-menu-item')
           actionButton.type = 'button'; actionButton.setAttribute('role', 'menuitem'); actionButton.setAttribute('aria-label', actionLabel(action)); actionButton.setAttribute('aria-keyshortcuts', action.keyboardShortcut === undefined ? 'Enter' : launcherShortcutAriaLabel(action.keyboardShortcut)); actionButton.title = action.description; actionButton.textContent = actionLabel(action)
           actionButton.addEventListener('click', () => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); void invoke(action, item) })
           menuButtons.push(actionButton); menu.append(actionButton)

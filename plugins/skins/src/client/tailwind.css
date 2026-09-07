@@ -113,6 +113,17 @@
   }
 }
 
+@utility launcher-command-content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.625rem;
+  overflow: auto;
+  padding: 0.75rem 1rem;
+}
+
 @utility launcher-command-list {
   min-width: 0;
   min-height: 0;
@@ -121,6 +132,58 @@
   margin: 0;
   padding: 0.375rem;
   list-style: none;
+}
+
+@utility launcher-command-field {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  & > span:first-child {
+    text-align: right;
+  }
+}
+
+@utility launcher-command-control {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.375rem;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 82%, transparent);
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, Canvas) 88%, transparent);
+  padding: 0.5rem 0.75rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+
+  &:focus-visible {
+    border-color: var(--dsw-alias-brand-primary, CanvasText);
+    outline: 2px solid color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 34%, transparent);
+    outline-offset: 1px;
+  }
+}
+
+@utility launcher-command-status {
+  min-height: 1.125rem;
+  margin: 0;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+@utility launcher-command-error {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary, CanvasText);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
 }
 
 @utility launcher-command-group-title {
@@ -273,11 +336,13 @@
 /* Launcher tools share these small semantic recipes across every provider surface. */
 @utility launcher-local-tool {
   display: flex;
+  width: 100%;
   min-width: 0;
+  height: 100%;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0;
 }
 
 @utility launcher-local-tool-header {
@@ -326,10 +391,12 @@
   display: inline-flex;
   min-height: 2.25rem;
   max-width: 100%;
+  align-self: flex-start;
   align-items: center;
   gap: 0.375rem;
   border: 1px solid var(--dsw-alias-border-l2, CanvasText);
   border-radius: 0.5rem;
+  background: transparent;
   padding-inline: 0.75rem;
   color: var(--dsw-alias-label-primary, CanvasText);
 }
@@ -337,8 +404,10 @@
 @utility launcher-primary-button {
   display: inline-flex;
   min-height: 2.25rem;
+  align-self: flex-start;
   align-items: center;
   gap: 0.375rem;
+  border: 0;
   border-radius: 0.5rem;
   background: var(--dsw-alias-brand-primary, CanvasText);
   padding-inline: 0.75rem;

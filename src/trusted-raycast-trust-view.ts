@@ -59,23 +59,23 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   let confirmStep: 'remove' | undefined
 
   const element = document.createElement('section')
-  element.className = 'launcher-local-tool p-4 text-sm'
+  element.className = 'launcher-local-tool text-sm'
   element.setAttribute('aria-label', copy.title)
-  const header = document.createElement('header'); header.className = 'launcher-local-tool-header'
+  const header = document.createElement('header'); header.className = 'launcher-command-header justify-between'
   const title = document.createElement('h2'); title.textContent = copy.title; title.className = 'm-0 text-sm font-semibold'
-  const close = document.createElement('button'); close.type = 'button'; close.className = 'launcher-secondary-button bg-transparent text-xs focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; close.textContent = copy.back; close.addEventListener('click', onClose)
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'launcher-command-footer-action'; close.textContent = copy.back; close.addEventListener('click', onClose)
   header.append(title, close)
-  const content = document.createElement('div'); content.className = 'launcher-local-tool-content min-w-0 overflow-auto'
-  const intro = document.createElement('p'); intro.className = 'launcher-local-tool-status'; intro.textContent = copy.intro
-  const status = document.createElement('p'); status.className = 'launcher-local-tool-status'; status.setAttribute('role', 'status')
-  const digestLine = document.createElement('p'); digestLine.className = 'launcher-local-tool-status text-xs [overflow-wrap:anywhere]'; digestLine.hidden = true
-  const previous = document.createElement('p'); previous.className = 'launcher-local-tool-status text-xs'; previous.hidden = true
-  const error = document.createElement('p'); error.className = 'launcher-local-tool-error'; error.setAttribute('role', 'alert'); error.hidden = true
+  const content = document.createElement('div'); content.className = 'launcher-command-content'
+  const intro = document.createElement('p'); intro.className = 'launcher-command-status'; intro.textContent = copy.intro
+  const status = document.createElement('p'); status.className = 'launcher-command-status'; status.setAttribute('role', 'status')
+  const digestLine = document.createElement('p'); digestLine.className = 'launcher-command-status [overflow-wrap:anywhere]'; digestLine.hidden = true
+  const previous = document.createElement('p'); previous.className = 'launcher-command-status'; previous.hidden = true
+  const error = document.createElement('p'); error.className = 'launcher-command-error'; error.setAttribute('role', 'alert'); error.hidden = true
   const buttons = document.createElement('div'); buttons.className = 'flex flex-wrap items-start gap-2 py-2'
   content.append(intro, status, digestLine, previous, error, buttons)
   element.append(header, content)
 
-  const buttonClass = 'launcher-secondary-button bg-transparent text-xs focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)] disabled:opacity-50'
+  const buttonClass = 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)] disabled:opacity-50'
   const renderButton = (label: string, run: () => void): HTMLButtonElement => {
     const button = document.createElement('button'); button.type = 'button'; button.className = buttonClass; button.textContent = label; button.disabled = busy
     button.addEventListener('click', run); buttons.append(button)

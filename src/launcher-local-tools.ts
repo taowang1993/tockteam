@@ -22,10 +22,10 @@ function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag:
   return created
 }
 function labeled(document: Document, labelText: string, control: HTMLElement): HTMLLabelElement {
-  const label = element(document, 'label', 'launcher-local-tool-field')
+  const label = element(document, 'label', 'launcher-command-field')
   const text = element(document, 'span')
   text.textContent = labelText
-  control.classList.add('min-w-0', 'max-w-full', 'w-full')
+  control.classList.add('launcher-command-control')
   label.append(text, control)
   return label
 }
@@ -169,15 +169,15 @@ export function createLauncherLocalTool(options: Readonly<{
   const toolName = extensionId === 'Base64Conversion' ? text('base64Name', TOOL_NAMES[extensionId]) : extensionId === 'RowlandTextEditor' ? text('rowlandName', TOOL_NAMES[extensionId]) : text('uuidName', TOOL_NAMES[extensionId])
   const tool = element(document, 'section', 'launcher-local-tool')
   tool.setAttribute('aria-label', `${toolName} ${text('tool', 'Tool')}`)
-  const header = element(document, 'header', 'launcher-local-tool-header')
-  const title = element(document, 'h2')
+  const header = element(document, 'header', 'launcher-command-header justify-between')
+  const title = element(document, 'h2', 'm-0 text-sm font-semibold')
   title.textContent = toolName
-  const close = element(document, 'button', 'launcher-secondary-button')
+  const close = element(document, 'button', 'launcher-command-footer-action')
   close.type = 'button'; close.textContent = text('back', 'Back to Results'); close.setAttribute('aria-label', `${text('closeTool', 'Close')} ${toolName} ${text('tool', 'Tool')}`); close.addEventListener('click', options.onClose)
   header.append(title, close); tool.append(header)
-  const content = element(document, 'div', 'launcher-local-tool-content min-w-0 overflow-auto'); tool.append(content)
-  const error = element(document, 'p', 'launcher-local-tool-error'); error.setAttribute('role', 'alert'); error.hidden = true
-  const outputStatus = element(document, 'p', 'launcher-local-tool-status'); outputStatus.setAttribute('role', 'status'); outputStatus.setAttribute('aria-live', 'polite'); outputStatus.textContent = text('outputReady', 'Output is ready.')
+  const content = element(document, 'div', 'launcher-command-content'); tool.append(content)
+  const error = element(document, 'p', 'launcher-command-error'); error.setAttribute('role', 'alert'); error.hidden = true
+  const outputStatus = element(document, 'p', 'launcher-command-status'); outputStatus.setAttribute('role', 'status'); outputStatus.setAttribute('aria-live', 'polite'); outputStatus.textContent = text('outputReady', 'Output is ready.')
   content.append(error, outputStatus)
 
   if (extensionId === 'Base64Conversion') {
