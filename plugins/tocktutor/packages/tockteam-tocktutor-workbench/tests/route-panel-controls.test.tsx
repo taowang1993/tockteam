@@ -527,7 +527,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.queryByRole('heading', { name: 'Web Viewer' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
     expect(onOpenRecovery).toHaveBeenCalledOnce()
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+    fireEvent.click(screen.getByRole('option', { name: /Snapshot 1/u }))
     expect(onReadSnapshot).toHaveBeenCalledWith(snapshotId)
     fireEvent.click(screen.getByRole('button', { name: 'Restore as New' }))
     expect(onRestoreSnapshot).toHaveBeenCalledWith(snapshotId)
@@ -538,7 +538,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByLabelText('Snapshot Preview').textContent).toContain('# Before')
   })
 
-  it('selects a bounded snapshot in the recovery list and shows its content beside the selector', () => {
+  it('selects a bounded snapshot in the recovery list and shows its content beside the selector', async () => {
     const firstId = '2026-08-22T18-00-00-000Z-first'
     const secondId = '2026-08-22T18-01-00-000Z-second'
     const onReadSnapshot = vi.fn()
@@ -563,7 +563,11 @@ describe('TockTutor titlebar panel controls', () => {
     expect(options[0]?.getAttribute('aria-selected')).toBe('false')
     expect(options[1]?.getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('region', { name: 'Selected Snapshot Content' }).textContent).toContain('# Second snapshot')
+    expect(options[0]?.getAttribute('tabindex')).toBe('-1')
+    expect(options[1]?.getAttribute('tabindex')).toBe('0')
+    options[1]?.focus()
     fireEvent.keyDown(options[1]!, { key: 'ArrowUp' })
+    await waitFor(() => expect(document.activeElement).toBe(options[0]))
     expect(onReadSnapshot).toHaveBeenCalledWith(firstId)
     fireEvent.click(options[0]!)
     expect(onReadSnapshot).toHaveBeenLastCalledWith(firstId)

@@ -5,7 +5,7 @@ import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@tockteam/ui/tooltip'
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { ExecutableBaseView } from './base-executable-view.tsx'
 import { CanvasBoard } from './canvas-board.tsx'
 import { BUILTIN_TEMPLATES } from './capture.ts'
@@ -84,6 +84,11 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const vaultTags = snapshot.facets?.tags ?? []
   const linkedMentions = snapshot.links?.backlinkDetails ?? []
   const unlinkedMentions = snapshot.links?.unlinkedMentions ?? []
+  const snapshotOptionRefs = useRef(new Map<string, HTMLButtonElement>())
+  const selectSnapshot = (id: string): void => {
+    props.onReadSnapshot?.(id)
+    snapshotOptionRefs.current.get(id)?.focus()
+  }
   return (
         <aside
           aria-hidden={!open}
@@ -121,29 +126,35 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
                   <div aria-label="Recovery Snapshots" className="grid min-w-0 gap-1 overflow-auto" role="listbox">
                     {(snapshot.snapshots ?? []).map((snapshotEntry, index) => {
                       const selected = snapshot.selectedSnapshot?.snapshot.id === snapshotEntry.id
+                      const selectedId = snapshot.selectedSnapshot?.snapshot.id
+                      const selectedIndex = snapshot.snapshots?.findIndex(entry => entry.id === selectedId) ?? -1
+                      const rovingIndex = selectedIndex >= 0 ? selectedIndex : 0
                       return (
                         <div className="grid min-w-0 gap-1 rounded-md" key={snapshotEntry.id}>
                           <Button
                             unstyled
                             aria-selected={selected}
                             className="grid min-w-0 gap-0.5 rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-left text-xs outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-selected:border-[var(--tt-accent)] aria-selected:bg-[var(--tt-selected)]"
-                            onClick={() => { props.onReadSnapshot?.(snapshotEntry.id) }}
+                            onClick={() => { selectSnapshot(snapshotEntry.id) }}
                             onKeyDown={event => {
                               if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
                               event.preventDefault()
                               const offset = event.key === 'ArrowDown' ? 1 : -1
                               const next = (index + offset + (snapshot.snapshots?.length ?? 0)) % (snapshot.snapshots?.length ?? 1)
                               const nextSnapshot = snapshot.snapshots?.[next]
-                              if (nextSnapshot !== undefined) props.onReadSnapshot?.(nextSnapshot.id)
+                              if (nextSnapshot !== undefined) selectSnapshot(nextSnapshot.id)
+                            }}
+                            ref={element => {
+                              if (element === null) snapshotOptionRefs.current.delete(snapshotEntry.id)
+                              else snapshotOptionRefs.current.set(snapshotEntry.id, element)
                             }}
                             role="option"
-                            tabIndex={selected || snapshot.selectedSnapshot === null || snapshot.selectedSnapshot === undefined ? 0 : -1}
+                            tabIndex={index === rovingIndex ? 0 : -1}
                             type="button"
                           >
                             <span className="truncate font-medium">Snapshot {String(index + 1)} · {snapshotEntry.reason}</span>
                             <span className="truncate text-[10px] text-[var(--tt-muted)]">{snapshotDateLabel(snapshotEntry.createdAt)} · rev {snapshotRevisionLabel(snapshotEntry.digest)}</span>
                           </Button>
-                          <Button unstyled className="justify-self-start rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[11px] text-inherit" onClick={() => { props.onReadSnapshot?.(snapshotEntry.id) }} type="button">Preview</Button>
                         </div>
                       )
                     })}
