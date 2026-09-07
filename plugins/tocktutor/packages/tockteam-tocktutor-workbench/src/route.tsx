@@ -1515,9 +1515,9 @@ export class WorkbenchRouteController {
         path,
         reason: 'manual',
       }))
-      if (result.generation !== vault.generation || result.snapshot?.path !== path) return false
+      if (result.generation !== vault.generation || result.snapshot?.path !== path || result.snapshot === undefined) return false
       await this.setRecoveryOpen(true)
-      return true
+      return await this.readRecoverySnapshot(result.snapshot.id)
     } catch {
       return false
     }

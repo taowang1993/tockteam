@@ -39,6 +39,15 @@ function graphFolder(path: string): string {
   return path.includes('/') ? path.split('/', 1)[0]! : 'Vault Root'
 }
 
+function snapshotDateLabel(createdAt: number): string {
+  const date = new Date(createdAt)
+  return Number.isNaN(date.getTime()) ? 'Unknown time' : date.toLocaleString(undefined, { day: 'numeric', hour: 'numeric', minute: '2-digit', month: 'short' })
+}
+
+function snapshotRevisionLabel(digest: string): string {
+  return digest.startsWith('sha256:') ? digest.slice(7, 15) : digest.slice(0, 8)
+}
+
 function graphFolderColor(folder: string): string {
   let hash = 0
   for (const character of folder) hash = (Math.imul(hash, 31) + character.codePointAt(0)!) >>> 0
@@ -105,21 +114,56 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             <div className="mt-2 flex gap-2">
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={props.onTrashCurrent} type="button">Move Current File to Trash</Button>
             </div>
-            <h3 className="mt-3 mb-1 text-xs">Snapshots</h3>
-            <div className="grid gap-1">
-              {(snapshot.snapshots ?? []).map((snapshotEntry, index) => (
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-1" key={snapshotEntry.id}>
-                  <span className="truncate text-xs">Snapshot {String(index + 1)} · {snapshotEntry.reason}</span>
-                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onReadSnapshot?.(snapshotEntry.id) }} type="button">Preview</Button>
-                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRestoreSnapshotOverwrite?.(snapshotEntry.id) }} type="button">Restore Original</Button>
-                  <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRestoreSnapshot?.(snapshotEntry.id) }} type="button">Restore as New</Button>
-                </div>
-              ))}
-              {(snapshot.snapshots?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No snapshots for the active file.</span>}
+            <div className="mt-3 grid min-w-0 gap-3 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] max-[380px]:grid-cols-1">
+              <section aria-label="Snapshot Selector" className="min-w-0">
+                <h3 className="mb-1 text-xs">Snapshots</h3>
+                {(snapshot.snapshots?.length ?? 0) > 0 ? (
+                  <div aria-label="Recovery Snapshots" className="grid min-w-0 gap-1 overflow-auto" role="listbox">
+                    {(snapshot.snapshots ?? []).map((snapshotEntry, index) => {
+                      const selected = snapshot.selectedSnapshot?.snapshot.id === snapshotEntry.id
+                      return (
+                        <div className="grid min-w-0 gap-1 rounded-md" key={snapshotEntry.id}>
+                          <Button
+                            unstyled
+                            aria-selected={selected}
+                            className="grid min-w-0 gap-0.5 rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-left text-xs outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-selected:border-[var(--tt-accent)] aria-selected:bg-[var(--tt-selected)]"
+                            onClick={() => { props.onReadSnapshot?.(snapshotEntry.id) }}
+                            onKeyDown={event => {
+                              if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+                              event.preventDefault()
+                              const offset = event.key === 'ArrowDown' ? 1 : -1
+                              const next = (index + offset + (snapshot.snapshots?.length ?? 0)) % (snapshot.snapshots?.length ?? 1)
+                              const nextSnapshot = snapshot.snapshots?.[next]
+                              if (nextSnapshot !== undefined) props.onReadSnapshot?.(nextSnapshot.id)
+                            }}
+                            role="option"
+                            tabIndex={selected || snapshot.selectedSnapshot === null || snapshot.selectedSnapshot === undefined ? 0 : -1}
+                            type="button"
+                          >
+                            <span className="truncate font-medium">Snapshot {String(index + 1)} · {snapshotEntry.reason}</span>
+                            <span className="truncate text-[10px] text-[var(--tt-muted)]">{snapshotDateLabel(snapshotEntry.createdAt)} · rev {snapshotRevisionLabel(snapshotEntry.digest)}</span>
+                          </Button>
+                          <Button unstyled className="justify-self-start rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[11px] text-inherit" onClick={() => { props.onReadSnapshot?.(snapshotEntry.id) }} type="button">Preview</Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : <span className="text-xs text-[var(--tt-muted)]">No snapshots for the active file.</span>}
+              </section>
+              <section aria-label="Selected Snapshot Content" className="grid min-w-0 content-start gap-2">
+                <h3 className="mb-0 text-xs">Snapshot Preview</h3>
+                {snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== undefined ? (
+                  <>
+                    <div className="truncate text-[10px] text-[var(--tt-muted)]">{snapshotDateLabel(snapshot.selectedSnapshot.snapshot.createdAt)} · rev {snapshotRevisionLabel(snapshot.selectedSnapshot.snapshot.digest)}</div>
+                    <pre aria-label="Snapshot Preview" className="m-0 max-h-48 min-h-24 overflow-auto whitespace-pre-wrap break-words rounded-md border border-[var(--tt-border)] bg-[color-mix(in_srgb,var(--tt-text)_3%,transparent)] p-2 text-[11px] leading-4">{snapshot.selectedSnapshot.content}</pre>
+                    <div className="flex min-w-0 flex-wrap gap-1">
+                      <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[11px] text-inherit" onClick={() => { props.onRestoreSnapshotOverwrite?.(snapshot.selectedSnapshot!.snapshot.id) }} type="button">Restore Original</Button>
+                      <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[11px] text-inherit" onClick={() => { props.onRestoreSnapshot?.(snapshot.selectedSnapshot!.snapshot.id) }} type="button">Restore as New</Button>
+                    </div>
+                  </>
+                ) : <span className="text-xs text-[var(--tt-muted)]">Select a snapshot to inspect its content.</span>}
+              </section>
             </div>
-            {snapshot.selectedSnapshot !== null && snapshot.selectedSnapshot !== undefined && (
-              <pre aria-label="Snapshot Preview" className="mt-2 max-h-32 overflow-auto rounded border border-[var(--tt-border)] p-2 text-xs">{snapshot.selectedSnapshot.content}</pre>
-            )}
             <h3 className="mt-3 mb-1 text-xs">Trash</h3>
             <div className="grid gap-1">
               {(snapshot.trash ?? []).map((entry, index) => (

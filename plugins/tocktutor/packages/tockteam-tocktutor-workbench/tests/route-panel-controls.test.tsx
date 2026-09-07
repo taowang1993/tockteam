@@ -538,6 +538,37 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByLabelText('Snapshot Preview').textContent).toContain('# Before')
   })
 
+  it('selects a bounded snapshot in the recovery list and shows its content beside the selector', () => {
+    const firstId = '2026-08-22T18-00-00-000Z-first'
+    const secondId = '2026-08-22T18-01-00-000Z-second'
+    const onReadSnapshot = vi.fn()
+    renderRoute({
+      path: 'Note.md',
+      selectedSnapshot: {
+        content: '# Second snapshot\\n',
+        generation: 1,
+        snapshot: { createdAt: 2, digest: `sha256:${'b'.repeat(64)}`, id: secondId, path: 'Note.md', reason: 'manual', size: 18 },
+      },
+      snapshots: [
+        { createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: firstId, path: 'Note.md', reason: 'save', size: 15 },
+        { createdAt: 2, digest: `sha256:${'b'.repeat(64)}`, id: secondId, path: 'Note.md', reason: 'manual', size: 18 },
+      ],
+    }, { onReadSnapshot })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
+    const selector = screen.getByRole('listbox', { name: 'Recovery Snapshots' })
+    const options = within(selector).getAllByRole('option')
+    expect(options).toHaveLength(2)
+    expect(options[0]?.getAttribute('aria-selected')).toBe('false')
+    expect(options[1]?.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('region', { name: 'Selected Snapshot Content' }).textContent).toContain('# Second snapshot')
+    fireEvent.keyDown(options[1]!, { key: 'ArrowUp' })
+    expect(onReadSnapshot).toHaveBeenCalledWith(firstId)
+    fireEvent.click(options[0]!)
+    expect(onReadSnapshot).toHaveBeenLastCalledWith(firstId)
+  })
+
   it('keeps Properties and Backlinks as separate utility views', () => {
     const onLoadFacets = vi.fn()
     renderRoute({
