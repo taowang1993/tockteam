@@ -1,6 +1,7 @@
 import { type MutableRefObject, type ReactNode } from 'react';
 import type { EditorWidgetTarget } from './editor-widgets.ts';
 import type { LivePreviewTableAction } from './milkdown-editor-commands.ts';
+import { type PropertyValue } from './properties.ts';
 export interface LivePreviewSelection {
     from: number;
     to: number;
@@ -18,6 +19,7 @@ export interface LivePreviewEditorProps {
     onAddProperty?: (key: string) => boolean;
     onMarkdownChange: (markdown: string) => void;
     onOpenExternalUrl?: (url: string) => void;
+    onSetProperty?: (key: string, value: PropertyValue) => boolean;
     resolvedEmbeds?: readonly import('./embeds.ts').ResolvedEmbedNode[];
     onSelectionChange?: (selection: LivePreviewSelection) => void;
     onTableAction?: (action: LivePreviewTableAction) => void;
@@ -28,6 +30,7 @@ export interface LivePreviewEditorProps {
 export declare function MarkdownDocumentHeader(props: {
     className?: string;
     onAddProperty?: (key: string) => boolean;
+    onSetProperty?: (key: string, value: PropertyValue) => boolean;
     source: string;
     title?: string;
 }): ReactNode;

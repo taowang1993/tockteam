@@ -102,17 +102,23 @@ describe('selection-aware editor widgets', () => {
 })
 
 describe('Milkdown Live Preview editor', () => {
-  it('keeps frontmatter outside Milkdown serialization and presents its properties', async () => {
+  it('keeps frontmatter outside Milkdown serialization and presents Obsidian-style tag properties', async () => {
     const source = '---\r\nstatus: active\r\ntags: [one, two]\r\n---\r\n# Lesson\r\n'
+    const onSetProperty = vi.fn(() => true)
     expect(splitLivePreviewSource(source)).toEqual({
       body: '# Lesson\n',
       prefix: '---\nstatus: active\ntags: [one, two]\n---\n',
     })
-    render(<LivePreviewEditor content={source} onMarkdownChange={() => {}} title="Lesson note" />)
+    render(<LivePreviewEditor content={source} onMarkdownChange={() => {}} onSetProperty={onSetProperty} title="Lesson note" />)
     const title = screen.getByRole('heading', { level: 1, name: 'Lesson note' })
     const propertiesHeading = screen.getByRole('heading', { level: 2, name: 'Properties' })
     expect(title.compareDocumentPosition(propertiesHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByLabelText('Document Properties').textContent).toContain('statusactive')
+    const tagsTerm = screen.getByText('tags').closest('dt')!
+    expect(tagsTerm.querySelector('.lucide-tags')).toBeTruthy()
+    expect(tagsTerm.parentElement?.querySelector('dd')?.textContent).toContain('onetwo')
+    fireEvent.click(screen.getByRole('button', { name: 'Remove one tag' }))
+    expect(onSetProperty).toHaveBeenCalledWith('tags', ['two'])
   })
 
   it('adds a validated property from Live Preview without overwriting an existing key', () => {
@@ -175,6 +181,8 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.className).toContain('text-base')
     expect(readingSurface.className).toContain('[&_blockquote]:border-l-2')
     expect(readingSurface.className).toContain('[&_blockquote]:pl-3')
+    expect(readingSurface.className).toContain('[&_ul:not(.task-list)]:list-disc')
+    expect(readingSurface.className).toContain('[&_code]:bg-[var(--dsw-specific-markdown-inline-code)]')
   })
 
   it('presents wikilinks without source brackets and shares Reading View link styling', async () => {
@@ -205,6 +213,8 @@ describe('Milkdown Live Preview editor', () => {
     const editor = screen.getByLabelText('Live Preview Editor')
     expect(editor.className).toContain('[&_.tocktutor-live-highlight]:bg-[var(--dsw-specific-markdown-highlight)]')
     expect(editor.className).toContain('[&_li>p]:m-0')
+    expect(editor.className).toContain('[&_ul]:list-disc')
+    expect(editor.className).toContain('[&_code]:bg-[var(--dsw-specific-markdown-inline-code)]')
     expect(editor.className).toContain('[&_.tocktutor-live-fold]:absolute')
     expect(editor.className).toContain('[&_li>ul]:!pl-4')
   })

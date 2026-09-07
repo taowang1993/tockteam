@@ -1,6 +1,6 @@
 import { Button } from '@tockteam/ui/button'
 import { Input } from '@tockteam/ui/input'
-import { AlignLeft, Plus, X } from 'lucide-react'
+import { AlignLeft, Plus, Tags, X } from 'lucide-react'
 import {
   lazy,
   Suspense,
@@ -12,7 +12,7 @@ import {
 } from 'react'
 import type { EditorWidgetTarget } from './editor-widgets.ts'
 import type { LivePreviewTableAction } from './milkdown-editor-commands.ts'
-import { parseFrontmatterProperties } from './properties.ts'
+import { parseFrontmatterProperties, type PropertyValue } from './properties.ts'
 
 export interface LivePreviewSelection {
   from: number
@@ -37,6 +37,7 @@ export interface LivePreviewEditorProps {
   onAddProperty?: (key: string) => boolean
   onMarkdownChange: (markdown: string) => void
   onOpenExternalUrl?: (url: string) => void
+  onSetProperty?: (key: string, value: PropertyValue) => boolean
   resolvedEmbeds?: readonly import('./embeds.ts').ResolvedEmbedNode[]
   onSelectionChange?: (selection: LivePreviewSelection) => void
   onTableAction?: (action: LivePreviewTableAction) => void
@@ -50,7 +51,7 @@ const LazyLivePreviewEditor = lazy(async () => {
   return { default: module.LivePreviewEditorRuntime }
 })
 
-export function MarkdownDocumentHeader(props: { className?: string; onAddProperty?: (key: string) => boolean; source: string; title?: string }): ReactNode {
+export function MarkdownDocumentHeader(props: { className?: string; onAddProperty?: (key: string) => boolean; onSetProperty?: (key: string, value: PropertyValue) => boolean; source: string; title?: string }): ReactNode {
   const properties = useMemo(() => parseFrontmatterProperties(props.source), [props.source])
   const errorId = useId()
   const [adding, setAdding] = useState(false)
@@ -71,12 +72,25 @@ export function MarkdownDocumentHeader(props: { className?: string; onAddPropert
           <h2 className="m-0 mb-2 text-xs font-semibold text-[var(--tt-text)]">Properties</h2>
           {properties.length > 0 && (
             <dl aria-label="Document Properties" className="m-0 grid grid-cols-[112px_minmax(0,1fr)] gap-x-3 text-xs">
-              {properties.map(property => (
-                <div className="contents" key={property.key}>
-                  <dt className="flex min-h-6 min-w-0 items-center gap-2 font-medium text-[var(--tt-muted)]"><AlignLeft aria-hidden="true" className="size-3 shrink-0" /><span className="truncate">{property.key}</span></dt>
-                  <dd className="m-0 flex min-h-6 min-w-0 items-center truncate text-[var(--tt-text)]">{Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')}</dd>
-                </div>
-              ))}
+              {properties.map(property => {
+                const tags = property.key.toLocaleLowerCase() === 'tags' && Array.isArray(property.value) ? property.value : null
+                const Icon = tags === null ? AlignLeft : Tags
+                return (
+                  <div className="contents" key={property.key}>
+                    <dt className="flex min-h-6 min-w-0 items-center gap-2 font-medium text-[var(--tt-muted)]"><Icon aria-hidden="true" className="size-3 shrink-0" /><span className="truncate">{property.key}</span></dt>
+                    <dd className={`m-0 flex min-h-6 min-w-0 items-center text-[var(--tt-text)] ${tags === null ? 'truncate' : 'flex-wrap gap-1'}`}>
+                      {tags === null
+                        ? Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')
+                        : tags.map((tag, index) => (
+                            <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_15%,transparent)] px-2 text-[var(--dsw-specific-markdown-accent)]" key={tag}>
+                              {tag}
+                              {props.onSetProperty !== undefined && <Button unstyled aria-label={`Remove ${tag} tag`} className="inline-flex size-3 items-center justify-center border-0 bg-transparent p-0 text-current" onClick={() => { props.onSetProperty?.(property.key, tags.filter((_value, valueIndex) => valueIndex !== index)) }} type="button"><X aria-hidden="true" className="size-3" /></Button>}
+                            </span>
+                          ))}
+                    </dd>
+                  </div>
+                )
+              })}
             </dl>
           )}
           {props.onAddProperty !== undefined && (adding
@@ -125,7 +139,7 @@ export function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode {
   const protectedSource = useMemo(() => isLivePreviewSourceProtected(props.content), [props.content])
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]" source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
+      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]" source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
       {protectedSource && <p className="m-0 border-b border-[var(--tt-border)] px-4 py-2 text-xs text-[var(--tt-muted)]" role="note">Protected Markdown stays exact in Live Preview. Use Source mode for free-form edits; task and fold controls remain available.</p>}
       <Suspense fallback={<div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={props.className}>Loading Live Preview…</div>}>
         <LazyLivePreviewEditor {...props} />

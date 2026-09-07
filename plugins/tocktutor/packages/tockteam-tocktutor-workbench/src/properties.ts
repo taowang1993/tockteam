@@ -71,7 +71,13 @@ export function inferPropertyType(value: unknown): PropertyType {
 }
 
 function scalar(value: string): PropertyValue {
-  const decoded = decodeQuoted(value)
+  const trimmed = value.trim()
+  // ponytail: flat flow lists cover tags; use a YAML parser if nested frontmatter becomes editable.
+  if (/^\[[^\[\]{}]*\]$/u.test(trimmed)) {
+    const content = trimmed.slice(1, -1).trim()
+    return content === '' ? [] : content.split(',').map(decodeQuoted)
+  }
+  const decoded = decodeQuoted(trimmed)
   if (decoded === 'true') return true
   if (decoded === 'false') return false
   if (decoded === 'null' || decoded === '~') return null

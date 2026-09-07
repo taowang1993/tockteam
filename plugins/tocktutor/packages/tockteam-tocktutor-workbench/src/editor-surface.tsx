@@ -5,6 +5,7 @@ import {
 } from 'react'
 import type { ResolvedEmbedNode } from './embeds.ts'
 import { LivePreviewEditor, MarkdownDocumentHeader, type LivePreviewSelection } from './live-preview-editor.tsx'
+import type { PropertyValue } from './properties.ts'
 import { buildMarkdownSlides, renderMarkdownHtml } from './rich-markdown.ts'
 
 function embedLabel(embed: ResolvedEmbedNode): string {
@@ -78,6 +79,7 @@ export function RichReadingView(props: {
   embeds?: readonly ResolvedEmbedNode[] | undefined
   onAddProperty?: ((key: string) => boolean) | undefined
   onOpenExternalUrl?: ((url: string) => void) | undefined
+  onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined
   onToggleTask(index: number): void
   source: string
   title: string
@@ -99,9 +101,9 @@ export function RichReadingView(props: {
   }
   return (
     <section aria-label="Reading View" className="min-h-full" tabIndex={-1}>
-      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]" {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} source={props.source} title={props.title} />
+      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]" {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} source={props.source} title={props.title} />
       <article
-        className="tocktutor-reading mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] text-base leading-6 [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:m-0 [&_.task-list]:list-none [&_.task-list]:pl-1 [&_.task-list_li]:min-h-6 [&_.task-list_li]:leading-6 [&_.task-list_input]:mr-2 [&_.task-list_input]:size-3.5 [&_.task-list_input]:accent-[var(--dsw-specific-markdown-accent)] [&_.task-list_li:has(input:checked)]:text-[var(--tt-muted)] [&_.task-list_li:has(input:checked)]:line-through [&_blockquote]:mx-0 [&_blockquote]:my-4 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--dsw-specific-markdown-accent)] [&_blockquote]:pl-3 [&_blockquote_p]:m-0 [&_a]:text-[var(--dsw-specific-markdown-accent)] [&_a.internal-link]:no-underline [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_ol]:my-2 [&_ol]:pl-[30px] [&_ul:not(.task-list)]:my-2 [&_ul:not(.task-list)]:pl-[30px] [&_li>ul]:!my-0 [&_li>ul]:!pl-4 [&_li>ol]:!my-0 [&_li>ol]:!pl-4 [&_mark]:bg-[var(--dsw-specific-markdown-highlight)] [&_mark]:text-inherit [&_p]:mt-0 [&_p]:mb-4 [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold"
+        className="tocktutor-reading mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] text-base leading-6 [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:m-0 [&_.task-list]:list-none [&_.task-list]:pl-1 [&_.task-list_li]:min-h-6 [&_.task-list_li]:leading-6 [&_.task-list_input]:mr-2 [&_.task-list_input]:size-3.5 [&_.task-list_input]:accent-[var(--dsw-specific-markdown-accent)] [&_.task-list_li:has(input:checked)]:text-[var(--tt-muted)] [&_.task-list_li:has(input:checked)]:line-through [&_blockquote]:mx-0 [&_blockquote]:my-4 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--dsw-specific-markdown-accent)] [&_blockquote]:pl-3 [&_blockquote_p]:m-0 [&_a]:text-[var(--dsw-specific-markdown-accent)] [&_a.internal-link]:no-underline [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_ol]:my-2 [&_ol]:pl-[30px] [&_ul:not(.task-list)]:my-2 [&_ul:not(.task-list)]:list-disc [&_ul:not(.task-list)]:pl-[30px] [&_li>ul]:!my-0 [&_li>ul]:!pl-4 [&_li>ol]:!my-0 [&_li>ol]:!pl-4 [&_mark]:bg-[var(--dsw-specific-markdown-highlight)] [&_mark]:text-inherit [&_code]:bg-[var(--dsw-specific-markdown-inline-code)] [&_pre_code]:bg-transparent [&_p]:mt-0 [&_p]:mb-4 [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold"
         onClick={onClick}
       >
         <div dangerouslySetInnerHTML={{ __html: html }} />
@@ -118,6 +120,7 @@ export function LivePreviewView(props: {
   onEdit(source: string): void
   onOpenExternalUrl?: ((url: string) => void) | undefined
   onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined
+  onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined
   onToggleTask(index: number): void
   source: string
   title: string
@@ -132,6 +135,7 @@ export function LivePreviewView(props: {
         onMarkdownChange={props.onEdit}
         {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })}
         {...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl })}
+        {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })}
         {...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds })}
         {...(props.onSelectionChange === undefined ? {} : { onSelectionChange: props.onSelectionChange })}
         onToggleTask={props.onToggleTask}
