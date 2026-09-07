@@ -136,7 +136,6 @@ function buildEditorExtensions(props: {
   showFoldGutter: boolean
   sourceRef: { current: string }
   spellCheck: boolean
-  title?: string
 }): Extension[] {
   const hardBreak = (view: EditorView): boolean => {
     if (view.state.readOnly) return false
@@ -180,7 +179,6 @@ function buildEditorExtensions(props: {
     EditorView.lineWrapping,
     EditorView.contentAttributes.of({
       spellcheck: props.spellCheck ? 'true' : 'false',
-      ...(props.title === undefined ? {} : { 'data-inline-title': props.title }),
     }),
     EditorView.decorations.compute(['doc'], sourceDecorations),
     EditorView.updateListener.of((update: ViewUpdate) => {
@@ -272,8 +270,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     showFoldGutter,
     sourceRef,
     spellCheck: props.spellCheck !== false,
-    ...(props.title === undefined ? {} : { title: props.title }),
-  }), [editable, extraExtensions, showFoldGutter, props.spellCheck, props.title])
+  }), [editable, extraExtensions, showFoldGutter, props.spellCheck])
 
   useEffect(() => {
     const parent = parentRef.current
@@ -327,5 +324,5 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     view.focus()
   }, [props.foldRequest])
 
-  return <div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className={`tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-content[data-inline-title]::before]:mb-4 [&_.cm-content[data-inline-title]::before]:block [&_.cm-content[data-inline-title]::before]:text-[30px] [&_.cm-content[data-inline-title]::before]:leading-tight [&_.cm-content[data-inline-title]::before]:font-[650] [&_.cm-content[data-inline-title]::before]:content-[attr(data-inline-title)] [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`} id={props.id}><div className="min-h-0 min-w-0 flex-1" ref={parentRef} /></div>
+  return <div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className={`tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`} id={props.id}><div className="min-h-0 min-w-0 flex-1" ref={parentRef} /></div>
 }

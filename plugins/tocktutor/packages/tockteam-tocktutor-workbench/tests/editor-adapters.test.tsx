@@ -19,9 +19,10 @@ describe('CodeMirror Source editor', () => {
     const source = '---\r\nstatus: active\r\n---\r\n# Keep\r\n'
     const onChange = vi.fn()
     const onSelection = vi.fn()
+    const onRenameTitle = vi.fn(async () => true)
     const editorViewRef = { current: null }
     const { container } = render(
-      <SourceEditor content={source} editorViewRef={editorViewRef} onContentChange={onChange} onSelectionChange={onSelection} title="Keep" />,
+      <SourceEditor content={source} editorViewRef={editorViewRef} onContentChange={onChange} onRenameTitle={onRenameTitle} onSelectionChange={onSelection} title="Keep" />,
     )
 
     await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
@@ -32,12 +33,39 @@ describe('CodeMirror Source editor', () => {
     expect(sourceEditor.className).toContain('[&_.cm-gutters]:hidden')
     expect(sourceEditor.className).toContain('[&_.cm-activeLine]:bg-transparent')
     expect(screen.getByLabelText('Markdown Source Editor').className).toContain('[&_.cm-scroller]:leading-6')
-    expect(container.querySelector('.cm-content')?.getAttribute('data-inline-title')).toBe('Keep')
+    const title = screen.getByRole('textbox', { name: 'Note title' }) as HTMLInputElement
+    expect(title.value).toBe('Keep')
+    expect(title.closest('.cm-editor')).toBeNull()
+    expect(container.querySelector('.cm-content')?.getAttribute('data-inline-title')).toBeNull()
+    fireEvent.change(title, { target: { value: 'Renamed' } })
+    fireEvent.keyDown(title, { key: 'Enter' })
+    await waitFor(() => expect(onRenameTitle).toHaveBeenCalledWith('Renamed'))
+    const firstLine = source.replace(/\r\n?/gu, '\n').indexOf('status')
+    editorViewRef.current?.dispatch({ selection: { anchor: firstLine, head: firstLine + 6 } })
+    await waitFor(() => expect(onSelection).toHaveBeenCalledWith(expect.objectContaining({ main: { from: firstLine, to: firstLine + 6 } })))
     expect(editorViewRef.current?.state.doc.toString()).toBe(source.replace(/\r\n?/gu, '\n'))
     expect(preserveEditorLineEndings(source, `${source.replace(/\r\n?/gu, '\n')}Tail`)).toBe(`${source}Tail`)
     editorViewRef.current?.dispatch({ changes: { from: editorViewRef.current.state.doc.length, insert: 'Tail' } })
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(`${source}Tail`))
     expect(onSelection).toHaveBeenCalled()
+  })
+
+  it('rejects invalid titles and restores the authoritative title after a failed rename', async () => {
+    const onRenameTitle = vi.fn(async () => false)
+    render(<SourceEditor content={'# Keep\n'} onRenameTitle={onRenameTitle} title="Keep" />)
+    const title = await screen.findByRole('textbox', { name: 'Note title' }) as HTMLInputElement
+
+    fireEvent.change(title, { target: { value: 'Folder/Bad' } })
+    fireEvent.keyDown(title, { key: 'Enter' })
+    expect(onRenameTitle).not.toHaveBeenCalled()
+    expect((await screen.findByRole('alert')).textContent).toContain('path separator')
+    expect(title.value).toBe('Folder/Bad')
+
+    fireEvent.change(title, { target: { value: 'Renamed' } })
+    fireEvent.blur(title)
+    await waitFor(() => expect(onRenameTitle).toHaveBeenCalledWith('Renamed'))
+    expect((await screen.findByRole('alert')).textContent).toContain('could not be renamed')
+    expect(title.value).toBe('Keep')
   })
 
   it('recreates from the current source instead of the initial source', async () => {

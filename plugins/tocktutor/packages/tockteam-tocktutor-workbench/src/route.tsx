@@ -2467,6 +2467,7 @@ export interface TockTutorRouteViewProps {
   onPrepareOrganization?(): void
   onPreviewAttachment?(path: string): void
   onReadSnapshot?(id: string): void
+  onRenameTitle?(title: string): Promise<boolean>
   onRemoveBookmark?(id: string): void
   onReopenClosedTab?(): void
   onRestoreSnapshot?(id: string): void
@@ -3321,6 +3322,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   content={snapshot.source}
                   key={snapshot.path}
                   onContentChange={props.onEdit}
+                  {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}
                   onSelectionChange={selection => { props.onSelectionChange?.(selection.main.from, selection.main.to) }}
                   {...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds })}
                   spellCheck
