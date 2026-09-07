@@ -1,4 +1,4 @@
-import { Hourglass, SearchX, type IconNode } from 'lucide'
+import { ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage, TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
 
@@ -6,7 +6,7 @@ import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage, TrustedRaycast
 export function createTrustedRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void, locale = 'en-US'): { element: HTMLElement; focus(): void; update(message: TrustedRaycastViewMessage): void } {
   const zh = locale.startsWith('zh')
   const setHidden = (target: HTMLElement, hidden: boolean): void => { target.hidden = hidden; target.classList?.toggle('!hidden', hidden) }
-  const icon = (definition: IconNode): Element => {
+  const icon = (definition: IconNode, className = 'size-7 opacity-60'): Element => {
     if (typeof document.createElementNS !== 'function') return document.createElement('span')
     type SvgTuple = [string, Record<string, unknown>, SvgTuple[]?]
     const render = ([tag, attributes, children = []]: SvgTuple): Element => {
@@ -15,7 +15,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       for (const child of children) node.append(render(child))
       return node
     }
-    const svg = render(definition as unknown as SvgTuple); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'size-7 opacity-60')
+    const svg = render(definition as unknown as SvgTuple); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', className)
     return svg
   }
   let current: TrustedRaycastViewMessage | undefined
@@ -30,40 +30,40 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     sendEvent({ kind: 'navigation', eventId: 'language-nav', value: 'language:pop' })
   }
   const element = document.createElement('section'); element.className = 'launcher-local-tool !gap-0 overflow-hidden text-sm'; element.setAttribute('aria-label', 'Google Translate'); element.setAttribute('aria-busy', 'false'); element.setAttribute('data-view', 'translate')
-  const header = document.createElement('header'); header.className = 'flex h-12 min-w-0 shrink-0 items-center gap-3 px-4'
-  const close = document.createElement('button'); close.type = 'button'; close.className = 'inline-flex size-9 items-center justify-center rounded-lg border-0 bg-transparent text-2xl leading-none text-[var(--dsw-alias-label-secondary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; close.textContent = '‹'; close.setAttribute('aria-label', zh ? '返回结果' : 'Back to Results'); close.addEventListener('click', onClose)
+  const header = document.createElement('header'); header.className = 'launcher-command-header'
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'launcher-command-footer-action !size-8 !min-h-8 !px-0'; close.append(icon(ChevronLeft, 'size-5')); close.setAttribute('aria-label', zh ? '返回结果' : 'Back to Results'); close.addEventListener('click', onClose)
   const titleIcon = document.createElement('img'); titleIcon.setAttribute('src', './trusted-raycast/google-translate.png'); titleIcon.setAttribute('alt', ''); titleIcon.className = 'size-6 rounded-md'
   const title = document.createElement('h2'); title.textContent = 'Google Translate'; title.className = 'm-0 text-sm font-semibold'
   header.append(close, titleIcon, title)
   const hero = document.createElement('div'); hero.className = 'flex flex-col items-center px-6 pb-2 text-center'; hero.hidden = true
-  const logoFrame = document.createElement('div'); logoFrame.className = 'mb-3 flex size-16 items-center justify-center rounded-full bg-black/25 shadow-sm'
-  const logo = document.createElement('img'); logo.setAttribute('src', './trusted-raycast/google-translate.png'); logo.setAttribute('alt', 'Google Translate'); logo.className = 'size-9'; logoFrame.append(logo)
+  const logoFrame = document.createElement('div'); logoFrame.className = 'mb-3 flex size-16 items-center justify-center rounded-full border border-[var(--dsw-alias-border-l1,CanvasText)] bg-[var(--dsw-alias-bg-layer-2,Canvas)] shadow-sm'
+  const logo = document.createElement('img'); logo.setAttribute('src', './trusted-raycast/google-translate.png'); logo.setAttribute('alt', 'Google Translate'); logo.className = 'size-10'; logoFrame.append(logo)
   const heroTitle = document.createElement('h1'); heroTitle.textContent = 'Google Translate'; heroTitle.className = 'm-0 text-2xl font-semibold tracking-[-0.02em] text-[var(--dsw-alias-label-primary,CanvasText)]'
   const about = document.createElement('details'); about.className = 'relative mt-2'
   const aboutSummary = document.createElement('summary'); aboutSummary.className = 'cursor-pointer list-none rounded-lg bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-3 py-1.5 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; aboutSummary.textContent = zh ? '关于此扩展 ⓘ' : 'About This Extension ⓘ'
   const aboutText = document.createElement('p'); aboutText.className = 'absolute left-1/2 z-10 mt-2 w-72 -translate-x-1/2 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,Canvas)] p-3 text-left text-xs leading-5 text-[var(--dsw-alias-label-secondary,CanvasText)] shadow-lg'; aboutText.textContent = zh ? '由 TockTeam 固定并审核的 Google Translate 扩展。' : 'Google Translate is bundled from the exact extension archive reviewed by TockTeam.'
   about.append(aboutSummary, aboutText); hero.append(logoFrame, heroTitle, about)
-  const content = document.createElement('div'); content.className = 'launcher-local-tool-content min-h-0 min-w-0 flex-1 overflow-auto px-6 pb-3'
-  const intro = document.createElement('p'); intro.className = 'mx-auto mb-2 max-w-3xl text-center text-sm font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; intro.textContent = zh ? '开始使用此扩展前，请设置以下偏好：' : 'Before you can start using this extension, set the following preferences:'; intro.hidden = true
-  const back = document.createElement('button'); back.type = 'button'; back.className = 'inline-flex min-h-9 items-center rounded-lg px-2 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; back.textContent = zh ? '‹ 返回' : '‹ Back'; back.hidden = true; back.addEventListener('click', popNavigation)
+  const content = document.createElement('div'); content.className = 'launcher-command-content !gap-0 !p-0'
+  const intro = document.createElement('p'); intro.className = 'mx-auto mb-2 max-w-3xl px-4 text-center text-sm font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; intro.textContent = zh ? '开始使用此扩展前，请设置以下偏好：' : 'Before you can start using this extension you have to set the following preferences:'; intro.hidden = true
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'launcher-command-footer-action mx-4 mt-2'; back.textContent = zh ? '‹ 返回' : '‹ Back'; back.hidden = true; back.addEventListener('click', popNavigation)
   const searchRow = document.createElement('div'); searchRow.className = 'flex min-w-0 flex-1 items-center gap-3'
   const label = document.createElement('label'); label.className = 'flex min-w-0 flex-1 items-center'
   const searchLabel = document.createElement('span'); searchLabel.className = 'sr-only'; searchLabel.textContent = zh ? '要翻译的文本' : 'Text to Translate'
-  const input = document.createElement('input'); input.type = 'search'; input.id = 'trusted-raycast-search'; input.maxLength = 16384; input.autocomplete = 'off'; input.className = 'box-border h-11 w-full min-w-0 rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-4 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; label.append(searchLabel, input)
-  const languageSelect = document.createElement('select'); languageSelect.className = 'box-border h-11 max-w-64 min-w-52 shrink rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-3 text-xs text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; languageSelect.setAttribute('aria-label', zh ? '语言集' : 'Language Set'); languageSelect.hidden = true; languageSelect.addEventListener('change', () => {
+  const input = document.createElement('input'); input.type = 'search'; input.id = 'trusted-raycast-search'; input.maxLength = 16384; input.autocomplete = 'off'; input.className = 'launcher-command-search'; label.append(searchLabel, input)
+  const languageSelect = document.createElement('select'); languageSelect.className = 'launcher-command-control !min-h-8 max-w-64 min-w-52 shrink !py-1 text-xs'; languageSelect.setAttribute('aria-label', zh ? '语言集' : 'Language Set'); languageSelect.hidden = true; languageSelect.addEventListener('change', () => {
     const dropdown = current?.root ? descendants(current.root, 'raycast-dropdown')[0] : undefined
     const eventId = dropdown?.props.fieldEventId
     if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: languageSelect.value.slice(0, 128) })
   })
   searchRow.append(label, languageSelect)
-  const status = document.createElement('p'); status.className = 'launcher-local-tool-status'; status.setAttribute('role', 'status')
+  const status = document.createElement('p'); status.className = 'launcher-command-status mx-4'; status.setAttribute('role', 'status')
   const panelActions = document.createElement('div'); panelActions.className = 'flex flex-wrap items-start gap-2 py-2'; panelActions.hidden = true
-  const results = document.createElement('ul'); results.className = 'm-0 list-none p-0'; results.setAttribute('aria-label', zh ? '翻译结果' : 'Translations')
+  const results = document.createElement('ul'); results.className = 'launcher-command-list'; results.setAttribute('aria-label', zh ? '翻译结果' : 'Translations')
   const formArea = document.createElement('form'); formArea.className = 'flex flex-col items-start gap-3 py-2'; formArea.hidden = true; formArea.addEventListener('submit', event => { event.preventDefault(); invoke(submitAction) })
-  const error = document.createElement('p'); error.className = 'launcher-local-tool-error'; error.setAttribute('role', 'alert'); error.hidden = true
+  const error = document.createElement('p'); error.className = 'launcher-command-error'; error.setAttribute('role', 'alert'); error.hidden = true
   header.append(searchRow); content.append(intro, back, status, panelActions, results, formArea, error)
-  const commandFooter = document.createElement('footer'); commandFooter.className = 'flex min-h-14 shrink-0 items-center justify-between border-t border-[var(--dsw-alias-border-l1,CanvasText)] px-4'; commandFooter.hidden = true
-  const extensionLabel = document.createElement('span'); extensionLabel.className = 'inline-flex items-center gap-2 rounded-xl bg-black/15 px-3 py-2 text-sm font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'
+  const commandFooter = document.createElement('footer'); commandFooter.className = 'launcher-command-footer'; commandFooter.hidden = true
+  const extensionLabel = document.createElement('span'); extensionLabel.className = 'launcher-command-footer-identity'
   const footerIcon = document.createElement('img'); footerIcon.setAttribute('src', './trusted-raycast/google-translate.png'); footerIcon.setAttribute('alt', ''); footerIcon.className = 'size-5'; extensionLabel.append(footerIcon); const footerText = document.createElement('span'); footerText.textContent = zh ? '翻译' : 'Translate'; extensionLabel.append(footerText)
   const footerActions = document.createElement('div'); footerActions.className = 'flex items-center gap-2'; footerActions.setAttribute('role', 'group'); footerActions.setAttribute('aria-label', zh ? '命令操作' : 'Command Actions')
   commandFooter.append(extensionLabel, footerActions); element.append(header, hero, content, commandFooter)
@@ -144,7 +144,19 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   })
   input.addEventListener('compositionstart', () => { composing = true })
   input.addEventListener('compositionend', () => { composing = false })
-  const buttonClass = 'launcher-secondary-button bg-transparent text-xs focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)] disabled:opacity-50'
+  const buttonClass = 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)] disabled:opacity-50'
+  const shortcutText = (value: unknown): string => {
+    if (typeof value !== 'string') return ''
+    try {
+      const parsed = JSON.parse(value) as { macOS?: { key?: unknown; modifiers?: unknown }; key?: unknown; modifiers?: unknown }
+      const shortcut = parsed.macOS ?? parsed
+      if (typeof shortcut.key !== 'string') return ''
+      const glyphs: Record<string, string> = { cmd: '⌘', ctrl: '⌃', opt: '⌥', shift: '⇧' }
+      const modifiers = Array.isArray(shortcut.modifiers) ? shortcut.modifiers.filter((item): item is string => typeof item === 'string').map(item => glyphs[item] ?? item) : []
+      const key = shortcut.key === 'enter' ? '↵' : shortcut.key.toLocaleUpperCase('en-US')
+      return [...modifiers, key].join(' ')
+    } catch { return '' }
+  }
   const syncSourceSearch = (root: TrustedRaycastViewNode): void => {
     const list = descendants(root, 'raycast-list')[0]
     if (list === undefined || typeof list.props.searchText !== 'string' || composing || pending !== undefined || sending) return
@@ -205,19 +217,21 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       const buttons: HTMLButtonElement[] = []
       const menu = document.createElement('details'); menu.className = 'relative'
       const summary = document.createElement('summary'); summary.className = 'sr-only'; summary.textContent = zh ? '操作' : 'Actions'; menu.append(summary)
-      const panel = document.createElement('div'); panel.className = 'fixed bottom-16 right-4 z-50 flex w-72 flex-col gap-1 rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,Canvas)] p-1.5 shadow-xl'
+      const panel = document.createElement('div'); panel.className = 'launcher-command-menu fixed bottom-14 right-3 flex w-72 flex-col gap-1'
       const panelTitle = document.createElement('p'); panelTitle.className = 'm-0 px-3 py-1 text-xs font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; panelTitle.textContent = 'Google Translate'; panel.append(panelTitle); menu.append(panel)
       const owner: ActionOwner = { item, actions, buttons, menu }
       for (const action of actions) {
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'flex min-h-9 w-full items-center rounded-lg border-0 bg-transparent px-3 text-left text-sm text-[var(--dsw-alias-label-primary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'launcher-command-menu-item grid-cols-[minmax(0,1fr)_auto] text-sm'
         button.textContent = String(action.props.title ?? '') + (action.props.unavailable ? (zh ? '（不可用）' : ' (Unavailable)') : '')
+        const shortcut = shortcutText(action.props.shortcut)
+        if (shortcut) { const key = document.createElement('kbd'); key.className = 'ml-3 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = shortcut; button.append(key) }
         button.disabled = !action.props.actionEventId || action.props.unavailable === true
         button.addEventListener('click', () => { menu.open = false; owner.item.focus(); invoke(action) }); buttons.push(button); panel.append(button)
       }
       item.append(menu); return owner
     }
     items.forEach((node, index) => {
-      const item = document.createElement('li'); item.className = 'rounded-lg px-3 py-2 [overflow-wrap:anywhere] data-[selected=true]:bg-[var(--dsw-alias-bg-layer-2,Canvas)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+      const item = document.createElement('li'); item.className = 'launcher-command-row !block [overflow-wrap:anywhere]'
       item.tabIndex = 0; item.setAttribute('data-selected', String(index === selected))
       const titleLine = document.createElement('div'); titleLine.className = 'flex min-w-0 items-center justify-between gap-3'
       const titleRow = document.createElement('p'); titleRow.className = 'm-0 min-w-0 flex-1 truncate'; titleRow.textContent = String(node.props.title ?? ''); titleLine.append(titleRow)
@@ -239,14 +253,14 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       rows.push({ ...owner, detail }); results.append(item)
     })
     if (items.length === 0) {
-      const empty = document.createElement('li'); empty.className = 'flex min-h-44 flex-col items-center justify-center gap-2 text-center text-[var(--dsw-alias-label-secondary,CanvasText)]'; empty.tabIndex = -1
+      const empty = document.createElement('li'); empty.className = 'launcher-command-empty'; empty.tabIndex = -1
       const emptyIcon = icon(emptyProjection?.props.icon === 'Hourglass' ? Hourglass : SearchX)
       const emptyText = document.createElement('p'); emptyText.className = 'm-0 text-sm font-medium'; emptyText.textContent = emptyTitle || (zh ? '无结果' : 'No Results'); empty.append(emptyIcon, emptyText); results.append(empty)
       if (rootActions.length > 0) rootActionOwner = createActionOwner(rootActions, empty)
     }
-    primaryFooter = document.createElement('button'); primaryFooter.type = 'button'; primaryFooter.className = 'inline-flex min-h-9 items-center rounded-lg border-0 bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-3 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+    primaryFooter = document.createElement('button'); primaryFooter.type = 'button'; primaryFooter.className = 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)]'
     primaryFooterLabel = document.createElement('span'); const enter = document.createElement('kbd'); enter.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; enter.textContent = '↵'; primaryFooter.append(primaryFooterLabel, enter); syncPrimaryFooter(); primaryFooter.addEventListener('click', () => invoke(rows[selected]?.actions[0]))
-    const commandActions = document.createElement('button'); commandActions.type = 'button'; commandActions.className = 'inline-flex min-h-9 items-center rounded-lg border-0 bg-transparent px-3 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; commandActions.textContent = zh ? '操作' : 'Actions'
+    const commandActions = document.createElement('button'); commandActions.type = 'button'; commandActions.className = 'launcher-command-footer-action'; commandActions.textContent = zh ? '操作' : 'Actions'
     const shortcut = document.createElement('kbd'); shortcut.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; shortcut.textContent = '⌘ K'; commandActions.append(shortcut)
     commandActions.disabled = rows[selected] === undefined && rootActionOwner === undefined
     if (rootActionOwner) rootActionOwner.item = commandActions
@@ -256,15 +270,15 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const renderForm = (form: TrustedRaycastViewNode): void => {
     formArea.replaceChildren(); footerActions.replaceChildren()
     firstFormControl = undefined
-    formArea.className = preferenceSetup ? 'mx-auto flex w-full max-w-[38rem] flex-col gap-2 pb-3' : 'flex flex-col items-start gap-3 py-2'
+    formArea.className = preferenceSetup ? 'mx-auto flex w-full max-w-[34rem] flex-col gap-3 px-4 pb-3' : 'flex w-full flex-col items-start gap-3 px-4 py-3'
     results.replaceChildren(); setHidden(results, true)
     setHidden(panelActions, true)
     setHidden(formArea, false)
     for (const child of form.children) {
       if (typeof child === 'string') continue
       if (child.type === 'raycast-form-dropdown') {
-        const field = document.createElement('label'); field.className = preferenceSetup ? 'grid w-full grid-cols-[11rem_minmax(0,1fr)] items-center gap-4 whitespace-nowrap text-right text-sm font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'flex flex-col gap-2 text-xs'; field.textContent = String(child.props.title ?? '')
-        const select = document.createElement('select'); select.className = preferenceSetup ? 'box-border h-10 w-full min-w-0 rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-4 text-left text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] shadow-sm focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]' : 'box-border w-full min-w-0 rounded-md border border-[var(--dsw-alias-border-l2,CanvasText)] bg-transparent px-3 py-2 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+        const field = document.createElement('label'); field.className = 'launcher-command-field'; field.textContent = String(child.props.title ?? '')
+        const select = document.createElement('select'); select.className = 'launcher-command-control'
         select.setAttribute('aria-label', String(child.props.title ?? ''))
         firstFormControl ??= select
         for (const option of child.children) {
@@ -279,8 +293,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         })
         field.append(select); formArea.append(field)
       } else if (child.type === 'raycast-text-field') {
-        const field = document.createElement('label'); field.className = 'flex flex-col gap-2 text-xs'; field.textContent = String(child.props.title ?? '')
-        const fieldInput = document.createElement('input'); fieldInput.type = 'text'; firstFormControl ??= fieldInput; fieldInput.className = 'box-border w-full min-w-0 rounded-md border border-[var(--dsw-alias-border-l2,CanvasText)] bg-transparent px-3 py-2 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+        const field = document.createElement('label'); field.className = 'launcher-command-field'; field.textContent = String(child.props.title ?? '')
+        const fieldInput = document.createElement('input'); fieldInput.type = 'text'; firstFormControl ??= fieldInput; fieldInput.className = 'launcher-command-control'
         fieldInput.value = String(child.props.value ?? '')
         fieldInput.addEventListener('change', () => {
           const eventId = child.props.fieldEventId
@@ -292,7 +306,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const actions = descendants(form, 'raycast-action')
     submitAction = actions.find(action => action.props.title === 'Add Language Set') ?? actions.find(action => Boolean(action.props.actionEventId))
     for (const action of actions) {
-      const button = document.createElement('button'); button.type = 'button'; button.className = preferenceSetup ? 'launcher-secondary-button min-h-10 rounded-xl bg-black/20 px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]' : buttonClass
+      const button = document.createElement('button'); button.type = 'button'; button.className = preferenceSetup ? 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)]' : buttonClass
       button.textContent = String(action.props.title ?? '')
       button.disabled = !action.props.actionEventId
       if (preferenceSetup && action.props.title === 'Continue') { const shortcut = document.createElement('kbd'); shortcut.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; shortcut.textContent = '⌘ ↵'; button.append(shortcut) }
@@ -362,7 +376,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         pending = undefined; queryPending = false; setActionPending()
         input.disabled = true; languageSelect.disabled = true; status.textContent = ''; setHidden(status, true)
         results.replaceChildren(); setHidden(panelActions, true); footerActions.replaceChildren()
-        error.className = 'launcher-local-tool-error flex min-h-44 items-center justify-center text-center'
+        error.className = 'launcher-command-error launcher-command-empty'
         fail(message.message ?? 'Translate runtime failed'); return
       }
       input.disabled = false; languageSelect.disabled = false

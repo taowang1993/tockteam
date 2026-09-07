@@ -96,16 +96,17 @@ test('footer actions follow selection, open by pointer, and clamp after results 
   const nodes: Element[] = []
   const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
-  const item = (title: string, action: string, eventId: string): NonNullable<TrustedRaycastViewMessage['root']> => ({ type: 'raycast-list-item', props: { title }, children: [{ type: 'raycast-action', props: { title: action, actionEventId: eventId }, children: [] }] })
+  const item = (title: string, action: string, eventId: string): NonNullable<TrustedRaycastViewMessage['root']> => ({ type: 'raycast-list-item', props: { title }, children: [{ type: 'raycast-action', props: { title: action, actionEventId: eventId, shortcut: JSON.stringify({ macOS: { key: 'c', modifiers: ['cmd', 'shift'] } }) }, children: [] }] })
   view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [item('Hello', 'Copy Translation', 'copy-translation'), item('Source', 'Copy', 'copy')] } })
-  const resultRows = nodes.filter(node => node.className.startsWith('rounded-lg px-3 py-2'))
+  const resultRows = nodes.filter(node => node.className.includes('launcher-command-row'))
   let primary = nodes.find(node => node.getAttribute('aria-label') === 'Copy Translation')!
   resultRows[1]!.dispatchEvent(new Event('focusin'))
   assert.equal(primary.getAttribute('aria-label'), 'Copy')
-  const trigger = nodes.find(node => node.textContent === 'Actions' && node.className.includes('inline-flex min-h-9'))!
+  const trigger = nodes.find(node => node.textContent === 'Actions' && node.className.includes('launcher-command-footer-action'))!
   const menus = nodes.filter(node => node.children.some(child => child.textContent === 'Actions' && child.className === 'sr-only'))
   trigger.dispatchEvent(new Event('click', { bubbles: true }))
   assert.equal(menus[1]!.open, true)
+  assert.ok(nodes.some(node => node.textContent === '⌘ ⇧ C'), 'action panels show Raycast-like trailing shortcuts')
   view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [item('Hello', 'Copy Translation', 'copy-translation')] } })
   primary = nodes.findLast(node => node.getAttribute('aria-label') === 'Copy Translation')!
   assert.equal(primary.disabled, false)
@@ -121,7 +122,7 @@ test('empty results stay centered and retain root language-set actions', () => {
   ] } })
   assert.ok(nodes.some(node => node.textContent === 'No Results' && node.className.includes('font-medium')))
   assert.equal(inputOf(nodes).placeholder, 'Enter text to translate')
-  const trigger = nodes.findLast(node => node.textContent === 'Actions' && node.className.includes('inline-flex min-h-9'))!
+  const trigger = nodes.findLast(node => node.textContent === 'Actions' && node.className.includes('launcher-command-footer-action'))!
   assert.equal(trigger.disabled, false)
   trigger.dispatchEvent(new Event('click', { bubbles: true }))
   const menu = nodes.findLast(node => node.children.some(child => child.textContent === 'Actions' && child.className === 'sr-only'))!
@@ -135,8 +136,9 @@ test('EmptyView renders explicit Hourglass and neutral implicit search icons', (
     createElementNS(_namespace: string, tag: string) { const node = new Element(); node.setAttribute('tag', tag); nodes.push(node); return node },
   } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  const chromePaths = nodes.filter(node => node.getAttribute('tag') === 'path').length
   view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [{ type: 'raycast-empty', props: { title: 'Translating…', icon: 'Hourglass' }, children: [] }] } })
-  assert.equal(nodes.filter(node => node.getAttribute('tag') === 'path').length, 4)
+  assert.equal(nodes.filter(node => node.getAttribute('tag') === 'path').length - chromePaths, 4)
   assert.equal(nodes.some(node => node.getAttribute('tag') === 'circle'), false)
   view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [{ type: 'raycast-empty', props: { title: 'No Results' }, children: [] }] } })
   assert.equal(nodes.some(node => node.getAttribute('tag') === 'circle'), true)
@@ -189,7 +191,7 @@ test('terminal errors clear query and action busy state', () => {
   assert.equal(footerActions.children.length, 0)
   const alert = errorOf(queryNodes)
   assert.equal(alert.hidden, false)
-  assert.match(alert.className, /items-center justify-center text-center/u)
+  assert.match(alert.className, /launcher-command-empty/u)
   assert.equal(alert.textContent, 'closed')
 })
 
@@ -269,7 +271,13 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.ok(nodes.some(node => node.textContent === 'Google Translate'))
   assert.ok(nodes.some(node => node.textContent.includes('Before you can start using this extension')))
   assert.ok(nodes.some(node => node.textContent === 'Continue'))
-  assert.ok(nodes.some(node => node.className.includes('max-w-[38rem]')), 'the form uses a centered readable measure')
+  assert.ok(nodes.some(node => node.className.includes('launcher-command-header')))
+  assert.ok(nodes.some(node => node.className.includes('launcher-command-content')))
+  assert.ok(nodes.some(node => node.className.includes('launcher-command-field')))
+  assert.ok(nodes.some(node => node.className.includes('launcher-command-control')))
+  assert.ok(nodes.some(node => node.className.includes('launcher-command-footer')))
+  assert.ok(nodes.some(node => node.className.includes('launcher-command-footer-identity')))
+  assert.ok(nodes.some(node => node.className.includes('max-w-[34rem]')), 'the form uses Raycast-like control width')
   const submit = Object.assign(new Event('keydown'), { key: 'Enter', isComposing: false, keyCode: 13, metaKey: true, ctrlKey: false, altKey: false, shiftKey: false })
   view.element.dispatchEvent(submit)
   await flush()

@@ -56,7 +56,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
     [
       'launcher-command-surface', 'launcher-command-header', 'launcher-command-search', 'launcher-command-content', 'launcher-command-list',
-      'launcher-command-field', 'launcher-command-control', 'launcher-command-status', 'launcher-command-error', 'launcher-command-group-title',
+      'launcher-command-field', 'launcher-command-control', 'launcher-command-status', 'launcher-command-error', 'launcher-command-empty', 'launcher-command-group-title',
       'launcher-command-row', 'launcher-command-row-icon', 'launcher-command-footer', 'launcher-command-footer-identity', 'launcher-command-footer-action',
       'launcher-command-menu', 'launcher-command-menu-item',
       'launcher-local-tool', 'launcher-local-tool-header', 'launcher-local-tool-identity', 'launcher-local-tool-content',
