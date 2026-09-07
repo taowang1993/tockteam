@@ -40,7 +40,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onEdit?(source: string): void
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
-  onOpenGraphNode?(path: string, mode: 'local' | 'note'): void
+  onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
   onOpenRecovery?(): void
   onOpenSearch?(): void
   onReadSnapshot?(id: string): void
@@ -514,18 +514,52 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByLabelText('Snapshot Preview').textContent).toContain('# Before')
   })
 
+  it('keeps Properties and Backlinks as separate utility views', () => {
+    renderRoute({ documentKind: 'markdown', path: 'Note.md', source: '---\nstatus: active\n---\n# Note\n' })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Properties' }))
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('properties')
+    expect(screen.getByRole('region', { name: 'Properties' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Backlinks' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close Utility Panel' }))
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Backlinks' }))
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('backlinks')
+    expect(screen.getByRole('region', { name: 'Backlinks' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Properties' })).toBeNull()
+  })
+
+  it('keeps Bookmarks and Tags as compact separate utility views', () => {
+    renderRoute({ bookmarks: [{ createdAt: 1, id: 'bookmark-1', kind: 'note', missing: false, path: 'Note.md', title: 'Note' }], facets: { properties: [], tags: [{ count: 2, tag: 'lesson' }] } })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('bookmarks')
+    expect(screen.getByRole('region', { name: 'Bookmarks' }).textContent).toContain('Note')
+    expect(screen.queryByRole('region', { name: 'Tags' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close Utility Panel' }))
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Tags' }))
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('tags')
+    expect(screen.getByRole('region', { name: 'Tags' }).textContent).toContain('#lesson')
+    expect(screen.queryByRole('region', { name: 'Bookmarks' })).toBeNull()
+  })
+
   it('filters, groups, colors, zooms, and opens bounded graph nodes accessibly', () => {
     const onCopyGraphPath = vi.fn()
     const onOpenGraphNode = vi.fn()
     const onSettingsChange = vi.fn()
     renderRoute({
-      graph: { complete: true, edges: [], generation: 1, missing: [], nodes: [{ depth: 0, path: 'Lessons/One.md' }, { depth: 1, path: 'Other.md' }], orphans: [], path: null, scan: { bytes: 1, entries: 2, files: 2 }, truncated: false, truncationReason: null, warnings: [] },
+      graph: { complete: true, edges: [{ line: 1, sourcePath: 'Lessons/One.md', targetPath: 'Other.md' }], generation: 1, missing: [], nodes: [{ depth: 0, path: 'Lessons/One.md' }, { depth: 1, path: 'Other.md' }], orphans: [], path: 'Lessons/One.md', scan: { bytes: 1, entries: 2, files: 2 }, truncated: false, truncationReason: null, warnings: [] },
       graphLayout: [{ depth: 0, path: 'Lessons/One.md', x: 100, y: 0 }, { depth: 1, path: 'Other.md', x: -100, y: 0 }],
       graphMode: 'global',
       settings: {
         attachmentFolder: 'Attachments', backlinksInDocument: false, defaultEditingMode: 'live-preview',
         graphColorBy: 'folder', graphDepth: 2, graphGroupBy: 'folder', graphIncludeAttachments: false,
-        graphIncludeOrphans: true, graphIncludeTags: false, graphQuery: 'Lessons', journalFolder: 'Journals',
+        graphIncludeOrphans: true, graphIncludeTags: false, graphQuery: '', journalFolder: 'Journals',
         pagePreview: true, recoveryIntervalMinutes: 5, snapshotRetentionDays: 7, templateFolder: 'Templates', webClipFolder: 'Clips',
       },
     }, { onCopyGraphPath, onOpenGraphNode, onSettingsChange })
@@ -533,30 +567,76 @@ describe('TockTutor titlebar panel controls', () => {
     openNoteActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Graph view' }))
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('graph')
+    expect(screen.getByLabelText('Workbench Utilities').className).toContain('!absolute')
+    expect(screen.getByLabelText('Global Graph Canvas')).toBeTruthy()
+    expect(screen.getByLabelText('Global Graph Canvas').querySelectorAll('[data-graph-edge="true"]')).toHaveLength(1)
     expect(screen.queryByRole('heading', { name: 'File Recovery' })).toBeNull()
     const graphNode = screen.getByLabelText('Lessons/One.md Graph Node')
-    expect(screen.queryByLabelText('Other.md Graph Node')).toBeNull()
+    expect(screen.getByLabelText('Other.md Graph Node')).toBeTruthy()
+    expect(graphNode.tagName).toBe('BUTTON')
+    expect(graphNode.getAttribute('aria-current')).toBe('true')
     expect(graphNode.getAttribute('data-graph-group')).toBe('Lessons')
-    expect(graphNode.getAttribute('style')).toContain('background-color')
-    const initialLeft = (graphNode as HTMLElement).style.left
+    expect((graphNode.querySelector('span') as HTMLElement).style.backgroundColor).toBe('var(--tt-accent)')
+    const graphLayer = screen.getByLabelText('Global Graph Canvas').querySelector('[data-graph-layer="true"]') as HTMLElement
+    const initialTransform = graphLayer.style.transform
+    fireEvent.click(screen.getByText('Settings', { selector: 'summary' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zoom Graph In' }))
-    expect((screen.getByLabelText('Lessons/One.md Graph Node') as HTMLElement).style.left).not.toBe(initialLeft)
+    expect(graphLayer.style.transform).not.toBe(initialTransform)
     fireEvent.click(screen.getByRole('button', { name: 'Pan Graph Right' }))
-    expect((screen.getByLabelText('Lessons/One.md Graph Node') as HTMLElement).style.left).toContain('45px')
+    expect(graphLayer.style.transform).toContain('translate(20px, 0px)')
     fireEvent.click(screen.getByRole('button', { name: 'Reset Graph Viewport' }))
-    expect((screen.getByLabelText('Lessons/One.md Graph Node') as HTMLElement).style.left).toContain('20px')
+    expect(graphLayer.style.transform).toContain('translate(0px, 0px)')
     fireEvent.click(screen.getByRole('button', { name: 'Open Note Lessons/One.md' }))
     fireEvent.click(screen.getByRole('button', { name: 'Open Local Graph Lessons/One.md' }))
     fireEvent.click(screen.getByRole('button', { name: 'Copy Graph Path Lessons/One.md' }))
     expect(onOpenGraphNode).toHaveBeenNthCalledWith(1, 'Lessons/One.md', 'note')
     expect(onOpenGraphNode).toHaveBeenNthCalledWith(2, 'Lessons/One.md', 'local')
     expect(onCopyGraphPath).toHaveBeenCalledWith('Lessons/One.md')
+    fireEvent.click(graphNode)
+    expect(onOpenGraphNode).toHaveBeenLastCalledWith('Lessons/One.md', 'note')
     fireEvent.change(screen.getByLabelText('Filter Graph Note Paths'), { target: { value: 'Other' } })
     fireEvent.change(screen.getByLabelText('Group Graph Nodes'), { target: { value: 'none' } })
     fireEvent.change(screen.getByLabelText('Color Graph Nodes'), { target: { value: 'none' } })
     expect(onSettingsChange).toHaveBeenCalledWith({ graphQuery: 'Other' })
     expect(onSettingsChange).toHaveBeenCalledWith({ graphGroupBy: 'none' })
     expect(onSettingsChange).toHaveBeenCalledWith({ graphColorBy: 'none' })
+    fireEvent.click(screen.getByRole('button', { name: 'Close Utility Panel' }))
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByLabelText('Workbench Utilities').hasAttribute('inert')).toBe(true)
+  })
+
+  it('closes the graph overlay after a visual node opens a note', async () => {
+    const onOpenGraphNode = vi.fn(async () => true)
+    renderRoute({
+      graph: { complete: true, edges: [], generation: 1, missing: [], nodes: [{ depth: 0, path: 'Note.md' }], orphans: [], path: 'Note.md', scan: { bytes: 1, entries: 1, files: 1 }, truncated: false, truncationReason: null, warnings: [] },
+      graphLayout: [{ depth: 0, path: 'Note.md', x: 0, y: 0 }],
+      graphMode: 'global',
+      path: 'Note.md',
+      phase: 'ready',
+    }, { onOpenGraphNode })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph view' }))
+    fireEvent.click(screen.getByLabelText('Note.md Graph Node'))
+    await waitFor(() => { expect(screen.getByLabelText('Workbench Utilities').getAttribute('aria-hidden')).toBe('true') })
+    expect(onOpenGraphNode).toHaveBeenCalledWith('Note.md', 'note')
+  })
+
+  it('keeps the graph overlay open when a visual node fails to open', async () => {
+    const onOpenGraphNode = vi.fn(async () => false)
+    renderRoute({
+      graph: { complete: true, edges: [], generation: 1, missing: [], nodes: [{ depth: 0, path: 'Note.md' }], orphans: [], path: 'Note.md', scan: { bytes: 1, entries: 1, files: 1 }, truncated: false, truncationReason: null, warnings: [] },
+      graphLayout: [{ depth: 0, path: 'Note.md', x: 0, y: 0 }],
+      graphMode: 'global',
+      path: 'Note.md',
+      phase: 'ready',
+    }, { onOpenGraphNode })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph view' }))
+    fireEvent.click(screen.getByLabelText('Note.md Graph Node'))
+    await waitFor(() => { expect(onOpenGraphNode).toHaveBeenCalledWith('Note.md', 'note') })
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('aria-hidden')).toBe('false')
   })
 
   it('renders bounded keyword and Related search results', () => {

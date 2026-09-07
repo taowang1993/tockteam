@@ -19,6 +19,7 @@ import {
   useState,
   useSyncExternalStore,
   type ChangeEvent,
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -909,14 +910,15 @@ export class WorkbenchRouteController {
     const operation = this.nextOperation()
     try {
       const graph = remoteValue(await this.remote.tocktutorWorkbench.graph({
-        ...(mode === 'local' ? { depth: this.snapshot.settings?.graphDepth ?? 2 } : {}),
-        direction: 'both',
+        ...(mode === 'local'
+          ? { depth: this.snapshot.settings?.graphDepth ?? 2, direction: 'both', path: this.snapshot.path!, scope: 'local' }
+          : {
+              includeAttachments: this.snapshot.settings?.graphIncludeAttachments ?? false,
+              includeTags: this.snapshot.settings?.graphIncludeTags ?? false,
+              limit: 180,
+              scope: 'global',
+            }),
         expectedVault: vault,
-        includeAttachments: this.snapshot.settings?.graphIncludeAttachments ?? false,
-        includeTags: this.snapshot.settings?.graphIncludeTags ?? false,
-        limit: 180,
-        ...(mode === 'local' && this.snapshot.path !== null ? { path: this.snapshot.path } : {}),
-        scope: mode,
       }, operation.signal))
       if (!this.current(operation.id, vault)
         || graph.generation !== vault.generation
@@ -2569,7 +2571,7 @@ export interface TockTutorRouteViewProps {
   onNewNote?(): void
   onOpenBookmark?(id: string): void
   onOpenCommandPalette?(): void
-  onOpenGraphNode?(path: string, mode: 'local' | 'note'): void
+  onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
   onOpenRecovery?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenExternalUrl?(url: string): void
@@ -3262,7 +3264,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         style={{
           gridTemplateColumns: contentColumns,
           transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
-        }}
+          '--tocktutor-sidebar-width': `${String(sidebarWidth)}px`,
+        } as CSSProperties}
       >
         <aside
           aria-hidden={!effectiveSidebarOpen}
@@ -3383,10 +3386,12 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   <DropdownMenuGroup>
                     {([
                       ['recovery', 'File recovery', FileClock],
-                      ['note-info', 'Properties and links', ListTree],
+                      ['properties', 'Properties', ListTree],
+                      ['backlinks', 'Backlinks', Link2],
                       ['graph', 'Graph view', Network],
                       ['web', 'Web viewer', Globe2],
-                      ['library', 'Bookmarks and tags', Tags],
+                      ['bookmarks', 'Bookmarks', BookmarkPlus],
+                      ['tags', 'Tags', Tags],
                       ['attachments', 'Attachments and embeds', Paperclip],
                       ['tools', 'Note tools', Wrench],
                       ['workspace', 'Workspaces and panes', PanelsTopLeft],
@@ -3526,7 +3531,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           )}
           <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]">{props.assistantPanel}</div>
         </aside>
-        <WorkbenchUtilities {...props} activeProperties={activeProperties} onClose={() => { setPanel(null) }} view={panel === 'assistant' ? null : panel} />
+        <WorkbenchUtilities {...props} activeProperties={activeProperties} onClose={() => { setPanel(null) }} onOpenGraphNode={(path, mode) => {
+          const result = props.onOpenGraphNode?.(path, mode)
+          if (mode !== 'note' || result === undefined) return
+          void Promise.resolve(result).then(success => { if (success === true) setPanel(null) })
+        }} view={panel === 'assistant' ? null : panel} />
         </div>
       </main>
     </TooltipProvider>
@@ -3759,7 +3768,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenBookmark={id => { void controller.openBookmark(id) }}
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
         onOpenExternalUrl={url => { setExternalUrl(url) }}
-        onOpenGraphNode={(path, mode) => { void controller.openGraphNode(path, mode) }}
+        onOpenGraphNode={(path, mode) => controller.openGraphNode(path, mode)}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
         onOpenSearch={() => { controller.openSearch('') }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}

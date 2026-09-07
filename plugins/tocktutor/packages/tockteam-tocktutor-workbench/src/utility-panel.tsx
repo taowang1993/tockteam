@@ -16,14 +16,16 @@ import { MAX_PANE_GROUPS } from './session.ts'
 import type { VaultHeading } from './types.ts'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 
-export type WorkbenchUtilityView = 'attachments' | 'extensions' | 'graph' | 'library' | 'note-info' | 'recovery' | 'tools' | 'web' | 'workspace'
+export type WorkbenchUtilityView = 'attachments' | 'backlinks' | 'bookmarks' | 'extensions' | 'graph' | 'properties' | 'recovery' | 'tags' | 'tools' | 'web' | 'workspace'
 
 const UTILITY_TITLES: Record<WorkbenchUtilityView, string> = {
   attachments: 'Attachments and Embeds',
   extensions: 'Reviews and Actions',
   graph: 'Graph View',
-  library: 'Bookmarks and Tags',
-  'note-info': 'Properties and Links',
+  backlinks: 'Backlinks',
+  bookmarks: 'Bookmarks',
+  properties: 'Properties',
+  tags: 'Tags',
   recovery: 'File Recovery',
   tools: 'Note Tools',
   web: 'Web Viewer',
@@ -46,6 +48,11 @@ function graphFolderColor(folder: string): string {
   return `hsl(${String(hash % 360)} 62% 48%)`
 }
 
+function graphCoordinate(value: number, minimum: number, maximum: number): number {
+  if (minimum === maximum) return 50
+  return 12 + ((value - minimum) / (maximum - minimum)) * 76
+}
+
 export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const { activeProperties, snapshot } = props
   const [graphZoom, setGraphZoom] = useState(1)
@@ -54,13 +61,24 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const graphQuery = (snapshot.settings?.graphQuery ?? '').trim().toLocaleLowerCase()
   const graphNodes = (snapshot.graphLayout ?? []).filter(node => graphQuery === '' || node.path.toLocaleLowerCase().includes(graphQuery))
   const graphPaths = new Set(graphNodes.map(node => node.path))
+  const graphBounds = {
+    maxX: Math.max(...graphNodes.map(node => node.x)),
+    maxY: Math.max(...graphNodes.map(node => node.y)),
+    minX: Math.min(...graphNodes.map(node => node.x)),
+    minY: Math.min(...graphNodes.map(node => node.y)),
+  }
+  const graphPoints = new Map(graphNodes.map(node => [node.path, {
+    x: graphCoordinate(node.x, graphBounds.minX, graphBounds.maxX),
+    y: graphCoordinate(node.y, graphBounds.minY, graphBounds.maxY),
+  }]))
+  const graphEdges = (snapshot.graph?.edges ?? []).filter(edge => graphPaths.has(edge.sourcePath) && graphPaths.has(edge.targetPath))
   const graphGroups = Object.entries(Object.groupBy(graphNodes, node => snapshot.settings?.graphGroupBy === 'folder' ? graphFolder(node.path) : 'All Notes'))
     .toSorted(([left], [right]) => left.localeCompare(right))
   return (
         <aside
           aria-hidden={!open}
           aria-label="Workbench Utilities"
-          className="tocktutor-right-panel invisible grid min-w-0 w-0 translate-x-6 auto-rows-max grid-rows-[40px] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] data-[open=false]:border-l-0 opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(300px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(300px,calc(100vw-262px))]"
+          className={`tocktutor-right-panel invisible grid min-h-0 min-w-0 w-0 translate-x-6 auto-rows-max grid-rows-[40px] overflow-auto border-l border-[var(--tt-border)] bg-[var(--tt-panel)] data-[open=false]:border-l-0 opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:w-[min(300px,calc(100vw-262px))] data-[open=true]:translate-x-0 data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(300px,calc(100vw-262px))] ${props.view === 'graph' ? 'z-20 !absolute !inset-y-0 !right-0 !left-[var(--tocktutor-sidebar-width)] !h-auto !w-auto !translate-x-0 !visible !overflow-hidden !border-l-0 !opacity-100 !pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-0' : ''}`}
           data-open={open}
           data-view={props.view ?? undefined}
           {...(open ? {} : { inert: '' })}
@@ -115,47 +133,68 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
           <section aria-label="Web Viewer" className="min-h-80 p-3" hidden={props.view !== 'web'}>
             <div className="flex min-h-72 flex-col">{props.webViewerPanel ?? <Alert unstyled role="status">Web Viewer is unavailable.</Alert>}</div>
           </section>
-          <section aria-label="Graph View" className="p-3" hidden={props.view !== 'graph'}>
-            <div className="flex items-center justify-end gap-2">
-              <span className="flex gap-1">
-                <Button unstyled aria-pressed={snapshot.graphMode === 'global'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onLoadGraph?.('global') }} type="button">Global</Button>
-                <Button unstyled aria-pressed={snapshot.graphMode === 'local'} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.path === null} onClick={() => { props.onLoadGraph?.('local') }} type="button">Local</Button>
+          <section aria-label="Graph View" className="absolute inset-x-0 top-10 bottom-0 min-h-0 min-w-0 overflow-hidden" hidden={props.view !== 'graph'}>
+            <div aria-label="Graph Toolbar" className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-md border border-[var(--tt-border)] bg-[color-mix(in_srgb,var(--tt-panel)_92%,transparent)] p-1 shadow-lg backdrop-blur-sm">
+              <span aria-label="Graph Scope" className="flex gap-1" role="group">
+                <Button unstyled aria-pressed={snapshot.graphMode === 'global'} className="rounded px-2 py-1 text-xs aria-pressed:bg-[var(--tt-selected)]" onClick={() => { props.onLoadGraph?.('global') }} type="button">Global</Button>
+                <Button unstyled aria-pressed={snapshot.graphMode === 'local'} className="rounded px-2 py-1 text-xs aria-pressed:bg-[var(--tt-selected)]" disabled={snapshot.path === null} onClick={() => { props.onLoadGraph?.('local') }} type="button">Local</Button>
               </span>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
-              <Label unstyled className="flex items-center gap-1">Orphans<Checkbox checked={snapshot.settings?.graphIncludeOrphans ?? true} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeOrphans: checked === true }) }} /></Label>
-              <Label unstyled className="flex items-center gap-1">Tags<Checkbox checked={snapshot.settings?.graphIncludeTags ?? false} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeTags: checked === true }) }} /></Label>
-              <Label unstyled className="flex items-center gap-1">Attachments<Checkbox checked={snapshot.settings?.graphIncludeAttachments ?? false} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeAttachments: checked === true }) }} /></Label>
-              <Label unstyled className="flex items-center gap-1">Local Depth<NativeSelect unstyled value={String(snapshot.settings?.graphDepth ?? 2)} onChange={event => { const depth = Number(event.target.value); if (depth === 1 || depth === 2 || depth === 3) props.onSettingsChange?.({ graphDepth: depth }) }}><NativeSelectOption value="1">1</NativeSelectOption><NativeSelectOption value="2">2</NativeSelectOption><NativeSelectOption value="3">3</NativeSelectOption></NativeSelect></Label>
-              <Label unstyled className="col-span-2 grid gap-1">Filter Note Paths<Input unstyled aria-label="Filter Graph Note Paths" className="rounded border border-[var(--tt-border)] bg-transparent p-1" maxLength={1_000} onChange={event => { props.onSettingsChange?.({ graphQuery: event.target.value }) }} type="search" value={snapshot.settings?.graphQuery ?? ''} /></Label>
-              <Label unstyled className="grid gap-1">Group Nodes<NativeSelect unstyled aria-label="Group Graph Nodes" className="rounded border border-[var(--tt-border)] bg-transparent p-1" onChange={event => { props.onSettingsChange?.({ graphGroupBy: event.target.value === 'folder' ? 'folder' : 'none' }) }} value={snapshot.settings?.graphGroupBy ?? 'none'}><NativeSelectOption value="none">None</NativeSelectOption><NativeSelectOption value="folder">Folder</NativeSelectOption></NativeSelect></Label>
-              <Label unstyled className="grid gap-1">Color Nodes<NativeSelect unstyled aria-label="Color Graph Nodes" className="rounded border border-[var(--tt-border)] bg-transparent p-1" onChange={event => { props.onSettingsChange?.({ graphColorBy: event.target.value === 'folder' ? 'folder' : 'none' }) }} value={snapshot.settings?.graphColorBy ?? 'none'}><NativeSelectOption value="none">Default</NativeSelectOption><NativeSelectOption value="folder">Folder</NativeSelectOption></NativeSelect></Label>
-            </div>
-            <div aria-label="Graph Viewport Controls" className="mt-2 flex gap-1" role="group">
-              <Button unstyled aria-label="Zoom Graph Out" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={graphZoom <= 0.5} onClick={() => { setGraphZoom(value => Math.max(0.5, value - 0.25)) }} type="button">−</Button>
-              <Button unstyled aria-label="Reset Graph Viewport" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphZoom(1); setGraphPan({ x: 0, y: 0 }) }} type="button">{String(Math.round(graphZoom * 100))}%</Button>
-              <Button unstyled aria-label="Zoom Graph In" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={graphZoom >= 2} onClick={() => { setGraphZoom(value => Math.min(2, value + 0.25)) }} type="button">+</Button>
-              <Button unstyled aria-label="Pan Graph Left" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, x: Math.max(-200, value.x - 20) })) }} type="button">←</Button>
-              <Button unstyled aria-label="Pan Graph Up" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, y: Math.max(-200, value.y - 20) })) }} type="button">↑</Button>
-              <Button unstyled aria-label="Pan Graph Down" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, y: Math.min(200, value.y + 20) })) }} type="button">↓</Button>
-              <Button unstyled aria-label="Pan Graph Right" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, x: Math.min(200, value.x + 20) })) }} type="button">→</Button>
+              <details className="relative">
+                <summary aria-label="Graph Settings" className="cursor-pointer list-none rounded px-2 py-1 text-xs hover:bg-[var(--tt-selected)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]">Settings</summary>
+                <div aria-label="Graph Settings" className="absolute top-[calc(100%+6px)] right-0 z-20 grid w-64 gap-3 rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-3 text-xs shadow-xl">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Label unstyled className="flex items-center gap-1">Orphans<Checkbox checked={snapshot.settings?.graphIncludeOrphans ?? true} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeOrphans: checked === true }) }} /></Label>
+                    <Label unstyled className="flex items-center gap-1">Tags<Checkbox checked={snapshot.settings?.graphIncludeTags ?? false} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeTags: checked === true }) }} /></Label>
+                    <Label unstyled className="flex items-center gap-1">Attachments<Checkbox checked={snapshot.settings?.graphIncludeAttachments ?? false} onCheckedChange={checked => { props.onSettingsChange?.({ graphIncludeAttachments: checked === true }) }} /></Label>
+                    <Label unstyled className="flex items-center gap-1">Local Depth<NativeSelect unstyled value={String(snapshot.settings?.graphDepth ?? 2)} onChange={event => { const depth = Number(event.target.value); if (depth === 1 || depth === 2 || depth === 3) props.onSettingsChange?.({ graphDepth: depth }) }}><NativeSelectOption value="1">1</NativeSelectOption><NativeSelectOption value="2">2</NativeSelectOption><NativeSelectOption value="3">3</NativeSelectOption></NativeSelect></Label>
+                    <Label unstyled className="col-span-2 grid gap-1">Filter Note Paths<Input unstyled aria-label="Filter Graph Note Paths" className="rounded border border-[var(--tt-border)] bg-transparent p-1" maxLength={1_000} onChange={event => { props.onSettingsChange?.({ graphQuery: event.target.value }) }} type="search" value={snapshot.settings?.graphQuery ?? ''} /></Label>
+                    <Label unstyled className="grid gap-1">Group Nodes<NativeSelect unstyled aria-label="Group Graph Nodes" className="rounded border border-[var(--tt-border)] bg-transparent p-1" onChange={event => { props.onSettingsChange?.({ graphGroupBy: event.target.value === 'folder' ? 'folder' : 'none' }) }} value={snapshot.settings?.graphGroupBy ?? 'none'}><NativeSelectOption value="none">None</NativeSelectOption><NativeSelectOption value="folder">Folder</NativeSelectOption></NativeSelect></Label>
+                    <Label unstyled className="grid gap-1">Color Nodes<NativeSelect unstyled aria-label="Color Graph Nodes" className="rounded border border-[var(--tt-border)] bg-transparent p-1" onChange={event => { props.onSettingsChange?.({ graphColorBy: event.target.value === 'folder' ? 'folder' : 'none' }) }} value={snapshot.settings?.graphColorBy ?? 'none'}><NativeSelectOption value="none">Default</NativeSelectOption><NativeSelectOption value="folder">Folder</NativeSelectOption></NativeSelect></Label>
+                  </div>
+                  <div aria-label="Graph Viewport Controls" className="flex flex-wrap gap-1" role="group">
+                    <Button unstyled aria-label="Zoom Graph Out" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={graphZoom <= 0.5} onClick={() => { setGraphZoom(value => Math.max(0.5, value - 0.25)) }} type="button">−</Button>
+                    <Button unstyled aria-label="Reset Graph Viewport" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphZoom(1); setGraphPan({ x: 0, y: 0 }) }} type="button">{String(Math.round(graphZoom * 100))}%</Button>
+                    <Button unstyled aria-label="Zoom Graph In" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={graphZoom >= 2} onClick={() => { setGraphZoom(value => Math.min(2, value + 0.25)) }} type="button">+</Button>
+                    <Button unstyled aria-label="Pan Graph Left" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, x: Math.max(-200, value.x - 20) })) }} type="button">←</Button>
+                    <Button unstyled aria-label="Pan Graph Up" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, y: Math.max(-200, value.y - 20) })) }} type="button">↑</Button>
+                    <Button unstyled aria-label="Pan Graph Down" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, y: Math.min(200, value.y + 20) })) }} type="button">↓</Button>
+                    <Button unstyled aria-label="Pan Graph Right" className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { setGraphPan(value => ({ ...value, x: Math.min(200, value.x + 20) })) }} type="button">→</Button>
+                  </div>
+                </div>
+              </details>
             </div>
             {graphNodes.length > 0 ? (
-              <>
-                <div aria-label={`${snapshot.graphMode === 'local' ? 'Local' : 'Global'} Graph Canvas`} className="relative mt-2 h-48 w-full overflow-hidden rounded border border-[var(--tt-border)]" role="img">
+              <div aria-label={`${snapshot.graphMode === 'local' ? 'Local' : 'Global'} Graph Canvas`} className="tocktutor-graph-canvas absolute inset-0 overflow-hidden bg-[color-mix(in_srgb,var(--tt-text)_2%,var(--tt-panel))]" role="group">
+                <div data-graph-layer="true" className="absolute inset-0" style={{ transform: `translate(${String(graphPan.x)}px, ${String(graphPan.y)}px) scale(${String(graphZoom)})`, transformOrigin: 'center' }}>
+                  <svg aria-hidden="true" className="pointer-events-none absolute inset-0 !h-full !w-full overflow-visible text-[var(--tt-muted)]" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    {graphEdges.map(edge => {
+                      const source = graphPoints.get(edge.sourcePath)
+                      const target = graphPoints.get(edge.targetPath)
+                      if (source === undefined || target === undefined) return null
+                      return <line data-graph-edge="true" key={`${edge.sourcePath}:${edge.targetPath}:${String(edge.line)}`} stroke="currentColor" strokeOpacity="0.4" strokeWidth="0.2" vectorEffect="non-scaling-stroke" x1={source.x} x2={target.x} y1={source.y} y2={target.y} />
+                    })}
+                  </svg>
                   {graphNodes.map(node => {
+                    const point = graphPoints.get(node.path)
+                    if (point === undefined) return null
                     const folder = graphFolder(node.path)
-                    return <span aria-label={`${node.path} Graph Node`} className="absolute size-2 rounded-full bg-[var(--tt-muted)] data-[active=true]:bg-[var(--tt-accent)]" data-active={node.path === snapshot.graph?.path} data-graph-group={snapshot.settings?.graphGroupBy === 'folder' ? folder : undefined} key={node.path} style={{ backgroundColor: snapshot.settings?.graphColorBy === 'folder' ? graphFolderColor(folder) : undefined, left: `calc(50% + ${String(node.x / 5 * graphZoom + graphPan.x)}px)`, top: `calc(50% + ${String(node.y / 5 * graphZoom + graphPan.y)}px)` }} title={node.path} />
+                    const active = node.path === snapshot.graph?.path
+                    const color = active ? 'var(--tt-accent)' : snapshot.settings?.graphColorBy === 'folder' ? graphFolderColor(folder) : 'var(--tt-muted)'
+                    return <Button unstyled aria-current={active ? 'true' : undefined} aria-label={`${node.path} Graph Node`} className="group absolute z-1 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]" data-active={active} data-graph-group={snapshot.settings?.graphGroupBy === 'folder' ? folder : undefined} key={node.path} onClick={() => { props.onOpenGraphNode?.(node.path, 'note') }} style={{ left: `${String(point.x)}%`, top: `${String(point.y)}%` }} title={`Open ${node.path}`} type="button"><span aria-hidden="true" className="absolute inset-[5px] rounded-full" style={{ backgroundColor: color }} /><span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-5 max-w-40 -translate-x-1/2 truncate whitespace-nowrap text-[10px] text-[var(--tt-muted)] opacity-80">{node.path}</span></Button>
                   })}
-                  <span className="sr-only">{(snapshot.graph?.edges ?? []).filter(edge => graphPaths.has(edge.sourcePath) && graphPaths.has(edge.targetPath)).map(edge => `${edge.sourcePath} links to ${edge.targetPath}`).join('. ')}</span>
+                  <span className="sr-only">{graphEdges.map(edge => `${edge.sourcePath} links to ${edge.targetPath}`).join('. ')}</span>
                 </div>
-                <div className="mt-1 grid max-h-48 gap-2 overflow-auto">
-                  {graphGroups.map(([group, nodes]) => <section aria-label={`Graph Group ${group}`} key={group}><h3 className="m-0 text-xs">{group}</h3><div className="grid gap-1">{(nodes ?? []).map(node => <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-1" key={node.path}><span className="truncate text-xs">{node.path}</span><Button unstyled aria-label={`Open Note ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onOpenGraphNode?.(node.path, 'note') }} type="button">Open</Button><Button unstyled aria-label={`Open Local Graph ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onOpenGraphNode?.(node.path, 'local') }} type="button">Local</Button><Button unstyled aria-label={`Copy Graph Path ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onCopyGraphPath?.(node.path) }} type="button">Copy</Button></div>)}</div></section>)}
-                </div>
-              </>
-            ) : <span className="mt-2 block text-xs text-[var(--tt-muted)]">{(snapshot.graphLayout?.length ?? 0) > 0 ? 'No graph nodes match this filter.' : 'Open Global or Local Graph.'}</span>}
+              </div>
+            ) : <span className="absolute inset-0 grid place-items-center text-xs text-[var(--tt-muted)]">{(snapshot.graphLayout?.length ?? 0) > 0 ? 'No graph nodes match this filter.' : 'Open Global or Local Graph.'}</span>}
+            <details className="absolute bottom-3 left-3 z-10 max-w-[min(22rem,calc(100%-24px))] rounded-md border border-[var(--tt-border)] bg-[color-mix(in_srgb,var(--tt-panel)_92%,transparent)] shadow-lg backdrop-blur-sm">
+              <summary className="cursor-pointer list-none px-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)]">Graph Nodes ({String(graphNodes.length)})</summary>
+              <div className="max-h-48 min-w-56 overflow-auto border-t border-[var(--tt-border)] p-2">
+                {graphGroups.map(([group, nodes]) => <section aria-label={`Graph Group ${group}`} key={group}><h3 className="m-0 text-xs">{group}</h3><div className="grid gap-1">{(nodes ?? []).map(node => <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-1" key={node.path}><span className="truncate text-xs">{node.path}</span><Button unstyled aria-label={`Open Note ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onOpenGraphNode?.(node.path, 'note') }} type="button">Open</Button><Button unstyled aria-label={`Open Local Graph ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onOpenGraphNode?.(node.path, 'local') }} type="button">Local</Button><Button unstyled aria-label={`Copy Graph Path ${node.path}`} className="rounded border border-[var(--tt-border)] bg-transparent px-1 py-0.5 text-xs" onClick={() => { props.onCopyGraphPath?.(node.path) }} type="button">Copy</Button></div>)}</div></section>)}
+                {(graphNodes.length === 0) && <span className="text-xs text-[var(--tt-muted)]">No graph nodes.</span>}
+              </div>
+            </details>
           </section>
-          <section aria-label="Bookmarks" className="p-3" hidden={props.view !== 'library'}>
+          <section aria-label="Bookmarks" className="p-3" hidden={props.view !== 'bookmarks'}>
             <h2 className="m-0 text-sm">Bookmarks</h2>
             <div className="mt-2 grid gap-1">
               {(snapshot.bookmarks ?? []).map(bookmark => (
@@ -167,8 +206,8 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               {(snapshot.bookmarks?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No bookmarks.</span>}
             </div>
           </section>
-          <section aria-label="Smart Views and Tags" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'library'}>
-            <h2 className="m-0 text-sm">Smart Views and Tags</h2>
+          <section aria-label="Tags" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'tags'}>
+            <h2 className="m-0 text-sm">Tags</h2>
             <div className="mt-2 grid grid-cols-2 gap-1">
               {(['recent', 'tasks', 'journals', 'favorites', 'collections', 'tags'] as const).map(kind => (
                 <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" key={kind} onClick={() => { props.onOpenSmartView?.(kind) }} type="button">{kind[0]!.toLocaleUpperCase() + kind.slice(1)}</Button>
@@ -182,7 +221,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               </div>
             )}
           </section>
-          <section aria-label="Properties" className="p-3" hidden={props.view !== 'note-info'}>
+          <section aria-label="Properties" className="p-3" hidden={props.view !== 'properties'}>
             <h2 className="m-0 text-sm">Properties</h2>
             <h3 className="mt-2 mb-1 text-xs">File</h3>
             <div className="grid gap-1">
@@ -203,8 +242,8 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               {(snapshot.facets?.properties ?? []).map(property => <Button unstyled className="rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={property.key.toLocaleLowerCase()} onClick={() => { props.onSearchChange?.(`[${property.key}]`); props.onRunSearch?.() }} type="button">{property.key} · {String(property.count)} · {property.types.join(', ')}</Button>)}
             </div>
           </section>
-          <section aria-label="Note Relationships" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'note-info'}>
-            <h2 className="m-0 text-sm">Outline and Relationships</h2>
+          <section aria-label="Backlinks" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'backlinks'}>
+            <h2 className="m-0 text-sm">Backlinks</h2>
             <h3 className="mt-2 mb-1 text-xs">Outline</h3>
             <div className="grid gap-1">
               {(snapshot.outline?.headings ?? []).map((heading: VaultHeading) => (
@@ -214,8 +253,9 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             </div>
             <h3 className="mt-2 mb-1 text-xs">Footnotes</h3>
             {(snapshot.outline?.footnotes ?? []).map(footnote => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={`${footnote.line}-${footnote.ordinal}`} onClick={() => { props.onJumpToLine?.(footnote.line) }} type="button">{footnote.content}</Button>)}
-            <h3 className="mt-2 mb-1 text-xs">Backlinks</h3>
+            <h3 className="mt-2 mb-1 text-xs">Incoming Links</h3>
             {(snapshot.links?.backlinkDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" key={`${link.sourcePath}-${String(link.line)}-${String(index)}`} onClick={() => { props.onSelect(link.sourcePath) }} type="button">{link.sourcePath}:{String(link.line)}</Button>)}
+            {(snapshot.links?.backlinkDetails.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No backlinks.</span>}
             <h3 className="mt-2 mb-1 text-xs">Outgoing Links</h3>
             {(snapshot.links?.outgoingDetails ?? []).map((link, index) => <Button unstyled className="block w-full rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs" disabled={link.resolvedPath === null} key={`${link.authoredTarget}-${String(link.line)}-${String(index)}`} onClick={() => { if (link.resolvedPath !== null) props.onSelect(link.resolvedPath) }} type="button">{link.displayText || link.authoredTarget}</Button>)}
             {(snapshot.links?.unlinkedMentions ?? []).map((mention, index) => <span className="block text-xs text-[var(--tt-muted)]" key={`${mention.sourcePath}-${String(mention.line)}-${String(index)}`}>Mention: {mention.matchedText}</span>)}
