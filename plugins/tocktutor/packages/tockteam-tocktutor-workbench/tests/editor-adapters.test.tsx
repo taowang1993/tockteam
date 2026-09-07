@@ -236,6 +236,18 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.className).toContain('[&_pre_code]:p-0')
   })
 
+  it('styles tinted callouts and readable Mermaid SVGs in Reading View', () => {
+    render(<RichReadingView source={'> [!tip] Study tip\n> Keep this nearby.\n\n```mermaid\ngraph TD; A[Start]-->B[Finish]\n```\n'} onToggleTask={() => {}} title="Reading" />)
+    const readingSurface = screen.getByLabelText('Reading View').querySelector<HTMLElement>('.tocktutor-reading')!
+    expect(readingSurface.querySelector('.callout')?.getAttribute('data-callout')).toBe('tip')
+    expect(readingSurface.className).toContain('[&_.callout]:border')
+    expect(readingSurface.className).toContain('[&_.callout]:bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,var(--tt-panel))]')
+    expect(readingSurface.querySelector('svg.mermaid-svg')).toBeTruthy()
+    expect(readingSurface.querySelector('.mermaid-node-label')?.textContent).toBe('Start')
+    expect(readingSurface.className).toContain('[&_.mermaid-edge-path]:stroke-[var(--dsw-specific-markdown-accent)]')
+    expect(readingSurface.className).toContain('[&_.mermaid-node-shape]:fill-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_12%,var(--tt-panel))]')
+  })
+
   it('presents wikilinks without source brackets and shares Reading View link styling', async () => {
     const live = render(<LivePreviewEditor content={'Review [[Welcome]] and [[Guide|start here]].\n'} onMarkdownChange={() => {}} />)
 

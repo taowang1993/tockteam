@@ -1093,7 +1093,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.match(html, /<footer[^>]+aria-label="TockTutor Status Bar"/u)
   assert.match(html, /motion-reduce:/u)
   assert.doesNotMatch(html, /<script>unsafe\(\)<\/script>/u)
-  assert.match(html, /Unsafe HTML is inert in Reading view\./u)
+  assert.doesNotMatch(html, /Unsafe HTML is inert in Reading view\./u)
 
   controller.dispose()
   assert.equal(remote.listeners.size, 0)

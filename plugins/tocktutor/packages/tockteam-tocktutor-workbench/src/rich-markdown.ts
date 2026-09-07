@@ -66,6 +66,59 @@ function safeUrl(value: string): string | null {
 const SAFE_RAW_TAG = /^<\/?(?:br|code|del|em|kbd|mark|s|small|strong|sub|sup|u)>$/iu
 const SAFE_RAW_BLOCK_TAGS = new Set(['a', 'br', 'code', 'del', 'div', 'em', 'mark', 'p', 's', 'span', 'strong', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u'])
 const SAFE_RAW_VOID_TAGS = new Set(['br'])
+const RAW_HTML_BLOCK_TAGS = new Set(['div', 'p', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr'])
+const ACTIVE_HTML_TAGS = new Set(['embed', 'form', 'iframe', 'link', 'math', 'meta', 'object', 'script', 'style', 'svg'])
+const ACTIVE_HTML_VOID_TAGS = new Set(['link', 'meta'])
+const ACTIVE_HTML_OPEN = /<\s*(embed|form|iframe|link|math|meta|object|script|style|svg)\b[^>]*>/iu
+
+function activeHtmlClose(name: string): RegExp {
+  return new RegExp(`</\\s*${name}\\s*>`, 'iu')
+}
+
+/** Remove active HTML outside fenced code without reordering the authored Markdown. */
+function stripActiveHtml(markdown: string): string {
+  const lines = markdown.split('\n')
+  let fence: { character: string; length: number } | null = null
+  let active: string | null = null
+  return lines.map(line => {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)
+    if (fence !== null) {
+      if (marker !== null && marker[1]![0] === fence.character && marker[1]!.length >= fence.length
+        && line.slice((marker.index ?? 0) + marker[1]!.length).trim() === '') fence = null
+      return line
+    }
+    if (active === null && marker !== null) {
+      fence = { character: marker[1]![0]!, length: marker[1]!.length }
+      return line
+    }
+    let result = line
+    if (active !== null) {
+      const close = result.match(activeHtmlClose(active))
+      if (close === null) return ''
+      result = result.slice((close.index ?? 0) + close[0].length)
+      active = null
+    }
+    while (true) {
+      const open = result.match(ACTIVE_HTML_OPEN)
+      if (open === null) break
+      const name = open[1]!.toLocaleLowerCase()
+      if (!ACTIVE_HTML_TAGS.has(name)) break
+      const start = open.index ?? 0
+      if (ACTIVE_HTML_VOID_TAGS.has(name) || /\/\s*>$/u.test(open[0])) {
+        result = result.slice(0, start) + result.slice(start + open[0].length)
+        continue
+      }
+      const close = result.match(activeHtmlClose(name))
+      if (close === null) {
+        result = result.slice(0, start)
+        active = name
+        break
+      }
+      result = result.slice(0, start) + result.slice((close.index ?? 0) + close[0].length)
+    }
+    return result.replace(/<\/\s*(?:embed|form|iframe|math|object|script|style|svg)\s*>/giu, '')
+  }).join('\n')
+}
 
 function rawHtmlAttributes(source: string): Record<string, string> {
   const attributes: Record<string, string> = {}
@@ -126,7 +179,7 @@ function renderSafeRawHtmlBlock(source: string): string | null {
 
 function rawHtmlBlockName(line: string): string | null {
   const name = line.trim().match(/^<\s*([A-Za-z][\w:-]*)(?:\s|>|\/)/u)?.[1]?.toLocaleLowerCase()
-  return name !== undefined && SAFE_RAW_BLOCK_TAGS.has(name) && name !== 'a' && name !== 'br' ? name : null
+  return name !== undefined && RAW_HTML_BLOCK_TAGS.has(name) ? name : null
 }
 
 function renderInline(source: string, footnoteNumbers: ReadonlyMap<string, number>, externalEmbedMode: 'inert' | 'viewer' = 'inert'): string {
@@ -226,15 +279,39 @@ function renderBoundedMermaid(source: string): string | null {
   if (source.length > 20_000) return null
   const statements = source.split(/[;\r\n]+/u).map(value => value.trim()).filter(Boolean)
   if (!/^graph\s+(?:TD|TB|LR|RL|BT)$/iu.test(statements.shift() ?? '') || statements.length === 0 || statements.length > 100) return null
-  const edges: string[] = []
+  const edges: Array<{ from: string; to: string }> = []
+  const labels = new Map<string, string>()
   for (const statement of statements) {
     const match = statement.match(/^([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?\s*--+>?\s*([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?$/u)
     if (match === null) return null
-    const from = escapeMarkdownHtml(match[2] ?? match[1]!)
-    const to = escapeMarkdownHtml(match[4] ?? match[3]!)
-    edges.push(`<span class="mermaid-node">${from}</span><span aria-hidden="true"> → </span><span class="mermaid-node">${to}</span>`)
+    const from = match[1]!
+    const to = match[3]!
+    if (!labels.has(from)) labels.set(from, match[2] ?? from)
+    if (!labels.has(to)) labels.set(to, match[4] ?? to)
+    edges.push({ from, to })
   }
-  return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img">${edges.join('<br>')}</div>`
+  const nodeIds = [...labels.keys()]
+  const nodeWidth = 132
+  const width = Math.max(320, Math.min(1200, 40 + nodeIds.length * 180))
+  const height = 128
+  const gap = nodeIds.length < 2 ? 0 : (width - 40 - nodeWidth) / (nodeIds.length - 1)
+  const position = (id: string): { x: number; y: number } => ({
+    x: 20 + nodeIds.indexOf(id) * gap,
+    y: 38,
+  })
+  const edgeMarkup = edges.map(edge => {
+    const from = position(edge.from)
+    const to = position(edge.to)
+    const fromX = from.x + nodeWidth / 2
+    const toX = to.x + nodeWidth / 2
+    const midpoint = (fromX + toX) / 2
+    return `<path class="mermaid-edge-path" d="M ${String(fromX)} 64 C ${String(midpoint)} 20, ${String(midpoint)} 20, ${String(toX)} 64" marker-end="url(#mermaid-arrow)"></path>`
+  }).join('')
+  const nodeMarkup = nodeIds.map(id => {
+    const point = position(id)
+    return `<g class="mermaid-node" data-node-id="${escapeMarkdownHtml(id)}"><rect class="mermaid-node-shape" height="52" rx="8" width="${String(nodeWidth)}" x="${String(point.x)}" y="${String(point.y)}"></rect><text class="mermaid-node-label" text-anchor="middle" x="${String(point.x + nodeWidth / 2)}" y="70">${escapeMarkdownHtml(labels.get(id) ?? id)}</text></g>`
+  }).join('')
+  return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img"><svg aria-hidden="true" class="mermaid-svg" preserveAspectRatio="xMidYMid meet" viewBox="0 0 ${String(width)} ${String(height)}" xmlns="http://www.w3.org/2000/svg"><defs><marker id="mermaid-arrow" markerHeight="8" markerWidth="8" orient="auto-start-reverse" refX="7" refY="4" viewBox="0 0 8 8"><path class="mermaid-arrow-head" d="M 0 0 L 8 4 L 0 8 z"></path></marker></defs>${edgeMarkup}${nodeMarkup}</svg></div>`
 }
 
 function tableDelimiter(line: string): boolean {
@@ -246,15 +323,23 @@ function tableCells(line: string): string[] {
   return line.trim().replace(/^\|/u, '').replace(/\|$/u, '').split('|').map(cell => cell.trim())
 }
 
+function blockIdText(value: string): { id: string; text: string } | null {
+  const match = value.match(/(?:^|\s)\^([A-Za-z0-9][A-Za-z0-9_-]{0,63})\s*$/u)
+  if (match === null) return null
+  return { id: match[1]!, text: value.slice(0, match.index ?? 0).replace(/[ \t]+$/u, '') }
+}
+
 function paragraphHtml(lines: string[], strict: boolean, footnotes: ReadonlyMap<string, number>, externalEmbedMode: 'inert' | 'viewer'): string {
   if (lines.length === 0) return ''
-  let html = renderInline(lines[0]!.replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)
-  for (let index = 1; index < lines.length; index += 1) {
-    const previous = lines[index - 1]!
+  const last = blockIdText(lines.at(-1)!.replace(/[ \t]+$/u, ''))
+  const content = last === null ? lines : [...lines.slice(0, -1), last.text]
+  let html = renderInline(content[0]!.replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)
+  for (let index = 1; index < content.length; index += 1) {
+    const previous = content[index - 1]!
     const separator = !strict || / {2,}$/u.test(previous) ? '<br>' : ' '
-    html += `${separator}${renderInline(lines[index]!.replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)}`
+    html += `${separator}${renderInline(content[index]!.replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)}`
   }
-  return `<p>${html}</p>`
+  return `<p${last === null ? '' : ` id="${escapeMarkdownHtml(last.id)}"`}>${html}</p>`
 }
 
 interface MarkdownListItem {
@@ -321,7 +406,7 @@ function renderMarkdownList(
 
 export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOptions = {}): string {
   if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`
-  const source = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+  const source = stripActiveHtml(stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n'))
   const lines = source.split('\n')
   const footnotes = collectFootnotes(lines)
   const externalEmbedMode = options.externalEmbedMode ?? 'inert'
@@ -381,7 +466,10 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
     if (heading !== null) {
       flush()
       const level = heading[1]!.length
-      blocks.push(`<h${String(level)}>${renderInline(heading[2]!, footnotes.numbers, externalEmbedMode)}</h${String(level)}>`)
+      const content = blockIdText(heading[2]!)
+      const title = content?.text ?? heading[2]!
+      const id = content === null ? '' : ` id="${escapeMarkdownHtml(content.id)}"`
+      blocks.push(`<h${String(level)}${id}>${renderInline(title, footnotes.numbers, externalEmbedMode)}</h${String(level)}>`)
       continue
     }
     const callout = line.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+(.*))?$/u)
@@ -394,7 +482,7 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
       }
       const type = callout[1]!.toLocaleLowerCase()
       const title = callout[3] ?? type[0]!.toLocaleUpperCase() + type.slice(1)
-      blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers, externalEmbedMode)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</aside>`)
+      blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-callout="${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers, externalEmbedMode)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</aside>`)
       continue
     }
     const quote = line.match(/^ {0,3}> ?(.*)$/u)

@@ -36,9 +36,26 @@ test('renders bounded rich Markdown without executing raw HTML or unsafe URLs', 
   assert.match(html, /class="footnotes"/u)
   assert.match(html, /href="https:\/\/example\.com\/"/u)
   assert.doesNotMatch(html, /href="javascript:/u)
-  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;<strong>Safe<\/strong>/u)
+  assert.doesNotMatch(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
+  assert.match(html, /<strong>Safe<\/strong>/u)
   assert.match(html, /aria-label="Mermaid Diagram"/u)
-  assert.match(html, />A<\/span><span aria-hidden="true"> → <\/span><span class="mermaid-node">B</u)
+  assert.match(html, /<svg[^>]+class="mermaid-svg"/u)
+  assert.match(html, /class="mermaid-edge-path"/u)
+  assert.match(html, /class="mermaid-node-label"[^>]*>A<\/text>/u)
+})
+
+test('suppresses active HTML outside fenced code while preserving surrounding Markdown order', () => {
+  const html = renderMarkdownHtml('Before\n\n<script>alert(1)</script><strong>Safe</strong>\n\nAfter\n\n```md\n<script>literal</script>\n```\n')
+  assert.match(html, /<p>Before<\/p>\n<p><strong>Safe<\/strong><\/p>\n<p>After<\/p>/u)
+  assert.doesNotMatch(html, /alert\(1\)/u)
+  assert.match(html, /&lt;script&gt;literal&lt;\/script&gt;/u)
+})
+
+test('hides block IDs from text while keeping them addressable', () => {
+  const html = renderMarkdownHtml('# Welcome ^welcome\n\nTarget block. ^target\n')
+  assert.match(html, /<h1 id="welcome">Welcome<\/h1>/u)
+  assert.match(html, /<p id="target">Target block\.<\/p>/u)
+  assert.doesNotMatch(html, /\^welcome|\^target/u)
 })
 
 test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {
@@ -96,7 +113,7 @@ test('includes bounded resolved embeds in static HTML without rewriting authored
   })
   assert.match(document, /<section[^>]+aria-label="Resolved Embeds"/u)
   assert.match(document, /<img[^>]+src="data:image\/png;base64,AQID"/u)
-  assert.match(document, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
+  assert.doesNotMatch(document, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
   assert.match(document, /<pre>\{&quot;nodes&quot;:\[\]\}<\/pre>/u)
   assert.match(document, /Audio Embed: voice\.weba/u)
   assert.match(document, /data-target="Second\.md#Part"/u)
