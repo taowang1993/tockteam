@@ -106,8 +106,11 @@ describe('Milkdown Live Preview editor', () => {
       body: '# Lesson\n',
       prefix: '---\nstatus: active\ntags: [one, two]\n---\n',
     })
-    render(<LivePreviewEditor content={source} onMarkdownChange={() => {}} />)
-    expect(screen.getByLabelText('Live Preview Properties').textContent).toContain('statusactive')
+    render(<LivePreviewEditor content={source} onMarkdownChange={() => {}} title="Lesson note" />)
+    const title = screen.getByRole('heading', { level: 1, name: 'Lesson note' })
+    const propertiesHeading = screen.getByRole('heading', { level: 2, name: 'Properties' })
+    expect(title.compareDocumentPosition(propertiesHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByLabelText('Document Properties').textContent).toContain('statusactive')
   })
 
   it('mounts one editable ProseMirror surface and keeps source untouched until edited', { timeout: 20_000 }, async () => {
@@ -138,12 +141,14 @@ describe('Milkdown Live Preview editor', () => {
   })
 
   it('keeps Reading tables compact and uses the same visible borders', () => {
-    render(<RichReadingView source={'| Surface | Status |\n| --- | --- |\n| Editor | Ready |\n'} onToggleTask={() => {}} />)
+    render(<RichReadingView source={'| Surface | Status |\n| --- | --- |\n| Editor | Ready |\n'} onToggleTask={() => {}} title="Table note" />)
 
     const reading = screen.getByLabelText('Reading View')
+    const readingSurface = reading.querySelector<HTMLElement>('.tocktutor-reading')!
+    expect(screen.getByRole('heading', { level: 1, name: 'Table note' })).toBeTruthy()
     expect(reading.querySelector('table')).toBeTruthy()
-    expect(reading.className).not.toContain('[&_table]:w-full')
-    expect(reading.className).toContain('border-[var(--dsw-alias-border-l2,var(--tt-border))]')
+    expect(readingSurface.className).not.toContain('[&_table]:w-full')
+    expect(readingSurface.className).toContain('border-[var(--dsw-alias-border-l2,var(--tt-border))]')
   })
 
   it('routes external Live Preview images through the isolated viewer callback', async () => {

@@ -15,6 +15,7 @@ export declare function RichReadingView(props: {
     onOpenExternalUrl?: ((url: string) => void) | undefined;
     onToggleTask(index: number): void;
     source: string;
+    title: string;
 }): ReactNode;
 export declare function LivePreviewView(props: {
     documentKey: string;
@@ -24,5 +25,6 @@ export declare function LivePreviewView(props: {
     onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined;
     onToggleTask(index: number): void;
     source: string;
+    title: string;
 }): ReactNode;
 //# sourceMappingURL=editor-surface.d.ts.map

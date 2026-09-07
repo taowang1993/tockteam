@@ -4,7 +4,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { ResolvedEmbedNode } from './embeds.ts'
-import { LivePreviewEditor, type LivePreviewSelection } from './live-preview-editor.tsx'
+import { LivePreviewEditor, MarkdownDocumentHeader, type LivePreviewSelection } from './live-preview-editor.tsx'
 import { buildMarkdownSlides, renderMarkdownHtml } from './rich-markdown.ts'
 
 function embedLabel(embed: ResolvedEmbedNode): string {
@@ -79,6 +79,7 @@ export function RichReadingView(props: {
   onOpenExternalUrl?: ((url: string) => void) | undefined
   onToggleTask(index: number): void
   source: string
+  title: string
 }): ReactNode {
   const html = useMemo(() => {
     const warning = /<\/?(?:script|style|iframe|object|embed|form|svg|link|meta)\b/iu.test(props.source)
@@ -96,15 +97,16 @@ export function RichReadingView(props: {
     handleRenderedClick(event, props.onOpenExternalUrl)
   }
   return (
-    <article
-      aria-label="Reading View"
-      className="tocktutor-reading mx-auto min-h-full w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:pl-5 [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_mark]:bg-[color-mix(in_srgb,#fde047_55%,transparent)] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold"
-      onClick={onClick}
-      tabIndex={-1}
-    >
-      <div dangerouslySetInnerHTML={{ __html: html }} />
-      <ResolvedEmbedsView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} />
-    </article>
+    <section aria-label="Reading View" className="min-h-full" tabIndex={-1}>
+      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]" source={props.source} title={props.title} />
+      <article
+        className="tocktutor-reading mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px] pb-[72px] [&_.callout]:my-4 [&_.callout]:rounded-md [&_.footnotes]:mt-8 [&_.math-display]:my-4 [&_.mermaid]:my-4 [&_.task-list]:pl-5 [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[30px] [&_h1]:leading-tight [&_h1]:font-[650] [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_mark]:bg-[color-mix(in_srgb,#fde047_55%,transparent)] [&_p]:mt-0 [&_p]:mb-4 [&_p]:text-lg [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-[var(--tt-border)] [&_pre]:bg-[color-mix(in_srgb,var(--tt-text)_4%,var(--tt-panel))] [&_pre]:p-3 [&_table]:my-4 [&_table]:border-collapse [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold"
+        onClick={onClick}
+      >
+        <div dangerouslySetInnerHTML={{ __html: html }} />
+        <ResolvedEmbedsView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} />
+      </article>
+    </section>
   )
 }
 
@@ -116,6 +118,7 @@ export function LivePreviewView(props: {
   onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined
   onToggleTask(index: number): void
   source: string
+  title: string
 }): ReactNode {
   return (
     <section aria-label="Live Preview" className="flex min-h-full flex-col" tabIndex={-1}>
@@ -129,6 +132,7 @@ export function LivePreviewView(props: {
         {...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds })}
         {...(props.onSelectionChange === undefined ? {} : { onSelectionChange: props.onSelectionChange })}
         onToggleTask={props.onToggleTask}
+        title={props.title}
       />
       <details className="mx-auto mb-6 mt-4 w-[calc(100%-32px)] max-w-3xl rounded border border-[var(--tt-border)] p-2">
         <summary className="cursor-pointer text-xs font-medium">Rendered Preview</summary>

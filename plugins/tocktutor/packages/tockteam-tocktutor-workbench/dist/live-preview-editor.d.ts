@@ -22,6 +22,12 @@ export interface LivePreviewEditorProps {
     onTableAction?: (action: LivePreviewTableAction) => void;
     onToggleTask?: (index: number) => void;
     onWidgetState?: (widgets: readonly EditorWidgetTarget[]) => void;
+    title?: string;
 }
+export declare function MarkdownDocumentHeader(props: {
+    className?: string;
+    source: string;
+    title?: string;
+}): ReactNode;
 export declare function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode;
 //# sourceMappingURL=live-preview-editor.d.ts.map

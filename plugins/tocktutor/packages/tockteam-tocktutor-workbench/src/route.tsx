@@ -3346,6 +3346,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
                 onToggleTask={props.onToggleTask}
                 source={snapshot.source}
+                title={noteTitle(snapshot.path)}
               />
             ) : snapshot.documentKind === 'canvas' ? (
               <CanvasBoard
@@ -3363,7 +3364,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 source={snapshot.source}
               />
             ) : snapshot.documentKind === 'markdown' ? (
-              <RichReadingView embeds={snapshot.embeds} onOpenExternalUrl={props.onOpenExternalUrl} onToggleTask={props.onToggleTask} source={snapshot.source} />
+              <RichReadingView embeds={snapshot.embeds} onOpenExternalUrl={props.onOpenExternalUrl} onToggleTask={props.onToggleTask} source={snapshot.source} title={noteTitle(snapshot.path)} />
             ) : (
               <Alert unstyled>Reading view is unavailable.</Alert>
             )}
