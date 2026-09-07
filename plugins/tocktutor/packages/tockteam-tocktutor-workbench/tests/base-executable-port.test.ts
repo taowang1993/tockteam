@@ -113,6 +113,16 @@ test('parses and executes the bounded filter, sort, limit, formula, summary, and
   assert.deepEqual(model.summaries.map(summary => summary.value), [2, 2])
 })
 
+test('accepts Obsidian sort property entries and applies their direction', () => {
+  const parsed = parseExecutableBase(`views:\n  - type: table\n    name: Ranked\n    order: [file.name, note.score]\n    sort:\n      - property: note.score\n        direction: DESC\n`)
+  assert.equal(parsed.status, 'ready')
+  if (parsed.status !== 'ready') return
+  assert.deepEqual(parsed.views[0]?.sort, ['note.score desc'])
+  const query = queryExecutableBaseView(parsed, parsed.views[0]!, files)
+  assert.deepEqual(query.unsupported, [])
+  assert.deepEqual(query.rows.map(row => row.file.path), ['Gamma.md', 'Beta.md', 'Alpha.md'])
+})
+
 test('projects table, list, cards, and bounded map-label models from the same row values', () => {
   const parsed = parseExecutableBase(definitionSource)
   assert.equal(parsed.status, 'ready')

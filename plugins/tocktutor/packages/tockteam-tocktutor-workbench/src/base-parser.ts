@@ -275,6 +275,24 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
       continue
     }
 
+    const sortPropertyItem = currentList === 'sort' && indent >= 6
+      ? /^-\s*property:\s*([\w.-]+)$/u.exec(trimmed)
+      : null
+    if (sortPropertyItem !== null) {
+      const property = sortPropertyItem[1] ?? ''
+      currentView.sort.push(property)
+      if (!boundedList(currentView.sort)) return unsupported('Base view list exceeds its limit.')
+      continue
+    }
+    const sortDirection = currentList === 'sort' && indent >= 8
+      ? /^direction:\s*(asc|desc)$/iu.exec(trimmed)
+      : null
+    if (sortDirection !== null) {
+      const property = currentView.sort.at(-1)
+      if (property === undefined || /\s+(?:asc|desc)$/iu.test(property)) return unsupported('Base sort direction is malformed.')
+      currentView.sort[currentView.sort.length - 1] = `${property} ${sortDirection[1]?.toLocaleLowerCase() ?? 'asc'}`
+      continue
+    }
     const listItem = currentList !== '' && indent >= 6 ? /^-\s*(.+)$/u.exec(trimmed) : null
     if (listItem !== null) {
       const value = cleanScalar(listItem[1] ?? '')
