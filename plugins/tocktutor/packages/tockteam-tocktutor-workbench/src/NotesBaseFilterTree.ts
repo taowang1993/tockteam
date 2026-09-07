@@ -40,7 +40,12 @@ function filterBlockText(block: FilterBlockLine[]) {
 }
 
 function cleanFilterStatement(value: string) {
-  return value.trim().replace(/^['"]|['"]$/u, "");
+  const trimmed = value.trim()
+  const first = trimmed[0]
+  const last = trimmed.at(-1)
+  return trimmed.length >= 2 && first === last && (first === "'" || first === '"')
+    ? trimmed.slice(1, -1)
+    : trimmed
 }
 
 /** Parse `- ` items at one indent level; each item is a statement or a nested conjunction. */
