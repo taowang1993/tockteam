@@ -25,6 +25,8 @@ describe('CodeMirror Source editor', () => {
     )
 
     await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
+    expect(screen.getByLabelText('Markdown Source Editor').className).toContain('[&_.cm-editor]:[font:16px/1.5_ui-monospace,SFMono-Regular,Consolas,monospace]')
+    expect(screen.getByLabelText('Markdown Source Editor').className).toContain('[&_.cm-scroller]:leading-6')
     expect(editorViewRef.current?.state.doc.toString()).toBe(source.replace(/\r\n?/gu, '\n'))
     expect(preserveEditorLineEndings(source, `${source.replace(/\r\n?/gu, '\n')}Tail`)).toBe(`${source}Tail`)
     editorViewRef.current?.dispatch({ changes: { from: editorViewRef.current.state.doc.length, insert: 'Tail' } })
@@ -155,6 +157,22 @@ describe('Milkdown Live Preview editor', () => {
     expect(onChange).not.toHaveBeenCalled()
     expect(container.querySelector<HTMLElement>('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
     await waitFor(() => expect(onSelection).toHaveBeenCalled())
+  })
+
+  it('uses readable document typography and Obsidian-style blockquotes in both preview modes', async () => {
+    const live = render(<LivePreviewEditor content={'> Quoted lesson\n'} onMarkdownChange={() => {}} />)
+
+    await waitFor(() => expect(live.container.querySelector('blockquote')).toBeTruthy(), { timeout: 5_000 })
+    const liveSurface = screen.getByLabelText('Live Preview Editor')
+    expect(liveSurface.className).toContain('text-base')
+    expect(liveSurface.className).toContain('[&_blockquote]:border-l-2')
+    live.unmount()
+
+    render(<RichReadingView source={'> Quoted lesson\n'} onToggleTask={() => {}} title="Quote" />)
+    const readingSurface = screen.getByLabelText('Reading View').querySelector<HTMLElement>('.tocktutor-reading')!
+    expect(readingSurface.querySelector('blockquote')?.textContent).toBe('Quoted lesson')
+    expect(readingSurface.className).toContain('text-base')
+    expect(readingSurface.className).toContain('[&_blockquote]:border-l-2')
   })
 
   it('renders compact Obsidian-style task rows in Live Preview', async () => {

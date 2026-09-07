@@ -333,6 +333,17 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
       blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers, externalEmbedMode)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</aside>`)
       continue
     }
+    const quote = line.match(/^ {0,3}> ?(.*)$/u)
+    if (quote !== null) {
+      flush()
+      const body = [quote[1]!]
+      while (index + 1 < lines.length && /^ {0,3}> ?/u.test(lines[index + 1]!)) {
+        index += 1
+        body.push(lines[index]!.replace(/^ {0,3}> ?/u, ''))
+      }
+      blocks.push(`<blockquote>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</blockquote>`)
+      continue
+    }
     if (index + 1 < lines.length && line.includes('|') && tableDelimiter(lines[index + 1]!)) {
       flush()
       const headers = tableCells(line)
