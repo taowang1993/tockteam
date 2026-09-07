@@ -683,7 +683,7 @@ async function bootstrap(): Promise<void> {
       : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey)
     const imageUrl = isLauncherImageUrl(item.imageUrl) ? item.imageUrl : localAsset ?? packagedAsset
     const marker = imageUrl === undefined ? document.createElement('span') : document.createElement('img')
-    marker.className = 'flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-[10px] font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)] object-contain'
+    marker.className = 'launcher-command-row-icon text-[10px] font-semibold'
     marker.setAttribute('aria-hidden', 'true')
     if (marker instanceof HTMLImageElement) {
       marker.alt = ''
@@ -711,7 +711,7 @@ async function bootstrap(): Promise<void> {
     footerSelection.append(createResultMarker(item), selectionName)
 
     const open = document.createElement('button')
-    open.className = 'inline-flex min-h-[22px] shrink-0 items-center gap-2 border-0 bg-transparent p-0 text-xs font-semibold text-[var(--dsw-alias-label-primary,CanvasText)] hover:text-[var(--dsw-alias-brand-text,var(--dsw-alias-label-primary,CanvasText))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+    open.className = 'launcher-command-footer-action'
     open.type = 'button'
     open.disabled = workflowInteractionBlocked()
     open.setAttribute('aria-label', actionLabel(item.defaultAction))
@@ -726,7 +726,7 @@ async function bootstrap(): Promise<void> {
     })
 
     const toggle = document.createElement('button')
-    toggle.className = 'inline-flex min-h-[22px] shrink-0 items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+    toggle.className = 'launcher-command-footer-action text-[var(--dsw-alias-label-secondary,CanvasText)]'
     toggle.type = 'button'
     toggle.disabled = workflowInteractionBlocked()
     toggle.setAttribute('aria-label', `${messages().actionsFor} ${item.name}`)
@@ -755,7 +755,7 @@ async function bootstrap(): Promise<void> {
     row.append(open)
     if (activeCancellation !== undefined && item.sourceExtension === 'Workflow') {
       const cancel = document.createElement('button')
-      cancel.className = 'inline-flex min-h-[22px] shrink-0 items-center border-0 bg-transparent p-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2'
+      cancel.className = 'launcher-command-footer-action text-[var(--dsw-alias-label-secondary,CanvasText)]'
       cancel.type = 'button'
       cancel.disabled = cancellationPending
       cancel.dataset.testid = 'tocklauncher-cancel-workflow'
@@ -769,14 +769,14 @@ async function bootstrap(): Promise<void> {
     if (!actionMenuOpen) return
 
     const menu = document.createElement('div')
-    menu.className = 'absolute bottom-[calc(100%+12px)] right-0 z-10 max-h-[240px] w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full overflow-y-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,Canvas))] p-1 shadow-lg'
+    menu.className = 'launcher-command-menu bottom-[calc(100%+10px)] right-0'
     menu.id = 'launcher-actions-menu'
     menu.setAttribute('role', 'menu')
     menu.setAttribute('aria-label', `${messages().actionsFor} ${item.name}`)
     const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
     for (const action of actions) {
       const actionButton = document.createElement('button')
-      actionButton.className = 'grid min-h-8 w-full grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-1 focus-visible:outline-offset-[-1px]'
+      actionButton.className = 'launcher-command-menu-item grid-cols-[18px_minmax(0,1fr)_auto]'
       actionButton.type = 'button'
       actionButton.disabled = workflowInteractionBlocked()
       actionButton.setAttribute('role', 'menuitem')
@@ -827,7 +827,7 @@ async function bootstrap(): Promise<void> {
     group.setAttribute('role', 'group')
     const heading = document.createElement('h2')
     heading.id = `launcher-group-${id}`
-    heading.className = 'm-0 px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--dsw-alias-label-secondary,CanvasText)]'
+    heading.className = 'launcher-command-group-title'
     heading.textContent = name
     group.setAttribute('aria-labelledby', heading.id)
     const list = document.createElement('ul')
@@ -837,7 +837,7 @@ async function bootstrap(): Promise<void> {
       const listItem = document.createElement('li')
       listItem.setAttribute('role', 'presentation')
       const button = document.createElement('button')
-      button.className = 'flex min-h-9 w-full min-w-0 items-center gap-2.5 rounded-md border border-transparent bg-transparent px-3 py-[7px] text-left text-[var(--dsw-alias-label-primary,CanvasText)] transition-[background-color,border-color] duration-150 hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)] aria-selected:border-[var(--dsw-alias-border-l2,CanvasText)] aria-selected:bg-[var(--dsw-alias-interactive-bg-active,rgb(0_0_0_/_10%))]'
+      button.className = 'launcher-command-row'
       button.type = 'button'
       button.disabled = workflowInteractionBlocked()
       button.id = `launcher-result-${encodeURIComponent(item.id)}`

@@ -61,6 +61,215 @@
 }
 
 /* The Desktop bridge has no component seam for the inherited DSH shell. */
+/* TockLauncher command views share Raycast-like density and material without sharing behavior or authority. */
+@utility launcher-command-surface {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
+  border-radius: 1.125rem;
+  background:
+    radial-gradient(ellipse at 82% 52%, color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 5%, transparent), transparent 54%),
+    color-mix(in srgb, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)) 96%, var(--dsw-alias-bg-base, Canvas));
+  color: var(--dsw-alias-label-primary, CanvasText);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 28%), inset 0 1px rgb(255 255 255 / 3%);
+}
+
+@utility launcher-command-header {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  min-width: 0;
+  min-height: 3rem;
+  height: 3rem;
+  flex: none;
+  align-items: center;
+  gap: 0.75rem;
+  padding-inline: 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1, var(--dsw-alias-border-l2, CanvasText)) 72%, transparent);
+}
+
+@utility launcher-command-search {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 2.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  outline: none;
+
+  &::placeholder {
+    color: var(--dsw-alias-label-secondary, CanvasText);
+  }
+}
+
+@utility launcher-command-list {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.375rem;
+  list-style: none;
+}
+
+@utility launcher-command-group-title {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.25rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+@utility launcher-command-row {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.625rem;
+  align-items: center;
+  gap: 0.625rem;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  text-align: left;
+  transition: background-color 100ms ease;
+
+  &:hover,
+  &[aria-selected='true'],
+  &[data-selected='true'] {
+    background: var(--dsw-alias-interactive-bg-active, color-mix(in srgb, CanvasText 10%, transparent));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dsw-alias-brand-primary, CanvasText);
+    outline-offset: -2px;
+  }
+}
+
+@utility launcher-command-row-icon {
+  display: flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: var(--dsw-alias-bg-layer-2, Canvas);
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  object-fit: contain;
+}
+
+@utility launcher-command-footer {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  border-top: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1, var(--dsw-alias-border-l2, CanvasText)) 72%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)) 88%, transparent);
+  padding-inline: 0.75rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+}
+
+@utility launcher-command-footer-identity {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2rem;
+  max-width: 15rem;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, Canvas) 84%, transparent);
+  padding-inline: 0.625rem;
+
+  &:empty {
+    display: none;
+  }
+}
+
+@utility launcher-command-footer-action {
+  display: inline-flex;
+  min-height: 2rem;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  padding-inline: 0.625rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, CanvasText 6%, transparent));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dsw-alias-brand-primary, CanvasText);
+    outline-offset: 1px;
+  }
+}
+
+@utility launcher-command-menu {
+  position: absolute;
+  z-index: 50;
+  min-width: 0;
+  width: min(20rem, calc(100vw - 2rem));
+  max-width: 100%;
+  max-height: 15rem;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 82%, transparent);
+  border-radius: 0.75rem;
+  background: var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas));
+  padding: 0.375rem;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 34%);
+}
+
+@utility launcher-command-menu-item {
+  box-sizing: border-box;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.375rem 0.625rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, CanvasText 7%, transparent));
+    outline: none;
+  }
+}
+
 /* Launcher tools share these small semantic recipes across every provider surface. */
 @utility launcher-local-tool {
   display: flex;

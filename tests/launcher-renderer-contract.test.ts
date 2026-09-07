@@ -14,6 +14,8 @@ import {
 import { launcherSettingDisposition } from '../src/launcher-settings-model.ts'
 
 const launcherSource = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
+const launcherHtml = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf8')
+const launcherStyles = readFileSync(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
 
 test('surface projection has bounded locale, appearance, interaction, and provider status facts', () => {
   const projection = parseLauncherSurfaceSettings({
@@ -78,6 +80,17 @@ test('launcher shortcut matching requires exact modifiers and supports finite pr
 test('programmatic launcher scrolling is instant when reduced motion is active', () => {
   assert.equal(launcherEffectiveScrollBehavior('smooth', true), 'instant')
   assert.equal(launcherEffectiveScrollBehavior('smooth', false), 'smooth')
+})
+
+test('root command UI uses one shared Raycast-like visual recipe', () => {
+  for (const name of ['surface', 'header', 'search', 'list', 'footer', 'footer-identity', 'menu']) {
+    assert.match(launcherHtml, new RegExp(`launcher-command-${name}`, 'u'))
+    assert.match(launcherStyles, new RegExp(`@utility launcher-command-${name}`, 'u'))
+  }
+  for (const name of ['group-title', 'row', 'row-icon', 'footer-action', 'menu', 'menu-item']) {
+    assert.match(launcherSource, new RegExp(`launcher-command-${name}`, 'u'))
+    assert.match(launcherStyles, new RegExp(`@utility launcher-command-${name}`, 'u'))
+  }
 })
 
 test('launcher renderer consumes only finite main-owned result sections', () => {
