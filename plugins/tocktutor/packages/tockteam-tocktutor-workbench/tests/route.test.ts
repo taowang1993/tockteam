@@ -17,6 +17,7 @@ import type {
   CreateDocumentRequest,
   NoteVaultChangeEvent,
   OpenDocumentResult,
+  VaultLinksResult,
   VaultReference,
   VaultTreePage,
   WriteDocumentResult,
@@ -136,6 +137,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   renamedPath: string | null = null
   saveOverride: (() => Promise<{ ok: true; value: WriteDocumentResult }>) | null = null
   linksGate: Promise<void> | null = null
+  linksOverride: ((request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => Promise<{ ok: true; value: VaultLinksResult }>) | null = null
 
   readonly tocktutorWorkbench = {
     createManagedVault: (request: { expectedGeneration: number; name: string }, signal?: AbortSignal) => {
@@ -328,6 +330,7 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     links: (request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'links', parameters: [request, signal] })
+      if (this.linksOverride !== null) return this.linksOverride(request, signal)
       if (this.linksGate !== null) return this.linksGate.then(() => success({
         backlinkDetails: [{ authoredTarget: request.path, displayText: 'Note', fragment: null, kind: 'wiki' as const, line: 3, normalizedTarget: request.path, resolvedPath: request.path, sourcePath: 'Second.md', status: 'resolved' as const }],
         backlinks: ['Second.md'],
@@ -507,6 +510,46 @@ test('reports incomplete link rewrites without hiding a committed note rename', 
   assert.equal(controller.getSnapshot().path, 'Folder/Renamed Note.md')
   assert.match(controller.getSnapshot().message, /renamed; Some note links could not be updated: Referrer Second\.md/u)
   assert.ok(controller.getSnapshot().warnings.some(warning => warning.includes('Some note links could not be updated')))
+  controller.dispose()
+})
+
+test('opens a Reading View wikilink only through Host-resolved path and fragment metadata', async () => {
+  const remote = new FakeRemote()
+  remote.linksOverride = request => success({
+    backlinkDetails: [],
+    backlinks: [],
+    cursor: null,
+    generation: request.expectedVault.generation,
+    outgoing: ['Notes/Alias Target.md'],
+    outgoingDetails: [{
+      authoredTarget: 'Alias Target#Details',
+      displayText: 'the alias note',
+      fragment: 'Details',
+      kind: 'wiki',
+      line: 2,
+      normalizedTarget: 'Alias Target',
+      resolvedPath: 'Notes/Alias Target.md',
+      sourcePath: request.path,
+      status: 'resolved',
+    }],
+    path: request.path,
+    scan: { bytes: 30, entries: 2, files: 2 },
+    tagRelations: [],
+    truncated: false,
+    truncationReason: null,
+    unlinkedMentions: [],
+    warnings: [],
+  })
+  const navigations: string[] = []
+  const controller = new WorkbenchRouteController(remote, path => { navigations.push(path) })
+
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  assert.equal(await controller.openInternalLink('Alias Target#Details'), true)
+  assert.equal(controller.getSnapshot().path, 'Notes/Alias Target.md')
+  assert.equal(controller.getSnapshot().mode, 'reading')
+  assert.equal(navigations.at(-1), '/tocktutor/Notes/Alias%20Target.md')
+  assert.equal(await controller.openInternalLink('Unresolved'), false)
+  assert.equal(controller.getSnapshot().path, 'Notes/Alias Target.md')
   controller.dispose()
 })
 

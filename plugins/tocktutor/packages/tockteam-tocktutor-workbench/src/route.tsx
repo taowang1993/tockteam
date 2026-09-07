@@ -944,6 +944,24 @@ export class WorkbenchRouteController {
     return mode === 'note' ? true : await this.loadGraph('local')
   }
 
+  async openInternalLink(target: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown'
+      || target.length === 0 || target.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(target)) return false
+    let links = this.snapshot.links
+    if (links === null || links === undefined || links.path !== path || links.generation !== vault.generation) {
+      if (!await this.loadRelationships()) return false
+      links = this.snapshot.links
+    }
+    if (links === null || links === undefined) return false
+    const record = links.outgoingDetails.find(candidate => candidate.kind === 'wiki' && candidate.authoredTarget === target)
+    if (record?.status !== 'resolved' || record.resolvedPath === null) return false
+    if (!await this.select(record.resolvedPath)) return false
+    this.setMode('reading')
+    return true
+  }
+
   async openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean> {
     this.openSearch('')
     if (kind === 'recent') {
@@ -2575,6 +2593,7 @@ export interface TockTutorRouteViewProps {
   onOpenBookmark?(id: string): void
   onOpenCommandPalette?(): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
+  onOpenInternalLink?(target: string): void
   onOpenRecovery?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenExternalUrl?(url: string): void
@@ -3492,7 +3511,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 source={snapshot.source}
               />
             ) : snapshot.documentKind === 'markdown' ? (
-              <RichReadingView embeds={snapshot.embeds} key={snapshot.path} onAddProperty={key => props.onSetProperty?.(key, '') ?? false} onOpenExternalUrl={props.onOpenExternalUrl} onSetProperty={props.onSetProperty} onToggleTask={props.onToggleTask} source={snapshot.source} title={noteTitle(snapshot.path)} />
+              <RichReadingView embeds={snapshot.embeds} key={snapshot.path} onAddProperty={key => props.onSetProperty?.(key, '') ?? false} onOpenExternalUrl={props.onOpenExternalUrl} onOpenInternalLink={props.onOpenInternalLink} onSetProperty={props.onSetProperty} onToggleTask={props.onToggleTask} source={snapshot.source} title={noteTitle(snapshot.path)} />
             ) : (
               <Alert unstyled>Reading view is unavailable.</Alert>
             )}
@@ -3790,6 +3809,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
         onOpenExternalUrl={url => { setExternalUrl(url) }}
         onOpenGraphNode={(path, mode) => controller.openGraphNode(path, mode)}
+        onOpenInternalLink={target => { void controller.openInternalLink(target) }}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
         onOpenSearch={() => { controller.openSearch('') }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}

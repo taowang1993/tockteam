@@ -324,6 +324,16 @@ describe('Milkdown Live Preview editor', () => {
     expect(reading.querySelector('.tocktutor-reading')?.className).toContain('[&_.task-list_li:has(input:checked)]:line-through')
   })
 
+  it('keeps Reading View content measure and nested-list guides aligned', () => {
+    render(<RichReadingView source={'1. First\n   - Nested\n'} onToggleTask={() => {}} title="Lists" />)
+
+    const readingSurface = screen.getByLabelText('Reading View').querySelector<HTMLElement>('.tocktutor-reading')!
+    expect(readingSurface.className).toContain('max-w-[700px]')
+    expect(readingSurface.className).toContain('[&_h1]:text-[26px]')
+    expect(readingSurface.className).toContain('[&_li>ul]:border-l')
+    expect(readingSurface.className).toContain('[&_li>ol]:border-l')
+  })
+
   it('routes external Live Preview images through the isolated viewer callback', async () => {
     const onOpenExternalUrl = vi.fn()
     const { container } = render(<LivePreviewEditor content="![Remote](https://example.com/image.png)\n" onMarkdownChange={() => {}} onOpenExternalUrl={onOpenExternalUrl} />)
