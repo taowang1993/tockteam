@@ -221,7 +221,7 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Search Notes' }))
     expect(onOpenSearch).toHaveBeenCalledOnce()
     expect(onCloseCommandPalette).not.toHaveBeenCalled()
-    expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Search Notes' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Commands' }))
     const commandInput = screen.getByRole('combobox', { name: 'Search Commands' })
     fireEvent.change(commandInput, { target: { value: 'focus' } })
@@ -577,7 +577,8 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('list', { name: 'Vault Search Results' }).textContent).toContain('Lesson match')
   })
 
-  it('shows a Notion-like result list with a focus-following note preview', () => {
+  it('keeps the active editor while selecting a search result', () => {
+    const onSelect = vi.fn()
     renderRoute({
       searchMatches: [
         { kind: 'content', line: 2, path: 'Notes/Lesson.md', preview: 'First lesson match' },
@@ -586,16 +587,15 @@ describe('TockTutor titlebar panel controls', () => {
       searchMode: 'query',
       searchOpen: true,
       searchQuery: 'lesson',
-    })
+    }, { onSelect })
 
     expect(screen.getByRole('radiogroup', { name: 'Search Mode' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Search Results' })).toBeTruthy()
-    const preview = screen.getByRole('region', { name: 'Note Preview' })
-    expect(preview.textContent).toContain('Lesson')
-    expect(preview.textContent).toContain('First lesson match')
-
-    fireEvent.focus(screen.getAllByRole('button', { name: 'Open Notes/Lesson.md' })[1]!)
-    expect(preview.textContent).toContain('Second lesson match')
+    expect(screen.queryByRole('region', { name: 'Note Preview' })).toBeNull()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open Notes/Lesson.md' })[1]!)
+    expect(onSelect).toHaveBeenCalledWith('Notes/Lesson.md')
+    expect(screen.getByRole('region', { name: 'Search Notes' })).toBeTruthy()
+    expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
   })
 
   it('shows Obsidian search operators and inserts the selected operator', async () => {
