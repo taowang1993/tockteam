@@ -83,6 +83,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /const launcherPackagedSmokeEnabled = app\.isPackaged[\s\S]+TOCKTEAM_PACKAGED_SMOKE/u)
   assert.match(main, /appDataPath: launcherPackagedSmokeEnabled \? app\.getPath\('userData'\) : app\.getPath\('appData'\)/u)
   assert.match(main, /if \(launcherPackagedSmokeEnabled\) return false/u)
+  assert.match(main, /process\.platform === 'darwin' && launcherPackagedSmokeEnabled\) app\.commandLine\.appendSwitch\('use-mock-keychain'\)/u)
   assert.match(main, /writeLauncherPackagedSmokeSecurity/u)
   assert.match(main, /launcherCoreFlush = async \(\) => \{[\s\S]+discovery\.close\(\)[\s\S]+fileSearch\.close\(\)[\s\S]+network\.close\(\)[\s\S]+os\.close\(\)[\s\S]+local\.close\(\)[\s\S]+await coreSearch\.close\(\)/u)
   assert.match(main, /updateSetting: async \(key, value\) => await runLauncherSettingsOperation\([\s\S]+runLauncherMutation\('launcher-setting-update'[\s\S]+requireLauncherPersistence\(\)\.updateSetting\(key, value, signal\)[\s\S]+launcherRescan/u)

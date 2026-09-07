@@ -230,6 +230,7 @@ const launcherPackagedSmokeEnabled = app.isPackaged
     || process.argv.includes('--tockteam-launcher-installed-smoke')
       && process.env.TOCKTEAM_INSTALLED_SMOKE === '1'
   )
+if (process.platform === 'darwin' && launcherPackagedSmokeEnabled) app.commandLine.appendSwitch('use-mock-keychain')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
