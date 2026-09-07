@@ -2596,6 +2596,8 @@ export function TockTutorRouteView(props) {
                                                                                 props.onLoadFacets?.();
                                                                             if (view === 'backlinks')
                                                                                 props.onLoadRelationships?.();
+                                                                            if (view === 'recovery')
+                                                                                props.onOpenRecovery?.();
                                                                         }, children: [_jsx(Icon, { "aria-hidden": "true" }), _jsx("span", { children: label })] }, view))) }), _jsx(DropdownMenuSeparator, {}), _jsx(DropdownMenuGroup, { children: _jsxs(DropdownMenuItem, { className: `${NOTE_ACTION_CLASS} text-[var(--dsw-alias-state-error-primary,#dc2626)]`, disabled: snapshot.path === null || props.onTrashCurrent === undefined, onSelect: () => { props.onTrashCurrent?.(); }, children: [_jsx(Trash2, { "aria-hidden": "true" }), _jsx("span", { children: "Move File to Trash" })] }) })] })] })] })] }), _jsx("div", { "aria-label": "Editor Attachment Drop Zone", className: "tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-3xl [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none", onDrop: event => {
                                         if (event.dataTransfer.files.length === 0)
                                             return;
