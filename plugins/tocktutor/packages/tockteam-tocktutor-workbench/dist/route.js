@@ -1650,21 +1650,31 @@ export class WorkbenchRouteController {
             this.embedTargets = embedTargetSources(this.snapshot.source);
             const bookmarks = remapBookmarks(this.bookmarks, fromPath, toPath);
             const bookmarksPersisted = this.storage === null || saveBookmarks(this.storage, vault.id, bookmarks);
+            const renameWarnings = [
+                ...(renamed.rewriteError === undefined || renamed.rewriteError.trim() === ''
+                    ? []
+                    : [`Some note links could not be updated: ${renamed.rewriteError.trim().slice(0, 240)}`]),
+                ...(bookmarksPersisted ? [] : ['Bookmarks could not be saved.']),
+            ];
             this.bookmarks = bookmarks;
             this.update({
                 bookmarks: Object.freeze(bookmarks.map(bookmark => Object.freeze({ ...bookmark }))),
                 draftRecovered: false,
                 embeds: Object.freeze([]),
                 links: null,
-                message: bookmarksPersisted ? `${toPath} renamed.` : `${toPath} renamed; bookmarks could not be saved.`,
+                message: renameWarnings.length === 0 ? `${toPath} renamed.` : `${toPath} renamed; ${renameWarnings.join(' ')}`,
                 outline: null,
                 path: toPath,
                 revision: renamed.revision,
                 saveStatus: 'saved',
+                warnings: Object.freeze([...this.snapshot.warnings, ...renameWarnings].slice(-32)),
             });
             this.syncShell();
             this.navigate(routeForPath(toPath), 'replace');
             await this.refreshTree(vault);
+            if (renameWarnings.length > 0) {
+                this.update({ warnings: Object.freeze([...this.snapshot.warnings, ...renameWarnings].slice(-32)) });
+            }
             if (this.snapshot.path === toPath && this.snapshot.documentKind === 'markdown') {
                 void this.loadRelationships();
                 if (this.embedTargets.length > 0)
