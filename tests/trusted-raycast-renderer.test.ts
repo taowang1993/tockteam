@@ -170,11 +170,26 @@ test('terminal errors clear query and action busy state', () => {
   const queryView = createTrustedRaycastView(queryDocument, { trustedRaycastEvent: () => new Promise<void>(() => {}) } as unknown as LauncherPreloadBridge, () => {})
   queryView.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search', queryCurrent: false }, children: [{ type: 'raycast-empty', props: { title: 'Translating…', icon: 'Hourglass' }, children: [] }] } })
   const queryResults = queryNodes.find(node => node.getAttribute('aria-label') === 'Translations')!
+  const queryInput = inputOf(queryNodes)
+  const languageSet = queryNodes.find(node => node.getAttribute('aria-label') === 'Language Set')!
+  const status = queryNodes.find(node => node.getAttribute('role') === 'status')!
+  const panelActions = queryNodes.find(node => node.className.startsWith('flex flex-wrap items-start'))!
+  const footerActions = queryNodes.find(node => node.getAttribute('aria-label') === 'Command Actions')!
   assert.equal(queryResults.children.length, 1)
   assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'true')
   queryView.update({ type: 'error', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
   assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'false')
-  assert.equal(queryResults.children.length, 0, 'terminal errors replace the stale translating projection')
+  assert.equal(queryInput.disabled, true)
+  assert.equal(languageSet.disabled, true)
+  assert.equal(status.textContent, '')
+  assert.equal(status.hidden, true)
+  assert.equal(queryResults.children.length, 0, 'terminal errors replace the stale Hourglass projection')
+  assert.equal(panelActions.hidden, true)
+  assert.equal(footerActions.children.length, 0)
+  const alert = errorOf(queryNodes)
+  assert.equal(alert.hidden, false)
+  assert.match(alert.className, /items-center justify-center text-center/u)
+  assert.equal(alert.textContent, 'closed')
 })
 
 test('internal stale or busy action rejections surface as a neutral retry message, not runtime text', async () => {
