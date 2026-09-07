@@ -1,5 +1,29 @@
 # Trusted Translate Slice 4 Parent Acceptance
 
+## Ready-Immediately and Host-Parity Checkpoint
+
+Final code commits: `042bf92`, `8896021`, `02acf44`, `c8d57f9`, `e2fc685`, and `650395f`.
+
+- The exact reviewed Google Translate archive is repository-owned, installs/enables on first run, and preserves later user disablement.
+- First use collects validated manifest preferences through the sandboxed host UI; persistence reuses the canonical private-directory, exclusive-temp, fsync, rename, and directory-fsync writer.
+- The fixed 750×475 host renders one command row, compact selectable results, bounded accessories, centered explicit/implicit empty states, footer primary/Actions controls, and keyboard/pointer action-panel behavior.
+- EmptyView projects the explicit `Icon.Hourglass`; implicit No Results uses a neutral SearchX icon. The final Electron run captured no uncaught launcher-page errors.
+- Automatic command focus and global focus restoration target the visible Translate input rather than the hidden catalog search.
+- Local smoke tests require a connected non-primary display by default; CI alone may fall back. Final placement evidence records launcher `(1820,149)`, private browser `(1745,202)`, and reshown launcher `(1820,149)` on the Sidecar display beginning at x=1512.
+
+Final verification:
+
+```sh
+node --test tests/trusted-raycast-build.test.ts tests/trusted-raycast-install-recovery.test.ts tests/trusted-raycast-preferences.test.ts tests/trusted-raycast-renderer.test.ts tests/trusted-raycast-language-sets.test.ts tests/trusted-raycast-native-effects.test.ts tests/trusted-raycast-lifecycle-faults.test.ts tests/launcher-persistence.test.ts tests/launcher-window-controller.test.ts tests/launcher-installed.test.ts
+pnpm typecheck
+env -u TRUSTED_RAYCAST_ARTIFACT_TAR pnpm build
+node scripts/launcher-electron-smoke.mjs --trusted-raycast
+pnpm test
+TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=/tmp/tockteam-e3k-final.noindex pnpm test:launcher:installed
+```
+
+Results: focused suite 119 passed/one intentional live-TTS skip; full suite passed; typecheck and environment-free build passed; real Electron/Playwright proof passed with `useCount=5`, clean process/workspace teardown, automatic focus, pointer/Cmd+K/arrow/Escape interactions, native Copy/Paste restoration, private-browser isolation, and auditable extended-display placement. The final installed macOS arm64 smoke passed from source commit `650395f2638b885779b823d0ce0c730a056d49aa` with bundled Node `v24.20.0`, complete package/security/reinstall/rollback/single-instance checks, and cleanup.
+
 ## Accepted Scope
 
 - The reviewed artifact is installed only through `stage -> isolated preview -> explicit approve/apply`.
