@@ -16,11 +16,13 @@ const networkSource = readFileSync(new URL('../src/launcher-network-extension-to
 const trustSource = readFileSync(new URL('../src/trusted-raycast-trust-view.ts', import.meta.url), 'utf8')
 const styles = readFileSync(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
 
-test('local tool output is announced and tools reflow at narrow widths', () => {
+test('local tool output is announced and tools reflow inside the fixed command window', () => {
   assert.match(source, /aria-live/u)
   assert.match(source, /launcher-command-content/u)
   assert.match(styles, /@utility launcher-command-content[\s\S]*min-width: 0/u)
   assert.match(source, /role.*status/u)
+  assert.match(source, /input\.rows = 5[\s\S]*output\.rows = 5/u)
+  assert.match(source, /input\.rows = 4[\s\S]*output\.rows = 4/u)
 })
 
 test('every local command view uses the shared Raycast-like recipes', () => {

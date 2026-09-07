@@ -182,15 +182,15 @@ export function createLauncherLocalTool(options: Readonly<{
 
   if (extensionId === 'Base64Conversion') {
     const operation = element(document, 'select'); operation.setAttribute('aria-label', text('base64Operation', 'Base64 Operation')); for (const [value, label] of [['encode', text('encode', 'Encode')], ['decode', text('decode', 'Decode')]] as const) { const option = element(document, 'option'); option.value = value; option.textContent = label; operation.append(option) }
-    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('base64Input', 'Base64 Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 8
-    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('base64Output', 'Base64 Output')); output.readOnly = true; output.rows = 8
+    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('base64Input', 'Base64 Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 5
+    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('base64Output', 'Base64 Output')); output.readOnly = true; output.rows = 5
     const update = () => { try { setOutput(output, error, operation.value === 'decode' ? base64Decode(input.value) : base64Encode(input.value), outputStatus, options.locale) } catch (caught) { setError(output, error, caught instanceof LocalToolLimitError ? caught.message : text('base64DecodeError', 'Base64 input could not be decoded.'), outputStatus, options.locale) } }
     operation.addEventListener('change', update); input.addEventListener('input', update); content.append(labeled(document, text('base64Operation', 'Operation'), operation), labeled(document, text('base64Input', 'Input'), input), labeled(document, text('base64Output', 'Output'), output)); queueMicrotask(() => input.focus()); return tool
   }
   if (extensionId === 'RowlandTextEditor') {
-    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('rowlandInput', 'Rowland Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 7
+    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('rowlandInput', 'Rowland Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 4
     const pattern = element(document, 'input'); pattern.type = 'text'; pattern.setAttribute('aria-label', text('rowlandPattern', 'Rowland Pattern')); pattern.maxLength = MAX_ROWLAND_PATTERN_LENGTH
-    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('rowlandOutput', 'Rowland Output')); output.readOnly = true; output.rows = 7
+    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('rowlandOutput', 'Rowland Output')); output.readOnly = true; output.rows = 4
     const update = () => { try { setOutput(output, error, rowland(input.value, pattern.value, settings.RowlandTextEditor.rowSeparator, settings.RowlandTextEditor.columnSeparator), outputStatus, options.locale) } catch (caught) { setError(output, error, text('rowlandError', 'Rowland output could not be generated.'), outputStatus, options.locale) } }
     input.addEventListener('input', update); pattern.addEventListener('input', update); content.append(labeled(document, text('rowlandInput', 'Input'), input), labeled(document, text('rowlandPattern', 'Pattern'), pattern), labeled(document, text('rowlandOutput', 'Output'), output)); queueMicrotask(() => input.focus()); return tool
   }

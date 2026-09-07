@@ -148,6 +148,7 @@ test('settings renderer never inserts sensitive values and preserves focused con
 test('launcher renderer uses shared color tokens for actions and selection', () => {
   assert.match(tailwind, /launcher-command-footer-action[\s\S]+brand-primary/u)
   assert.match(tailwind, /launcher-command-row[\s\S]+interactive-bg-active/u)
+  assert.match(tailwind, /@utility launcher-command-menu[\s\S]+max-height: 20rem/u)
   assert.doesNotMatch(launcher, /text-white|interactive-bg-selected|bg-selected/u)
 })
 
