@@ -1,0 +1,1 @@
+Final view close removed its private workspace; no afplay or translate child remained.

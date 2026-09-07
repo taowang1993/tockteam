@@ -93,7 +93,7 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
     }).catch(failure => {
       error.textContent = `${copy.actionFailed}: ${failure instanceof Error ? failure.message : 'Unavailable'}`; error.hidden = false
       if (state) render(state)
-    }).finally(() => { busy = false })
+    }).finally(() => { busy = false; if (state) render(state) })
   }
 
   const render = (next: TrustedRaycastTrustState): void => {
