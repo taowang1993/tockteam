@@ -507,7 +507,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
       >
         {marquee !== null && <div aria-label="Canvas Marquee Selection" className="pointer-events-none absolute z-20 border border-[var(--tt-accent)] bg-[color-mix(in_srgb,var(--tt-accent)_12%,transparent)]" role="img" style={marquee} />}
         {(document.edges?.length ?? 0) > 0 && (
-          <svg aria-label="Canvas Connection Lines" className="pointer-events-none absolute inset-0 z-10 size-full overflow-visible" fill="none" role="img" viewBox={`0 0 ${String(bounds.width)} ${String(bounds.height)}`}>
+          <svg aria-label="Canvas Connection Lines" className="pointer-events-none absolute inset-0 z-10 overflow-visible" fill="none" role="img" style={{ height: '100%', width: '100%' }} viewBox={`0 0 ${String(bounds.width)} ${String(bounds.height)}`}>
             <defs>
               <marker id="tocktutor-canvas-arrow" markerHeight="6" markerWidth="6" orient="auto-start-reverse" refX="5" refY="3" viewBox="0 0 6 6">
                 <path d="M 0 0 L 6 3 L 0 6 z" fill="var(--tt-accent)" />
@@ -519,7 +519,15 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
               if (from === undefined || to === undefined) return null
               const start = canvasConnectionPoint(from, bounds, edge.fromSide, 'right')
               const end = canvasConnectionPoint(to, bounds, edge.toSide, 'left')
-              return <line data-canvas-edge={edge.id} key={edge.id} markerEnd={edge.toEnd === 'arrow' ? 'url(#tocktutor-canvas-arrow)' : undefined} stroke="var(--tt-accent)" strokeLinecap="round" strokeWidth="2" x1={start.x} x2={end.x} y1={start.y} y2={end.y} />
+              const bend = Math.max(24, Math.min(72, Math.abs(end.x - start.x) * 0.35))
+              const lift = start.y === end.y ? -24 : 0
+              const path = `M ${String(start.x)} ${String(start.y)} C ${String(start.x + bend)} ${String(start.y + lift)} ${String(end.x - bend)} ${String(end.y + lift)} ${String(end.x)} ${String(end.y)}`
+              return (
+                <g key={edge.id}>
+                  <path d={path} fill="none" stroke="var(--tt-bg)" strokeLinecap="round" strokeWidth="8" />
+                  <path data-canvas-edge={edge.id} d={path} fill="none" markerEnd={edge.toEnd === 'arrow' ? 'url(#tocktutor-canvas-arrow)' : undefined} stroke="var(--tt-accent)" strokeLinecap="round" strokeWidth="3" />
+                </g>
+              )
             })}
           </svg>
         )}

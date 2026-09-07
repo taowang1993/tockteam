@@ -69,8 +69,8 @@ describe('CanvasBoard', () => {
     const lines = screen.getByRole('img', { name: 'Canvas Connection Lines' })
     const line = lines.querySelector('[data-canvas-edge="edge-1"]')
     expect(line).toBeTruthy()
-    expect(line?.getAttribute('x1')).toBe('300')
-    expect(line?.getAttribute('x2')).toBe('380')
+    expect(line?.getAttribute('d')).toContain('M 300 120 C')
+    expect(line?.getAttribute('d')).toContain('380 120')
     expect(line?.getAttribute('marker-end')).toContain('tocktutor-canvas-arrow')
   })
 
