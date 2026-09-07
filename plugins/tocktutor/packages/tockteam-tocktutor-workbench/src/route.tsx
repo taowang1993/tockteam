@@ -3411,6 +3411,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                         setPanel(view)
                         if (view === 'properties' || view === 'tags') props.onLoadFacets?.()
                         if (view === 'backlinks') props.onLoadRelationships?.()
+                        if (view === 'recovery') props.onOpenRecovery?.()
                       }}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuItem>
                     ))}
                   </DropdownMenuGroup>
