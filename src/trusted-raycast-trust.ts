@@ -170,7 +170,7 @@ export class TrustedRaycastTrustStore {
     return this.status()
   }
 
-  /** A build-pinned reviewed bundle is ready on first launch; later user disablement remains authoritative. */
+  /** Install first use or refresh host-derived code for the same artifact; artifact upgrades stay explicit and user disablement remains authoritative. */
   async installBundledDefault(): Promise<TrustedRaycastDiskTrustState> {
     const current = this.status()
     let decided = false
