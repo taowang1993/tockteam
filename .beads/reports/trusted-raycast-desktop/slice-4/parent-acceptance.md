@@ -19,10 +19,10 @@ pnpm typecheck
 env -u TRUSTED_RAYCAST_ARTIFACT_TAR pnpm build
 node scripts/launcher-electron-smoke.mjs --trusted-raycast
 pnpm test
-TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=/tmp/tockteam-e3k-final.noindex pnpm test:launcher:installed
+TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=/tmp/tockteam-e3k-keychain-final.noindex pnpm test:launcher:installed
 ```
 
-Results: focused suite 119 passed/one intentional live-TTS skip; full suite passed; typecheck and environment-free build passed; real Electron/Playwright proof passed with `useCount=5`, clean process/workspace teardown, automatic focus, pointer/Cmd+K/arrow/Escape interactions, native Copy/Paste restoration, private-browser isolation, and auditable extended-display placement. The final installed macOS arm64 smoke passed from source commit `650395f2638b885779b823d0ce0c730a056d49aa` with bundled Node `v24.20.0`, complete package/security/reinstall/rollback/single-instance checks, and cleanup.
+Results: focused suite 119 passed/one intentional live-TTS skip; full suite passed; typecheck and environment-free build passed; real Electron/Playwright proof passed with `useCount=5`, clean process/workspace teardown, automatic focus, pointer/Cmd+K/arrow/Escape interactions, native Copy/Paste restoration, private-browser isolation, and auditable extended-display placement. The final installed macOS arm64 smoke passed from source commit `b9f648c1e55e3ff08db1f31f71b1c09098fbfb53` with bundled Node `v24.20.0`, complete package/security/reinstall/rollback/single-instance checks, and cleanup. The exact packaged/installed smoke handshake now enables Chromium's macOS mock keychain before readiness; no SecurityAgent process, keychain dialog, owned app process, or private install tree remained after the final run.
 
 ## Accepted Scope
 
@@ -87,7 +87,7 @@ The configured attempt at `164772d` packaged and launched the app but exposed tw
 
 ### Final Installed Result
 
-The single installed smoke for final code commit `9add0dffc88a8baa68e13921bba9463315a75b58` passed on macOS arm64 from a private `.noindex` root. It verified the ASAR/resource/notices inventory (including the configured trusted candidate), the exact finite preload bridge, renderer sandbox/CSP/permission denial, bundled Node `v24.20.0`, ad-hoc local identity, workbench and launcher action, settings preservation across reinstall, rollback recovery, single-instance behavior, and complete process/install-root cleanup. `installed-smoke.json` passes `scripts/check-installed-report.mjs`; the installed-evidence catalog now references its SHA-256 and `scripts/ueli/installed-evidence.mjs` passes all 27 rows.
+The latest installed smoke for final code commit `b9f648c1e55e3ff08db1f31f71b1c09098fbfb53` passed on macOS arm64 from a private `.noindex` root. It verified the ASAR/resource/notices inventory (including the configured trusted candidate), the exact finite preload bridge, renderer sandbox/CSP/permission denial, bundled Node `v24.20.0`, ad-hoc local identity, workbench and launcher action, settings preservation across reinstall, rollback recovery, single-instance behavior, and complete process/install-root cleanup. `installed-smoke.json` passes `scripts/check-installed-report.mjs`; the installed-evidence catalog now references its SHA-256 and `scripts/ueli/installed-evidence.mjs` passes all 27 rows.
 
 ## Honest Boundaries
 
