@@ -85,7 +85,7 @@ import {
 } from './live-preview.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import { parseFrontmatterProperties, setFrontmatterProperty, type PropertyValue } from './properties.ts'
-import { addBookmark, loadBookmarks, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
+import { addBookmark, loadBookmarks, remapBookmarks, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
 import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
 import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, uniqueNotePath } from './capture.ts'
 import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
@@ -124,6 +124,7 @@ import {
   MAX_PANE_GROUPS,
   moveNoteTab,
   openNoteTab,
+  renameNoteTabPath,
   setActiveNoteTab,
   setNoteTabMode,
   setTabPinned,
@@ -146,6 +147,8 @@ import type {
   NoteVaultChangeEvent,
   OpenDocumentResult,
   ReadSnapshotRequest,
+  RenameDocumentRequest,
+  RenameDocumentResult,
   RestoreSnapshotOverwriteRequest,
   RestoreSnapshotRequest,
   RestoreTrashRequest,
@@ -207,6 +210,10 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
       expectedVault: VaultReference,
       signal?: AbortSignal,
     ): Promise<RemoteResult<OpenDocumentResult>>
+    renameDocument(
+      request: RenameDocumentRequest,
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<RenameDocumentResult>>
     saveDocument(
       request: SaveDocumentRequest,
       signal?: AbortSignal,
@@ -584,6 +591,7 @@ export class WorkbenchRouteController {
   private draftTimer: ReturnType<typeof setTimeout> | null = null
   private eventDispose: (() => void) | null = null
   private pendingDispatch: PendingNativeDispatch | null = null
+  private pendingRename: { fromPath: string; toPath: string; vault: VaultReference } | null = null
   private pathname = ROUTE_PREFIX
   private started = false
   private disposed = false
@@ -1369,6 +1377,12 @@ export class WorkbenchRouteController {
       return
     }
     if (!sameVault(this.snapshot.vault, value.vault)) return
+    if (value.kind === 'entry'
+      && value.action === 'moved'
+      && this.pendingRename !== null
+      && sameVault(this.pendingRename.vault, value.vault)
+      && value.fromPath === this.pendingRename.fromPath
+      && value.path === this.pendingRename.toPath) return
     if (value.kind === 'tree') {
       void this.refreshTree(value.vault)
       return
@@ -1844,6 +1858,92 @@ export class WorkbenchRouteController {
       return true
     }
     return await this.select(path)
+  }
+
+  async renameActiveTitle(title: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const fromPath = this.snapshot.path
+    if (vault === null || fromPath === null || this.snapshot.documentKind !== 'markdown') return false
+    const normalized = title.trim()
+    if (normalized.length === 0
+      || normalized.length > 200
+      || normalized === '.'
+      || normalized === '..'
+      || /[\\/\u0000-\u001f\u007f]/u.test(normalized)) return false
+    const extension = fromPath.match(/\.(?:markdown|md)$/iu)?.[0]
+    if (extension === undefined) return false
+    const directory = fromPath.includes('/') ? fromPath.slice(0, fromPath.lastIndexOf('/')) : ''
+    const toPath = directory === '' ? `${normalized}${extension}` : `${directory}/${normalized}${extension}`
+    if (!isSafeVaultRelativePath(toPath)) return false
+    if (toPath === fromPath) return true
+    if (this.pendingRename !== null) return false
+    if (this.snapshot.entries.some(entry => entry.path === toPath)
+      || this.shellSession.groups.some(group => group.tabs.some(tab => tab.path === toPath))) return false
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    if (!sameVault(this.snapshot.vault, vault) || this.snapshot.path !== fromPath || this.snapshot.revision === null) return false
+    const operation = this.nextOperation()
+    this.pendingRename = { fromPath, toPath, vault }
+    this.update({ message: `Renaming ${fromPath}.` })
+    try {
+      const request: RenameDocumentRequest = {
+        expectedRevision: this.snapshot.revision,
+        expectedVault: vault,
+        fromPath,
+        toPath,
+      }
+      const renamed = remoteValue(await this.remote.tocktutorWorkbench.renameDocument(request, operation.signal))
+      if (!this.current(operation.id, vault)
+        || renamed.generation !== vault.generation
+        || renamed.fromPath !== fromPath
+        || renamed.path !== toPath
+        || renamed.status !== 'moved'
+        || !/^file:[0-9a-f]{64}$/u.test(renamed.revision)) return false
+      this.shellSession = renameNoteTabPath(this.shellSession, fromPath, toPath)
+      this.workspaces = this.workspaces.map(workspace => ({
+        ...workspace,
+        session: renameNoteTabPath(workspace.session, fromPath, toPath),
+      }))
+      for (const history of [this.historyBack, this.historyForward]) {
+        for (let index = 0; index < history.length; index += 1) {
+          if (history[index] === fromPath) history[index] = toPath
+        }
+      }
+      for (let index = 0; index < this.recentlyClosed.length; index += 1) {
+        const closed = this.recentlyClosed[index]
+        if (closed?.path === fromPath) this.recentlyClosed[index] = { ...closed, path: toPath }
+      }
+      this.cancelEmbedOperation()
+      this.embedTargets = embedTargetSources(this.snapshot.source)
+      const bookmarks = remapBookmarks(this.bookmarks, fromPath, toPath)
+      const bookmarksPersisted = this.storage === null || saveBookmarks(this.storage, vault.id, bookmarks)
+      this.bookmarks = bookmarks
+      this.update({
+        bookmarks: Object.freeze(bookmarks.map(bookmark => Object.freeze({ ...bookmark }))),
+        draftRecovered: false,
+        embeds: Object.freeze([]),
+        links: null,
+        message: bookmarksPersisted ? `${toPath} renamed.` : `${toPath} renamed; bookmarks could not be saved.`,
+        outline: null,
+        path: toPath,
+        revision: renamed.revision,
+        saveStatus: 'saved',
+      })
+      this.syncShell()
+      this.navigate(routeForPath(toPath), 'replace')
+      await this.refreshTree(vault)
+      if (this.snapshot.path === toPath && this.snapshot.documentKind === 'markdown') {
+        void this.loadRelationships()
+        if (this.embedTargets.length > 0) void this.loadEmbeds()
+      }
+      return true
+    } catch (error) {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+        this.update({ message: this.failureMessage(error, `${fromPath} could not be renamed.`) })
+      }
+      return false
+    } finally {
+      if (this.pendingRename?.fromPath === fromPath && this.pendingRename.toPath === toPath) this.pendingRename = null
+    }
   }
 
   async select(
@@ -3656,6 +3756,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onPrepareOrganization={() => { void controller.prepareOrganization() }}
         onPreviewAttachment={path => { void controller.previewAttachment(path) }}
         onReadSnapshot={id => { void controller.readRecoverySnapshot(id) }}
+        onRenameTitle={title => controller.renameActiveTitle(title)}
         onRemoveBookmark={id => { controller.removeBookmark(id) }}
         onReopenClosedTab={() => { void controller.reopenClosedTab() }}
         onRestoreSnapshot={id => { void controller.restoreRecoverySnapshot(id) }}

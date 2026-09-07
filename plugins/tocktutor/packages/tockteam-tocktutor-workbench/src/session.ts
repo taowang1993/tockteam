@@ -297,6 +297,22 @@ export function openNoteTab(
   return session
 }
 
+export function renameNoteTabPath(
+  source: WorkbenchSession,
+  fromPath: string,
+  toPath: string,
+): WorkbenchSession {
+  if (!isSafeVaultRelativePath(fromPath) || !isSafeVaultRelativePath(toPath) || fromPath === toPath) return cloneSession(source)
+  if (source.groups.some(group => group.tabs.some(tab => tab.path === toPath && tab.path !== fromPath))) return cloneSession(source)
+  const session = cloneSession(source)
+  for (const group of session.groups) {
+    for (const tab of group.tabs) {
+      if (tab.path === fromPath) tab.path = toPath
+    }
+  }
+  return session
+}
+
 export function markTabDirty(
   source: WorkbenchSession,
   groupId: string,

@@ -37,6 +37,24 @@ export interface SaveDocumentRequest extends CreateDocumentRequest {
   expectedRevision: string
 }
 
+export interface RenameDocumentRequest {
+  expectedRevision: string
+  expectedVault: VaultReference
+  fromPath: string
+  toPath: string
+}
+
+export interface RenameDocumentResult {
+  fromPath: string
+  generation: number
+  path: string
+  revision: string
+  rewriteError?: string
+  rewriteSnapshots: Array<{ path: string; snapshotId: string }>
+  rewrittenPaths: string[]
+  status: 'moved'
+}
+
 export type WriteDocumentResult = Readonly<
   | {
       digest: string

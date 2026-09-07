@@ -51,7 +51,7 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function tree(vault: VaultReference): VaultTreePage {
+function tree(vault: VaultReference, notePath = 'Folder/Note.md'): VaultTreePage {
   return {
     complete: true,
     cursor: null,
@@ -66,7 +66,7 @@ function tree(vault: VaultReference): VaultTreePage {
         createdAt: 1,
         kind: 'document',
         modifiedAt: 2,
-        path: 'Folder/Note.md',
+        path: notePath,
         revision: firstRevision,
         size: 30,
       },
@@ -131,6 +131,8 @@ class FakeRemote implements WorkbenchRouteRemote {
     value: WriteDocumentResult
   }>) | null = null
   openOverride: ((path: string) => Promise<{ ok: true; value: OpenDocumentResult }>) | null = null
+  renameFailure: { code: 'conflict'; message: string } | null = null
+  renamedPath: string | null = null
   saveOverride: (() => Promise<{ ok: true; value: WriteDocumentResult }>) | null = null
 
   readonly tocktutorWorkbench = {
@@ -186,7 +188,7 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     listTree: (request: { expectedVault: VaultReference; cursor?: string | null; limit?: number }, signal?: AbortSignal) => {
       this.calls.push({ method: 'listTree', parameters: [request, signal] })
-      return success(tree(request.expectedVault))
+      return success(tree(request.expectedVault, this.renamedPath ?? undefined))
     },
     openSandboxVault: (request: { expectedGeneration: number }, signal?: AbortSignal) => {
       this.calls.push({ method: 'openSandboxVault', parameters: [request, signal] })
@@ -221,7 +223,7 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.calls.push({ method: 'openDocument', parameters: [path, expectedVault, signal] })
       if (this.openOverride !== null) return this.openOverride(path)
       return success({
-        content: path === 'Folder/Note.md'
+        content: path === 'Folder/Note.md' || path === this.renamedPath
           ? '# Before\n- [ ] Verify route\nParagraph ^route-block\n'
           : path === 'Board.canvas'
             ? JSON.stringify({
@@ -257,6 +259,21 @@ class FakeRemote implements WorkbenchRouteRemote {
     restoreTrash: (request: { expectedVault: VaultReference; id: string; toPath?: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'restoreTrash', parameters: [request, signal] })
       return success({ generation: request.expectedVault.generation, status: 'restored' })
+    },
+    renameDocument: (request: { expectedRevision: string; expectedVault: VaultReference; fromPath: string; toPath: string }, signal?: AbortSignal) => {
+      this.calls.push({ method: 'renameDocument', parameters: [request, signal] })
+      if (this.renameFailure !== null) return failure(this.renameFailure.code, this.renameFailure.message)
+      this.renamedPath = request.toPath
+      this.emit({ action: 'moved', fromPath: request.fromPath, kind: 'entry', path: request.toPath, vault: request.expectedVault })
+      return success({
+        fromPath: request.fromPath,
+        generation: request.expectedVault.generation,
+        path: request.toPath,
+        rewriteSnapshots: [],
+        rewrittenPaths: [],
+        revision: secondRevision,
+        status: 'moved' as const,
+      })
     },
     saveDraft: (request: { content: string; expectedVault: VaultReference; path: string; revision?: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'saveDraft', parameters: [request, signal] })
@@ -386,6 +403,81 @@ class FakeRemote implements WorkbenchRouteRemote {
     for (const listener of this.listeners) listener(event)
   }
 }
+
+test('saves an edited note before renaming every open pane reference and refreshing the tree', async () => {
+  const navigations: string[] = []
+  const remote = new FakeRemote()
+  const storage = new MemoryStorage()
+  const controller = new WorkbenchRouteController(remote, path => { navigations.push(path) }, () => new Date(0), storage)
+
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  assert.equal(controller.addActiveBookmark(), true)
+  const original = controller.getSnapshot().source
+  assert.equal(await controller.addPane(), true)
+  await controller.select('Folder/Note.md')
+  await controller.focusPane('pane-1')
+  controller.edit(`${original}Edited locally\n`)
+  const edited = controller.getSnapshot().source
+  const renamed = await controller.renameActiveTitle('Renamed Note')
+
+  assert.equal(renamed, true)
+  assert.equal(controller.getSnapshot().path, 'Folder/Renamed Note.md')
+  assert.equal(controller.getSnapshot().source, edited)
+  assert.equal(controller.getSnapshot().saveStatus, 'saved')
+  assert.deepEqual(controller.getSnapshot().panes.flatMap(pane => pane.tabs.map(tab => tab.path)), [
+    'Folder/Renamed Note.md',
+    'Folder/Renamed Note.md',
+  ])
+  assert.equal(controller.getSnapshot().panes.every(pane => {
+    const active = pane.tabs.find(tab => tab.path === pane.activePath)
+    return pane.activePath === 'Folder/Renamed Note.md' && active?.path === 'Folder/Renamed Note.md'
+  }), true)
+  const noteBookmark = controller.getSnapshot().bookmarks?.find(bookmark => bookmark.kind === 'note')
+  assert.equal(noteBookmark !== undefined && 'path' in noteBookmark ? noteBookmark.path : undefined, 'Folder/Renamed Note.md')
+  assert.deepEqual(controller.getSnapshot().entries.filter(entry => entry.kind === 'document').map(entry => entry.path).toSorted(), [
+    'Board.canvas',
+    'Folder/Renamed Note.md',
+    'Second.md',
+    'Tasks.base',
+  ])
+  const saveIndex = remote.calls.findIndex(call => call.method === 'saveDocument')
+  const renameIndex = remote.calls.findIndex(call => call.method === 'renameDocument')
+  assert.ok(saveIndex >= 0 && saveIndex < renameIndex)
+  assert.equal((remote.calls[renameIndex]?.parameters[0] as { expectedRevision: string }).expectedRevision, secondRevision)
+  assert.deepEqual(remote.calls[renameIndex]?.parameters[0], {
+    expectedRevision: secondRevision,
+    expectedVault: firstVault,
+    fromPath: 'Folder/Note.md',
+    toPath: 'Folder/Renamed Note.md',
+  })
+  assert.equal(navigations.at(-1), '/tocktutor/Folder/Renamed%20Note.md')
+  controller.dispose()
+})
+
+test('does not rename an edited note when saving its source fails', async () => {
+  const remote = new FakeRemote()
+  remote.saveFailure = { code: 'conflict', message: 'source changed' }
+  const controller = new WorkbenchRouteController(remote, () => {})
+
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  controller.edit(`${controller.getSnapshot().source}Edited locally\n`)
+  assert.equal(await controller.renameActiveTitle('Renamed Note'), false)
+  assert.equal(remote.calls.some(call => call.method === 'renameDocument'), false)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  controller.dispose()
+})
+
+test('keeps the active note authoritative when a title rename fails', async () => {
+  const remote = new FakeRemote()
+  remote.renameFailure = { code: 'conflict', message: 'destination changed' }
+  const controller = new WorkbenchRouteController(remote, () => {})
+
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  assert.equal(await controller.renameActiveTitle('Renamed Note'), false)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  assert.match(controller.getSnapshot().message, /destination changed|Save Conflict/u)
+  controller.dispose()
+})
 
 test('loads the active vault name, display path, and generation without fetching recent vaults', async () => {
   const remote = new FakeRemote()

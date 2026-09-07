@@ -16,6 +16,8 @@ import type {
   ListTrashRequest,
   ListTreeRequest,
   OpenDocumentResult,
+  RenameDocumentRequest,
+  RenameDocumentResult,
   ReadSnapshotRequest,
   RestoreSnapshotOverwriteRequest,
   RestoreSnapshotRequest,
@@ -70,6 +72,7 @@ export type NoteVaultCapability = Pick<
   | 'links'
   | 'listTree'
   | 'openDocument'
+  | 'moveFileWithLinkRewrite'
   | 'outline'
   | 'openSandboxVault'
   | 'previewAttachment'
@@ -219,6 +222,14 @@ function assertCreateRequest(value: CreateDocumentRequest): void {
 
 function assertSaveRequest(value: SaveDocumentRequest): void {
   assertCreateRequest(value)
+  assertRevision(value.expectedRevision)
+}
+
+function assertRenameRequest(value: RenameDocumentRequest): void {
+  assertRecord(value, 'Rename request')
+  assertVaultReference(value.expectedVault)
+  assertDocumentPath(value.fromPath)
+  assertDocumentPath(value.toPath)
   assertRevision(value.expectedRevision)
 }
 
@@ -447,6 +458,18 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertSaveRequest(request)
     signal.throwIfAborted()
     return this.ctx.noteVault.saveDocument(request, signal)
+  }
+
+  @Remote
+  async renameDocument(
+    request: RenameDocumentRequest,
+    signal: AbortSignal,
+  ): Promise<RenameDocumentResult> {
+    assertRenameRequest(request)
+    signal.throwIfAborted()
+    const result = await this.ctx.noteVault.moveFileWithLinkRewrite(request, signal)
+    if (result.status !== 'moved') throw new Error('The vault move returned an invalid status.')
+    return { ...result, status: 'moved' }
   }
 
   @Remote

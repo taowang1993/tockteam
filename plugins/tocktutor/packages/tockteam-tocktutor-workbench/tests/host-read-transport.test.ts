@@ -14,6 +14,8 @@ import {
   type StoreAttachmentResult,
   type ListTreeRequest,
   type OpenDocumentResult,
+  type RenameDocumentRequest,
+  type RenameDocumentResult,
   type VaultFacetsRequest,
   type VaultFacetsResult,
   type VaultGraphRequest,
@@ -119,6 +121,19 @@ class FakeNoteVault extends Service {
     return this.openResult
   }
 
+  async moveFileWithLinkRewrite(request: RenameDocumentRequest, signal: AbortSignal): Promise<RenameDocumentResult> {
+    this.calls.push({ method: 'moveFileWithLinkRewrite', parameters: [request, signal] })
+    return {
+      fromPath: request.fromPath,
+      generation: request.expectedVault.generation,
+      path: request.toPath,
+      rewriteSnapshots: [],
+      rewrittenPaths: [],
+      revision: `file:${'f'.repeat(64)}`,
+      status: 'moved',
+    }
+  }
+
   async graph(args: Omit<VaultGraphRequest, 'expectedVault'>, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultGraphResult> {
     this.calls.push({ method: 'graph', parameters: [args, expectedVault, signal] })
     return { complete: true, edges: [], generation: expectedVault.generation, missing: [], nodes: [], orphans: [], path: args.path ?? null, scan: { bytes: 0, entries: 0, files: 0 }, truncated: false, truncationReason: null, warnings: [] }
@@ -192,6 +207,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { invocation: { kind: 'direct' }, method: 'listTree' },
       { invocation: { kind: 'direct' }, method: 'createDocument' },
       { invocation: { kind: 'direct' }, method: 'saveDocument' },
+      { invocation: { kind: 'direct' }, method: 'renameDocument' },
       { invocation: { kind: 'direct' }, method: 'graph' },
       { invocation: { kind: 'direct' }, method: 'facets' },
       { invocation: { kind: 'direct' }, method: 'outline' },
@@ -231,6 +247,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     assert.equal((await state.gateway.storeAttachment({ dataBase64: 'AQID', expectedVault: vault, path: 'Attachments/b.png' }, signal)).status, 'stored')
     assert.strictEqual(await state.gateway.openDocument('Folder/Note.md', vault, signal), state.runtime.openResult)
     assert.strictEqual(await state.gateway.listTree({ expectedVault: vault, limit: 20 }, signal), state.runtime.treeResult)
+    assert.equal((await state.gateway.renameDocument({ expectedRevision: `file:${'b'.repeat(64)}`, expectedVault: vault, fromPath: 'Folder/Note.md', toPath: 'Folder/Renamed.md' }, signal)).path, 'Folder/Renamed.md')
     assert.equal((await state.gateway.graph({ expectedVault: vault, limit: 100, scope: 'global' }, signal)).complete, true)
     assert.equal((await state.gateway.facets({ expectedVault: vault, limit: 100 }, signal)).complete, true)
     assert.equal((await state.gateway.outline({ expectedVault: vault, includeFootnotes: true, path: 'Folder/Note.md' }, signal)).path, 'Folder/Note.md')
@@ -249,6 +266,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { method: 'storeAttachment', parameters: [{ data: Buffer.from([1, 2, 3]), expectedVault: vault, path: 'Attachments/b.png' }, signal] },
       { method: 'openDocument', parameters: ['Folder/Note.md', vault, signal] },
       { method: 'listTree', parameters: [{ expectedVault: vault, limit: 20 }, signal] },
+      { method: 'moveFileWithLinkRewrite', parameters: [{ expectedRevision: `file:${'b'.repeat(64)}`, expectedVault: vault, fromPath: 'Folder/Note.md', toPath: 'Folder/Renamed.md' }, signal] },
       { method: 'graph', parameters: [{ limit: 100, scope: 'global' }, vault, signal] },
       { method: 'facets', parameters: [{ limit: 100 }, vault, signal] },
       { method: 'outline', parameters: [{ includeFootnotes: true, path: 'Folder/Note.md' }, vault, signal] },
@@ -275,6 +293,7 @@ test('fails closed on browser-controlled path, vault, cursor, and limit values',
     for (const path of ['', '/absolute.md', '../escape.md', 'Folder\\Note.md', 'note.txt']) {
       await assert.rejects(state.gateway.openDocument(path, vault, signal), /document path/i)
     }
+    await assert.rejects(state.gateway.renameDocument({ expectedRevision: 'bad', expectedVault: vault, fromPath: 'Folder/Note.md', toPath: '../escape.md' }, signal), /path|revision/i)
     await assert.rejects(state.gateway.previewAttachment('../escape.png', vault, signal), /attachment path/i)
     await assert.rejects(state.gateway.storeAttachment({ dataBase64: '***', expectedVault: vault, path: 'Attachments/a.png' }, signal), /base64/i)
     await assert.rejects(
@@ -316,5 +335,5 @@ test('preserves runtime failures and withdraws the gateway with its owning fiber
 test('keeps the Host gateway free of filesystem authority and unreleased methods', async () => {
   const source = await readFile(new URL('../src/host-read.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /node:|electron|window\.electronAPI|child_process/u)
-  assert.doesNotMatch(source, /\b(?:move|duplicate)(?:File|Folder)\b/u)
+  assert.doesNotMatch(source, /\b(?:readFile|writeFile|renameSync|unlink|rm|mkdir|lstat)\b/u)
 })

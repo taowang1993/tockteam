@@ -50,6 +50,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'previewAttachment',
     'readDraft',
     'readSnapshot',
+    'renameDocument',
     'restoreSnapshot',
     'restoreSnapshotAsNew',
     'restoreTrash',
@@ -70,7 +71,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
       descriptor.method === 'currentVault'
         ? []
         : descriptor.method === 'openDocument' || descriptor.method === 'inspectAttachment' || descriptor.method === 'previewAttachment'
-          ? ['path', 'expectedVault'] : ['request'],
+          ? ['path', 'expectedVault'] : ['request']
     )
   }
 

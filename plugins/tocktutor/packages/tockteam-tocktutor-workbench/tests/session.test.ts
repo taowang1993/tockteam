@@ -8,6 +8,7 @@ import {
   isCurrentOperation,
   markTabDirty,
   openNoteTab,
+  renameNoteTabPath,
   createDirtySaveGate,
 } from '../src/session.ts'
 
@@ -60,6 +61,23 @@ test('replaces an active unpinned note only when requested', () => {
 
   session = openNoteTab(session, session.focusedGroupId, 'three.md')
   assert.deepEqual(session.groups[0]?.tabs.map(tab => tab.path), ['two.md', 'three.md'])
+})
+
+test('renames the same note across every open pane without changing tab state', () => {
+  let session = createWorkbenchSession('route-1', { id: 'vault-1', generation: 1 })
+  session = openNoteTab(session, session.focusedGroupId, 'Folder/Note.md', { pinned: true, mode: 'source' })
+  const second = addPaneGroup(session, 'pane-2')
+  session = openNoteTab(second.session, second.groupId, 'Folder/Note.md', { mode: 'reading' })
+  session = markTabDirty(session, 'group-1', 'Folder/Note.md', true)
+  const renamed = renameNoteTabPath(session, 'Folder/Note.md', 'Folder/Renamed.md')
+
+  assert.deepEqual(renamed.groups.map(group => group.tabs.map(tab => ({ dirty: tab.dirty, mode: tab.mode, path: tab.path, pinned: tab.pinned }))), [
+    [{ dirty: true, mode: 'source', path: 'Folder/Renamed.md', pinned: true }],
+    [{ dirty: false, mode: 'reading', path: 'Folder/Renamed.md', pinned: false }],
+  ])
+  assert.equal(renamed.groups.every(group => group.tabs.find(tab => tab.id === group.activeTabId)?.path === 'Folder/Renamed.md'), true)
+  assert.equal(session.groups[0]?.tabs[0]?.path, 'Folder/Note.md')
+  assert.equal(renameNoteTabPath(session, 'Folder/Note.md', 'Folder/../bad.md').groups[0]?.tabs[0]?.path, 'Folder/Note.md')
 })
 
 test('coalesces a dirty save gate and blocks failed persistence', async () => {
