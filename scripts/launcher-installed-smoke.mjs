@@ -49,11 +49,12 @@ const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/elect
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
 
-/** Installed/package proof is an explicit artifact check, never an ambient or fixture-only build. */
+/** Installed/package proof admits either an explicit update candidate or the repository-owned reviewed bundle. */
 export function assertTrustedRaycastInstalledSmokeArtifact(path) {
-  assert.ok(typeof path === 'string' && isAbsolute(path.trim()), 'TRUSTED_RAYCAST_ARTIFACT_TAR must point to the absolute reviewed artifact')
-  admitTrustedRaycastArtifact(path.trim())
-  return path.trim()
+  const candidate = typeof path === 'string' && path.trim() !== '' ? path.trim() : join(root, 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
+  assert.ok(isAbsolute(candidate), 'TRUSTED_RAYCAST_ARTIFACT_TAR must point to the absolute reviewed artifact')
+  admitTrustedRaycastArtifact(candidate)
+  return candidate
 }
 
 function trustedWindowsTool(name) {

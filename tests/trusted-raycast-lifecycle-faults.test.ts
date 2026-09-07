@@ -18,6 +18,23 @@ test('Translate group cleanup kills descendants even when their leader has exite
   }
 })
 
+test('intentional owner close tears down silently instead of rendering an internal lifecycle error', { timeout: 5000 }, async () => {
+  const { TrustedRaycastManager } = await import('../src/trusted-raycast-manager.ts')
+  const { mkdtempSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const workspace = mkdtempSync(join(tmpdir(), 'raycast-owner-close-'))
+  const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { detached: true })
+  const owner = { webContentsId: 1 }
+  const messages: unknown[] = []
+  const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage: (_owner, message) => messages.push(message) })
+  Reflect.set(manager, 'session', { child, owner, input: { sessionId: 's', generation: 'g', command: 'translate', preferences: {} }, workspace, revision: 0, querySequence: 0, eventId: '', actions: new Map(), fields: new Map(), reject() {} })
+  try {
+    await manager.closeOwner(owner)
+    assert.deepEqual(messages, [])
+  } finally { await stopOwnedChild(child, 30, true); rmSync(workspace, { recursive: true, force: true }) }
+})
+
 test('failed termination retains workspace and child ownership, revokes input, and permits close retry', { timeout: 5000 }, async t => {
   const { TrustedRaycastManager } = await import('../src/trusted-raycast-manager.ts')
   const { mkdtempSync, existsSync, rmSync } = await import('node:fs')

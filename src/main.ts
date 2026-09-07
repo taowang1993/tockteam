@@ -2,7 +2,7 @@ import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
 import { TrustedRaycastTrustStore } from './trusted-raycast-trust.ts'
 import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastPriorApp, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
-import { loadTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
+import { loadTrustedRaycastPreferenceState, loadTrustedRaycastPreferences, saveTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
 import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
@@ -546,6 +546,7 @@ let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 let trustedRaycast: TrustedRaycastManager | undefined
 let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
+let trustedRaycastBootstrap: Promise<void> = Promise.resolve()
 let trustedRaycastPriorApp: TrustedRaycastPriorApp | undefined
 let trustedRaycastPriorCaptureTimer: ReturnType<typeof setTimeout> | undefined
 const trustedRaycastMutex = createTrustedRaycastMutex()
@@ -553,7 +554,7 @@ const execFilePromise = promisify(execFile)
 const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
   execFile: (file, args, options) => execFilePromise(file, args, { timeout: options?.timeout, maxBuffer: options?.maxBuffer }) as Promise<{ stdout: string }>,
   readClipboard: () => clipboard.readText(),
-  writeClipboard: (text: string) => clipboard.writeText(text),
+  writeClipboard: (text: string) => text === '' ? clipboard.clear() : clipboard.writeText(text),
   readClipboardFormats: () => clipboard.availableFormats(),
   readClipboardBuffer: (format: string) => clipboard.readBuffer(format),
   writeClipboardBuffer: (format: string, data: Buffer) => clipboard.writeBuffer(format, data),
@@ -2244,6 +2245,8 @@ function initializeLauncher(): void {
     runtimeDir: () => trustedRaycastTrust?.runtimeDir(),
     nodePath: runtimePaths().nodeBinary,
     stateFile: join(app.getPath('userData'), 'launcher', 'trusted-raycast-state.json'),
+    preferencesConfigured: () => loadTrustedRaycastPreferenceState(translatePreferencesPath).configured,
+    savePreferences: preferences => saveTrustedRaycastPreferences(translatePreferencesPath, preferences),
     readSelectedText: async () => {
       const result = await readTrustedRaycastSelectedText(trustedRaycastPriorApp, { ...trustedRaycastNativeDeps, ...(selectionFixture ? { fixture: 'selection' as const } : {}) })
       if (selectionFixture && 'text' in result) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-selection-proof.json'), JSON.stringify({ fixture: true }), { mode: 0o600 })
@@ -2280,6 +2283,9 @@ function initializeLauncher(): void {
     },
     onError: (_owner, error) => appendLog('desktop', error.message.slice(0, 512)),
   })
+  trustedRaycastBootstrap = trustedRaycastMutex(async () => { await trustedRaycastTrust?.installBundledDefault() }).catch(error => {
+    appendLog('desktop', `Bundled Translate activation failed: ${error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512)}`)
+  })
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
@@ -2287,6 +2293,7 @@ function initializeLauncher(): void {
     initialRanking: repository.readRanking(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async (signal, preserveSignal) => {
+      await trustedRaycastBootstrap
       const result = await createTockTeamDestinationResults('')
       return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust?.status() ?? { digest: '', digestApproved: false, enabled: false, installed: false }), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
     },
@@ -2333,6 +2340,7 @@ function initializeLauncher(): void {
       if (!completion.handled) completion = normalizeLauncherActionResult(await network.executeAction(record))
       if (!completion.handled) completion = normalizeLauncherActionResult(await os.executeAction(record))
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRANSLATE_HANDLER) {
+        await trustedRaycastBootstrap
         await trustedRaycastMutex(async () => {
           if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || trustedRaycastTrust?.status().digestApproved !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
           await trustedRaycast.start(record.owner, { sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })

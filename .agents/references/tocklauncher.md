@@ -2,12 +2,12 @@
 audience: agent
 canonical: .agents/references/tocklauncher.md
 owner: TockTeam
-last_reviewed: 2026-09-05
+last_reviewed: 2026-09-07
 ---
 
 # TockLauncher
 
-_Last reviewed: 2026-09-05_
+_Last reviewed: 2026-09-07_
 
 TockLauncher is TockTeam Desktop's native keystroke launcher. It selectively ports the reviewed Ueli `v9.29.0` behavior while keeping the Electron lifecycle, renderer, persistence, security boundary, platform effects, and product routing under TockTeam ownership.
 
@@ -34,7 +34,7 @@ The pin in `LAUNCHER_COMPOSITION`, the package lock, `scripts/ueli/desktop-relea
 
 ### Opening-Screen Ranking Provenance
 
-The bounded opening-screen ranking and section-order behavior were reviewed against SuperCmd at commit `2da7b9e5dec0199a972a59cece402c85f729d5d7` (`/Users/taowang/research/launcher/SuperCmd`). TockTeam reimplements only that small ranking reference locally; it does not ship SuperCmd source or runtime code. Raycast extension execution, installation, manifests, and the privileged Raycast extension runtime are explicitly unsupported.
+The bounded opening-screen ranking and section-order behavior were reviewed against SuperCmd at commit `2da7b9e5dec0199a972a59cece402c85f729d5d7` (`/Users/taowang/research/launcher/SuperCmd`). TockTeam reimplements only that small ranking reference locally; it does not ship SuperCmd source or runtime code. Arbitrary Raycast extensions, runtime installation, stores, and manifests remain explicitly unsupported. The only exception is the build-pinned Google Translate pilot described below.
 
 ## Deliberate TockTeam Scope
 
@@ -57,6 +57,8 @@ TockTeam Electron Main
   ├─ Ueli-Compatible Core Search
   ├─ Finite Provider Adapters
   ├─ LauncherActionStore
+  ├─ TrustedRaycastTrustStore + TrustedRaycastManager
+  │    └─ Exact reviewed Google Translate child
   ├─ Workbench Route Delivery
   └─ Guarded Launcher IPC
        ▲
@@ -83,6 +85,8 @@ TockTeam Electron Main
 | `src/launcher-persistence.ts` | Owns settings, index, logs, grants, backups, transactions, and encrypted values. |
 | `src/launcher-navigation.ts` | Defines the finite TockCoder and TockTutor destination contract. |
 | `src/launcher-workbench-navigation.ts` | Focuses/reuses the workbench and queues one latest route until readiness. |
+| `src/trusted-raycast-{trust,manager,contract,ipc}.ts` | Admits, installs, runs, and authenticates the single reviewed Translate capability. |
+| `src/trusted-raycast-{child,compat-api,renderer,preferences}.ts` | Runs unchanged `translate`, projects inert views, and persists validated preferences through main. |
 | `src/launcher.ts` | Implements the semantic launcher surface and keyboard behavior. |
 | `src/launcher-settings.tsx` | Implements the canonical React settings section with shared `@tockteam/ui` controls. |
 | `scripts/build.mjs` | Builds the renderer, preload, Tailwind CSS, and reviewed launcher assets. |
@@ -98,7 +102,9 @@ TockTeam Electron Main
 7. `LauncherActionStore` publishes a new result-set ID and opaque action IDs for the current launcher `webContents` owner.
 8. Invocation validates and consumes one action ID before dispatching the finite provider effect. Only successful default completions update the main-owned usage ranking; Electron main alone applies `hideWindowAfterInvocation`.
 9. Provider invalidation, window clearing, navigation, settings changes, and teardown revoke stale actions and abort owned work.
-10. TockCoder or TockTutor actions focus/reuse the canonical workbench and deliver a validated route after its main-frame readiness handshake.
+10. On a fresh profile, main admits the bundled Translate archive, runs one isolated preview, and installs/enables it. A later explicit disablement remains authoritative.
+11. Translate runs unchanged command `translate` in a private child workspace. The sandboxed launcher renders only bounded inert projections; main executes the finite selected-text, Clipboard, Paste, browser, preference, lifecycle, and trust effects.
+12. TockCoder or TockTutor actions focus/reuse the canonical workbench and deliver a validated route after its main-frame readiness handshake.
 
 ## Window and User Experience
 
@@ -135,6 +141,14 @@ The settings button opens the canonical workbench settings page. There is no sec
 | Operating system | Appearance Switcher, System Commands, System Settings, Ueli Commands, Windows Control Panel | Finite catalogs and trusted platform adapters; destructive and quit actions require confirmation. |
 | Terminal | Terminal Launcher | A finite macOS/Windows terminal catalog with confirmation and trusted executables. |
 | Workflow | Workflow | Ordered Open File, Open URL, Open Terminal, and Execute Command actions with bounded validation and audit metadata. |
+
+### Trusted Google Translate Pilot
+
+The distribution contains one reviewed Raycast compatibility artifact: `plugins/trusted-raycast/vendor/google-translate.tar`, SHA-256 `7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac`. It preserves all 35 source files at pin `1063bfaa34be81528c4e397c91b57c42ec370d79`, runs unchanged command `translate`, and pins its reviewed React, reconciler, scheduler, Axios, lock, provenance, and license closure.
+
+This trusted child is not an OS sandbox. It has the launching account's filesystem, network, and process authority. The security boundary is instead finite admission and ownership: exact archive and derived-file hashes, isolated preview, journaled current/previous rotation, recovery, authenticated owner/session/generation/revision IPC, bounded messages, main-owned native effects, private process-group cleanup, and a renderer that receives no extension functions, HTML, React, Node, or generic RPC. New bytes require a new reviewed TockTeam build. User disablement remains persistent, and selected text never falls back to Clipboard.
+
+No compatibility claim extends beyond this exact Google Translate artifact. There is no extension store, runtime package installation, generic manifest loader, per-extension Cordis plugin, or Web/TUI mounting.
 
 Unsupported behavior is isolated rather than emulated:
 
@@ -189,7 +203,7 @@ The launcher uses `persist:tockteam-launcher` with:
 - denied unexpected navigation and new windows;
 - main-frame, sender URL, registered-window role, dedicated-session, and `webContents` identity checks for every IPC handler.
 
-`launcher-preload.cjs` exposes only typed composition, search, rescan, invocation/cancellation, settings snapshot/update, import/export/reset, overlay controls, and native selection/revocation methods. It does not expose `ipcRenderer`, arbitrary channels, paths from native pickers, secrets, or generic native capabilities.
+`launcher-preload.cjs` exposes only typed composition, search, rescan, invocation/cancellation, settings snapshot/update, import/export/reset, overlay controls, native selection/revocation methods, and the finite trusted-Translate open/event/close/status/trust operations. It does not expose `ipcRenderer`, arbitrary channels, paths from native pickers, secrets, extension code, or generic native capabilities.
 
 ## Network Boundary
 
@@ -220,6 +234,13 @@ Sensitive values use Electron `safeStorage`. Main-owned browser path/name fields
   external-backups/
   custom-browser-grant.json
   application-icons/
+  trusted-raycast-trust.json
+  trusted-raycast-preferences.json
+  trusted-raycast-state.json
+  trusted-raycast-install/
+    current/
+    previous/
+    stage/
 ```
 
 Persistence rules:
@@ -266,9 +287,16 @@ dist/launcher.css
 dist/launcher-preload.cjs
 dist/launcher-preload.cjs.map
 dist/launcher-assets/**
+dist/trusted-raycast/artifact.tar
+dist/trusted-raycast/build.json
+dist/trusted-raycast/child.mjs
+dist/trusted-raycast/resolution.mjs
+dist/trusted-raycast/google-translate.png
 ```
 
-The Electron package is `@tockteam/desktop@0.1.14`, product name `TockTeam Desktop`, application ID `ai.deepseek.tockteam-desktop`, with ASAR packaging and the launcher files explicitly admitted by `package.json`. The staged DSH and Node runtimes remain extra resources owned by the unified TockTeam distribution.
+`scripts/build.mjs` uses the repository-owned reviewed Translate archive by default; `TRUSTED_RAYCAST_ARTIFACT_TAR` is only an explicit exact-byte update candidate. `scripts/trusted-raycast-build.mjs` verifies the archive before extracting or compiling, emits the attested child and resolver, copies the reviewed icon, and preserves the admitted archive bytes.
+
+The Electron package is `@tockteam/desktop@0.1.14`, product name `TockTeam Desktop`, application ID `ai.deepseek.tockteam-desktop`, with ASAR packaging and the launcher and trusted-Translate files explicitly admitted by `package.json`. The staged DSH and Node runtimes remain extra resources owned by the unified TockTeam distribution.
 
 `scripts/install-mac.mjs` and `scripts/install-windows.mjs` perform validated pending-copy/extraction, atomic promotion, backup, rollback, and cleanup. Their lock directories contain process ownership metadata; stale takeover uses an exclusive recovery claim and revalidates the same owner and inode before replacement, so a dead installer's lock is recoverable while a live installer remains exclusive.
 
@@ -284,6 +312,8 @@ pnpm test
 pnpm run build
 pnpm audit:ueli-package-feasibility
 pnpm audit:installed-evidence
+node --test tests/trusted-raycast-*.test.ts
+node scripts/launcher-electron-smoke.mjs --trusted-raycast
 pnpm test:launcher:electron
 pnpm test:launcher:packaged
 ```

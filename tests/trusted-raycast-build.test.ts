@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { TRUSTED_RAYCAST_ARTIFACT_SHA256 } from '../src/trusted-raycast-artifact-admission.ts'
 // @ts-expect-error Build helper is JavaScript.
 
 import { buildTrustedRaycast } from '../scripts/trusted-raycast-build.mjs'
@@ -16,6 +17,13 @@ test('trusted Translate child runtime pins Node 24: the unchanged playTTS downlo
   if (!existsSync(staged)) return
   const version = execFileSync(staged, ['--version'], { encoding: 'utf8', timeout: 10000 }).trim()
   assert.match(version, /^v24\./, `staged child runtime ${version} reproduces the upstream playTTS https.get stall; stage with DSH_DESKTOP_NODE_VERSION=24.20.0`)
+})
+
+test('the reviewed Google Translate archive is repository-owned for ordinary builds', () => {
+  const artifact = join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
+  assert.equal(existsSync(artifact), true)
+  assert.equal(createHash('sha256').update(readFileSync(artifact)).digest('hex'), TRUSTED_RAYCAST_ARTIFACT_SHA256)
+  assert.match(readFileSync(join(resolve('.'), 'scripts', 'build.mjs'), 'utf8'), /TRUSTED_RAYCAST_ARTIFACT_TAR \?\? .*google-translate\.tar/)
 })
 
 test('build omits absent candidate and rejects unapproved bytes before compilation', async () => {
@@ -38,6 +46,7 @@ test('configured build records exact original archive identity', async t => {
     const metadata = JSON.parse(readFileSync(join(root, 'trusted-raycast', 'build.json'), 'utf8'))
     assert.equal(metadata.artifactSha256, '7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac')
     assert.equal(existsSync(join(root, 'trusted-raycast', 'child.mjs')), true)
+    assert.equal(existsSync(join(root, 'trusted-raycast', 'google-translate.png')), true)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 test('configured rebuilds are byte-identical: fixed work root keeps every emitted file deterministic', async t => {

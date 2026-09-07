@@ -1,12 +1,14 @@
 import React from 'react'
 // @ts-expect-error Build-time first-party alias, shared with unchanged source.
-import { configureCompatibility, advanceQuery, queryText, registerNavigationRenderer, popView, viewSearchable, navigationDepth } from '@raycast/api'
+import { Action, ActionPanel, Form, configureCompatibility, advanceQuery, getPreferenceValues, savePreferenceValues, queryText, registerNavigationRenderer, popView, viewSearchable, navigationDepth } from '@raycast/api'
 // @ts-expect-error Build-time first-party contract alias.
 import { isTrustedRaycastNativeOutcome, isTrustedRaycastViewEvent } from '@tockteam/trusted-raycast-child-contract'
 // @ts-expect-error The approved child artifact supplies this runtime-only singleton.
 import Reconciler from 'react-reconciler'
 // @ts-expect-error The runtime replaces this source-preserving path during extraction.
 import Translate from '/tmp/trusted-raycast-source/src/translate'
+// @ts-expect-error The admitted artifact supplies the unchanged extension manifest.
+import extensionManifest from '/tmp/trusted-raycast-source/package.json'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
 const rootNode: Node = { type: 'root', props: {}, children: [] }
@@ -35,6 +37,7 @@ const emit = () => {
   handles = new Map()
   fieldHandles = new Map()
   rootNode.props.querySequence = querySequence
+  rootNode.props.preferenceSetup = showingPreferenceSetup
   rootNode.props.searchable = viewSearchable()
   rootNode.props.navigationDepth = navigationDepth()
   const root = serialize(rootNode)
@@ -51,7 +54,7 @@ const requestNative = (request: object, resolve: (result?: string) => void, reje
   process.stdout.write(`${JSON.stringify({ type: 'native', sessionId, generation, requestId, ...request })}\n`)
 }
 configureCompatibility({
-  native: (request: { kind: 'copy' | 'paste'; text?: string } | { kind: 'openGoogleTranslate'; url?: string }) => new Promise<void>((resolve, reject) => {
+  native: (request: { kind: 'copy' | 'paste'; text?: string } | { kind: 'openGoogleTranslate'; url?: string } | { kind: 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>> }) => new Promise<void>((resolve, reject) => {
     if (!activeAction) { reject(new Error('Native effect requires a current source action')); return }
     requestNative({ revision: activeAction.revision, eventId: activeAction.eventId, ...request }, () => resolve(), reject)
   }),
@@ -112,6 +115,23 @@ const reportError = (error: unknown): void => {
 }
 const container = renderer.createContainer(rootNode, 0, null, false, null, '', reportError, reportError, reportError)
 const translateRoot = React.createElement(Translate)
+type ManifestPreference = { name?: unknown; title?: unknown; type?: unknown; data?: unknown }
+const requiredPreferences = (extensionManifest as { preferences?: ManifestPreference[] }).preferences?.filter(preference => preference.type === 'dropdown' && ['langFrom', 'lang1', 'lang2'].includes(String(preference.name))) ?? []
+let showingPreferenceSetup = process.env.TRUSTED_RAYCAST_PREFERENCES_CONFIGURED === '0'
+let preferencesRoot: React.ReactElement
+const PreferencesSetup = (): React.ReactElement => {
+  const defaults = getPreferenceValues<Record<string, boolean | string>>()
+  const submit = async (values: Record<string, unknown>): Promise<void> => {
+    const next = { ...defaults, langFrom: String(values.langFrom ?? defaults.langFrom), lang1: String(values.lang1 ?? defaults.lang1), lang2: String(values.lang2 ?? defaults.lang2) }
+    await savePreferenceValues(next)
+    showingPreferenceSetup = false
+    mount(undefined)
+  }
+  return React.createElement(Form, {
+    actions: React.createElement(ActionPanel, null, React.createElement(Action.SubmitForm, { title: 'Continue', onSubmit: submit })),
+  }, ...requiredPreferences.map(preference => React.createElement(Form.Dropdown, { id: String(preference.name), key: String(preference.name), title: String(preference.title), value: String(defaults[String(preference.name)] ?? '') }, ...((Array.isArray(preference.data) ? preference.data : []) as Array<{ title?: unknown; value?: unknown }>).map(option => React.createElement(Form.Dropdown.Item, { key: String(option.value), title: String(option.title), value: String(option.value) })))))
+}
+preferencesRoot = React.createElement(PreferencesSetup)
 const mount = (view: unknown): void => {
   renderer.updateContainer(view === undefined ? translateRoot : view, container, null, () => {
     searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
@@ -119,7 +139,7 @@ const mount = (view: unknown): void => {
   })
 }
 registerNavigationRenderer(mount)
-mount(undefined)
+mount(showingPreferenceSetup ? preferencesRoot : undefined)
 process.stdin.setEncoding('utf8')
 let pending = ''
 process.stdin.on('data', chunk => {

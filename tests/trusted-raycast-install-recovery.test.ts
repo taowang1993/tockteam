@@ -65,6 +65,23 @@ test('digest rejection: nothing loads from an unreviewed candidate or wrong stag
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
 })
 
+test('bundled reviewed Translate installs enabled on first run and preserves later user disablement', async () => {
+  let previews = 0
+  const fixture = makeFixture(DIGEST_V1, async () => { previews++; return '' })
+  try {
+    const first = await fixture.store().installBundledDefault()
+    assert.equal(first.installed, true)
+    assert.equal(first.enabled, true)
+    assert.equal(first.digestApproved, true)
+    assert.equal(previews, 1, 'the reviewed bundle still passes isolated preview before first load')
+
+    fixture.store().disable()
+    const restarted = await fixture.store().installBundledDefault()
+    assert.equal(restarted.enabled, false, 'an explicit user disable survives restart')
+    assert.equal(previews, 1, 'a healthy existing install is not previewed again')
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
 test('install lifecycle: stage -> pinned candidate -> isolated preview -> explicit apply keeps installed separate from enabled', async () => {
   const fixture = makeFixture()
   try {

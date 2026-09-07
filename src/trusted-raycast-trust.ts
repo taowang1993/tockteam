@@ -149,7 +149,7 @@ export class TrustedRaycastTrustStore {
     return this.status()
   }
 
-  apply(): TrustedRaycastDiskTrustState {
+  apply(enabledOverride?: boolean): TrustedRaycastDiskTrustState {
     const status = this.status()
     if (!status.staged) throw new Error('No pinned Translate candidate is staged')
     if (!status.previewed) throw new Error('The staged Translate candidate has not passed its isolated preview')
@@ -163,11 +163,24 @@ export class TrustedRaycastTrustStore {
       rmSync(this.previousDir(), { recursive: true, force: true })
       if (existsSync(this.currentDir())) renameSync(this.currentDir(), this.previousDir())
       renameSync(this.stageDir(), this.currentDir())
-      writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ enabled: trust.enabled, approvedSha256: candidate.artifactSha256, installedSha256: candidate.artifactSha256, approvedIdentity: candidate, ...(previous === undefined ? {} : { previousApprovedSha256: previous.artifactSha256, previousIdentity: previous }) })))
+      writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ enabled: enabledOverride ?? trust.enabled, approvedSha256: candidate.artifactSha256, installedSha256: candidate.artifactSha256, approvedIdentity: candidate, ...(previous === undefined ? {} : { previousApprovedSha256: previous.artifactSha256, previousIdentity: previous }) })))
       if (this.readExact(this.currentDir(), candidate) === undefined) throw new Error('Applied Translate candidate failed its digest check')
       rmSync(this.journalPath(), { force: true })
     } catch (error) { throw error }
     return this.status()
+  }
+
+  /** A build-pinned reviewed bundle is ready on first launch; later user disablement remains authoritative. */
+  async installBundledDefault(): Promise<TrustedRaycastDiskTrustState> {
+    const current = this.status()
+    let decided = false
+    try { lstatSync(this.options.stateFile); decided = true } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+    if (decided || !current.candidateAvailable || current.recovery !== '') return current
+    this.stage()
+    await this.preview()
+    return this.apply(true)
   }
 
   private setEnabled(enabled: boolean): TrustedRaycastDiskTrustState {

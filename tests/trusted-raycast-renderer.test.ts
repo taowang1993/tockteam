@@ -7,7 +7,7 @@ import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage } from '../src/
 class Element extends EventTarget {
   children: Element[] = []
   attributes = new Map<string, string>()
-  value = ''; textContent = ''; hidden = false; disabled = false; isConnected = true; tabIndex = 0; open = false
+  value = ''; textContent = ''; placeholder = ''; hidden = false; disabled = false; isConnected = true; tabIndex = 0; open = false
   className = ''
   id = ''
   get options(): Element[] { return this.children }
@@ -78,6 +78,55 @@ test('source action outcomes remain visible when React commits after callback co
   assert.ok(nodes.some(node => node.textContent === '<img src=x onerror=alert(1)>'), 'translation rendered as text, not HTML')
 })
 
+test('footer actions follow selection, open by pointer, and clamp after results shrink', () => {
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  const item = (title: string, action: string, eventId: string): NonNullable<TrustedRaycastViewMessage['root']> => ({ type: 'raycast-list-item', props: { title }, children: [{ type: 'raycast-action', props: { title: action, actionEventId: eventId }, children: [] }] })
+  view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [item('Hello', 'Copy Translation', 'copy-translation'), item('Source', 'Copy', 'copy')] } })
+  const resultRows = nodes.filter(node => node.className.startsWith('rounded-lg px-3 py-2'))
+  let primary = nodes.find(node => node.getAttribute('aria-label') === 'Copy Translation')!
+  resultRows[1]!.dispatchEvent(new Event('focusin'))
+  assert.equal(primary.getAttribute('aria-label'), 'Copy')
+  const trigger = nodes.find(node => node.textContent === 'Actions' && node.className.includes('inline-flex min-h-9'))!
+  const menus = nodes.filter(node => node.children.some(child => child.textContent === 'Actions' && child.className === 'sr-only'))
+  trigger.dispatchEvent(new Event('click', { bubbles: true }))
+  assert.equal(menus[1]!.open, true)
+  view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [item('Hello', 'Copy Translation', 'copy-translation')] } })
+  primary = nodes.findLast(node => node.getAttribute('aria-label') === 'Copy Translation')!
+  assert.equal(primary.disabled, false)
+})
+
+test('empty results stay centered and retain root language-set actions', () => {
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search', searchBarPlaceholder: 'Enter text to translate' }, children: [
+    { type: 'raycast-empty', props: { title: 'No Results' }, children: [] },
+    { type: 'raycast-action', props: { title: 'Next Language Set', actionEventId: 'next' }, children: [] },
+  ] } })
+  assert.ok(nodes.some(node => node.textContent === 'No Results' && node.className.includes('font-medium')))
+  assert.equal(inputOf(nodes).placeholder, 'Enter text to translate')
+  const trigger = nodes.findLast(node => node.textContent === 'Actions' && node.className.includes('inline-flex min-h-9'))!
+  assert.equal(trigger.disabled, false)
+  trigger.dispatchEvent(new Event('click', { bubbles: true }))
+  const menu = nodes.findLast(node => node.children.some(child => child.textContent === 'Actions' && child.className === 'sr-only'))!
+  assert.equal(menu.open, true)
+})
+
+test('result accessories are bounded text and malformed values stay inert', () => {
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  const row = (accessories: string): NonNullable<TrustedRaycastViewMessage['root']> => ({ type: 'raycast-list-item', props: { title: 'Hello', accessories }, children: [{ type: 'raycast-action', props: { title: 'Copy', actionEventId: 'copy' }, children: [] }] })
+  view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [row(JSON.stringify([{ text: 'French → English', tooltip: 'French to English' }]))] } })
+  const accessory = nodes.find(node => node.textContent === 'French → English')!
+  assert.equal((accessory as unknown as { title: string }).title, 'French to English')
+  const oversized = 'x'.repeat(257)
+  view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [row(JSON.stringify([{ text: oversized }]))] } })
+  assert.equal(nodes.some(node => node.textContent === oversized), false)
+})
+
 test('internal stale or busy action rejections surface as a neutral retry message, not runtime text', async () => {
   const nodes: Element[] = []
   const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
@@ -135,6 +184,34 @@ test('language set dropdown change sends a bounded fieldChanged event', async ()
   assert.equal(sent[0]?.kind, 'fieldChanged')
   assert.equal(sent[0]?.eventId, 'manage-dropdown')
   assert.equal(sent[0]?.value, 'manage')
+})
+
+test('first-run preferences use the Raycast-like centered hierarchy and keyboard submit', async () => {
+  const nodes: Element[] = []
+  const sent: TrustedRaycastViewEvent[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  const options = [{ type: 'raycast-form-dropdown-item', props: { title: 'English', value: 'en' }, children: [] }] as const
+  view.update({ ...projection(0), root: { type: 'root', props: { preferenceSetup: true }, children: [{ type: 'raycast-form', props: {}, children: [
+    { type: 'raycast-form-dropdown', props: { title: 'Translate from', value: 'auto', fieldEventId: 'from' }, children: [{ type: 'raycast-form-dropdown-item', props: { title: 'Auto-Detect', value: 'auto' }, children: [] }] },
+    { type: 'raycast-form-dropdown', props: { title: 'Primary Language', value: 'en', fieldEventId: 'primary' }, children: options },
+    { type: 'raycast-form-dropdown', props: { title: 'Secondary Language', value: 'en', fieldEventId: 'secondary' }, children: options },
+    { type: 'raycast-action', props: { title: 'Continue', actionEventId: 'continue' }, children: [] },
+  ] }] } })
+  assert.equal(view.element.getAttribute('data-view'), 'preference-setup')
+  assert.ok(nodes.some(node => node.getAttribute('alt') === 'Google Translate'))
+  assert.ok(nodes.some(node => node.textContent === 'Google Translate'))
+  assert.ok(nodes.some(node => node.textContent.includes('Before you can start using this extension')))
+  assert.ok(nodes.some(node => node.textContent === 'Continue'))
+  assert.ok(nodes.some(node => node.className.includes('max-w-[38rem]')), 'the form uses a centered readable measure')
+  const submit = Object.assign(new Event('keydown'), { key: 'Enter', isComposing: false, keyCode: 13, metaKey: true, ctrlKey: false, altKey: false, shiftKey: false })
+  view.element.dispatchEvent(submit)
+  await flush()
+  assert.equal(sent.at(-1)?.kind, 'action')
+  assert.equal(sent.at(-1)?.eventId, 'continue')
+  view.update(projection(1))
+  view.update({ type: 'outcome', sessionId: 's', generation: 'g', revision: 1, eventId: 'continue', succeeded: true })
+  assert.ok(!nodes.some(node => node.getAttribute('role') === 'status' && node.textContent === 'Action Completed'), 'setup completion does not leak into a fresh command view')
 })
 
 test('nested AddLanguageForm renders fields and submits through the source action', async () => {

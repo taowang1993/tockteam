@@ -11,7 +11,7 @@ const MAX_PREFERENCE_TOTAL = 128 * 1024
 
 const LANGUAGE_CODE = /^[a-zA-Z]{2,5}(?:-[a-zA-Z0-9]{2,5})?$/
 const TRUSTED_RAYCAST_PREFERENCE_KEYS = ['langFrom', 'lang1', 'lang2', 'autoInput', 'defaultAction', 'prioritizeCrossLanguage', 'proxy'] as const
-export const TRUSTED_RAYCAST_PREFERENCE_DEFAULTS = Object.freeze({ langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' })
+export const TRUSTED_RAYCAST_PREFERENCE_DEFAULTS = Object.freeze({ langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' })
 
 export function isTrustedRaycastPreferences(value: unknown): value is Readonly<Record<(typeof TRUSTED_RAYCAST_PREFERENCE_KEYS)[number], TrustedRaycastPreference>> {
   if (!isRecord(value) || !exactKeys(value, TRUSTED_RAYCAST_PREFERENCE_KEYS)) return false
@@ -201,7 +201,7 @@ export function parseTrustedRaycastChildMessage(line: string, session: TrustedRa
 }
 
 export type TrustedRaycastNativeRequest = Readonly<
-  { type: 'native'; sessionId: string; generation: string; requestId: string } & ({ kind: 'selectedText' } | ({ revision: number; eventId: string } & ({ kind: 'copy'; text: string } | { kind: 'paste'; text: string } | { kind: 'openGoogleTranslate'; url: string })))
+  { type: 'native'; sessionId: string; generation: string; requestId: string } & ({ kind: 'selectedText' } | ({ revision: number; eventId: string } & ({ kind: 'copy'; text: string } | { kind: 'paste'; text: string } | { kind: 'openGoogleTranslate'; url: string } | { kind: 'savePreferences'; preferences: Readonly<Record<string, TrustedRaycastPreference>> })))
 >
 
 export type TrustedRaycastNativeOutcome = Readonly<{ type: 'nativeOutcome'; requestId: string; succeeded: boolean; message: string; result?: string }>
@@ -213,6 +213,7 @@ export function isTrustedRaycastNativeRequest(value: unknown): value is TrustedR
   const scoped = ['revision', 'eventId']
   const scopedValue = (keys: readonly string[]): boolean => exactKeys(value, keys) && boundedString(value.eventId, 128) && Number.isSafeInteger(value.revision) && (value.revision as number) >= 0
   if (value.kind === 'copy' || value.kind === 'paste') return scopedValue([...base, ...scoped, 'text']) && boundedString(value.text, 128 * 1024)
+  if (value.kind === 'savePreferences') return scopedValue([...base, ...scoped, 'preferences']) && isTrustedRaycastPreferences(value.preferences)
   if (value.kind !== 'openGoogleTranslate' || !scopedValue([...base, ...scoped, 'url']) || !boundedString(value.url, 128 * 1024)) return false
   try {
     const url = new URL(value.url)

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -20,7 +20,7 @@ export async function buildTrustedRaycast(dist, artifact) {
     const source = join(work, 'tockteam-raycast-artifact', 'source')
     const output = join(dist, 'trusted-raycast')
     const repository = fileURLToPath(new URL('../', import.meta.url))
-    const child = readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8').replace('/tmp/trusted-raycast-source', source)
+    const child = readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8').replaceAll('/tmp/trusted-raycast-source', source)
     writeFileSync(join(work, 'child.ts'), child)
     // Only compatibility aliases are bundled; all third-party bare imports resolve in the private artifact.
     await build({ entryPoints: [join(work, 'child.ts')], outfile: join(output, 'child.mjs'), bundle: true, packages: 'external', format: 'esm', platform: 'node', target: 'node24', alias: {
@@ -33,6 +33,7 @@ export async function buildTrustedRaycast(dist, artifact) {
     const emitted = readFileSync(join(output, 'child.mjs'), 'utf8').replace(/\/\/ [^\n]*tockteam-raycast-build-work-\d+\//g, '// tockteam-raycast-build-work/')
     writeFileSync(join(output, 'child.mjs'), emitted)
     mkdirSync(output, { recursive: true })
+    copyFileSync(join(source, 'assets', 'google-translate.png'), join(output, 'google-translate.png'))
     writeFileSync(join(output, 'artifact.tar'), bytes)
     const identity = { artifactSha256: TRUSTED_RAYCAST_ARTIFACT_SHA256, childSha256: createHash('sha256').update(readFileSync(join(output, 'child.mjs'))).digest('hex'), command: 'translate', react: '19.0.0', reconciler: '0.31.0', resolutionSha256: createHash('sha256').update(readFileSync(join(output, 'resolution.mjs'))).digest('hex') }
     writeFileSync(join(output, 'build.json'), JSON.stringify({ ...identity, metadataSha256: attestTrustedRaycastBuildIdentity(identity) }))

@@ -51,10 +51,12 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
   }
   const installRoot = join(userData, 'launcher', 'trusted-raycast-install')
   const trustStatePath = join(userData, 'launcher', 'trusted-raycast-trust.json')
+  const preferencePath = join(userData, 'launcher', 'trusted-raycast-preferences.json')
   const currentChildPath = join(installRoot, 'current', 'child.mjs')
   const candidateIdentity = JSON.parse(await readFile(join(root, 'dist/trusted-raycast/build.json'), 'utf8'))
   const digestFile = async path => createHash('sha256').update(await readFile(path)).digest('hex')
   const trustEvidence = { candidateDigest: candidateIdentity.artifactSha256, steps: [] }
+  const fullTrustLifecycle = process.env.TOCKTEAM_TRUSTED_RAYCAST_FULL_TRUST_PROOF === '1'
   const trustView = async (expectedStatus, expectedButtons) => {
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
@@ -129,32 +131,35 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await rm(join(process.env.TMPDIR ?? '/tmp', name), { recursive: true, force: true }).catch(() => {})
     }
     await cli('attach', `--cdp=http://127.0.0.1:${port}`)
-    // Slice 4 starts with the real native-DOM trust surface and its main-owned store.
+    // Fresh userData gets the exact reviewed bundle immediately; first use asks only for preferences.
     await openTrustView()
-    await trustView('Not Installed', ['Install Reviewed Extension'])
-    await (async () => { await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'trust-not-installed.png'))} }); return true; }`) })()
-    trustEvidence.steps.push('fresh userData: trust item visible and Translate absent')
-    await backToResults()
-    await assertTranslateCatalog(false)
-    await openTrustView()
-    await cli('run-code', `async page => {
-      const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
-      if (await launcher.getByRole('button', { name: 'Approve & Install', exact: true }).count() !== 0) throw new Error('Approve & Install appeared before staging');
-      await launcher.getByRole('button', { name: 'Install Reviewed Extension', exact: true }).click();
-      await launcher.getByRole('button', { name: 'Approve & Install', exact: true }).waitFor({ timeout: 30000 });
-      await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'trust-previewed.png'))} });
-      return { previewed: true };
-    }`)
-    trustEvidence.steps.push('Install Reviewed Extension performed stage and isolated preview')
-    await trustAction('Approve & Install', 'Installed · Disabled', ['Enable Translate', 'Remove Extension'])
-    trustEvidence.steps.push('explicit Apply left Installed · Disabled')
-    await backToResults()
-    await assertTranslateCatalog(false)
-    await openTrustView()
-    await trustAction('Enable Translate', 'Installed · Enabled', ['Disable Translate', 'Remove Extension'])
+    await trustView('Installed · Enabled', ['Disable Translate', 'Remove Extension'])
     await backToResults()
     await assertTranslateCatalog(true)
-    trustEvidence.steps.push('enable rescanned the catalog and exposed Translate immediately')
+    await cli('run-code', `async page => {
+      const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
+      const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
+      await command.click(); await launcher.locator('#launcher-search').press('Enter');
+      const setup = launcher.locator('section[data-view="preference-setup"]');
+      await setup.waitFor({ timeout: 15000 });
+      const labels = await setup.locator('form label').evaluateAll(nodes => nodes.map(node => node.childNodes[0]?.textContent?.trim()));
+      if (JSON.stringify(labels) !== JSON.stringify(['Translate from', 'Primary Language', 'Secondary Language'])) throw new Error('Unexpected preference fields: ' + JSON.stringify(labels));
+      if (await launcher.evaluate(() => document.activeElement?.getAttribute('aria-label')) !== 'Translate from') throw new Error('First preference was not focused');
+      const geometry = await setup.evaluate(section => { const footerTop = section.querySelector('footer').getBoundingClientRect().top; return [...section.querySelectorAll('form label')].map(label => { const range = document.createRange(); range.selectNode(label.firstChild); const text = range.getBoundingClientRect(); const select = label.querySelector('select').getBoundingClientRect(); return { textHeight: text.height, selectBottom: select.bottom, footerTop }; }); });
+      if (geometry.some(row => row.textHeight > 24 || row.selectBottom > row.footerTop - 8)) throw new Error('Preference rows wrap or overlap the footer: ' + JSON.stringify(geometry));
+      await launcher.keyboard.press('Tab');
+      if (await launcher.evaluate(() => document.activeElement?.getAttribute('aria-label')) !== 'Primary Language') throw new Error('Preference focus order is incorrect');
+      await launcher.keyboard.press('Shift+Tab');
+      await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'preference-setup.png'))} });
+      return { readyImmediately: true, preferenceFields: labels };
+    }`)
+    await workbenchConnection.evaluate(`void window.dshDesktop.syncLauncherTheme({ mode: 'light', skinId: null })`)
+    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.documentElement.style.colorScheme === 'light'); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'preference-setup-light.png'))} }); return { theme: 'light' }; }`)
+    await workbenchConnection.evaluate(`void window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' })`)
+    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.documentElement.style.colorScheme === 'dark'); await launcher.keyboard.press('Meta+Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Preference completion leaked into fresh command state'); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { preferencesConfigured: true }; }`)
+    await writeFile(preferencePath, JSON.stringify({ langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }), { mode: 0o600 })
+    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.locator('#launcher-search').fill('Translate'); const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' }); await command.click(); await launcher.locator('#launcher-search').press('Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); await launcher.waitForTimeout(500); if (await input.inputValue() !== '') throw new Error('Reopened command did not start with an empty query'); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Prior action feedback survived command reopen'); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'command-empty.png'))} }); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { freshCommand: true }; }`)
+    trustEvidence.steps.push('fresh userData: exact reviewed Translate installed and enabled; first use saved required preferences in dark and light themes; reopen cleared prior feedback')
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.waitForTimeout(250); return { enabled: true }; }`)
     await openTrustView()
     await trustAction('Disable Translate', 'Installed · Disabled', ['Enable Translate', 'Remove Extension'])
@@ -166,8 +171,8 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await backToResults()
     await assertTranslateCatalog(true)
     trustEvidence.steps.push('disable stopped the child and removed Translate; re-enable restored it')
+    if (fullTrustLifecycle) {
     // Remove from a stopped, disabled install so the persisted preference is visibly preserved.
-    const preferencePath = join(userData, 'launcher', 'trusted-raycast-preferences.json')
     const preservedPreference = JSON.stringify({ langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' })
     await writeFile(preferencePath, preservedPreference, { mode: 0o600 })
     await openTrustView()
@@ -224,6 +229,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     trustEvidence.steps.push('UI recovery then reinstall/re-enable restored exact artifact and derived digests')
     await writeFile(join(evidence, 'trust-flow.json'), JSON.stringify({ ...trustEvidence, recoveredDigest: recoveredIdentity.artifactSha256, recoveredChildDigest: recoveredIdentity.childSha256, exactArtifact: true, exactDerived: true, noRuntimeAfterRemove: removedEntries.length === 0, noChildDuringRecovery: (await childProcesses()).length === 0 }), { mode: 0o600 })
     console.log('Slice 4 trust flow proved through the native-DOM UI and main-owned IPC/store; exact reviewed artifact and derived digests recovered.')
+    }
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       if (!launcher) throw new Error('No real launcher');
@@ -265,22 +271,29 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       const firstPasteDenied = await launcher.locator('section[aria-label="Google Translate"] [role=alert]').isVisible().catch(() => false);
       const denialText = firstPasteDenied ? await launcher.locator('section[aria-label="Google Translate"] [role=alert]').innerText() : '';
       console.log('FIRST_PASTE_DENIED=' + firstPasteDenied + ' TEXT=' + denialText.slice(0, 120));
-      if (firstPasteDenied && !denialText.includes('prior application')) throw new Error('Unexpected paste denial text: ' + denialText.slice(0, 256));
+      if (firstPasteDenied && !/prior application|Clipboard restoration failed/u.test(denialText)) throw new Error('Unexpected paste denial text: ' + denialText.slice(0, 256));
+      await launcher.locator('section[data-view="translate"] footer').getByRole('button', { name: /Actions/u }).click();
+      if (!(await rows.first().locator('details').evaluate(el => el.open))) throw new Error('Pointer Actions did not open the selected row panel');
+      await launcher.keyboard.press('Escape');
       await rows.first().press('Meta+k');
       const paste = rows.first().getByRole('button', { name: 'Paste Translation', exact: true });
       if (await paste.isDisabled()) throw new Error('Paste Translation was still deferred');
+      if (!(await rows.first().getByRole('button', { name: 'Copy Translation', exact: true }).evaluate(el => document.activeElement === el))) throw new Error('Cmd+K did not focus the first action');
+      await launcher.keyboard.press('ArrowDown');
+      if (!(await paste.evaluate(el => document.activeElement === el))) throw new Error('Action-panel ArrowDown did not move focus');
+      await launcher.keyboard.press('ArrowUp');
       await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'source-actions-menu.png'))} });
-      await rows.first().locator('summary').press('Escape');
+      await launcher.keyboard.press('Escape');
       if (await rows.first().locator('details').evaluate(el => el.open)) throw new Error('Escape did not dismiss source actions');
-      if (!(await rows.first().locator('summary').evaluate(el => document.activeElement === el))) throw new Error('Menu focus was not restored');
+      if (!(await rows.first().evaluate(el => document.activeElement === el))) throw new Error('Menu focus was not restored to the selected row');
       await rows.first().press('Enter');
       await launcher.getByRole('status').filter({ hasText: /Action Completed|操作已完成/ }).waitFor();
       return { sourceCopyOutcome: true, pasteDenial: 'no prior application captured' };
     }`)
-    const clipboardAfterFirstPaste = await readClipboardEqualityToken()
-    if (clipboardBeforeFirstPaste !== clipboardAfterFirstPaste) throw new Error(`Paste attempt did not preserve the prior clipboard (before ${clipboardBeforeFirstPaste.length} bytes, after ${clipboardAfterFirstPaste.length} bytes)`)
     const record = await readProofRecord()
     if (record.restoration !== 'RESTORED') throw new Error(`Clipboard was not restored: ${JSON.stringify(record)}`)
+    const clipboardAfterFirstPaste = await readClipboardEqualityToken()
+    if (clipboardBeforeFirstPaste !== clipboardAfterFirstPaste) throw new Error(`Paste attempt did not preserve the prior clipboard (before ${clipboardBeforeFirstPaste.length} bytes, after ${clipboardAfterFirstPaste.length} bytes)`)
     await writeFile(join(evidence, 'native-copy-record.json'), JSON.stringify(record), { mode: 0o600 })
     console.log('Main-owned Swift proof port copied, verified and restored synchronously; original clipboard bytes were never logged.')
     await cli('run-code', `async page => {

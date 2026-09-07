@@ -1,9 +1,17 @@
+import { Hourglass, SearchX, type IconNode } from 'lucide'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage, TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
 
 /** First-party finite DOM projection. Source callbacks stay in the child; native effects stay in main. */
 export function createTrustedRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void, locale = 'en-US'): { element: HTMLElement; update(message: TrustedRaycastViewMessage): void } {
   const zh = locale.startsWith('zh')
+  const setHidden = (target: HTMLElement, hidden: boolean): void => { target.hidden = hidden; target.classList?.toggle('!hidden', hidden) }
+  const icon = (definition: IconNode): Element => {
+    if (typeof document.createElementNS !== 'function') return document.createElement('span')
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'size-7 opacity-60')
+    for (const [tag, attributes] of definition as unknown as Array<[string, Record<string, unknown>]>) { const child = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [name, value] of Object.entries(attributes)) child.setAttribute(name, String(value)); svg.append(child) }
+    return svg
+  }
   let current: TrustedRaycastViewMessage | undefined
   const sendEvent = (event: { kind: TrustedRaycastViewEvent['kind']; eventId: string; value?: string }): void => {
     if (!current?.root || current.type === 'error') return
@@ -15,17 +23,28 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (depth <= 0) return
     sendEvent({ kind: 'navigation', eventId: 'language-nav', value: 'language:pop' })
   }
-  const element = document.createElement('section'); element.className = 'launcher-local-tool p-4 text-sm'; element.setAttribute('aria-label', 'Google Translate')
-  const header = document.createElement('header'); header.className = 'launcher-local-tool-header'
+  const element = document.createElement('section'); element.className = 'launcher-local-tool !gap-0 overflow-hidden text-sm'; element.setAttribute('aria-label', 'Google Translate'); element.setAttribute('data-view', 'translate')
+  const header = document.createElement('header'); header.className = 'flex h-12 min-w-0 shrink-0 items-center gap-3 px-4'
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'inline-flex size-9 items-center justify-center rounded-lg border-0 bg-transparent text-2xl leading-none text-[var(--dsw-alias-label-secondary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; close.textContent = '‹'; close.setAttribute('aria-label', zh ? '返回结果' : 'Back to Results'); close.addEventListener('click', onClose)
+  const titleIcon = document.createElement('img'); titleIcon.setAttribute('src', './trusted-raycast/google-translate.png'); titleIcon.setAttribute('alt', ''); titleIcon.className = 'size-6 rounded-md'
   const title = document.createElement('h2'); title.textContent = 'Google Translate'; title.className = 'm-0 text-sm font-semibold'
-  const close = document.createElement('button'); close.type = 'button'; close.className = 'launcher-secondary-button bg-transparent text-xs focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; close.textContent = zh ? '返回结果' : 'Back to Results'; close.addEventListener('click', onClose)
-  header.append(title, close)
-  const content = document.createElement('div'); content.className = 'launcher-local-tool-content min-w-0 overflow-auto'
-  const back = document.createElement('button'); back.type = 'button'; back.className = 'launcher-secondary-button bg-transparent text-xs focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; back.textContent = zh ? '‹ 返回' : '‹ Back'; back.hidden = true; back.addEventListener('click', popNavigation)
-  const searchRow = document.createElement('div'); searchRow.className = 'flex items-start gap-2'
-  const label = document.createElement('label'); label.className = 'flex flex-col gap-2 text-xs'; label.textContent = zh ? '要翻译的文本' : 'Text to Translate'
-  const input = document.createElement('input'); input.type = 'search'; input.id = 'trusted-raycast-search'; input.maxLength = 16384; input.autocomplete = 'off'; input.className = 'box-border w-full min-w-0 rounded-md border border-[var(--dsw-alias-border-l2,CanvasText)] bg-transparent px-3 py-2 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; label.append(input)
-  const languageSelect = document.createElement('select'); languageSelect.className = 'box-border max-w-56 min-w-0 shrink rounded-md border border-[var(--dsw-alias-border-l2,CanvasText)] bg-transparent px-2 py-2 text-xs text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; languageSelect.setAttribute('aria-label', zh ? '语言集' : 'Language Set'); languageSelect.hidden = true; languageSelect.addEventListener('change', () => {
+  header.append(close, titleIcon, title)
+  const hero = document.createElement('div'); hero.className = 'flex flex-col items-center px-6 pb-2 text-center'; hero.hidden = true
+  const logoFrame = document.createElement('div'); logoFrame.className = 'mb-3 flex size-16 items-center justify-center rounded-full bg-black/25 shadow-sm'
+  const logo = document.createElement('img'); logo.setAttribute('src', './trusted-raycast/google-translate.png'); logo.setAttribute('alt', 'Google Translate'); logo.className = 'size-9'; logoFrame.append(logo)
+  const heroTitle = document.createElement('h1'); heroTitle.textContent = 'Google Translate'; heroTitle.className = 'm-0 text-2xl font-semibold tracking-[-0.02em] text-[var(--dsw-alias-label-primary,CanvasText)]'
+  const about = document.createElement('details'); about.className = 'relative mt-2'
+  const aboutSummary = document.createElement('summary'); aboutSummary.className = 'cursor-pointer list-none rounded-lg bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-3 py-1.5 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; aboutSummary.textContent = zh ? '关于此扩展 ⓘ' : 'About This Extension ⓘ'
+  const aboutText = document.createElement('p'); aboutText.className = 'absolute left-1/2 z-10 mt-2 w-72 -translate-x-1/2 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,Canvas)] p-3 text-left text-xs leading-5 text-[var(--dsw-alias-label-secondary,CanvasText)] shadow-lg'; aboutText.textContent = zh ? '由 TockTeam 固定并审核的 Google Translate 扩展。' : 'Google Translate is bundled from the exact extension archive reviewed by TockTeam.'
+  about.append(aboutSummary, aboutText); hero.append(logoFrame, heroTitle, about)
+  const content = document.createElement('div'); content.className = 'launcher-local-tool-content min-h-0 min-w-0 flex-1 overflow-auto px-6 pb-3'
+  const intro = document.createElement('p'); intro.className = 'mx-auto mb-2 max-w-3xl text-center text-sm font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; intro.textContent = zh ? '开始使用此扩展前，请设置以下偏好：' : 'Before you can start using this extension, set the following preferences:'; intro.hidden = true
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'inline-flex min-h-9 items-center rounded-lg px-2 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; back.textContent = zh ? '‹ 返回' : '‹ Back'; back.hidden = true; back.addEventListener('click', popNavigation)
+  const searchRow = document.createElement('div'); searchRow.className = 'flex min-w-0 flex-1 items-center gap-3'
+  const label = document.createElement('label'); label.className = 'flex min-w-0 flex-1 items-center'
+  const searchLabel = document.createElement('span'); searchLabel.className = 'sr-only'; searchLabel.textContent = zh ? '要翻译的文本' : 'Text to Translate'
+  const input = document.createElement('input'); input.type = 'search'; input.id = 'trusted-raycast-search'; input.maxLength = 16384; input.autocomplete = 'off'; input.className = 'box-border h-11 w-full min-w-0 rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-4 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; label.append(searchLabel, input)
+  const languageSelect = document.createElement('select'); languageSelect.className = 'box-border h-11 max-w-64 min-w-52 shrink rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-3 text-xs text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; languageSelect.setAttribute('aria-label', zh ? '语言集' : 'Language Set'); languageSelect.hidden = true; languageSelect.addEventListener('change', () => {
     const dropdown = current?.root ? descendants(current.root, 'raycast-dropdown')[0] : undefined
     const eventId = dropdown?.props.fieldEventId
     if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: languageSelect.value.slice(0, 128) })
@@ -35,16 +54,33 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const panelActions = document.createElement('div'); panelActions.className = 'flex flex-wrap items-start gap-2 py-2'; panelActions.hidden = true
   const results = document.createElement('ul'); results.className = 'm-0 list-none p-0'; results.setAttribute('aria-label', zh ? '翻译结果' : 'Translations')
   const formArea = document.createElement('form'); formArea.className = 'flex flex-col items-start gap-3 py-2'; formArea.hidden = true; formArea.addEventListener('submit', event => { event.preventDefault(); invoke(submitAction) })
-  const notice = document.createElement('p'); notice.className = 'launcher-local-tool-status'; notice.textContent = zh ? '手动输入始终可用 · 语言集、粘贴与语音由主进程按策略执行 · 选中文本需 macOS 辅助功能权限。' : 'Manual input is always available · Language sets, Paste and speech run under main-owned policy · Selected text needs macOS Accessibility permission.'
   const error = document.createElement('p'); error.className = 'launcher-local-tool-error'; error.setAttribute('role', 'alert'); error.hidden = true
-  content.append(back, searchRow, status, panelActions, results, formArea, notice, error); element.append(header, content)
+  header.append(searchRow); content.append(intro, back, status, panelActions, results, formArea, error)
+  const commandFooter = document.createElement('footer'); commandFooter.className = 'flex min-h-14 shrink-0 items-center justify-between border-t border-[var(--dsw-alias-border-l1,CanvasText)] px-4'; commandFooter.hidden = true
+  const extensionLabel = document.createElement('span'); extensionLabel.className = 'inline-flex items-center gap-2 rounded-xl bg-black/15 px-3 py-2 text-sm font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'
+  const footerIcon = document.createElement('img'); footerIcon.setAttribute('src', './trusted-raycast/google-translate.png'); footerIcon.setAttribute('alt', ''); footerIcon.className = 'size-5'; extensionLabel.append(footerIcon); const footerText = document.createElement('span'); footerText.textContent = zh ? '翻译' : 'Translate'; extensionLabel.append(footerText)
+  const footerActions = document.createElement('div'); footerActions.className = 'flex items-center gap-2'
+  commandFooter.append(extensionLabel, footerActions); element.append(header, hero, content, commandFooter)
   let actionPending: string | undefined
+  let preferenceAction: string | undefined
   let actionFeedback = ''
   let selected = 0
   let composing = false
   let submitAction: TrustedRaycastViewNode | undefined
-  let rows: { item: HTMLElement; actions: TrustedRaycastViewNode[]; menu: HTMLDetailsElement; detail: HTMLElement | undefined }[] = []
+  let firstFormControl: HTMLElement | undefined
+  let primaryFooter: HTMLButtonElement | undefined
+  let primaryFooterLabel: HTMLElement | undefined
+  let preferenceSetup = false
+  type ActionOwner = { item: HTMLElement; actions: TrustedRaycastViewNode[]; buttons: HTMLButtonElement[]; menu: HTMLDetailsElement }
+  let rootActionOwner: ActionOwner | undefined
+  let rows: (ActionOwner & { detail: HTMLElement | undefined })[] = []
   const descendants = (node: TrustedRaycastViewNode, type: string): TrustedRaycastViewNode[] => [ ...(node.type === type ? [node] : []), ...node.children.flatMap(child => typeof child === 'string' ? [] : descendants(child, type)) ]
+  const syncPrimaryFooter = (): void => {
+    if (!primaryFooter || !primaryFooterLabel) return
+    const action = rows[selected]?.actions[0]
+    const title = String(action?.props.title ?? '')
+    primaryFooterLabel.textContent = title; primaryFooter.setAttribute('aria-label', title); primaryFooter.disabled = action?.props.actionEventId === undefined; setHidden(primaryFooter, action === undefined)
+  }
   let toastText = ''
   let toastTimer: ReturnType<typeof setTimeout> | undefined
   const showToastText = (text: string): void => {
@@ -58,16 +94,17 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (!action.props.actionEventId || action.props.unavailable) { fail(zh ? '此操作不可用。' : 'This action is unavailable.'); return false }
     const eventId = String(action.props.actionEventId)
     actionPending = eventId
+    if (preferenceSetup) preferenceAction = eventId
     actionFeedback = zh ? '正在执行操作…' : 'Running Action…'
     status.textContent = actionFeedback
     void bridge.trustedRaycastEvent({ sessionId: current.sessionId, generation: current.generation, revision: current.revision, eventId, kind: 'action' }).catch(error => {
-      if (actionPending === eventId) { actionPending = undefined; actionFeedback = ''; status.textContent = ''; fail(userActionMessage(error instanceof Error ? error.message : 'Translate action failed')) }
+      if (actionPending === eventId) { actionPending = undefined; preferenceAction = undefined; actionFeedback = ''; status.textContent = ''; fail(userActionMessage(error instanceof Error ? error.message : 'Translate action failed')) }
     })
     return true
   }
   // Internal lifecycle rejections (stale/busy/inactive) are runtime bookkeeping, not user-facing service text.
   const userActionMessage = (message: string): string => /stale|busy|inactive/i.test(message) ? (zh ? '此操作已失效，请重试。' : 'That action is no longer available. Please try again.') : message
-  const fail = (message: string): void => { error.hidden = false; error.textContent = message }
+  const fail = (message: string): void => { setHidden(error, false); error.textContent = message }
   let pending: string | undefined
   let sending = false
   let staleRevision = -1
@@ -78,7 +115,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     sending = true
     void bridge.trustedRaycastEvent({ sessionId: current.sessionId, generation: current.generation, revision, eventId: String(current.root.props.searchEventId), kind: 'searchChanged', value }).then(() => {
       if (pending === value) pending = undefined
-      if (current?.type !== 'error') error.hidden = true
+      if (current?.type !== 'error') setHidden(error, true)
     }).catch(error => {
       const message = error instanceof Error ? error.message : 'Translate input failed'
       if (message.includes('Translate event is stale')) staleRevision = revision
@@ -91,7 +128,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     pending = input.value
     actionPending = undefined
     actionFeedback = ''
-    error.hidden = true
+    setHidden(error, true)
     status.textContent = zh ? '正在翻译…' : 'Translating…'
     sendLatest()
   })
@@ -105,7 +142,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   }
   const renderDropdown = (root: TrustedRaycastViewNode): void => {
     const dropdown = descendants(root, 'raycast-dropdown')[0]
-    languageSelect.hidden = dropdown === undefined
+    setHidden(languageSelect, dropdown === undefined)
     if (dropdown === undefined) return
     languageSelect.replaceChildren()
     for (const item of dropdown.children) {
@@ -116,74 +153,109 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if ([...languageSelect.options].some(option => option.value === value)) languageSelect.value = value
   }
   const render = (root: TrustedRaycastViewNode): void => {
-    rows = []
+    rows = []; rootActionOwner = undefined
+    primaryFooter = undefined; primaryFooterLabel = undefined
     submitAction = undefined
+    preferenceSetup = root.props.preferenceSetup === true
+    element.setAttribute('data-view', preferenceSetup ? 'preference-setup' : 'translate')
+    setHidden(hero, !preferenceSetup)
+    setHidden(intro, !preferenceSetup)
+    setHidden(commandFooter, false)
+    footerActions.replaceChildren()
+    const commandSearch = descendants(root, 'raycast-list')[0] !== undefined && 'searchEventId' in root.props
+    setHidden(title, preferenceSetup || commandSearch)
+    setHidden(titleIcon, preferenceSetup || commandSearch)
+    setHidden(status, preferenceSetup)
+    content.classList?.toggle('!overflow-hidden', preferenceSetup)
     syncSourceSearch(root)
     renderDropdown(root)
     const depth = typeof root.props.navigationDepth === 'number' ? root.props.navigationDepth : 0
-    back.hidden = depth <= 0
+    setHidden(back, preferenceSetup || depth <= 0)
     const form = descendants(root, 'raycast-form')[0]
     const list = descendants(root, 'raycast-list')[0]
-    searchRow.hidden = form !== undefined || !('searchEventId' in root.props)
+    setHidden(searchRow, form !== undefined || !('searchEventId' in root.props))
     if (form !== undefined) { renderForm(form); return }
-    formArea.hidden = true
-    results.hidden = false
-    panelActions.hidden = false
+    setHidden(formArea, true)
+    setHidden(results, false)
+    setHidden(panelActions, false)
     if (list === undefined) { results.replaceChildren(); return }
-    if (root.props.queryCurrent === false) { status.textContent = zh ? '正在翻译…' : 'Translating…'; return }
-    for (const empty of descendants(root, 'raycast-empty')) status.textContent = String(empty.props.title ?? '')
+    input.placeholder = typeof list.props.searchBarPlaceholder === 'string' ? list.props.searchBarPlaceholder.slice(0, 256) : (zh ? '输入要翻译的文本' : 'Enter text to translate')
+    if (!preferenceSetup && preferenceAction !== undefined) status.textContent = ''
+    const waiting = root.props.queryCurrent === false
+    const emptyProjection = descendants(root, 'raycast-empty')[0]
+    const emptyTitle = waiting ? (zh ? '正在翻译…' : 'Translating…') : String(emptyProjection?.props.title ?? '')
     const showingDetail = descendants(root, 'raycast-list').some(list => list.props.isShowingDetail === true)
-    const items = descendants(root, 'raycast-list-item')
+    const items = waiting ? [] : descendants(root, 'raycast-list-item')
     selected = Math.min(selected, Math.max(0, items.length - 1))
     const itemActions = new Set(items.flatMap(item => descendants(item, 'raycast-action')))
-    panelActions.replaceChildren()
-    for (const action of descendants(root, 'raycast-action')) {
-      if (itemActions.has(action)) continue
-      const button = document.createElement('button'); button.type = 'button'; button.className = buttonClass
-      button.textContent = String(action.props.title ?? '') + (action.props.unavailable ? (zh ? '（不可用）' : ' (Unavailable)') : '')
-      button.disabled = !action.props.actionEventId || action.props.unavailable === true
-      button.addEventListener('click', () => invoke(action)); panelActions.append(button)
-    }
-    panelActions.hidden = panelActions.children.length === 0
-    items.forEach((node, index) => {
-      const item = document.createElement('li'); item.className = 'px-3 py-2 rounded-md focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)] [overflow-wrap:anywhere]'
-      item.tabIndex = 0
-      const titleRow = document.createElement('p'); titleRow.className = 'm-0 truncate'
-      titleRow.textContent = (node.props.selected === true ? '✓ ' : '') + String(node.props.title ?? ''); item.append(titleRow)
-      if (typeof node.props.subtitle === 'string' && node.props.subtitle.length > 0) { const subtitle = document.createElement('p'); subtitle.className = 'm-0 truncate text-xs'; subtitle.textContent = node.props.subtitle; item.append(subtitle) }
-      const actions = descendants(node, 'raycast-action')
-      const controls = document.createElement('div'); controls.className = 'flex flex-wrap items-start gap-2 py-2'
-      const primary = document.createElement('button'); primary.type = 'button'; primary.className = buttonClass; primary.textContent = String(actions[0]?.props.title ?? ''); primary.disabled = !actions[0]?.props.actionEventId; primary.addEventListener('click', () => invoke(actions[0]))
+    const rootActions = descendants(root, 'raycast-action').filter(action => !itemActions.has(action))
+    panelActions.replaceChildren(); setHidden(panelActions, true)
+    const createActionOwner = (actions: TrustedRaycastViewNode[], item: HTMLElement): ActionOwner => {
+      const buttons: HTMLButtonElement[] = []
       const menu = document.createElement('details'); menu.className = 'relative'
-      const summary = document.createElement('summary'); summary.className = 'cursor-pointer text-xs focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; summary.textContent = zh ? '操作' : 'Actions'; menu.append(summary)
-      const panel = document.createElement('div'); panel.className = 'flex flex-col items-start gap-1 py-2'; menu.append(panel)
+      const summary = document.createElement('summary'); summary.className = 'sr-only'; summary.textContent = zh ? '操作' : 'Actions'; menu.append(summary)
+      const panel = document.createElement('div'); panel.className = 'fixed bottom-16 right-4 z-50 flex w-72 flex-col gap-1 rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,Canvas)] p-1.5 shadow-xl'
+      const panelTitle = document.createElement('p'); panelTitle.className = 'm-0 px-3 py-1 text-xs font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; panelTitle.textContent = 'Google Translate'; panel.append(panelTitle); menu.append(panel)
+      const owner: ActionOwner = { item, actions, buttons, menu }
       for (const action of actions) {
-        const button = document.createElement('button'); button.type = 'button'; button.className = buttonClass
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'flex min-h-9 w-full items-center rounded-lg border-0 bg-transparent px-3 text-left text-sm text-[var(--dsw-alias-label-primary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
         button.textContent = String(action.props.title ?? '') + (action.props.unavailable ? (zh ? '（不可用）' : ' (Unavailable)') : '')
         button.disabled = !action.props.actionEventId || action.props.unavailable === true
-        button.addEventListener('click', () => { menu.open = false; summary.focus(); invoke(action) }); panel.append(button)
+        button.addEventListener('click', () => { menu.open = false; owner.item.focus(); invoke(action) }); buttons.push(button); panel.append(button)
       }
-      controls.append(primary, menu); item.append(controls)
+      item.append(menu); return owner
+    }
+    items.forEach((node, index) => {
+      const item = document.createElement('li'); item.className = 'rounded-lg px-3 py-2 [overflow-wrap:anywhere] data-[selected=true]:bg-[var(--dsw-alias-bg-layer-2,Canvas)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+      item.tabIndex = 0; item.setAttribute('data-selected', String(index === selected))
+      const titleLine = document.createElement('div'); titleLine.className = 'flex min-w-0 items-center justify-between gap-3'
+      const titleRow = document.createElement('p'); titleRow.className = 'm-0 min-w-0 flex-1 truncate'; titleRow.textContent = String(node.props.title ?? ''); titleLine.append(titleRow)
+      try {
+        const accessories: unknown = typeof node.props.accessories === 'string' && node.props.accessories.length <= 4096 ? JSON.parse(node.props.accessories) : []
+        const accessory = Array.isArray(accessories) ? accessories[0] : undefined
+        if (accessory && typeof accessory === 'object' && typeof accessory.text === 'string' && accessory.text.length <= 256) { const text = document.createElement('span'); text.className = 'shrink-0 truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'; text.textContent = accessory.text; if (typeof accessory.tooltip === 'string' && accessory.tooltip.length <= 512) text.title = accessory.tooltip; titleLine.append(text) }
+      } catch { /* malformed accessories stay inert */ }
+      item.append(titleLine)
+      if (typeof node.props.subtitle === 'string' && node.props.subtitle.length > 0) { const subtitle = document.createElement('p'); subtitle.className = 'm-0 truncate text-xs'; subtitle.textContent = node.props.subtitle; item.append(subtitle) }
+      const ownActions = descendants(node, 'raycast-action')
+      const owner = createActionOwner(ownActions, item)
       let detail: HTMLElement | undefined
       if (showingDetail) {
         detail = document.createElement('pre'); detail.hidden = index !== selected; detail.className = 'm-0 whitespace-pre-wrap font-sans [overflow-wrap:anywhere]'; detail.setAttribute('aria-label', zh ? '全文' : 'Full Text')
         detail.textContent = descendants(node, 'raycast-detail').map(detail => String(detail.props.markdown ?? '')).join('\n'); item.append(detail)
       }
-      item.addEventListener('focusin', () => { selected = index; for (const row of rows) if (row.detail) row.detail.hidden = row.item !== item })
-      rows.push({ item, actions, menu, detail }); results.append(item)
+      item.addEventListener('focusin', () => { selected = index; syncPrimaryFooter(); for (const row of rows) { row.item.setAttribute('data-selected', String(row.item === item)); if (row.detail) row.detail.hidden = row.item !== item } })
+      rows.push({ ...owner, detail }); results.append(item)
     })
+    if (items.length === 0) {
+      const empty = document.createElement('li'); empty.className = 'flex min-h-44 flex-col items-center justify-center gap-2 text-center text-[var(--dsw-alias-label-secondary,CanvasText)]'; empty.tabIndex = -1
+      const emptyIcon = icon(emptyProjection?.props.icon === 'Hourglass' ? Hourglass : SearchX)
+      const emptyText = document.createElement('p'); emptyText.className = 'm-0 text-sm font-medium'; emptyText.textContent = emptyTitle || (zh ? '无结果' : 'No Results'); empty.append(emptyIcon, emptyText); results.append(empty)
+      if (rootActions.length > 0) rootActionOwner = createActionOwner(rootActions, empty)
+    }
+    primaryFooter = document.createElement('button'); primaryFooter.type = 'button'; primaryFooter.className = 'inline-flex min-h-9 items-center rounded-lg border-0 bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-3 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+    primaryFooterLabel = document.createElement('span'); const enter = document.createElement('kbd'); enter.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; enter.textContent = '↵'; primaryFooter.append(primaryFooterLabel, enter); syncPrimaryFooter(); primaryFooter.addEventListener('click', () => invoke(rows[selected]?.actions[0]))
+    const commandActions = document.createElement('button'); commandActions.type = 'button'; commandActions.className = 'inline-flex min-h-9 items-center rounded-lg border-0 bg-transparent px-3 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] hover:bg-[var(--dsw-alias-bg-layer-2,Canvas)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; commandActions.textContent = zh ? '操作' : 'Actions'
+    const shortcut = document.createElement('kbd'); shortcut.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; shortcut.textContent = '⌘ K'; commandActions.append(shortcut)
+    commandActions.disabled = rows[selected] === undefined && rootActionOwner === undefined
+    if (rootActionOwner) rootActionOwner.item = commandActions
+    commandActions.addEventListener('click', event => { event.stopPropagation(); const owner = rows[selected] ?? rootActionOwner; if (!owner) return; owner.menu.open = !owner.menu.open; if (owner.menu.open) owner.buttons.find(button => !button.disabled)?.focus(); else commandActions.focus() })
+    footerActions.append(primaryFooter, commandActions)
   }
   const renderForm = (form: TrustedRaycastViewNode): void => {
-    formArea.replaceChildren()
-    results.replaceChildren(); results.hidden = true
-    panelActions.hidden = true
-    formArea.hidden = false
+    formArea.replaceChildren(); footerActions.replaceChildren()
+    firstFormControl = undefined
+    formArea.className = preferenceSetup ? 'mx-auto flex w-full max-w-[38rem] flex-col gap-2 pb-3' : 'flex flex-col items-start gap-3 py-2'
+    results.replaceChildren(); setHidden(results, true)
+    setHidden(panelActions, true)
+    setHidden(formArea, false)
     for (const child of form.children) {
       if (typeof child === 'string') continue
       if (child.type === 'raycast-form-dropdown') {
-        const field = document.createElement('label'); field.className = 'flex flex-col gap-2 text-xs'; field.textContent = String(child.props.title ?? '')
-        const select = document.createElement('select'); select.className = 'box-border w-full min-w-0 rounded-md border border-[var(--dsw-alias-border-l2,CanvasText)] bg-transparent px-3 py-2 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+        const field = document.createElement('label'); field.className = preferenceSetup ? 'grid w-full grid-cols-[11rem_minmax(0,1fr)] items-center gap-4 whitespace-nowrap text-right text-sm font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'flex flex-col gap-2 text-xs'; field.textContent = String(child.props.title ?? '')
+        const select = document.createElement('select'); select.className = preferenceSetup ? 'box-border h-10 w-full min-w-0 rounded-xl border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-1,Canvas)] px-4 text-left text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] shadow-sm focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]' : 'box-border w-full min-w-0 rounded-md border border-[var(--dsw-alias-border-l2,CanvasText)] bg-transparent px-3 py-2 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
         select.setAttribute('aria-label', String(child.props.title ?? ''))
+        firstFormControl ??= select
         for (const option of child.children) {
           if (typeof option === 'string') continue
           const node = document.createElement('option'); node.value = String(option.props.value ?? ''); node.textContent = String(option.props.title ?? ''); select.append(node)
@@ -197,7 +269,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         field.append(select); formArea.append(field)
       } else if (child.type === 'raycast-text-field') {
         const field = document.createElement('label'); field.className = 'flex flex-col gap-2 text-xs'; field.textContent = String(child.props.title ?? '')
-        const fieldInput = document.createElement('input'); fieldInput.type = 'text'; fieldInput.className = 'box-border w-full min-w-0 rounded-md border border-[var(--dsw-alias-border-l2,CanvasText)] bg-transparent px-3 py-2 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+        const fieldInput = document.createElement('input'); fieldInput.type = 'text'; firstFormControl ??= fieldInput; fieldInput.className = 'box-border w-full min-w-0 rounded-md border border-[var(--dsw-alias-border-l2,CanvasText)] bg-transparent px-3 py-2 text-sm text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
         fieldInput.value = String(child.props.value ?? '')
         fieldInput.addEventListener('change', () => {
           const eventId = child.props.fieldEventId
@@ -209,10 +281,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const actions = descendants(form, 'raycast-action')
     submitAction = actions.find(action => action.props.title === 'Add Language Set') ?? actions.find(action => Boolean(action.props.actionEventId))
     for (const action of actions) {
-      const button = document.createElement('button'); button.type = 'button'; button.className = buttonClass
+      const button = document.createElement('button'); button.type = 'button'; button.className = preferenceSetup ? 'launcher-secondary-button min-h-10 rounded-xl bg-black/20 px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]' : buttonClass
       button.textContent = String(action.props.title ?? '')
       button.disabled = !action.props.actionEventId
-      button.addEventListener('click', () => invoke(action)); formArea.append(button)
+      if (preferenceSetup && action.props.title === 'Continue') { const shortcut = document.createElement('kbd'); shortcut.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; shortcut.textContent = '⌘ ↵'; button.append(shortcut) }
+      button.addEventListener('click', () => invoke(action)); (preferenceSetup ? footerActions : formArea).append(button)
     }
   }
   element.addEventListener('keydown', event => {
@@ -220,18 +293,24 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (event.isComposing || event.keyCode === 229) { event.stopPropagation(); return }
     const depth = typeof current?.root?.props.navigationDepth === 'number' ? current.root.props.navigationDepth : 0
     const row = rows[selected]
-    if (event.key === 'Escape' && row?.menu.open) { event.preventDefault(); event.stopPropagation(); row.menu.open = false; row.menu.querySelector('summary')?.focus(); return }
+    const actionOwner = row ?? rootActionOwner
+    if (event.key === 'Escape' && actionOwner?.menu.open) { event.preventDefault(); event.stopPropagation(); actionOwner.menu.open = false; actionOwner.item.focus(); return }
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && actionOwner?.menu.open) {
+      event.preventDefault(); const enabled = actionOwner.buttons.filter(button => !button.disabled); if (enabled.length === 0) return
+      const currentButton = enabled.indexOf(document.activeElement as HTMLButtonElement); const offset = event.key === 'ArrowDown' ? 1 : enabled.length - 1; enabled[(Math.max(0, currentButton) + offset) % enabled.length]?.focus(); return
+    }
     if (event.key === 'Escape' && depth > 0) { event.preventDefault(); event.stopPropagation(); popNavigation(); return }
     if (event.key === 'Escape' && current?.root && descendants(current.root, 'raycast-list').some(list => list.props.isShowingDetail === true)) {
       if (invoke(row?.actions.find(action => action.props.title === 'Toggle Full Text'))) { event.preventDefault(); event.stopPropagation() }
       return
     }
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && !event.metaKey && !event.ctrlKey && !event.altKey && rows.length) {
-      event.preventDefault(); selected = (selected + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length; rows[selected]!.item.focus(); return
+      event.preventDefault(); selected = (selected + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length; syncPrimaryFooter(); rows[selected]!.item.focus(); return
     }
+    if (preferenceSetup && event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) { event.preventDefault(); invoke(submitAction); return }
     if (event.key === 'Enter' && (event.target === input || event.target === row?.item) && !event.altKey && !event.shiftKey) { event.preventDefault(); invoke(row?.actions[event.metaKey || event.ctrlKey ? 1 : 0]); return }
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && row) { event.preventDefault(); row.menu.open = !row.menu.open; row.menu.querySelector('summary')?.focus(); return }
-    for (const action of row?.actions ?? []) {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && actionOwner) { event.preventDefault(); actionOwner.menu.open = !actionOwner.menu.open; if (actionOwner.menu.open) actionOwner.buttons.find(button => !button.disabled)?.focus(); else actionOwner.item.focus(); return }
+    for (const action of actionOwner?.actions ?? []) {
       if (typeof action.props.shortcut !== 'string' || !action.props.actionEventId) continue
       let raw: { macOS?: { key?: unknown; modifiers?: unknown }; key?: unknown; modifiers?: unknown } | null
       try { raw = JSON.parse(action.props.shortcut) } catch { continue }
@@ -246,7 +325,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     }
   })
   element.addEventListener('click', event => {
-    for (const row of rows) if (!row.menu.contains(event.target as globalThis.Node)) row.menu.open = false
+    for (const owner of [...rows, ...(rootActionOwner ? [rootActionOwner] : [])]) if (!owner.menu.contains(event.target as globalThis.Node)) owner.menu.open = false
   })
   return {
     element,
@@ -258,7 +337,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       if (message.type === 'outcome') {
         if (actionPending !== message.eventId) return
         actionPending = undefined
-        if (message.succeeded) { error.hidden = true; actionFeedback = zh ? '操作已完成' : 'Action Completed'; if (toastText === '') status.textContent = actionFeedback }
+        if (preferenceAction === message.eventId) { preferenceAction = undefined; actionFeedback = ''; status.textContent = ''; if (message.succeeded) setHidden(error, true); else fail(userActionMessage(message.message ?? 'Translate action failed')); return }
+        if (message.succeeded) { setHidden(error, true); actionFeedback = zh ? '操作已完成' : 'Action Completed'; if (toastText === '') status.textContent = actionFeedback }
         else { actionFeedback = ''; status.textContent = ''; fail(userActionMessage(message.message ?? 'Translate action failed')) }
         return
       }
@@ -272,7 +352,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       if (message.root) render(message.root)
       if (restoreRow) rows[selected]?.item.focus()
       sendLatest()
-      if (message.type === 'ready') queueMicrotask(() => { if (!searchRow.hidden) input.focus() })
+      if (message.type === 'ready') queueMicrotask(() => { if (message.root?.props.preferenceSetup === true) firstFormControl?.focus(); else if (!searchRow.hidden) input.focus() })
     },
   }
 }

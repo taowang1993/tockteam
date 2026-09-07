@@ -20,7 +20,7 @@ export const List = Object.assign(list, {
   EmptyView: component('raycast-empty'),
   Dropdown: Object.assign((props: Record<string, unknown>) => element('raycast-dropdown', { value: String(props.value ?? ''), fieldEventId: `dropdown-${++handleSequence}`, ...(typeof props.onChange === 'function' ? { onChange: props.onChange as (value: string) => void } : {}) }, React.Children.toArray(props.children as React.ReactNode)), { Item: component('raycast-dropdown-item') }),
 })
-type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste'; text?: string; url?: string }
+type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
 type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void }
 let compatibility: Compatibility
 export let queryEpoch = 0
@@ -92,7 +92,7 @@ export const Action = Object.assign(action, {
       const collected = formId !== null ? formValues.get(formId) : undefined
       const values: Record<string, unknown> = {}
       if (collected) for (const [key, value] of collected) values[key] = value
-      if (typeof props.onSubmit === 'function') props.onSubmit(values)
+      if (typeof props.onSubmit === 'function') return props.onSubmit(values)
     } })
   },
 })
@@ -105,7 +105,11 @@ export const Clipboard = { copy: async (text: string) => compatibility.native({ 
 let preferences: Record<string, unknown> | undefined
 export function getPreferenceValues<T>(): T {
   preferences ??= (() => { try { const parsed: unknown = JSON.parse(process.env.TRUSTED_RAYCAST_PREFERENCES ?? '{}'); return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {} } catch { return {} } })()
-  return { langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '', ...preferences } as T
+  return { langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '', ...preferences } as T
+}
+export async function savePreferenceValues(next: Readonly<Record<string, boolean | string>>): Promise<void> {
+  await compatibility.native({ kind: 'savePreferences', preferences: next })
+  preferences = { ...next }
 }
 export async function getSelectedText(): Promise<string> {
   try { return await compatibility.selection() } catch (error) {

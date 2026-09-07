@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { spawn, execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastNativeDeps } from '../src/trusted-raycast-native.ts'
@@ -22,6 +22,8 @@ test('native request admission accepts bounded Paste and selected text and rejec
   assert.equal(valid({ ...base, kind: 'paste', revision: 2, eventId: 'a', text: 'hello' }), true)
   assert.equal(valid({ ...base, kind: 'paste', revision: 2, eventId: 'a', text: 'x'.repeat(131073) }), false)
   assert.equal(valid({ ...base, kind: 'paste', revision: 2, eventId: 'a' }), false)
+  assert.equal(valid({ ...base, kind: 'savePreferences', revision: 2, eventId: 'a', preferences: { langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' } }), true)
+  assert.equal(valid({ ...base, kind: 'savePreferences', revision: 2, eventId: 'a', preferences: { lang1: '<script>' } }), false)
   assert.equal(valid({ ...base, kind: 'selectedText', text: 'leak' }), false)
   assert.ok(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', requestId: 'n', succeeded: true, message: '', result: 'selected fixture' }))
   assert.ok(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', requestId: 'n', succeeded: false, message: 'denied' }))
@@ -178,6 +180,37 @@ const projections = (messages: any[]) => {
   const fields = (root: any): any[] => { const visit = (node: any): any[] => node.type === 'raycast-form-dropdown' ? [node] : node.children.flatMap((child: any) => typeof child === 'string' ? [] : visit(child)); return visit(root) }
   return { rootMessages, latestRoot, waitRoot, settle, dropdown, action, fields }
 }
+
+test('bundled artifact: first command shows required preferences, saves them in main, then mounts unchanged Translate', { timeout: 30000 }, async () => {
+  // @ts-expect-error JavaScript helper owns the reviewed artifact build.
+  const { buildTrustedRaycast } = await import('../scripts/trusted-raycast-build.mjs')
+  const work = mkdtempSync(join(tmpdir(), 'raycast-preferences-setup-'))
+  const artifact = join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
+  const messages: any[] = []
+  const saved: unknown[] = []
+  const manager = new TrustedRaycastManager({
+    runtimeDir: join(work, 'trusted-raycast'),
+    nodePath: process.execPath,
+    onMessage: (_owner, message) => messages.push(message),
+    preferencesConfigured: () => false,
+    savePreferences: preferences => { saved.push(preferences) },
+    readSelectedText: async () => ({ unavailable: 'No selected text' }),
+  })
+  try {
+    await buildTrustedRaycast(work, artifact)
+    await manager.start({ webContentsId: 1 }, { sessionId: 'setup', generation: '1', command: 'translate', preferences: {} })
+    const view = projections(messages)
+    const setup = await view.waitRoot(root => root.props.preferenceSetup === true)
+    const fields = view.fields(setup.root)
+    assert.deepEqual(fields.map(field => field.props.title), ['Translate from', 'Primary Language', 'Secondary Language'])
+    assert.equal(fields.every(field => field.children.length >= 249), true, 'the reviewed manifest supplies the complete language menus')
+    manager.send({ webContentsId: 1 }, { sessionId: 'setup', generation: '1', revision: setup.revision, eventId: fields[2].props.fieldEventId, kind: 'fieldChanged', value: 'zh-CN' })
+    const submit = view.action(setup.root, 'Continue')
+    manager.send({ webContentsId: 1 }, { sessionId: 'setup', generation: '1', revision: setup.revision, eventId: submit.props.actionEventId, kind: 'action' })
+    await view.waitRoot(root => root.props.preferenceSetup === false)
+    assert.deepEqual(saved, [{ langFrom: 'auto', lang1: 'en', lang2: 'zh-CN', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }])
+  } finally { await manager.close(); rmSync(work, { recursive: true, force: true }) }
+})
 
 test('configured artifact: language sets, nested AddLanguageForm, and restart persistence', configured, async () => {
   // @ts-expect-error JavaScript helper owns the configured artifact build.

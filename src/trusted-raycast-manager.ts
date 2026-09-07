@@ -19,6 +19,8 @@ export type TrustedRaycastManagerOptions = Readonly<{
   openGoogleTranslate?: (url: string) => Promise<void>
   readSelectedText?: () => Promise<Readonly<{ text?: string; unavailable?: string }>>
   pasteText?: (text: string) => void | Promise<void>
+  preferencesConfigured?: () => boolean
+  savePreferences?: (preferences: Readonly<Record<string, boolean | string>>) => void | Promise<void>
   stateFile?: string
 }>
 type Session = { revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
@@ -57,7 +59,7 @@ export class TrustedRaycastManager {
       if (this.options.stateFile !== undefined) mkdirSync(dirname(this.options.stateFile), { recursive: true })
       const child = spawn(this.options.nodePath, ['--import', join(workspace, 'resolution.mjs'), join(workspace, 'child.mjs')], {
         cwd: workspace, detached: true,
-        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? TRUSTED_RAYCAST_PREFERENCE_DEFAULTS : input.preferences), ...(this.options.stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: this.options.stateFile }) },
+        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? TRUSTED_RAYCAST_PREFERENCE_DEFAULTS : input.preferences), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: this.options.preferencesConfigured?.() === false ? '0' : '1', ...(this.options.stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: this.options.stateFile }) },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
       return { child, workspace }
@@ -255,9 +257,12 @@ export class TrustedRaycastManager {
         } else if (request.kind === 'paste') {
           if (!this.options.pasteText) throw new Error('Paste is unavailable')
           await this.options.pasteText(request.text)
-        } else {
+        } else if (request.kind === 'openGoogleTranslate') {
           if (!this.options.openGoogleTranslate) throw new Error('Browser opening is unavailable')
           await this.options.openGoogleTranslate(request.url)
+        } else {
+          if (!this.options.savePreferences) throw new Error('Translate preference storage is unavailable')
+          await this.options.savePreferences(request.preferences)
         }
       }
       succeeded = true
@@ -275,7 +280,9 @@ export class TrustedRaycastManager {
     session.reject(new Error('Translate session closed'))
     const operation = (async () => {
       try {
-        this.options.onMessage(session.owner, { type: 'error', sessionId: session.input.sessionId, generation: session.input.generation, revision: session.revision + 1, message: `Translate session closed: ${reason}`.slice(0, 128) })
+        if (!['activation-revoked', 'capability-disabled', 'capability-removed', 'capability-recovery', 'capability-rotation', 'owner-closed', 'shutdown'].includes(reason)) {
+          this.options.onMessage(session.owner, { type: 'error', sessionId: session.input.sessionId, generation: session.input.generation, revision: session.revision + 1, message: 'Translate closed unexpectedly. Please reopen it.' })
+        }
       } finally {
         await stopOwnedChild(session.child, 250, true)
         session.child.stdout.removeAllListeners()

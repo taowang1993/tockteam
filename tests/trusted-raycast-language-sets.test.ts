@@ -20,6 +20,7 @@ test('bounded private proof browser denies malformed navigation destinations', (
 })
 
 test('translate preferences admit only the exact reviewed key set with bounded values', () => {
+  assert.deepEqual(TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, { langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }, 'defaults match the unchanged extension manifest')
   assert.equal(isTrustedRaycastPreferences(TRUSTED_RAYCAST_PREFERENCE_DEFAULTS), true)
   assert.equal(isTrustedRaycastPreferences({ ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, lang1: 'en', autoInput: true, defaultAction: 'paste', proxy: 'http://127.0.0.1:8080' }), true)
   assert.equal(isTrustedRaycastPreferences({}), false)
