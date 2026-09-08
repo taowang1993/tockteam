@@ -40,6 +40,7 @@ export {
 } from './windows-portable-archive.mjs'
 import { assertOwnedProcessGone } from './process-cleanup.mjs'
 import { admitTrustedRaycastArtifact } from '../src/trusted-raycast-artifact-admission.ts'
+import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
 
 const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -53,7 +54,7 @@ const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
 export function assertTrustedRaycastInstalledSmokeArtifact(path) {
   const candidate = typeof path === 'string' && path.trim() !== '' ? path.trim() : join(root, 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
   assert.ok(isAbsolute(candidate), 'TRUSTED_RAYCAST_ARTIFACT_TAR must point to the absolute reviewed artifact')
-  admitTrustedRaycastArtifact(candidate)
+  admitTrustedRaycastArtifact(trustedRaycastDescriptors['google-translate'], candidate)
   return candidate
 }
 

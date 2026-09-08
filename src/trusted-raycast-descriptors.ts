@@ -7,7 +7,11 @@ export type TrustedRaycastDescriptor = Readonly<{
   artifactSha256: string
   command: TrustedRaycastCommand
   extensionId: TrustedRaycastExtensionId
+  previousArtifactSha256s: readonly string[]
+  react: '19.0.0'
+  reconciler: '0.31.0'
   sourceEntry: string
+  sourceRevision: string
   vendorFile: string
 }>
 
@@ -17,7 +21,11 @@ export const trustedRaycastDescriptors: Readonly<Record<TrustedRaycastExtensionI
     artifactSha256: '7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac',
     command: 'translate',
     extensionId: 'google-translate',
+    previousArtifactSha256s: Object.freeze([]),
+    react: '19.0.0',
+    reconciler: '0.31.0',
     sourceEntry: 'src/translate.tsx',
+    sourceRevision: '1063bfaa34be81528c4e397c91b57c42ec370d79',
     vendorFile: 'google-translate.tar',
   }),
   'kaomoji-search': Object.freeze({
@@ -25,7 +33,11 @@ export const trustedRaycastDescriptors: Readonly<Record<TrustedRaycastExtensionI
     artifactSha256: '9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f',
     command: 'index',
     extensionId: 'kaomoji-search',
+    previousArtifactSha256s: Object.freeze([]),
+    react: '19.0.0',
+    reconciler: '0.31.0',
     sourceEntry: 'src/index.tsx',
+    sourceRevision: 'b7845053e3f39dadcf984217be5249fb51ab2ce8',
     vendorFile: 'kaomoji-search.tar',
   }),
 })

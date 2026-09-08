@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { TrustedRaycastTrustStore } from '../src/trusted-raycast-trust.ts'
 import { attestTrustedRaycastBuildIdentity } from '../src/trusted-raycast-artifact-admission.ts'
+import { trustedRaycastDescriptors, type TrustedRaycastDescriptor } from '../src/trusted-raycast-descriptors.ts'
 
 import type { TrustedRaycastTrustState } from '../src/trusted-raycast-contract.ts'
 
@@ -14,6 +15,7 @@ const ARTIFACT_V1 = 'reviewed-translate-artifact-v1'
 const ARTIFACT_V2 = 'reviewed-translate-artifact-v2'
 const DIGEST_V1 = digestOf(ARTIFACT_V1)
 const DIGEST_V2 = digestOf(ARTIFACT_V2)
+const descriptorFor = (artifactSha256: string, previousArtifactSha256s: readonly string[] = []): TrustedRaycastDescriptor => Object.freeze({ ...trustedRaycastDescriptors['google-translate'], artifactSha256, previousArtifactSha256s: Object.freeze([...previousArtifactSha256s]) })
 
 type Fixture = Readonly<{
   root: string
@@ -34,11 +36,11 @@ function makeFixture(expectedSha256 = DIGEST_V1, preview: ((dir: string) => Prom
   writeFileSync(join(candidate, 'artifact.tar'), ARTIFACT_V1)
   writeFileSync(join(candidate, 'child.mjs'), 'child-v1')
   writeFileSync(join(candidate, 'resolution.mjs'), 'resolution-v1')
-  const identity = { artifactSha256: expectedSha256, childSha256: digestOf('child-v1'), command: 'translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v1') }
+  const identity = { artifactSha256: expectedSha256, childSha256: digestOf('child-v1'), command: 'translate' as const, extensionId: 'google-translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v1') }
   writeFileSync(join(candidate, 'build.json'), JSON.stringify({ ...identity, metadataSha256: attestTrustedRaycastBuildIdentity(identity) }))
   return Object.freeze({
     root, candidate, install, state, userData,
-    store: () => new TrustedRaycastTrustStore({ installRoot: install, candidateDir: candidate, stateFile: state, expectedSha256, ...(preview === undefined ? {} : { preview }) }),
+    store: () => new TrustedRaycastTrustStore({ descriptor: descriptorFor(expectedSha256), installRoot: install, candidateDir: candidate, stateFile: state, ...(preview === undefined ? {} : { preview }) }),
   })
 }
 
@@ -81,7 +83,7 @@ test('bundled reviewed Translate installs enabled on first run and preserves lat
     assert.equal(previews, 1, 'a healthy existing install is not previewed again')
 
     writeFileSync(join(fixture.candidate, 'child.mjs'), 'child-v1-host-fix')
-    const refreshedIdentity = { artifactSha256: DIGEST_V1, childSha256: digestOf('child-v1-host-fix'), command: 'translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v1') }
+    const refreshedIdentity = { artifactSha256: DIGEST_V1, childSha256: digestOf('child-v1-host-fix'), command: 'translate' as const, extensionId: 'google-translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v1') }
     writeFileSync(join(fixture.candidate, 'build.json'), JSON.stringify({ ...refreshedIdentity, metadataSha256: attestTrustedRaycastBuildIdentity(refreshedIdentity) }))
     const refreshed = await fixture.store().installBundledDefault()
     assert.equal(readFileSync(join(fixture.install, 'current', 'child.mjs'), 'utf8'), 'child-v1-host-fix', 'a shipped host-runner fix replaces stale derived bytes for the same reviewed artifact')
@@ -156,7 +158,7 @@ test('preview failure blocks apply and leaves the candidate unapproved', async (
     assert.equal(fixture.store().status().previewed, false)
     assert.throws(() => fixture.store().apply(), /preview/)
     // A later healthy preview admits the same pinned bytes.
-    const recovering = new TrustedRaycastTrustStore({ installRoot: fixture.install, candidateDir: fixture.candidate, stateFile: fixture.state, expectedSha256: DIGEST_V1, preview: async () => '' })
+    const recovering = new TrustedRaycastTrustStore({ descriptor: descriptorFor(DIGEST_V1), installRoot: fixture.install, candidateDir: fixture.candidate, stateFile: fixture.state, preview: async () => '' })
     await recovering.preview()
     assert.equal(recovering.apply().installed, true)
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
@@ -170,9 +172,9 @@ test('current and previous are retained across an explicit reviewed upgrade; onl
     writeFileSync(join(fixture.candidate, 'artifact.tar'), ARTIFACT_V2)
     writeFileSync(join(fixture.candidate, 'child.mjs'), 'child-v2')
     writeFileSync(join(fixture.candidate, 'resolution.mjs'), 'resolution-v2')
-    const identityV2 = { artifactSha256: DIGEST_V2, childSha256: digestOf('child-v2'), command: 'translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v2') }
+    const identityV2 = { artifactSha256: DIGEST_V2, childSha256: digestOf('child-v2'), command: 'translate' as const, extensionId: 'google-translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v2') }
     writeFileSync(join(fixture.candidate, 'build.json'), JSON.stringify({ ...identityV2, metadataSha256: attestTrustedRaycastBuildIdentity(identityV2) }))
-    const upgraded = new TrustedRaycastTrustStore({ installRoot: fixture.install, candidateDir: fixture.candidate, stateFile: fixture.state, expectedSha256: DIGEST_V2 })
+    const upgraded = new TrustedRaycastTrustStore({ descriptor: descriptorFor(DIGEST_V2, [DIGEST_V1]), installRoot: fixture.install, candidateDir: fixture.candidate, stateFile: fixture.state })
     // A newer candidate never replaces the still-approved current install.
     const before = upgraded.status()
     assert.equal(before.installed, true)
@@ -298,7 +300,7 @@ test('trust state persists across restarts and install/remove never touches user
     await install(fixture)
 
     // A new process instance sees the same persisted state.
-    const restarted = new TrustedRaycastTrustStore({ installRoot: fixture.install, candidateDir: fixture.candidate, stateFile: fixture.state, expectedSha256: DIGEST_V1 })
+    const restarted = new TrustedRaycastTrustStore({ descriptor: descriptorFor(DIGEST_V1), installRoot: fixture.install, candidateDir: fixture.candidate, stateFile: fixture.state })
     const status = restarted.status()
     assert.equal(status.installed, true)
     assert.equal(status.enabled, true)

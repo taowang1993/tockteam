@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { admitTrustedRaycastArtifact, assertTrustedRaycastBuildIdentity } from '../src/trusted-raycast-artifact-admission.ts'
+import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
 
 const PINNED_SHA256 = '7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac'
 
@@ -22,7 +23,7 @@ test('owning package, build, staging and notices admit Desktop capability withou
   const distIdentity = join('dist', 'trusted-raycast', 'build.json')
   if (existsSync(distIdentity)) {
     const metadata = JSON.parse(readFileSync(distIdentity, 'utf8'))
-    assertTrustedRaycastBuildIdentity(metadata)
+    assertTrustedRaycastBuildIdentity(metadata, trustedRaycastDescriptors['google-translate'])
     assert.equal(metadata.artifactSha256, PINNED_SHA256)
     const archive = readFileSync(join('dist', 'trusted-raycast', 'artifact.tar'))
     assert.equal(createHash('sha256').update(archive).digest('hex'), PINNED_SHA256)
@@ -32,7 +33,7 @@ test('owning package, build, staging and notices admit Desktop capability withou
 test('configured archive preserves all 35 source files and notice/dependency inventory', t => {
   const path = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
   if (!path) return t.skip('set TRUSTED_RAYCAST_ARTIFACT_TAR for source hash checks')
-  const bytes = admitTrustedRaycastArtifact(path)
+  const bytes = admitTrustedRaycastArtifact(trustedRaycastDescriptors['google-translate'], path)
   const work = mkdtempSync(join(tmpdir(), 'raycast-source-check-'))
   try {
     execFileSync('/usr/bin/tar', ['xf', '-', '-C', work], { input: bytes, timeout: 15000 })

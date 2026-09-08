@@ -5,7 +5,8 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, isAbsolute, dirname } from 'node:path'
-import { admitTrustedRaycastArtifact, readTrustedRaycastBuildIdentity, readTrustedRaycastDerivedFile, readTrustedRaycastFile, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from './trusted-raycast-artifact-admission.ts'
+import { admitTrustedRaycastArtifact, readTrustedRaycastBuildIdentity, readTrustedRaycastDerivedFile, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
+import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
 import { isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
 
 export type TrustedRaycastOwner = Readonly<{ webContentsId: number }>
@@ -41,12 +42,13 @@ export class TrustedRaycastManager {
     if (process.platform !== 'darwin') return false
     const runtimeDir = this.resolveRuntimeDir()
     if (runtimeDir === undefined) return false
-    try { readTrustedRaycastBuildIdentity(runtimeDir, TRUSTED_RAYCAST_ARTIFACT_SHA256); return true } catch { return false }
+    try { readTrustedRaycastBuildIdentity(runtimeDir, trustedRaycastDescriptors['google-translate']); return true } catch { return false }
   }
   /** Shared admission and workspace staging; main calls this before any child can load. */
   private createWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen): { child: ChildProcessWithoutNullStreams; workspace: string } {
-    const identity = readTrustedRaycastBuildIdentity(runtimeDir, TRUSTED_RAYCAST_ARTIFACT_SHA256)
-    const bytes = admitTrustedRaycastArtifact(join(runtimeDir, 'artifact.tar'), identity.artifactSha256)
+    const descriptor = trustedRaycastDescriptors[input.extensionId]
+    const identity = readTrustedRaycastBuildIdentity(runtimeDir, descriptor)
+    const bytes = admitTrustedRaycastArtifact(descriptor, join(runtimeDir, 'artifact.tar'))
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-trusted-raycast-'))
     try {
       execFileSync('/usr/bin/tar', ['xf', '-', '-C', workspace], { input: bytes, timeout: 15000 })

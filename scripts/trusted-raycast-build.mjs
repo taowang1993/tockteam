@@ -5,12 +5,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
-import { admitTrustedRaycastArtifact, attestTrustedRaycastBuildIdentity, TRUSTED_RAYCAST_ARTIFACT_SHA256 } from '../src/trusted-raycast-artifact-admission.ts'
+import { admitTrustedRaycastArtifact, attestTrustedRaycastBuildIdentity } from '../src/trusted-raycast-artifact-admission.ts'
+import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
 
 /** Build upstream source from the same admitted bytes we ship; never install packages. */
 export async function buildTrustedRaycast(dist, artifact) {
   if (!artifact) return
-  const bytes = admitTrustedRaycastArtifact(artifact)
+  const descriptor = trustedRaycastDescriptors['google-translate']
+  const bytes = admitTrustedRaycastArtifact(descriptor, artifact)
   // ponytail: per-process work dir (parallel test files) plus comment normalization keeps rebuilds byte-identical.
   const work = join(tmpdir(), `tockteam-raycast-build-work-${process.pid}`)
   rmSync(work, { recursive: true, force: true })
@@ -35,7 +37,7 @@ export async function buildTrustedRaycast(dist, artifact) {
     mkdirSync(output, { recursive: true })
     copyFileSync(join(source, 'assets', 'google-translate.png'), join(output, 'google-translate.png'))
     writeFileSync(join(output, 'artifact.tar'), bytes)
-    const identity = { artifactSha256: TRUSTED_RAYCAST_ARTIFACT_SHA256, childSha256: createHash('sha256').update(readFileSync(join(output, 'child.mjs'))).digest('hex'), command: 'translate', react: '19.0.0', reconciler: '0.31.0', resolutionSha256: createHash('sha256').update(readFileSync(join(output, 'resolution.mjs'))).digest('hex') }
+    const identity = { artifactSha256: descriptor.artifactSha256, childSha256: createHash('sha256').update(readFileSync(join(output, 'child.mjs'))).digest('hex'), command: descriptor.command, extensionId: descriptor.extensionId, react: descriptor.react, reconciler: descriptor.reconciler, resolutionSha256: createHash('sha256').update(readFileSync(join(output, 'resolution.mjs'))).digest('hex') }
     writeFileSync(join(output, 'build.json'), JSON.stringify({ ...identity, metadataSha256: attestTrustedRaycastBuildIdentity(identity) }))
   } finally { rmSync(work, { recursive: true, force: true }) }
 }

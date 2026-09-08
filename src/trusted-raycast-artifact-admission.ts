@@ -1,16 +1,18 @@
 import { createHash } from 'node:crypto'
 import { closeSync, fstatSync, openSync, readSync, constants as fsConstants } from 'node:fs'
 import { join } from 'node:path'
-import { TRUSTED_RAYCAST_RUNTIME } from './trusted-raycast-artifact.ts'
+import { trustedRaycastDescriptors, type TrustedRaycastCommand, type TrustedRaycastDescriptor, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 
-export const TRUSTED_RAYCAST_ARTIFACT_SHA256 = '7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac'
+/** Compatibility export for existing Google Translate evidence and callers. */
+export const TRUSTED_RAYCAST_ARTIFACT_SHA256 = trustedRaycastDescriptors['google-translate'].artifactSha256
 const SHA256_PATTERN = /^[a-f0-9]{64}$/
 const MAX_DERIVED_FILE = 16 * 1024 * 1024
 
 export type TrustedRaycastBuildIdentity = Readonly<{
   artifactSha256: string
   childSha256: string
-  command: 'translate'
+  command: TrustedRaycastCommand
+  extensionId: TrustedRaycastExtensionId
   metadataSha256: string
   react: string
   reconciler: string
@@ -36,10 +38,11 @@ export function readTrustedRaycastFile(path: string, maxBytes = MAX_DERIVED_FILE
   } finally { closeSync(file) }
 }
 
-export function admitTrustedRaycastArtifact(path: string, expected = TRUSTED_RAYCAST_ARTIFACT_SHA256): Buffer {
+export function admitTrustedRaycastArtifact(descriptor: TrustedRaycastDescriptor, path: string): Buffer {
+  if (descriptor === undefined || descriptor === null || descriptor.extensionId === undefined) throw new Error('Invalid trusted extension identity')
   const bytes = readTrustedRaycastFile(path)
   const digest = createHash('sha256').update(bytes).digest('hex')
-  if (digest !== expected) throw new Error(`trusted Raycast artifact digest mismatch: ${digest}`)
+  if (digest !== descriptor.artifactSha256) throw new Error(`trusted Raycast artifact digest mismatch: ${digest}`)
   return bytes
 }
 
@@ -47,6 +50,7 @@ const identityPayload = (identity: Omit<TrustedRaycastBuildIdentity, 'metadataSh
   artifactSha256: identity.artifactSha256,
   childSha256: identity.childSha256,
   command: identity.command,
+  extensionId: identity.extensionId,
   react: identity.react,
   reconciler: identity.reconciler,
   resolutionSha256: identity.resolutionSha256,
@@ -57,16 +61,16 @@ export function attestTrustedRaycastBuildIdentity(identity: Omit<TrustedRaycastB
 }
 
 /** Every load path shares this admission: pinned archive, reviewed pairing, and attested derived bytes. */
-export function assertTrustedRaycastBuildIdentity(metadata: unknown, expected = TRUSTED_RAYCAST_ARTIFACT_SHA256): TrustedRaycastBuildIdentity {
-  if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) throw new Error('Translate build identity is missing')
+export function assertTrustedRaycastBuildIdentity(metadata: unknown, descriptor: TrustedRaycastDescriptor): TrustedRaycastBuildIdentity {
+  if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) throw new Error('Trusted extension build identity is missing')
   const record = metadata as Record<string, unknown>
   const keys = Object.keys(record).sort().join(',')
-  if (keys !== 'artifactSha256,childSha256,command,metadataSha256,react,reconciler,resolutionSha256') throw new Error('Translate build identity is incomplete')
-  if (record.artifactSha256 !== expected || record.command !== 'translate' || record.react !== TRUSTED_RAYCAST_RUNTIME.react || record.reconciler !== TRUSTED_RAYCAST_RUNTIME.reconciler) throw new Error('Translate build identity mismatch')
-  for (const key of ['artifactSha256', 'childSha256', 'metadataSha256', 'resolutionSha256'] as const) if (typeof record[key] !== 'string' || !SHA256_PATTERN.test(record[key])) throw new Error('Translate build identity digest is invalid')
+  if (keys !== 'artifactSha256,childSha256,command,extensionId,metadataSha256,react,reconciler,resolutionSha256') throw new Error('Trusted extension build identity is incomplete')
+  if (record.extensionId !== descriptor.extensionId || record.artifactSha256 !== descriptor.artifactSha256 || record.command !== descriptor.command || record.react !== descriptor.react || record.reconciler !== descriptor.reconciler) throw new Error('Trusted extension build identity mismatch')
+  for (const key of ['artifactSha256', 'childSha256', 'metadataSha256', 'resolutionSha256'] as const) if (typeof record[key] !== 'string' || !SHA256_PATTERN.test(record[key])) throw new Error('Trusted extension build identity digest is invalid')
   const identity = record as unknown as TrustedRaycastBuildIdentity
   const { metadataSha256: _metadataSha256, ...payload } = identity
-  if (attestTrustedRaycastBuildIdentity(payload) !== identity.metadataSha256) throw new Error('Translate build metadata attestation mismatch')
+  if (attestTrustedRaycastBuildIdentity(payload) !== identity.metadataSha256) throw new Error('Trusted extension build metadata attestation mismatch')
   return Object.freeze({ ...identity })
 }
 
@@ -78,10 +82,10 @@ export function readTrustedRaycastDerivedFile(path: string, expected: string): B
   return bytes
 }
 
-export function readTrustedRaycastBuildIdentity(runtimeDir: string, expected = TRUSTED_RAYCAST_ARTIFACT_SHA256): TrustedRaycastBuildIdentity {
+export function readTrustedRaycastBuildIdentity(runtimeDir: string, descriptor: TrustedRaycastDescriptor): TrustedRaycastBuildIdentity {
   const metadata = JSON.parse(readTrustedRaycastFile(join(runtimeDir, 'build.json'), 64 * 1024).toString('utf8')) as unknown
-  const identity = assertTrustedRaycastBuildIdentity(metadata, expected)
-  admitTrustedRaycastArtifact(join(runtimeDir, 'artifact.tar'), expected)
+  const identity = assertTrustedRaycastBuildIdentity(metadata, descriptor)
+  admitTrustedRaycastArtifact(descriptor, join(runtimeDir, 'artifact.tar'))
   for (const [name, digest] of [['child.mjs', identity.childSha256], ['resolution.mjs', identity.resolutionSha256]] as const) readTrustedRaycastDerivedFile(join(runtimeDir, name), digest)
   return identity
 }

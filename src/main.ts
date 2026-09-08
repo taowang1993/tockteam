@@ -8,6 +8,7 @@ import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
 import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
 import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER, TRUSTED_RAYCAST_RESULT_ID, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, type TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
+import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
 import { randomBytes } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
@@ -2237,6 +2238,7 @@ function initializeLauncher(): void {
   const selectionFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE === '1'
   const pasteFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE === '1'
   trustedRaycastTrust = new TrustedRaycastTrustStore({
+    descriptor: trustedRaycastDescriptors['google-translate'],
     installRoot: join(app.getPath('userData'), 'launcher', 'trusted-raycast-install'),
     candidateDir: join(currentDir, 'trusted-raycast'),
     stateFile: join(app.getPath('userData'), 'launcher', 'trusted-raycast-trust.json'),
