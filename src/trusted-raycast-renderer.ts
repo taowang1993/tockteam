@@ -36,11 +36,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const title = document.createElement('h2'); title.textContent = 'Google Translate'; title.className = 'm-0 text-sm font-semibold'
   header.append(close, titleIcon, title)
   const hero = document.createElement('div'); hero.className = 'flex flex-col items-center px-6 pb-2 text-center'; hero.hidden = true
-  const logoFrame = document.createElement('div'); logoFrame.className = 'mb-5 flex size-16 items-center justify-center rounded-full bg-[var(--dsw-alias-bg-layer-2,Canvas)]'
+  const logoFrame = document.createElement('div'); logoFrame.className = 'launcher-preference-logo mb-5 flex size-16 items-center justify-center rounded-full'
   const logo = document.createElement('img'); logo.setAttribute('src', './trusted-raycast/google-translate.png'); logo.setAttribute('alt', 'Google Translate'); logo.className = 'size-8'; logoFrame.append(logo)
   const heroTitle = document.createElement('h1'); heroTitle.textContent = 'Google Translate'; heroTitle.className = 'm-0 text-2xl font-semibold tracking-[0.025em] text-[var(--dsw-alias-label-primary,CanvasText)]'
   const about = document.createElement('details'); about.className = 'relative mt-2'
-  const aboutSummary = document.createElement('summary'); aboutSummary.className = 'cursor-pointer list-none rounded-lg bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-2.5 py-0.5 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; aboutSummary.textContent = zh ? '关于此扩展' : 'About This Extension'
+  const aboutSummary = document.createElement('summary'); aboutSummary.className = 'cursor-pointer list-none rounded-lg px-2.5 py-0.5 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; aboutSummary.textContent = zh ? '关于此扩展' : 'About This Extension'
   const aboutInfo = document.createElement('span'); aboutInfo.className = 'ml-1.5'; aboutInfo.textContent = 'ⓘ'; aboutInfo.setAttribute('aria-hidden', 'true'); aboutInfo.setAttribute('data-about-info', ''); aboutSummary.append(aboutInfo)
   const aboutText = document.createElement('p'); aboutText.className = 'absolute left-1/2 z-10 mt-2 w-72 -translate-x-1/2 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,Canvas)] p-3 text-left text-xs leading-5 text-[var(--dsw-alias-label-secondary,CanvasText)] shadow-lg'; aboutText.textContent = zh ? '由 TockTeam 固定并审核的 Google Translate 扩展。' : 'Google Translate is bundled from the exact extension archive reviewed by TockTeam.'
   about.append(aboutSummary, aboutText); hero.append(logoFrame, heroTitle, about)
@@ -324,7 +324,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       button.textContent = String(action.props.title ?? '')
       button.disabled = !action.props.actionEventId
       if (preferenceSetup && action.props.title === 'Continue') {
-        button.className += ' !gap-0.5 !px-2'
+        button.className += ' !gap-1 !px-2'
         const shortcuts = document.createElement('span'); shortcuts.className = 'flex gap-px'; shortcuts.setAttribute('aria-hidden', 'true')
         for (const glyph of ['⌘', '↵']) { const key = document.createElement('kbd'); key.className = 'box-border inline-flex size-5 items-center justify-center rounded-[0.25rem] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-3,Canvas)] text-sm font-normal leading-none text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = glyph; shortcuts.append(key) }
         button.append(shortcuts)

@@ -54,6 +54,8 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(tailwind.match(/@utility launcher-command-menu-item \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? '', /font-size: 0\.875rem/u, 'shared action menus keep the compact 14px type size')
   assert.ok(tailwind.indexOf('@utility launcher-command-error') > tailwind.indexOf('@utility launcher-command-empty'), 'error color must override the shared empty-state color')
   assert.doesNotMatch(tailwind, /#launcher-root \[data-view='preference-setup'\] \{\s*background:/u, 'preference setup must expose the same command-surface material as the first screen')
+  const preferenceSurface = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(preferenceSurface, /--tockteam-preference-control-light:[\s\S]*?4%/u, 'light preference materials share the selector color')
   const preferenceHeader = tailwind.match(/#launcher-root \[data-view='preference-setup'\] > \.launcher-command-header \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceHeader, /height: 4rem/u, 'preference setup keeps Raycast’s 64px top region')
   const footerActions = tailwind.match(/@utility launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
@@ -64,6 +66,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
   const preferenceControls = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-control \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceControls, /height: 2\.125rem/u, 'preference controls keep Raycast’s 34px height')
   assert.match(preferenceControls, /border-radius: 0\.875rem/u, 'preference controls keep Raycast’s radius')
+  assert.match(preferenceControls, /var\(--tockteam-preference-control-light\)/u, 'light selectors consume the shared preference material')
   assert.match(preferenceControls, /21%/u, 'dark preference controls preserve Raycast’s contrast against the token-derived surface')
   assert.match(preferenceControls, /font-size: 0\.875rem/u)
   assert.match(preferenceControls, /padding-inline: 0\.75rem 2rem/u, 'selector text has a readable leading inset and clears the Lucide arrow')
@@ -72,7 +75,11 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(preferenceFocus, /--dsw-alias-border-l3/u, 'keyboard focus remains visibly indicated')
   const preferenceFooterMaterial = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-identity,\n#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceFooterMaterial, /border-color: color-mix\(/u, 'setup identity and actions share one outlined footer treatment')
-  assert.match(preferenceFooterMaterial, /background: light-dark\(/u, 'setup identity and actions match Raycast’s footer material')
+  assert.match(preferenceFooterMaterial, /var\(--tockteam-preference-control-light\)/u, 'light setup identity and actions match the selector material')
+  const preferenceLogoMaterial = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-preference-logo \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(preferenceLogoMaterial, /var\(--tockteam-preference-control-light\)/u, 'the light logo disc matches the controls')
+  const preferenceAboutMaterial = tailwind.match(/#launcher-root \[data-view='preference-setup'\] details > summary \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(preferenceAboutMaterial, /var\(--tockteam-preference-control-light\)/u, 'the light About pill matches the controls')
   const preferenceBack = tailwind.match(/#launcher-root \[data-view='preference-setup'\] > \.launcher-command-header \.launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceBack, /background: transparent/u, 'the preference back button rests directly on the shared surface')
   const preferenceIdentity = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-identity \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''

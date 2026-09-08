@@ -431,6 +431,10 @@
 }
 
 /* Launcher settings are derived from the shared DSH surface projection. */
+#launcher-root [data-view='preference-setup'] {
+  --tockteam-preference-control-light: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 4%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)));
+}
+
 #launcher-root [data-view='preference-setup'] > .launcher-command-header {
   min-height: 4rem;
   height: 4rem;
@@ -453,7 +457,7 @@
   );
   border-radius: 0.875rem;
   background: light-dark(
-    color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 4%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas))),
+    var(--tockteam-preference-control-light),
     color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 21%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
   );
   padding-block: 0.375rem;
@@ -467,9 +471,16 @@
   outline: none;
 }
 
+#launcher-root [data-view='preference-setup'] .launcher-preference-logo {
+  background: light-dark(
+    var(--tockteam-preference-control-light),
+    var(--dsw-alias-bg-layer-2, Canvas)
+  );
+}
+
 #launcher-root [data-view='preference-setup'] details > summary {
   background: light-dark(
-    color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 5%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas))),
+    var(--tockteam-preference-control-light),
     color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 26%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
   );
 }
@@ -487,7 +498,7 @@
 #launcher-root [data-view='preference-setup'] .launcher-command-footer-action {
   border-color: color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
   background: light-dark(
-    var(--dsw-alias-bg-layer-2, Canvas),
+    var(--tockteam-preference-control-light),
     color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 9%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
   );
 }
