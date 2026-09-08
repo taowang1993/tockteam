@@ -1,6 +1,6 @@
 {
   "bead": "tockteam-62k",
-  "sourceCommit": "de48e911f09246ff2fa452cf4aa036cc50df5111",
+  "sourceCommit": "7eb5bb879b25df217158602dc6adb01de1149238",
   "logicalViewport": {
     "width": 750,
     "height": 475
@@ -44,8 +44,8 @@
     ]
   },
   "installedSmoke": {
-    "command": "TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=/tmp/tockteam-62k-installed-review-final.noindex pnpm test:launcher:installed",
-    "sourceCommit": "de48e911f09246ff2fa452cf4aa036cc50df5111",
+    "command": "TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=/tmp/tockteam-62k-parity-followup.noindex pnpm test:launcher:installed",
+    "sourceCommit": "7eb5bb879b25df217158602dc6adb01de1149238",
     "result": "passed",
     "platform": "darwin-arm64",
     "processTreesGone": true,
