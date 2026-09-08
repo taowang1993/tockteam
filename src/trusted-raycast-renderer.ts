@@ -29,7 +29,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (depth <= 0) return
     sendEvent({ kind: 'navigation', eventId: 'language-nav', value: 'language:pop' })
   }
-  const element = document.createElement('section'); element.className = 'launcher-local-tool !gap-0 overflow-hidden text-sm'; element.setAttribute('aria-label', 'Google Translate'); element.setAttribute('aria-busy', 'false'); element.setAttribute('data-view', 'translate')
+  const element = document.createElement('section'); element.className = 'launcher-local-tool !gap-0 overflow-hidden text-sm'; element.setAttribute('aria-label', 'Trusted Extension'); element.setAttribute('aria-busy', 'false'); element.setAttribute('data-view', 'translate')
   const header = document.createElement('header'); header.className = 'launcher-command-header'
   const close = document.createElement('button'); close.type = 'button'; close.className = 'launcher-command-footer-action !size-8 !min-h-8 !px-0'; close.append(icon(ChevronLeft, 'size-5')); close.setAttribute('aria-label', zh ? '返回结果' : 'Back to Results'); close.addEventListener('click', onClose)
   const titleIcon = document.createElement('img'); titleIcon.setAttribute('src', './trusted-raycast/google-translate.png'); titleIcon.setAttribute('alt', ''); titleIcon.className = 'size-6 rounded-md'
@@ -85,6 +85,18 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   let rootActionOwner: ActionOwner | undefined
   let rows: (ActionOwner & { detail: HTMLElement | undefined })[] = []
   const descendants = (node: TrustedRaycastViewNode, type: string): TrustedRaycastViewNode[] => [ ...(node.type === type ? [node] : []), ...node.children.flatMap(child => typeof child === 'string' ? [] : descendants(child, type)) ]
+  const identity = (): { image: string; title: string } => current?.extensionId === 'kaomoji-search'
+    ? { image: './trusted-raycast-kaomoji/kaomoji-search.png', title: 'Kaomoji Search' }
+    : { image: './trusted-raycast/google-translate.png', title: 'Google Translate' }
+  const syncIdentity = (): void => {
+    const value = identity()
+    element.setAttribute('aria-label', value.title); title.textContent = value.title; titleIcon.setAttribute('src', value.image)
+    heroTitle.textContent = value.title; logo.setAttribute('src', value.image); logo.setAttribute('alt', value.title)
+    footerIcon.setAttribute('src', value.image); footerText.textContent = current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '翻译' : 'Translate')
+    aboutText.textContent = current?.extensionId === 'kaomoji-search'
+      ? 'Kaomoji Search is bundled from the exact extension archive reviewed by TockTeam.'
+      : (zh ? '由 TockTeam 固定并审核的 Google Translate 扩展。' : 'Google Translate is bundled from the exact extension archive reviewed by TockTeam.')
+  }
   const syncPrimaryFooter = (): void => {
     if (!primaryFooter || !primaryFooterLabel) return
     const action = rows[selected]?.actions[0]
@@ -185,12 +197,12 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     primaryFooter = undefined; primaryFooterLabel = undefined
     submitAction = undefined
     preferenceSetup = root.props.preferenceSetup === true
-    element.setAttribute('data-view', preferenceSetup ? 'preference-setup' : 'translate')
+    element.setAttribute('data-view', preferenceSetup ? 'preference-setup' : current?.extensionId === 'kaomoji-search' ? 'kaomoji' : 'translate')
     setHidden(hero, !preferenceSetup)
     setHidden(intro, !preferenceSetup)
     setHidden(commandFooter, false)
     footerActions.replaceChildren()
-    const commandSearch = descendants(root, 'raycast-list')[0] !== undefined && 'searchEventId' in root.props
+    const commandSearch = (descendants(root, 'raycast-list')[0] !== undefined || descendants(root, 'raycast-grid')[0] !== undefined) && 'searchEventId' in root.props
     setHidden(title, preferenceSetup || commandSearch)
     setHidden(titleIcon, preferenceSetup || commandSearch)
     setHidden(status, preferenceSetup)
@@ -201,20 +213,26 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     setHidden(back, preferenceSetup || depth <= 0)
     const form = descendants(root, 'raycast-form')[0]
     const list = descendants(root, 'raycast-list')[0]
+    const grid = descendants(root, 'raycast-grid')[0]
+    const collection = list ?? grid
     setHidden(searchRow, form !== undefined || !('searchEventId' in root.props))
     if (form !== undefined) { renderForm(form); return }
     setHidden(formArea, true)
     setHidden(results, false)
     setHidden(panelActions, false)
-    if (list === undefined) { results.replaceChildren(); return }
-    input.placeholder = typeof list.props.searchBarPlaceholder === 'string' ? list.props.searchBarPlaceholder.slice(0, 256) : (zh ? '输入要翻译的文本' : 'Enter text to translate')
+    if (collection === undefined) { results.replaceChildren(); return }
+    input.placeholder = typeof collection.props.searchBarPlaceholder === 'string' ? collection.props.searchBarPlaceholder.slice(0, 256) : current?.extensionId === 'kaomoji-search' ? 'Search by name...' : (zh ? '输入要翻译的文本' : 'Enter text to translate')
     if (!preferenceSetup && preferenceAction !== undefined) status.textContent = ''
     const waiting = root.props.queryCurrent === false
     queryPending = waiting; syncBusy()
     const emptyProjection = descendants(root, 'raycast-empty')[0]
-    const emptyTitle = waiting ? (zh ? '正在翻译…' : 'Translating…') : String(emptyProjection?.props.title ?? '')
+    const emptyTitle = waiting ? (current?.extensionId === 'kaomoji-search' ? 'Searching…' : (zh ? '正在翻译…' : 'Translating…')) : String(emptyProjection?.props.title ?? '')
     const showingDetail = descendants(root, 'raycast-list').some(list => list.props.isShowingDetail === true)
-    const items = waiting ? [] : descendants(root, 'raycast-list-item')
+    const gridMode = grid !== undefined
+    results.className = gridMode ? 'grid grid-cols-5 content-start gap-3 overflow-y-auto p-3' : 'launcher-command-list'
+    const items = waiting ? [] : descendants(root, gridMode ? 'raycast-grid-item' : 'raycast-list-item')
+    const itemSections = new Map<TrustedRaycastViewNode, string>()
+    for (const section of descendants(root, 'raycast-section')) for (const child of section.children) if (typeof child !== 'string') itemSections.set(child, String(section.props.title ?? ''))
     selected = Math.min(selected, Math.max(0, items.length - 1))
     const itemActions = new Set(items.flatMap(item => descendants(item, 'raycast-action')))
     const rootActions = descendants(root, 'raycast-action').filter(action => !itemActions.has(action))
@@ -224,7 +242,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       const menu = document.createElement('details'); menu.className = 'relative'
       const summary = document.createElement('summary'); summary.className = 'sr-only'; summary.textContent = zh ? '操作' : 'Actions'; menu.append(summary)
       const panel = document.createElement('div'); panel.className = 'launcher-command-menu fixed bottom-14 right-3 flex w-72 flex-col gap-1'
-      const panelTitle = document.createElement('p'); panelTitle.className = 'm-0 px-3 py-1 text-xs font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; panelTitle.textContent = 'Google Translate'; panel.append(panelTitle); menu.append(panel)
+      const panelTitle = document.createElement('p'); panelTitle.className = 'm-0 px-3 py-1 text-xs font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; panelTitle.textContent = identity().title; panel.append(panelTitle); menu.append(panel)
       const owner: ActionOwner = { item, actions, buttons, menu }
       for (const action of actions) {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'launcher-command-menu-item grid-cols-[minmax(0,1fr)_auto] text-sm'
@@ -237,10 +255,16 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       }
       item.append(menu); return owner
     }
+    let lastSection: string | undefined
     items.forEach((node, index) => {
-      const item = document.createElement('li'); item.className = 'launcher-command-row !block [overflow-wrap:anywhere]'
-      item.tabIndex = 0; item.setAttribute('data-selected', String(index === selected))
-      const titleLine = document.createElement('div'); titleLine.className = 'flex min-w-0 items-center justify-between gap-3'
+      const sectionTitle = itemSections.get(node)
+      if (sectionTitle !== undefined && sectionTitle !== lastSection) {
+        const heading = document.createElement('li'); heading.className = gridMode ? 'col-span-full flex items-center justify-between px-1 pt-1 text-xs font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'px-4 pb-1 pt-3 text-xs font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'; heading.textContent = sectionTitle; heading.setAttribute('aria-hidden', 'true'); results.append(heading); lastSection = sectionTitle
+      }
+      const item = document.createElement('li'); item.className = gridMode ? 'launcher-command-row flex aspect-square min-w-0 flex-col items-center justify-center gap-2 p-2 text-center [overflow-wrap:anywhere]' : 'launcher-command-row !block [overflow-wrap:anywhere]'
+      item.tabIndex = 0; item.setAttribute('data-selected', String(index === selected)); if (gridMode) item.setAttribute('aria-label', String(node.props.title ?? 'Kaomoji'))
+      if (gridMode) { const image = document.createElement('img'); const light = document.documentElement?.style?.colorScheme === 'light'; image.setAttribute('src', String(light ? node.props.contentLight ?? '' : node.props.contentDark ?? '')); image.setAttribute('alt', ''); image.className = 'size-16 max-h-full max-w-full'; item.append(image) }
+      const titleLine = document.createElement('div'); titleLine.className = gridMode ? 'flex min-w-0 max-w-full items-center justify-center' : 'flex min-w-0 items-center justify-between gap-3'
       const titleRow = document.createElement('p'); titleRow.className = 'm-0 min-w-0 flex-1 truncate'; titleRow.textContent = String(node.props.title ?? ''); titleLine.append(titleRow)
       try {
         const accessories: unknown = typeof node.props.accessories === 'string' && node.props.accessories.length <= 4096 ? JSON.parse(node.props.accessories) : []
@@ -391,6 +415,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       if (current && message.revision <= current.revision) return
       const restoreRow = rows.some(row => row.item.contains?.(document.activeElement))
       current = message
+      syncIdentity()
       if (message.type === 'error') {
         pending = undefined; queryPending = false; setActionPending()
         input.disabled = true; languageSelect.disabled = true; status.textContent = ''; setHidden(status, true)

@@ -1,5 +1,6 @@
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { TrustedRaycastTrustAction, TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
+import type { TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 
 const COPY = Object.freeze({
   en: Object.freeze({
@@ -8,6 +9,7 @@ const COPY = Object.freeze({
     title: 'Trusted Extensions',
     intro: 'Reviewed trusted extensions execute third-party code with account-level authority outside the launcher renderer. Installation verifies the reviewed archive digest before anything loads.',
     name: 'Google Translate · Trusted Raycast',
+    kaomojiName: 'Kaomoji Search · Trusted Raycast',
     notInstalled: 'Not Installed',
     installedDisabled: 'Installed · Disabled',
     installedEnabled: 'Installed · Enabled',
@@ -16,8 +18,8 @@ const COPY = Object.freeze({
     install: 'Install Reviewed Extension',
     approveInstall: 'Approve & Install',
     cancel: 'Cancel',
-    enable: 'Enable Translate',
-    disable: 'Disable Translate',
+    enable: 'Enable Extension',
+    disable: 'Disable Extension',
     remove: 'Remove Extension',
     confirmRemove: 'Confirm Remove',
     recover: 'Recover Installation',
@@ -30,6 +32,7 @@ const COPY = Object.freeze({
     title: '可信扩展',
     intro: '经审核的可信扩展会在启动器渲染器之外以账户级权限执行第三方代码。安装会在任何代码加载前校验已审核归档的摘要。',
     name: 'Google 翻译 · 可信 Raycast',
+    kaomojiName: 'Kaomoji Search · 可信 Raycast',
     notInstalled: '未安装',
     installedDisabled: '已安装 · 已停用',
     installedEnabled: '已安装 · 已启用',
@@ -38,8 +41,8 @@ const COPY = Object.freeze({
     install: '安装已审核扩展',
     approveInstall: '批准并安装',
     cancel: '取消',
-    enable: '启用翻译',
-    disable: '停用翻译',
+    enable: '启用扩展',
+    disable: '停用扩展',
     remove: '移除扩展',
     confirmRemove: '确认移除',
     recover: '恢复安装',
@@ -55,6 +58,8 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   const zh = locale.startsWith('zh')
   const copy = zh ? COPY.zh : COPY.en
   let state: TrustedRaycastTrustState | undefined
+  let selected: TrustedRaycastExtensionId = 'google-translate'
+  let requestSequence = 0
   let busy = false
   let confirmStep: 'remove' | undefined
 
@@ -67,12 +72,13 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   header.append(title, close)
   const content = document.createElement('div'); content.className = 'launcher-command-content'
   const intro = document.createElement('p'); intro.className = 'launcher-command-status'; intro.textContent = copy.intro
+  const tabs = document.createElement('div'); tabs.className = 'flex gap-2'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', copy.title)
   const status = document.createElement('p'); status.className = 'launcher-command-status'; status.setAttribute('role', 'status')
   const digestLine = document.createElement('p'); digestLine.className = 'launcher-command-status [overflow-wrap:anywhere]'; digestLine.hidden = true
   const previous = document.createElement('p'); previous.className = 'launcher-command-status'; previous.hidden = true
   const error = document.createElement('p'); error.className = 'launcher-command-error'; error.setAttribute('role', 'alert'); error.hidden = true
   const buttons = document.createElement('div'); buttons.className = 'flex flex-wrap items-start gap-2 py-2'
-  content.append(intro, status, digestLine, previous, error, buttons)
+  content.append(intro, tabs, status, digestLine, previous, error, buttons)
   element.append(header, content)
 
   const buttonClass = 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)] disabled:opacity-50'
@@ -87,7 +93,9 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
     busy = true
     error.hidden = true
     for (const button of buttons.querySelectorAll('button')) button.disabled = true
-    void bridge.trustedRaycastTrustAction(action).then(result => {
+    const extensionId = selected
+    void bridge.trustedRaycastTrustAction(extensionId, action).then(result => {
+      if (selected !== extensionId || result.extensionId !== extensionId) return
       render(result.state)
       if (!result.ok) { error.textContent = `${copy.actionFailed}: ${result.error}`; error.hidden = false }
     }).catch(failure => {
@@ -120,9 +128,19 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
     else renderButton(copy.install, () => runAction('prepare'))
   }
 
-  void bridge.getTrustedRaycastTrust().then(render).catch(failure => {
-    status.textContent = copy.capabilityInactive
-    error.textContent = `${copy.actionFailed}: ${failure instanceof Error ? failure.message : 'Unavailable'}`; error.hidden = false
-  })
+  const load = (extensionId: TrustedRaycastExtensionId): void => {
+    selected = extensionId; state = undefined; confirmStep = undefined; busy = true; error.hidden = true; status.textContent = ''
+    const sequence = ++requestSequence
+    for (const tab of tabs.querySelectorAll('button')) { tab.setAttribute('aria-selected', String(tab.getAttribute('data-extension-id') === extensionId)); tab.disabled = tab.getAttribute('data-extension-id') === extensionId }
+    void bridge.getTrustedRaycastTrust(extensionId).then(next => { if (sequence === requestSequence && selected === extensionId) render(next) }).catch(failure => {
+      if (sequence !== requestSequence || selected !== extensionId) return
+      status.textContent = copy.capabilityInactive
+      error.textContent = `${copy.actionFailed}: ${failure instanceof Error ? failure.message : 'Unavailable'}`; error.hidden = false
+    }).finally(() => { if (sequence === requestSequence) { busy = false; if (state) render(state) } })
+  }
+  for (const [extensionId, label] of [['google-translate', copy.name], ['kaomoji-search', copy.kaomojiName]] as const) {
+    const tab = document.createElement('button'); tab.type = 'button'; tab.className = buttonClass; tab.textContent = label; tab.setAttribute('role', 'tab'); tab.setAttribute('data-extension-id', extensionId); tab.addEventListener('click', () => load(extensionId)); tabs.append(tab)
+  }
+  load('google-translate')
   return { element }
 }

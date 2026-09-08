@@ -55,13 +55,19 @@ export type TrustedRaycastTrustState = Readonly<{
   recovery: TrustedRaycastTrustRecovery
   staged: boolean
 }>
+export type TrustedRaycastTrustRequest = Readonly<{ action: TrustedRaycastTrustAction; extensionId: TrustedRaycastExtensionId }>
+export type TrustedRaycastTrustStateEnvelope = Readonly<{ extensionId: TrustedRaycastExtensionId; state: TrustedRaycastTrustState }>
 export type TrustedRaycastTrustResult = Readonly<
-  | { error: string; ok: false; state: TrustedRaycastTrustState }
-  | { ok: true; state: TrustedRaycastTrustState }
+  | { error: string; extensionId: TrustedRaycastExtensionId; ok: false; state: TrustedRaycastTrustState }
+  | { extensionId: TrustedRaycastExtensionId; ok: true; state: TrustedRaycastTrustState }
 >
 
 export function isTrustedRaycastTrustAction(value: unknown): value is TrustedRaycastTrustAction {
   return value === 'disable' || value === 'enable' || value === 'prepare' || value === 'apply' || value === 'recover' || value === 'remove'
+}
+
+export function isTrustedRaycastTrustRequest(value: unknown): value is TrustedRaycastTrustRequest {
+  return isRecord(value) && exactKeys(value, ['action', 'extensionId']) && getTrustedRaycastDescriptor(value.extensionId) !== undefined && isTrustedRaycastTrustAction(value.action)
 }
 
 export function isTrustedRaycastTrustState(value: unknown): value is TrustedRaycastTrustState {
@@ -79,10 +85,14 @@ export function isTrustedRaycastTrustState(value: unknown): value is TrustedRayc
     && typeof value.staged === 'boolean'
 }
 
+export function isTrustedRaycastTrustStateEnvelope(value: unknown): value is TrustedRaycastTrustStateEnvelope {
+  return isRecord(value) && exactKeys(value, ['extensionId', 'state']) && getTrustedRaycastDescriptor(value.extensionId) !== undefined && isTrustedRaycastTrustState(value.state)
+}
+
 export function isTrustedRaycastTrustResult(value: unknown): value is TrustedRaycastTrustResult {
-  if (!isRecord(value) || !isTrustedRaycastTrustState(value.state)) return false
-  if (value.ok === true) return exactKeys(value, ['ok', 'state'])
-  return value.ok === false && exactKeys(value, ['error', 'ok', 'state']) && boundedString(value.error, 512)
+  if (!isRecord(value) || getTrustedRaycastDescriptor(value.extensionId) === undefined || !isTrustedRaycastTrustState(value.state)) return false
+  if (value.ok === true) return exactKeys(value, ['extensionId', 'ok', 'state'])
+  return value.ok === false && exactKeys(value, ['error', 'extensionId', 'ok', 'state']) && boundedString(value.error, 512)
 }
 export type TrustedRaycastPreference = boolean | string
 export type KaomojiDisplayMode = 'list' | 'grid'
@@ -181,7 +191,7 @@ export function isTrustedRaycastViewEvent(value: unknown): value is TrustedRayca
 }
 
 const VIEW_TYPES = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-action', 'raycast-action-panel', 'raycast-action-section', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
-const KAOMOJI_VIEW_TYPES = new Set([...VIEW_TYPES, 'raycast-grid', 'raycast-grid-item', 'raycast-section'])
+const KAOMOJI_VIEW_TYPES = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-grid', 'raycast-grid-item', 'raycast-section', 'raycast-empty', 'raycast-action', 'raycast-action-panel', 'raycast-action-section', 'raycast-form', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
 const KAOMOJI_ICONS = new Set(['Clipboard', 'Gear', 'Star', 'StarDisabled'])
 const KAOMOJI_PROPS: Readonly<Record<string, readonly string[]>> = Object.freeze({
   root: ['navigationDepth', 'preferenceSetup', 'queryCurrent', 'querySequence', 'searchable', 'searchEventId'],
@@ -194,6 +204,9 @@ const KAOMOJI_PROPS: Readonly<Record<string, readonly string[]>> = Object.freeze
   'raycast-action': ['actionEventId', 'icon', 'shortcut', 'style', 'title', 'unavailable'],
   'raycast-action-panel': [],
   'raycast-action-section': ['title'],
+  'raycast-form': [],
+  'raycast-form-dropdown': ['fieldEventId', 'title', 'value'],
+  'raycast-form-dropdown-item': ['title', 'value'],
 })
 function isKaomojiSvg(value: unknown, fill: '#000' | '#fff'): boolean {
   if (typeof value !== 'string' || !value.startsWith('data:image/svg+xml;base64,') || value.length > 6144) return false

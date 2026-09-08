@@ -76,7 +76,8 @@ const tailwindDefine = {
   __TOCKTEAM_TAILWIND_CSS__: JSON.stringify(tailwindCss),
 }
 
-await buildTrustedRaycast(dist, process.env.TRUSTED_RAYCAST_ARTIFACT_TAR ?? join(root, 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar'))
+await buildTrustedRaycast(dist, join(root, 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar'), 'google-translate')
+await buildTrustedRaycast(dist, join(root, 'plugins', 'trusted-raycast', 'vendor', 'kaomoji-search.tar'), 'kaomoji-search')
 
 const pluginPackages = [
   { directory: 'trusted-raycast', hostOnly: true },

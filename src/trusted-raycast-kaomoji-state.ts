@@ -1,5 +1,6 @@
-import { lstatSync, readFileSync } from 'node:fs'
+import { lstatSync } from 'node:fs'
 import { atomicWrite } from './launcher-persistence.ts'
+import { readBoundedRegularFile } from './trusted-raycast-bounded-file.ts'
 
 const MAX_FAVORITES = 1822
 const MAX_RECENTS = 16
@@ -52,7 +53,7 @@ export function isKaomojiState(value: unknown, dataset: ReadonlyMap<string, Kaom
 
 export function loadKaomojiState(path: string, dataset: ReadonlyMap<string, KaomojiRecord>): KaomojiState {
   try {
-    const raw = readFileSync(path, 'utf8')
+    const raw = readBoundedRegularFile(path, MAX_STATE_BYTES)
     if (byteLength(raw) > MAX_STATE_BYTES) throw new Error('invalid')
     const parsed: unknown = JSON.parse(raw)
     if (!isKaomojiState(parsed, dataset)) throw new Error('invalid')

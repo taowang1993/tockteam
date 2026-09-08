@@ -9,9 +9,10 @@ import { admitTrustedRaycastArtifact, attestTrustedRaycastBuildIdentity } from '
 import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
 
 /** Build upstream source from the same admitted bytes we ship; never install packages. */
-export async function buildTrustedRaycast(dist, artifact) {
+export async function buildTrustedRaycast(dist, artifact, extensionId = 'google-translate') {
   if (!artifact) return
-  const descriptor = trustedRaycastDescriptors['google-translate']
+  const descriptor = trustedRaycastDescriptors[extensionId]
+  if (!descriptor) throw new Error('Unknown trusted extension build descriptor')
   const bytes = admitTrustedRaycastArtifact(descriptor, artifact)
   // ponytail: per-process work dir (parallel test files) plus comment normalization keeps rebuilds byte-identical.
   const work = join(tmpdir(), `tockteam-raycast-build-work-${process.pid}`)
@@ -19,10 +20,12 @@ export async function buildTrustedRaycast(dist, artifact) {
   mkdirSync(work, { recursive: true })
   try {
     execFileSync('/usr/bin/tar', ['xf', '-', '-C', work], { input: bytes, timeout: 15000 })
-    const source = join(work, 'tockteam-raycast-artifact', 'source')
-    const output = join(dist, 'trusted-raycast')
+    const source = join(work, descriptor.artifactRoot, 'source')
+    const output = join(dist, descriptor.extensionId === 'google-translate' ? 'trusted-raycast' : 'trusted-raycast-kaomoji')
     const repository = fileURLToPath(new URL('../', import.meta.url))
-    const child = readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8').replaceAll('/tmp/trusted-raycast-source', source)
+    const child = readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8')
+      .replaceAll('/tmp/trusted-raycast-source/src/translate', join(source, descriptor.sourceEntry))
+      .replaceAll('/tmp/trusted-raycast-source', source)
     writeFileSync(join(work, 'child.ts'), child)
     // Only compatibility aliases are bundled; all third-party bare imports resolve in the private artifact.
     await build({ entryPoints: [join(work, 'child.ts')], outfile: join(output, 'child.mjs'), bundle: true, packages: 'external', format: 'esm', platform: 'node', target: 'node24', alias: {
@@ -35,7 +38,8 @@ export async function buildTrustedRaycast(dist, artifact) {
     const emitted = readFileSync(join(output, 'child.mjs'), 'utf8').replace(/\/\/ [^\n]*tockteam-raycast-build-work-\d+\//g, '// tockteam-raycast-build-work/')
     writeFileSync(join(output, 'child.mjs'), emitted)
     mkdirSync(output, { recursive: true })
-    copyFileSync(join(source, 'assets', 'google-translate.png'), join(output, 'google-translate.png'))
+    if (descriptor.extensionId === 'google-translate') copyFileSync(join(source, 'assets', 'google-translate.png'), join(output, 'google-translate.png'))
+    else copyFileSync(join(source, 'assets', 'command-icon.png'), join(output, 'kaomoji-search.png'))
     writeFileSync(join(output, 'artifact.tar'), bytes)
     const identity = { artifactSha256: descriptor.artifactSha256, childSha256: createHash('sha256').update(readFileSync(join(output, 'child.mjs'))).digest('hex'), command: descriptor.command, extensionId: descriptor.extensionId, react: descriptor.react, reconciler: descriptor.reconciler, resolutionSha256: createHash('sha256').update(readFileSync(join(output, 'resolution.mjs'))).digest('hex') }
     writeFileSync(join(output, 'build.json'), JSON.stringify({ ...identity, metadataSha256: attestTrustedRaycastBuildIdentity(identity) }))

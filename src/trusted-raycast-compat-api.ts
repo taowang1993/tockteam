@@ -7,7 +7,10 @@ const component = (type: string) => (props: Record<string, unknown>) => element(
 // Search belongs to the view that rendered the List; navigation must not leak the previous handler.
 let searchHandler: ((value: string) => void) | undefined
 let searchable = false
+let renderedCollectionItems = 0
+const MAX_COLLECTION_ITEMS = 256
 const searchableCollection = (type: 'raycast-grid' | 'raycast-list') => (props: Record<string, unknown>) => {
+  renderedCollectionItems = 0
   if (typeof props.onSearchTextChange === 'function') {
     searchHandler = props.onSearchTextChange as (value: string) => void
     searchable = true
@@ -19,13 +22,14 @@ const section = component('raycast-section')
 const list = searchableCollection('raycast-list')
 export function viewSearchable(): boolean { return searchable }
 export const List = Object.assign(list, {
-  Item: Object.assign((props: Record<string, unknown>) => element('raycast-list-item', { title: props.title, subtitle: String(props.subtitle ?? ''), selected: props.selected === true, accessories: JSON.stringify(props.accessories ?? []) }, [props.detail as React.ReactNode, props.actions as React.ReactNode]), { Detail: component('raycast-detail') }),
+  Item: Object.assign((props: Record<string, unknown>) => renderedCollectionItems++ < MAX_COLLECTION_ITEMS ? element('raycast-list-item', { title: props.title, subtitle: String(props.subtitle ?? ''), selected: props.selected === true, accessories: JSON.stringify(props.accessories ?? []) }, [props.detail as React.ReactNode, props.actions as React.ReactNode]) : null, { Detail: component('raycast-detail') }),
   Section: section,
   EmptyView: component('raycast-empty'),
   Dropdown: Object.assign((props: Record<string, unknown>) => element('raycast-dropdown', { value: String(props.value ?? ''), fieldEventId: `dropdown-${++handleSequence}`, ...(typeof props.onChange === 'function' ? { onChange: props.onChange as (value: string) => void } : {}) }, React.Children.toArray(props.children as React.ReactNode)), { Item: component('raycast-dropdown-item') }),
 })
 export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   Item: (props: Record<string, unknown>) => {
+    if (renderedCollectionItems++ >= MAX_COLLECTION_ITEMS) return null
     const source = typeof props.content === 'object' && props.content !== null && typeof (props.content as { source?: unknown }).source === 'object' && (props.content as { source: object }).source !== null ? (props.content as { source: Record<string, unknown> }).source : {}
     return element('raycast-grid-item', { contentDark: source.dark, contentLight: source.light, title: props.title }, [props.actions as React.ReactNode])
   },

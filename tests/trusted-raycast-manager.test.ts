@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
@@ -28,6 +28,22 @@ test('manager has no default artifact fallback and rejects events without a live
   await assert.rejects(manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }))
   await manager.close()
 })
+test('one global manager forbids preview while any trusted extension child is active', async () => {
+  const resolved: string[] = []
+  const manager = new TrustedRaycastManager({ runtimeDir: extensionId => { resolved.push(extensionId); return '/missing' }, nodePath: process.execPath, onMessage() {} })
+  if (process.platform === 'darwin') manager.availableFor('kaomoji-search')
+  assert.ok(process.platform !== 'darwin' || resolved.includes('kaomoji-search'))
+  ;(manager as unknown as { session: unknown }).session = { input: { extensionId: 'google-translate' }, revoked: false }
+  await assert.rejects(manager.previewRuntime('/missing', 'kaomoji-search'), /busy/)
+  ;(manager as unknown as { session: undefined }).session = undefined
+  await assert.rejects(manager.previewRuntime('/missing', 'kaomoji-search'), /ENOENT|build\.json/)
+  await assert.rejects(manager.previewRuntime('/missing', 'kaomoji-search'), /ENOENT|build\.json/, 'failed setup releases the preview reservation')
+  const orphan = mkdtempSync(join(tmpdir(), 'raycast-preview-orphan-'))
+  ;(manager as unknown as { preview: unknown }).preview = { child: { exitCode: 0, signalCode: null, pid: undefined }, workspace: orphan, phase: 'cleanup-failed' }
+  await assert.rejects(manager.previewRuntime('/missing', 'kaomoji-search'), /ENOENT|build\.json/)
+  assert.equal(existsSync(orphan), false, 'the normal preview flow retries retained cleanup before creating another child')
+})
+
 test('install-store runtime resolution fails closed before any child can load', async () => {
   const unresolved = new TrustedRaycastManager({ runtimeDir: () => undefined, nodePath: process.execPath, onMessage() {} })
   assert.equal(unresolved.available, false)

@@ -136,7 +136,7 @@ const PreferencesSetup = (): React.ReactElement => {
     mount(undefined)
   }
   return React.createElement(Form, {
-    actions: React.createElement(ActionPanel, null, React.createElement(Action.SubmitForm, { title: process.env.TRUSTED_RAYCAST_PREFERENCES_CONFIGURED === '0' ? 'Continue' : 'Save Preferences', onSubmit: submit })),
+    actions: React.createElement(ActionPanel, null, React.createElement(Action.SubmitForm, { title: extensionId === 'google-translate' && process.env.TRUSTED_RAYCAST_PREFERENCES_CONFIGURED === '0' ? 'Continue' : 'Save Preferences', onSubmit: submit })),
   }, ...managedPreferences.map(preference => React.createElement(Form.Dropdown, { id: String(preference.name), key: String(preference.name), title: String(preference.title), value: String(defaults[String(preference.name)] ?? '') }, ...((Array.isArray(preference.data) ? preference.data : []) as Array<{ title?: unknown; value?: unknown }>).map(option => React.createElement(Form.Dropdown.Item, { key: String(option.value), title: String(option.title), value: String(option.value) })))))
 }
 preferencesRoot = React.createElement(PreferencesSetup)

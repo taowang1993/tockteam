@@ -25,6 +25,20 @@ const projection = (revision: number): TrustedRaycastViewMessage => ({ type: rev
 const inputOf = (nodes: Element[]): Element => nodes.find(node => node.id === 'trusted-raycast-search')!
 const errorOf = (nodes: Element[]): Element => nodes.find(node => node.getAttribute('role') === 'alert')!
 
+test('Kaomoji Grid renders bounded theme image data and extension identity', () => {
+  const nodes: Element[] = []
+  const document = { documentElement: { style: { colorScheme: 'light' } }, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, {} as LauncherPreloadBridge, () => {})
+  view.update({
+    type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 0,
+    root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-section', props: { title: 'emotion' }, children: [{ type: 'raycast-grid-item', props: { contentDark: 'data:image/svg+xml;base64,dark', contentLight: 'data:image/svg+xml;base64,light', title: 'Happy Face' }, children: [{ type: 'raycast-action', props: { actionEventId: 'copy', title: 'Copy to Clipboard' }, children: [] }] }] }] },
+  })
+  assert.equal((view.element as unknown as Element).getAttribute('aria-label'), 'Kaomoji Search')
+  assert.ok(nodes.some(node => node.getAttribute('src') === 'data:image/svg+xml;base64,light'))
+  assert.ok(nodes.some(node => node.textContent === 'emotion'))
+  assert.ok(nodes.some(node => node.getAttribute('aria-label') === 'Happy Face'))
+})
+
 test('launcher focus requests target the visible Translate search control', () => {
   const nodes: Element[] = []
   const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document

@@ -6,9 +6,10 @@ import { loadTrustedRaycastPreferenceState, loadTrustedRaycastPreferences, saveT
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
 import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
-import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER, TRUSTED_RAYCAST_RESULT_ID, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
+import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_KAOMOJI_HANDLER, TRUSTED_RAYCAST_KAOMOJI_RESULT_ID, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER, TRUSTED_RAYCAST_RESULT_ID, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, type TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
 import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
+import { loadKaomojiPreferenceState, saveKaomojiPreferences } from './trusted-raycast-kaomoji-preferences.ts'
 import { trustedRaycastDataPaths } from './trusted-raycast-paths.ts'
 import { randomBytes } from 'node:crypto'
 import { Buffer } from 'node:buffer'
@@ -549,6 +550,7 @@ let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 let trustedRaycast: TrustedRaycastManager | undefined
 let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
+let trustedRaycastKaomojiTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastBootstrap: Promise<void> = Promise.resolve()
 let trustedRaycastPriorApp: TrustedRaycastPriorApp | undefined
 let trustedRaycastPriorCaptureTimer: ReturnType<typeof setTimeout> | undefined
@@ -2236,6 +2238,7 @@ function initializeLauncher(): void {
   })
   launcherOs = os
   const googleTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'google-translate')
+  const kaomojiTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'kaomoji-search')
   const translatePreferencesPath = googleTrustedPaths.preferencesFile
   const selectionFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE === '1'
   const pasteFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE === '1'
@@ -2246,12 +2249,19 @@ function initializeLauncher(): void {
     stateFile: googleTrustedPaths.trustFile,
     preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Translate runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir),
   })
+  trustedRaycastKaomojiTrust = new TrustedRaycastTrustStore({
+    descriptor: trustedRaycastDescriptors['kaomoji-search'],
+    installRoot: kaomojiTrustedPaths.installRoot,
+    candidateDir: join(currentDir, 'trusted-raycast-kaomoji'),
+    stateFile: kaomojiTrustedPaths.trustFile,
+    preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Kaomoji runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir, 'kaomoji-search'),
+  })
   trustedRaycast = new TrustedRaycastManager({
-    runtimeDir: () => trustedRaycastTrust?.runtimeDir(),
+    runtimeDir: extensionId => extensionId === 'kaomoji-search' ? trustedRaycastKaomojiTrust?.runtimeDir() : trustedRaycastTrust?.runtimeDir(),
     nodePath: runtimePaths().nodeBinary,
-    stateFile: googleTrustedPaths.stateFile,
-    preferencesConfigured: () => loadTrustedRaycastPreferenceState(translatePreferencesPath).configured,
-    savePreferences: preferences => saveTrustedRaycastPreferences(translatePreferencesPath, preferences),
+    stateFile: extensionId => extensionId === 'kaomoji-search' ? kaomojiTrustedPaths.stateFile : googleTrustedPaths.stateFile,
+    preferencesConfigured: extensionId => extensionId === 'kaomoji-search' ? loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).configured : loadTrustedRaycastPreferenceState(translatePreferencesPath).configured,
+    savePreferences: (preferences, extensionId) => extensionId === 'kaomoji-search' ? saveKaomojiPreferences(kaomojiTrustedPaths.preferencesFile, preferences) : saveTrustedRaycastPreferences(translatePreferencesPath, preferences),
     readSelectedText: async () => {
       const result = await readTrustedRaycastSelectedText(trustedRaycastPriorApp, { ...trustedRaycastNativeDeps, ...(selectionFixture ? { fixture: 'selection' as const } : {}) })
       if (selectionFixture && 'text' in result) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-selection-proof.json'), JSON.stringify({ fixture: true }), { mode: 0o600 })
@@ -2298,13 +2308,13 @@ function initializeLauncher(): void {
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
-    initialIndexedItems: repository.readIndex().filter(item => item.id !== TRUSTED_RAYCAST_RESULT_ID && item.id !== TRUSTED_RAYCAST_TRUST_RESULT_ID),
+    initialIndexedItems: repository.readIndex().filter(item => item.id !== TRUSTED_RAYCAST_RESULT_ID && item.id !== TRUSTED_RAYCAST_KAOMOJI_RESULT_ID && item.id !== TRUSTED_RAYCAST_TRUST_RESULT_ID),
     initialRanking: repository.readRanking(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async (signal, preserveSignal) => {
       await trustedRaycastBootstrap
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust?.status() ?? { digest: '', digestApproved: false, enabled: false, installed: false }), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
+      return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust?.status() ?? { digest: '', digestApproved: false, enabled: false, installed: false }, trustedRaycastKaomojiTrust?.status()), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
       const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
@@ -2353,6 +2363,14 @@ function initializeLauncher(): void {
         await trustedRaycastMutex(async () => {
           if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || trustedRaycastTrust?.status().digestApproved !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
           await trustedRaycast.start(record.owner, { extensionId: 'google-translate', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
+        })
+        completion = launcherActionCompletion(true)
+      }
+      if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_KAOMOJI_HANDLER) {
+        await trustedRaycastMutex(async () => {
+          const trust = trustedRaycastKaomojiTrust?.status()
+          if (!trustedRaycastChannel.active || !trustedRaycast?.availableFor('kaomoji-search') || trust?.enabled !== true || trust.digestApproved !== true || record.argument !== 'index') throw new Error('Kaomoji Search capability is unavailable')
+          await trustedRaycast.start(record.owner, { extensionId: 'kaomoji-search', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).values })
         })
         completion = launcherActionCompletion(true)
       }
@@ -2481,16 +2499,17 @@ function initializeLauncher(): void {
     guard: launcherGuard, ipcMain,
     onEvent: (owner, event) => { if (!trustedRaycastChannel.active) throw new Error('Translate capability is inactive'); trustedRaycast?.send(owner, event) },
     onClose: async owner => { await trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)) },
-    getTrust: () => Object.freeze({ ...(trustedRaycastTrust?.status() ?? Object.freeze({ candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '', staged: false })), active: trustedRaycastChannel.active }),
-    onTrustAction: async action => {
-      const store = trustedRaycastTrust
+    getTrust: extensionId => Object.freeze({ extensionId, state: Object.freeze({ ...((extensionId === 'kaomoji-search' ? trustedRaycastKaomojiTrust : trustedRaycastTrust)?.status() ?? Object.freeze({ candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '', staged: false })), active: trustedRaycastChannel.active }) }),
+    onTrustAction: async request => {
+      const { action, extensionId } = request
+      const store = extensionId === 'kaomoji-search' ? trustedRaycastKaomojiTrust : trustedRaycastTrust
       if (store === undefined) throw new Error('Trusted Extensions are unavailable')
       try {
         return await trustedRaycastMutex(async () => {
-          if (action === 'disable') await trustedRaycast?.stop('capability-disabled')
-          if (action === 'remove') await trustedRaycast?.stop('capability-removed')
-          if (action === 'recover') await trustedRaycast?.stop('capability-recovery')
-          if (action === 'apply') await trustedRaycast?.stop('capability-rotation')
+          if (trustedRaycast?.activeExtensionId === extensionId && action === 'disable') await trustedRaycast.stop('capability-disabled')
+          if (trustedRaycast?.activeExtensionId === extensionId && action === 'remove') await trustedRaycast.stop('capability-removed')
+          if (trustedRaycast?.activeExtensionId === extensionId && action === 'recover') await trustedRaycast.stop('capability-recovery')
+          if (trustedRaycast?.activeExtensionId === extensionId && action === 'apply') await trustedRaycast.stop('capability-rotation')
           const state = (): TrustedRaycastTrustState => Object.freeze({ ...store.status(), active: trustedRaycastChannel.active })
           if (action === 'prepare') { store.stage(); await store.preview() }
           else if (action === 'apply') store.apply()
@@ -2500,10 +2519,10 @@ function initializeLauncher(): void {
           else store.recover()
           // Trust mutations change the main-owned catalog; successful mutations must not leave its index stale.
           await rescan(undefined, undefined, 'trusted-raycast-mutation')
-          return Object.freeze({ ok: true as const, state: state() })
+          return Object.freeze({ extensionId, ok: true as const, state: state() })
         })
       } catch (error) {
-        return Object.freeze({ ok: false as const, state: Object.freeze({ ...store.status(), active: trustedRaycastChannel.active }), error: error instanceof Error ? error.message.slice(0, 512) : 'Trusted Extensions action failed' })
+        return Object.freeze({ extensionId, ok: false as const, state: Object.freeze({ ...store.status(), active: trustedRaycastChannel.active }), error: error instanceof Error ? error.message.slice(0, 512) : 'Trusted Extensions action failed' })
       }
     },
   })

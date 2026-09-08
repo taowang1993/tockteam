@@ -14,8 +14,8 @@ test('view IPC authenticates before parsing and disposes only its finite handler
     guard: { assert: event => { if (event !== sender) throw new Error('untrusted'); return { role: 'launcher', webContentsId: 7 } } },
     onEvent: owner => { assert.equal(owner.webContentsId, 7); sent++ },
     onClose: owner => { assert.equal(owner.webContentsId, 7); closed++ },
-    getTrust: () => trustState,
-    onTrustAction: action => ({ ok: true, state: { ...trustState, ...(action === 'enable' ? { enabled: true } : null) } }),
+    getTrust: extensionId => ({ extensionId, state: trustState }),
+    onTrustAction: request => ({ extensionId: request.extensionId, ok: true, state: { ...trustState, ...(request.action === 'enable' ? { enabled: true } : null) } }),
   })
   const event = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.event)!
   const close = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.close)!
@@ -27,10 +27,11 @@ test('view IPC authenticates before parsing and disposes only its finite handler
   await assert.rejects(Promise.resolve(close(sender, {})), /arguments/)
   await close(sender); assert.equal(closed, 1)
   const trust = handlers.get(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.action)!
-  await assert.rejects(Promise.resolve(trust({}, 'enable')), /untrusted/)
-  await assert.rejects(Promise.resolve(trust(sender, 'launch')), /Invalid/)
-  await assert.rejects(Promise.resolve(trust(sender, 'enable', 'extra')), /Invalid/)
-  const enabled = (await trust(sender, 'enable')) as Readonly<{ ok: true; state: { enabled: boolean } }>
+  await assert.rejects(Promise.resolve(trust({}, { extensionId: 'google-translate', action: 'enable' })), /untrusted/)
+  await assert.rejects(Promise.resolve(trust(sender, { extensionId: 'unknown', action: 'enable' })), /Invalid/)
+  await assert.rejects(Promise.resolve(trust(sender, { extensionId: 'google-translate', action: 'launch' })), /Invalid/)
+  await assert.rejects(Promise.resolve(trust(sender, { extensionId: 'google-translate', action: 'enable' }, 'extra')), /Invalid/)
+  const enabled = (await trust(sender, { extensionId: 'google-translate', action: 'enable' })) as Readonly<{ ok: true; state: { enabled: boolean } }>
   assert.equal(enabled.state.enabled, true)
   dispose(); dispose(); assert.equal(handlers.size, 0)
 })

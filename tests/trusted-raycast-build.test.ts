@@ -19,11 +19,16 @@ test('trusted Translate child runtime pins Node 24: the unchanged playTTS downlo
   assert.match(version, /^v24\./, `staged child runtime ${version} reproduces the upstream playTTS https.get stall; stage with DSH_DESKTOP_NODE_VERSION=24.20.0`)
 })
 
-test('the reviewed Google Translate archive is repository-owned for ordinary builds', () => {
-  const artifact = join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
-  assert.equal(existsSync(artifact), true)
-  assert.equal(createHash('sha256').update(readFileSync(artifact)).digest('hex'), TRUSTED_RAYCAST_ARTIFACT_SHA256)
-  assert.match(readFileSync(join(resolve('.'), 'scripts', 'build.mjs'), 'utf8'), /TRUSTED_RAYCAST_ARTIFACT_TAR \?\? .*google-translate\.tar/)
+test('ordinary builds use only the two repository-owned reviewed archives', () => {
+  const vendor = join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor')
+  const translate = join(vendor, 'google-translate.tar')
+  const kaomoji = join(vendor, 'kaomoji-search.tar')
+  assert.equal(createHash('sha256').update(readFileSync(translate)).digest('hex'), TRUSTED_RAYCAST_ARTIFACT_SHA256)
+  assert.equal(createHash('sha256').update(readFileSync(kaomoji)).digest('hex'), '9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f')
+  const build = readFileSync(join(resolve('.'), 'scripts', 'build.mjs'), 'utf8')
+  assert.doesNotMatch(build, /TRUSTED_RAYCAST_ARTIFACT_TAR/)
+  assert.match(build, /google-translate\.tar'\), 'google-translate'/)
+  assert.match(build, /kaomoji-search\.tar'\), 'kaomoji-search'/)
 })
 
 test('build omits absent candidate and rejects unapproved bytes before compilation', async () => {
@@ -48,6 +53,23 @@ test('reviewed build records exact original archive identity', async () => {
     assert.equal(existsSync(join(root, 'trusted-raycast', 'google-translate.png')), true)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+test('Kaomoji build is descriptor-bound and compiles without loading the candidate', async () => {
+  const artifact = join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'kaomoji-search.tar')
+  const root = mkdtempSync(join(tmpdir(), 'raycast-kaomoji-build-test-'))
+  try {
+    await buildTrustedRaycast(root, artifact, 'kaomoji-search')
+    const output = join(root, 'trusted-raycast-kaomoji')
+    const metadata = JSON.parse(readFileSync(join(output, 'build.json'), 'utf8'))
+    assert.equal(metadata.extensionId, 'kaomoji-search')
+    assert.equal(metadata.command, 'index')
+    assert.equal(metadata.artifactSha256, '9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f')
+    assert.deepEqual(readFileSync(join(output, 'artifact.tar')), readFileSync(artifact))
+    assert.equal(existsSync(join(output, 'google-translate.png')), false)
+    assert.equal(existsSync(join(output, 'kaomoji-search.png')), true)
+    assert.doesNotMatch(readFileSync(join(output, 'child.mjs'), 'utf8'), /tockteam-raycast-artifact\/source\/src\/translate/)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
 test('reviewed rebuilds are byte-identical: fixed work root keeps every emitted file deterministic', async () => {
   const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR ?? join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
   const root = mkdtempSync(join(tmpdir(), 'raycast-repro-test-'))

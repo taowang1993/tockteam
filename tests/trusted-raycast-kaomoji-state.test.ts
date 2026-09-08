@@ -48,9 +48,12 @@ test('Kaomoji state loads defensively and saves atomically without following sym
     assert.equal(readFileSync(path, 'utf8').endsWith('\n'), true)
     writeFileSync(path, '{"favoriteKaomoji":[],"recentKaomoji":[],"extra":[]}', 'utf8')
     assert.deepEqual(loadKaomojiState(path, dataset), EMPTY_KAOMOJI_STATE)
+    writeFileSync(path, 'x'.repeat(512 * 1024 + 1), 'utf8')
+    assert.deepEqual(loadKaomojiState(path, dataset), EMPTY_KAOMOJI_STATE)
     rmSync(path)
     const target = join(root, 'target'); writeFileSync(target, 'owned')
     symlinkSync(target, path)
+    assert.deepEqual(loadKaomojiState(path, dataset), EMPTY_KAOMOJI_STATE)
     await assert.rejects(saveKaomojiState(path, state, dataset), /symlink/)
     assert.equal(readFileSync(target, 'utf8'), 'owned')
   } finally { rmSync(root, { recursive: true, force: true }) }

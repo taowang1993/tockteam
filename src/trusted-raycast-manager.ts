@@ -6,13 +6,13 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync 
 import { tmpdir } from 'node:os'
 import { join, isAbsolute, dirname } from 'node:path'
 import { admitTrustedRaycastArtifact, readTrustedRaycastBuildIdentity, readTrustedRaycastDerivedFile, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
-import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
-import { isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
+import { trustedRaycastDescriptors, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
+import { isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, KAOMOJI_PREFERENCE_DEFAULTS, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
 
 export type TrustedRaycastOwner = Readonly<{ webContentsId: number }>
 export type TrustedRaycastManagerOptions = Readonly<{
   /** The live runtime directory, or a main-owned resolver when the install store owns it. */
-  runtimeDir: string | (() => string | undefined)
+  runtimeDir: string | ((extensionId: TrustedRaycastExtensionId) => string | undefined)
   nodePath: string
   onMessage: (owner: TrustedRaycastOwner, message: TrustedRaycastViewMessage) => void
   onError?: (owner: TrustedRaycastOwner, error: Error) => void
@@ -20,29 +20,33 @@ export type TrustedRaycastManagerOptions = Readonly<{
   openGoogleTranslate?: (url: string) => Promise<void>
   readSelectedText?: () => Promise<Readonly<{ text?: string; unavailable?: string }>>
   pasteText?: (text: string) => void | Promise<void>
-  preferencesConfigured?: () => boolean
-  savePreferences?: (preferences: Readonly<Record<string, boolean | string>>) => void | Promise<void>
-  stateFile?: string
+  preferencesConfigured?: (extensionId: TrustedRaycastExtensionId) => boolean
+  savePreferences?: (preferences: Readonly<Record<string, boolean | string>>, extensionId: TrustedRaycastExtensionId) => void | Promise<void>
+  stateFile?: string | ((extensionId: TrustedRaycastExtensionId) => string | undefined)
 }>
 type Session = { revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
+type Preview = { child: ChildProcessWithoutNullStreams; workspace: string; phase: 'running' | 'cleanup-failed'; stopping?: Promise<void> }
 
 /** Main owns identity and the sole live child. Trusted code is not an OS sandbox. */
 export class TrustedRaycastManager {
   private session: Session | undefined
   private stopping: Promise<void> | undefined
+  private preview: Preview | undefined
   private disposed = false
   private readonly options: TrustedRaycastManagerOptions
   constructor(options: TrustedRaycastManagerOptions) { this.options = options }
   get active(): boolean { return this.session !== undefined && !this.session.revoked }
-  private resolveRuntimeDir(): string | undefined {
-    const resolved = typeof this.options.runtimeDir === 'function' ? this.options.runtimeDir() : this.options.runtimeDir
+  get activeExtensionId(): TrustedRaycastExtensionId | undefined { return this.session?.revoked ? undefined : this.session?.input.extensionId }
+  private resolveRuntimeDir(extensionId: TrustedRaycastExtensionId): string | undefined {
+    const resolved = typeof this.options.runtimeDir === 'function' ? this.options.runtimeDir(extensionId) : this.options.runtimeDir
     return resolved === '' ? undefined : resolved
   }
-  get available(): boolean {
+  get available(): boolean { return this.availableFor('google-translate') }
+  availableFor(extensionId: TrustedRaycastExtensionId): boolean {
     if (process.platform !== 'darwin') return false
-    const runtimeDir = this.resolveRuntimeDir()
+    const runtimeDir = this.resolveRuntimeDir(extensionId)
     if (runtimeDir === undefined) return false
-    try { readTrustedRaycastBuildIdentity(runtimeDir, trustedRaycastDescriptors['google-translate']); return true } catch { return false }
+    try { readTrustedRaycastBuildIdentity(runtimeDir, trustedRaycastDescriptors[extensionId]); return true } catch { return false }
   }
   /** Shared admission and workspace staging; main calls this before any child can load. */
   private createWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen): { child: ChildProcessWithoutNullStreams; workspace: string } {
@@ -52,16 +56,18 @@ export class TrustedRaycastManager {
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-trusted-raycast-'))
     try {
       execFileSync('/usr/bin/tar', ['xf', '-', '-C', workspace], { input: bytes, timeout: 15000 })
-      const runtime = join(workspace, 'tockteam-raycast-artifact', 'runtime', 'node_modules')
+      const runtime = join(workspace, descriptor.artifactRoot, 'runtime', 'node_modules')
       symlinkSync(runtime, join(workspace, 'node_modules'))
       // Read through checked descriptors, then execute the exact bytes that were verified.
       writeFileSync(join(workspace, 'child.mjs'), readTrustedRaycastDerivedFile(join(runtimeDir, 'child.mjs'), identity.childSha256))
       writeFileSync(join(workspace, 'resolution.mjs'), readTrustedRaycastDerivedFile(join(runtimeDir, 'resolution.mjs'), identity.resolutionSha256))
       mkdirSync(join(workspace, 'tmp'))
-      if (this.options.stateFile !== undefined) mkdirSync(dirname(this.options.stateFile), { recursive: true })
+      const stateFile = typeof this.options.stateFile === 'function' ? this.options.stateFile(input.extensionId) : this.options.stateFile
+      if (stateFile !== undefined) mkdirSync(dirname(stateFile), { recursive: true })
+      const defaults = input.extensionId === 'kaomoji-search' ? KAOMOJI_PREFERENCE_DEFAULTS : TRUSTED_RAYCAST_PREFERENCE_DEFAULTS
       const child = spawn(this.options.nodePath, ['--import', join(workspace, 'resolution.mjs'), join(workspace, 'child.mjs')], {
         cwd: workspace, detached: true,
-        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_EXTENSION_ID: input.extensionId, TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? TRUSTED_RAYCAST_PREFERENCE_DEFAULTS : input.preferences), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: this.options.preferencesConfigured?.() === false ? '0' : '1', ...(this.options.stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: this.options.stateFile }) },
+        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_EXTENSION_ID: input.extensionId, TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? defaults : input.preferences), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: this.options.preferencesConfigured?.(input.extensionId) === false ? '0' : '1', ...(stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: stateFile }) },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
       return { child, workspace }
@@ -70,10 +76,27 @@ export class TrustedRaycastManager {
       throw error
     }
   }
+  private async stopPreview(): Promise<void> {
+    const preview = this.preview
+    if (preview === undefined) return
+    if (preview.stopping !== undefined) return await preview.stopping
+    const operation = (async () => {
+      await stopOwnedChild(preview.child, 250, true)
+      rmSync(preview.workspace, { recursive: true, force: true })
+      if (this.preview === preview) this.preview = undefined
+    })()
+    preview.stopping = operation
+    try { await operation } catch (error) { delete preview.stopping; preview.phase = 'cleanup-failed'; throw error }
+  }
+
   /** Isolated bounded boot of a staged install: first valid readiness or a typed failure, then teardown. */
-  async previewRuntime(runtimeDir: string): Promise<string> {
-    const input: TrustedRaycastViewOpen = Object.freeze({ extensionId: 'google-translate', sessionId: randomUUID(), generation: randomUUID(), command: 'translate', preferences: Object.freeze({}) })
+  async previewRuntime(runtimeDir: string, extensionId: TrustedRaycastExtensionId = 'google-translate'): Promise<string> {
+    if (this.disposed || this.session || this.stopping || (this.preview && this.preview.phase !== 'cleanup-failed')) throw new Error('Trusted extension runtime is busy or closed')
+    if (this.preview?.phase === 'cleanup-failed') await this.stopPreview()
+    const descriptor = trustedRaycastDescriptors[extensionId]
+    const input: TrustedRaycastViewOpen = Object.freeze({ extensionId, sessionId: randomUUID(), generation: randomUUID(), command: descriptor.command, preferences: Object.freeze({}) })
     const { child, workspace } = this.createWorkspace(runtimeDir, input)
+    this.preview = { child, workspace, phase: 'running' }
     try {
       await new Promise<void>((resolve, reject) => {
         let pending = ''
@@ -108,19 +131,16 @@ export class TrustedRaycastManager {
         child.once('close', () => finish(new Error('Translate preview closed before readiness')))
       })
       return ''
-    } finally {
-      await stopOwnedChild(child, 250, true)
-      rmSync(workspace, { recursive: true, force: true })
-    }
+    } finally { await this.stopPreview() }
   }
   async start(owner: TrustedRaycastOwner, input: TrustedRaycastViewOpen): Promise<void> {
     const startedAt = Date.now()
-    if (this.disposed || this.session || this.stopping) throw new Error('Translate runtime is busy or closed')
+    if (this.disposed || this.session || this.stopping || this.preview) throw new Error('Translate runtime is busy or closed')
     if (!isTrustedRaycastViewOpen(input)) throw new Error('Invalid Translate session')
-    if (Object.keys(input.preferences).length !== 0 && !isTrustedRaycastPreferences(input.preferences)) throw new Error('Unsupported Translate preferences')
+    if (input.extensionId === 'google-translate' && Object.keys(input.preferences).length !== 0 && !isTrustedRaycastPreferences(input.preferences)) throw new Error('Unsupported Translate preferences')
     if (!isAbsolute(this.options.nodePath) || !existsSync(this.options.nodePath)) throw new Error('Packaged Node is unavailable')
-    const runtimeDir = this.resolveRuntimeDir()
-    if (runtimeDir === undefined) throw new Error('Translate capability is not installed')
+    const runtimeDir = this.resolveRuntimeDir(input.extensionId)
+    if (runtimeDir === undefined) throw new Error('Trusted extension capability is not installed')
     let current: Session | undefined
     let workspace = ''
     try {
@@ -264,7 +284,7 @@ export class TrustedRaycastManager {
           await this.options.openGoogleTranslate(request.url)
         } else {
           if (!this.options.savePreferences) throw new Error('Translate preference storage is unavailable')
-          await this.options.savePreferences(request.preferences)
+          await this.options.savePreferences(request.preferences, request.extensionId)
         }
       }
       succeeded = true
@@ -298,5 +318,5 @@ export class TrustedRaycastManager {
     this.stopping = operation
     try { await operation } finally { this.stopping = undefined }
   }
-  async close(): Promise<void> { this.disposed = true; await this.stop('shutdown') }
+  async close(): Promise<void> { this.disposed = true; await this.stop('shutdown'); await this.stopPreview() }
 }

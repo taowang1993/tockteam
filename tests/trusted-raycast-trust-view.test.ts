@@ -44,17 +44,17 @@ async function makeView(state: TrustedRaycastTrustState, actionResult?: { ok: bo
   let current: TrustedRaycastTrustState = state
   const bridge = {
     getTrustedRaycastTrust: async () => current,
-    trustedRaycastTrustAction: async (action: string) => {
-      actions.push(action)
+    trustedRaycastTrustAction: async (extensionId: string, action: string) => {
+      actions.push(`${extensionId}:${action}`)
       if (actionResult === undefined && action === 'prepare') current = { ...current, staged: true, previewed: true }
-      return actionResult === undefined ? { ok: true, state: current } : { ok: actionResult.ok, state: current, error: actionResult.error ?? '' }
+      return actionResult === undefined ? { extensionId, ok: true, state: current } : { extensionId, ok: actionResult.ok, state: current, error: actionResult.error ?? '' }
     },
   } as unknown as LauncherPreloadBridge
   const view = createTrustedRaycastTrustView(document, bridge, () => {}, 'en-US')
   await flush()
   const section = nodes.find(node => node.attributes.get('aria-label') === 'Trusted Extensions')!
   const byRole = (role: string): Element => section.descendants('p').find(node => node.attributes.get('role') === role)!
-  const buttons = (): Tagged[] => section.descendants('button').filter(button => button.textContent !== 'Back to Results')
+  const buttons = (): Tagged[] => section.descendants('button').filter(button => button.textContent !== 'Back to Results' && button.attributes.get('role') !== 'tab')
   void states
   return {
     nodes,
@@ -76,31 +76,41 @@ test('trust surface installs through the explicit two-step approve and keeps ena
   assert.deepEqual(harness.buttons().map(button => button.textContent), ['Approve & Install'])
   harness.buttons()[0]!.dispatchEvent(new Event('click'))
   await flush()
-  assert.deepEqual(harness.actions, ['prepare', 'apply'])
+  assert.deepEqual(harness.actions, ['google-translate:prepare', 'google-translate:apply'])
   assert.equal(harness.status().textContent, 'Not Installed')
+})
+
+test('trust actions stay bound to the selected reviewed extension', async () => {
+  const harness = await makeView(trustState())
+  const kaomoji = harness.nodes.find(node => node.attributes.get('role') === 'tab' && node.attributes.get('data-extension-id') === 'kaomoji-search')!
+  kaomoji.dispatchEvent(new Event('click'))
+  await flush()
+  harness.buttons()[0]!.dispatchEvent(new Event('click'))
+  await flush()
+  assert.deepEqual(harness.actions, ['kaomoji-search:prepare'])
 })
 
 test('installed capability exposes enable, disable and confirmed remove; recovery surfaces its action', async () => {
   const installed = await makeView(trustState({ installed: true, digest: 'abc123', digestApproved: true }))
   assert.equal(installed.status().textContent, 'Installed · Disabled')
-  assert.deepEqual(installed.buttons().map(button => button.textContent), ['Enable Translate', 'Remove Extension'])
+  assert.deepEqual(installed.buttons().map(button => button.textContent), ['Enable Extension', 'Remove Extension'])
   installed.buttons()[0]!.dispatchEvent(new Event('click'))
-  assert.deepEqual(installed.actions, ['enable'])
+  assert.deepEqual(installed.actions, ['google-translate:enable'])
   const enabled = await makeView(trustState({ installed: true, enabled: true, digest: 'abc123', digestApproved: true }))
   assert.equal(enabled.status().textContent, 'Installed · Enabled')
-  assert.deepEqual(enabled.buttons().map(button => button.textContent), ['Disable Translate', 'Remove Extension'])
+  assert.deepEqual(enabled.buttons().map(button => button.textContent), ['Disable Extension', 'Remove Extension'])
   enabled.buttons()[0]!.dispatchEvent(new Event('click'))
-  assert.deepEqual(enabled.actions, ['disable'])
+  assert.deepEqual(enabled.actions, ['google-translate:disable'])
   const removing = await makeView(trustState({ installed: true, enabled: true, digest: 'abc123', digestApproved: true }))
   removing.buttons()[1]!.dispatchEvent(new Event('click'))
-  assert.deepEqual(removing.buttons().map(button => button.textContent), ['Disable Translate', 'Confirm Remove'])
+  assert.deepEqual(removing.buttons().map(button => button.textContent), ['Disable Extension', 'Confirm Remove'])
   removing.buttons()[1]!.dispatchEvent(new Event('click'))
-  assert.deepEqual(removing.actions, ['remove'])
+  assert.deepEqual(removing.actions, ['google-translate:remove'])
   const recovering = await makeView(trustState({ recovery: 'invalid-install' }))
   assert.equal(recovering.status().textContent, 'Recovery Required')
   assert.deepEqual(recovering.buttons().map(button => button.textContent), ['Recover Installation'])
   recovering.buttons()[0]!.dispatchEvent(new Event('click'))
-  assert.deepEqual(recovering.actions, ['recover'])
+  assert.deepEqual(recovering.actions, ['google-translate:recover'])
 })
 
 test('inactive capability and failed actions stay honest and visible', async () => {

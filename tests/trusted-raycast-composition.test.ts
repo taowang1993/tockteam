@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { apply, inject } from '../plugins/trusted-raycast/src/index.ts'
-import { trustedRaycastCatalog } from '../src/trusted-raycast-catalog.ts'
+import { trustedRaycastAssetUrl, trustedRaycastCatalog } from '../src/trusted-raycast-catalog.ts'
 import { BUNDLED_DESKTOP_HOST_PLUGINS, BUNDLED_DESKTOP_CLIENT_PLUGINS } from '../src/profile.ts'
 import { DesktopTrustedRaycastChannel } from '../src/trusted-raycast-channel.ts'
 import { scrubDesktopAuthorityEnvironment } from '../src/desktop-runtime-environment.ts'
@@ -21,6 +21,14 @@ test('catalog requires live Host capability, an installed enabled candidate, and
   assert.equal(item!.id.startsWith('tockteam-route:'), false)
   assert.equal(trustItem!.id, 'trusted-raycast:trust')
   assert.equal(trustItem!.imageKey, 'ueli-command')
+  const [translate, kaomoji, manage] = trustedRaycastCatalog(true, { ...approved, installed: true, enabled: true }, { ...approved, installed: true, enabled: true })
+  assert.equal(translate!.id, 'trusted-raycast:google-translate:translate')
+  assert.equal(kaomoji!.id, 'trusted-raycast:kaomoji-search:index')
+  assert.equal(kaomoji!.imageKey, 'trusted-raycast-kaomoji-search')
+  assert.equal(kaomoji!.defaultAction.handlerKey, 'trusted-raycast-kaomoji')
+  assert.equal(trustedRaycastAssetUrl(kaomoji!.imageKey), './trusted-raycast-kaomoji/kaomoji-search.png')
+  assert.equal(manage!.id, 'trusted-raycast:trust')
+  assert.equal(trustedRaycastCatalog(true, { ...approved, installed: false, enabled: false }, { ...approved, installed: true, enabled: true })[0]!.id, 'trusted-raycast:kaomoji-search:index')
 })
 test('Desktop Host effect alone owns activation and disposal', async () => {
   const channel = new DesktopTrustedRaycastChannel(async () => {})
