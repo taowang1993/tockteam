@@ -125,7 +125,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       if (${expected}) {
         const marker = launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"] .launcher-command-row-icon');
         const identity = await marker.evaluate(node => ({ src: node instanceof HTMLImageElement ? node.src : '', tag: node.tagName }));
-        if (identity.tag !== 'IMG' || !new URL(identity.src).pathname.endsWith('/trusted-raycast/google-translate.png')) throw new Error('Translate catalog did not use its reviewed extension icon: ' + JSON.stringify(identity));
+        if (identity.tag !== 'IMG' || !identity.src.endsWith('/trusted-raycast/google-translate.png')) throw new Error('Translate catalog did not use its reviewed extension icon: ' + JSON.stringify(identity));
       }
       return { translateVisible: present === 1 };
     }`)
