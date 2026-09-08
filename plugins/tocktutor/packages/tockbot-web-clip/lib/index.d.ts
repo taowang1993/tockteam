@@ -49,6 +49,7 @@ export declare class WebClipHost extends Service {
     }, signal: AbortSignal): Promise<ClipPreview>;
     applyClipReview(approval: ClipApproval, signal: AbortSignal): Promise<WriteDocumentResult>;
     private applyClipReviewOnce;
+    private loadLoopbackFixture;
     protected loadPublicText(url: string, signal: AbortSignal): Promise<PublicTextResult>;
     fetchText(url: string, options?: {
         signal?: AbortSignal;

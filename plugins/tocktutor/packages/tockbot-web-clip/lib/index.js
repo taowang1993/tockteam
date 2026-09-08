@@ -1,6 +1,6 @@
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
-import { defaultPublicFetchLimits, fetchPublicText, maximumPublicFetchLimits, } from "./fetch.js";
+import { defaultPublicFetchLimits, fetchPublicText, readBoundedText, responseHeaderBytes, maximumPublicFetchLimits, WebFetchError, } from "./fetch.js";
 import { defaultReaderViewLimits, maximumReaderViewLimits, projectReaderView, } from "./reader.js";
 import { ClipReviewStore, } from "./review.js";
 import { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH, createClipApplyHandler, createClipCancelHandler, createClipReviewHandler, createReaderHandler, createViewerHandler, } from "./server.js";
@@ -36,6 +36,8 @@ export const Config = Schema.object({
     maxReaderWarnings: positiveInteger(defaultReaderViewLimits.maxReaderWarnings, maximumReaderViewLimits.maxReaderWarnings),
 });
 const MAX_VIEWER_HTML_CHARS = 1_000_000;
+const WEB_CLIP_FIXTURE_URL_ENV = 'TOCKTEAM_WEB_CLIP_FIXTURE_URL';
+const fixtureContentTypes = new Set(['application/xhtml+xml', 'text/html', 'text/plain']);
 function escapedViewerText(value, maxChars) {
     return value.toWellFormed()
         .replaceAll('&', '&amp;')
@@ -246,8 +248,67 @@ export class WebClipHost extends Service {
         }
         return result;
     }
+    async loadLoopbackFixture(url, signal) {
+        if (process.env[WEB_CLIP_FIXTURE_URL_ENV] !== url)
+            return null;
+        let parsed;
+        try {
+            parsed = new URL(url);
+        }
+        catch {
+            return null;
+        }
+        if (parsed.protocol !== 'http:' || parsed.hostname !== '127.0.0.1.nip.io' || parsed.pathname !== '/tockteam-web-clip-fixture')
+            return null;
+        const controller = new AbortController();
+        let timedOut = false;
+        const abortFromCaller = () => { controller.abort(signal.reason); };
+        signal.addEventListener('abort', abortFromCaller, { once: true });
+        if (signal.aborted)
+            controller.abort(signal.reason);
+        const timer = setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+        }, this.fetchLimits.timeoutMs);
+        try {
+            const response = await fetch(url, { redirect: 'manual', signal: controller.signal });
+            if (responseHeaderBytes(response.headers) > this.fetchLimits.maxResponseHeadersBytes) {
+                await response.body?.cancel().catch(() => undefined);
+                throw new WebFetchError('headers', 'The loopback fixture response headers are too large.');
+            }
+            if (response.status >= 300 && response.status < 400) {
+                await response.body?.cancel().catch(() => undefined);
+                throw new WebFetchError('redirect', 'The loopback fixture must not redirect.');
+            }
+            if (!response.ok) {
+                await response.body?.cancel().catch(() => undefined);
+                throw new WebFetchError('status', 'The loopback fixture returned an unsuccessful status.');
+            }
+            const type = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
+            if (type === undefined || !fixtureContentTypes.has(type)) {
+                await response.body?.cancel().catch(() => undefined);
+                throw new WebFetchError('content-type', 'The loopback fixture must contain HTML or plain text.');
+            }
+            const text = await readBoundedText(response, this.fetchLimits, controller.signal);
+            return { contentType: type, text, url };
+        }
+        catch (error) {
+            if (signal.aborted)
+                throw signal.reason;
+            if (timedOut)
+                throw new WebFetchError('timeout', 'The loopback fixture request timed out.');
+            if (error instanceof WebFetchError)
+                throw error;
+            throw new WebFetchError('network', 'The loopback fixture request failed.');
+        }
+        finally {
+            clearTimeout(timer);
+            signal.removeEventListener('abort', abortFromCaller);
+        }
+    }
     async loadPublicText(url, signal) {
-        return await fetchPublicText(url, { limits: this.fetchLimits, signal });
+        const fixture = await this.loadLoopbackFixture(url, signal);
+        return fixture ?? await fetchPublicText(url, { limits: this.fetchLimits, signal });
     }
     async fetchText(url, options = {}) {
         if (this.activeFetches >= this.maxConcurrentRequests) {

@@ -259,7 +259,7 @@ async function resolvePublicAddress(url, lookup, limits, signal) {
     }
     return addresses[0]?.address ?? fail('address', 'Only public HTTP(S) addresses are allowed.');
 }
-function responseHeaderBytes(headers) {
+export function responseHeaderBytes(headers) {
     let bytes = 2;
     for (const [name, value] of headers)
         bytes += utf8.encode(`${name}: ${value}\r\n`).byteLength;
@@ -275,7 +275,7 @@ function contentType(response) {
     }
     return value;
 }
-async function readText(response, limits, signal) {
+export async function readBoundedText(response, limits, signal) {
     const declaredLength = response.headers.get('content-length');
     if (declaredLength !== null) {
         if (!/^\d+$/u.test(declaredLength) || Number(declaredLength) > limits.maxResponseBytes) {
@@ -392,7 +392,7 @@ export async function fetchPublicText(value, options = {}) {
                 await discard(response);
                 throw error;
             }
-            const text = await readText(response, limits, controller.signal);
+            const text = await readBoundedText(response, limits, controller.signal);
             return { contentType: type, text, url: currentUrl };
         }
     }

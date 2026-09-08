@@ -41,4 +41,6 @@ export interface FetchPublicTextOptions {
 export declare function normalizePublicHttpUrl(value: string, maxBytes?: number): string;
 export declare function isPublicAddress(rawAddress: string): boolean;
 export declare function createPinnedLookup(rawAddress: string): LookupFunction;
+export declare function responseHeaderBytes(headers: Headers): number;
+export declare function readBoundedText(response: Response, limits: PublicFetchLimits, signal: AbortSignal): Promise<string>;
 export declare function fetchPublicText(value: string, options?: FetchPublicTextOptions): Promise<PublicTextResult>;
