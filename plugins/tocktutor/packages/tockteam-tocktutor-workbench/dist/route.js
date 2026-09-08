@@ -170,6 +170,9 @@ function validSearchResult(value, vault) {
             && match.preview.length <= 4_096
             && (match.line === null || Number.isSafeInteger(match.line)));
 }
+function validEntryRevision(value) {
+    return typeof value === 'string' && /^(?:entry|file):[0-9a-f]{64}$/u.test(value);
+}
 function validTrashEntryInfo(value) {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -186,8 +189,7 @@ function validTrashMutationResult(value, vault, originalPath) {
     const result = value;
     return result.generation === vault.generation
         && result.originalPath === originalPath
-        && typeof result.revision === 'string'
-        && /^file:[0-9a-f]{64}$/u.test(result.revision)
+        && validEntryRevision(result.revision)
         && result.status === 'trashed';
 }
 function validRestoreTrashResult(value, vault, entry) {
@@ -199,8 +201,7 @@ function validRestoreTrashResult(value, vault, entry) {
         && result.kind === entry.kind
         && result.originalPath === entry.originalPath
         && result.path === entry.originalPath
-        && typeof result.revision === 'string'
-        && /^file:[0-9a-f]{64}$/u.test(result.revision)
+        && validEntryRevision(result.revision)
         && result.status === 'restored';
 }
 function documentKind(path) {
