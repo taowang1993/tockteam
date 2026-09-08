@@ -4,6 +4,8 @@ export declare const MAX_RICH_MARKDOWN_FOOTNOTES = 1000;
 export interface RenderMarkdownOptions {
     /** External HTTP(S) media is inert by default; viewer mode emits a button for the isolated Web Viewer. */
     externalEmbedMode?: 'inert' | 'viewer';
+    /** Hide only local embed markers that have already been resolved by the Host. */
+    resolvedEmbedSources?: readonly string[];
     strictLineBreaks?: boolean;
 }
 export interface StaticMarkdownEmbed {

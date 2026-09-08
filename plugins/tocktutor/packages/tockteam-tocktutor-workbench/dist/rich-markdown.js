@@ -44,6 +44,42 @@ const ACTIVE_HTML_OPEN = /<\s*(embed|form|iframe|link|math|meta|object|script|st
 function activeHtmlClose(name) {
     return new RegExp(`</\\s*${name}\\s*>`, 'iu');
 }
+function inlineCodeRanges(line) {
+    const ranges = [];
+    for (const match of line.matchAll(/(`+)([^`]*?)\1/gu)) {
+        if (match.index !== undefined)
+            ranges.push([match.index, match.index + match[0].length]);
+    }
+    return ranges;
+}
+function escapedAt(line, index) {
+    let slashes = 0;
+    for (let cursor = index - 1; cursor >= 0 && line[cursor] === '\\'; cursor -= 1)
+        slashes += 1;
+    return slashes % 2 === 1;
+}
+/** Hide resolved local embed markers without touching fenced or inline code. */
+function hideResolvedEmbedSources(markdown, sources) {
+    if (sources.size === 0)
+        return markdown;
+    let fence = null;
+    return markdown.split('\n').map(line => {
+        const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
+        if (marker !== undefined) {
+            if (fence === null)
+                fence = { character: marker[0], length: marker.length };
+            else if (marker[0] === fence.character && marker.length >= fence.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line))
+                fence = null;
+            return line;
+        }
+        if (fence !== null)
+            return line;
+        const code = inlineCodeRanges(line);
+        return line.replace(/!\[\[([^\]\r\n]{1,4096})\]\]/gu, (match, _target, offset) => {
+            return sources.has(match) && !code.some(([start, end]) => offset >= start && offset < end) && !escapedAt(line, offset) ? '' : match;
+        });
+    }).join('\n');
+}
 /** Remove active HTML outside fenced code without reordering the authored Markdown. */
 function stripActiveHtml(markdown) {
     const inlineCode = [];
@@ -384,7 +420,9 @@ function renderMarkdownList(items, start, indent, taskIndex, footnotes, external
 export function renderMarkdownHtml(markdown, options = {}) {
     if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES)
         return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
-    const source = stripActiveHtml(stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n'));
+    const normalized = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    const resolvedEmbedSources = new Set(options.resolvedEmbedSources ?? []);
+    const source = stripActiveHtml(hideResolvedEmbedSources(normalized, resolvedEmbedSources));
     const lines = source.split('\n');
     const footnotes = collectFootnotes(lines);
     const externalEmbedMode = options.externalEmbedMode ?? 'inert';

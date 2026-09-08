@@ -55,8 +55,9 @@ export interface EmbedResolverOptions {
     readDocument(path: string, signal: AbortSignal): Promise<EmbedDocumentResult>;
     signal?: AbortSignal;
     source: string;
+    sourcePath?: string;
 }
-export declare function collectEmbedTargets(source: string): EmbedTarget[];
+export declare function collectEmbedTargets(source: string, sourcePath?: string): EmbedTarget[];
 /** Resolve an authored path exactly before falling back to one unambiguous basename or alias. */
 export declare function resolveEmbedTargetPath(entries: readonly EmbedIndexEntry[], targetPath: string): string | null;
 export declare function resolveNoteEmbedFragment(source: string, fragment: string | null): string | null;
