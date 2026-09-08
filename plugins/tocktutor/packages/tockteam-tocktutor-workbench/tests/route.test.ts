@@ -30,6 +30,7 @@ const secondVault = Object.freeze({ generation: 4, id: `vault:${'2'.repeat(64)}`
 const sandboxVault = Object.freeze({ generation: 5, id: `vault:${'3'.repeat(64)}` })
 const firstRevision = `file:${'a'.repeat(64)}`
 const secondRevision = `file:${'b'.repeat(64)}`
+const aliasRevision = `entry:${'c'.repeat(64)}`
 function success<T>(value: T) {
   return Promise.resolve({ ok: true as const, value })
 }
@@ -139,6 +140,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   renameFailure: { code: 'conflict'; message: string } | null = null
   renameRewriteError: string | undefined
   renamedPath: string | null = null
+  aliasPath: string | null = null
   saveOverride: (() => Promise<{ ok: true; value: WriteDocumentResult }>) | null = null
   linksGate: Promise<void> | null = null
   linksOverride: ((request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => Promise<{ ok: true; value: VaultLinksResult }>) | null = null
@@ -253,7 +255,7 @@ class FakeRemote implements WorkbenchRouteRemote {
         digest: `sha256:${'c'.repeat(64)}`,
         generation: expectedVault.generation,
         path,
-        revision: firstRevision,
+        revision: path === this.aliasPath ? aliasRevision : firstRevision,
       })
     },
     restoreSnapshot: (request: { expectedRevision: string; expectedVault: VaultReference; path: string; snapshotId: string }, signal?: AbortSignal) => {
@@ -1386,6 +1388,64 @@ test('loads bounded recovery state and drives preview, restore, trash, and recov
   assert.equal(await controller.trashCurrent(), true)
   assert.equal(controller.getSnapshot().path, null)
   assert.equal(remote.calls.some(call => call.method === 'trashEntry'), true)
+  controller.dispose()
+})
+
+test('trashes an aliased active document when the runtime returns an entry revision', async () => {
+  const remote = new FakeRemote()
+  const aliasPath = 'Aliases/Note.md'
+  remote.aliasPath = aliasPath
+  remote.trashEntryResult = {
+    createdAt: 1,
+    generation: firstVault.generation,
+    id: 'trash-12345678-1234-4123-8123-123456789abc',
+    kind: 'document',
+    originalPath: aliasPath,
+    revision: aliasRevision,
+    status: 'trashed',
+  }
+  const navigations: string[] = []
+  const controller = new WorkbenchRouteController(remote, path => { navigations.push(path) })
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select(aliasPath), true)
+  assert.equal(controller.getSnapshot().revision, aliasRevision)
+
+  assert.equal(await controller.trashCurrent(), true)
+  assert.equal(controller.getSnapshot().path, null)
+  assert.equal(navigations.at(-1), '/tocktutor')
+  assert.deepEqual(remote.calls.findLast(call => call.method === 'trashEntry')?.parameters[0], {
+    expectedRevision: aliasRevision,
+    expectedVault: firstVault,
+    path: aliasPath,
+  })
+  controller.dispose()
+})
+
+test('restores an aliased trash entry when the runtime returns an entry revision', async () => {
+  const remote = new FakeRemote()
+  const aliasPath = 'Aliases/Note.md'
+  const trashId = 'trash-123e4567-e89b-42d3-a456-426614174000'
+  remote.aliasPath = aliasPath
+  remote.trashEntries = [{ createdAt: 2, id: trashId, kind: 'document', originalPath: aliasPath }]
+  remote.restoreTrashResult = {
+    createdAt: 2,
+    generation: firstVault.generation,
+    id: trashId,
+    kind: 'document',
+    originalPath: aliasPath,
+    path: aliasPath,
+    revision: aliasRevision,
+    status: 'restored',
+  }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select(aliasPath), true)
+  await controller.setRecoveryOpen(true)
+
+  assert.equal(await controller.restoreTrashEntry(trashId), true)
+  assert.equal(controller.getSnapshot().path, aliasPath)
+  assert.equal(controller.getSnapshot().recoveryOpen, true)
+  assert.equal(remote.calls.some(call => call.method === 'listTree'), true)
   controller.dispose()
 })
 

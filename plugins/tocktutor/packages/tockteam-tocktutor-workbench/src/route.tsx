@@ -464,6 +464,10 @@ function validSearchResult(value: VaultSearchResult, vault: VaultReference): boo
       && (match.line === null || Number.isSafeInteger(match.line)))
 }
 
+function validEntryRevision(value: unknown): value is string {
+  return typeof value === 'string' && /^(?:entry|file):[0-9a-f]{64}$/u.test(value)
+}
+
 function validTrashEntryInfo(value: unknown): value is TrashEntryInfo {
   if (typeof value !== 'object' || value === null) return false
   const entry = value as unknown as Record<string, unknown>
@@ -483,8 +487,7 @@ function validTrashMutationResult(
   const result = value as unknown as Record<string, unknown>
   return result.generation === vault.generation
     && result.originalPath === originalPath
-    && typeof result.revision === 'string'
-    && /^file:[0-9a-f]{64}$/u.test(result.revision)
+    && validEntryRevision(result.revision)
     && result.status === 'trashed'
 }
 
@@ -500,8 +503,7 @@ function validRestoreTrashResult(
     && result.kind === entry.kind
     && result.originalPath === entry.originalPath
     && result.path === entry.originalPath
-    && typeof result.revision === 'string'
-    && /^file:[0-9a-f]{64}$/u.test(result.revision)
+    && validEntryRevision(result.revision)
     && result.status === 'restored'
 }
 
