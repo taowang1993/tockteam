@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isTrustedRaycastViewMessage } from '../src/trusted-raycast-contract.ts'
+import { isTrustedRaycastViewMessage, parseTrustedRaycastChildMessage } from '../src/trusted-raycast-contract.ts'
 
 const svg = (text: string, fill: '#000' | '#fff'): string => `data:image/svg+xml;base64,${Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" >\n  <text dominant-baseline="middle" x="45" y="45" text-anchor="middle" fill="${fill}" font-size="8px" text-length="90" length-adjust="spacing">\n    ${[...text].map(value => `&#${value.charCodeAt(0)};`).join('')}\n  </text>\n</svg>`).toString('base64')}`
 const action = { type: 'raycast-action', props: { actionEventId: 'copy', icon: 'Clipboard', title: 'Copy to Clipboard' }, children: [] }
@@ -34,4 +34,20 @@ test('Grid and fixed Kaomoji icons cannot cross extension or capability boundari
   assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, children: [{ ...root.children[0], children: [unknownIcon] }] } }), false)
   const list = { ...root, type: 'raycast-list', children: [{ ...root.children[0], children: [{ type: 'raycast-list-item', props: { accessories: '[{"text":"Happy Face"}]', subtitle: '', title: '(^_^)' }, children: [action] }] }] }
   assert.equal(isTrustedRaycastViewMessage({ ...message, root: list }), true)
+})
+
+test('Kaomoji projection admits exactly 64 four-action items and diagnoses the next item', () => {
+  const inertAction = { type: 'raycast-action', props: { title: 'Unavailable', unavailable: true }, children: [] }
+  const fourActions = { type: 'raycast-action-panel', props: {}, children: [...Array.from({ length: 4 }, (_, index) => ({ ...action, props: { ...action.props, actionEventId: `action-${index}` } })), inertAction] }
+  const withItems = (count: number) => ({ ...root, children: [{ ...root.children[0], children: Array.from({ length: count }, (_, index) => ({ ...item, props: { ...item.props, title: `item-${index}` }, children: [fourActions] })) }] })
+  const boundary = { ...message, root: withItems(64) }
+  assert.equal(isTrustedRaycastViewMessage(boundary), true, 'inert action nodes do not consume invocation handles')
+  const nonLeaf = { ...boundary, root: { ...boundary.root, children: [{ ...boundary.root.children[0], children: [{ ...item, children: [{ ...fourActions, children: [{ ...action, children: ['unexpected'] }] }] }] }] } }
+  assert.equal(isTrustedRaycastViewMessage(nonLeaf), false)
+  const patch = { ...boundary, type: 'patch', revision: 1, status: 'ready' }
+  assert.equal(isTrustedRaycastViewMessage(patch), true)
+  assert.doesNotThrow(() => parseTrustedRaycastChildMessage(JSON.stringify(patch), { extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', command: 'index', preferences: {} }, 0))
+  const oversized = { ...message, root: withItems(65) }
+  assert.equal(isTrustedRaycastViewMessage(oversized), false)
+  assert.throws(() => parseTrustedRaycastChildMessage(JSON.stringify(oversized), { extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', command: 'index', preferences: {} }, -1), /projection exceeded finite view bounds/)
 })

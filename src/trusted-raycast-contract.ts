@@ -234,7 +234,8 @@ function isViewNode(value: unknown, extensionId: TrustedRaycastExtensionId, dept
     if (typeof entry === 'string') count.text += byteLength(entry)
     if (typeof entry === 'number' && !Number.isFinite(entry)) return false
   }
-  if (value.type.startsWith('raycast-action') && ++count.actions > 256) return false
+  if (extensionId === 'kaomoji-search' && value.type === 'raycast-action' && value.children.length !== 0) return false
+  if (value.type === 'raycast-action' && typeof value.props.actionEventId === 'string' && ++count.actions > 256) return false
   return value.children.every(child => {
     if (typeof child === 'string') { count.text += byteLength(child); return boundedString(child, MAX_TEXT) }
     return isViewNode(child, extensionId, depth + 1, count)
@@ -260,7 +261,11 @@ export function isTrustedRaycastViewMessage(value: unknown): value is TrustedRay
 export function parseTrustedRaycastChildMessage(line: string, session: TrustedRaycastViewOpen, previousRevision: number): TrustedRaycastViewMessage {
   if (byteLength(line) > MAX_MESSAGE) throw new Error('Translate output exceeded its bound')
   const message: unknown = JSON.parse(line)
-  if (!isTrustedRaycastViewMessage(message) || message.extensionId !== session.extensionId || message.sessionId !== session.sessionId || message.generation !== session.generation || ((message.type === 'toast' || message.type === 'outcome') ? message.revision !== previousRevision : message.revision <= previousRevision) || (previousRevision === -1 ? message.type !== 'ready' : message.type === 'ready')) throw new Error('Invalid trusted extension runtime message')
+  if (!isTrustedRaycastViewMessage(message)) {
+    if (isRecord(message) && message.extensionId === 'kaomoji-search' && (message.type === 'ready' || message.type === 'patch') && Object.hasOwn(message, 'root')) throw new Error('Trusted extension projection exceeded finite view bounds')
+    throw new Error('Invalid trusted extension runtime message')
+  }
+  if (message.extensionId !== session.extensionId || message.sessionId !== session.sessionId || message.generation !== session.generation || ((message.type === 'toast' || message.type === 'outcome') ? message.revision !== previousRevision : message.revision <= previousRevision) || (previousRevision === -1 ? message.type !== 'ready' : message.type === 'ready')) throw new Error('Invalid trusted extension runtime message')
   return message
 }
 

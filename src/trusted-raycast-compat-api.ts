@@ -8,7 +8,11 @@ const component = (type: string) => (props: Record<string, unknown>) => element(
 let searchHandler: ((value: string) => void) | undefined
 let searchable = false
 let renderedCollectionItems = 0
-const MAX_COLLECTION_ITEMS = 256
+// Every admitted Kaomoji item owns four finite actions; 64 items keep the whole
+// projection within the independent 256-action protocol ceiling. Translate keeps
+// its existing cap because its reviewed command has a different projection shape.
+// ponytail: keep the 64-item ceiling until lazy/virtualized action registration makes larger browsing bounded.
+const MAX_COLLECTION_ITEMS = process.env.TRUSTED_RAYCAST_EXTENSION_ID === 'kaomoji-search' ? 64 : 256
 const searchableCollection = (type: 'raycast-grid' | 'raycast-list') => (props: Record<string, unknown>) => {
   renderedCollectionItems = 0
   if (typeof props.onSearchTextChange === 'function') {
