@@ -74,6 +74,20 @@ test('hides resolved local embed markers while preserving unresolved and code li
   assert.doesNotMatch(html, /<p>!\[\[Target\.md\]\]<\/p>/u)
 })
 
+test('renders Host-resolved local media and note embeds at their authored positions', () => {
+  const mediaSource = '![[../Attachments/pixel.png|16x16]]'
+  const html = renderMarkdownHtml(`Before ${mediaSource} after\n\n![[Included.md]]\n`, {
+    externalEmbedMode: 'viewer',
+    resolvedEmbeds: [
+      { content: 'iVBORw0KGgo=', mimeType: 'image/png', target: { display: '16x16', fragment: null, kind: 'media', path: 'Attachments/pixel.png', source: mediaSource } },
+      { content: '# Included\n\nHost content\n', target: { display: null, fragment: null, kind: 'note', path: 'Notes/Included.md', source: '![[Included.md]]' } },
+    ],
+  })
+  assert.match(html, /<p>Before <span[^>]+data-embed-kind="media"[^>]*><img[^>]+height="16"[^>]+width="16"[^>]+src="data:image\/png;base64,iVBORw0KGgo="/u)
+  assert.match(html, /data-embed-kind="note"[^>]*>.*<h1>Included<\/h1>.*Host content/su)
+  assert.doesNotMatch(html, /!\[\[\.\.\/Attachments\/pixel\.png\|16x16\]\]/u)
+})
+
 test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {
   const html = renderMarkdownHtml('> First line\n>\n> second line\n\nOpen [[Welcome]] and [[Study Guide|start here]].\n')
   assert.match(html, /<blockquote><p>First line<\/p><p>second line<\/p><\/blockquote>/u)

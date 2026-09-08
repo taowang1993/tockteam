@@ -272,7 +272,9 @@ describe('Milkdown Live Preview editor', () => {
     const reading = screen.getByLabelText('Reading View')
     expect(reading.textContent).not.toContain(mediaSource)
     expect(reading.textContent).not.toContain('![[Included.md]]')
-    expect(reading.querySelector('img[alt="16x16"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
+    expect(reading.querySelector('.tocktutor-reading img[alt="16x16"][height="16"][width="16"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
+    expect(reading.querySelector('.tocktutor-reading [data-embed-kind="note"]')).toBeTruthy()
+    expect(reading.querySelector('[aria-label="Resolved Embeds"]')).toBeNull()
     expect(reading.textContent).toContain('Rendered from the Host.')
   })
 

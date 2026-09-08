@@ -77,8 +77,7 @@ export function MarkdownSlidesView(props: {
   onOpenExternalUrl?: ((url: string) => void) | undefined
   source: string
 }): ReactNode {
-  const resolvedEmbedSources = useMemo(() => (props.embeds ?? []).map(embed => embed.target.source), [props.embeds])
-  const slides = useMemo(() => buildMarkdownSlides(props.source, { externalEmbedMode: 'viewer', resolvedEmbedSources }), [props.source, resolvedEmbedSources])
+  const slides = useMemo(() => buildMarkdownSlides(props.source, { externalEmbedMode: 'viewer', ...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds }) }), [props.source, props.embeds])
   return (
     <section aria-label="Slides Preview" className="grid gap-3">
       {slides.map((slide, index) => (
@@ -87,7 +86,6 @@ export function MarkdownSlidesView(props: {
           <div dangerouslySetInnerHTML={{ __html: slide }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />
         </article>
       ))}
-      <ResolvedEmbedsView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} />
     </section>
   )
 }
@@ -122,8 +120,7 @@ export function RichReadingView(props: {
   source: string
   title: string
 }): ReactNode {
-  const resolvedEmbedSources = useMemo(() => (props.embeds ?? []).map(embed => embed.target.source), [props.embeds])
-  const html = useMemo(() => renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer', resolvedEmbedSources }), [props.source, resolvedEmbedSources])
+  const html = useMemo(() => renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer', ...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds }) }), [props.source, props.embeds])
   const onClick = (event: ReactMouseEvent<HTMLElement>): void => {
     const target = event.target
     if (target instanceof HTMLInputElement && target.dataset.taskIndex !== undefined) {
@@ -151,7 +148,6 @@ export function RichReadingView(props: {
         onClick={onClick}
       >
         <div dangerouslySetInnerHTML={{ __html: html }} />
-        <ResolvedEmbedsView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} />
       </article>
     </section>
   )
@@ -169,7 +165,6 @@ export function LivePreviewView(props: {
   source: string
   title: string
 }): ReactNode {
-  const resolvedEmbedSources = useMemo(() => (props.embeds ?? []).map(embed => embed.target.source), [props.embeds])
   return (
     <section aria-label="Live Preview" className="flex min-h-full flex-col" tabIndex={-1}>
       <LivePreviewEditor
@@ -188,7 +183,7 @@ export function LivePreviewView(props: {
       />
       <details className="mx-auto mb-6 mt-4 w-[calc(100%-32px)] max-w-3xl rounded border border-[var(--tt-border)] p-2">
         <summary className="cursor-pointer text-xs font-medium">Rendered Preview</summary>
-        <div aria-label="Live Preview Rendered Content" className="mt-2" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer', resolvedEmbedSources }) }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />
+        <div aria-label="Live Preview Rendered Content" className="mt-2" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer', ...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds }) }) }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />
         <details className="mt-3 rounded border border-[var(--tt-border)] p-2">
           <summary className="cursor-pointer text-xs font-medium">Slides Preview</summary>
           <MarkdownSlidesView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} source={props.source} />
