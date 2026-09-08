@@ -283,6 +283,10 @@ function allowedMime(mimeType, target) {
         || /^video\/(?:3gpp|mp4|mpeg|ogg|quicktime|webm)$/u.test(mime)
         || mime === 'application/pdf';
 }
+function validBase64(value) {
+    return typeof value === 'string'
+        && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value);
+}
 function freezeTarget(target) {
     return Object.freeze({ ...target });
 }
@@ -360,6 +364,10 @@ export async function resolveEmbedGraph(options) {
                 }
                 if (!allowedMime(value.mimeType, target)) {
                     warn(`Unsupported media type: ${path}`);
+                    return;
+                }
+                if (!validBase64(value.dataBase64)) {
+                    warn(`Invalid media encoding: ${path}`);
                     return;
                 }
                 const encodedBytes = new TextEncoder().encode(value.dataBase64).byteLength;
