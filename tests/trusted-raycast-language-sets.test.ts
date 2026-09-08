@@ -34,8 +34,8 @@ test('translate preferences admit only the exact reviewed key set with bounded v
 
 test('manager start rejects unsupported preferences but admits defaults', async () => {
   const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage() {} })
-  await assert.rejects(manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: { lang1: 'unsafe<script>' } }), /Unsupported Translate preferences/)
-  await assert.rejects(manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: {} }), /Packaged Node|runtimeDir|artifact|ENOENT/i)
+  await assert.rejects(manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: { lang1: 'unsafe<script>' } }), /Unsupported Translate preferences/)
+  await assert.rejects(manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: {} }), /Packaged Node|runtimeDir|artifact|ENOENT/i)
 })
 
 test('manager rewrites field handles, forwards navigation, and rejects stale field and search events', async () => {
@@ -43,16 +43,18 @@ test('manager rewrites field handles, forwards navigation, and rejects stale fie
   const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage() {} })
   const stdin = new PassThrough(); stdin.on('data', chunk => writes.push(String(chunk)))
   const owner = { webContentsId: 1 }
-  const session = { child: { stdin }, owner, input: { sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }, workspace: '/tmp/x', revision: 2, querySequence: 0, eventId: 'search', actions: new Map([['action', 'source-action']]), fields: new Map([['field', 'source-field']]), action: undefined as { eventId: string; revision: number; nativeUsed: boolean } | undefined }
+  const session = { child: { stdin }, owner, input: { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }, workspace: '/tmp/x', revision: 2, querySequence: 0, eventId: 'search', actions: new Map([['action', 'source-action']]), fields: new Map([['field', 'source-field']]), action: undefined as { eventId: string; revision: number; nativeUsed: boolean } | undefined }
   Reflect.set(manager, 'session', session)
-  manager.send(owner, { sessionId: 's', generation: 'g', revision: 2, eventId: 'field', kind: 'fieldChanged', value: 'manage' })
-  assert.deepEqual(JSON.parse(writes.at(-1)!), { sessionId: 's', generation: 'g', revision: 2, eventId: 'source-field', kind: 'fieldChanged', value: 'manage' })
-  assert.throws(() => manager.send(owner, { sessionId: 's', generation: 'g', revision: 2, eventId: 'unknown', kind: 'fieldChanged', value: 'manage' }), /stale/)
-  manager.send(owner, { sessionId: 's', generation: 'g', revision: 2, eventId: 'language-nav', kind: 'navigation', value: 'language:pop' })
-  assert.deepEqual(JSON.parse(writes.at(-1)!), { sessionId: 's', generation: 'g', revision: 2, eventId: 'language-nav', kind: 'navigation', value: 'language:pop' })
-  assert.throws(() => manager.send(owner, { sessionId: 's', generation: 'g', revision: 2, eventId: 'language-nav', kind: 'navigation', value: 'unsafe' }), /stale/)
+  assert.throws(() => manager.send(owner, { extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 2, eventId: 'field', kind: 'fieldChanged', value: 'manage' }), /stale/)
+  assert.equal(writes.length, 0)
+  manager.send(owner, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 2, eventId: 'field', kind: 'fieldChanged', value: 'manage' })
+  assert.deepEqual(JSON.parse(writes.at(-1)!), { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 2, eventId: 'source-field', kind: 'fieldChanged', value: 'manage' })
+  assert.throws(() => manager.send(owner, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 2, eventId: 'unknown', kind: 'fieldChanged', value: 'manage' }), /stale/)
+  manager.send(owner, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 2, eventId: 'language-nav', kind: 'navigation', value: 'language:pop' })
+  assert.deepEqual(JSON.parse(writes.at(-1)!), { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 2, eventId: 'language-nav', kind: 'navigation', value: 'language:pop' })
+  assert.throws(() => manager.send(owner, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 2, eventId: 'language-nav', kind: 'navigation', value: 'unsafe' }), /stale/)
   session.eventId = ''
-  assert.throws(() => manager.send(owner, { sessionId: 's', generation: 'g', revision: 2, eventId: '', kind: 'searchChanged', value: 'x' }), /stale/)
+  assert.throws(() => manager.send(owner, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 2, eventId: '', kind: 'searchChanged', value: 'x' }), /stale/)
   stdin.destroy()
 })
 
@@ -62,20 +64,20 @@ test('selected text native requests resolve with bounded results or honest denia
   const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage() {}, readSelectedText: async () => { selections.push('read'); return { text: 'fixture selection' } } })
   const stdin = new PassThrough(); stdin.on('data', chunk => writes.push(String(chunk)))
   const owner = { webContentsId: 1 }
-  const session = { child: { stdin }, owner, input: { sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }, workspace: '/tmp/x', revision: 2, querySequence: 0, eventId: 'search', actions: new Map(), fields: new Map(), action: undefined as { eventId: string; revision: number; nativeUsed: boolean } | undefined }
+  const session = { child: { stdin }, owner, input: { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }, workspace: '/tmp/x', revision: 2, querySequence: 0, eventId: 'search', actions: new Map(), fields: new Map(), action: undefined as { eventId: string; revision: number; nativeUsed: boolean } | undefined }
   Reflect.set(manager, 'session', session)
   const native = Reflect.get(manager, 'native').bind(manager)
-  await native(session, { type: 'native', sessionId: 's', generation: 'g', requestId: 'n1', kind: 'selectedText' })
+  await native(session, { type: 'native', extensionId: 'google-translate', sessionId: 's', generation: 'g', requestId: 'n1', kind: 'selectedText' })
   const outcome = JSON.parse(writes.at(-1)!)
   assert.equal(outcome.succeeded, true)
   assert.equal(outcome.result, 'fixture selection')
-  await native(session, { type: 'native', sessionId: 'other', generation: 'g', requestId: 'n2', kind: 'selectedText' })
+  await native(session, { type: 'native', extensionId: 'google-translate', sessionId: 'other', generation: 'g', requestId: 'n2', kind: 'selectedText' })
   assert.equal(JSON.parse(writes.at(-1)!).succeeded, false)
   assert.equal(selections.length, 1, 'unowned sessions cannot read selection')
   Reflect.set(manager, 'session', { ...session, input: { ...session.input, sessionId: 's' } })
   const denied = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage() {} })
   Reflect.set(denied, 'session', session)
-  await Reflect.get(denied, 'native').bind(denied)(session, { type: 'native', sessionId: 's', generation: 'g', requestId: 'n3', kind: 'selectedText' })
+  await Reflect.get(denied, 'native').bind(denied)(session, { type: 'native', extensionId: 'google-translate', sessionId: 's', generation: 'g', requestId: 'n3', kind: 'selectedText' })
   assert.equal(JSON.parse(writes.at(-1)!).succeeded, false)
   assert.match(JSON.parse(writes.at(-1)!).message, /unavailable/i)
   stdin.destroy()
@@ -87,10 +89,10 @@ test('paste requires a correlated action and surfaces honest policy denial', asy
   const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage() {}, pasteText: async text => { pastes.push(text); throw new Error('No prior application captured. Paste requires a captured target application.') } })
   const stdin = new PassThrough(); stdin.on('data', chunk => writes.push(String(chunk)))
   const owner = { webContentsId: 1 }
-  const session: { child: { stdin: PassThrough }; owner: typeof owner; input: { sessionId: string; generation: string; command: 'translate'; preferences: Record<string, never> }; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } } = { child: { stdin }, owner, input: { sessionId: 's', generation: 'g', command: 'translate', preferences: {} }, workspace: '/tmp/x', revision: 2, querySequence: 0, eventId: 'search', actions: new Map(), fields: new Map(), action: { eventId: 'paste-action', revision: 2, nativeUsed: false } }
+  const session: { child: { stdin: PassThrough }; owner: typeof owner; input: { extensionId: 'google-translate'; sessionId: string; generation: string; command: 'translate'; preferences: Record<string, never> }; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } } = { child: { stdin }, owner, input: { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: {} }, workspace: '/tmp/x', revision: 2, querySequence: 0, eventId: 'search', actions: new Map(), fields: new Map(), action: { eventId: 'paste-action', revision: 2, nativeUsed: false } }
   Reflect.set(manager, 'session', session)
   const native = Reflect.get(manager, 'native').bind(manager)
-  const base = { type: 'native', sessionId: 's', generation: 'g', revision: 2, eventId: 'paste-action', requestId: 'n', kind: 'paste', text: 'translated text' }
+  const base = { type: 'native', extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 2, eventId: 'paste-action', requestId: 'n', kind: 'paste', text: 'translated text' }
   await native(session, base)
   const outcome = JSON.parse(writes.at(-1)!)
   assert.equal(outcome.succeeded, false)

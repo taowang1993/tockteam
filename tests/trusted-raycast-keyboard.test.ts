@@ -22,7 +22,7 @@ function setup() {
   const view = createTrustedRaycastView(document as unknown as Document, { async trustedRaycastEvent(event: unknown) { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
   const input = nodes.find(node => node.tag === 'input')!
   let revision = 0
-  const update = (children: TrustedRaycastViewNode[], detail = true) => view.update({ type: revision ? 'patch' : 'ready', sessionId: 's', generation: 'g', revision: revision++, root: { type: 'raycast-list', props: { isShowingDetail: detail, searchEventId: 'search' }, children } } as TrustedRaycastViewMessage)
+  const update = (children: TrustedRaycastViewNode[], detail = true) => view.update({ type: revision ? 'patch' : 'ready', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: revision++, root: { type: 'raycast-list', props: { isShowingDetail: detail, searchEventId: 'search' }, children } } as TrustedRaycastViewMessage)
   const key = (key: string, composing = false, keyCode = 0) => {
     const event = new Event('keydown', { bubbles: true, cancelable: true })
     Object.defineProperties(event, Object.fromEntries(Object.entries({ key, isComposing: composing, keyCode, target: input, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false }).map(([key, value]) => [key, { value }])))

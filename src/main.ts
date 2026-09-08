@@ -2348,7 +2348,7 @@ function initializeLauncher(): void {
         await trustedRaycastBootstrap
         await trustedRaycastMutex(async () => {
           if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || trustedRaycastTrust?.status().digestApproved !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
-          await trustedRaycast.start(record.owner, { sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
+          await trustedRaycast.start(record.owner, { extensionId: 'google-translate', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
         })
         completion = launcherActionCompletion(true)
       }

@@ -21,7 +21,7 @@ class Element extends EventTarget {
   contains() { return false }
 }
 const flush = () => new Promise(resolve => setImmediate(resolve))
-const projection = (revision: number): TrustedRaycastViewMessage => ({ type: revision ? 'patch' : 'ready', sessionId: 's', generation: 'g', revision, root: { type: 'raycast-list', props: { searchEventId: `e${revision}` }, children: [] } })
+const projection = (revision: number): TrustedRaycastViewMessage => ({ type: revision ? 'patch' : 'ready', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision, root: { type: 'raycast-list', props: { searchEventId: `e${revision}` }, children: [] } })
 const inputOf = (nodes: Element[]): Element => nodes.find(node => node.id === 'trusted-raycast-search')!
 const errorOf = (nodes: Element[]): Element => nodes.find(node => node.getAttribute('role') === 'alert')!
 
@@ -47,7 +47,7 @@ test('latest typed input is coalesced and retried when a newer projection overta
   const type = (value: string) => { input.value = value; input.dispatchEvent(new Event('input')) }
   view.update(projection(0))
   type('old'); type('intermediate'); type('latest')
-  view.update({ type: 'toast', sessionId: 's', generation: 'g', revision: 0, querySequence: 0, style: 'failure', title: 'Old Query Failed', message: 'obsolete' })
+  view.update({ type: 'toast', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 0, querySequence: 0, style: 'failure', title: 'Old Query Failed', message: 'obsolete' })
   assert.equal(errorOf(nodes).hidden, true, 'old service toast cannot overtake pending input')
   assert.equal(sent.length, 1, 'one in-flight input, not a queue of obsolete queries')
   completions[0]!.reject(new Error("Error invoking remote method: Translate event is stale"))
@@ -67,7 +67,7 @@ test('latest typed input is coalesced and retried when a newer projection overta
   view.update(projection(3)); await flush()
   assert.equal(sent.length, 3, 'accepted input must not be sent for every render')
   type('closing')
-  view.update({ type: 'error', sessionId: 's', generation: 'g', revision: 4, message: 'closed' })
+  view.update({ type: 'error', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 4, message: 'closed' })
   completions[3]!.reject(new Error('Translate event is stale')); await flush()
   assert.equal(sent.length, 4)
   assert.equal(input.disabled, true)
@@ -85,7 +85,7 @@ test('source action outcomes remain visible when React commits after callback co
   assert.equal((view.element as unknown as Element).getAttribute('aria-busy'), 'true')
   await flush()
   assert.equal(sent[0]?.eventId, 'copy')
-  view.update({ type: 'outcome', sessionId: 's', generation: 'g', revision: 0, eventId: 'copy', succeeded: true, message: '' })
+  view.update({ type: 'outcome', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 0, eventId: 'copy', succeeded: true, message: '' })
   assert.equal((view.element as unknown as Element).getAttribute('aria-busy'), 'false')
   assert.ok(nodes.some(node => node.textContent === 'Action Completed'), 'completion status is visible')
   view.update({ ...message, type: 'patch', revision: 1, status: 'ready' })
@@ -169,7 +169,7 @@ test('terminal errors clear query and action busy state', () => {
   actionView.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [{ type: 'raycast-list-item', props: { title: 'result' }, children: [{ type: 'raycast-action', props: { title: 'Copy', actionEventId: 'copy' }, children: [] }] }] } })
   actionNodes.find(node => node.textContent === 'Copy')!.dispatchEvent(new Event('click'))
   assert.equal((actionView.element as unknown as Element).getAttribute('aria-busy'), 'true')
-  actionView.update({ type: 'error', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
+  actionView.update({ type: 'error', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
   assert.equal((actionView.element as unknown as Element).getAttribute('aria-busy'), 'false')
 
   const queryNodes: Element[] = []
@@ -185,7 +185,7 @@ test('terminal errors clear query and action busy state', () => {
   assert.equal(footerActions.getAttribute('role'), 'group')
   assert.equal(queryResults.children.length, 1)
   assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'true')
-  queryView.update({ type: 'error', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
+  queryView.update({ type: 'error', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 1, message: 'closed' })
   assert.equal((queryView.element as unknown as Element).getAttribute('aria-busy'), 'false')
   assert.equal(queryInput.disabled, true)
   assert.equal(languageSet.disabled, true)
@@ -226,7 +226,7 @@ test('internal stale or busy child outcomes also surface as the neutral retry me
   view.update(message)
   nodes.find(node => node.textContent === 'Play Text-To-Speech')!.dispatchEvent(new Event('click'))
   await flush()
-  view.update({ type: 'outcome', sessionId: 's', generation: 'g', revision: 0, eventId: 'play', succeeded: false, message: 'Translate action is stale or busy' })
+  view.update({ type: 'outcome', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 0, eventId: 'play', succeeded: false, message: 'Translate action is stale or busy' })
   const alert = errorOf(nodes)
   assert.equal(alert.hidden, false)
   assert.equal(alert.textContent.includes('stale'), false)
@@ -318,7 +318,7 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.equal(sent.at(-1)?.kind, 'action')
   assert.equal(sent.at(-1)?.eventId, 'continue')
   view.update(projection(1))
-  view.update({ type: 'outcome', sessionId: 's', generation: 'g', revision: 1, eventId: 'continue', succeeded: true })
+  view.update({ type: 'outcome', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 1, eventId: 'continue', succeeded: true })
   assert.ok(!nodes.some(node => node.getAttribute('role') === 'status' && node.textContent === 'Action Completed'), 'setup completion does not leak into a fresh command view')
 })
 

@@ -22,7 +22,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const sendEvent = (event: { kind: TrustedRaycastViewEvent['kind']; eventId: string; value?: string }): void => {
     if (!current?.root || current.type === 'error') return
     // Field and navigation events are superseded by the next projection; stale rejections stay silent.
-    void bridge.trustedRaycastEvent({ sessionId: current.sessionId, generation: current.generation, revision: current.revision, ...event } as TrustedRaycastViewEvent).catch(() => undefined)
+    void bridge.trustedRaycastEvent({ extensionId: current.extensionId, sessionId: current.sessionId, generation: current.generation, revision: current.revision, ...event } as TrustedRaycastViewEvent).catch(() => undefined)
   }
   const popNavigation = (): void => {
     const depth = typeof current?.root?.props.navigationDepth === 'number' ? current.root.props.navigationDepth : 0
@@ -107,7 +107,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (preferenceSetup) preferenceAction = eventId
     actionFeedback = zh ? '正在执行操作…' : 'Running Action…'
     status.textContent = actionFeedback
-    void bridge.trustedRaycastEvent({ sessionId: current.sessionId, generation: current.generation, revision: current.revision, eventId, kind: 'action' }).catch(error => {
+    void bridge.trustedRaycastEvent({ extensionId: current.extensionId, sessionId: current.sessionId, generation: current.generation, revision: current.revision, eventId, kind: 'action' }).catch(error => {
       if (actionPending === eventId) { setActionPending(); preferenceAction = undefined; actionFeedback = ''; status.textContent = ''; fail(userActionMessage(error instanceof Error ? error.message : 'Translate action failed')) }
     })
     return true
@@ -123,7 +123,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const value = pending
     const revision = current.revision
     sending = true
-    void bridge.trustedRaycastEvent({ sessionId: current.sessionId, generation: current.generation, revision, eventId: String(current.root.props.searchEventId), kind: 'searchChanged', value }).then(() => {
+    void bridge.trustedRaycastEvent({ extensionId: current.extensionId, sessionId: current.sessionId, generation: current.generation, revision, eventId: String(current.root.props.searchEventId), kind: 'searchChanged', value }).then(() => {
       if (pending === value) pending = undefined
       if (current?.type !== 'error') setHidden(error, true)
     }).catch(error => {
@@ -376,7 +376,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     element,
     focus,
     update(message) {
-      if (current && (message.sessionId !== current.sessionId || message.generation !== current.generation)) return
+      if (current && (message.extensionId !== current.extensionId || message.sessionId !== current.sessionId || message.generation !== current.generation)) return
       if (message.type === 'toast') {
         if (pending !== undefined || sending || !current?.root || descendants(current.root, 'raycast-list').some(list => list.props.searchText !== input.value)) return
         if (message.style === 'failure') fail(`${message.title}: ${message.message}`); else showToastText(message.message ? `${message.title}: ${message.message}` : String(message.title ?? '')); return }

@@ -29,6 +29,8 @@ const serialize = (node: Node | string): unknown => {
   }
   return { type: node.type, props, children: node.children.map(serialize) }
 }
+const extensionId = process.env.TRUSTED_RAYCAST_EXTENSION_ID
+if (extensionId !== 'google-translate') throw new Error('Invalid trusted extension identity')
 const sessionId = process.env.TRUSTED_RAYCAST_SESSION_ID!
 const generation = process.env.TRUSTED_RAYCAST_GENERATION!
 let revision = -1
@@ -43,7 +45,7 @@ const emit = () => {
   rootNode.props.searchable = viewSearchable()
   rootNode.props.navigationDepth = navigationDepth()
   const root = serialize(rootNode)
-  process.stdout.write(`${JSON.stringify({ type: ready ? 'patch' : 'ready', sessionId, generation, revision: ++revision, root, ...(ready ? { status: 'ready' } : {}) })}\n`)
+  process.stdout.write(`${JSON.stringify({ type: ready ? 'patch' : 'ready', extensionId, sessionId, generation, revision: ++revision, root, ...(ready ? { status: 'ready' } : {}) })}\n`)
   ready = true
 }
 let activeAction: { eventId: string; revision: number } | undefined
@@ -53,7 +55,7 @@ const requestNative = (request: object, resolve: (result?: string) => void, reje
   const requestId = `native-${++nativeSequence}`
   const timer = setTimeout(() => { nativePending.delete(requestId); reject(new Error('Native action timed out')) }, 10000)
   nativePending.set(requestId, { resolve, reject, timer })
-  process.stdout.write(`${JSON.stringify({ type: 'native', sessionId, generation, requestId, ...request })}\n`)
+  process.stdout.write(`${JSON.stringify({ type: 'native', extensionId, sessionId, generation, requestId, ...request })}\n`)
 }
 configureCompatibility({
   native: (request: { kind: 'copy' | 'paste'; text?: string } | { kind: 'openGoogleTranslate'; url?: string } | { kind: 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>> }) => new Promise<void>((resolve, reject) => {
@@ -64,7 +66,7 @@ configureCompatibility({
     requestNative({ kind: 'selectedText' }, result => { if (typeof result === 'string') resolve(result); else reject(new Error('Selected text was not returned')) }, reject)
   }),
   toast: (toast: { title: string; message: string; style: string }) => {
-    process.stdout.write(`${JSON.stringify({ type: 'toast', sessionId, generation, revision, querySequence, ...toast })}\n`)
+    process.stdout.write(`${JSON.stringify({ type: 'toast', extensionId, sessionId, generation, revision, querySequence, ...toast })}\n`)
   },
 })
 const hostConfig: any = {
@@ -113,7 +115,7 @@ const hostConfig: any = {
 }
 const renderer = Reconciler(hostConfig)
 const reportError = (error: unknown): void => {
-  process.stdout.write(`${JSON.stringify({ type: 'error', sessionId, generation, revision: ++revision, message: String(error).slice(0, 128) })}\n`)
+  process.stdout.write(`${JSON.stringify({ type: 'error', extensionId, sessionId, generation, revision: ++revision, message: String(error).slice(0, 128) })}\n`)
 }
 const container = renderer.createContainer(rootNode, 0, null, false, null, '', reportError, reportError, reportError)
 const translateRoot = React.createElement(Translate)
@@ -152,13 +154,14 @@ process.stdin.on('data', chunk => {
     const line = pending.slice(0, end); pending = pending.slice(end + 1)
     const message = JSON.parse(line)
     if (isTrustedRaycastNativeOutcome(message)) {
+      if (message.extensionId !== extensionId) throw new Error('Unsupported native outcome identity')
       const waiting = nativePending.get(message.requestId)
       if (!waiting) continue
       clearTimeout(waiting.timer); nativePending.delete(message.requestId)
       if (message.succeeded) waiting.resolve(message.result); else waiting.reject(new Error(message.message))
       continue
     }
-    if (!isTrustedRaycastViewEvent(message) || message.sessionId !== sessionId || message.generation !== generation) throw new Error('Unsupported Translate event')
+    if (!isTrustedRaycastViewEvent(message) || message.extensionId !== extensionId || message.sessionId !== sessionId || message.generation !== generation) throw new Error('Unsupported Translate event')
     if (message.kind === 'searchChanged') {
       querySequence++
       if (message.value === queryText) emit()
@@ -177,7 +180,7 @@ process.stdin.on('data', chunk => {
     }
     if (message.kind !== 'action') throw new Error('Unsupported Translate event')
     const callback = message.revision === revision ? handles.get(message.value) : undefined
-    const outcome = (succeeded: boolean, text: string) => process.stdout.write(`${JSON.stringify({ type: 'outcome', sessionId, generation, revision, eventId: message.eventId, succeeded, message: text })}\n`)
+    const outcome = (succeeded: boolean, text: string) => process.stdout.write(`${JSON.stringify({ type: 'outcome', extensionId, sessionId, generation, revision, eventId: message.eventId, succeeded, message: text })}\n`)
     if (!callback || activeAction) { outcome(false, 'Translate action is stale or busy'); continue }
     activeAction = { eventId: message.eventId, revision: message.revision }
     Promise.resolve().then(callback).then(() => outcome(true, ''), error => outcome(false, String(error).slice(0, 512))).finally(() => { activeAction = undefined })

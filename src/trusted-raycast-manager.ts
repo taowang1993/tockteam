@@ -59,7 +59,7 @@ export class TrustedRaycastManager {
       if (this.options.stateFile !== undefined) mkdirSync(dirname(this.options.stateFile), { recursive: true })
       const child = spawn(this.options.nodePath, ['--import', join(workspace, 'resolution.mjs'), join(workspace, 'child.mjs')], {
         cwd: workspace, detached: true,
-        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? TRUSTED_RAYCAST_PREFERENCE_DEFAULTS : input.preferences), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: this.options.preferencesConfigured?.() === false ? '0' : '1', ...(this.options.stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: this.options.stateFile }) },
+        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_EXTENSION_ID: input.extensionId, TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? TRUSTED_RAYCAST_PREFERENCE_DEFAULTS : input.preferences), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: this.options.preferencesConfigured?.() === false ? '0' : '1', ...(this.options.stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: this.options.stateFile }) },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
       return { child, workspace }
@@ -70,7 +70,7 @@ export class TrustedRaycastManager {
   }
   /** Isolated bounded boot of a staged install: first valid readiness or a typed failure, then teardown. */
   async previewRuntime(runtimeDir: string): Promise<string> {
-    const input: TrustedRaycastViewOpen = Object.freeze({ sessionId: randomUUID(), generation: randomUUID(), command: 'translate', preferences: Object.freeze({}) })
+    const input: TrustedRaycastViewOpen = Object.freeze({ extensionId: 'google-translate', sessionId: randomUUID(), generation: randomUUID(), command: 'translate', preferences: Object.freeze({}) })
     const { child, workspace } = this.createWorkspace(runtimeDir, input)
     try {
       await new Promise<void>((resolve, reject) => {
@@ -214,7 +214,7 @@ export class TrustedRaycastManager {
   }
   send(owner: TrustedRaycastOwner, event: TrustedRaycastViewEvent): void {
     const session = this.session
-    if (!isTrustedRaycastViewEvent(event) || !session || session.revoked || owner.webContentsId !== session.owner.webContentsId || event.sessionId !== session.input.sessionId || event.generation !== session.input.generation || event.revision !== session.revision) throw new Error('Translate event is stale')
+    if (!isTrustedRaycastViewEvent(event) || !session || session.revoked || owner.webContentsId !== session.owner.webContentsId || event.extensionId !== session.input.extensionId || event.sessionId !== session.input.sessionId || event.generation !== session.input.generation || event.revision !== session.revision) throw new Error('Translate event is stale')
     if (session.child.stdin.writableLength > 32768) throw new Error('Translate input is busy')
     if (event.kind === 'searchChanged') {
       if (event.eventId !== session.eventId || session.eventId === '') throw new Error('Translate event is stale')
@@ -242,7 +242,7 @@ export class TrustedRaycastManager {
     let message = ''
     let result: string | undefined
     try {
-      if (this.session !== session || session.revoked || request.sessionId !== session.input.sessionId || request.generation !== session.input.generation) throw new Error('Translate native action is stale')
+      if (this.session !== session || session.revoked || request.extensionId !== session.input.extensionId || request.sessionId !== session.input.sessionId || request.generation !== session.input.generation) throw new Error('Trusted extension native action is stale')
       if (request.kind === 'selectedText') {
         if (!this.options.readSelectedText) throw new Error('Selected text is unavailable')
         const selection = await this.options.readSelectedText()
@@ -267,7 +267,7 @@ export class TrustedRaycastManager {
       }
       succeeded = true
     } catch (error) { message = error instanceof Error ? error.message.slice(0, 512) : 'Native action failed' }
-    if (this.session === session && !session.revoked) session.child.stdin.write(`${JSON.stringify({ type: 'nativeOutcome', requestId: request.requestId, succeeded, message, ...(result === undefined ? {} : { result }) })}\n`)
+    if (this.session === session && !session.revoked) session.child.stdin.write(`${JSON.stringify({ type: 'nativeOutcome', extensionId: session.input.extensionId, requestId: request.requestId, succeeded, message, ...(result === undefined ? {} : { result }) })}\n`)
   }
   async closeOwner(owner: TrustedRaycastOwner): Promise<void> {
     if (this.session?.owner.webContentsId === owner.webContentsId) await this.stop('owner-closed')
@@ -281,7 +281,7 @@ export class TrustedRaycastManager {
     const operation = (async () => {
       try {
         if (!['activation-revoked', 'capability-disabled', 'capability-removed', 'capability-recovery', 'capability-rotation', 'owner-closed', 'shutdown'].includes(reason)) {
-          this.options.onMessage(session.owner, { type: 'error', sessionId: session.input.sessionId, generation: session.input.generation, revision: session.revision + 1, message: 'Translate closed unexpectedly. Please reopen it.' })
+          this.options.onMessage(session.owner, { type: 'error', extensionId: session.input.extensionId, sessionId: session.input.sessionId, generation: session.input.generation, revision: session.revision + 1, message: 'Trusted extension closed unexpectedly. Please reopen it.' })
         }
       } finally {
         await stopOwnedChild(session.child, 250, true)

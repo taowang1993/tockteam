@@ -28,7 +28,7 @@ test('intentional owner close tears down silently instead of rendering an intern
   const owner = { webContentsId: 1 }
   const messages: unknown[] = []
   const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage: (_owner, message) => messages.push(message) })
-  Reflect.set(manager, 'session', { child, owner, input: { sessionId: 's', generation: 'g', command: 'translate', preferences: {} }, workspace, revision: 0, querySequence: 0, eventId: '', actions: new Map(), fields: new Map(), reject() {} })
+  Reflect.set(manager, 'session', { child, owner, input: { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: {} }, workspace, revision: 0, querySequence: 0, eventId: '', actions: new Map(), fields: new Map(), reject() {} })
   try {
     await manager.closeOwner(owner)
     assert.deepEqual(messages, [])
@@ -43,7 +43,7 @@ test('failed termination retains workspace and child ownership, revokes input, a
   const workspace = mkdtempSync(join(tmpdir(), 'raycast-stop-fault-'))
   const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { detached: true })
   const owner = { webContentsId: 1 }
-  const input = { sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }
+  const input = { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }
   const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage() {} })
   // Seed only the owned-process boundary; no fixture is admitted as an extension.
   Reflect.set(manager, 'session', { child, owner, input, workspace, revision: 0, eventId: 'e', reject() {} })
@@ -57,7 +57,7 @@ test('failed termination retains workspace and child ownership, revokes input, a
     await assert.rejects(manager.closeOwner(owner), /injected/)
     assert.equal(existsSync(workspace), true)
     await assert.rejects(manager.start(owner, input), /busy/)
-    assert.throws(() => manager.send(owner, { sessionId: 's', generation: 'g', revision: 0, eventId: 'e', kind: 'searchChanged', value: 'latest' }), /stale/)
+    assert.throws(() => manager.send(owner, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 0, eventId: 'e', kind: 'searchChanged', value: 'latest' }), /stale/)
     deny = false
     await manager.closeOwner(owner)
     assert.equal(existsSync(workspace), false)

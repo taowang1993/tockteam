@@ -1,3 +1,5 @@
+import { getTrustedRaycastDescriptor, type TrustedRaycastCommand, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
+
 const byteLength = (value: string): number => new TextEncoder().encode(value).byteLength
 const MAX_TEXT = 16 * 1024
 const MAX_MESSAGE = 1024 * 1024
@@ -84,12 +86,14 @@ export function isTrustedRaycastTrustResult(value: unknown): value is TrustedRay
 }
 export type TrustedRaycastPreference = boolean | string
 export type TrustedRaycastViewOpen = Readonly<{
+  extensionId: TrustedRaycastExtensionId
   sessionId: string
   generation: string
-  command: typeof TRUSTED_RAYCAST_COMMAND
+  command: TrustedRaycastCommand
   preferences: Readonly<Record<string, TrustedRaycastPreference>>
 }>
 export type TrustedRaycastViewEvent = Readonly<{
+  extensionId: TrustedRaycastExtensionId
   sessionId: string
   generation: string
   revision: number
@@ -105,6 +109,7 @@ export type TrustedRaycastViewNode = Readonly<{
 }>
 
 export type TrustedRaycastViewPatch = Readonly<{
+  extensionId: TrustedRaycastExtensionId
   sessionId: string
   generation: string
   revision: number
@@ -114,6 +119,7 @@ export type TrustedRaycastViewPatch = Readonly<{
 
 export type TrustedRaycastViewMessage = Readonly<{
   type: 'ready' | 'patch' | 'error' | 'toast' | 'outcome'
+  extensionId: TrustedRaycastExtensionId
   sessionId: string
   generation: string
   revision: number
@@ -144,8 +150,9 @@ function jsonSafe(value: unknown, depth = 0, count = { value: 0 }): boolean {
 }
 
 export function isTrustedRaycastViewOpen(value: unknown): value is TrustedRaycastViewOpen {
-  if (!isRecord(value) || !exactKeys(value, ['sessionId', 'generation', 'command', 'preferences'])) return false
-  if (!boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || value.command !== TRUSTED_RAYCAST_COMMAND || !isRecord(value.preferences)) return false
+  if (!isRecord(value) || !exactKeys(value, ['extensionId', 'sessionId', 'generation', 'command', 'preferences'])) return false
+  const descriptor = getTrustedRaycastDescriptor(value.extensionId)
+  if (descriptor === undefined || value.command !== descriptor.command || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !isRecord(value.preferences)) return false
   const entries = Object.entries(value.preferences)
   if (entries.length > MAX_PREFERENCES || entries.some(([key, entry]) => key.length > MAX_PREFERENCE_KEY || (typeof entry !== 'string' && typeof entry !== 'boolean'))) return false
   return byteLength(JSON.stringify(value.preferences)) <= MAX_PREFERENCE_TOTAL
@@ -153,8 +160,8 @@ export function isTrustedRaycastViewOpen(value: unknown): value is TrustedRaycas
 
 export function isTrustedRaycastViewEvent(value: unknown): value is TrustedRaycastViewEvent {
   if (!isRecord(value)) return false
-  const keys = ['sessionId', 'generation', 'revision', 'eventId', 'kind', ...(Object.hasOwn(value, 'value') ? ['value'] : [])]
-  if (!exactKeys(value, keys) || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.eventId, 128)) return false
+  const keys = ['extensionId', 'sessionId', 'generation', 'revision', 'eventId', 'kind', ...(Object.hasOwn(value, 'value') ? ['value'] : [])]
+  if (!exactKeys(value, keys) || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.eventId, 128)) return false
   if (!Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || !['searchChanged', 'action', 'navigation', 'fieldChanged', 'submit'].includes(value.kind as string)) return false
   if (!Object.hasOwn(value, 'value')) return value.kind === 'navigation' || value.kind === 'action'
   if (!boundedString(value.value)) return false
@@ -179,42 +186,43 @@ function isViewNode(value: unknown, depth = 0, count = { value: 0, text: 0, acti
 }
 
 export function isTrustedRaycastViewPatch(value: unknown): value is TrustedRaycastViewPatch {
-  if (!isRecord(value) || !exactKeys(value, ['sessionId', 'generation', 'revision', 'root', 'status']) || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || (value.status !== 'ready' && value.status !== 'loading' && value.status !== 'error') || !isViewNode(value.root)) return false
+  if (!isRecord(value) || !exactKeys(value, ['extensionId', 'sessionId', 'generation', 'revision', 'root', 'status']) || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || (value.status !== 'ready' && value.status !== 'loading' && value.status !== 'error') || !isViewNode(value.root)) return false
   return isBoundedTrustedRaycastMessage(value)
 }
 
 export function isTrustedRaycastViewMessage(value: unknown): value is TrustedRaycastViewMessage {
-  if (!isRecord(value) || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || !isBoundedTrustedRaycastMessage(value)) return false
-  if (value.type === 'toast') return exactKeys(value, ['type', 'sessionId', 'generation', 'revision', 'querySequence', 'title', 'message', 'style']) && Number.isSafeInteger(value.querySequence) && (value.querySequence as number) >= 0 && boundedString(value.title, 512) && boundedString(value.message, 4096) && ['failure', 'success', 'animated'].includes(value.style as string)
-  if (value.type === 'outcome') return exactKeys(value, ['type', 'sessionId', 'generation', 'revision', 'eventId', 'succeeded', 'message']) && boundedString(value.eventId, 128) && typeof value.succeeded === 'boolean' && boundedString(value.message, 512)
-  if (value.type === 'ready') return exactKeys(value, ['type', 'sessionId', 'generation', 'revision', 'root']) && isViewNode(value.root)
-  if (value.type === 'patch') return exactKeys(value, ['type', 'sessionId', 'generation', 'revision', 'root', 'status']) && isViewNode(value.root) && (value.status === 'ready' || value.status === 'loading' || value.status === 'error')
-  return value.type === 'error' && exactKeys(value, ['type', 'sessionId', 'generation', 'revision', 'message']) && boundedString(value.message, 512)
+  if (!isRecord(value) || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || !isBoundedTrustedRaycastMessage(value)) return false
+  const identity = ['extensionId', 'sessionId', 'generation', 'revision']
+  if (value.type === 'toast') return exactKeys(value, ['type', ...identity, 'querySequence', 'title', 'message', 'style']) && Number.isSafeInteger(value.querySequence) && (value.querySequence as number) >= 0 && boundedString(value.title, 512) && boundedString(value.message, 4096) && ['failure', 'success', 'animated'].includes(value.style as string)
+  if (value.type === 'outcome') return exactKeys(value, ['type', ...identity, 'eventId', 'succeeded', 'message']) && boundedString(value.eventId, 128) && typeof value.succeeded === 'boolean' && boundedString(value.message, 512)
+  if (value.type === 'ready') return exactKeys(value, ['type', ...identity, 'root']) && isViewNode(value.root)
+  if (value.type === 'patch') return exactKeys(value, ['type', ...identity, 'root', 'status']) && isViewNode(value.root) && (value.status === 'ready' || value.status === 'loading' || value.status === 'error')
+  return value.type === 'error' && exactKeys(value, ['type', ...identity, 'message']) && boundedString(value.message, 512)
 }
 
 /** Main's child-channel admission: identity/revision belong to this invocation, not the child. */
 export function parseTrustedRaycastChildMessage(line: string, session: TrustedRaycastViewOpen, previousRevision: number): TrustedRaycastViewMessage {
   if (byteLength(line) > MAX_MESSAGE) throw new Error('Translate output exceeded its bound')
   const message: unknown = JSON.parse(line)
-  if (!isTrustedRaycastViewMessage(message) || message.sessionId !== session.sessionId || message.generation !== session.generation || ((message.type === 'toast' || message.type === 'outcome') ? message.revision !== previousRevision : message.revision <= previousRevision) || (previousRevision === -1 ? message.type !== 'ready' : message.type === 'ready')) throw new Error('Invalid Translate runtime message')
+  if (!isTrustedRaycastViewMessage(message) || message.extensionId !== session.extensionId || message.sessionId !== session.sessionId || message.generation !== session.generation || ((message.type === 'toast' || message.type === 'outcome') ? message.revision !== previousRevision : message.revision <= previousRevision) || (previousRevision === -1 ? message.type !== 'ready' : message.type === 'ready')) throw new Error('Invalid trusted extension runtime message')
   return message
 }
 
 export type TrustedRaycastNativeRequest = Readonly<
-  { type: 'native'; sessionId: string; generation: string; requestId: string } & ({ kind: 'selectedText' } | ({ revision: number; eventId: string } & ({ kind: 'copy'; text: string } | { kind: 'paste'; text: string } | { kind: 'openGoogleTranslate'; url: string } | { kind: 'savePreferences'; preferences: Readonly<Record<string, TrustedRaycastPreference>> })))
+  { type: 'native'; extensionId: TrustedRaycastExtensionId; sessionId: string; generation: string; requestId: string } & ({ kind: 'selectedText' } | ({ revision: number; eventId: string } & ({ kind: 'copy'; text: string } | { kind: 'paste'; text: string } | { kind: 'openGoogleTranslate'; url: string } | { kind: 'savePreferences'; preferences: Readonly<Record<string, TrustedRaycastPreference>> })))
 >
 
-export type TrustedRaycastNativeOutcome = Readonly<{ type: 'nativeOutcome'; requestId: string; succeeded: boolean; message: string; result?: string }>
+export type TrustedRaycastNativeOutcome = Readonly<{ type: 'nativeOutcome'; extensionId: TrustedRaycastExtensionId; requestId: string; succeeded: boolean; message: string; result?: string }>
 
 export function isTrustedRaycastNativeRequest(value: unknown): value is TrustedRaycastNativeRequest {
-  if (!isRecord(value) || value.type !== 'native' || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.requestId, 128)) return false
-  const base = ['type', 'sessionId', 'generation', 'requestId', 'kind']
-  if (value.kind === 'selectedText') return exactKeys(value, base)
+  if (!isRecord(value) || value.type !== 'native' || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.requestId, 128)) return false
+  const base = ['type', 'extensionId', 'sessionId', 'generation', 'requestId', 'kind']
+  if (value.kind === 'selectedText') return value.extensionId === 'google-translate' && exactKeys(value, base)
   const scoped = ['revision', 'eventId']
   const scopedValue = (keys: readonly string[]): boolean => exactKeys(value, keys) && boundedString(value.eventId, 128) && Number.isSafeInteger(value.revision) && (value.revision as number) >= 0
   if (value.kind === 'copy' || value.kind === 'paste') return scopedValue([...base, ...scoped, 'text']) && boundedString(value.text, 128 * 1024)
-  if (value.kind === 'savePreferences') return scopedValue([...base, ...scoped, 'preferences']) && isTrustedRaycastPreferences(value.preferences)
-  if (value.kind !== 'openGoogleTranslate' || !scopedValue([...base, ...scoped, 'url']) || !boundedString(value.url, 128 * 1024)) return false
+  if (value.kind === 'savePreferences') return scopedValue([...base, ...scoped, 'preferences']) && value.extensionId === 'google-translate' && isTrustedRaycastPreferences(value.preferences)
+  if (value.kind !== 'openGoogleTranslate' || value.extensionId !== 'google-translate' || !scopedValue([...base, ...scoped, 'url']) || !boundedString(value.url, 128 * 1024)) return false
   try {
     const url = new URL(value.url)
     return url.origin === 'https://translate.google.com' && !url.username && !url.password && !url.hash && url.pathname === '/'
@@ -227,8 +235,8 @@ export function isTrustedRaycastNativeRequest(value: unknown): value is TrustedR
 }
 
 export function isTrustedRaycastNativeOutcome(value: unknown): value is TrustedRaycastNativeOutcome {
-  if (!isRecord(value) || value.type !== 'nativeOutcome' || !boundedString(value.requestId, 128) || typeof value.succeeded !== 'boolean' || !boundedString(value.message, 512)) return false
-  const keys = ['type', 'requestId', 'succeeded', 'message', ...(Object.hasOwn(value, 'result') ? ['result'] : [])]
+  if (!isRecord(value) || value.type !== 'nativeOutcome' || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.requestId, 128) || typeof value.succeeded !== 'boolean' || !boundedString(value.message, 512)) return false
+  const keys = ['type', 'extensionId', 'requestId', 'succeeded', 'message', ...(Object.hasOwn(value, 'result') ? ['result'] : [])]
   return exactKeys(value, keys) && (value.result === undefined || boundedString(value.result, MAX_TEXT))
 }
 

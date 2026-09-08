@@ -16,7 +16,7 @@ const deps = (overrides: Partial<TrustedRaycastNativeDeps> = {}): TrustedRaycast
 
 test('native request admission accepts bounded Paste and selected text and rejects the rest', () => {
   const valid = isTrustedRaycastNativeRequest
-  const base = { type: 'native', sessionId: 's', generation: 'g', requestId: 'n' }
+  const base = { type: 'native', extensionId: 'google-translate', sessionId: 's', generation: 'g', requestId: 'n' }
   assert.equal(valid({ ...base, kind: 'selectedText' }), true)
   assert.equal(valid({ ...base, kind: 'selectedText', revision: 0 }), false)
   assert.equal(valid({ ...base, kind: 'paste', revision: 2, eventId: 'a', text: 'hello' }), true)
@@ -25,10 +25,10 @@ test('native request admission accepts bounded Paste and selected text and rejec
   assert.equal(valid({ ...base, kind: 'savePreferences', revision: 2, eventId: 'a', preferences: { langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' } }), true)
   assert.equal(valid({ ...base, kind: 'savePreferences', revision: 2, eventId: 'a', preferences: { lang1: '<script>' } }), false)
   assert.equal(valid({ ...base, kind: 'selectedText', text: 'leak' }), false)
-  assert.ok(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', requestId: 'n', succeeded: true, message: '', result: 'selected fixture' }))
-  assert.ok(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', requestId: 'n', succeeded: false, message: 'denied' }))
-  assert.equal(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', requestId: 'n', succeeded: true, message: '', result: 'x'.repeat(16385) }), false)
-  assert.equal(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', requestId: 'n', succeeded: true, message: '', extra: 1 }), false)
+  assert.ok(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', extensionId: 'google-translate', requestId: 'n', succeeded: true, message: '', result: 'selected fixture' }))
+  assert.ok(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', extensionId: 'google-translate', requestId: 'n', succeeded: false, message: 'denied' }))
+  assert.equal(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', extensionId: 'google-translate', requestId: 'n', succeeded: true, message: '', result: 'x'.repeat(16385) }), false)
+  assert.equal(isTrustedRaycastNativeOutcome({ type: 'nativeOutcome', extensionId: 'google-translate', requestId: 'n', succeeded: true, message: '', extra: 1 }), false)
 })
 
 test('prior-app capture admits only an external frontmost application', async () => {
@@ -198,15 +198,15 @@ test('bundled artifact: first command shows required preferences, saves them in 
   })
   try {
     await buildTrustedRaycast(work, artifact)
-    await manager.start({ webContentsId: 1 }, { sessionId: 'setup', generation: '1', command: 'translate', preferences: {} })
+    await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'setup', generation: '1', command: 'translate', preferences: {} })
     const view = projections(messages)
     const setup = await view.waitRoot(root => root.props.preferenceSetup === true)
     const fields = view.fields(setup.root)
     assert.deepEqual(fields.map(field => field.props.title), ['Translate from', 'Primary Language', 'Secondary Language'])
     assert.equal(fields.every(field => field.children.length >= 249), true, 'the reviewed manifest supplies the complete language menus')
-    manager.send({ webContentsId: 1 }, { sessionId: 'setup', generation: '1', revision: setup.revision, eventId: fields[2].props.fieldEventId, kind: 'fieldChanged', value: 'zh-CN' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'setup', generation: '1', revision: setup.revision, eventId: fields[2].props.fieldEventId, kind: 'fieldChanged', value: 'zh-CN' })
     const submit = view.action(setup.root, 'Continue')
-    manager.send({ webContentsId: 1 }, { sessionId: 'setup', generation: '1', revision: setup.revision, eventId: submit.props.actionEventId, kind: 'action' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'setup', generation: '1', revision: setup.revision, eventId: submit.props.actionEventId, kind: 'action' })
     await view.waitRoot(root => root.props.preferenceSetup === false)
     await wait(250)
     assert.equal(manager.active, true, 'an unavailable selected-text lookup must not corrupt the child protocol')
@@ -225,7 +225,7 @@ test('reviewed artifact: language sets, nested AddLanguageForm, and restart pers
     await buildTrustedRaycast(work, artifact)
     messages = []
     const manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath: process.execPath, stateFile, onMessage: (_owner, message) => messages.push(message) })
-    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, lang1: 'zh-CN', autoInput: false } })
+    await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, lang1: 'zh-CN', autoInput: false } })
     return manager
   }
   let manager: TrustedRaycastManager | undefined
@@ -240,7 +240,7 @@ test('reviewed artifact: language sets, nested AddLanguageForm, and restart pers
     assert.ok(accessor.children.some((item: any) => item.props.value === 'manage'))
     // Select the full preferences set (auto -> zh-CN + en).
     const settled = await settle()
-    manager.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: settled.revision, eventId: dropdown(settled.root).props.fieldEventId, kind: 'fieldChanged', value: JSON.stringify({ langFrom: 'auto', langTo: ['zh-CN', 'en'] }) })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settled.revision, eventId: dropdown(settled.root).props.fieldEventId, kind: 'fieldChanged', value: JSON.stringify({ langFrom: 'auto', langTo: ['zh-CN', 'en'] }) })
     const selected = await waitRoot(root => dropdown(root)?.props.value === JSON.stringify({ langFrom: 'auto', langTo: ['zh-CN', 'en'] }))
     assert.equal(dropdown(selected.root).props.value, JSON.stringify({ langFrom: 'auto', langTo: ['zh-CN', 'en'] }))
     assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).selectedLanguageSet.langTo.length, 2, 'cached set persisted to the main-owned state file')
@@ -259,14 +259,14 @@ test('reviewed artifact: language sets, nested AddLanguageForm, and restart pers
     assert.equal(dropdown(migrated.root).props.value, JSON.stringify({ langFrom: 'en', langTo: ['zh-CN'] }), 'legacy stored set migrates to the array shape')
     // Nested navigation: the manage option pushes LanguagesManagerList.
     const settledManage = await settle()
-    manager.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: settledManage.revision, eventId: dropdown(settledManage.root).props.fieldEventId, kind: 'fieldChanged', value: 'manage' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settledManage.revision, eventId: dropdown(settledManage.root).props.fieldEventId, kind: 'fieldChanged', value: 'manage' })
     const managerList = await waitRoot(root => !('searchEventId' in root.props) && JSON.stringify(root).includes('Add new language set...'))
     assert.ok(JSON.stringify(managerList.root).includes('Save current set'), 'an unsaved selected set offers Save Current Set')
     // Push AddLanguageForm.
     const settledPush = await settle()
     const push = action(settledPush.root, 'Add New Language Set…')
     assert.ok(push?.props.actionEventId)
-    manager.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: settledPush.revision, eventId: push.props.actionEventId, kind: 'action' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settledPush.revision, eventId: push.props.actionEventId, kind: 'action' })
     const formMessage = await waitRoot(root => fields(root).length > 0)
     const formFields = fields(formMessage.root)
     assert.equal(formFields.length, 3, 'source language plus one target plus the empty next target')
@@ -275,24 +275,24 @@ test('reviewed artifact: language sets, nested AddLanguageForm, and restart pers
     // Choose English source and French target, then submit.
     const settledForm = await settle()
     const settledFormFields = fields(settledForm.root)
-    manager.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: settledForm.revision, eventId: settledFormFields[0]!.props.fieldEventId, kind: 'fieldChanged', value: 'en' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settledForm.revision, eventId: settledFormFields[0]!.props.fieldEventId, kind: 'fieldChanged', value: 'en' })
     const targetMessage = await waitRoot(root => fields(root).find(field => field.props.title === 'Target Language 1')?.props.value === 'en')
     const target = fields(targetMessage.root).find(field => field.props.title === 'Target Language 1')!
     const settledTarget = await settle()
     const settledTargetField = fields(settledTarget.root).find(field => field.props.title === 'Target Language 1')!
-    manager.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: settledTarget.revision, eventId: settledTargetField.props.fieldEventId, kind: 'fieldChanged', value: 'fr' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settledTarget.revision, eventId: settledTargetField.props.fieldEventId, kind: 'fieldChanged', value: 'fr' })
     const frMessage = await waitRoot(root => fields(root).find(field => field.props.title === 'Target Language 1')?.props.value === 'fr')
     assert.equal(fields(frMessage.root).find(field => field.props.title === 'Target Language 1')!.props.value, 'fr')
     const settledSubmit = await settle()
     const submit = action(settledSubmit.root, 'Add Language Set')
-    manager.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: settledSubmit.revision, eventId: submit.props.actionEventId, kind: 'action' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settledSubmit.revision, eventId: submit.props.actionEventId, kind: 'action' })
     await waitRoot(root => JSON.stringify(root).includes('English') && JSON.stringify(root).includes('French') && !JSON.stringify(root).includes('raycast-form'))
     assert.ok(messages.some((message: any) => message.type === 'toast' && message.title === 'Language set was saved!'), 'success toast from the unchanged source')
     const persisted = JSON.parse(readFileSync(stateFile, 'utf8'))
     assert.deepEqual(persisted.languages, [{ langFrom: 'en', langTo: ['fr'] }])
     // Pop back to the translate root.
     const settledBack = await settle()
-    manager.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: settledBack.revision, eventId: 'language-nav', kind: 'navigation', value: 'language:pop' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settledBack.revision, eventId: 'language-nav', kind: 'navigation', value: 'language:pop' })
     const backMessage = await waitRoot(root => typeof root.props.searchEventId === 'string')
     assert.ok(backMessage, 'popping restores the searchable translate root')
   } finally {
@@ -311,17 +311,17 @@ test('configured artifact: TTS runs the upstream https.get + afplay flow in priv
   try {
     await buildTrustedRaycast(work, artifact)
     manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath: process.execPath, onMessage: (_owner, message) => messages.push(message) })
-    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, autoInput: false } })
+    await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, autoInput: false } })
     const session = Reflect.get(manager, 'session')!
     const mp3 = join(session.workspace, 'tmp', 'translation.mp3')
     const { latestRoot, waitRoot, action } = projections(messages)
     const ready = latestRoot()
-    manager.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: ready.revision, eventId: ready.root.props.searchEventId, kind: 'searchChanged', value: 'TockTeam trusted Raycast TTS fixture' })
+    manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: ready.revision, eventId: ready.root.props.searchEventId, kind: 'searchChanged', value: 'TockTeam trusted Raycast TTS fixture' })
     const play = async (): Promise<void> => {
       const rows = await waitRoot(root => JSON.stringify(root).includes('raycast-list-item'))
       const tts = action(rows.root, 'Play Text-To-Speech')
       assert.ok(tts?.props.actionEventId, 'Play Text-To-Speech is available')
-      manager!.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: rows.revision, eventId: tts.props.actionEventId, kind: 'action' })
+      manager!.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: rows.revision, eventId: tts.props.actionEventId, kind: 'action' })
     }
     const afplayFor = async (): Promise<string[]> => {
       const { stdout } = await exec('/bin/ps', ['-axo', 'pid=,command='], { timeout: 5000 })
@@ -363,12 +363,12 @@ test('reviewed artifact: debounce coalesces keystrokes into one final translatio
   try {
     await buildTrustedRaycast(work, artifact)
     manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath: process.execPath, onMessage: (_owner, message) => messages.push(message) })
-    await manager.start({ webContentsId: 1 }, { sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, autoInput: false } })
+    await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, autoInput: false } })
     const { latestRoot, waitRoot } = projections(messages)
     const ready = latestRoot()
     const send = (value: string) => {
       const session = Reflect.get(manager!, 'session')!
-      manager!.send({ webContentsId: 1 }, { sessionId: 's', generation: 'g', revision: session.revision, eventId: session.eventId, kind: 'searchChanged', value })
+      manager!.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: session.revision, eventId: session.eventId, kind: 'searchChanged', value })
     }
     send('ab')
     await wait(60)

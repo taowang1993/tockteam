@@ -9,10 +9,10 @@ import { buildTrustedRaycast } from '../scripts/trusted-raycast-build.mjs'
 import { parseTrustedRaycastChildMessage, type TrustedRaycastViewMessage } from '../src/trusted-raycast-contract.ts'
 
 test('manager child admission fails closed before accepting wrong identity, stale or malformed output', () => {
-  const session = { sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }
-  const ready = { type: 'ready', sessionId: 's', generation: 'g', revision: 0, root: { type: 'root', props: {}, children: [] } }
+  const session = { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }
+  const ready = { type: 'ready', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 0, root: { type: 'root', props: {}, children: [] } }
   assert.equal(parseTrustedRaycastChildMessage(JSON.stringify(ready), session, -1).type, 'ready')
-  for (const changed of [{ sessionId: 'foreign' }, { generation: 'old' }, { revision: -1 }, { extra: true }, { type: 'patch', status: 'ready' }]) assert.throws(() => parseTrustedRaycastChildMessage(JSON.stringify({ ...ready, ...changed }), session, -1))
+  for (const changed of [{ extensionId: 'google-translate' as const, sessionId: 'foreign' }, { generation: 'old' }, { revision: -1 }, { extra: true }, { type: 'patch', status: 'ready' }]) assert.throws(() => parseTrustedRaycastChildMessage(JSON.stringify({ ...ready, ...changed }), session, -1))
   assert.throws(() => parseTrustedRaycastChildMessage(JSON.stringify(ready), session, 0))
   assert.throws(() => parseTrustedRaycastChildMessage('not-json', session, -1))
   assert.throws(() => parseTrustedRaycastChildMessage('x'.repeat(1024 * 1024 + 1), session, -1), /bound/)
@@ -24,18 +24,18 @@ test('manager child admission fails closed before accepting wrong identity, stal
 test('manager has no default artifact fallback and rejects events without a live owner', async () => {
   const manager = new TrustedRaycastManager({ runtimeDir: '/nonexistent/tockteam-runtime', nodePath: process.execPath, onMessage() {} })
   assert.equal(manager.available, false)
-  assert.throws(() => manager.send({ webContentsId: 1 }, { sessionId: 'a', generation: 'b', eventId: 'c', revision: 0, kind: 'searchChanged', value: 'hello' }), /stale/)
-  await assert.rejects(manager.start({ webContentsId: 1 }, { sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }))
+  assert.throws(() => manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'a', generation: 'b', eventId: 'c', revision: 0, kind: 'searchChanged', value: 'hello' }), /stale/)
+  await assert.rejects(manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }))
   await manager.close()
 })
 test('install-store runtime resolution fails closed before any child can load', async () => {
   const unresolved = new TrustedRaycastManager({ runtimeDir: () => undefined, nodePath: process.execPath, onMessage() {} })
   assert.equal(unresolved.available, false)
-  await assert.rejects(unresolved.start({ webContentsId: 1 }, { sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }), /not installed/)
+  await assert.rejects(unresolved.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }), /not installed/)
   await unresolved.close()
   const missing = new TrustedRaycastManager({ runtimeDir: () => '/nonexistent/tockteam-runtime', nodePath: process.execPath, onMessage() {} })
   assert.equal(missing.available, false)
-  await assert.rejects(missing.start({ webContentsId: 1 }, { sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }))
+  await assert.rejects(missing.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }))
   await missing.close()
 })
 test('configured unchanged component translates interactive input and revokes owner', { timeout: 30000 }, async t => {
@@ -47,10 +47,10 @@ test('configured unchanged component translates interactive input and revokes ow
   const manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath: process.execPath, onMessage: (_, message) => messages.push(message), onError: (_, error) => errors.push(error.message) })
   try {
     await buildTrustedRaycast(work, artifact)
-    await manager.start({ webContentsId: 1 }, { sessionId: 'test', generation: '1', command: 'translate', preferences: {} })
+    await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'test', generation: '1', command: 'translate', preferences: {} })
     assert.equal(messages[0]?.type, 'ready')
     const latest = messages.at(-1)!
-    const event = { sessionId: 'test', generation: '1', revision: latest.revision, eventId: latest.root!.props.searchEventId as string, kind: 'searchChanged' as const, value: 'TockTeam compatibility tracer: hello world' }
+    const event = { extensionId: 'google-translate' as const, sessionId: 'test', generation: '1', revision: latest.revision, eventId: latest.root!.props.searchEventId as string, kind: 'searchChanged' as const, value: 'TockTeam compatibility tracer: hello world' }
     assert.throws(() => manager.send({ webContentsId: 2 }, event), /stale/)
     manager.send({ webContentsId: 1 }, event)
     const deadline = Date.now() + 16000
@@ -63,7 +63,7 @@ test('configured unchanged component translates interactive input and revokes ow
       const action = visit(latest.root!).find(node => node.type === 'raycast-action' && node.props.title === title)!
       assert.ok(action?.props.actionEventId, title)
       const eventId = String(action.props.actionEventId)
-      manager.send({ webContentsId: 1 }, { sessionId: 'test', generation: '1', revision: latest.revision, eventId, kind: 'action' })
+      manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'test', generation: '1', revision: latest.revision, eventId, kind: 'action' })
       return eventId
     }
     const copyId = act('Copy Translation')

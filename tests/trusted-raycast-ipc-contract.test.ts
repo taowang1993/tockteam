@@ -19,7 +19,7 @@ test('view IPC authenticates before parsing and disposes only its finite handler
   })
   const event = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.event)!
   const close = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.close)!
-  const input = { sessionId: 's', generation: 'g', revision: 0, eventId: 'e', kind: 'searchChanged', value: 'hello' }
+  const input = { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 0, eventId: 'e', kind: 'searchChanged', value: 'hello' }
   await assert.rejects(Promise.resolve(event({}, input)), /untrusted/)
   await assert.rejects(Promise.resolve(event(sender, { ...input, extra: true })), /Invalid/)
   await assert.rejects(Promise.resolve(event(sender, input, 'extra')), /Invalid/)
@@ -36,13 +36,13 @@ test('view IPC authenticates before parsing and disposes only its finite handler
 })
 test('projection rejects unknown families, oversized text, nonfinite properties and foreign keys', () => {
   const root = { type: 'root', props: {}, children: [] }
-  const message = { type: 'ready', sessionId: 's', generation: 'g', revision: 0, root }
+  const message = { type: 'ready', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 0, root }
   assert.equal(isTrustedRaycastViewMessage(message), true)
   assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, type: 'iframe' } }), false)
   assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, props: { text: 'a'.repeat(262145) } } }), false)
   assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, props: { number: Infinity } } }), false)
   assert.equal(isTrustedRaycastViewMessage({ ...message, token: 'not-public' }), false)
-  assert.equal(isTrustedRaycastViewEvent({ sessionId: 's', generation: 'g', revision: 0, eventId: 'e', kind: 'searchChanged', value: '中'.repeat(5462) }), false)
+  assert.equal(isTrustedRaycastViewEvent({ extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: 0, eventId: 'e', kind: 'searchChanged', value: '中'.repeat(5462) }), false)
 })
 test('preload filters malformed projections and rejects extra event arguments', async () => {
   const listeners = new Map<string, (...args: any[]) => void>()
@@ -51,12 +51,12 @@ test('preload filters malformed projections and rejects extra event arguments', 
   const remove = bridge.onTrustedRaycastView(() => count++)
   const receive = listeners.get(TRUSTED_RAYCAST_IPC_CHANNELS.patch)!
   receive({}, { type: 'patch', extra: true }); assert.equal(count, 0)
-  receive({}, { type: 'ready', sessionId: 's', generation: 'g', revision: 0, root: { type: 'root', props: {}, children: [] } }); assert.equal(count, 1)
-  const outcome = { type: 'outcome', sessionId: 's', generation: 'g', revision: 0, eventId: 'copy', succeeded: false, message: 'Clipboard denied' }
+  receive({}, { type: 'ready', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 0, root: { type: 'root', props: {}, children: [] } }); assert.equal(count, 1)
+  const outcome = { type: 'outcome', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 0, eventId: 'copy', succeeded: false, message: 'Clipboard denied' }
   receive({}, outcome); assert.equal(count, 2)
   receive({}, { ...outcome, succeeded: 'true' }); assert.equal(count, 2)
   receive({}, { ...outcome, native: { kind: 'copy', text: 'untrusted' } }); assert.equal(count, 2)
-  const toast = { type: 'toast', sessionId: 's', generation: 'g', revision: 0, querySequence: 0, style: 'failure', title: 'Could not translate', message: 'Service unavailable' }
+  const toast = { type: 'toast', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: 0, querySequence: 0, style: 'failure', title: 'Could not translate', message: 'Service unavailable' }
   receive({}, toast); assert.equal(count, 3)
   receive({}, { ...toast, message: 'x'.repeat(4097) }); assert.equal(count, 3)
   receive({}, { ...toast, style: 'execute' }); assert.equal(count, 3)
