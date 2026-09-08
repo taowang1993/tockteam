@@ -235,6 +235,19 @@
   },
   "reading": {
     "fixture": "plugins/tocktutor/parity/fixtures/vault",
+    "fixtureManifest": {
+      "trackedPath": "plugins/tocktutor/parity/fixtures/vault/Notes/Welcome.md",
+      "copiedPath": "TockTutor Parity Fixture/Notes/Welcome.md",
+      "copiedFor": ["TockTutor isolated vault", "Obsidian 1.13.7 isolated vault"],
+      "bytes": 656,
+      "expectedSha256": "sha256:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
+      "trackedSha256": "sha256:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
+      "copiedSha256": "sha256:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
+      "sameBytes": true,
+      "sameSha256": true,
+      "sameNormalizedFixture": true,
+      "explicitEquality": "tracked.bytes === copied.bytes && tracked.sha256 === copied.sha256"
+    },
     "sourceRevision": "tutor@a3535e41",
     "viewport": {
       "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },

@@ -82,6 +82,8 @@
     .section-number { margin: 0 0 7px; color: var(--muted); font: 650 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; }
     h2 { margin: 0; font-size: clamp(24px, 3vw, 38px); letter-spacing: -.025em; }
     .section-note { max-width: 900px; margin: 10px 0 22px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .fixture-proof { max-width: 900px; margin: -8px 0 22px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--muted); font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .fixture-proof strong { color: var(--text); font-family: inherit; }
 
     .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
     .comparison + .comparison { margin-top: 14px; }
@@ -151,6 +153,7 @@
 
     <section class="surface" id="reading">
       <p class="section-number">Surface 02</p><h2>Reading View</h2><p class="section-note">Parity-fixture rendering covers typography, measure, metadata, tasks, callout tinting, fenced code, safe HTML, hidden block IDs, and accessible Mermaid SVGs. Raw image embeds remain deferred to the Attachments and Embeds tranche.</p>
+      <p class="fixture-proof"><strong>Fixture Proof:</strong> tracked <code>plugins/tocktutor/parity/fixtures/vault/Notes/Welcome.md</code> and copied <code>TockTutor Parity Fixture/Notes/Welcome.md</code> use the same normalized bytes for both isolated surfaces: 656 bytes and SHA-256 <code>sha256:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c</code>. Equality is explicit: tracked and copied byte counts and SHA-256 values match.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reading View</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-reading.png"><img src="screenshots/tocktutor-editor-reading.png" alt="TockTutor reading view"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Reading View</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-reading-view.png"><img src="screenshots/obsidian-reading-view.png" alt="Obsidian reading view"></a></figure>
