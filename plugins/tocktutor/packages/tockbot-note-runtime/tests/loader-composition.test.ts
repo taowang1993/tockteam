@@ -3953,9 +3953,14 @@ test('save fails before mutation when recovery storage is unavailable', async ()
 
 test('recovery metadata scans honor cancellation before stale snapshot writes', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-snapshot-cancel-'))
+  // Keep recovery state inside the fixture so the background search index cannot race the read probe.
+  const stateRoot = join(fixture, '.tockteam-state')
   try {
     await writeFile(join(fixture, 'Note.md'), 'before')
-    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    const loaded = await load([
+      `vaultRoot: ${JSON.stringify(fixture)}`,
+      `stateRoot: ${JSON.stringify(stateRoot)}`,
+    ].join('\n'))
     try {
       const state = loaded.context.noteVault.state
       if (!state.active) assert.fail('configured vault must be active')
@@ -3971,10 +3976,10 @@ test('recovery metadata scans honor cancellation before stale snapshot writes', 
       const savedSnapshots = await loaded.context.noteVault.listSnapshots({ expectedVault, path: 'Note.md' }, signal)
       const snapshotId = savedSnapshots.snapshots[0]?.id
       if (snapshotId === undefined) assert.fail('save must create a snapshot')
-      const stateFiles = await readdir(join(loaded.root, 'state'), { recursive: true })
+      const stateFiles = await readdir(stateRoot, { recursive: true })
       const metadata = stateFiles.find(name => name.endsWith(`${snapshotId}.json`))
       if (metadata === undefined) assert.fail('snapshot metadata must exist')
-      const metadataPath = join(loaded.root, 'state', metadata)
+      const metadataPath = join(stateRoot, metadata)
       const probe = await openFile(metadataPath, 'r')
       const prototype = Object.getPrototypeOf(probe) as { read: FileRead }
       const originalRead = prototype.read
