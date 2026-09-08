@@ -1,4 +1,4 @@
-import { ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
+import { ChevronDown, ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage, TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
 
@@ -286,7 +286,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         const field = document.createElement('label'); field.className = 'launcher-command-field'
         const fieldTitle = String(child.props.title ?? '')
         const fieldLabel = document.createElement('span'); fieldLabel.className = 'text-right'; fieldLabel.textContent = fieldTitle
-        const select = document.createElement('select'); select.className = 'launcher-command-control'
+        const selectFrame = document.createElement('span'); selectFrame.className = 'relative block min-w-0'
+        const select = document.createElement('select'); select.className = 'launcher-command-control appearance-none pr-8'
         select.setAttribute('aria-label', fieldTitle)
         firstFormControl ??= select
         for (const option of child.children) {
@@ -299,7 +300,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
           const eventId = child.props.fieldEventId
           if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: select.value.slice(0, 128) })
         })
-        field.append(fieldLabel, select); formArea.append(field)
+        const selectArrow = icon(ChevronDown, 'pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]')
+        selectFrame.append(select, selectArrow); field.append(fieldLabel, selectFrame); formArea.append(field)
       } else if (child.type === 'raycast-text-field') {
         const field = document.createElement('label'); field.className = 'launcher-command-field'
         const fieldTitle = String(child.props.title ?? '')
@@ -320,7 +322,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       const button = document.createElement('button'); button.type = 'button'; button.className = preferenceSetup ? 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)]' : buttonClass
       button.textContent = String(action.props.title ?? '')
       button.disabled = !action.props.actionEventId
-      if (preferenceSetup && action.props.title === 'Continue') { const shortcut = document.createElement('kbd'); shortcut.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; shortcut.textContent = '⌘ ↵'; button.append(shortcut) }
+      if (preferenceSetup && action.props.title === 'Continue') {
+        const shortcuts = document.createElement('span'); shortcuts.className = 'ml-1 flex gap-1'; shortcuts.setAttribute('aria-hidden', 'true')
+        for (const glyph of ['⌘', '↵']) { const key = document.createElement('kbd'); key.className = 'rounded-[0.25rem] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-3,Canvas)] px-1 py-0.5 text-xs font-normal leading-none text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = glyph; shortcuts.append(key) }
+        button.append(shortcuts)
+      }
       button.addEventListener('click', () => invoke(action)); (preferenceSetup ? footerActions : formArea).append(button)
     }
   }
@@ -363,7 +369,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   element.addEventListener('click', event => {
     for (const owner of [...rows, ...(rootActionOwner ? [rootActionOwner] : [])]) if (!owner.menu.contains(event.target as globalThis.Node)) owner.menu.open = false
   })
-  const focus = (): void => { if (preferenceSetup) firstFormControl?.focus(); else if (!searchRow.hidden) input.focus() }
+  const focus = (): void => { if (preferenceSetup) firstFormControl?.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus() }
   return {
     element,
     focus,

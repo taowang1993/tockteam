@@ -11,12 +11,13 @@ class Element extends EventTarget {
   className = ''
   id = ''
   focused = false
+  focusOptions: FocusOptions | undefined
   get options(): Element[] { return this.children }
   append(...children: Element[]) { this.children.push(...children) }
   setAttribute(name: string, value: string) { this.attributes.set(name, value) }
   getAttribute(name: string) { return this.attributes.get(name) ?? null }
   replaceChildren() { this.children = [] }
-  focus() { this.focused = true }
+  focus(options?: FocusOptions) { this.focused = true; this.focusOptions = options }
   contains() { return false }
 }
 const flush = () => new Promise(resolve => setImmediate(resolve))
@@ -261,7 +262,10 @@ test('language set dropdown change sends a bounded fieldChanged event', async ()
 test('first-run preferences use the Raycast-like centered hierarchy and keyboard submit', async () => {
   const nodes: Element[] = []
   const sent: TrustedRaycastViewEvent[] = []
-  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const document = {
+    createElement() { const node = new Element(); nodes.push(node); return node },
+    createElementNS() { const node = new Element(); nodes.push(node); return node },
+  } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
   const options = [{ type: 'raycast-form-dropdown-item', props: { title: 'English', value: 'en' }, children: [] }] as const
   view.update({ ...projection(0), root: { type: 'root', props: { preferenceSetup: true }, children: [{ type: 'raycast-form', props: {}, children: [
@@ -282,7 +286,11 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.ok(nodes.some(node => node.className.includes('launcher-command-content')))
   assert.ok(nodes.some(node => node.className.includes('launcher-command-field')))
   assert.equal(nodes.find(node => node.textContent === 'Translate from')?.className, 'text-right', 'preference labels align to the control edge')
-  assert.ok(nodes.some(node => node.className.includes('launcher-command-control')))
+  const preferenceControls = ['Translate from', 'Primary Language', 'Secondary Language'].map(name => nodes.find(node => node.getAttribute('aria-label') === name)!)
+  assert.ok(preferenceControls.every(node => node.className.includes('appearance-none') && node.className.includes('pr-8')), 'custom selector chevrons preserve a visible right gutter')
+  assert.equal(nodes.filter(node => node.getAttribute('class')?.includes('pointer-events-none') && node.getAttribute('class')?.includes('right-3')).length, 3)
+  view.focus()
+  assert.deepEqual(preferenceControls[0]?.focusOptions, { focusVisible: false }, 'programmatic setup focus does not paint a ring; keyboard focus remains visible')
   assert.ok(nodes.some(node => node.className.includes('launcher-command-footer')))
   assert.ok(nodes.some(node => node.className.includes('launcher-command-footer-identity')))
   const preferenceForm = nodes.find(node => node.className.includes('w-[33.0625rem]'))
@@ -292,6 +300,9 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   const logoFrame = nodes.find(node => node.className.includes('rounded-full'))
   assert.ok(logoFrame?.className.includes('mb-5'))
   assert.ok(!logoFrame?.className.includes(' border '), 'the Raycast logo disc has no extra ring')
+  const keycaps = nodes.filter(node => node.className.includes('rounded-[0.25rem]'))
+  assert.deepEqual(keycaps.map(node => node.textContent), ['⌘', '↵'])
+  assert.ok(keycaps.every(node => node.className.includes('border-[var(--dsw-alias-border-l2,CanvasText)]')), 'setup keycaps remain distinct without changing the theme')
   const submit = Object.assign(new Event('keydown'), { key: 'Enter', isComposing: false, keyCode: 13, metaKey: true, ctrlKey: false, altKey: false, shiftKey: false })
   view.element.dispatchEvent(submit)
   await flush()

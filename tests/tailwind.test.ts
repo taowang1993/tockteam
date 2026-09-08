@@ -64,11 +64,14 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(preferenceControls, /border-radius: 0\.875rem/u, 'preference controls keep Raycast’s radius')
   assert.match(preferenceControls, /21%/u, 'dark preference controls preserve Raycast’s contrast against the token-derived surface')
   assert.match(preferenceControls, /font-size: 0\.875rem/u)
-  assert.match(preferenceControls, /padding-inline: 0\.5rem/u)
+  assert.match(preferenceControls, /padding-inline: 0\.5rem 2rem/u, 'selector text clears the inset Lucide arrow')
+  const preferenceFocus = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-control:focus-visible \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(preferenceFocus, /outline: none/u, 'preference controls replace the prominent ring with a tokenized border')
+  assert.match(preferenceFocus, /--dsw-alias-border-l3/u, 'keyboard focus remains visibly indicated')
   const preferenceFooterMaterial = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-identity,\n#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceFooterMaterial, /background: light-dark\(/u, 'setup identity and actions match Raycast’s footer material')
   const preferenceIdentity = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-identity \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
-  assert.match(preferenceIdentity, /padding-inline: 0\.1875rem/u, 'setup identity aligns the Raycast footer pill')
+  assert.match(preferenceIdentity, /padding-inline: 0\.625rem/u, 'setup identity keeps the wider Raycast footer pill')
 
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),

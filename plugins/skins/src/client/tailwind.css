@@ -462,9 +462,14 @@
     color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 21%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
   );
   padding-block: 0.375rem;
-  padding-inline: 0.5rem;
+  padding-inline: 0.5rem 2rem;
   font-size: 0.875rem;
   letter-spacing: normal;
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-command-control:focus-visible {
+  border-color: var(--dsw-alias-border-l3, var(--dsw-alias-border-l2, CanvasText));
+  outline: none;
 }
 
 #launcher-root [data-view='preference-setup'] details > summary {
@@ -492,7 +497,7 @@
 }
 
 #launcher-root [data-view='preference-setup'] .launcher-command-footer-identity {
-  padding-inline: 0.1875rem;
+  padding-inline: 0.625rem;
 }
 
 #launcher-root [data-view='preference-setup'] .launcher-command-footer-action:hover {
