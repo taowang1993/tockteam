@@ -56,14 +56,17 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.doesNotMatch(tailwind, /#launcher-root \[data-view='preference-setup'\] \{\s*background:/u, 'preference setup must expose the same command-surface material as the first screen')
   const preferenceHeader = tailwind.match(/#launcher-root \[data-view='preference-setup'\] > \.launcher-command-header \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceHeader, /height: 4rem/u, 'preference setup keeps Raycast’s 64px top region')
+  const footerActions = tailwind.match(/@utility launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(footerActions, /justify-content: center/u, 'fixed and content-sized footer actions center their contents')
   const preferenceFields = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-field \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceFields, /gap: 1\.4375rem/u, 'preference labels and controls keep Raycast’s 23px gutter')
+  assert.match(preferenceFields, /font-size: 0\.84375rem/u, 'preference row titles match the introduction type size')
   const preferenceControls = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-control \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceControls, /height: 2\.125rem/u, 'preference controls keep Raycast’s 34px height')
   assert.match(preferenceControls, /border-radius: 0\.875rem/u, 'preference controls keep Raycast’s radius')
   assert.match(preferenceControls, /21%/u, 'dark preference controls preserve Raycast’s contrast against the token-derived surface')
   assert.match(preferenceControls, /font-size: 0\.875rem/u)
-  assert.match(preferenceControls, /padding-inline: 0\.5rem 2rem/u, 'selector text clears the inset Lucide arrow')
+  assert.match(preferenceControls, /padding-inline: 0\.75rem 2rem/u, 'selector text has a readable leading inset and clears the Lucide arrow')
   const preferenceFocus = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-control:focus-visible \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceFocus, /outline: none/u, 'preference controls replace the prominent ring with a tokenized border')
   assert.match(preferenceFocus, /--dsw-alias-border-l3/u, 'keyboard focus remains visibly indicated')

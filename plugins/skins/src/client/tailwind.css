@@ -290,6 +290,7 @@
   min-height: 2rem;
   flex: none;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   border: 1px solid transparent;
   border-radius: 9999px;
@@ -438,6 +439,7 @@
 
 #launcher-root [data-view='preference-setup'] .launcher-command-field {
   gap: 1.4375rem;
+  font-size: 0.84375rem;
   font-weight: 400;
   letter-spacing: -0.04em;
 }
@@ -455,7 +457,7 @@
     color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 21%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
   );
   padding-block: 0.375rem;
-  padding-inline: 0.5rem 2rem;
+  padding-inline: 0.75rem 2rem;
   font-size: 0.875rem;
   letter-spacing: normal;
 }
