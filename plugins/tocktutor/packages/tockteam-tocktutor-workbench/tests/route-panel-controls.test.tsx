@@ -6,6 +6,7 @@ import {
   TockTutorRouteView,
   type WorkbenchRouteSnapshot,
 } from '../src/route.tsx'
+import { createWorkbenchSession } from '../src/session.ts'
 
 const snapshot: WorkbenchRouteSnapshot = {
   dispatchDialog: null,
@@ -54,6 +55,8 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onRestoreSnapshot?(id: string): void
   onRestoreTrash?(id: string): void
   onRunSearch?(): void
+  onSaveWorkspace?(): void
+  onLoadWorkspace?(id: string): void
   onSearchChange?(query: string): void
   onSearchMode?(mode: 'query' | 'related'): void
   onSettingsChange?(change: Record<string, unknown>): void
@@ -213,6 +216,47 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
     const pane1Close = screen.getByRole('button', { name: 'Close Pane 1' })
     expect(pane1Close.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('saves and restores named workspaces from accessible panel controls', () => {
+    const onSaveWorkspace = vi.fn()
+    const onLoadWorkspace = vi.fn()
+    const vault = { generation: 1, id: `vault:${'a'.repeat(64)}` }
+    renderRoute({
+      settings: {
+        attachmentFolder: 'Attachments',
+        backlinksInDocument: false,
+        defaultEditingMode: 'live-preview',
+        graphColorBy: 'none',
+        graphDepth: 2,
+        graphGroupBy: 'none',
+        graphIncludeAttachments: false,
+        graphIncludeOrphans: true,
+        graphIncludeTags: false,
+        graphQuery: '',
+        journalFolder: 'Journals',
+        pagePreview: true,
+        recoveryIntervalMinutes: 5,
+        snapshotRetentionDays: 7,
+        templateFolder: 'Templates',
+        webClipFolder: 'Clips',
+      },
+      vault,
+      workspaces: [{
+        createdAt: 1,
+        focusMode: true,
+        id: 'class-layout',
+        name: 'Class Layout',
+        session: createWorkbenchSession('/tocktutor', vault, 'main'),
+      }],
+    }, { onLoadWorkspace, onSaveWorkspace })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save Workspace' }))
+    expect(onSaveWorkspace).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: 'Load Class Layout' }))
+    expect(onLoadWorkspace).toHaveBeenCalledWith('class-layout')
   })
 
   it('exposes Host-backed note actions behind explicit rename and move dialogs', async () => {
