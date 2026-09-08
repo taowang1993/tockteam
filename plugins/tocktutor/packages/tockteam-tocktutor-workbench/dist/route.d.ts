@@ -21,7 +21,7 @@ import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } fro
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, RestoreTrashResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorWorkbench: {
@@ -45,12 +45,12 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         readSnapshot(request: ReadSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotContentResult>>;
         restoreSnapshot(request: RestoreSnapshotOverwriteRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         restoreSnapshotAsNew(request: RestoreSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
-        trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
+        trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<TrashMutationResult>>;
         listTrash(request: ListTrashRequest, signal?: AbortSignal): Promise<RemoteResult<{
             entries: TrashEntryInfo[];
             generation: number;
         }>>;
-        restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
+        restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<RestoreTrashResult>>;
         search(request: VaultSearchRequest, signal?: AbortSignal): Promise<RemoteResult<VaultSearchResult>>;
         outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>;
         links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>;

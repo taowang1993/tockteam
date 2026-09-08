@@ -170,6 +170,39 @@ function validSearchResult(value, vault) {
             && match.preview.length <= 4_096
             && (match.line === null || Number.isSafeInteger(match.line)));
 }
+function validTrashEntryInfo(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    const entry = value;
+    return Number.isSafeInteger(entry.createdAt)
+        && typeof entry.id === 'string' && entry.id.length > 0 && entry.id.length <= 255
+        && (entry.kind === 'attachment' || entry.kind === 'document' || entry.kind === 'folder')
+        && typeof entry.originalPath === 'string'
+        && isSafeVaultRelativePath(entry.originalPath);
+}
+function validTrashMutationResult(value, vault, originalPath) {
+    if (!validTrashEntryInfo(value) || typeof value !== 'object' || value === null)
+        return false;
+    const result = value;
+    return result.generation === vault.generation
+        && result.originalPath === originalPath
+        && typeof result.revision === 'string'
+        && /^file:[0-9a-f]{64}$/u.test(result.revision)
+        && result.status === 'trashed';
+}
+function validRestoreTrashResult(value, vault, entry) {
+    if (!validTrashEntryInfo(value) || typeof value !== 'object' || value === null)
+        return false;
+    const result = value;
+    return result.generation === vault.generation
+        && result.id === entry.id
+        && result.kind === entry.kind
+        && result.originalPath === entry.originalPath
+        && result.path === entry.originalPath
+        && typeof result.revision === 'string'
+        && /^file:[0-9a-f]{64}$/u.test(result.revision)
+        && result.status === 'restored';
+}
 function documentKind(path) {
     if (!isSafeVaultRelativePath(path))
         return null;
@@ -1406,8 +1439,9 @@ export class WorkbenchRouteController {
             return false;
         const operation = this.nextRecoveryOperation();
         try {
-            remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: identity.revision, expectedVault: identity.vault, path: identity.path }, operation.signal));
-            if (!this.recoveryCurrent(operation.id, identity))
+            const trashed = remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: identity.revision, expectedVault: identity.vault, path: identity.path }, operation.signal));
+            if (!this.recoveryCurrent(operation.id, identity)
+                || !validTrashMutationResult(trashed, identity.vault, identity.path))
                 return false;
             const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, identity.path);
             this.shellSession = closed.session;
@@ -1423,12 +1457,14 @@ export class WorkbenchRouteController {
     }
     async restoreTrashEntry(id) {
         const identity = this.recoveryIdentity();
-        if (identity === null || this.snapshot.trash?.some(entry => entry.id === id) !== true)
+        const entry = this.snapshot.trash?.find(candidate => candidate.id === id);
+        if (identity === null || entry === undefined)
             return false;
         const operation = this.nextRecoveryOperation();
         try {
-            remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: identity.vault, id }, operation.signal));
-            if (!this.recoveryCurrent(operation.id, identity))
+            const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: identity.vault, id }, operation.signal));
+            if (!this.recoveryCurrent(operation.id, identity)
+                || !validRestoreTrashResult(restored, identity.vault, entry))
                 return false;
             await this.refreshTree(identity.vault);
             if (!this.recoveryIdentityMatches(identity))

@@ -1362,7 +1362,7 @@ async function stateDirectory(stateRoot, parts, create) {
     }
     return cursor;
 }
-async function readStateBytes(filePath, maxBytes) {
+async function readStateBytes(filePath, maxBytes, signal = POST_COMMIT_SIGNAL) {
     const entry = await lstat(filePath, { bigint: true });
     if (!entry.isFile() || entry.isSymbolicLink() || entry.size > BigInt(maxBytes)) {
         throw new NoteVaultError('not-found', 'Snapshot record not found');
@@ -1373,7 +1373,7 @@ async function readStateBytes(filePath, maxBytes) {
         if (!opened.isFile() || !sameStableFile(entry, opened)) {
             throw new NoteVaultError('not-found', 'Snapshot record not found');
         }
-        const data = await readBounded(handle, maxBytes, Number(opened.size), POST_COMMIT_SIGNAL);
+        const data = await readBounded(handle, maxBytes, Number(opened.size), signal);
         if (data === null)
             throw new NoteVaultError('not-found', 'Snapshot record not found');
         const final = await handle.stat({ bigint: true });
@@ -1387,13 +1387,14 @@ async function readStateBytes(filePath, maxBytes) {
         await handle.close().catch(() => undefined);
     }
 }
-async function listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes) {
+async function listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes, signal = POST_COMMIT_SIGNAL) {
     const directory = await stateDirectory(stateRoot, snapshotDirectoryParts(vault, relativePath), false);
     if (directory === null)
         return [];
     const names = [];
     const stream = await opendir(directory);
     for await (const entry of stream) {
+        signal.throwIfAborted();
         if (names.length >= SNAPSHOT_SCAN_LIMIT)
             break;
         if (entry.isFile() && entry.name.endsWith('.json'))
@@ -1401,12 +1402,13 @@ async function listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes)
     }
     const records = [];
     for (const name of names.sort(compareVaultPaths)) {
+        signal.throwIfAborted();
         const id = name.slice(0, -'.json'.length);
         if (!validSnapshotId(id))
             continue;
         const metaPath = path.join(directory, name);
         try {
-            const parsed = JSON.parse((await readStateBytes(metaPath, SNAPSHOT_METADATA_MAX_BYTES)).toString('utf8'));
+            const parsed = JSON.parse((await readStateBytes(metaPath, SNAPSHOT_METADATA_MAX_BYTES, signal)).toString('utf8'));
             if (parsed.id !== id
                 || parsed.path !== relativePath
                 || typeof parsed.createdAt !== 'number'
@@ -1422,7 +1424,7 @@ async function listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes)
                 || !/^sha256:[0-9a-f]{64}$/u.test(parsed.digest))
                 continue;
             const bodyPath = path.join(directory, `${id}.body`);
-            const body = await readStateBytes(bodyPath, maxBodyBytes);
+            const body = await readStateBytes(bodyPath, maxBodyBytes, signal);
             if (body.byteLength !== parsed.size
                 || `sha256:${createHash('sha256').update(body).digest('hex')}` !== parsed.digest)
                 continue;
@@ -1440,53 +1442,75 @@ async function listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes)
                 metaPath,
             });
         }
-        catch {
+        catch (error) {
+            if (signal.aborted)
+                throw error;
             // Persisted recovery metadata is untrusted; malformed records are ignored.
         }
     }
     return records.sort((left, right) => right.info.createdAt - left.info.createdAt);
 }
-async function readSnapshotRecord(stateRoot, vault, relativePath, id, maxBodyBytes) {
+async function readSnapshotRecord(stateRoot, vault, relativePath, id, maxBodyBytes, signal = POST_COMMIT_SIGNAL) {
     if (!validSnapshotId(id))
         throw new NoteVaultError('not-found', 'Snapshot record not found');
-    const records = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes);
+    const records = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes, signal);
     const record = records.find(candidate => candidate.info.id === id);
     if (record === undefined)
         throw new NoteVaultError('not-found', 'Snapshot record not found');
     return { body: record.body, info: record.info };
 }
-async function captureSnapshotRecord(stateRoot, vault, relativePath, content, reason, maxBodyBytes, limit, retentionDays) {
+async function captureSnapshotRecord(stateRoot, vault, relativePath, content, reason, maxBodyBytes, limit, retentionDays, signal = POST_COMMIT_SIGNAL, assertCurrent = () => undefined) {
+    signal.throwIfAborted();
+    assertCurrent();
     const body = Buffer.from(content, 'utf8');
     if (body.byteLength > maxBodyBytes) {
         throw new NoteVaultError('recovery-unavailable', 'Snapshot content exceeds the configured byte limit');
     }
     const digest = `sha256:${createHash('sha256').update(body).digest('hex')}`;
-    const existing = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes);
+    const existing = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes, signal);
+    signal.throwIfAborted();
+    assertCurrent();
     if (existing[0]?.info.digest === digest)
         return existing[0].info;
     const directory = await stateDirectory(stateRoot, snapshotDirectoryParts(vault, relativePath), true);
     if (directory === null)
         throw new NoteVaultError('recovery-unavailable', 'Snapshot storage is unavailable');
+    signal.throwIfAborted();
+    assertCurrent();
     const createdAt = Date.now();
     const id = snapshotId(createdAt);
     const info = { createdAt, digest, id, path: relativePath, reason, size: body.byteLength };
     const bodyPath = path.join(directory, `${id}.body`);
     const metaPath = path.join(directory, `${id}.json`);
     try {
-        await writeDocumentAtomic(bodyPath, body, true, async () => undefined);
-        await writeDocumentAtomic(metaPath, Buffer.from(JSON.stringify(info), 'utf8'), true, async () => undefined);
+        await writeDocumentAtomic(bodyPath, body, true, async () => {
+            signal.throwIfAborted();
+            assertCurrent();
+        });
+        await writeDocumentAtomic(metaPath, Buffer.from(JSON.stringify(info), 'utf8'), true, async () => {
+            signal.throwIfAborted();
+            assertCurrent();
+        });
     }
     catch (error) {
         await rm(bodyPath, { force: true }).catch(() => undefined);
         await rm(metaPath, { force: true }).catch(() => undefined);
         throw error;
     }
-    const records = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes);
+    signal.throwIfAborted();
+    assertCurrent();
+    const records = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes, signal);
+    signal.throwIfAborted();
+    assertCurrent();
     const cutoff = createdAt - retentionDays * 24 * 60 * 60_000;
     for (const record of records.filter((candidate, index) => (index >= limit || candidate.info.createdAt < cutoff))) {
+        signal.throwIfAborted();
+        assertCurrent();
         await rm(record.bodyPath, { force: true });
         await rm(record.metaPath, { force: true });
     }
+    signal.throwIfAborted();
+    assertCurrent();
     return info;
 }
 async function draftFilePath(stateRoot, vault, relativePath, create) {
@@ -1528,13 +1552,14 @@ function validTrashId(id) {
 async function trashMetadataDirectory(stateRoot, vault, create) {
     return await stateDirectory(stateRoot, ['trash', createHash('sha256').update(vault.id).digest('hex')], create);
 }
-async function listTrashRecords(stateRoot, vault) {
+async function listTrashRecords(stateRoot, vault, signal = POST_COMMIT_SIGNAL) {
     const directory = await trashMetadataDirectory(stateRoot, vault, false);
     if (directory === null)
         return [];
     const names = [];
     const stream = await opendir(directory);
     for await (const entry of stream) {
+        signal.throwIfAborted();
         if (names.length >= SNAPSHOT_SCAN_LIMIT)
             break;
         if (entry.isFile() && entry.name.endsWith('.json'))
@@ -1542,12 +1567,13 @@ async function listTrashRecords(stateRoot, vault) {
     }
     const records = [];
     for (const name of names.sort(compareVaultPaths)) {
+        signal.throwIfAborted();
         const id = name.slice(0, -'.json'.length);
         if (!validTrashId(id))
             continue;
         const metaPath = path.join(directory, name);
         try {
-            const parsed = JSON.parse((await readStateBytes(metaPath, SNAPSHOT_METADATA_MAX_BYTES)).toString('utf8'));
+            const parsed = JSON.parse((await readStateBytes(metaPath, SNAPSHOT_METADATA_MAX_BYTES, signal)).toString('utf8'));
             if (parsed.id !== id
                 || typeof parsed.createdAt !== 'number'
                 || !Number.isFinite(parsed.createdAt)
@@ -1562,20 +1588,25 @@ async function listTrashRecords(stateRoot, vault) {
                 continue;
             records.push({ metaPath, record: parsed });
         }
-        catch {
+        catch (error) {
+            if (signal.aborted)
+                throw error;
             // Persisted trash metadata is untrusted; malformed records are ignored.
         }
     }
     return records.sort((left, right) => right.record.createdAt - left.record.createdAt);
 }
-async function currentTrashRevision(root, record) {
+async function currentTrashRevision(root, record, signal = POST_COMMIT_SIGNAL) {
+    signal.throwIfAborted();
     try {
         if (record.kind === 'document') {
             const target = await resolveDocumentTarget(root, record.trashPath);
+            signal.throwIfAborted();
             return entryRevision(target.alias, target.aliasEntry, target.targetEntry);
         }
         if (record.kind === 'attachment') {
             const target = await resolveAttachmentTarget(root, record.trashPath);
+            signal.throwIfAborted();
             return entryRevision(target.alias, target.aliasEntry, target.targetEntry);
         }
         const candidate = path.join(root, ...record.trashPath.split('/'));
@@ -1584,18 +1615,26 @@ async function currentTrashRevision(root, record) {
         if (!entry.isDirectory() || entry.isSymbolicLink())
             return null;
         assertInside(root, await realpath(candidate));
+        signal.throwIfAborted();
         return fileRevision(entry);
     }
-    catch {
+    catch (error) {
+        if (signal.aborted)
+            throw error;
         return null;
     }
 }
-async function writeTrashRecord(stateRoot, vault, record) {
+async function writeTrashRecord(stateRoot, vault, record, signal = POST_COMMIT_SIGNAL, assertCurrent = () => undefined) {
+    signal.throwIfAborted();
+    assertCurrent();
     const directory = await trashMetadataDirectory(stateRoot, vault, true);
     if (directory === null)
         throw new NoteVaultError('recovery-unavailable', 'Trash metadata storage is unavailable');
     const metaPath = path.join(directory, `${record.id}.json`);
-    await writeDocumentAtomic(metaPath, Buffer.from(JSON.stringify(record), 'utf8'), true, async () => undefined);
+    await writeDocumentAtomic(metaPath, Buffer.from(JSON.stringify(record), 'utf8'), true, async () => {
+        signal.throwIfAborted();
+        assertCurrent();
+    });
     return metaPath;
 }
 function compareVaultPaths(left, right) {
@@ -4413,7 +4452,7 @@ export class NoteVaultRuntime extends Service {
             : await this.preparePathRewrites(updates, args, request.expectedVault, signal);
         const rewriteSnapshots = [];
         for (const rewrite of prepared.selected) {
-            const snapshot = await this.captureRecoverySnapshot(rewrite.snapshotPath, rewrite.originalContent, state, 'pre-link-rewrite');
+            const snapshot = await this.captureRecoverySnapshot(rewrite.snapshotPath, rewrite.originalContent, state, 'pre-link-rewrite', signal);
             rewriteSnapshots.push({ path: rewrite.snapshotPath, snapshotId: snapshot.id });
         }
         const normalizedRequest = {
@@ -4474,15 +4513,17 @@ export class NoteVaultRuntime extends Service {
     async moveFolderWithLinkRewrite(request, signal) {
         return await this.moveWithLinkRewrite(request, signal, true);
     }
-    async captureRecoverySnapshot(path, content, state, reason) {
-        if (this.stateRoot === null) {
+    async captureRecoverySnapshot(path, content, state, reason, signal = POST_COMMIT_SIGNAL) {
+        const root = this.vaultRoot;
+        if (this.stateRoot === null || root === null) {
             throw new NoteVaultError('recovery-unavailable', 'Recovery storage is required before overwriting documents');
         }
+        const assertCurrent = () => { this.assertCapturedVault(state, root); };
         try {
-            return await captureSnapshotRecord(this.stateRoot, { id: state.id, generation: state.generation }, path, content, reason, this.maxReadBytes, this.snapshotLimit, this.snapshotRetentionDays);
+            return await captureSnapshotRecord(this.stateRoot, { id: state.id, generation: state.generation }, path, content, reason, this.maxReadBytes, this.snapshotLimit, this.snapshotRetentionDays, signal, assertCurrent);
         }
         catch (error) {
-            if (error instanceof NoteVaultError)
+            if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError'))
                 throw error;
             throw new NoteVaultError('recovery-unavailable', 'Could not capture a recovery snapshot');
         }
@@ -4494,7 +4535,7 @@ export class NoteVaultRuntime extends Service {
             throw new NoteVaultError('recovery-unavailable', 'Recovery storage is not configured');
         }
         const relativePath = normalizeDocumentPath(request.path);
-        const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes);
+        const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes, signal);
         this.assertCapturedVault(state, root);
         signal.throwIfAborted();
         return { generation: state.generation, snapshots: records.map(record => record.info) };
@@ -4506,7 +4547,7 @@ export class NoteVaultRuntime extends Service {
             throw new NoteVaultError('recovery-unavailable', 'Recovery storage is not configured');
         }
         const relativePath = normalizeDocumentPath(request.path);
-        const record = await readSnapshotRecord(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, request.snapshotId, this.maxReadBytes);
+        const record = await readSnapshotRecord(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, request.snapshotId, this.maxReadBytes, signal);
         this.assertCapturedVault(state, root);
         signal.throwIfAborted();
         return {
@@ -4522,7 +4563,7 @@ export class NoteVaultRuntime extends Service {
         const reason = request.reason?.trim() || 'manual';
         if (reason.length > 200)
             throw new NoteVaultError('invalid-content', 'Snapshot reason is too long');
-        const snapshot = await this.captureRecoverySnapshot(relativePath, request.content, state, reason);
+        const snapshot = await this.captureRecoverySnapshot(relativePath, request.content, state, reason, signal);
         this.assertCapturedVault(state, root);
         signal.throwIfAborted();
         return { generation: state.generation, snapshot };
@@ -4533,7 +4574,7 @@ export class NoteVaultRuntime extends Service {
         if (this.stateRoot === null)
             throw new NoteVaultError('recovery-unavailable', 'Recovery storage is not configured');
         const relativePath = normalizeDocumentPath(request.path);
-        const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes);
+        const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes, signal);
         for (const record of records) {
             signal.throwIfAborted();
             this.assertCapturedVault(state, root);
@@ -4638,10 +4679,12 @@ export class NoteVaultRuntime extends Service {
             revision: mutation.revision,
             trashPath: mutation.path,
         };
+        this.assertCapturedVault(state, root);
+        signal.throwIfAborted();
         try {
-            await writeTrashRecord(this.stateRoot, { id: state.id, generation: state.generation }, record);
+            await writeTrashRecord(this.stateRoot, { id: state.id, generation: state.generation }, record, signal, () => { this.assertCapturedVault(state, root); });
         }
-        catch {
+        catch (error) {
             try {
                 const rollbackRequest = {
                     expectedRevision: mutation.revision,
@@ -4658,7 +4701,6 @@ export class NoteVaultRuntime extends Service {
                 else {
                     await this.moveFileInternal(rollbackRequest, POST_COMMIT_SIGNAL, false);
                 }
-                throw new NoteVaultError('recovery-unavailable', 'Trash metadata could not be stored; the entry was restored');
             }
             catch (rollbackError) {
                 if (rollbackError instanceof NoteVaultError
@@ -4666,6 +4708,11 @@ export class NoteVaultRuntime extends Service {
                     throw rollbackError;
                 throw new NoteVaultError('partial', `Trash entry ${id} was retained at ${mutation.path} after metadata storage failed`);
             }
+            if (error instanceof NoteVaultError && (error.code === 'stale-vault' || error.code === 'changed'))
+                throw error;
+            if (error instanceof Error && error.name === 'AbortError')
+                throw error;
+            throw new NoteVaultError('recovery-unavailable', 'Trash metadata could not be stored; the entry was restored');
         }
         const result = {
             createdAt: record.createdAt,
@@ -4685,11 +4732,11 @@ export class NoteVaultRuntime extends Service {
         if (this.stateRoot === null) {
             throw new NoteVaultError('recovery-unavailable', 'Trash metadata storage is not configured');
         }
-        const records = await listTrashRecords(this.stateRoot, { id: state.id, generation: state.generation });
+        const records = await listTrashRecords(this.stateRoot, { id: state.id, generation: state.generation }, signal);
         const validRecords = [];
         for (const stored of records) {
             signal.throwIfAborted();
-            if (await currentTrashRevision(root, stored.record) === stored.record.revision) {
+            if (await currentTrashRevision(root, stored.record, signal) === stored.record.revision) {
                 validRecords.push(stored);
             }
         }
@@ -4711,12 +4758,12 @@ export class NoteVaultRuntime extends Service {
         if (this.stateRoot === null || !validTrashId(request.id)) {
             throw new NoteVaultError('not-found', 'Trash entry not found');
         }
-        const records = await listTrashRecords(this.stateRoot, { id: state.id, generation: state.generation });
+        const records = await listTrashRecords(this.stateRoot, { id: state.id, generation: state.generation }, signal);
         const stored = records.find(candidate => candidate.record.id === request.id);
         if (stored === undefined)
             throw new NoteVaultError('not-found', 'Trash entry not found');
         const record = stored.record;
-        if (await currentTrashRevision(root, record) !== record.revision) {
+        if (await currentTrashRevision(root, record, signal) !== record.revision) {
             throw new NoteVaultError('not-found', 'Trash entry not found');
         }
         const toPath = request.toPath === undefined
@@ -4909,7 +4956,7 @@ export class NoteVaultRuntime extends Service {
             if (current.revision !== request.expectedRevision) {
                 throw new NoteVaultError('conflict', 'The document changed on disk before it could be saved');
             }
-            snapshot = await this.captureRecoverySnapshot(target.relativePath, current.content, state, 'save');
+            snapshot = await this.captureRecoverySnapshot(target.relativePath, current.content, state, 'save', signal);
             this.assertCapturedVault(state, root);
             await writeDocumentAtomic(target.canonical, data, false, async () => {
                 signal.throwIfAborted();

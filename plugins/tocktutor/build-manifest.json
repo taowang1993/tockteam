@@ -199,7 +199,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/lib/index.js",
-      "sha256": "68f7dbe6242cded142981c1485279fb71935235817866bb9cfb1d2fde01f3cc6"
+      "sha256": "2b2d7dc4d77ca4f7d3ca9beb564b130a00fa15b4e912aaf0c16281acf607db95"
     },
     {
       "path": "packages/tockbot-note-runtime/package.json",
@@ -207,7 +207,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/src/index.ts",
-      "sha256": "24b8f80a8ef4b3c5df33c2b4664ba3012d6d8b4abc3d0aca407ddb5f54df3f4c"
+      "sha256": "3cb538aca551257b8c7f7909b215e49781fc0772578a79088168310dc786ac17"
     },
     {
       "path": "packages/tockbot-note-runtime/tsconfig.build.json",
@@ -1475,11 +1475,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "724c1e38e10782bccf8c32a61441a2c1f0f1d46d44c31646aa97b8f3e5a41803"
+      "sha256": "69689b366ae9d3f95178a94c2869ac734c938555192715a97c5f4a346dd268bc"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "1bf5b561e457c5b14753fe25ae54d60566a8e31fb9e90dbf0ac6cb254f241d6a"
+      "sha256": "76224d53e65300d6906027d966ad01079eacd713fd00c091e5d9cdad44dd3c80"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -1711,15 +1711,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/markdown.d.ts.map",
-      "sha256": "dd2167761bd67bbd9eaf07326614e560ce61b3acc65603137c286147c07954cf"
+      "sha256": "776530ad2b1e986a7c4744eea3ef920c0c230db371b5ad7b255acb266fd1382b"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/markdown.js",
-      "sha256": "f43fdcbf66190f40977c5a3c294c6f5ba78f04f69cba66b780f11b148cfe6af7"
+      "sha256": "e8a6ee79b7392229a97e173c44ef46f8888fcfc6cde0bb9dcdef51a853500b1a"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/markdown.js.map",
-      "sha256": "74abe577ff292f4a7cceecccabc6b13e0ccf44c3072de617196e9e99aee6a155"
+      "sha256": "020e89bd77cb50004a06c73d70c362e77b79270e6f17da66f7f518ffde2b57c9"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/milkdown-editor-commands.d.ts",
@@ -2091,19 +2091,19 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.d.ts",
-      "sha256": "6f50c95b3430402afa9d6c80bb652b60a716f4004162e3144ffbf970b9983129"
+      "sha256": "2da233179c207f9e78688a932909850ca2c22692ef9ccbe8c967874caaf4f7f8"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.d.ts.map",
-      "sha256": "259100702f4aebcac6d3ce3471f939a23725c845712d1703e6d98e6a141b9a98"
+      "sha256": "483950988ba9ff736e22b4f2d379a47eb0f63cbab712ad6c448fd2005db861d3"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js",
-      "sha256": "467749988f08aa6ec5c0f26212baa8dff9391667d5b9b13c52181eeba766cc1a"
+      "sha256": "f893d87f6808d1129e86092ff0f66ac5ab26a15c2fc18d5e68c86c9d6e62f290"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js.map",
-      "sha256": "71e5a49416b5cb08393bc06dd1d2f868d7ced0987873975177e87958628f7f59"
+      "sha256": "beb69be15f7e5ef00c3ebf1ac9911716d41d0f3ca9fea1b91822f00a5fb39734"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/session.d.ts",
@@ -2483,7 +2483,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/markdown.ts",
-      "sha256": "c1b8bcffd01548ccaa5f22f2ed38864fd39e1ee2ddded03ce3057cce90b676e1"
+      "sha256": "2c38ca016b8d463e1933d4ff956dcfc5f22aee9eba9ae539c31c767e9d40f883"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/milkdown-editor-commands.ts",
@@ -2583,7 +2583,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/route.tsx",
-      "sha256": "96ec571fa49d16da8a2d11a0f7a895fac7c89b4fe8af06a7526e60c49500195e"
+      "sha256": "a2fcd20d61030eb0b38f61baa0f0f8985b3ba501c6d6c87e66fdc6982b4e9b6a"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/session.ts",
