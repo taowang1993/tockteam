@@ -43,6 +43,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onLoadFacets?(): void
   onLoadRelationships?(): void
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
+  onMoveNote?(folder: string): Promise<boolean> | boolean
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
   onOpenInternalLink?(target: string): void | Promise<{ fragment: string | null } | null>
@@ -212,6 +213,41 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
     const pane1Close = screen.getByRole('button', { name: 'Close Pane 1' })
     expect(pane1Close.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('exposes Host-backed note actions behind explicit rename and move dialogs', async () => {
+    const onMoveNote = vi.fn(async () => true)
+    const onRenameTitle = vi.fn(async () => true)
+    const onTrashCurrent = vi.fn()
+    renderRoute({
+      documentKind: 'markdown',
+      path: 'Lessons/Welcome.md',
+      phase: 'ready',
+      source: '# Welcome\\n',
+    }, { onMoveNote, onRenameTitle, onTrashCurrent })
+
+    openNoteActions()
+    expect(screen.getByRole('menuitem', { name: 'Rename Note' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Move Note' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Move File to Trash' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename Note' }))
+    const renameDialog = screen.getByRole('dialog', { name: 'Rename Note' })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note Title' }), { target: { value: 'Renamed' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Note' }))
+    await waitFor(() => expect(onRenameTitle).toHaveBeenCalledWith('Renamed'))
+    expect(renameDialog).toBeTruthy()
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Rename Note' })).toBeNull())
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move Note' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note Folder' }), { target: { value: 'Archive/2026' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Move Note' }))
+    await waitFor(() => expect(onMoveNote).toHaveBeenCalledWith('Archive/2026'))
+    expect(screen.queryByRole('dialog', { name: 'Move Note' })).toBeNull()
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move File to Trash' }))
+    expect(onTrashCurrent).toHaveBeenCalledOnce()
   })
 
   it('exposes accessible tab lifecycle and history controls', () => {

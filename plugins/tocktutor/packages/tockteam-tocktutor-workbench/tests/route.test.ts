@@ -521,6 +521,28 @@ test('reports incomplete link rewrites without hiding a committed note rename', 
   controller.dispose()
 })
 
+test('moves the active note through the same revision-aware Host contract', async () => {
+  const remote = new FakeRemote()
+  const navigations: string[] = []
+  const controller = new WorkbenchRouteController(remote, path => { navigations.push(path) })
+
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  assert.equal(await controller.moveActiveNote('Archive/2026'), true)
+  assert.equal(controller.getSnapshot().path, 'Archive/2026/Note.md')
+  assert.equal(controller.getSnapshot().message, 'Archive/2026/Note.md moved.')
+  const move = remote.calls.findLast(call => call.method === 'renameDocument')
+  assert.deepEqual(move?.parameters[0], {
+    expectedRevision: firstRevision,
+    expectedVault: firstVault,
+    fromPath: 'Folder/Note.md',
+    toPath: 'Archive/2026/Note.md',
+  })
+  assert.equal(navigations.at(-1), '/tocktutor/Archive/2026/Note.md')
+  assert.equal(await controller.moveActiveNote('../outside'), false)
+  assert.equal(controller.getSnapshot().path, 'Archive/2026/Note.md')
+  controller.dispose()
+})
+
 test('opens a Reading View wikilink only through Host-resolved path and fragment metadata', async () => {
   const remote = new FakeRemote()
   remote.linksOverride = request => success({

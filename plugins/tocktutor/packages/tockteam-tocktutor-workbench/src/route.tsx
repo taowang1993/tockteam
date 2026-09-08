@@ -34,6 +34,7 @@ import {
   FileClock,
   FileCode2,
   FileText,
+  FolderInput,
   Globe2,
   Link2,
   ListTree,
@@ -2049,9 +2050,8 @@ export class WorkbenchRouteController {
   }
 
   async renameActiveTitle(title: string): Promise<boolean> {
-    const vault = this.snapshot.vault
     const fromPath = this.snapshot.path
-    if (vault === null || fromPath === null || this.snapshot.documentKind !== 'markdown') return false
+    if (fromPath === null || this.snapshot.documentKind !== 'markdown') return false
     const normalized = title.trim()
     if (normalized.length === 0
       || normalized.length > 200
@@ -2062,7 +2062,27 @@ export class WorkbenchRouteController {
     if (extension === undefined) return false
     const directory = fromPath.includes('/') ? fromPath.slice(0, fromPath.lastIndexOf('/')) : ''
     const toPath = directory === '' ? `${normalized}${extension}` : `${directory}/${normalized}${extension}`
-    if (!isSafeVaultRelativePath(toPath)) return false
+    return await this.renameActivePath(toPath, 'renamed')
+  }
+
+  async moveActiveNote(folder: string): Promise<boolean> {
+    const fromPath = this.snapshot.path
+    if (fromPath === null || this.snapshot.documentKind !== 'markdown') return false
+    const input = folder.trim()
+    const normalized = input.replace(/\/+$/u, '')
+    if ((input !== '' && normalized === '')
+      || /[\u0000-\u001f\u007f]/u.test(normalized)
+      || (normalized !== '' && !isSafeVaultRelativePath(normalized))) return false
+    const basename = fileName(fromPath)
+    const toPath = normalized === '' ? basename : `${normalized}/${basename}`
+    return await this.renameActivePath(toPath, 'moved')
+  }
+
+  private async renameActivePath(toPath: string, action: 'moved' | 'renamed'): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const fromPath = this.snapshot.path
+    if (vault === null || fromPath === null || this.snapshot.documentKind !== 'markdown'
+      || !isSafeVaultRelativePath(toPath)) return false
     if (toPath === fromPath) return true
     const recoveryWasOpen = this.snapshot.recoveryOpen === true
     this.cancelRecoveryOperations()
@@ -2074,7 +2094,7 @@ export class WorkbenchRouteController {
     if (!sameVault(this.snapshot.vault, vault) || this.snapshot.path !== fromPath || this.snapshot.revision === null) return false
     const operation = this.nextOperation()
     this.pendingRename = { fromPath, toPath, vault }
-    this.update({ message: `Renaming ${fromPath}.` })
+    this.update({ message: `${action === 'moved' ? 'Moving' : 'Renaming'} ${fromPath}.` })
     try {
       const request: RenameDocumentRequest = {
         expectedRevision: this.snapshot.revision,
@@ -2114,12 +2134,13 @@ export class WorkbenchRouteController {
         ...(bookmarksPersisted ? [] : ['Bookmarks could not be saved.']),
       ]
       this.bookmarks = bookmarks
+      const message = renameWarnings.length === 0 ? `${toPath} ${action}.` : `${toPath} ${action}; ${renameWarnings.join(' ')}`
       this.update({
         bookmarks: Object.freeze(bookmarks.map(bookmark => Object.freeze({ ...bookmark }))),
         draftRecovered: false,
         embeds: Object.freeze([]),
         links: null,
-        message: renameWarnings.length === 0 ? `${toPath} renamed.` : `${toPath} renamed; ${renameWarnings.join(' ')}`,
+        message,
         outline: null,
         path: toPath,
         selectedSnapshot: null,
@@ -2142,7 +2163,7 @@ export class WorkbenchRouteController {
       return true
     } catch (error) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
-        this.update({ message: this.failureMessage(error, `${fromPath} could not be renamed.`) })
+        this.update({ message: this.failureMessage(error, `${fromPath} could not be ${action}.`) })
       }
       return false
     } finally {
@@ -2778,6 +2799,7 @@ export interface TockTutorRouteViewProps {
   onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onMode(mode: RouteEditorMode): void
+  onMoveNote?(folder: string): Promise<boolean> | boolean
   onNewNote?(): void
   onOpenBookmark?(id: string): void
   onOpenCommandPalette?(): void
@@ -2885,6 +2907,69 @@ const SEARCH_OPTIONS = [
   { description: 'search keywords under same heading', label: 'section:', value: 'section:' },
   { description: 'match property', label: '[property]', value: '[]' },
 ] as const
+
+function NotePathDialog(props: {
+  initialValue: string
+  kind: 'move' | 'rename'
+  onCancel(): void
+  onSubmit(value: string): Promise<boolean> | boolean
+}): ReactNode {
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  const [value, setValue] = useState(props.initialValue)
+  useEffect(() => {
+    setValue(props.initialValue)
+    setError(null)
+  }, [props.initialValue])
+  const rename = props.kind === 'rename'
+  const label = rename ? 'Rename Note' : 'Move Note'
+  const submit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    if (pending) return
+    setPending(true)
+    setError(null)
+    void Promise.resolve()
+      .then(() => props.onSubmit(value))
+      .then(success => {
+        if (success === true) props.onCancel()
+        else setError(`The note could not be ${rename ? 'renamed' : 'moved'}.`)
+      }, () => { setError(`The note could not be ${rename ? 'renamed' : 'moved'}.`) })
+      .finally(() => { setPending(false) })
+  }
+  return (
+    <Dialog open onOpenChange={open => { if (!open && !pending) props.onCancel() }}>
+      <DialogContent
+        unstyled
+        className="fixed top-1/2 left-1/2 z-[2147483647] grid w-[calc(100%-48px)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 gap-3.5 overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 text-[var(--tt-text)] shadow-xl [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#27272a)_28%,transparent)]"
+        showCloseButton={false}
+      >
+        <form className="grid gap-3" onSubmit={submit}>
+          <DialogTitle className="m-0 text-[17px]">{label}</DialogTitle>
+          <Label unstyled className="grid gap-1.5 text-sm font-[650]">
+            {rename ? 'Note Title' : 'Note Folder'}
+            <Input
+              unstyled
+              aria-label={rename ? 'Note Title' : 'Note Folder'}
+              autoFocus
+              disabled={pending}
+              maxLength={4_096}
+              onChange={event => { setValue(event.target.value); setError(null) }}
+              placeholder={rename ? undefined : 'Folder/Subfolder (optional)'}
+              value={value}
+            />
+          </Label>
+          {!rename && <p className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Leave the folder empty to move the note to the vault root.</p>}
+          {error !== null && <p className="m-0 text-xs text-[var(--dsw-alias-state-error-primary,#dc2626)]" role="alert">{error}</p>}
+          <div className="flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
+            <Button unstyled disabled={pending} onClick={props.onCancel} type="button">Cancel</Button>
+            <Button unstyled disabled={pending} type="submit">{label}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function NoteSearchPreview(props: {
   match: VaultSearchMatch | undefined
@@ -3258,6 +3343,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       ? documents.some(document => document.path.startsWith(`${entry.path}/`))
       : documents.includes(entry))
   const [panel, setPanel] = useState<'assistant' | WorkbenchUtilityView | null>(null)
+  const [noteAction, setNoteAction] = useState<'move' | 'rename' | null>(null)
   const [paletteView, setPaletteView] = useState<'commands' | 'notes' | null>(null)
   const visiblePalette = paletteView ?? (snapshot.searchOpen ? 'notes' : snapshot.commandPaletteOpen === true ? 'commands' : null)
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
@@ -3461,6 +3547,18 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onSubmit={draft => { props.onSubmitDispatch?.(draft) }}
         />
       )}
+      {noteAction !== null && snapshot.path !== null && (
+        <NotePathDialog
+          initialValue={noteAction === 'rename'
+            ? noteTitle(snapshot.path)
+            : snapshot.path.includes('/') ? snapshot.path.slice(0, snapshot.path.lastIndexOf('/')) : ''}
+          kind={noteAction}
+          onCancel={() => { setNoteAction(null) }}
+          onSubmit={value => noteAction === 'rename'
+            ? props.onRenameTitle?.(value) ?? false
+            : props.onMoveNote?.(value) ?? false}
+        />
+      )}
       {visiblePalette === 'commands' && (
         <WorkbenchCommandPalette
           canGoBack={snapshot.canGoBack === true}
@@ -3596,6 +3694,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                       <DropdownMenuSeparator />
                     </>
                   )}
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || props.onRenameTitle === undefined} onSelect={() => { setNoteAction('rename') }}><Pencil aria-hidden="true" /><span>Rename Note</span></DropdownMenuItem>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || props.onMoveNote === undefined} onSelect={() => { setNoteAction('move') }}><FolderInput aria-hidden="true" /><span>Move Note</span></DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuCheckboxItem checked={snapshot.settings?.backlinksInDocument ?? false} className={NOTE_ACTION_CLASS} disabled={snapshot.settings === undefined} onSelect={() => { props.onSettingsChange?.({ backlinksInDocument: !(snapshot.settings?.backlinksInDocument ?? false) }) }}><Link2 aria-hidden="true" /><span>Backlinks in Document</span></DropdownMenuCheckboxItem>
                     <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || props.onAddBookmark === undefined} onSelect={() => { props.onAddBookmark?.() }}><BookmarkPlus aria-hidden="true" /><span>Bookmark Note</span></DropdownMenuItem>
@@ -3992,6 +4095,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onLoadRelationships={() => { void controller.loadRelationships() }}
         onLoadWorkspace={id => { void controller.loadWorkspace(id) }}
         onMode={mode => { controller.setMode(mode) }}
+        onMoveNote={folder => controller.moveActiveNote(folder)}
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}
         onMoveTab={(paneId, path, direction) => { controller.moveTab(paneId, path, direction) }}
         onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}

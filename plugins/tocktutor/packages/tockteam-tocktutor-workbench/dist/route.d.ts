@@ -257,6 +257,8 @@ export declare class WorkbenchRouteController {
     openBookmark(id: string): Promise<boolean>;
     loadWorkspace(id: string): Promise<boolean>;
     renameActiveTitle(title: string): Promise<boolean>;
+    moveActiveNote(folder: string): Promise<boolean>;
+    private renameActivePath;
     select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean): Promise<boolean>;
     edit(source: string): void;
     setSelection(start: number, end: number): void;
@@ -324,6 +326,7 @@ export interface TockTutorRouteViewProps {
     onMoveCanvas(nodeId: string, deltaX: number, deltaY: number): void;
     onMoveTab?(paneId: string, path: string, direction: -1 | 1): void;
     onMode(mode: RouteEditorMode): void;
+    onMoveNote?(folder: string): Promise<boolean> | boolean;
     onNewNote?(): void;
     onOpenBookmark?(id: string): void;
     onOpenCommandPalette?(): void;
