@@ -77,10 +77,16 @@ function activeHtmlClose(name: string): RegExp {
 
 /** Remove active HTML outside fenced code without reordering the authored Markdown. */
 function stripActiveHtml(markdown: string): string {
+  const inlineCode: string[] = []
+  const protectInlineCode = (value: string): string => value.replace(/`([^`\n]{0,10000})`/gu, (match: string): string => {
+    const token = `\u0000tocktutor-inline-code-${String(inlineCode.length)}\u0000`
+    inlineCode.push(match)
+    return token
+  })
   const lines = markdown.split('\n')
   let fence: { character: string; length: number } | null = null
   let active: string | null = null
-  return lines.map(line => {
+  const stripped = lines.map(line => {
     const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)
     if (fence !== null) {
       if (marker !== null && marker[1]![0] === fence.character && marker[1]!.length >= fence.length
@@ -98,6 +104,7 @@ function stripActiveHtml(markdown: string): string {
       result = result.slice((close.index ?? 0) + close[0].length)
       active = null
     }
+    result = protectInlineCode(result)
     while (true) {
       const open = result.match(ACTIVE_HTML_OPEN)
       if (open === null) break
@@ -118,6 +125,7 @@ function stripActiveHtml(markdown: string): string {
     }
     return result.replace(/<\/\s*(?:embed|form|iframe|math|object|script|style|svg)\s*>/giu, '')
   }).join('\n')
+  return stripped.replace(/\u0000tocktutor-inline-code-(\d+)\u0000/gu, (_match, index: string) => inlineCode[Number(index)] ?? '')
 }
 
 function rawHtmlAttributes(source: string): Record<string, string> {
@@ -304,14 +312,18 @@ function renderBoundedMermaid(source: string): string | null {
     const to = position(edge.to)
     const fromX = from.x + nodeWidth / 2
     const toX = to.x + nodeWidth / 2
-    const midpoint = (fromX + toX) / 2
-    return `<path class="mermaid-edge-path" d="M ${String(fromX)} 64 C ${String(midpoint)} 20, ${String(midpoint)} 20, ${String(toX)} 64" marker-end="url(#mermaid-arrow)"></path>`
+    const direction = toX >= fromX ? 1 : -1
+    const startX = from.x + (direction > 0 ? nodeWidth : 0)
+    const endX = to.x + (direction > 0 ? 0 : nodeWidth)
+    const midpoint = (startX + endX) / 2
+    const arrowBase = endX - direction * 8
+    return `<path class="mermaid-edge-path" d="M ${String(startX)} 64 C ${String(midpoint)} 20, ${String(midpoint)} 20, ${String(endX)} 64"></path><path class="mermaid-arrow-head" d="M ${String(arrowBase)} 58 L ${String(endX)} 64 L ${String(arrowBase)} 70 z"></path>`
   }).join('')
   const nodeMarkup = nodeIds.map(id => {
     const point = position(id)
     return `<g class="mermaid-node" data-node-id="${escapeMarkdownHtml(id)}"><rect class="mermaid-node-shape" height="52" rx="8" width="${String(nodeWidth)}" x="${String(point.x)}" y="${String(point.y)}"></rect><text class="mermaid-node-label" text-anchor="middle" x="${String(point.x + nodeWidth / 2)}" y="70">${escapeMarkdownHtml(labels.get(id) ?? id)}</text></g>`
   }).join('')
-  return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img"><svg aria-hidden="true" class="mermaid-svg" preserveAspectRatio="xMidYMid meet" viewBox="0 0 ${String(width)} ${String(height)}" xmlns="http://www.w3.org/2000/svg"><defs><marker id="mermaid-arrow" markerHeight="8" markerWidth="8" orient="auto-start-reverse" refX="7" refY="4" viewBox="0 0 8 8"><path class="mermaid-arrow-head" d="M 0 0 L 8 4 L 0 8 z"></path></marker></defs>${edgeMarkup}${nodeMarkup}</svg></div>`
+  return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img"><svg aria-hidden="true" class="mermaid-svg" preserveAspectRatio="xMidYMid meet" viewBox="0 0 ${String(width)} ${String(height)}" xmlns="http://www.w3.org/2000/svg">${edgeMarkup}${nodeMarkup}</svg></div>`
 }
 
 function tableDelimiter(line: string): boolean {
@@ -394,7 +406,9 @@ function renderMarkdownList(
       cursor = result.next
       nextTaskIndex = result.taskIndex
     }
-    children.push(`<li>${input}${renderInline(item.content, footnotes, externalEmbedMode)}${nested}</li>`)
+    const content = blockIdText(item.content)
+    const id = content === null ? '' : ` id="${escapeMarkdownHtml(content.id)}"`
+    children.push(`<li${id}>${input}${renderInline(content?.text ?? item.content, footnotes, externalEmbedMode)}${nested}</li>`)
   }
   const tag = ordered ? 'ol' : 'ul'
   const startValue = ordered ? Number.parseInt(items[start]!.marker, 10) : 1

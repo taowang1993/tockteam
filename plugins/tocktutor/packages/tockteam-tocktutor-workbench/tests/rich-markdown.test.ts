@@ -41,6 +41,7 @@ test('renders bounded rich Markdown without executing raw HTML or unsafe URLs', 
   assert.match(html, /aria-label="Mermaid Diagram"/u)
   assert.match(html, /<svg[^>]+class="mermaid-svg"/u)
   assert.match(html, /class="mermaid-edge-path"/u)
+  assert.match(html, /d="M 152 64 C 200 20, 200 20, 248 64"/u)
   assert.match(html, /class="mermaid-node-label"[^>]*>A<\/text>/u)
 })
 
@@ -55,7 +56,13 @@ test('hides block IDs from text while keeping them addressable', () => {
   const html = renderMarkdownHtml('# Welcome ^welcome\n\nTarget block. ^target\n')
   assert.match(html, /<h1 id="welcome">Welcome<\/h1>/u)
   assert.match(html, /<p id="target">Target block\.<\/p>/u)
+  assert.match(renderMarkdownHtml('- List item ^item\n'), /<li id="item">List item<\/li>/u)
   assert.doesNotMatch(html, /\^welcome|\^target/u)
+})
+
+test('preserves active-looking markup inside inline code spans', () => {
+  const html = renderMarkdownHtml('Literal `<script>alert(1)</script>` remains visible.\n')
+  assert.match(html, /<code>&lt;script&gt;alert\(1\)&lt;\/script&gt;<\/code>/u)
 })
 
 test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {
