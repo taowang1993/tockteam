@@ -13,14 +13,12 @@ class FakeIpc {
 
 test('launcher search IPC guards, publishes opaque actions, rejects stale requests, and disposes', async () => {
   const ipc = new FakeIpc()
-  const owners = new Map<object, number>()
   let releaseOld: (() => void) | undefined
   const old = new Promise<void>(resolve => { releaseOld = resolve })
   let published = 0
   const dispose = registerLauncherIpcHandlers({
     actions: {
       cancel: async () => ({ ok: true as const }),
-      clearOwner: () => {},
       invoke: async () => ({ ok: true as const }),
       publish: ({ owner }) => {
         published += 1
@@ -29,7 +27,6 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
     },
     guard: { assert: () => ({ role: 'launcher', webContentsId: 41 }) },
     ipcMain: ipc,
-    rescan: async () => ({ indexedItemCount: 1, rescanStatus: 'idle' as const }),
     search: async term => {
       if (term === 'old') await old
       return { after: [], before: [{ defaultAction: { argument: 'coder', description: 'Focus', handlerKey: 'focus-workbench' }, description: 'TockCoder', id: 'coder', name: 'TockCoder', sourceExtension: 'TockTeam' }], sections: [{ id: 'pinned', items: [{ defaultAction: { argument: 'coder', description: 'Focus', handlerKey: 'focus-workbench' }, description: 'TockCoder', id: 'coder', name: 'TockCoder', sourceExtension: 'TockTeam' }] }], status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
@@ -44,7 +41,6 @@ test('launcher search IPC guards, publishes opaque actions, rejects stale reques
   releaseOld?.()
   await assert.rejects(stale, /superseded/u)
   assert.equal(published, 1)
-  await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.rescan)!(event, 'extra') as Promise<unknown>, /arguments/u)
   await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.search)!(event, input('extra'), 'extra') as Promise<unknown>, /arguments/u)
   await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.invokeAction)!(event, { actionId: 'launcher-action:opaque' }, 'extra') as Promise<unknown>, /arguments/u)
   const cancel = ipc.handlers.get(LAUNCHER_IPC_CHANNELS.cancelAction)!
@@ -76,7 +72,6 @@ test('workflow invocation fences a pending search while preserving cancellation'
     actions,
     guard: { assert: () => owner },
     ipcMain: ipc,
-    rescan: async () => ({ indexedItemCount: 1, rescanStatus: 'idle' as const }),
     search: async () => {
       await pendingSearch
       return { after: [], before: [], sections: [], status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
@@ -105,7 +100,6 @@ test('launcher IPC rechecks ownership after search and maps expiry without expos
   const dispose = registerLauncherIpcHandlers({
     actions: {
       cancel: async () => ({ ok: true as const }),
-      clearOwner: () => {},
       invoke: async () => { throw new LauncherActionExpiredError() },
       publish: () => {
         published += 1
@@ -120,7 +114,6 @@ test('launcher IPC rechecks ownership after search and maps expiry without expos
       },
     },
     ipcMain: ipc,
-    rescan: async () => ({ indexedItemCount: 0, rescanStatus: 'idle' as const }),
     search: async () => {
       await pending
       return { after: [], before: [], sections: [], status: { indexedItemCount: 0, rescanStatus: 'idle' as const } }
@@ -140,23 +133,17 @@ test('launcher IPC rechecks ownership after search and maps expiry without expos
   dispose()
 })
 
-test('overlay operations invalidate actions on rescan and hide downstream path errors', async () => {
+test('overlay operations hide downstream path errors', async () => {
   const ipc = new FakeIpc()
-  const cleared: number[] = []
   const path = '/private/user/secrets/settings.json'
   const dispose = registerLauncherIpcHandlers({
     actions: {
       cancel: async () => { throw new Error('cancel unavailable') },
-      clearOwner: owner => { cleared.push(owner.webContentsId) },
       invoke: async () => { throw new Error(`EACCES ${path}`) },
       publish: () => ({ items: [], resultSetId: 'launcher-results:1' }),
     },
     guard: { assert: () => ({ role: 'launcher', webContentsId: 41 }) },
     ipcMain: ipc,
-    rescan: async owner => {
-      if (owner !== undefined) cleared.push(owner.webContentsId)
-      throw new Error(`ENOENT ${path}`)
-    },
     search: async () => { throw new Error(`lstat ${path}`) },
     surface: {
       getSettings: () => { throw new Error(`read ${path}`) },
@@ -169,8 +156,6 @@ test('overlay operations invalidate actions on rescan and hide downstream path e
     ipc.handlers.get(LAUNCHER_IPC_CHANNELS.search)!(event, { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort', searchTerm: '' }),
     safe,
   )
-  await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.rescan)!(event), safe)
-  assert.deepEqual(cleared, [41])
   await assert.rejects(ipc.handlers.get(LAUNCHER_IPC_CHANNELS.invokeAction)!(event, { actionId: 'launcher-action:opaque' }), safe)
   assert.throws(() => ipc.handlers.get(LAUNCHER_SURFACE_IPC_CHANNELS.getSettings)!(event), safe)
   await assert.rejects(ipc.handlers.get(LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch)!(event, 'query'), safe)

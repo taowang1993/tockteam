@@ -285,6 +285,23 @@
   }
 }
 
+@utility launcher-command-footer-actions {
+  box-sizing: border-box;
+  display: inline-flex;
+  min-height: 2rem;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, Canvas) 84%, transparent);
+  padding: 1px;
+
+  & > .launcher-command-footer-action {
+    min-height: 1.75rem;
+  }
+}
+
 @utility launcher-command-footer-action {
   display: inline-flex;
   min-height: 2rem;

@@ -2515,7 +2515,6 @@ function initializeLauncher(): void {
       actions,
       guard: launcherGuard,
       ipcMain,
-      rescan,
       search: async (searchTerm) => {
         await launcherOwnerReady
         const surface = launcherSurfaceSettings()

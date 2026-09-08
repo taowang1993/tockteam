@@ -15,7 +15,6 @@ export const LAUNCHER_FILE_SEARCH_QUERY_PREFIX = 'tockteam:file-search:'
 export const LAUNCHER_IPC_CHANNELS = Object.freeze({
   cancelAction: 'launcher:cancel-action',
   invokeAction: 'launcher:invoke-action',
-  rescan: 'launcher:rescan',
   search: 'launcher:search',
 })
 

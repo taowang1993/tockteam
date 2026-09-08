@@ -13,7 +13,7 @@ export function trustedRaycastAssetUrl(imageKey: string | undefined): string | u
 export function trustedRaycastCatalog(active: boolean, trust: Readonly<{ digest: string; digestApproved: boolean; enabled: boolean; installed: boolean }>): readonly LauncherInternalResultItem[] {
   if (!active) return []
   const trustItem: LauncherInternalResultItem = {
-    id: TRUSTED_RAYCAST_TRUST_RESULT_ID, name: 'Trusted Extensions', sourceExtension: 'Trusted Raycast',
+    id: TRUSTED_RAYCAST_TRUST_RESULT_ID, name: 'Trusted Extensions', sourceExtension: 'Trusted Raycast', imageKey: 'ueli-command',
     description: 'Install and manage reviewed trusted extensions',
     defaultAction: { handlerKey: TRUSTED_RAYCAST_TRUST_HANDLER, argument: 'manage', description: 'Manage Trusted Extensions', hideWindowAfterInvocation: false, requiresConfirmation: false },
   }

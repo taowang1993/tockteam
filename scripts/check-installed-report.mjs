@@ -8,7 +8,7 @@ import { pathContainedSync } from './path-identity.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const EXPECTED_ROOTS = Object.freeze(['dsh-runtime', 'node-runtime', 'tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd'])
-const EXPECTED_LAUNCHER_API_KEYS = Object.freeze(['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'rescan', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastTrustAction'])
+const EXPECTED_LAUNCHER_API_KEYS = Object.freeze(['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastTrustAction'])
 const EXPECTED_LAUNCHER_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'"
 
 function failure(failures, condition, message) {

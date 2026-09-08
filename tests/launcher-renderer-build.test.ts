@@ -37,7 +37,6 @@ test('launcher document is standalone, strict, external, and accessible', () => 
   assert.match(html, /id="launcher-search"[^>]+role="combobox"/u)
   assert.match(html, /role="listbox"/u)
   assert.match(html, /role="status"/u)
-  assert.match(html, /id="launcher-close"/u)
   assert.doesNotMatch(html, /<style[\s>]|<form[\s>]/u)
   assert.doesNotMatch(html, /<script(?! type="module" src=)[\s>]/u)
   assert.doesNotMatch(html, /unsafe-(?:inline|eval)|\*/u)
@@ -168,8 +167,14 @@ test('launcher renderer uses the compact Tockbot composition', () => {
   assert.match(html, /<footer[^>]+id="launcher-footer"[^>]+class="[^"]*launcher-command-footer/u)
   assert.match(html, /id="launcher-footer-selection"/u)
   for (const id of ['launcher-rescan', 'launcher-settings', 'launcher-close']) {
-    assert.doesNotMatch(html, new RegExp(`id="${id}"[^>]+class="hidden"`, 'u'))
+    assert.doesNotMatch(html, new RegExp(`id="${id}"`, 'u'))
   }
+  assert.match(html, /id="launcher-details"[^>]+class="[^"]*ml-auto/u)
+  assert.match(launcher, /openCommand: 'Open Command'/u)
+  assert.match(launcher, /openText\.textContent = messages\(\)\.openCommand/u)
+  assert.match(launcher, /row\.className = 'launcher-command-footer-actions'/u)
+  assert.match(tailwind, /@utility launcher-command-footer-actions/u)
+  assert.doesNotMatch(launcher, /RefreshCw|\brescan\.|event\.key === 'F5'/u)
   assert.doesNotMatch(html, /id="launcher-root"[^>]+class="[^"]*(?:gap-3|p-5)/u)
   assert.match(launcher, /createLauncherShortcut/u)
   assert.match(launcher, /key\.className = '[^']*box-border[^']*px-\[1\.5px\]/u)

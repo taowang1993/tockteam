@@ -412,7 +412,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'rescan', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastTrustAction'],
+    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastTrustAction'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -1634,7 +1634,7 @@ try {
     return true
   })()`)
   await waitFor(
-    () => launcherConnection.evaluate('([...document.querySelectorAll("#launcher-details button")].some(node => node.textContent?.includes("Search Google")))'),
+    () => launcherConnection.evaluate('document.querySelector("#launcher-details button[aria-label^=\\"Search Google\\"]") !== null'),
     found => found === true,
   )
   const networkToolClicked = await launcherConnection.clickSelector('#launcher-details button[aria-label^="Search Google"]')
@@ -1706,7 +1706,7 @@ try {
     return true
   })()`)
   await waitFor(
-    () => launcherConnection.evaluate('([...document.querySelectorAll("#launcher-details button")].some(node => node.textContent?.includes("Open DeepL Translator")))'),
+    () => launcherConnection.evaluate('document.querySelector("#launcher-details button[aria-label^=\\"Open DeepL Translator\\"]") !== null'),
     found => found === true,
   )
   assert.equal(await launcherConnection.clickSelector('#launcher-details button[aria-label^="Open DeepL Translator"]'), true)
@@ -2232,16 +2232,6 @@ try {
   const rowFocusRestored = await launcherConnection.evaluate(`(() => document.activeElement?.id === 'launcher-search' && document.querySelector('#launcher-actions-menu') === null)()`)
   assert.equal(rowFocusRestored, true)
 
-  await launcherConnection.pressKey('F5')
-  await waitFor(
-    () => launcherConnection.evaluate(`({
-      busy: document.getElementById('launcher-rescan')?.getAttribute('aria-busy'),
-      disabled: document.getElementById('launcher-rescan')?.matches(':disabled'),
-      status: document.getElementById('launcher-status')?.textContent,
-    })`),
-    state => state.busy === null && state.disabled === false && !state.status?.toLowerCase().includes('failed'),
-  )
-
   assert.equal(await launcherConnection.clickSelector('#launcher-details button[aria-haspopup="menu"]'), true)
   assert.equal(await launcherConnection.clickSelector('#launcher-history-toggle'), true)
   const popupState = await launcherConnection.evaluate(`(() => ({
@@ -2463,7 +2453,7 @@ try {
   }))()`)
   assert.deepEqual(disabledHistory, { history: [], hidden: true })
   await clearStartupDialogs(restartedWorkbenchConnection)
-  assert.equal(await restartedLauncherConnection.clickSelector('#launcher-settings'), true)
+  await restartedLauncherConnection.pressKey(',', PRIMARY_MODIFIER)
   await waitFor(
     () => restartedWorkbenchConnection.evaluate('document.querySelector(\'[data-testid="tocklauncher-settings"]\') !== null'),
     present => present === true,

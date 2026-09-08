@@ -80,6 +80,9 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await launcher.locator('#launcher-search').fill('Trusted Extensions');
       const command = launcher.getByRole('option').filter({ hasText: 'Trusted Extensions' });
       await command.waitFor({ timeout: 15000 });
+      const marker = command.locator('.launcher-command-row-icon');
+      const identity = await marker.evaluate(node => ({ src: node instanceof HTMLImageElement ? node.src : '', tag: node.tagName }));
+      if (identity.tag !== 'IMG' || !/\/launcher-assets\/ueli-command-(?:dark|light)\.png$/u.test(identity.src)) throw new Error('Trusted Extensions did not use the TockTeam command icon: ' + JSON.stringify(identity));
       await launcher.locator('#launcher-search').press('Enter');
       await launcher.locator('section[aria-label="Trusted Extensions"]').waitFor({ timeout: 15000 });
       return { opened: true };
@@ -110,6 +113,18 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click();
       await launcher.locator('#launcher-search-form').waitFor({ timeout: 10000 });
       return { closed: true };
+    }`)
+  }
+  const rescanCatalog = async () => {
+    await cli('run-code', `async page => {
+      const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
+      await launcher.locator('#launcher-search').fill('Rescan extensions');
+      const command = launcher.getByRole('option').filter({ hasText: 'Rescan extensions' });
+      await command.waitFor({ timeout: 15000 });
+      const before = await launcher.locator('html').getAttribute('data-launcher-result-revision');
+      await launcher.locator('#launcher-search').press('Enter');
+      await launcher.waitForFunction(previous => document.documentElement.dataset.launcherResultRevision !== previous, before, { timeout: 15000 });
+      return { rescannedThroughCommand: true };
     }`)
   }
   const assertTranslateCatalog = async expected => {
@@ -143,6 +158,17 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await cli('attach', `--cdp=http://127.0.0.1:${port}`)
     const launcherPlacementOutput = await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); const placement = await launcher.evaluate(() => ({ screenX: window.screenX, screenY: window.screenY, availLeft: window.screen.availLeft, availTop: window.screen.availTop })); if (${String(!process.env.CI)} && placement.availLeft === 0) throw new Error('Launcher did not open on an extended display: ' + JSON.stringify(placement)); await launcher.evaluate(() => { window.__tockUnhandledErrors = []; window.addEventListener('error', event => window.__tockUnhandledErrors.push(String(event.error?.stack ?? event.message).slice(0, 1024))); window.addEventListener('unhandledrejection', event => window.__tockUnhandledErrors.push(String(event.reason?.stack ?? event.reason).slice(0, 1024))); }); return { placement }; }`)
     const launcherPlacement = cliResult(launcherPlacementOutput).placement
+    await cli('run-code', `async page => {
+      const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
+      const group = launcher.locator('.launcher-command-footer-actions');
+      await group.waitFor({ timeout: 15000 });
+      const facts = await group.evaluate(node => {
+        const rect = node.getBoundingClientRect(); const style = getComputedStyle(node);
+        return { buttons: [...node.querySelectorAll('button > span:first-child')].map(label => label.textContent), rightGap: innerWidth - rect.right, background: style.backgroundColor, borderStyle: style.borderTopStyle, radius: Number.parseFloat(style.borderTopLeftRadius), removedControls: document.querySelectorAll('#launcher-rescan, #launcher-settings, #launcher-close').length };
+      });
+      if (JSON.stringify(facts.buttons) !== JSON.stringify(['Open Command', 'Actions']) || Math.abs(facts.rightGap - 12) > 1 || ['rgba(0, 0, 0, 0)', 'transparent'].includes(facts.background) || facts.borderStyle !== 'solid' || facts.radius < 16 || facts.removedControls !== 0) throw new Error('Root footer did not match the grouped Raycast action pill: ' + JSON.stringify(facts));
+      return facts;
+    }`)
     // Fresh userData gets the exact reviewed bundle immediately; first use asks only for preferences.
     await openTrustView()
     await trustView('Installed · Enabled', ['Disable Translate', 'Remove Extension'])
@@ -238,7 +264,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     const pristineChild = await readFile(currentChildPath)
     await writeFile(currentChildPath, Buffer.concat([pristineChild, Buffer.from('\n// Slice4 private derived-file tamper\n')]))
     await backToResults()
-    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.evaluate(() => window.tockteamLauncher?.rescan()); return { rescanned: true }; }`)
+    await rescanCatalog()
     await assertTranslateCatalog(false)
     await openTrustView()
     await trustView('Recovery Required', ['Recover Installation'])

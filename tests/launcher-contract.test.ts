@@ -42,7 +42,6 @@ test('launcher public responses contain opaque action IDs only', () => {
   assert.deepEqual(LAUNCHER_IPC_CHANNELS, {
     cancelAction: 'launcher:cancel-action',
     invokeAction: 'launcher:invoke-action',
-    rescan: 'launcher:rescan',
     search: 'launcher:search',
   })
   assert.deepEqual(parseLauncherInvokeActionArgs({ actionId: 'launcher-action:abc' }), {

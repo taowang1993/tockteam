@@ -4,13 +4,10 @@ import { trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trust
 import {
   ArrowRight,
   History as HistoryIcon,
-  RefreshCw,
   Search,
-  Settings,
   Star,
   StarOff,
   Trash2,
-  X,
   createElement,
 } from 'lucide'
 import type { IconNode } from 'lucide'
@@ -62,7 +59,6 @@ type LauncherMessages = Readonly<{
   canceling: string
   canceled: string
   cancelWorkflow: string
-  close: string
   fileSearchUnavailable: string
   indexed: (count: number) => string
   invokeFailed: (action: string) => string
@@ -70,17 +66,14 @@ type LauncherMessages = Readonly<{
   history: string
   noHistory: string
   noResults: string
+  openCommand: string
   pinned: string
   providerState: (state: string) => string
   recent: string
   refreshed: string
-  rescan: string
-  rescanFailed: string
-  rescanning: string
   results: string
   search: string
   searching: string
-  settings: string
   unavailable: string
 }>
 
@@ -95,7 +88,6 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     canceling: 'Canceling workflow…',
     canceled: 'Workflow canceled.',
     cancelWorkflow: 'Cancel workflow',
-    close: 'Close TockLauncher',
     fileSearchUnavailable: 'Local extension settings are unavailable.',
     history: 'History',
     indexed: (count: number) => `${count} indexed destinations`,
@@ -103,18 +95,15 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     invoking: (action: string) => `${action}…`,
     noHistory: 'No Recent Searches',
     noResults: 'No TockTeam destinations found.',
+    openCommand: 'Open Command',
     refreshed: 'Results Refreshed. Try Again.',
     pinned: 'Pinned',
     providerState: (state: string) => state,
     recent: 'Recent',
-    rescan: 'Rescan',
-    rescanFailed: 'TockLauncher rescan failed.',
-    rescanning: 'Rescanning TockLauncher…',
     results: 'Results',
     search: 'Search TockTeam',
     unavailable: 'TockLauncher destinations are unavailable.',
     searching: 'Searching…',
-    settings: 'Open TockLauncher Settings',
   }),
   zh: Object.freeze({
     actions: '操作',
@@ -126,7 +115,6 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     canceling: '正在取消工作流…',
     canceled: '工作流已取消。',
     cancelWorkflow: '取消工作流',
-    close: '关闭 TockLauncher',
     fileSearchUnavailable: '本地扩展设置不可用。',
     history: '历史',
     indexed: (count: number) => `${count} 个已索引目标`,
@@ -134,18 +122,15 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     invoking: (action: string) => `${action}…`,
     noHistory: '没有最近搜索',
     noResults: '未找到 TockTeam 目标。',
+    openCommand: '打开命令',
     refreshed: '结果已刷新，请重试。',
     pinned: '置顶',
     providerState: (state: string) => ({ disabled: '已禁用', unavailable: '不可用', unsupported: '不支持', ready: '就绪' } as Record<string, string>)[state] ?? state,
     recent: '最近',
-    rescan: '重新扫描',
-    rescanFailed: 'TockLauncher 重新扫描失败。',
-    rescanning: '正在重新扫描 TockLauncher…',
     results: '结果',
     search: '搜索 TockTeam',
     unavailable: 'TockLauncher 目标不可用。',
     searching: '正在搜索…',
-    settings: '打开 TockLauncher 设置',
   }),
 })
 
@@ -216,14 +201,11 @@ async function bootstrap(): Promise<void> {
   const search = document.getElementById('launcher-search') as HTMLInputElement
   const searchForm = document.getElementById('launcher-search-form') as HTMLElement
   const searchIcon = document.getElementById('launcher-search-icon') as HTMLElement
-  const close = document.getElementById('launcher-close') as HTMLButtonElement
-  const settings = document.getElementById('launcher-settings') as HTMLButtonElement
   const results = document.getElementById('launcher-results') as HTMLUListElement
   const status = document.getElementById('launcher-status') as HTMLElement
   const providerStatuses = document.getElementById('launcher-provider-statuses') as HTMLElement
   const historyToggle = document.getElementById('launcher-history-toggle') as HTMLButtonElement
   const historyPanel = document.getElementById('launcher-history') as HTMLElement
-  const rescan = document.getElementById('launcher-rescan') as HTMLButtonElement
   const details = document.getElementById('launcher-details') as HTMLElement
   const footer = document.getElementById('launcher-footer') as HTMLElement
   const footerSelection = document.getElementById('launcher-footer-selection') as HTMLElement
@@ -232,14 +214,11 @@ async function bootstrap(): Promise<void> {
     || !(search instanceof HTMLInputElement)
     || !(searchForm instanceof HTMLElement)
     || !(searchIcon instanceof HTMLElement)
-    || !(close instanceof HTMLButtonElement)
-    || !(settings instanceof HTMLButtonElement)
     || !(results instanceof HTMLUListElement)
     || !(status instanceof HTMLElement)
     || !(providerStatuses instanceof HTMLElement)
     || !(historyToggle instanceof HTMLButtonElement)
     || !(historyPanel instanceof HTMLElement)
-    || !(rescan instanceof HTMLButtonElement)
     || !(details instanceof HTMLElement)
     || !(footer instanceof HTMLElement)
     || !(footerSelection instanceof HTMLElement)
@@ -249,9 +228,6 @@ async function bootstrap(): Promise<void> {
 
   searchIcon.append(icon(Search))
   historyToggle.prepend(icon(HistoryIcon))
-  rescan.prepend(icon(RefreshCw))
-  close.prepend(icon(X))
-  settings.prepend(icon(Settings))
   bridge.onTheme(applyLauncherTheme)
   void bridge.getTheme().then(applyLauncherTheme).catch(() => {})
 
@@ -331,11 +307,6 @@ async function bootstrap(): Promise<void> {
       else button.append(document.createTextNode(label))
     }
     setButtonLabel(historyToggle, copy.history)
-    for (const [button, label] of [[rescan, copy.rescan], [close, copy.close], [settings, copy.settings]] as const) {
-      setButtonLabel(button, label)
-      button.setAttribute('aria-label', label)
-      button.title = label
-    }
     providerStatuses.hidden = surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
     providerStatuses.textContent = surfaceSettings.providerStatuses
       .filter(provider => provider.state !== 'ready' && provider.state !== 'disabled')
@@ -361,7 +332,6 @@ async function bootstrap(): Promise<void> {
 
   const setWorkflowBusy = (busy: boolean): void => {
     search.disabled = busy
-    rescan.disabled = busy
     historyToggle.disabled = busy || !surfaceSettings.historyEnabled
   }
 
@@ -718,7 +688,7 @@ async function bootstrap(): Promise<void> {
     const openShortcut = actionAriaShortcut(item.defaultAction, true)
     if (openShortcut !== undefined) open.setAttribute('aria-keyshortcuts', openShortcut)
     const openText = document.createElement('span')
-    openText.textContent = item.defaultAction.description
+    openText.textContent = messages().openCommand
     open.append(openText, createLauncherShortcut('Enter'))
     open.addEventListener('click', () => {
       if (workflowInteractionBlocked()) return
@@ -751,7 +721,7 @@ async function bootstrap(): Promise<void> {
     })
 
     const row = document.createElement('div')
-    row.className = 'flex min-w-0 items-center gap-3'
+    row.className = 'launcher-command-footer-actions'
     row.append(open)
     if (activeCancellation !== undefined && item.sourceExtension === 'Workflow') {
       const cancel = document.createElement('button')
@@ -950,8 +920,6 @@ async function bootstrap(): Promise<void> {
   launcherThemeRerender = () => {
     if (activeLocalTool === undefined && !invokingWorkflow) void renderSearch(search.value)
   }
-  close.addEventListener('click', () => { void bridge.dismiss().catch(() => undefined) })
-  settings.addEventListener('click', () => { void bridge.openSettings().catch(() => undefined) })
   historyToggle.addEventListener('click', () => {
     if (invokingWorkflow || !surfaceSettings.historyEnabled) return
     actionMenuOpen = false
@@ -985,21 +953,6 @@ async function bootstrap(): Promise<void> {
     if (next !== undefined && buttons.length > 0) {
       event.preventDefault()
       buttons[next]?.focus()
-    }
-  })
-  rescan.addEventListener('click', async () => {
-    if (invokingWorkflow) return
-    rescan.disabled = true
-    rescan.setAttribute('aria-busy', 'true')
-    setStatus(messages().rescanning, 'muted')
-    try {
-      await bridge.rescan()
-      await renderSearch(search.value)
-    } catch {
-      setStatus(messages().rescanFailed, 'error')
-    } finally {
-      rescan.disabled = false
-      rescan.removeAttribute('aria-busy')
     }
   })
   let scrollbarHideTimer = 0
@@ -1061,9 +1014,6 @@ async function bootstrap(): Promise<void> {
       event.preventDefault()
       const item = selectedItem()
       if (item !== undefined) void invoke(item.defaultAction)
-    } else if (event.key === 'F5' && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
-      event.preventDefault()
-      rescan.click()
     } else if (hasPrimaryModifier(event) && event.key.toLowerCase() === 'k') {
       event.preventDefault()
       if (selectedItem() === undefined) return

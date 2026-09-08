@@ -20,6 +20,7 @@ test('catalog requires live Host capability, an installed enabled candidate, and
   assert.equal(item!.imageKey, 'trusted-raycast-google-translate')
   assert.equal(item!.id.startsWith('tockteam-route:'), false)
   assert.equal(trustItem!.id, 'trusted-raycast:trust')
+  assert.equal(trustItem!.imageKey, 'ueli-command')
 })
 test('Desktop Host effect alone owns activation and disposal', async () => {
   const channel = new DesktopTrustedRaycastChannel(async () => {})

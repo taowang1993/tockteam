@@ -3,7 +3,6 @@ import {
   LAUNCHER_SURFACE_IPC_CHANNELS,
   parseLauncherCancelActionArgs,
   parseLauncherLocale,
-  parseLauncherCoreStatus,
   parseLauncherInvokeActionArgs,
   parseLauncherInvokeResult,
   parseLauncherSuccessResult,
@@ -19,7 +18,7 @@ import {
   parseLauncherThemeProjection,
   type LauncherThemeProjection,
 } from './launcher-window-contract.ts'
-import type { LauncherCoreStatus, LauncherSearchOptions } from './launcher-core-search.ts'
+import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastTrustAction, isTrustedRaycastTrustResult, isTrustedRaycastTrustState, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastTrustAction, type TrustedRaycastTrustResult, type TrustedRaycastTrustState, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
 
@@ -39,7 +38,6 @@ export type LauncherPreloadBridge = Readonly<{
   onLocale: (listener: (locale: import('./launcher-contract.ts').LauncherLocale) => void) => () => void
   onTheme: (listener: (projection: LauncherThemeProjection) => void) => () => void
   openSettings: (...args: unknown[]) => Promise<void>
-  rescan: () => Promise<LauncherCoreStatus>
   recordSearch: (query: string) => Promise<import('./launcher-contract.ts').LauncherSurfaceSettings>
   search: (searchTerm: string, options: LauncherSearchOptions) => Promise<LauncherSearchResponse>
   onTrustedRaycastView: (listener: (message: TrustedRaycastViewMessage) => void) => () => void
@@ -136,10 +134,6 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       assertArity('recordSearch', [query, ...extra], 1)
       if (typeof query !== 'string') throw new Error('TockLauncher search history query is invalid')
       return parseLauncherSurfaceSettings(await ipcRenderer.invoke(LAUNCHER_SURFACE_IPC_CHANNELS.recordSearch, query))
-    },
-    rescan: async (...args: unknown[]): Promise<LauncherCoreStatus> => {
-      assertArity('rescan', args, 0)
-      return parseLauncherCoreStatus(await ipcRenderer.invoke(LAUNCHER_IPC_CHANNELS.rescan))
     },
     onTrustedRaycastView: (listener: (message: TrustedRaycastViewMessage) => void): (() => void) => {
       if (typeof listener !== 'function') throw new Error('Trusted Translate view listener is invalid')
