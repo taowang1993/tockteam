@@ -198,6 +198,16 @@ describe('Milkdown Live Preview editor', () => {
     expect(onAddProperty).toHaveBeenCalledWith('area')
   })
 
+  it('renders boolean properties as checkboxes and brackets footnote references in Reading View', () => {
+    render(<RichReadingView onToggleTask={() => {}} source={'---\nfavorite: true\n---\nInline footnote.[^proof]\n\n[^proof]: Footnote text.\n'} title="Welcome" />)
+
+    const favorite = screen.getByRole('checkbox', { name: 'favorite' })
+    expect(favorite.getAttribute('data-state')).toBe('checked')
+    expect(favorite.getAttribute('aria-checked')).toBe('true')
+    expect(favorite.hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('link', { name: '[1]' }).textContent).toBe('[1]')
+  })
+
   it('mounts one editable ProseMirror surface and keeps source untouched until edited', { timeout: 20_000 }, async () => {
     const source = '# Lesson\r\n\r\n- [ ] Review\r\n'
     const onChange = vi.fn()

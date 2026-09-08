@@ -291,7 +291,7 @@ function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
     });
     text = text.replace(/\[\^([^\]\n]{1,200})\]/gu, (match, label) => {
         const number = footnoteNumbers.get(label.toLocaleLowerCase());
-        return number === undefined ? match : `<sup class="footnote-ref"><a href="#fn-${String(number)}">${String(number)}</a></sup>`;
+        return number === undefined ? match : `<sup class="footnote-ref"><a href="#fn-${String(number)}">[${String(number)}]</a></sup>`;
     });
     text = text.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers, externalEmbedMode)}</sup>`));
     text = text.replace(/\$([^$\n]{1,20000})\$/gu, (_match, value) => `<span class="math-inline" role="math">${escapeMarkdownHtml(value)}</span>`);

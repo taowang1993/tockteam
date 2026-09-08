@@ -33,6 +33,7 @@ test('renders bounded rich Markdown without executing raw HTML or unsafe URLs', 
   assert.match(html, /<mark>highlight<\/mark>/u)
   assert.match(html, /class="math-inline"/u)
   assert.match(html, /<table>/u)
+  assert.match(html, /class="footnote-ref"><a href="#fn-1">\[1\]<\/a>/u)
   assert.match(html, /class="footnotes"/u)
   assert.match(html, /href="https:\/\/example\.com\/"/u)
   assert.doesNotMatch(html, /href="javascript:/u)

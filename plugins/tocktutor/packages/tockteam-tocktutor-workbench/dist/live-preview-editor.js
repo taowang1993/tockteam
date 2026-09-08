@@ -1,4 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Checkbox } from '@tockteam/ui/checkbox';
 import { Button } from '@tockteam/ui/button';
 import { Input } from '@tockteam/ui/input';
 import { AlignLeft, Plus, Tags, X } from 'lucide-react';
@@ -32,9 +33,12 @@ export function MarkdownDocumentHeader(props) {
         return null;
     return (_jsxs("header", { className: props.className, children: [props.title !== undefined && _jsx("h1", { className: "m-0 mb-5 text-[30px] leading-tight font-[650] tracking-[-.01em] text-[var(--tt-text)]", children: props.title }), showProperties && (_jsxs("section", { children: [_jsx("h2", { className: "m-0 mb-2 text-xs font-semibold text-[var(--tt-text)]", children: "Properties" }), properties.length > 0 && (_jsx("dl", { "aria-label": "Document Properties", className: "m-0 grid grid-cols-[112px_minmax(0,1fr)] gap-x-3 text-xs", children: properties.map(property => {
                             const tags = property.key.toLocaleLowerCase() === 'tags' && Array.isArray(property.value) ? property.value : null;
+                            const checkbox = property.type === 'checkbox' && typeof property.value === 'boolean';
                             const Icon = tags === null ? AlignLeft : Tags;
                             return (_jsxs("div", { className: "contents", children: [_jsxs("dt", { className: "flex min-h-6 min-w-0 items-center gap-2 font-medium text-[var(--tt-muted)]", children: [_jsx(Icon, { "aria-hidden": "true", className: "size-3 shrink-0" }), _jsx("span", { className: "truncate", children: property.key })] }), _jsx("dd", { className: `m-0 flex min-h-6 min-w-0 items-center text-[var(--tt-text)] ${tags === null ? 'truncate' : 'flex-wrap gap-1'}`, children: tags === null
-                                            ? Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')
+                                            ? checkbox
+                                                ? _jsx(Checkbox, { "aria-label": property.key, checked: property.value === true, className: "size-3.5 cursor-default disabled:opacity-100", disabled: true })
+                                                : Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')
                                             : tags.map((tag, index) => (_jsxs("span", { className: "inline-flex h-5 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_15%,transparent)] px-2 text-[var(--dsw-specific-markdown-accent)]", children: [tag, props.onSetProperty !== undefined && _jsx(Button, { unstyled: true, "aria-label": `Remove ${tag} tag`, className: "inline-flex size-3 items-center justify-center border-0 bg-transparent p-0 text-current", onClick: () => { props.onSetProperty?.(property.key, tags.filter((_value, valueIndex) => valueIndex !== index)); }, type: "button", children: _jsx(X, { "aria-hidden": "true", className: "size-3" }) })] }, tag))) })] }, property.key));
                         }) })), props.onAddProperty !== undefined && (adding
                         ? (_jsxs("form", { "aria-label": "Add Property", className: "mt-1 flex min-h-7 flex-wrap items-center gap-1", onKeyDown: event => {

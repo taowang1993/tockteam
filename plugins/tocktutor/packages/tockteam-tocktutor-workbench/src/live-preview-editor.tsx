@@ -1,3 +1,4 @@
+import { Checkbox } from '@tockteam/ui/checkbox'
 import { Button } from '@tockteam/ui/button'
 import { Input } from '@tockteam/ui/input'
 import { AlignLeft, Plus, Tags, X } from 'lucide-react'
@@ -74,13 +75,16 @@ export function MarkdownDocumentHeader(props: { className?: string; onAddPropert
             <dl aria-label="Document Properties" className="m-0 grid grid-cols-[112px_minmax(0,1fr)] gap-x-3 text-xs">
               {properties.map(property => {
                 const tags = property.key.toLocaleLowerCase() === 'tags' && Array.isArray(property.value) ? property.value : null
+                const checkbox = property.type === 'checkbox' && typeof property.value === 'boolean'
                 const Icon = tags === null ? AlignLeft : Tags
                 return (
                   <div className="contents" key={property.key}>
                     <dt className="flex min-h-6 min-w-0 items-center gap-2 font-medium text-[var(--tt-muted)]"><Icon aria-hidden="true" className="size-3 shrink-0" /><span className="truncate">{property.key}</span></dt>
                     <dd className={`m-0 flex min-h-6 min-w-0 items-center text-[var(--tt-text)] ${tags === null ? 'truncate' : 'flex-wrap gap-1'}`}>
                       {tags === null
-                        ? Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')
+                        ? checkbox
+                          ? <Checkbox aria-label={property.key} checked={property.value === true} className="size-3.5 cursor-default disabled:opacity-100" disabled />
+                          : Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')
                         : tags.map((tag, index) => (
                             <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_15%,transparent)] px-2 text-[var(--dsw-specific-markdown-accent)]" key={tag}>
                               {tag}
