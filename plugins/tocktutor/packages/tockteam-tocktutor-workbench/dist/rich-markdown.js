@@ -37,6 +37,69 @@ function safeUrl(value) {
 const SAFE_RAW_TAG = /^<\/?(?:br|code|del|em|kbd|mark|s|small|strong|sub|sup|u)>$/iu;
 const SAFE_RAW_BLOCK_TAGS = new Set(['a', 'br', 'code', 'del', 'div', 'em', 'mark', 'p', 's', 'span', 'strong', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u']);
 const SAFE_RAW_VOID_TAGS = new Set(['br']);
+const RAW_HTML_BLOCK_TAGS = new Set(['div', 'p', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr']);
+const ACTIVE_HTML_TAGS = new Set(['embed', 'form', 'iframe', 'link', 'math', 'meta', 'object', 'script', 'style', 'svg']);
+const ACTIVE_HTML_VOID_TAGS = new Set(['link', 'meta']);
+const ACTIVE_HTML_OPEN = /<\s*(embed|form|iframe|link|math|meta|object|script|style|svg)\b[^>]*>/iu;
+function activeHtmlClose(name) {
+    return new RegExp(`</\\s*${name}\\s*>`, 'iu');
+}
+/** Remove active HTML outside fenced code without reordering the authored Markdown. */
+function stripActiveHtml(markdown) {
+    const inlineCode = [];
+    const protectInlineCode = (value) => value.replace(/`([^`\n]{0,10000})`/gu, (match) => {
+        const token = `\u0000tocktutor-inline-code-${String(inlineCode.length)}\u0000`;
+        inlineCode.push(match);
+        return token;
+    });
+    const lines = markdown.split('\n');
+    let fence = null;
+    let active = null;
+    const stripped = lines.map(line => {
+        const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u);
+        if (fence !== null) {
+            if (marker !== null && marker[1][0] === fence.character && marker[1].length >= fence.length
+                && line.slice((marker.index ?? 0) + marker[1].length).trim() === '')
+                fence = null;
+            return line;
+        }
+        if (active === null && marker !== null) {
+            fence = { character: marker[1][0], length: marker[1].length };
+            return line;
+        }
+        let result = line;
+        if (active !== null) {
+            const close = result.match(activeHtmlClose(active));
+            if (close === null)
+                return '';
+            result = result.slice((close.index ?? 0) + close[0].length);
+            active = null;
+        }
+        result = protectInlineCode(result);
+        while (true) {
+            const open = result.match(ACTIVE_HTML_OPEN);
+            if (open === null)
+                break;
+            const name = open[1].toLocaleLowerCase();
+            if (!ACTIVE_HTML_TAGS.has(name))
+                break;
+            const start = open.index ?? 0;
+            if (ACTIVE_HTML_VOID_TAGS.has(name) || /\/\s*>$/u.test(open[0])) {
+                result = result.slice(0, start) + result.slice(start + open[0].length);
+                continue;
+            }
+            const close = result.match(activeHtmlClose(name));
+            if (close === null) {
+                result = result.slice(0, start);
+                active = name;
+                break;
+            }
+            result = result.slice(0, start) + result.slice((close.index ?? 0) + close[0].length);
+        }
+        return result.replace(/<\/\s*(?:embed|form|iframe|math|object|script|style|svg)\s*>/giu, '');
+    }).join('\n');
+    return stripped.replace(/\u0000tocktutor-inline-code-(\d+)\u0000/gu, (_match, index) => inlineCode[Number(index)] ?? '');
+}
 function rawHtmlAttributes(source) {
     const attributes = {};
     for (const match of source.matchAll(/([A-Za-z][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gu)) {
@@ -106,7 +169,7 @@ function renderSafeRawHtmlBlock(source) {
 }
 function rawHtmlBlockName(line) {
     const name = line.trim().match(/^<\s*([A-Za-z][\w:-]*)(?:\s|>|\/)/u)?.[1]?.toLocaleLowerCase();
-    return name !== undefined && SAFE_RAW_BLOCK_TAGS.has(name) && name !== 'a' && name !== 'br' ? name : null;
+    return name !== undefined && RAW_HTML_BLOCK_TAGS.has(name) ? name : null;
 }
 function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
     const tokens = [];
@@ -203,15 +266,45 @@ function renderBoundedMermaid(source) {
     if (!/^graph\s+(?:TD|TB|LR|RL|BT)$/iu.test(statements.shift() ?? '') || statements.length === 0 || statements.length > 100)
         return null;
     const edges = [];
+    const labels = new Map();
     for (const statement of statements) {
         const match = statement.match(/^([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?\s*--+>?\s*([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?$/u);
         if (match === null)
             return null;
-        const from = escapeMarkdownHtml(match[2] ?? match[1]);
-        const to = escapeMarkdownHtml(match[4] ?? match[3]);
-        edges.push(`<span class="mermaid-node">${from}</span><span aria-hidden="true"> → </span><span class="mermaid-node">${to}</span>`);
+        const from = match[1];
+        const to = match[3];
+        if (!labels.has(from))
+            labels.set(from, match[2] ?? from);
+        if (!labels.has(to))
+            labels.set(to, match[4] ?? to);
+        edges.push({ from, to });
     }
-    return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img">${edges.join('<br>')}</div>`;
+    const nodeIds = [...labels.keys()];
+    const nodeWidth = 132;
+    const width = Math.max(320, Math.min(1200, 40 + nodeIds.length * 180));
+    const height = 128;
+    const gap = nodeIds.length < 2 ? 0 : (width - 40 - nodeWidth) / (nodeIds.length - 1);
+    const position = (id) => ({
+        x: 20 + nodeIds.indexOf(id) * gap,
+        y: 38,
+    });
+    const edgeMarkup = edges.map(edge => {
+        const from = position(edge.from);
+        const to = position(edge.to);
+        const fromX = from.x + nodeWidth / 2;
+        const toX = to.x + nodeWidth / 2;
+        const direction = toX >= fromX ? 1 : -1;
+        const startX = from.x + (direction > 0 ? nodeWidth : 0);
+        const endX = to.x + (direction > 0 ? 0 : nodeWidth);
+        const midpoint = (startX + endX) / 2;
+        const arrowBase = endX - direction * 8;
+        return `<path class="mermaid-edge-path" d="M ${String(startX)} 64 C ${String(midpoint)} 20, ${String(midpoint)} 20, ${String(endX)} 64"></path><path class="mermaid-arrow-head" d="M ${String(arrowBase)} 58 L ${String(endX)} 64 L ${String(arrowBase)} 70 z"></path>`;
+    }).join('');
+    const nodeMarkup = nodeIds.map(id => {
+        const point = position(id);
+        return `<g class="mermaid-node" data-node-id="${escapeMarkdownHtml(id)}"><rect class="mermaid-node-shape" height="52" rx="8" width="${String(nodeWidth)}" x="${String(point.x)}" y="${String(point.y)}"></rect><text class="mermaid-node-label" text-anchor="middle" x="${String(point.x + nodeWidth / 2)}" y="70">${escapeMarkdownHtml(labels.get(id) ?? id)}</text></g>`;
+    }).join('');
+    return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img"><svg aria-hidden="true" class="mermaid-svg" preserveAspectRatio="xMidYMid meet" viewBox="0 0 ${String(width)} ${String(height)}" xmlns="http://www.w3.org/2000/svg">${edgeMarkup}${nodeMarkup}</svg></div>`;
 }
 function tableDelimiter(line) {
     const cells = line.trim().replace(/^\|/u, '').replace(/\|$/u, '').split('|');
@@ -220,16 +313,24 @@ function tableDelimiter(line) {
 function tableCells(line) {
     return line.trim().replace(/^\|/u, '').replace(/\|$/u, '').split('|').map(cell => cell.trim());
 }
+function blockIdText(value) {
+    const match = value.match(/(?:^|\s)\^([A-Za-z0-9][A-Za-z0-9_-]{0,63})\s*$/u);
+    if (match === null)
+        return null;
+    return { id: match[1], text: value.slice(0, match.index ?? 0).replace(/[ \t]+$/u, '') };
+}
 function paragraphHtml(lines, strict, footnotes, externalEmbedMode) {
     if (lines.length === 0)
         return '';
-    let html = renderInline(lines[0].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode);
-    for (let index = 1; index < lines.length; index += 1) {
-        const previous = lines[index - 1];
+    const last = blockIdText(lines.at(-1).replace(/[ \t]+$/u, ''));
+    const content = last === null ? lines : [...lines.slice(0, -1), last.text];
+    let html = renderInline(content[0].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode);
+    for (let index = 1; index < content.length; index += 1) {
+        const previous = content[index - 1];
         const separator = !strict || / {2,}$/u.test(previous) ? '<br>' : ' ';
-        html += `${separator}${renderInline(lines[index].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)}`;
+        html += `${separator}${renderInline(content[index].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)}`;
     }
-    return `<p>${html}</p>`;
+    return `<p${last === null ? '' : ` id="${escapeMarkdownHtml(last.id)}"`}>${html}</p>`;
 }
 function parseMarkdownListItem(line) {
     const match = line.match(/^( {0,64})([-+*]|\d{1,9}[.)])\s+(.*)$/u);
@@ -269,7 +370,9 @@ function renderMarkdownList(items, start, indent, taskIndex, footnotes, external
             cursor = result.next;
             nextTaskIndex = result.taskIndex;
         }
-        children.push(`<li>${input}${renderInline(item.content, footnotes, externalEmbedMode)}${nested}</li>`);
+        const content = blockIdText(item.content);
+        const id = content === null ? '' : ` id="${escapeMarkdownHtml(content.id)}"`;
+        children.push(`<li${id}>${input}${renderInline(content?.text ?? item.content, footnotes, externalEmbedMode)}${nested}</li>`);
     }
     const tag = ordered ? 'ol' : 'ul';
     const startValue = ordered ? Number.parseInt(items[start].marker, 10) : 1;
@@ -281,7 +384,7 @@ function renderMarkdownList(items, start, indent, taskIndex, footnotes, external
 export function renderMarkdownHtml(markdown, options = {}) {
     if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES)
         return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
-    const source = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    const source = stripActiveHtml(stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n'));
     const lines = source.split('\n');
     const footnotes = collectFootnotes(lines);
     const externalEmbedMode = options.externalEmbedMode ?? 'inert';
@@ -342,7 +445,10 @@ export function renderMarkdownHtml(markdown, options = {}) {
         if (heading !== null) {
             flush();
             const level = heading[1].length;
-            blocks.push(`<h${String(level)}>${renderInline(heading[2], footnotes.numbers, externalEmbedMode)}</h${String(level)}>`);
+            const content = blockIdText(heading[2]);
+            const title = content?.text ?? heading[2];
+            const id = content === null ? '' : ` id="${escapeMarkdownHtml(content.id)}"`;
+            blocks.push(`<h${String(level)}${id}>${renderInline(title, footnotes.numbers, externalEmbedMode)}</h${String(level)}>`);
             continue;
         }
         const callout = line.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+(.*))?$/u);
@@ -355,7 +461,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
             }
             const type = callout[1].toLocaleLowerCase();
             const title = callout[3] ?? type[0].toLocaleUpperCase() + type.slice(1);
-            blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers, externalEmbedMode)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</aside>`);
+            blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-callout="${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers, externalEmbedMode)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</aside>`);
             continue;
         }
         const quote = line.match(/^ {0,3}> ?(.*)$/u);

@@ -160,6 +160,8 @@ export declare class WorkbenchRouteController {
     private bookmarks;
     private workspaces;
     private operation;
+    private recoveryOperation;
+    private recoveryAbort;
     private embedOperation;
     private embedTargets;
     private dispatchRevision;
@@ -211,6 +213,11 @@ export declare class WorkbenchRouteController {
     private scheduleDraft;
     private flushPendingDraft;
     private clearDocument;
+    private recoveryIdentity;
+    private cancelRecoveryOperations;
+    private nextRecoveryOperation;
+    private recoveryIdentityMatches;
+    private recoveryCurrent;
     private nextOperation;
     private cancelEmbedOperation;
     private nextEmbedOperation;
