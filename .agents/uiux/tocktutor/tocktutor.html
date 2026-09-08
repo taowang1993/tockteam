@@ -193,10 +193,10 @@
     </section>
 
     <section class="surface" id="new-note">
-      <p class="section-number">Surface 07</p><h2>New Note Dialog</h2><p class="section-note">Creation flow beside Obsidian’s matching new-note state.</p>
+      <p class="section-number">Surface 07</p><h2>New Note Dialog</h2><p class="section-note">Post-create opened-note state beside Obsidian’s matching result; the empty dialog remains supplementary flow evidence in the proof report.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · New Note</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-new-note.png"><img src="screenshots/tocktutor-new-note.png" alt="TockTutor new note dialog"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · New Note</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-new-note.png"><img src="screenshots/obsidian-new-note.png" alt="Obsidian new note"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · New Note Result</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-new-note.png"><img src="screenshots/tocktutor-new-note.png" alt="TockTutor newly created note"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · New Note Result</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-new-note.png"><img src="screenshots/obsidian-new-note.png" alt="Obsidian newly created note"></a></figure>
       </div>
     </section>
 
@@ -261,11 +261,15 @@
     </section>
 
     <section class="surface" id="attachments">
-      <p class="section-number">Surface 14</p><h2>Attachments and Embeds</h2><p class="section-note">Host-resolved local media renders inline in Reading View and remains inspectable in the Attachments and Embeds panel. External HTTP(S) media stays behind the isolated Web Viewer.</p>
-      <p class="fixture-proof"><strong>Embed Proof:</strong> tracked <code>plugins/tocktutor/parity/fixtures/vault/Attachments/pixel.png</code> and copied <code>TockTutor Parity Fixture/Attachments/pixel.png</code> use the same 68 bytes and SHA-256 <code>sha256:431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460</code>; equality is explicit because tracked and copied byte counts and hashes match. The isolated <code>Notes/Welcome.md</code> fixture resolves <code>![[../Attachments/pixel.png|16x16]]</code> to <code>Attachments/pixel.png</code> as <code>image/png</code>; the Reading capture places it at 16 × 16 CSS pixels, and the utility capture reports one resolved embed and one attachment with no visible tooltip.</p>
+      <p class="section-number">Surface 14</p><h2>Attachments and Embeds</h2><p class="section-note">Host-resolved local media renders inline in the comparable Reading state. The TockTutor Attachments and Embeds utility panel is retained as an additional surface; Obsidian has no captured one-to-one panel. External HTTP(S) media stays behind the isolated Web Viewer.</p>
+      <p class="fixture-proof"><strong>Embed Proof:</strong> tracked <code>plugins/tocktutor/parity/fixtures/vault/Attachments/pixel.png</code> and copied <code>TockTutor Parity Fixture/Attachments/pixel.png</code> use the same 68 bytes and SHA-256 <code>sha256:431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460</code>; equality is explicit because tracked and copied byte counts and hashes match. The isolated <code>Notes/Welcome.md</code> fixture resolves <code>![[../Attachments/pixel.png|16x16]]</code> to <code>Attachments/pixel.png</code> as <code>image/png</code>; both Reading captures place the local image inline at 16 × 16 CSS pixels without exposing the raw marker.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Attachments and Embeds</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-attachments-embeds.png"><img src="screenshots/tocktutor-attachments-embeds.png" alt="TockTutor attachments and embeds with a resolved local image"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Attachments and Embeds</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-attachments-embeds.png"><img src="screenshots/obsidian-attachments-embeds.png" alt="Obsidian attachments and embeds with a resolved local image"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reading Embed</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-reading.png"><img src="screenshots/tocktutor-editor-reading.png" alt="TockTutor Reading View with a resolved local image"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Reading Embed</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-reading-view.png"><img src="screenshots/obsidian-reading-view.png" alt="Obsidian Reading View with a resolved local image"></a></figure>
+      </div>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Attachments Utility Panel</span><span class="badge">Additional Surface</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-attachments-embeds.png"><img src="screenshots/tocktutor-attachments-embeds.png" alt="TockTutor Attachments and Embeds utility panel"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Attachments Folder</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-attachments-embeds.png"><img src="screenshots/obsidian-attachments-embeds.png" alt="Obsidian expanded Attachments folder beside the Reading embed"></a></figure>
       </div>
     </section>
 
@@ -278,7 +282,7 @@
     </section>
 
     <section class="surface" id="workspaces">
-      <p class="section-number">Surface 16</p><h2>Workspaces and Panes</h2><p class="section-note">TockTutor pane groups and workspace settings beside Obsidian’s captured outline and pane context.</p>
+      <p class="section-number">Surface 16</p><h2>Workspaces and Panes</h2><p class="section-note">TockTutor pane groups and workspace settings beside Obsidian’s closest captured Outline and pane context; these are approximate rather than one-to-one workspace groups.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Workspaces and Panes</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-workspaces-panes.png"><img src="screenshots/tocktutor-workspaces-panes.png" alt="TockTutor workspaces and panes"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Outline and Pane Context</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-workspaces-panes.png"><img src="screenshots/obsidian-workspaces-panes.png" alt="Obsidian outline and pane context"></a></figure>
