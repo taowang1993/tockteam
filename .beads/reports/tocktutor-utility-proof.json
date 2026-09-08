@@ -28,6 +28,8 @@
     ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png",
     ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-note-actions.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-new-note.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-attachments-embeds.png",
@@ -393,6 +395,44 @@
         "activePath": "Notes/Alias Target.md",
         "mode": "reading",
         "fragmentY": 400.5
+      }
+    }
+  },
+  "webViewer": {
+    "fixture": "credential-free loopback HTTP fixture at 127.0.0.1.nip.io",
+    "tockTutor": {
+      "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer.png",
+      "screenshotBytes": 304827,
+      "screenshotSha256": "sha256:6186e9624388baeac4e1736d364bae6014ec08f0a50dcf06d17e71fdbfd2c2b4",
+      "readerScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
+      "readerScreenshotBytes": 356890,
+      "readerScreenshotSha256": "sha256:5fc698307370a465092b37bbada1e35c0967aca6b09e053896dbbc4b46895a63",
+      "activePath": "Notes/Welcome.md",
+      "loaded": true,
+      "isolatedGuest": {
+        "source": "data:text/html",
+        "visible": true,
+        "scripts": 0,
+        "csp": "default-src 'none'; connect-src 'none'; script-src 'none'"
+      },
+      "reader": {
+        "loaded": true,
+        "title": "Loopback Viewer Fixture",
+        "textMarker": "Reader mode should preserve this text."
+      },
+      "invalidLocalUrlRejected": true,
+      "wrongFixturePathRejected": { "status": 400, "error": "address" },
+      "noFocus": {
+        "foregroundBefore": "com.apple.loginwindow",
+        "foregroundAfter": "com.apple.loginwindow",
+        "launch": "open -g",
+        "physicalAutomation": false,
+        "probe": "NSWorkspace.shared.frontmostApplication bundle identifier"
+      },
+      "captureMethod": "background open -g launch with CDP Runtime.evaluate, Input.dispatchMouseEvent, and Page.captureScreenshot",
+      "geometry": {
+        "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+        "pixels": { "width": 3024, "height": 1898 }
       }
     }
   },

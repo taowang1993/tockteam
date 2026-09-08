@@ -1034,8 +1034,14 @@
       "owner": "tockbot-web-clip + @tockteam/tocktutor-workbench",
       "issueId": "tockteam-3t5.24",
       "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx",
+        "plugins/tocktutor/packages/tockbot-web-clip/src/index.ts",
         "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts",
-        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts"
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/runtime-adapter.test.ts",
+        ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer.png",
+        ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
+        ".beads/reports/tocktutor-utility-proof.json"
       ],
       "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
     },
@@ -1983,8 +1989,14 @@
       "issueId": "tockteam-3t5.24",
       "owner": "tockbot-web-clip + @tockteam/tocktutor-workbench",
       "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx",
+        "plugins/tocktutor/packages/tockbot-web-clip/src/index.ts",
         "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts",
-        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts"
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/runtime-adapter.test.ts",
+        ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer.png",
+        ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
+        ".beads/reports/tocktutor-utility-proof.json"
       ],
       "children": [
         "render-safe-raw-html",
