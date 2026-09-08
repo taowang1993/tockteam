@@ -449,6 +449,13 @@
         "restored": { "activePath": "/tocktutor/Notes/Quick.md", "focused": "Pane 1 Notes/Quick.md", "panes": ["Pane 1 Notes/Quick.md", "Pane 2"], "finalPaneCloseDisabled": false }
       }
     },
+    "regression": {
+      "treeMembershipAfterCreate": true,
+      "postCreateTreeRefreshFailure": { "result": "failed", "routeRecorded": false, "message": "tree unavailable" },
+      "postCreateTreeRefreshStale": { "result": "stale", "routeRecorded": false },
+      "freshControllerWorkspaceRestore": { "createdPath": "Notes/Quick.md", "treeContainsPath": true, "restoredPath": "Notes/Quick.md", "paneCount": 2, "namedWorkspace": "quick-layout" },
+      "focusedTest": "node --test plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+    },
     "cleanup": { "electronTreesStopped": true, "temporaryProfilesRemoved": true }
   },
   "parityClassification": {
