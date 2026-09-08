@@ -58,12 +58,18 @@ function escapedAt(line, index) {
         slashes += 1;
     return slashes % 2 === 1;
 }
-/** Hide resolved local embed markers without touching fenced or inline code. */
-function hideResolvedEmbedSources(markdown, sources) {
-    if (sources.size === 0)
-        return markdown;
+/** Replace resolved local embed markers without touching fenced or inline code. */
+function replaceResolvedEmbedSources(markdown, replacements) {
+    if (replacements.size === 0)
+        return { markdown, tokens: [] };
+    const tokens = [];
+    const sourceTokens = new Map();
+    for (const [source, html] of replacements) {
+        sourceTokens.set(source, `\u0000tocktutor-resolved-embed-${String(tokens.length)}\u0000`);
+        tokens.push(html);
+    }
     let fence = null;
-    return markdown.split('\n').map(line => {
+    const replaced = markdown.split('\n').map(line => {
         const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
         if (marker !== undefined) {
             if (fence === null)
@@ -76,9 +82,48 @@ function hideResolvedEmbedSources(markdown, sources) {
             return line;
         const code = inlineCodeRanges(line);
         return line.replace(/!\[\[([^\]\r\n]{1,4096})\]\]/gu, (match, _target, offset) => {
-            return sources.has(match) && !code.some(([start, end]) => offset >= start && offset < end) && !escapedAt(line, offset) ? '' : match;
+            const token = sourceTokens.get(match);
+            return token !== undefined && !code.some(([start, end]) => offset >= start && offset < end) && !escapedAt(line, offset) ? token : match;
         });
     }).join('\n');
+    return { markdown: replaced, tokens };
+}
+function resolvedEmbedDimensions(display) {
+    const match = display?.match(/^(\d{1,4})x(\d{1,4})$/iu);
+    if (match === null || match === undefined)
+        return null;
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    return width >= 1 && width <= 2_000 && height >= 1 && height <= 2_000 ? { height, width } : null;
+}
+function resolvedEmbedMime(mimeType) {
+    const mime = mimeType?.toLocaleLowerCase().split(';', 1)[0]?.trim();
+    if (mime === undefined || !/^image\/(?:avif|bmp|gif|jpeg|png|svg\+xml|webp)$|^audio\/(?:3gpp|flac|mp4|mpeg|ogg|wav|webm)$|^video\/(?:3gpp|mp4|mpeg|ogg|quicktime|webm)$|^application\/pdf$/u.test(mime))
+        return null;
+    return mime;
+}
+function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbedSources) {
+    const path = escapeMarkdownHtml(embed.target.path);
+    const label = escapeMarkdownHtml(embed.target.display ?? embed.target.path);
+    if (embed.target.kind === 'note') {
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbedSources })}</span>`;
+    }
+    if (embed.target.kind === 'canvas' || embed.target.kind === 'base') {
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="${embed.target.kind}" data-embed-path="${path}"><pre>${escapeMarkdownHtml(embed.content)}</pre></span>`;
+    }
+    const mimeType = resolvedEmbedMime(embed.mimeType);
+    if (mimeType === null || bytes(embed.content) > 64 * 1024 * 1024 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(embed.content))
+        return '';
+    const source = `data:${escapeMarkdownHtml(mimeType)};base64,${escapeMarkdownHtml(embed.content)}`;
+    const dimensions = resolvedEmbedDimensions(embed.target.display);
+    const sizing = dimensions === null ? '' : ` height="${String(dimensions.height)}" width="${String(dimensions.width)}"`;
+    if (mimeType.startsWith('image/'))
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><img alt="${label}" class="max-h-80 max-w-full object-contain" loading="lazy"${sizing} src="${source}"></span>`;
+    if (mimeType.startsWith('audio/'))
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><audio aria-label="${label}" class="max-w-full" controls preload="metadata" src="${source}"></audio></span>`;
+    if (mimeType.startsWith('video/'))
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><video aria-label="${label}" class="max-h-80 max-w-full object-contain" controls preload="metadata"${sizing} src="${source}"></video></span>`;
+    return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><iframe aria-label="${label}" class="h-80 max-w-full" sandbox="" src="${source}" title="${label}"></iframe></span>`;
 }
 /** Remove active HTML outside fenced code without reordering the authored Markdown. */
 function stripActiveHtml(markdown) {
@@ -421,8 +466,14 @@ export function renderMarkdownHtml(markdown, options = {}) {
     if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES)
         return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
     const normalized = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-    const resolvedEmbedSources = new Set(options.resolvedEmbedSources ?? []);
-    const source = stripActiveHtml(hideResolvedEmbedSources(normalized, resolvedEmbedSources));
+    const resolvedEmbeds = options.resolvedEmbeds ?? [];
+    const resolvedEmbedSources = resolvedEmbeds.map(embed => embed.target.source);
+    const resolvedEmbedReplacements = new Map([
+        ...(options.resolvedEmbedSources ?? []).map(source => [source, '']),
+        ...resolvedEmbeds.map(embed => [embed.target.source, renderResolvedEmbed(embed, options.externalEmbedMode ?? 'inert', resolvedEmbedSources)]),
+    ]);
+    const replacedEmbeds = replaceResolvedEmbedSources(normalized, resolvedEmbedReplacements);
+    const source = stripActiveHtml(replacedEmbeds.markdown);
     const lines = source.split('\n');
     const footnotes = collectFootnotes(lines);
     const externalEmbedMode = options.externalEmbedMode ?? 'inert';
@@ -565,7 +616,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
     if (footnotes.definitions.length > 0) {
         blocks.push(`<section class="footnotes"><ol>${footnotes.definitions.map(definition => `<li id="fn-${String(definition.number)}">${renderInline(definition.text, footnotes.numbers, externalEmbedMode)}</li>`).join('')}</ol></section>`);
     }
-    return blocks.join('\n');
+    return blocks.join('\n').replace(/\u0000tocktutor-resolved-embed-(\d+)\u0000/gu, (_match, index) => replacedEmbeds.tokens[Number(index)] ?? '');
 }
 export function buildMarkdownSlides(markdown, options = {}) {
     if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES)
