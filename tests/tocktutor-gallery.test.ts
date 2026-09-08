@@ -7,9 +7,9 @@ const galleryPath = resolve('.agents/uiux/tocktutor/tocktutor.html')
 const galleryRoot = dirname(galleryPath)
 const gallery = readFileSync(galleryPath, 'utf8')
 const proof = JSON.parse(readFileSync(resolve('.beads/reports/tocktutor-utility-proof.json'), 'utf8')) as {
-  reading: { tockTutor: { containsGeneratedQuick?: boolean; treePaths?: string[] } }
+  reading: { tockTutor: { containsGeneratedUntitled?: boolean; copiedVaultIdentity?: string; treePaths?: string[] } }
   attachmentsEmbeds: { obsidian?: { directAttachmentPanelCapture?: boolean } }
-  affectedRecapture: { surfaces: { noteActions: { menuLabels: string[] }; workspacesPanes: { comparability?: string }; newNote: { captureState?: string } } }
+  affectedRecapture: { copiedVaultIdentity?: string; surfaces: { noteActions: { menuLabels: string[] }; workspacesPanes: { comparability?: string }; newNote: { captureState?: string; copiedVaultIdentity?: string; collisionIsolation?: string } } }
 }
 const imageSources = [...gallery.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]!)
 const screenshotLinks = [...gallery.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]!)
@@ -26,11 +26,16 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
   assert.match(gallery, /Obsidian · New Note Result/u)
   assert.match(gallery, /TockTutor · Reading Embed/u)
   assert.match(gallery, /TockTutor · Attachments Utility Panel[\s\S]*?Additional Surface/u)
-  assert.equal(proof.reading.tockTutor.containsGeneratedQuick, false)
+  assert.match(gallery, /Post-create opened and focused <code>Untitled<\/code> note/u)
+  assert.equal(proof.reading.tockTutor.containsGeneratedUntitled, false)
+  assert.equal(proof.reading.tockTutor.copiedVaultIdentity, 'TockTutor Parity Fixture')
+  assert.equal(proof.affectedRecapture.copiedVaultIdentity, 'TockTutor Parity Fixture')
   assert.deepEqual(proof.reading.tockTutor.treePaths, ['Notes/Welcome.md', 'Imports/Imported.md', 'Notes/Alias Target.md'])
   assert.equal(proof.attachmentsEmbeds.obsidian?.directAttachmentPanelCapture, undefined)
   assert.equal(proof.affectedRecapture.surfaces.workspacesPanes.comparability, 'approximate')
-  assert.equal(proof.affectedRecapture.surfaces.newNote.captureState, 'post-create opened note, paired with Obsidian post-create note')
+  assert.equal(proof.affectedRecapture.surfaces.newNote.captureState, 'post-create opened and focused Untitled note, phase-matched with Obsidian Untitled result')
+  assert.equal(proof.affectedRecapture.surfaces.newNote.copiedVaultIdentity, 'TockTutor Parity Fixture')
+  assert.equal(proof.affectedRecapture.surfaces.newNote.collisionIsolation, 'fresh temporary vault had no pre-existing Notes/Untitled.md')
   assert.equal(proof.affectedRecapture.surfaces.noteActions.menuLabels.includes('Backlinks in Document'), true)
   for (const relativePath of new Set([...imageSources, ...screenshotLinks, 'shared-note.md', '../../../plugins/tocktutor/parity/fixtures/vault'])) {
     assert.equal(existsSync(resolve(galleryRoot, relativePath)), true, relativePath)

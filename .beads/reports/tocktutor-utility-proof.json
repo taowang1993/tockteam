@@ -266,15 +266,16 @@
     "tockTutor": {
       "path": "Notes/Welcome.md",
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "screenshotBytes": 219008,
-      "screenshotSha256": "sha256:5bb51f2c21e1f49db568dfec5dbdad81b2ed6aa43e72e31ffdddd8e64441a294",
+      "screenshotBytes": 218359,
+      "screenshotSha256": "sha256:ed3dd531709477037b18a34a6bb44f92f55147a7ea14ae7ec40340ff4ee19ebd",
       "captureMethod": "background open -g -n -a launch with CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
-      "captureCommit": "tutor@769e605f",
+      "captureCommit": "tutor@ccda4c8c",
       "captureState": "fresh isolated fixture captured before New Note creation",
+      "copiedVaultIdentity": "TockTutor Parity Fixture",
       "sameIsolatedFixture": true,
       "pristine": true,
       "treePaths": ["Notes/Welcome.md", "Imports/Imported.md", "Notes/Alias Target.md"],
-      "containsGeneratedQuick": false,
+      "containsGeneratedUntitled": false,
       "localEmbed": {
         "authoredSource": "![[../Attachments/pixel.png|16x16]]",
         "resolvedPath": "Attachments/pixel.png",
@@ -361,12 +362,15 @@
     "tockTutor": {
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png",
       "screenshotRole": "additional-surface",
-      "screenshotBytes": 254672,
-      "screenshotSha256": "sha256:19d133565c1eee7a367de9ac87a3a82643032500cc7d72202bedc4096718a8b1",
+      "screenshotBytes": 253761,
+      "screenshotSha256": "sha256:3dffb6ab5ac1fdfaefc0b640224e1a5abd62ba2772888368a9e51311eef600df",
       "captureMethod": "background open -g -n -a launch with CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
+      "captureCommit": "tutor@ccda4c8c",
+      "copiedVaultIdentity": "TockTutor Parity Fixture",
       "readingScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "readingScreenshotBytes": 219008,
-      "readingScreenshotSha256": "sha256:5bb51f2c21e1f49db568dfec5dbdad81b2ed6aa43e72e31ffdddd8e64441a294",
+      "readingScreenshotBytes": 218359,
+      "readingScreenshotSha256": "sha256:ed3dd531709477037b18a34a6bb44f92f55147a7ea14ae7ec40340ff4ee19ebd",
+      "copiedVaultIdentity": "TockTutor Parity Fixture",
       "activePath": "Notes/Welcome.md",
       "resolvedEmbedCount": 1,
       "resolvedMedia": {
@@ -434,22 +438,23 @@
       "probe": "NSWorkspace.shared.frontmostApplication bundle identifier"
     },
     "captureMethod": "CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
-    "captureCommit": "tutor@769e605f",
+    "captureCommit": "tutor@ccda4c8c",
+    "copiedVaultIdentity": "TockTutor Parity Fixture",
     "fixtureState": {
       "reading": {
         "capturedBeforeNewNote": true,
         "treePaths": ["Notes/Welcome.md", "Imports/Imported.md", "Notes/Alias Target.md"],
-        "containsGeneratedQuick": false,
+        "containsGeneratedUntitled": false,
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-        "screenshotBytes": 219008,
-        "screenshotSha256": "sha256:5bb51f2c21e1f49db568dfec5dbdad81b2ed6aa43e72e31ffdddd8e64441a294"
+        "screenshotBytes": 218359,
+        "screenshotSha256": "sha256:ed3dd531709477037b18a34a6bb44f92f55147a7ea14ae7ec40340ff4ee19ebd"
       },
       "postCreate": {
-        "createdPath": "Notes/Quick.md",
+        "createdPath": "Notes/Untitled.md",
         "treeContainsPath": true,
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-new-note.png",
-        "screenshotBytes": 112560,
-        "screenshotSha256": "sha256:3c7d3606b3b95f80d574ca7047cedd994c7e76bb15df9b18854f20968e5db46c"
+        "screenshotBytes": 111371,
+        "screenshotSha256": "sha256:470342ff2726db6e42082e006827a8076918cf434b6815e187dc4c6c06f4cc6d"
       }
     },
     "geometry": {
@@ -461,8 +466,9 @@
         "comparability": "genuine",
         "status": "reference",
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-note-actions-menu.png",
-        "screenshotBytes": 332640,
-        "screenshotSha256": "sha256:15c049eb515947801ca7be5a59e92ec70032accd3188b981f434b3c5241b3a3e",
+        "screenshotBytes": 332090,
+        "screenshotSha256": "sha256:14c254a8e38663ec5f8fd45cf81b19df446595d5ef6029167d1ce582e43f1909",
+        "copiedVaultIdentity": "TockTutor Parity Fixture",
         "activePath": "Welcome",
         "menuLabels": ["Reading View", "Live Preview", "Source Mode", "Rename Note", "Move Note", "Bookmark Note", "File Recovery", "Properties", "Backlinks in Document", "Graph View", "Web Viewer", "Bookmarks", "Tags", "Attachments and Embeds", "Note Tools", "Workspaces and Panes", "Reviews and Actions", "Move File to Trash"],
         "visibleTooltips": 0
@@ -471,39 +477,42 @@
         "comparability": "genuine",
         "status": "reference",
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-new-note.png",
-        "screenshotBytes": 112560,
-        "screenshotSha256": "sha256:3c7d3606b3b95f80d574ca7047cedd994c7e76bb15df9b18854f20968e5db46c",
-        "captureState": "post-create opened note, paired with Obsidian post-create note",
+        "screenshotBytes": 111371,
+        "screenshotSha256": "sha256:470342ff2726db6e42082e006827a8076918cf434b6815e187dc4c6c06f4cc6d",
+        "captureState": "post-create opened and focused Untitled note, phase-matched with Obsidian Untitled result",
+        "copiedVaultIdentity": "TockTutor Parity Fixture",
         "dialogScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-new-note-dialog.png",
-        "dialogScreenshotBytes": 200782,
-        "dialogScreenshotSha256": "sha256:1d66483a5fa2a47d27b1ca6f7737e41f72899c6b689ebd08986f42b5f7fcb28e",
+        "dialogScreenshotBytes": 200206,
+        "dialogScreenshotSha256": "sha256:d4c5fc774d0178e89c2d65df14f0fb3d39ead9cd16cedc77f00540c9143de271",
         "dialogEvidence": "supplementary flow evidence captured before creation",
+        "collisionIsolation": "fresh temporary vault had no pre-existing Notes/Untitled.md",
         "dialog": { "title": "New Note", "focused": "New Note Path", "path": "" },
-        "result": { "activePath": "/tocktutor/Notes/Quick.md", "editorTitle": "Quick", "message": "Notes/Quick.md created.", "source": "", "unsavedMarker": false, "saved": true },
-        "postCreate": { "activePath": "/tocktutor/Notes/Quick.md", "editorTitle": "Quick", "editorVisible": true, "treeContainsQuick": true, "saved": true }
+        "result": { "activePath": "/tocktutor/Notes/Untitled.md", "editorTitle": "Untitled", "message": "Notes/Untitled.md created.", "source": "", "unsavedMarker": false, "saved": true },
+        "postCreate": { "activePath": "/tocktutor/Notes/Untitled.md", "editorTitle": "Untitled", "editorVisible": true, "treeContainsUntitled": true, "saved": true }
       },
       "workspacesPanes": {
         "comparability": "approximate",
         "status": "closest-reference",
         "reason": "The Obsidian capture is Outline and pane context, not one-to-one workspace groups.",
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-workspaces-panes.png",
-        "screenshotBytes": 172456,
-        "screenshotSha256": "sha256:0a0ddff8a0173c03be1a4ad76e4caa24a677e6f025998869cc0750629333232e",
-        "afterAddPane": { "activePath": "/tocktutor", "focused": "Pane 2", "panes": ["Pane 1 Notes/Quick.md", "Pane 2"] },
-        "saved": { "focused": "Pane 1 Notes/Quick.md", "loadButtons": ["Load Workspace 1"], "panes": [{ "label": "Pane 1 Notes/Quick.md", "pressed": "true" }, { "label": "Pane 2", "pressed": "false" }] },
-        "restored": { "activePath": "/tocktutor/Notes/Quick.md", "focused": "Pane 1 Notes/Quick.md", "panes": ["Pane 1 Notes/Quick.md", "Pane 2"], "finalPaneCloseDisabled": false }
+        "screenshotBytes": 170741,
+        "screenshotSha256": "sha256:4715e395a21719307d246f5def99785fc62bf8e72be1f50dbe0004175a80ec51",
+        "copiedVaultIdentity": "TockTutor Parity Fixture",
+        "afterAddPane": { "activePath": "/tocktutor", "focused": "Pane 2", "panes": ["Pane 1 Notes/Untitled.md", "Pane 2"] },
+        "saved": { "focused": "Pane 1 Notes/Untitled.md", "loadButtons": ["Load Workspace 1"], "panes": [{ "label": "Pane 1 Notes/Untitled.md", "pressed": "true" }, { "label": "Pane 2", "pressed": "false" }] },
+        "restored": { "activePath": "/tocktutor/Notes/Untitled.md", "focused": "Pane 1 Notes/Untitled.md", "panes": ["Pane 1 Notes/Untitled.md", "Pane 2"], "finalPaneCloseDisabled": false }
       },
       "attachments": {
         "comparability": "additional",
         "status": "closest-reference",
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png",
-        "screenshotBytes": 254672,
-        "screenshotSha256": "sha256:19d133565c1eee7a367de9ac87a3a82643032500cc7d72202bedc4096718a8b1",
+        "screenshotBytes": 253761,
+        "screenshotSha256": "sha256:3dffb6ab5ac1fdfaefc0b640224e1a5abd62ba2772888368a9e51311eef600df",
         "classification": "additional TockTutor utility-panel surface",
         "reason": "Obsidian has no captured Attachments utility panel; retain this panel as additional evidence and compare the genuine Reading embed pair separately.",
         "readingPair": {
           "comparability": "genuine",
-          "tockTutor": { "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png", "bytes": 219008, "sha256": "sha256:5bb51f2c21e1f49db568dfec5dbdad81b2ed6aa43e72e31ffdddd8e64441a294" },
+          "tockTutor": { "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png", "bytes": 218359, "sha256": "sha256:ed3dd531709477037b18a34a6bb44f92f55147a7ea14ae7ec40340ff4ee19ebd" },
           "obsidian": { "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png", "bytes": 182314, "sha256": "sha256:c83fcb60931f84631732d2e42b0a2a8f83dc259bd7201b6a2e49a715b3d6e74a" }
         }
       }
