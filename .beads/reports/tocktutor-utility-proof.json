@@ -349,8 +349,8 @@
     },
     "tockTutor": {
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png",
-      "screenshotBytes": 254675,
-      "screenshotSha256": "sha256:c1058a0f2c54d02f2877cb5b13d7feeba227fdfc50a11b77163c8a9846fdd31a",
+      "screenshotBytes": 254672,
+      "screenshotSha256": "sha256:19d133565c1eee7a367de9ac87a3a82643032500cc7d72202bedc4096718a8b1",
       "captureMethod": "background open -g -n -a launch with CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
       "readingScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
       "activePath": "Notes/Welcome.md",
