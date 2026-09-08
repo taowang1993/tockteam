@@ -324,9 +324,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       button.textContent = String(action.props.title ?? '')
       button.disabled = !action.props.actionEventId
       if (preferenceSetup && action.props.title === 'Continue') {
-        button.className += ' !px-2'
-        const shortcuts = document.createElement('span'); shortcuts.className = 'ml-0.5 flex gap-px'; shortcuts.setAttribute('aria-hidden', 'true')
-        for (const glyph of ['⌘', '↵']) { const key = document.createElement('kbd'); key.className = 'box-border inline-flex size-[1.375rem] items-center justify-center rounded-[0.25rem] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-3,Canvas)] text-xs font-normal leading-none text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = glyph; shortcuts.append(key) }
+        button.className += ' !gap-0.5 !px-2'
+        const shortcuts = document.createElement('span'); shortcuts.className = 'flex gap-px'; shortcuts.setAttribute('aria-hidden', 'true')
+        for (const glyph of ['⌘', '↵']) { const key = document.createElement('kbd'); key.className = 'box-border inline-flex size-5 items-center justify-center rounded-[0.25rem] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-3,Canvas)] text-sm font-normal leading-none text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = glyph; shortcuts.append(key) }
         button.append(shortcuts)
       }
       button.addEventListener('click', () => invoke(action)); (preferenceSetup ? footerActions : formArea).append(button)
