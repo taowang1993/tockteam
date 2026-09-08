@@ -236,6 +236,8 @@ const launcherPackagedSmokeEnabled = app.isPackaged
 if (process.platform === 'darwin' && launcherPackagedSmokeEnabled) app.commandLine.appendSwitch('use-mock-keychain')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
+const launcherInactiveVisualProofEnabled = !app.isPackaged && process.env.TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF === '1'
+const trustedRaycastDenyEffectsProofEnabled = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
 const configuredLauncherWorkflowFixtureActionTtlMs = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS !== undefined
@@ -2268,10 +2270,12 @@ function initializeLauncher(): void {
       return result
     },
     pasteText: async text => {
+      if (trustedRaycastDenyEffectsProofEnabled) throw new Error('Paste is disabled in the bounded visual proof')
       const result = await pasteTrustedRaycastText(text, trustedRaycastPriorApp, { ...trustedRaycastNativeDeps, ...(pasteFixture ? { fixture: 'paste' as const } : {}) })
       if (!app.isPackaged) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-paste-proof.json'), JSON.stringify({ target: result.target, fixture: result.fixture, restoration: result.restoration }), { mode: 0o600 })
     },
     copyText: async text => {
+      if (trustedRaycastDenyEffectsProofEnabled) throw new Error('Clipboard Copy is disabled in the bounded visual proof')
       const proof = await copyTrustedRaycastText(text, clipboard,
         !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_CLIPBOARD_FIXTURE === '1'
           ? join(app.getAppPath(), 'scripts/trusted-raycast-clipboard-proof.swift') : undefined)
@@ -2461,6 +2465,7 @@ function initializeLauncher(): void {
     onWindowCleared,
     getThemeProjection: () => launcherThemeProjector.get(),
     platform: process.platform,
+    showInactive: launcherInactiveVisualProofEnabled,
     registerWindow: (_role, window) => launcherWindowRegistry.register(
       'launcher',
       window as unknown as LauncherRegistryWindow,
@@ -3016,7 +3021,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   const windowId = String(window.webContents.id)
   window.webContents.setZoomFactor(DEFAULT_UI_ZOOM_FACTOR)
   if (options.preview !== true) window.maximize()
-  window.once('ready-to-show', () => { window.show() })
+  window.once('ready-to-show', () => { if (launcherInactiveVisualProofEnabled) window.showInactive(); else window.show() })
   window.on('close', event => {
     if (options.preview === true || !shouldCloseToTray({
       platform: process.platform,

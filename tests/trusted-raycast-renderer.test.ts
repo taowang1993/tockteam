@@ -31,12 +31,15 @@ test('Kaomoji Grid renders bounded theme image data and extension identity', () 
   const view = createTrustedRaycastView(document, {} as LauncherPreloadBridge, () => {})
   view.update({
     type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 0,
-    root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-section', props: { title: 'emotion' }, children: [{ type: 'raycast-grid-item', props: { contentDark: 'data:image/svg+xml;base64,dark', contentLight: 'data:image/svg+xml;base64,light', title: 'Happy Face' }, children: [{ type: 'raycast-action', props: { actionEventId: 'copy', title: 'Copy to Clipboard' }, children: [] }] }] }] },
+    root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-section', props: { title: 'emotion' }, children: Array.from({ length: 64 }, (_, index) => ({ type: 'raycast-grid-item' as const, props: { contentDark: 'data:image/svg+xml;base64,dark', contentLight: 'data:image/svg+xml;base64,light', title: `Happy Face ${index}` }, children: [{ type: 'raycast-action' as const, props: { actionEventId: `copy-${index}`, title: 'Copy to Clipboard' }, children: [] }] })) }] },
   })
   assert.equal((view.element as unknown as Element).getAttribute('aria-label'), 'Kaomoji Search')
+  assert.ok(nodes.some(node => node.textContent === 'Search Kaomoji'))
+  assert.ok(nodes.some(node => node.getAttribute('aria-label') === 'Kaomoji Results' && node.getAttribute('role') === 'list'))
   assert.ok(nodes.some(node => node.getAttribute('src') === 'data:image/svg+xml;base64,light'))
   assert.ok(nodes.some(node => node.textContent === 'emotion'))
-  assert.ok(nodes.some(node => node.getAttribute('aria-label') === 'Happy Face'))
+  assert.ok(nodes.some(node => node.getAttribute('aria-label') === 'Happy Face 0'))
+  assert.ok(nodes.some(node => node.textContent === 'Showing 64 results. Search all 1,822 kaomoji.'))
 })
 
 test('launcher focus requests target the visible Translate search control', () => {
@@ -350,11 +353,13 @@ test('nested AddLanguageForm renders fields and submits through the source actio
       { type: 'raycast-action', props: { title: 'Add Language Set', actionEventId: 'submit-action' }, children: [] },
     ],
   }
-  view.update({ ...projection(0), root: formRoot })
+  view.update(projection(0))
+  view.update({ ...projection(1), root: formRoot })
   const search = inputOf(nodes)
   assert.equal(search.hidden, false, 'stub lacks real layout: search row visibility comes from searchEventId')
-  const from = nodes.find(node => node.getAttribute('aria-label') === 'Source Language')!
+  const from = nodes.findLast(node => node.getAttribute('aria-label') === 'Source Language')!
   assert.equal(from.value, 'auto')
+  assert.equal(from.focused, true, 'an action-generated form patch focuses its first control')
   from.value = 'en'; from.dispatchEvent(new Event('change'))
   await flush()
   assert.equal(sent[0]?.kind, 'fieldChanged')

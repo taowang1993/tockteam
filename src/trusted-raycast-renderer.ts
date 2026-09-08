@@ -59,7 +59,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   searchRow.append(label, languageSelect)
   const status = document.createElement('p'); status.className = 'launcher-command-status mx-4'; status.setAttribute('role', 'status')
   const panelActions = document.createElement('div'); panelActions.className = 'flex flex-wrap items-start gap-2 py-2'; panelActions.hidden = true
-  const results = document.createElement('ul'); results.className = 'launcher-command-list'; results.setAttribute('aria-label', zh ? '翻译结果' : 'Translations')
+  const results = document.createElement('ul'); results.className = 'launcher-command-list'; results.setAttribute('role', 'list'); results.setAttribute('aria-label', zh ? '翻译结果' : 'Translations')
   const formArea = document.createElement('form'); formArea.className = 'flex flex-col items-start gap-3 py-2'; formArea.hidden = true; formArea.addEventListener('submit', event => { event.preventDefault(); invoke(submitAction) })
   const error = document.createElement('p'); error.className = 'launcher-command-error'; error.setAttribute('role', 'alert'); error.hidden = true
   header.append(searchRow); content.append(intro, back, status, panelActions, results, formArea, error)
@@ -91,6 +91,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const syncIdentity = (): void => {
     const value = identity()
     element.setAttribute('aria-label', value.title); title.textContent = value.title; titleIcon.setAttribute('src', value.image)
+    searchLabel.textContent = current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '要翻译的文本' : 'Text to Translate')
+    results.setAttribute('aria-label', current?.extensionId === 'kaomoji-search' ? 'Kaomoji Results' : (zh ? '翻译结果' : 'Translations'))
     heroTitle.textContent = value.title; logo.setAttribute('src', value.image); logo.setAttribute('alt', value.title)
     footerIcon.setAttribute('src', value.image); footerText.textContent = current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '翻译' : 'Translate')
     aboutText.textContent = current?.extensionId === 'kaomoji-search'
@@ -151,7 +153,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     setActionPending()
     actionFeedback = ''
     setHidden(error, true)
-    status.textContent = zh ? '正在翻译…' : 'Translating…'
+    status.textContent = current?.extensionId === 'kaomoji-search' ? 'Searching…' : (zh ? '正在翻译…' : 'Translating…')
     queryPending = true; syncBusy()
     sendLatest()
   })
@@ -283,6 +285,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       item.addEventListener('focusin', () => { selected = index; syncPrimaryFooter(); for (const row of rows) { row.item.setAttribute('data-selected', String(row.item === item)); if (row.detail) row.detail.hidden = row.item !== item } })
       rows.push({ ...owner, detail }); results.append(item)
     })
+    if (current?.extensionId === 'kaomoji-search' && items.length === 64 && input.value === '') {
+      status.textContent = 'Showing 64 results. Search all 1,822 kaomoji.'
+    }
     if (items.length === 0) {
       const empty = document.createElement('li'); empty.className = 'launcher-command-empty'; empty.tabIndex = -1
       const emptyIcon = icon(emptyProjection?.props.icon === 'Hourglass' ? Hourglass : SearchX)
@@ -395,7 +400,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   element.addEventListener('click', event => {
     for (const owner of [...rows, ...(rootActionOwner ? [rootActionOwner] : [])]) if (!owner.menu.contains(event.target as globalThis.Node)) owner.menu.open = false
   })
-  const focus = (): void => { if (preferenceSetup) firstFormControl?.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus() }
+  const focus = (): void => { if (firstFormControl && !formArea.hidden) firstFormControl.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus() }
   return {
     element,
     focus,
@@ -414,6 +419,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       }
       if (current && message.revision <= current.revision) return
       const restoreRow = rows.some(row => row.item.contains?.(document.activeElement))
+      const previousHadForm = current?.root ? descendants(current.root, 'raycast-form').length > 0 : false
       current = message
       syncIdentity()
       if (message.type === 'error') {
@@ -429,7 +435,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       if (message.root) render(message.root)
       if (restoreRow) rows[selected]?.item.focus()
       sendLatest()
-      if (message.type === 'ready') { focus(); document.defaultView?.requestAnimationFrame(() => focus()) }
+      const enteredForm = !previousHadForm && Boolean(message.root && descendants(message.root, 'raycast-form').length > 0)
+      if (message.type === 'ready' || enteredForm) { focus(); document.defaultView?.requestAnimationFrame(() => focus()) }
     },
   }
 }

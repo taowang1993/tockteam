@@ -37,6 +37,7 @@ class FakeWindow {
   hideCount = 0
   loadCount = 0
   showCount = 0
+  showInactiveCount = 0
   alwaysOnTop = false
   allWorkspaces = false
   private readonly listeners = new Map<string, Listener[]>()
@@ -74,6 +75,7 @@ class FakeWindow {
   setBounds(value: Rectangle): void { this.bounds = value }
   setVisibleOnAllWorkspaces(value: boolean): void { this.allWorkspaces = value }
   show(): void { this.showCount += 1; this.visible = true }
+  showInactive(): void { this.showInactiveCount += 1; this.visible = true }
 }
 
 function actionRecord(item: LauncherInternalResultItem): LauncherActionRecord {
@@ -94,6 +96,7 @@ function setup(
   platform: NodeJS.Platform = 'linux',
   configure?: (window: FakeWindow) => void,
   onWindowCleared?: (window: { webContents: { id: number } }) => void,
+  showInactive = false,
 ) {
   const windows: FakeWindow[] = []
   const callbacks: (() => void)[] = []
@@ -121,6 +124,7 @@ function setup(
     loadWindow: window => window.loadURL('file:///launcher.html'),
     ...(onWindowCleared === undefined ? {} : { onWindowCleared }),
     platform,
+    showInactive,
     registerWindow: () => () => {},
   })
   return {
@@ -168,6 +172,23 @@ test('macOS activates the app before showing the launcher', async () => {
   const linux = setup('linux')
   await linux.controller.show()
   assert.equal(linux.focusAppCount(), 0)
+})
+
+test('bounded visual proof can show without activating or focusing the app', async () => {
+  const result = setup('darwin', undefined, undefined, true)
+  await result.controller.show()
+  assert.equal(result.focusAppCount(), 0)
+  assert.equal(result.windows[0]?.showCount, 0)
+  assert.equal(result.windows[0]?.focusCount, 0)
+  assert.equal(result.windows[0]?.showInactiveCount, 1)
+})
+
+test('bounded visual proof fails closed without inactive window support', async () => {
+  const result = setup('darwin', window => { window.showInactive = undefined as never }, undefined, true)
+  await assert.rejects(() => result.controller.show(), /requires showInactive support/u)
+  assert.equal(result.focusAppCount(), 0)
+  assert.equal(result.windows[0]?.showCount, 0)
+  assert.equal(result.windows[0]?.focusCount, 0)
 })
 
 test('launcher lazily creates and reuses one focused, rebound window', async () => {

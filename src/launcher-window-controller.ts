@@ -54,6 +54,7 @@ export type LauncherOverlayWindow = Readonly<{
     }>,
   ) => void
   show: () => void
+  showInactive?: () => void
   webContents: LauncherWebContents
 }>
 
@@ -98,6 +99,7 @@ export class LauncherOverlayController {
     globalShortcut: LauncherGlobalShortcut
     loadWindow: (window: LauncherOverlayWindow) => Promise<void>
     platform: NodeJS.Platform
+    showInactive?: boolean
     registerWindow: (
       role: 'launcher',
       window: LauncherOverlayWindow,
@@ -128,6 +130,7 @@ export class LauncherOverlayController {
     globalShortcut: LauncherGlobalShortcut
     loadWindow: (window: LauncherOverlayWindow) => Promise<void>
     platform: NodeJS.Platform
+    showInactive?: boolean
     registerWindow: (
       role: 'launcher',
       window: LauncherOverlayWindow,
@@ -200,9 +203,14 @@ export class LauncherOverlayController {
       throw new Error('Launcher window is unavailable')
     }
     window.setBounds(resolveLauncherBounds(this.args.getDisplayWorkArea()))
-    if (this.args.platform === 'darwin') this.args.focusApp?.()
-    window.show()
-    window.focus()
+    if (this.args.showInactive === true) {
+      if (window.showInactive === undefined) throw new Error('Inactive visual proof requires showInactive support')
+      window.showInactive()
+    } else {
+      if (this.args.platform === 'darwin') this.args.focusApp?.()
+      window.show()
+      window.focus()
+    }
     this.sendTheme()
     this.sendLocale()
     window.webContents.send(LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch)

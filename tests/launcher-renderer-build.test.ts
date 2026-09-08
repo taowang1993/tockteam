@@ -12,6 +12,7 @@ const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'u
 const launcherSettings = readFileSync(new URL('../src/launcher-settings.tsx', import.meta.url), 'utf8')
 const launcherDrafts = readFileSync(new URL('../src/launcher-settings-drafts.tsx', import.meta.url), 'utf8')
 const launcherDraftValue = readFileSync(new URL('../src/launcher-settings-draft-value.ts', import.meta.url), 'utf8')
+const trustedRaycastRenderer = readFileSync(new URL('../src/trusted-raycast-renderer.ts', import.meta.url), 'utf8')
 const localSettings = readFileSync(new URL('../src/launcher-local-settings.tsx', import.meta.url), 'utf8')
 const discoverySettings = readFileSync(new URL('../src/launcher-discovery-settings.tsx', import.meta.url), 'utf8')
 const localTools = readFileSync(new URL('../src/launcher-local-tools.ts', import.meta.url), 'utf8')
@@ -69,6 +70,11 @@ test('launcher renderer stays empty/search-ready and reports bootstrap status', 
   assert.ok(cancellationPublication > invokeStart && cancellationPublication < historyStart, 'Workflow cancellation must publish before delayed history persistence')
   assert.match(launcher, /invokingWorkflow/u)
   assert.match(launcher, /search\.disabled/u)
+})
+
+test('trusted extension result lists keep explicit built accessibility semantics', () => {
+  assert.match(trustedRaycastRenderer, /createElement\('ul'\).*setAttribute\('role', 'list'\).*setAttribute\('aria-label'/u)
+  assert.match(build, /\['trusted-raycast-renderer', 'renderer'\]/u)
 })
 
 test('workflow invocation fences late searches and blocks result interactions', () => {
