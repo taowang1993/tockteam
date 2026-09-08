@@ -119,18 +119,19 @@ export function resolveEmbedTargetPath(entries, targetPath) {
     const wanted = normalizeIdentifier(targetPath);
     if (!wanted)
         return null;
-    const exact = entries.find(entry => normalizeIdentifier(entry.path) === wanted);
+    const safeEntries = entries.filter(entry => isSafeVaultRelativePath(entry.path));
+    const exact = safeEntries.find(entry => normalizeIdentifier(entry.path) === wanted);
     if (exact !== undefined)
         return exact.path;
     const extensionless = normalizeIdentifier(withoutExtension(targetPath));
-    const exactStem = entries.filter(entry => normalizeIdentifier(withoutExtension(entry.path)) === extensionless);
+    const exactStem = safeEntries.filter(entry => normalizeIdentifier(withoutExtension(entry.path)) === extensionless);
     if (exactStem.length === 1)
         return exactStem[0].path;
     const basename = wanted.split('/').at(-1);
     if (basename === undefined)
         return null;
     const basenameStem = normalizeIdentifier(withoutExtension(basename));
-    const matches = entries.filter(entry => {
+    const matches = safeEntries.filter(entry => {
         const identifiers = entryIdentifiers(entry);
         const entryBasename = normalizeIdentifier(entry.path.split('/').at(-1) ?? entry.path);
         const entryBasenameStem = normalizeIdentifier(withoutExtension(entryBasename));
@@ -277,11 +278,13 @@ function withoutFrontmatter(source) {
 function allowedMime(mimeType, target) {
     const mime = mimeType.toLocaleLowerCase().split(';', 1)[0].trim();
     if (target.kind !== 'media')
-        return false;
+        return null;
     return /^image\/(?:avif|bmp|gif|jpeg|png|svg\+xml|webp)$/u.test(mime)
         || /^audio\/(?:3gpp|flac|mp4|mpeg|ogg|wav|webm)$/u.test(mime)
         || /^video\/(?:3gpp|mp4|mpeg|ogg|quicktime|webm)$/u.test(mime)
-        || mime === 'application/pdf';
+        || mime === 'application/pdf'
+        ? mime
+        : null;
 }
 function validBase64(value) {
     return typeof value === 'string'
@@ -362,7 +365,8 @@ export async function resolveEmbedGraph(options) {
                     warn(`Embed path mismatch: ${path}`);
                     return;
                 }
-                if (!allowedMime(value.mimeType, target)) {
+                const mimeType = allowedMime(value.mimeType, target);
+                if (mimeType === null) {
                     warn(`Unsupported media type: ${path}`);
                     return;
                 }
@@ -380,7 +384,7 @@ export async function resolveEmbedGraph(options) {
                 embeds.push({
                     content: value.dataBase64,
                     depth,
-                    mimeType: value.mimeType,
+                    mimeType,
                     ...(parentPath === undefined ? {} : { parentPath }),
                     target: freezeTarget({ ...target, path }),
                 });

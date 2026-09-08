@@ -11,6 +11,7 @@ function widgetDom(embed, from, to, embeds, reveal) {
     widget.dataset.embedTo = String(to);
     widget.dataset.embedKind = embed.target.kind;
     widget.setAttribute('aria-label', `${embed.target.kind} Embed: ${embed.target.display ?? embed.target.path}`);
+    widget.setAttribute('role', 'button');
     widget.tabIndex = 0;
     widget.addEventListener('mousedown', event => {
         if (event.target instanceof Element && event.target.closest('audio,video') !== null) {
