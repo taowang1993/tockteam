@@ -38,13 +38,13 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const hero = document.createElement('div'); hero.className = 'flex flex-col items-center px-6 pb-2 text-center'; hero.hidden = true
   const logoFrame = document.createElement('div'); logoFrame.className = 'mb-5 flex size-16 items-center justify-center rounded-full bg-[var(--dsw-alias-bg-layer-2,Canvas)]'
   const logo = document.createElement('img'); logo.setAttribute('src', './trusted-raycast/google-translate.png'); logo.setAttribute('alt', 'Google Translate'); logo.className = 'size-10'; logoFrame.append(logo)
-  const heroTitle = document.createElement('h1'); heroTitle.textContent = 'Google Translate'; heroTitle.className = 'm-0 text-2xl font-semibold text-[var(--dsw-alias-label-primary,CanvasText)]'
+  const heroTitle = document.createElement('h1'); heroTitle.textContent = 'Google Translate'; heroTitle.className = 'm-0 text-2xl font-semibold tracking-[0.025em] text-[var(--dsw-alias-label-primary,CanvasText)]'
   const about = document.createElement('details'); about.className = 'relative mt-2'
   const aboutSummary = document.createElement('summary'); aboutSummary.className = 'cursor-pointer list-none rounded-lg bg-[var(--dsw-alias-bg-layer-2,Canvas)] px-2.5 py-0.5 text-sm font-medium text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'; aboutSummary.textContent = zh ? '关于此扩展 ⓘ' : 'About This Extension ⓘ'
   const aboutText = document.createElement('p'); aboutText.className = 'absolute left-1/2 z-10 mt-2 w-72 -translate-x-1/2 rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,Canvas)] p-3 text-left text-xs leading-5 text-[var(--dsw-alias-label-secondary,CanvasText)] shadow-lg'; aboutText.textContent = zh ? '由 TockTeam 固定并审核的 Google Translate 扩展。' : 'Google Translate is bundled from the exact extension archive reviewed by TockTeam.'
   about.append(aboutSummary, aboutText); hero.append(logoFrame, heroTitle, about)
   const content = document.createElement('div'); content.className = 'launcher-command-content !gap-0 !p-0'
-  const intro = document.createElement('p'); intro.className = 'mx-auto mb-2 max-w-3xl px-4 text-center text-sm font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; intro.textContent = zh ? '开始使用此扩展前，请设置以下偏好：' : 'Before you can start using this extension, you have to set the following preferences:'; intro.hidden = true
+  const intro = document.createElement('p'); intro.className = 'mx-auto mb-2 max-w-3xl px-4 text-center text-[0.84375rem] font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]'; intro.textContent = zh ? '开始使用此扩展前，请设置以下偏好：' : 'Before you can start using this extension, you have to set the following preferences:'; intro.hidden = true
   const back = document.createElement('button'); back.type = 'button'; back.className = 'launcher-command-footer-action mx-4 mt-2'; back.textContent = zh ? '‹ 返回' : '‹ Back'; back.hidden = true; back.addEventListener('click', popNavigation)
   const searchRow = document.createElement('div'); searchRow.className = 'flex min-w-0 flex-1 items-center gap-3'
   const label = document.createElement('label'); label.className = 'flex min-w-0 flex-1 items-center'
@@ -317,7 +317,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const actions = descendants(form, 'raycast-action')
     submitAction = actions.find(action => action.props.title === 'Add Language Set') ?? actions.find(action => Boolean(action.props.actionEventId))
     for (const action of actions) {
-      const button = document.createElement('button'); button.type = 'button'; button.className = preferenceSetup ? 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)]' : buttonClass
+      const button = document.createElement('button'); button.type = 'button'; button.className = preferenceSetup ? 'launcher-command-footer-action' : buttonClass
       button.textContent = String(action.props.title ?? '')
       button.disabled = !action.props.actionEventId
       if (preferenceSetup && action.props.title === 'Continue') { const shortcut = document.createElement('kbd'); shortcut.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; shortcut.textContent = '⌘ ↵'; button.append(shortcut) }
