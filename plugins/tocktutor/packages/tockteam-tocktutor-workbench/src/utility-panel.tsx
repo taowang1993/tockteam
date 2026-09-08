@@ -334,8 +334,8 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
                 <article className="overflow-auto rounded border border-[var(--tt-border)] p-2" key={`${embed.target.path}-${String(index)}`}>
                   <strong className="block truncate text-xs">{embed.target.path}{embed.target.fragment === null ? '' : `#${embed.target.fragment}`}</strong>
                   {embed.target.kind === 'media' && embed.mimeType?.startsWith('image/') && <img alt={embed.target.display ?? embed.target.path} className="mt-1 max-h-48 max-w-full" src={`data:${embed.mimeType};base64,${embed.content}`} />}
-                  {embed.target.kind === 'media' && embed.mimeType?.startsWith('audio/') && <audio className="mt-1 w-full" controls src={`data:${embed.mimeType};base64,${embed.content}`} />}
-                  {embed.target.kind === 'media' && embed.mimeType?.startsWith('video/') && <video className="mt-1 max-h-48 max-w-full" controls src={`data:${embed.mimeType};base64,${embed.content}`} />}
+                  {embed.target.kind === 'media' && embed.mimeType?.startsWith('audio/') && <audio aria-label={embed.target.display ?? embed.target.path} className="mt-1 w-full" controls src={`data:${embed.mimeType};base64,${embed.content}`} />}
+                  {embed.target.kind === 'media' && embed.mimeType?.startsWith('video/') && <video aria-label={embed.target.display ?? embed.target.path} className="mt-1 max-h-48 max-w-full" controls src={`data:${embed.mimeType};base64,${embed.content}`} />}
                   {embed.target.kind === 'media' && embed.mimeType === 'application/pdf' && <iframe className="mt-1 h-48 w-full" sandbox="" src={`data:${embed.mimeType};base64,${embed.content}`} title={embed.target.path} />}
                   {embed.target.kind === 'note' && <div className="prose text-xs" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content, { resolvedEmbeds: snapshot.embeds ?? [], resolvedEmbedParentPath: embed.target.path }) }} />}
                   {embed.target.kind === 'canvas' && <CanvasBoard disabled onChange={() => {}} revision="embedded" source={embed.content} />}
@@ -362,8 +362,8 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               <div className="mt-2 rounded border border-[var(--tt-border)] p-2">
                 <div className="flex justify-between gap-2"><strong className="truncate text-xs">{snapshot.attachmentPreview.path}</strong><Button unstyled aria-label="Close Attachment Preview" className="border-0 bg-transparent" onClick={props.onCloseAttachmentPreview} type="button"><WorkbenchGlyph kind="close" /></Button></div>
                 {snapshot.attachmentPreview.mediaKind === 'image' && <img alt={snapshot.attachmentPreview.path} className="mt-2 max-h-48 max-w-full" src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} />}
-                {snapshot.attachmentPreview.mediaKind === 'audio' && <audio className="mt-2 w-full" controls src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} />}
-                {snapshot.attachmentPreview.mediaKind === 'video' && <video className="mt-2 max-h-48 max-w-full" controls src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} />}
+                {snapshot.attachmentPreview.mediaKind === 'audio' && <audio aria-label={snapshot.attachmentPreview.path} className="mt-2 w-full" controls src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} />}
+                {snapshot.attachmentPreview.mediaKind === 'video' && <video aria-label={snapshot.attachmentPreview.path} className="mt-2 max-h-48 max-w-full" controls src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} />}
                 {snapshot.attachmentPreview.mediaKind === 'pdf' && <iframe className="mt-2 h-48 w-full" sandbox="" src={`data:${snapshot.attachmentPreview.mimeType};base64,${snapshot.attachmentPreview.dataBase64}`} title={snapshot.attachmentPreview.path} />}
               </div>
             )}

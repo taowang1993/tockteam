@@ -53,6 +53,23 @@ test('resolves nested relative embeds with parent identity and bounded reads', a
   ])
 })
 
+test('ignores unsafe indexed paths even when an alias matches', async () => {
+  let reads = 0
+  const result = await resolveEmbedGraph({
+    entries: [{ aliases: ['Secret'], path: '../outside.md' }],
+    readAttachment: async path => {
+      reads += 1
+      return { dataBase64: 'iVBORw0KGgo=', mimeType: 'image/png', path }
+    },
+    readDocument: async path => ({ content: '', path }),
+    source: '![[Secret]]\n',
+  })
+  assert.equal(result.status, 'ready')
+  assert.equal(reads, 0)
+  assert.deepEqual(result.embeds, [])
+  assert.deepEqual(result.warnings, ['Embed not found: Secret.md'])
+})
+
 test('rejects malformed Host media payloads before they reach renderers', async () => {
   const result = await resolveEmbedGraph({
     entries: [{ path: 'Attachments/bad.png' }],

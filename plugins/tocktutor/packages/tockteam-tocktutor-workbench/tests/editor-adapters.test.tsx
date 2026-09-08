@@ -444,6 +444,7 @@ describe('Milkdown Live Preview editor', () => {
       expect(value).toBeTruthy()
       return value!
     }, { timeout: 5_000 })
+    expect(widget.getAttribute('role')).toBe('button')
     expect(widget.querySelector('img[alt="8x8"][height="8"][width="8"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
     expect(widget.textContent).not.toContain(nestedSource)
   })
