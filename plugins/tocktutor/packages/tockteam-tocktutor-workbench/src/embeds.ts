@@ -319,6 +319,11 @@ function allowedMime(mimeType: string, target: EmbedTarget): boolean {
     || mime === 'application/pdf'
 }
 
+function validBase64(value: unknown): value is string {
+  return typeof value === 'string'
+    && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value)
+}
+
 function freezeTarget(target: EmbedTarget): EmbedTarget {
   return Object.freeze({ ...target })
 }
@@ -393,6 +398,10 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
         }
         if (!allowedMime(value.mimeType, target)) {
           warn(`Unsupported media type: ${path}`)
+          return
+        }
+        if (!validBase64(value.dataBase64)) {
+          warn(`Invalid media encoding: ${path}`)
           return
         }
         const encodedBytes = new TextEncoder().encode(value.dataBase64).byteLength

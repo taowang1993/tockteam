@@ -53,6 +53,18 @@ test('resolves nested relative embeds with parent identity and bounded reads', a
   ])
 })
 
+test('rejects malformed Host media payloads before they reach renderers', async () => {
+  const result = await resolveEmbedGraph({
+    entries: [{ path: 'Attachments/bad.png' }],
+    readAttachment: async path => ({ dataBase64: 'not base64', mimeType: 'image/png', path }),
+    readDocument: async path => ({ content: '', path }),
+    source: '![[Attachments/bad.png]]\n',
+  })
+  assert.equal(result.status, 'ready')
+  assert.deepEqual(result.embeds, [])
+  assert.deepEqual(result.warnings, ['Invalid media encoding: Attachments/bad.png'])
+})
+
 test('prefers an exact embed path before an otherwise ambiguous basename', () => {
   const entries = [{ path: 'Course/Note.md' }, { path: 'Archive/Note.md' }]
   assert.equal(resolveEmbedTargetPath(entries, 'Course/Note.md'), 'Course/Note.md')
