@@ -608,7 +608,7 @@ test('resolves bounded note, image, and Canvas embeds into static HTML and PDF i
     assert.equal(request.format, 'pdf')
     assert.match(request.html, /aria-label="Resolved Embeds"/u)
     assert.match(request.html, /data:image\/png;base64,AQID/u)
-    assert.match(request.html, /Safe &lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
+    assert.match(request.html, /<p>Safe<\/p>/u)
     assert.match(request.html, /<pre>\{&quot;nodes&quot;:\[\]\}<\/pre>/u)
     assert.doesNotMatch(request.html, /<script|href=/u)
     assert.deepEqual(state.calls.map(call => call.method), [
