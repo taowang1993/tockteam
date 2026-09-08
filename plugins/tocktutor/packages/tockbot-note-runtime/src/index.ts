@@ -2287,13 +2287,18 @@ async function readStateBytes(
   maxBytes: number,
   signal: AbortSignal = POST_COMMIT_SIGNAL,
 ): Promise<Buffer> {
+  signal.throwIfAborted()
   const entry = await lstat(filePath, { bigint: true })
+  signal.throwIfAborted()
   if (!entry.isFile() || entry.isSymbolicLink() || entry.size > BigInt(maxBytes)) {
     throw new NoteVaultError('not-found', 'Snapshot record not found')
   }
+  signal.throwIfAborted()
   const handle = await open(filePath, fsConstants.O_RDONLY | NOFOLLOW)
   try {
+    signal.throwIfAborted()
     const opened = await handle.stat({ bigint: true })
+    signal.throwIfAborted()
     if (!opened.isFile() || !sameStableFile(entry, opened)) {
       throw new NoteVaultError('not-found', 'Snapshot record not found')
     }
