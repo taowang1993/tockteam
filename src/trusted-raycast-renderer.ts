@@ -317,7 +317,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const actions = descendants(form, 'raycast-action')
     submitAction = actions.find(action => action.props.title === 'Add Language Set') ?? actions.find(action => Boolean(action.props.actionEventId))
     for (const action of actions) {
-      const button = document.createElement('button'); button.type = 'button'; button.className = preferenceSetup ? 'launcher-command-footer-action' : buttonClass
+      const button = document.createElement('button'); button.type = 'button'; button.className = preferenceSetup ? 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)]' : buttonClass
       button.textContent = String(action.props.title ?? '')
       button.disabled = !action.props.actionEventId
       if (preferenceSetup && action.props.title === 'Continue') { const shortcut = document.createElement('kbd'); shortcut.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; shortcut.textContent = '⌘ ↵'; button.append(shortcut) }

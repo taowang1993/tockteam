@@ -66,9 +66,8 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(preferenceControls, /font-size: 0\.875rem/u)
   assert.match(preferenceControls, /padding-inline: 0\.5rem/u)
   const preferenceIdentity = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-identity \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
-  assert.match(preferenceIdentity, /background: transparent/u, 'setup identity stays unboxed like Raycast')
-  const preferenceActions = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
-  assert.match(preferenceActions, /background: transparent/u, 'setup actions stay unboxed like Raycast')
+  assert.match(preferenceIdentity, /padding-inline: 0\.1875rem/u, 'setup identity aligns the Raycast footer pill')
+  assert.doesNotMatch(preferenceIdentity, /background:/u, 'setup identity inherits the shared footer pill material')
 
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
