@@ -1395,6 +1395,13 @@ try {
   const pinnedItemId = await launcherConnection.evaluate('document.querySelector(\'[data-result-id][aria-selected="true"]\')?.getAttribute("data-result-id")')
   assert.equal(typeof pinnedItemId, 'string')
   assert.equal(await launcherConnection.clickSelector('#launcher-details button[aria-haspopup="menu"]'), true)
+  const favoriteActionFacts = await launcherConnection.evaluate(`({
+    lang: document.documentElement.lang,
+    selected: document.querySelector('[data-result-id][aria-selected="true"]')?.textContent ?? null,
+    menu: document.querySelector('#launcher-actions-menu') !== null,
+    labels: [...document.querySelectorAll('#launcher-actions-menu [role="menuitem"]')].map(item => item.getAttribute('aria-label')),
+  })`)
+  assert.ok(favoriteActionFacts.labels.some(label => label?.startsWith('Add to Favorites')), `favorite action unavailable: ${JSON.stringify(favoriteActionFacts)}`)
   assert.equal(await launcherConnection.clickSelector('#launcher-actions-menu [role="menuitem"][aria-label^="Add to Favorites"]'), true)
   await waitFor(
     () => launcherConnection.evaluate('document.querySelector(\'#launcher-actions-menu\') === null && document.activeElement?.id === "launcher-search"'),

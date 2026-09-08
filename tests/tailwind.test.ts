@@ -51,12 +51,14 @@ test('splash Tailwind build scans only the standalone loading document', async (
 test('owned browser components use Tailwind utilities in markup', () => {
   const tailwind = readFileSync(join(root, 'plugins', 'skins', 'src', 'client', 'tailwind.css'), 'utf8')
   assert.match(tailwind, /@source .*src\/launcher-workflow-settings\.tsx/u)
+  assert.match(tailwind.match(/@utility launcher-command-menu-item \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? '', /font-size: 0\.875rem/u, 'shared action menus keep the compact 14px type size')
+  assert.ok(tailwind.indexOf('@utility launcher-command-error') > tailwind.indexOf('@utility launcher-command-empty'), 'error color must override the shared empty-state color')
 
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
     [
       'launcher-command-surface', 'launcher-command-header', 'launcher-command-search', 'launcher-command-content', 'launcher-command-list',
-      'launcher-command-field', 'launcher-command-control', 'launcher-command-status', 'launcher-command-error', 'launcher-command-empty', 'launcher-command-group-title',
+      'launcher-command-field', 'launcher-command-control', 'launcher-command-status', 'launcher-command-empty', 'launcher-command-error', 'launcher-command-group-title',
       'launcher-command-row', 'launcher-command-row-icon', 'launcher-command-footer', 'launcher-command-footer-identity', 'launcher-command-footer-action',
       'launcher-command-menu', 'launcher-command-menu-item',
       'launcher-local-tool', 'launcher-local-tool-header', 'launcher-local-tool-identity', 'launcher-local-tool-content',

@@ -145,17 +145,22 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   input.addEventListener('compositionstart', () => { composing = true })
   input.addEventListener('compositionend', () => { composing = false })
   const buttonClass = 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)] disabled:opacity-50'
-  const shortcutText = (value: unknown): string => {
-    if (typeof value !== 'string') return ''
+  const shortcutInfo = (value: unknown): { display: string; aria: string } | undefined => {
+    if (typeof value !== 'string') return undefined
     try {
       const parsed = JSON.parse(value) as { macOS?: { key?: unknown; modifiers?: unknown }; key?: unknown; modifiers?: unknown }
       const shortcut = parsed.macOS ?? parsed
-      if (typeof shortcut.key !== 'string') return ''
+      if (typeof shortcut.key !== 'string') return undefined
       const glyphs: Record<string, string> = { cmd: '⌘', ctrl: '⌃', opt: '⌥', shift: '⇧' }
-      const modifiers = Array.isArray(shortcut.modifiers) ? shortcut.modifiers.filter((item): item is string => typeof item === 'string').map(item => glyphs[item] ?? item) : []
+      const ariaModifiers: Record<string, string> = { cmd: 'Meta', ctrl: 'Control', opt: 'Alt', shift: 'Shift' }
+      const modifiers = Array.isArray(shortcut.modifiers) ? shortcut.modifiers.filter((item): item is string => typeof item === 'string') : []
       const key = shortcut.key === 'enter' ? '↵' : shortcut.key.toLocaleUpperCase('en-US')
-      return [...modifiers, key].join(' ')
-    } catch { return '' }
+      const ariaKey = shortcut.key === 'enter' ? 'Enter' : shortcut.key.toLocaleUpperCase('en-US')
+      return {
+        display: [...modifiers.map(item => glyphs[item] ?? item), key].join(' '),
+        aria: [...modifiers.map(item => ariaModifiers[item] ?? item), ariaKey].join('+'),
+      }
+    } catch { return undefined }
   }
   const syncSourceSearch = (root: TrustedRaycastViewNode): void => {
     const list = descendants(root, 'raycast-list')[0]
@@ -224,8 +229,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         const button = document.createElement('button'); button.type = 'button'; button.className = 'launcher-command-menu-item grid-cols-[minmax(0,1fr)_auto] text-sm'
         const actionTitle = String(action.props.title ?? '')
         button.textContent = actionTitle + (action.props.unavailable ? (zh ? '（不可用）' : ' (Unavailable)') : '')
-        const shortcut = shortcutText(action.props.shortcut)
-        if (shortcut) { const key = document.createElement('kbd'); key.className = 'ml-3 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = shortcut; key.setAttribute('aria-hidden', 'true'); button.append(key) }
+        const shortcut = shortcutInfo(action.props.shortcut)
+        if (shortcut) { const key = document.createElement('kbd'); key.className = 'ml-3 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = shortcut.display; key.setAttribute('aria-hidden', 'true'); button.setAttribute('aria-keyshortcuts', shortcut.aria); button.append(key) }
         button.disabled = !action.props.actionEventId || action.props.unavailable === true
         button.addEventListener('click', () => { menu.open = false; owner.item.focus(); invoke(action) }); buttons.push(button); panel.append(button)
       }

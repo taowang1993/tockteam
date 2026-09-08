@@ -107,7 +107,9 @@ test('footer actions follow selection, open by pointer, and clamp after results 
   trigger.dispatchEvent(new Event('click', { bubbles: true }))
   assert.equal(menus[1]!.open, true)
   assert.ok(nodes.some(node => node.textContent === '⌘ ⇧ C'), 'action panels show Raycast-like trailing shortcuts')
-  assert.equal(nodes.find(node => node.textContent === 'Copy' && node.className.includes('launcher-command-menu-item'))?.getAttribute('aria-label'), null, 'action text remains the accessible name')
+  const copyAction = nodes.find(node => node.textContent === 'Copy' && node.className.includes('launcher-command-menu-item'))
+  assert.equal(copyAction?.getAttribute('aria-label'), null, 'action text remains the accessible name')
+  assert.equal(copyAction?.getAttribute('aria-keyshortcuts'), 'Meta+Shift+C', 'decorative glyphs retain a semantic keyboard shortcut')
   assert.equal(nodes.find(node => node.textContent === '⌘ ⇧ C')?.getAttribute('aria-hidden'), 'true', 'shortcut glyphs stay decorative')
   view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [item('Hello', 'Copy Translation', 'copy-translation')] } })
   primary = nodes.findLast(node => node.getAttribute('aria-label') === 'Copy Translation' && node.className.includes('launcher-command-footer-action'))!

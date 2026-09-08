@@ -180,13 +180,6 @@
   line-height: 1.125rem;
 }
 
-@utility launcher-command-error {
-  margin: 0;
-  color: var(--dsw-alias-state-error-primary, CanvasText);
-  font-size: 0.75rem;
-  line-height: 1.125rem;
-}
-
 @utility launcher-command-empty {
   display: flex;
   min-height: 11rem;
@@ -197,6 +190,13 @@
   gap: 0.5rem;
   color: var(--dsw-alias-label-secondary, CanvasText);
   text-align: center;
+}
+
+@utility launcher-command-error {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary, CanvasText);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
 }
 
 @utility launcher-command-group-title {
@@ -337,6 +337,8 @@
   background: transparent;
   padding: 0.375rem 0.625rem;
   color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   text-align: left;
 
   &:hover,

@@ -162,16 +162,18 @@ export function createLauncherFileSearchTool(options: Readonly<{
   })
   tool.addEventListener('pointerdown', event => {
     if (openMenu === undefined || !(event.target instanceof Element)) return
-    if (event.target.closest('[role="menu"], [aria-haspopup="menu"]') === null) closeMenuWithoutFocus()
+    if (event.target.closest('[role="menu"], [aria-haspopup="menu"]') !== null) return
+    const toggle = openMenu.toggle
+    const restoreFocus = (document.activeElement === toggle || openMenu.menu.contains(document.activeElement))
+      && event.target.closest('button, input, textarea, select, a[href], [tabindex]:not([tabindex="-1"])') === null
+    closeMenuWithoutFocus()
+    if (restoreFocus) setTimeout(() => { if (toggle.isConnected) toggle.focus() }, 0)
   })
   const closeMenuWithoutFocus = (): void => {
     if (openMenu === undefined) return
-    const active = openMenu
-    const hiddenFocus = active.menu.contains(document.activeElement)
-    active.menu.hidden = true
-    active.toggle.setAttribute('aria-expanded', 'false')
+    openMenu.menu.hidden = true
+    openMenu.toggle.setAttribute('aria-expanded', 'false')
     openMenu = undefined
-    if (hiddenFocus && active.toggle.isConnected) active.toggle.focus()
   }
   const closeMenuAndRestoreFocus = (): void => {
     const toggle = openMenu?.toggle
