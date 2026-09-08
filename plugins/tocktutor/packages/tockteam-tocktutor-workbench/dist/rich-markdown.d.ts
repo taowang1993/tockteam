@@ -3,7 +3,9 @@ export declare const MAX_RICH_MARKDOWN_BLOCKS = 20000;
 export declare const MAX_RICH_MARKDOWN_FOOTNOTES = 1000;
 export interface StaticMarkdownEmbed {
     content: string;
+    depth?: number;
     mimeType?: string;
+    parentPath?: string;
     target: {
         display: string | null;
         fragment: string | null;
@@ -19,6 +21,8 @@ export interface RenderMarkdownOptions {
     resolvedEmbedSources?: readonly string[];
     /** Render local embed markers from Host-approved content. */
     resolvedEmbeds?: readonly StaticMarkdownEmbed[];
+    /** Internal parent path used while recursively rendering nested resolved embeds. */
+    resolvedEmbedParentPath?: string;
     strictLineBreaks?: boolean;
 }
 export interface BuildMarkdownExportDocumentOptions extends RenderMarkdownOptions {

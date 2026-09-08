@@ -102,11 +102,11 @@ function resolvedEmbedMime(mimeType) {
         return null;
     return mime;
 }
-function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbedSources) {
+function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbeds) {
     const path = escapeMarkdownHtml(embed.target.path);
     const label = escapeMarkdownHtml(embed.target.display ?? embed.target.path);
     if (embed.target.kind === 'note') {
-        return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbedSources })}</span>`;
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbeds, resolvedEmbedParentPath: embed.target.path })}</span>`;
     }
     if (embed.target.kind === 'canvas' || embed.target.kind === 'base') {
         return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="${embed.target.kind}" data-embed-path="${path}"><pre>${escapeMarkdownHtml(embed.content)}</pre></span>`;
@@ -280,7 +280,9 @@ function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
             ? escapeMarkdownHtml(match)
             : `<a href="${escapeMarkdownHtml(url)}" rel="noopener noreferrer">${label}</a>`;
     });
-    text = text.replace(/\[\[([^\]|\n]{1,2000})(?:\|([^\]\n]{1,2000}))?\]\]/gu, (_match, target, alias) => {
+    text = text.replace(/\[\[([^\]|\n]{1,2000})(?:\|([^\]\n]{1,2000}))?\]\]/gu, (match, target, alias, offset) => {
+        if (escapedAt(text, offset) || offset > 0 && text[offset - 1] === '!' && escapedAt(text, offset - 1))
+            return match;
         const candidate = target.trim();
         const path = isSafeVaultRelativePath(candidate) ? candidate : null;
         return path === null
@@ -467,10 +469,12 @@ export function renderMarkdownHtml(markdown, options = {}) {
         return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
     const normalized = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n');
     const resolvedEmbeds = options.resolvedEmbeds ?? [];
-    const resolvedEmbedSources = resolvedEmbeds.map(embed => embed.target.source);
+    const rootResolvedEmbeds = options.resolvedEmbedParentPath === undefined
+        ? resolvedEmbeds.filter(embed => embed.parentPath === undefined)
+        : resolvedEmbeds.filter(embed => embed.parentPath === options.resolvedEmbedParentPath);
     const resolvedEmbedReplacements = new Map([
         ...(options.resolvedEmbedSources ?? []).map(source => [source, '']),
-        ...resolvedEmbeds.map(embed => [embed.target.source, renderResolvedEmbed(embed, options.externalEmbedMode ?? 'inert', resolvedEmbedSources)]),
+        ...rootResolvedEmbeds.map(embed => [embed.target.source, renderResolvedEmbed(embed, options.externalEmbedMode ?? 'inert', resolvedEmbeds)]),
     ]);
     const replacedEmbeds = replaceResolvedEmbedSources(normalized, resolvedEmbedReplacements);
     const source = stripActiveHtml(replacedEmbeds.markdown);
