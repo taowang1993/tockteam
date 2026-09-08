@@ -137,6 +137,8 @@ class FakeRemote implements WorkbenchRouteRemote {
     ok: true
     value: WriteDocumentResult
   }>) | null = null
+  treeFailure: Error | null = null
+  treeGate: { promise: Promise<void> } | null = null
   openOverride: ((path: string) => Promise<{ ok: true; value: OpenDocumentResult }>) | null = null
   renameFailure: { code: 'conflict'; message: string } | null = null
   renameRewriteError: string | undefined
@@ -145,6 +147,12 @@ class FakeRemote implements WorkbenchRouteRemote {
   saveOverride: (() => Promise<{ ok: true; value: WriteDocumentResult }>) | null = null
   linksGate: Promise<void> | null = null
   linksOverride: ((request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => Promise<{ ok: true; value: VaultLinksResult }>) | null = null
+
+  private readonly createdPaths: Set<string>
+
+  constructor(createdPaths: Set<string> = new Set()) {
+    this.createdPaths = createdPaths
+  }
 
   readonly tocktutorWorkbench = {
     createManagedVault: (request: { expectedGeneration: number; name: string }, signal?: AbortSignal) => {
@@ -156,6 +164,7 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.calls.push({ method: 'createDocument', parameters: [request, signal] })
       if (this.createFailure !== null) return failure(this.createFailure.code, this.createFailure.message)
       if (this.createOverride !== null) return this.createOverride(request)
+      this.createdPaths.add(request.path)
       return success({
         digest: `sha256:${'e'.repeat(64)}`,
         generation: request.expectedVault.generation,
@@ -198,9 +207,34 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.calls.push({ method: 'listTrash', parameters: [request, signal] })
       return success({ entries: this.trashEntries, generation: request.expectedVault.generation })
     },
-    listTree: (request: { expectedVault: VaultReference; cursor?: string | null; limit?: number }, signal?: AbortSignal) => {
+    listTree: async (request: { expectedVault: VaultReference; cursor?: string | null; limit?: number }, signal?: AbortSignal) => {
       this.calls.push({ method: 'listTree', parameters: [request, signal] })
-      return success(tree(request.expectedVault, this.renamedPath ?? undefined))
+      if (this.treeFailure !== null) {
+        const error = this.treeFailure
+        this.treeFailure = null
+        throw error
+      }
+      if (this.treeGate !== null) {
+        const gate = this.treeGate
+        this.treeGate = null
+        await gate.promise
+      }
+      const page = tree(request.expectedVault, this.renamedPath ?? undefined)
+      const extra = [...this.createdPaths]
+        .filter(path => !page.entries.some(entry => entry.path === path))
+        .map(path => ({
+          createdAt: 1,
+          kind: 'document' as const,
+          modifiedAt: 2,
+          path,
+          revision: secondRevision,
+          size: 0,
+        }))
+      return success({
+        ...page,
+        entries: [...page.entries, ...extra],
+        scan: { ...page.scan, entries: page.scan.entries + extra.length },
+      })
     },
     openSandboxVault: (request: { expectedGeneration: number }, signal?: AbortSignal) => {
       this.calls.push({ method: 'openSandboxVault', parameters: [request, signal] })
@@ -917,6 +951,7 @@ test('owns bounded quick New, Capture, and Search route interactions', async () 
   assert.equal(controller.getSnapshot().saveStatus, 'saved')
   assert.equal(controller.getSnapshot().panes.find(pane => pane.id === controller.getSnapshot().focusedPaneId)?.activePath, 'Notes/Quick.md')
   assert.equal(controller.getSnapshot().source, '')
+  assert.equal(controller.getSnapshot().entries.some(entry => entry.path === 'Notes/Quick.md'), true)
   assert.equal(remote.calls.filter(call => call.method === 'listTree').length, 2)
 
   remote.createFailure = { code: 'exists', message: 'Notes/Quick.md already exists.' }
@@ -962,6 +997,88 @@ test('owns bounded quick New, Capture, and Search route interactions', async () 
   assert.equal(controller.getSnapshot().searchQuery, 'second')
 
   controller.dispose()
+})
+
+test('does not record a new note when the post-create tree refresh fails', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  remote.treeFailure = new Error('tree unavailable')
+
+  const pendingNew = controller.handleDispatch({
+    action: 'new',
+    kind: 'quick-action',
+    operationId: 'tree-refresh-failure',
+  })
+  await controller.submitDispatchDialog({ path: 'Notes/Quick.md' })
+
+  assert.equal(await pendingNew, 'failed')
+  assert.equal(controller.getSnapshot().path, null)
+  assert.deepEqual(controller.getSnapshot().panes.flatMap(pane => pane.tabs), [])
+  assert.equal(controller.getSnapshot().entries.some(entry => entry.path === 'Notes/Quick.md'), false)
+  assert.equal(controller.getSnapshot().message, 'tree unavailable')
+  controller.dispose()
+})
+
+test('does not record a new note after the post-create tree refresh goes stale', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  const gate = deferred<void>()
+  remote.treeGate = gate
+
+  const pendingNew = controller.handleDispatch({
+    action: 'new',
+    kind: 'quick-action',
+    operationId: 'tree-refresh-stale',
+  })
+  const submitting = controller.submitDispatchDialog({ path: 'Notes/Quick.md' })
+  for (let attempt = 0; attempt < 20 && remote.calls.filter(call => call.method === 'listTree').length < 2; attempt += 1) {
+    await new Promise(resolve => setTimeout(resolve, 0))
+  }
+  assert.equal(remote.calls.filter(call => call.method === 'listTree').length, 2)
+
+  remote.vault = secondVault
+  remote.emit({ action: 'activated', kind: 'vault', vault: secondVault })
+  gate.resolve()
+
+  assert.equal(await pendingNew, 'stale')
+  await submitting
+  assert.equal(controller.getSnapshot().path, null)
+  assert.deepEqual(controller.getSnapshot().panes.flatMap(pane => pane.tabs), [])
+  controller.dispose()
+})
+
+test('newly created notes remain visible and restore through a named workspace', async () => {
+  const storage = new MemoryStorage()
+  const createdPaths = new Set<string>()
+  const firstRemote = new FakeRemote(createdPaths)
+  const first = new WorkbenchRouteController(firstRemote, () => {}, () => new Date(20), storage)
+  await first.syncLocation('/tocktutor')
+  const pendingNew = first.handleDispatch({
+    action: 'new',
+    kind: 'quick-action',
+    operationId: 'persist-created-note',
+  })
+  await first.submitDispatchDialog({ path: 'Notes/Quick.md' })
+  assert.equal(await pendingNew, 'handled')
+  assert.equal(first.getSnapshot().entries.some(entry => entry.path === 'Notes/Quick.md'), true)
+  assert.equal(await first.addPane(), true)
+  assert.equal(await first.focusPane('pane-1'), true)
+  assert.equal(first.saveCurrentWorkspace('Quick Layout'), true)
+  first.dispose()
+
+  const secondRemote = new FakeRemote(createdPaths)
+  const second = new WorkbenchRouteController(secondRemote, () => {}, () => new Date(21), storage)
+  await second.syncLocation('/tocktutor')
+  assert.equal(second.getSnapshot().entries.some(entry => entry.path === 'Notes/Quick.md'), true)
+  assert.equal(second.getSnapshot().path, 'Notes/Quick.md')
+  assert.equal(second.getSnapshot().panes.length, 2)
+  assert.equal(await second.select('Second.md'), true)
+  assert.equal(await second.loadWorkspace('quick-layout'), true)
+  assert.equal(second.getSnapshot().path, 'Notes/Quick.md')
+  assert.equal(second.getSnapshot().panes.length, 2)
+  second.dispose()
 })
 
 test('returns stale or failed honestly across vault changes, reload, and unload', async () => {

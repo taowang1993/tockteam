@@ -827,7 +827,7 @@ export class WorkbenchRouteController {
       // Keep the bounded tree snapshot in sync before recording the new tab. Workspace
       // restore filters persisted tabs against this snapshot, so a just-created note
       // must be visible before another pane or workspace can capture it.
-      await this.refreshTree(vault)
+      if (!await this.refreshTree(vault)) return this.dispatchCurrent(revision, vault) ? 'failed' : 'stale'
       if (!this.dispatchCurrent(revision, vault)) return 'stale'
       if (silent) return 'handled'
       this.update({
@@ -1553,22 +1553,24 @@ export class WorkbenchRouteController {
     }
   }
 
-  private async refreshTree(vault: VaultReference): Promise<void> {
+  private async refreshTree(vault: VaultReference): Promise<boolean> {
     const operation = this.nextOperation()
     try {
       const page = remoteValue(await this.remote.tocktutorWorkbench.listTree({
         expectedVault: vault,
         limit: TREE_LIMIT,
       }, operation.signal))
-      if (!this.current(operation.id, vault) || page.generation !== vault.generation) return
+      if (!this.current(operation.id, vault) || page.generation !== vault.generation) return false
       this.update({
         entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
         warnings: Object.freeze(page.warnings),
       })
+      return true
     } catch (error) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
         this.update({ message: this.failureMessage(error, 'The vault tree could not be refreshed.') })
       }
+      return false
     }
   }
 
