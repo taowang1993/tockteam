@@ -491,6 +491,10 @@
   );
 }
 
+#launcher-root [data-view='preference-setup'] > .launcher-command-header .launcher-command-footer-action {
+  background: transparent;
+}
+
 #launcher-root [data-view='preference-setup'] .launcher-command-footer-identity {
   padding-inline: 0.625rem;
 }
