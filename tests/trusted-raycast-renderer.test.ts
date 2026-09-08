@@ -281,7 +281,7 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.ok(nodes.some(node => node.textContent === 'Before you can start using this extension, you have to set the following preferences:' && node.className.includes('text-[0.84375rem]')))
   const continueButton = nodes.find(node => node.textContent === 'Continue')
   assert.ok(continueButton)
-  assert.ok(continueButton.className.includes('bg-[var(--dsw-alias-bg-layer-2,Canvas)]'), 'setup actions retain Raycast’s footer pill')
+  assert.ok(!continueButton.className.includes('bg-['), 'setup action delegates its material to the shared footer recipe')
   assert.ok(continueButton.className.includes('!px-2') && continueButton.className.includes('!gap-0.5'), 'setup action uses compact padding and content spacing')
   assert.ok(nodes.some(node => node.className.includes('launcher-command-header')))
   assert.ok(nodes.some(node => node.className.includes('launcher-command-content')))

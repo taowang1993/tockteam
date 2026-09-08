@@ -485,6 +485,7 @@
 
 #launcher-root [data-view='preference-setup'] .launcher-command-footer-identity,
 #launcher-root [data-view='preference-setup'] .launcher-command-footer-action {
+  border-color: color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
   background: light-dark(
     var(--dsw-alias-bg-layer-2, Canvas),
     color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 9%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))

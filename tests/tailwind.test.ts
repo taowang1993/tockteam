@@ -71,6 +71,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(preferenceFocus, /outline: none/u, 'preference controls replace the prominent ring with a tokenized border')
   assert.match(preferenceFocus, /--dsw-alias-border-l3/u, 'keyboard focus remains visibly indicated')
   const preferenceFooterMaterial = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-identity,\n#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(preferenceFooterMaterial, /border-color: color-mix\(/u, 'setup identity and actions share one outlined footer treatment')
   assert.match(preferenceFooterMaterial, /background: light-dark\(/u, 'setup identity and actions match Raycast’s footer material')
   const preferenceBack = tailwind.match(/#launcher-root \[data-view='preference-setup'\] > \.launcher-command-header \.launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceBack, /background: transparent/u, 'the preference back button rests directly on the shared surface')
