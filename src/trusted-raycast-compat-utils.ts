@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { queryEpoch, queryText } from './trusted-raycast-compat-api.ts'
 import { isKaomojiState, loadKaomojiState, saveKaomojiState, type KaomojiRecord } from './trusted-raycast-kaomoji-state.ts'
+import { createCachedStateStore } from './trusted-raycast-cached-state.ts'
 
 // Cached state persists across child restarts in the main-owned extension data file.
 // ponytail: whole-file synchronous rewrite; per-key transactional store if state grows large.
@@ -20,36 +21,26 @@ const kaomojiDataset: ReadonlyMap<string, KaomojiRecord> | undefined = extension
   if (dataset.size !== 1822) throw new Error('Reviewed Kaomoji dataset cardinality mismatch')
   return dataset
 })() : undefined
-const state = new Map<string, unknown>()
+const initialState: Record<string, unknown> = {}
 if (stateFile) {
   try {
     const parsed: unknown = kaomojiDataset === undefined ? JSON.parse(readFileSync(stateFile, 'utf8')) : loadKaomojiState(stateFile, kaomojiDataset)
-    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && (kaomojiDataset === undefined || isKaomojiState(parsed, kaomojiDataset))) {
-      for (const [key, value] of Object.entries(parsed)) state.set(key, value)
-    }
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && (kaomojiDataset === undefined || isKaomojiState(parsed, kaomojiDataset))) Object.assign(initialState, parsed)
   } catch { /* first run or unreadable state: start from initial values */ }
 }
-let kaomojiWrite = Promise.resolve()
-const persist = (): void => {
-  if (!stateFile) return
-  const snapshot = Object.fromEntries(state)
-  if (kaomojiDataset !== undefined) {
-    if (!isKaomojiState(snapshot, kaomojiDataset)) return
-    kaomojiWrite = kaomojiWrite.then(() => saveKaomojiState(stateFile, snapshot, kaomojiDataset)).catch(() => undefined)
-  } else {
-    try { writeFileSync(stateFile, JSON.stringify(snapshot), { mode: 0o600 }) } catch { /* storage failure must not crash the command */ }
-  }
-}
+const cachedState = createCachedStateStore({
+  initial: initialState,
+  ...(kaomojiDataset === undefined ? {} : { validate: (snapshot: Readonly<Record<string, unknown>>) => isKaomojiState(snapshot, kaomojiDataset) }),
+  ...(stateFile === undefined ? {} : { persist: async (snapshot: Readonly<Record<string, unknown>>) => {
+    if (kaomojiDataset !== undefined) await saveKaomojiState(stateFile, snapshot, kaomojiDataset)
+    else writeFileSync(stateFile, JSON.stringify(snapshot), { mode: 0o600 })
+  } }),
+})
 export function useCachedState<T>(key: string, initial: T): readonly [T, (next: T | ((old: T) => T)) => void] {
-  if (!state.has(key)) state.set(key, initial)
-  const [value, setValue] = React.useState<T>(() => state.get(key) as T)
-  const update = (next: T | ((old: T) => T)) => setValue(old => {
-    const value = typeof next === 'function' ? (next as (old: T) => T)(old) : next
-    const snapshot = Object.fromEntries(state); snapshot[key] = value
-    if (kaomojiDataset !== undefined && !isKaomojiState(snapshot, kaomojiDataset)) return old
-    state.set(key, value); persist(); return value
-  })
-  return [value, update] as const
+  const subscribe = React.useCallback((listener: () => void) => cachedState.subscribe(key, listener), [key])
+  const snapshot = React.useCallback(() => cachedState.get(key, initial), [key])
+  const value = React.useSyncExternalStore(subscribe, snapshot, snapshot)
+  return [value, React.useCallback(next => { cachedState.update(key, next) }, [key])] as const
 }
 export function usePromise<T>(promise: (...args: any[]) => Promise<T>, args: readonly unknown[] = [], options?: { onError?: (error: unknown) => void }): { data: T | undefined; isLoading: boolean } {
   const [state, setState] = React.useState<{ data?: T; loading: boolean; args?: string; epoch?: number }>({ loading: true })

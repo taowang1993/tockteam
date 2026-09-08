@@ -1,4 +1,6 @@
 import React from 'react'
+// @ts-expect-error Build-time first-party projection alias.
+import { projectTrustedRaycastRoot } from '@tockteam/trusted-raycast-projection'
 // @ts-expect-error Build-time first-party alias, shared with unchanged source.
 import { Action, ActionPanel, Form, configureCompatibility, advanceQuery, getPreferenceValues, savePreferenceValues, queryText, registerNavigationRenderer, popView, viewSearchable, navigationDepth } from '@raycast/api'
 // @ts-expect-error Build-time first-party contract alias.
@@ -44,7 +46,7 @@ const emit = () => {
   rootNode.props.preferenceSetup = showingPreferenceSetup
   rootNode.props.searchable = viewSearchable()
   rootNode.props.navigationDepth = navigationDepth()
-  const root = serialize(rootNode)
+  const root = serialize(projectTrustedRaycastRoot(rootNode, extensionId))
   process.stdout.write(`${JSON.stringify({ type: ready ? 'patch' : 'ready', extensionId, sessionId, generation, revision: ++revision, root, ...(ready ? { status: 'ready' } : {}) })}\n`)
   ready = true
 }

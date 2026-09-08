@@ -127,6 +127,51 @@ export type TrustedRaycastViewNode = Readonly<{
   props: Readonly<Record<string, string | number | boolean | null>>
   children: readonly (TrustedRaycastViewNode | string)[]
 }>
+export type TrustedRaycastProjectionInspection = Readonly<{
+  actionableHandles: number
+  actionNodes: number
+  aggregateTextBytes: number
+  decodedSvgBytes: number
+  depth: number
+  itemNodes: number
+  maxChildren: number
+  nodeCount: number
+  rootBytes: number
+  sectionNodes: number
+  uniqueActionHandles: number
+}>
+
+/** Payload-free counters for diagnostics and finite-bound evidence. */
+export function inspectTrustedRaycastProjection(root: unknown): TrustedRaycastProjectionInspection {
+  let actionableHandles = 0; let actionNodes = 0; let aggregateTextBytes = 0; let decodedSvgBytes = 0; let depth = 0; let itemNodes = 0; let maxChildren = 0; let nodeCount = 0; let sectionNodes = 0
+  const handles = new Set<string>()
+  const stack: Array<{ depth: number; value: unknown }> = [{ depth: 0, value: root }]
+  while (stack.length > 0 && nodeCount <= MAX_NODES) {
+    const current = stack.pop()!; depth = Math.max(depth, current.depth)
+    if (typeof current.value === 'string') { aggregateTextBytes += byteLength(current.value); continue }
+    if (!isRecord(current.value)) continue
+    nodeCount++
+    const type = current.value.type
+    if (type === 'raycast-action') actionNodes++
+    if (type === 'raycast-section') sectionNodes++
+    if (type === 'raycast-list-item' || type === 'raycast-grid-item') itemNodes++
+    const props = isRecord(current.value.props) ? current.value.props : {}
+    for (const [key, entry] of Object.entries(props)) {
+      if (typeof entry !== 'string') continue
+      aggregateTextBytes += byteLength(entry)
+      if (key === 'actionEventId') { actionableHandles++; handles.add(entry) }
+      if ((key === 'contentDark' || key === 'contentLight') && entry.startsWith('data:image/svg+xml;base64,') && entry.length <= 6144) {
+        try { decodedSvgBytes += atob(entry.slice(entry.indexOf(',') + 1)).length } catch { /* the validator reports malformed data */ }
+      }
+    }
+    const children = Array.isArray(current.value.children) ? current.value.children : []
+    maxChildren = Math.max(maxChildren, children.length)
+    if (current.depth <= MAX_DEPTH) for (const child of children) stack.push({ depth: current.depth + 1, value: child })
+  }
+  let rootBytes = MAX_MESSAGE + 1
+  try { rootBytes = byteLength(JSON.stringify(root)) } catch { /* non-JSON input remains over-bound */ }
+  return Object.freeze({ actionableHandles, actionNodes, aggregateTextBytes, decodedSvgBytes, depth, itemNodes, maxChildren, nodeCount, rootBytes, sectionNodes, uniqueActionHandles: handles.size })
+}
 
 export type TrustedRaycastViewPatch = Readonly<{
   extensionId: TrustedRaycastExtensionId
@@ -208,7 +253,7 @@ const KAOMOJI_PROPS: Readonly<Record<string, readonly string[]>> = Object.freeze
   'raycast-form-dropdown': ['fieldEventId', 'title', 'value'],
   'raycast-form-dropdown-item': ['title', 'value'],
 })
-function isKaomojiSvg(value: unknown, fill: '#000' | '#fff'): boolean {
+export function isTrustedRaycastKaomojiSvg(value: unknown, fill: '#000' | '#fff'): boolean {
   if (typeof value !== 'string' || !value.startsWith('data:image/svg+xml;base64,') || value.length > 6144) return false
   const encoded = value.slice('data:image/svg+xml;base64,'.length)
   if (encoded.length === 0 || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return false
@@ -227,7 +272,7 @@ function isViewNode(value: unknown, extensionId: TrustedRaycastExtensionId, dept
   if (extensionId === 'kaomoji-search') {
     const allowed = KAOMOJI_PROPS[value.type]
     if (allowed === undefined || Object.keys(value.props).some(key => !allowed.includes(key))) return false
-    if (value.type === 'raycast-grid-item' && (!isKaomojiSvg(value.props.contentDark, '#fff') || !isKaomojiSvg(value.props.contentLight, '#000'))) return false
+    if (value.type === 'raycast-grid-item' && (!isTrustedRaycastKaomojiSvg(value.props.contentDark, '#fff') || !isTrustedRaycastKaomojiSvg(value.props.contentLight, '#000'))) return false
     if (value.type === 'raycast-action' && value.props.icon !== undefined && (typeof value.props.icon !== 'string' || !KAOMOJI_ICONS.has(value.props.icon))) return false
   }
   for (const entry of Object.values(value.props)) {
@@ -262,7 +307,17 @@ export function parseTrustedRaycastChildMessage(line: string, session: TrustedRa
   if (byteLength(line) > MAX_MESSAGE) throw new Error('Translate output exceeded its bound')
   const message: unknown = JSON.parse(line)
   if (!isTrustedRaycastViewMessage(message)) {
-    if (isRecord(message) && message.extensionId === 'kaomoji-search' && (message.type === 'ready' || message.type === 'patch') && Object.hasOwn(message, 'root')) throw new Error('Trusted extension projection exceeded finite view bounds')
+    if (isRecord(message) && message.extensionId === 'kaomoji-search' && (message.type === 'ready' || message.type === 'patch') && Object.hasOwn(message, 'root')) {
+      const metrics = inspectTrustedRaycastProjection(message.root)
+      const reason = metrics.rootBytes > MAX_MESSAGE ? ['root-bytes', metrics.rootBytes, MAX_MESSAGE]
+        : metrics.nodeCount > MAX_NODES ? ['nodes', metrics.nodeCount, MAX_NODES]
+          : metrics.depth > MAX_DEPTH ? ['depth', metrics.depth, MAX_DEPTH]
+            : metrics.maxChildren > 1024 ? ['children', metrics.maxChildren, 1024]
+              : metrics.actionableHandles > 256 ? ['action-handles', metrics.actionableHandles, 256]
+                : metrics.aggregateTextBytes > 256 * 1024 ? ['text-bytes', metrics.aggregateTextBytes, 256 * 1024]
+                  : ['shape', 1, 0]
+      throw new Error(`Trusted extension projection exceeded finite view bounds (${reason[0]} ${reason[1]}/${reason[2]})`)
+    }
     throw new Error('Invalid trusted extension runtime message')
   }
   if (message.extensionId !== session.extensionId || message.sessionId !== session.sessionId || message.generation !== session.generation || ((message.type === 'toast' || message.type === 'outcome') ? message.revision !== previousRevision : message.revision <= previousRevision) || (previousRevision === -1 ? message.type !== 'ready' : message.type === 'ready')) throw new Error('Invalid trusted extension runtime message')

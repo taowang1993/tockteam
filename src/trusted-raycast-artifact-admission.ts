@@ -14,6 +14,7 @@ export type TrustedRaycastBuildIdentity = Readonly<{
   command: TrustedRaycastCommand
   extensionId: TrustedRaycastExtensionId
   metadataSha256: string
+  projectionSha256?: string
   react: string
   reconciler: string
   resolutionSha256: string
@@ -51,6 +52,7 @@ const identityPayload = (identity: Omit<TrustedRaycastBuildIdentity, 'metadataSh
   childSha256: identity.childSha256,
   command: identity.command,
   extensionId: identity.extensionId,
+  ...(identity.projectionSha256 === undefined ? {} : { projectionSha256: identity.projectionSha256 }),
   react: identity.react,
   reconciler: identity.reconciler,
   resolutionSha256: identity.resolutionSha256,
@@ -65,9 +67,9 @@ export function assertTrustedRaycastBuildIdentity(metadata: unknown, descriptor:
   if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) throw new Error('Trusted extension build identity is missing')
   const record = metadata as Record<string, unknown>
   const keys = Object.keys(record).sort().join(',')
-  if (keys !== 'artifactSha256,childSha256,command,extensionId,metadataSha256,react,reconciler,resolutionSha256') throw new Error('Trusted extension build identity is incomplete')
+  if (keys !== 'artifactSha256,childSha256,command,extensionId,metadataSha256,react,reconciler,resolutionSha256' && keys !== 'artifactSha256,childSha256,command,extensionId,metadataSha256,projectionSha256,react,reconciler,resolutionSha256') throw new Error('Trusted extension build identity is incomplete')
   if (record.extensionId !== descriptor.extensionId || record.artifactSha256 !== descriptor.artifactSha256 || record.command !== descriptor.command || record.react !== descriptor.react || record.reconciler !== descriptor.reconciler) throw new Error('Trusted extension build identity mismatch')
-  for (const key of ['artifactSha256', 'childSha256', 'metadataSha256', 'resolutionSha256'] as const) if (typeof record[key] !== 'string' || !SHA256_PATTERN.test(record[key])) throw new Error('Trusted extension build identity digest is invalid')
+  for (const key of ['artifactSha256', 'childSha256', 'metadataSha256', 'resolutionSha256', ...(Object.hasOwn(record, 'projectionSha256') ? ['projectionSha256' as const] : [])] as const) if (typeof record[key] !== 'string' || !SHA256_PATTERN.test(record[key])) throw new Error('Trusted extension build identity digest is invalid')
   const identity = record as unknown as TrustedRaycastBuildIdentity
   const { metadataSha256: _metadataSha256, ...payload } = identity
   if (attestTrustedRaycastBuildIdentity(payload) !== identity.metadataSha256) throw new Error('Trusted extension build metadata attestation mismatch')

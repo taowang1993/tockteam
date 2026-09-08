@@ -116,13 +116,14 @@ test('cached state persists across child restarts and admits legacy stored shape
     process.env.TRUSTED_RAYCAST_STATE_FILE = stateFile
     const output = await build({ stdin: { contents: `export { useCachedState } from './src/trusted-raycast-compat-utils.ts'`, resolveDir: resolve('.') }, bundle: true, write: false, format: 'esm', platform: 'node', plugins: [{ name: 'isolated-hook-scheduler', setup(builder) {
       builder.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'test' }))
-      builder.onLoad({ filter: /.*/, namespace: 'test' }, () => ({ contents: `let state, dependency, cleanup; export default {useState(initial) {state ??= (typeof initial === 'function' ? initial() : initial); return [state,next=>{state=typeof next==='function'?next(state):next}]},useEffect(effect,deps){if(JSON.stringify(deps)!==dependency){cleanup?.();dependency=JSON.stringify(deps);cleanup=effect()}},createContext(value){return {Provider:()=>null,value}},useRef(value){return {current:value}},useContext(){return null},Children:{toArray:children=>children}}` }))
+      builder.onLoad({ filter: /.*/, namespace: 'test' }, () => ({ contents: `let state, dependency, cleanup; export default {useState(initial) {state ??= (typeof initial === 'function' ? initial() : initial); return [state,next=>{state=typeof next==='function'?next(state):next}]},useEffect(effect,deps){if(JSON.stringify(deps)!==dependency){cleanup?.();dependency=JSON.stringify(deps);cleanup=effect()}},useCallback(callback){return callback},useSyncExternalStore(_subscribe,getSnapshot){return getSnapshot()},createContext(value){return {Provider:()=>null,value}},useRef(value){return {current:value}},useContext(){return null},Children:{toArray:children=>children}}` }))
     } }] })
     const { useCachedState } = await import(`data:text/javascript;base64,${Buffer.from(output.outputFiles[0]!.text).toString('base64')}`)
     const [legacy] = useCachedState('selectedLanguageSet', { langFrom: 'auto', langTo: ['zh-CN'] })
     assert.deepEqual(legacy, { langFrom: 'en', langTo: 'zh-CN' }, 'stored legacy shape is loaded for source-side unification')
     const [, set] = useCachedState('languages', [])
     set([{ langFrom: 'auto', langTo: ['zh-CN', 'en'] }])
+    await new Promise(resolve => setImmediate(resolve))
     const persisted = JSON.parse(readFileSync(stateFile, 'utf8'))
     assert.deepEqual(persisted.languages, [{ langFrom: 'auto', langTo: ['zh-CN', 'en'] }])
     assert.equal((persisted.selectedLanguageSet as { langTo: string }).langTo, 'zh-CN', 'unrelated cached keys are preserved')

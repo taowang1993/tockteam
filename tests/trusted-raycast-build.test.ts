@@ -63,10 +63,14 @@ test('Kaomoji build is descriptor-bound and compiles without loading the candida
     assert.equal(metadata.extensionId, 'kaomoji-search')
     assert.equal(metadata.command, 'index')
     assert.equal(metadata.artifactSha256, '9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f')
+    assert.equal(metadata.projectionSha256, createHash('sha256').update(readFileSync(join(resolve('.'), 'src', 'trusted-raycast-projection.ts'))).digest('hex'))
     assert.deepEqual(readFileSync(join(output, 'artifact.tar')), readFileSync(artifact))
     assert.equal(existsSync(join(output, 'google-translate.png')), false)
     assert.equal(existsSync(join(output, 'kaomoji-search.png')), true)
-    assert.doesNotMatch(readFileSync(join(output, 'child.mjs'), 'utf8'), /tockteam-raycast-artifact\/source\/src\/translate/)
+    const child = readFileSync(join(output, 'child.mjs'), 'utf8')
+    assert.doesNotMatch(child, /tockteam-raycast-artifact\/source\/src\/translate/)
+    assert.match(child, /projectTrustedRaycastRoot/)
+    assert.doesNotMatch(child, /@tockteam\/trusted-raycast-projection|\.\/trusted-raycast-projection\.ts/)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
