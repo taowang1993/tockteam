@@ -82,6 +82,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(preferenceAboutMaterial, /var\(--tockteam-preference-control-light\)/u, 'the light About pill matches the controls')
   const preferenceBack = tailwind.match(/#launcher-root \[data-view='preference-setup'\] > \.launcher-command-header \.launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceBack, /background: transparent/u, 'the preference back button rests directly on the shared surface')
+  assert.match(preferenceBack, /border-color: transparent/u, 'the preference back button has no resting ring')
   const preferenceIdentity = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-identity \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceIdentity, /padding-inline: 0\.625rem/u, 'setup identity keeps the wider Raycast footer pill')
 
