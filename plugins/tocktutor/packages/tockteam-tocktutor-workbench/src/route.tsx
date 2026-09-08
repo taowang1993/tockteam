@@ -790,6 +790,7 @@ export class WorkbenchRouteController {
     }
     if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return 'failed'
     if (!this.dispatchCurrent(revision, vault)) return 'stale'
+    const failureFallback = `${path} could not be ${ifExists === undefined ? 'created' : 'updated'}.`
     try {
       let result: WriteDocumentResult
       let operation = 'created'
@@ -837,7 +838,10 @@ export class WorkbenchRouteController {
       this.navigate(routeForPath(path))
       if (recoveryWasOpen) void this.setRecoveryOpen(true)
       return 'handled'
-    } catch {
+    } catch (error) {
+      if (this.dispatchCurrent(revision, vault) && !this.operationAbort?.signal.aborted) {
+        this.update({ message: this.failureMessage(error, failureFallback) })
+      }
       return this.dispatchCurrent(revision, vault) ? 'failed' : 'stale'
     }
   }

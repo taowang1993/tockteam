@@ -482,6 +482,7 @@ export class WorkbenchRouteController {
             return 'failed';
         if (!this.dispatchCurrent(revision, vault))
             return 'stale';
+        const failureFallback = `${path} could not be ${ifExists === undefined ? 'created' : 'updated'}.`;
         try {
             let result;
             let operation = 'created';
@@ -542,7 +543,10 @@ export class WorkbenchRouteController {
                 void this.setRecoveryOpen(true);
             return 'handled';
         }
-        catch {
+        catch (error) {
+            if (this.dispatchCurrent(revision, vault) && !this.operationAbort?.signal.aborted) {
+                this.update({ message: this.failureMessage(error, failureFallback) });
+            }
             return this.dispatchCurrent(revision, vault) ? 'failed' : 'stale';
         }
     }
