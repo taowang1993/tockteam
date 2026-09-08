@@ -26,7 +26,8 @@
     ".agents/uiux/tocktutor/screenshots/tocktutor-file-recovery.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png",
     ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-    ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png"
+    ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png"
   ],
   "graphs": {
     "fixture": {
@@ -248,7 +249,7 @@
       "sameNormalizedFixture": true,
       "explicitEquality": "tracked.bytes === copied.bytes && tracked.sha256 === copied.sha256"
     },
-    "sourceRevision": "tutor@a3535e41",
+    "sourceRevision": "tutor@f3e01944",
     "viewport": {
       "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
       "pixels": { "width": 3024, "height": 1898 }
@@ -256,9 +257,20 @@
     "tockTutor": {
       "path": "Notes/Welcome.md",
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "screenshotSha256": "sha256:0956329acc908109e6db3ac95181e6b62b81d2acfc71ab7a653fe9b9d09788ca",
+      "screenshotBytes": 218363,
+      "screenshotSha256": "sha256:8b2078f28a889a021c842c457f52ef20cc2008362b6fcc512b94d54b4b6e87d8",
       "sameIsolatedFixture": true,
       "pristine": true,
+      "localEmbed": {
+        "authoredSource": "![[../Attachments/pixel.png|16x16]]",
+        "resolvedPath": "Attachments/pixel.png",
+        "kind": "media",
+        "display": "16x16",
+        "mimeType": "image/png",
+        "inline": true,
+        "dimensions": { "width": 16, "height": 16 },
+        "rawMarkerVisible": false
+      },
       "link": {
         "authoredTarget": "Alias Target#Details",
         "resolvedPath": "Notes/Alias Target.md",
@@ -283,9 +295,15 @@
       "version": "1.13.7",
       "path": "Notes/Welcome.md",
       "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png",
+      "screenshotBytes": 182314,
       "screenshotSha256": "sha256:c83fcb60931f84631732d2e42b0a2a8f83dc259bd7201b6a2e49a715b3d6e74a",
       "sameIsolatedFixture": true,
       "pristine": true,
+      "localEmbed": {
+        "authoredSource": "![[../Attachments/pixel.png|16x16]]",
+        "inline": true,
+        "sameIsolatedFixture": true
+      },
       "link": {
         "authoredTarget": "Alias Target#Details",
         "activeAfterClick": "Alias Target",
@@ -300,9 +318,74 @@
       "activeHtml": "sanitized outside fenced and inline code while preserving authored order",
       "blockIds": "hidden from visible text and attached to headings, paragraphs, and list items",
       "callouts": "tinted semantic panel",
+      "localEmbeds": "Host-resolved relative media and note embeds render inline without exposing raw markers",
       "mermaid": "bounded accessible SVG with edge arrowheads terminating at node boundaries"
     },
-    "deferredLimitations": ["Raw image embeds remain deferred to the Attachments and Embeds tranche."]
+    "deferredLimitations": []
+  },
+  "attachmentsEmbeds": {
+    "fixture": "plugins/tocktutor/parity/fixtures/vault",
+    "sameIsolatedFixture": true,
+    "attachmentManifest": {
+      "trackedPath": "plugins/tocktutor/parity/fixtures/vault/Attachments/pixel.png",
+      "copiedPath": "TockTutor Parity Fixture/Attachments/pixel.png",
+      "copiedFor": ["TockTutor isolated vault", "Obsidian 1.13.7 isolated vault"],
+      "bytes": 68,
+      "expectedSha256": "sha256:431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460",
+      "trackedSha256": "sha256:431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460",
+      "copiedSha256": "sha256:431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460",
+      "sameBytes": true,
+      "sameSha256": true,
+      "explicitEquality": "tracked.bytes === copied.bytes && tracked.sha256 === copied.sha256"
+    },
+    "tockTutor": {
+      "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png",
+      "screenshotBytes": 250563,
+      "screenshotSha256": "sha256:3cf4f7109f36698b56c2c7a5f55a0f3e51adc46dc733d99a6555e62013057d98",
+      "readingScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
+      "activePath": "Notes/Welcome.md",
+      "resolvedEmbedCount": 1,
+      "resolvedMedia": {
+        "source": "![[../Attachments/pixel.png|16x16]]",
+        "path": "Attachments/pixel.png",
+        "mimeType": "image/png",
+        "display": "16x16",
+        "dimensions": { "width": 16, "height": 16 },
+        "inlineReading": true
+      },
+      "utilityPanel": {
+        "visible": true,
+        "resolvedEmbedCount": 1,
+        "attachmentCount": 1,
+        "visibleTooltips": 0
+      }
+    },
+    "obsidian": {
+      "version": "1.13.7",
+      "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png",
+      "screenshotBytes": 182314,
+      "screenshotSha256": "sha256:c83fcb60931f84631732d2e42b0a2a8f83dc259bd7201b6a2e49a715b3d6e74a",
+      "sameIsolatedFixture": true,
+      "inlineEmbedVisible": true,
+      "directAttachmentPanelCapture": false
+    },
+    "securityBoundary": "External HTTP(S) media remains inert or routes through the isolated Web Viewer; local media is rendered only from Host-resolved content.",
+    "postCapture": {
+      "task": {
+        "path": "Notes/Welcome.md",
+        "initialRevision": "file:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
+        "savedRevision": "file:70d39ca4bf3cb7c427b4ffba7ae8b4d3c55c40d37a62d580cff460c8704a7185",
+        "unsavedStatus": "Unsaved changes.",
+        "savedStatus": "Notes/Welcome.md saved.",
+        "persisted": true
+      },
+      "internalLink": {
+        "target": "Alias Target#Details",
+        "activePath": "Notes/Alias Target.md",
+        "mode": "reading",
+        "fragmentY": 400.5
+      }
+    }
   },
   "checks": {
     "properties": {

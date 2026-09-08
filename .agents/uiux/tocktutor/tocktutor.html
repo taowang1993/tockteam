@@ -129,7 +129,7 @@
     <div class="header-inner">
       <p class="eyebrow">Visual Design Audit · 46 Captures</p>
       <h1>TockTutor and Obsidian</h1>
-      <p class="intro">A surface-by-surface comparison using one capture geometry. TockTutor appears on the left and the closest available Obsidian reference appears on the right. Each capture uses the fixture named in its proof: the <a href="shared-note.md">shared Markdown fixture</a> where noted, or the matching <a href="../../../plugins/tocktutor/parity/fixtures/vault/">parity fixture files</a> for Source, Reading View, and Recovery. Click any screenshot to inspect its full-resolution pixels.</p>
+      <p class="intro">A surface-by-surface comparison using one capture geometry. TockTutor appears on the left and the closest available Obsidian reference appears on the right. Each capture uses the fixture named in its proof: the <a href="shared-note.md">shared Markdown fixture</a> where noted, or the matching <a href="../../../plugins/tocktutor/parity/fixtures/vault/">parity fixture files</a> for Source, Reading View, Recovery, and Attachments and Embeds. Click any screenshot to inspect its full-resolution pixels.</p>
       <div class="capture-standard">1512 × 949 CSS pixels · 2× scale · 3024 × 1898 output</div>
       <div class="legend" aria-label="Comparison legend">
         <span class="tt">TockTutor</span>
@@ -152,7 +152,7 @@
     </section>
 
     <section class="surface" id="reading">
-      <p class="section-number">Surface 02</p><h2>Reading View</h2><p class="section-note">Parity-fixture rendering covers typography, measure, metadata, tasks, callout tinting, fenced code, safe HTML, hidden block IDs, and accessible Mermaid SVGs. Raw image embeds remain deferred to the Attachments and Embeds tranche.</p>
+      <p class="section-number">Surface 02</p><h2>Reading View</h2><p class="section-note">Parity-fixture rendering covers typography, measure, metadata, tasks, callout tinting, fenced code, safe HTML, hidden block IDs, accessible Mermaid SVGs, and Host-resolved local media and note embeds rendered inline.</p>
       <p class="fixture-proof"><strong>Fixture Proof:</strong> tracked <code>plugins/tocktutor/parity/fixtures/vault/Notes/Welcome.md</code> and copied <code>TockTutor Parity Fixture/Notes/Welcome.md</code> use the same normalized bytes for both isolated surfaces: 656 bytes and SHA-256 <code>sha256:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c</code>. Equality is explicit: tracked and copied byte counts and SHA-256 values match.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reading View</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-reading.png"><img src="screenshots/tocktutor-editor-reading.png" alt="TockTutor reading view"></a></figure>
@@ -261,9 +261,10 @@
     </section>
 
     <section class="surface" id="attachments">
-      <p class="section-number">Surface 14</p><h2>Attachments and Embeds</h2><p class="section-note">Resolved embeds, attachments, and preview controls.</p>
+      <p class="section-number">Surface 14</p><h2>Attachments and Embeds</h2><p class="section-note">Host-resolved local media renders inline in Reading View and remains inspectable in the Attachments and Embeds panel. External HTTP(S) media stays behind the isolated Web Viewer.</p>
+      <p class="fixture-proof"><strong>Embed Proof:</strong> tracked <code>plugins/tocktutor/parity/fixtures/vault/Attachments/pixel.png</code> and copied <code>TockTutor Parity Fixture/Attachments/pixel.png</code> use the same 68 bytes and SHA-256 <code>sha256:431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460</code>; equality is explicit because tracked and copied byte counts and hashes match. The isolated <code>Notes/Welcome.md</code> fixture resolves <code>![[../Attachments/pixel.png|16x16]]</code> to <code>Attachments/pixel.png</code> as <code>image/png</code>; the Reading capture places it at 16 × 16 CSS pixels, and the utility capture reports one resolved embed and one attachment with no visible tooltip.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Attachments and Embeds</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-attachments-embeds.png"><img src="screenshots/tocktutor-attachments-embeds.png" alt="TockTutor attachments and embeds"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Attachments and Embeds</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-attachments-embeds.png"><img src="screenshots/tocktutor-attachments-embeds.png" alt="TockTutor attachments and embeds with a resolved local image"></a></figure>
         <figure><figcaption><span class="caption-title">Obsidian · Attachments</span><span class="badge">Not Captured</span></figcaption><div class="missing-reference"><strong>No Direct Capture</strong><p>A matching Obsidian attachment-management state was not captured.</p></div></figure>
       </div>
     </section>
