@@ -325,7 +325,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       button.disabled = !action.props.actionEventId
       if (preferenceSetup && action.props.title === 'Continue') {
         const shortcuts = document.createElement('span'); shortcuts.className = 'ml-1 flex gap-0.5'; shortcuts.setAttribute('aria-hidden', 'true')
-        for (const glyph of ['⌘', '↵']) { const key = document.createElement('kbd'); key.className = 'inline-flex size-5 items-center justify-center rounded-[0.25rem] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-3,Canvas)] text-xs font-normal leading-none text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = glyph; shortcuts.append(key) }
+        for (const glyph of ['⌘', '↵']) { const key = document.createElement('kbd'); key.className = 'box-border inline-flex size-5 items-center justify-center rounded-[0.25rem] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-3,Canvas)] text-xs font-normal leading-none text-[var(--dsw-alias-label-secondary,CanvasText)]'; key.textContent = glyph; shortcuts.append(key) }
         button.append(shortcuts)
       }
       button.addEventListener('click', () => invoke(action)); (preferenceSetup ? footerActions : formArea).append(button)

@@ -308,7 +308,7 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.ok(shortcutGroup, 'setup keycaps use a compact gap')
   const keycaps = nodes.filter(node => node.className.includes('rounded-[0.25rem]'))
   assert.deepEqual(keycaps.map(node => node.textContent), ['⌘', '↵'])
-  assert.ok(keycaps.every(node => node.className.includes('size-5') && node.className.includes('justify-center')), 'setup keycaps are larger and center their glyphs')
+  assert.ok(keycaps.every(node => node.className.includes('box-border') && node.className.includes('size-5') && node.className.includes('justify-center')), 'setup keycaps are larger and center their glyphs')
   assert.ok(keycaps.every(node => node.className.includes('border-[var(--dsw-alias-border-l2,CanvasText)]')), 'setup keycaps remain distinct without changing the theme')
   const submit = Object.assign(new Event('keydown'), { key: 'Enter', isComposing: false, keyCode: 13, metaKey: true, ctrlKey: false, altKey: false, shiftKey: false })
   view.element.dispatchEvent(submit)
