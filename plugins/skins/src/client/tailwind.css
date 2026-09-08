@@ -483,8 +483,20 @@
   transform: translateY(-0.25rem);
 }
 
+#launcher-root [data-view='preference-setup'] .launcher-command-footer-identity,
+#launcher-root [data-view='preference-setup'] .launcher-command-footer-action {
+  background: light-dark(
+    var(--dsw-alias-bg-layer-2, Canvas),
+    color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 9%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
+  );
+}
+
 #launcher-root [data-view='preference-setup'] .launcher-command-footer-identity {
   padding-inline: 0.1875rem;
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-command-footer-action:hover {
+  background: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, CanvasText 6%, transparent));
 }
 
 #launcher-search::-webkit-search-cancel-button,
