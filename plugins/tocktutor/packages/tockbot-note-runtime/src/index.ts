@@ -2282,7 +2282,11 @@ async function stateDirectory(
   return cursor
 }
 
-async function readStateBytes(filePath: string, maxBytes: number): Promise<Buffer> {
+async function readStateBytes(
+  filePath: string,
+  maxBytes: number,
+  signal: AbortSignal = POST_COMMIT_SIGNAL,
+): Promise<Buffer> {
   const entry = await lstat(filePath, { bigint: true })
   if (!entry.isFile() || entry.isSymbolicLink() || entry.size > BigInt(maxBytes)) {
     throw new NoteVaultError('not-found', 'Snapshot record not found')
@@ -2293,7 +2297,7 @@ async function readStateBytes(filePath: string, maxBytes: number): Promise<Buffe
     if (!opened.isFile() || !sameStableFile(entry, opened)) {
       throw new NoteVaultError('not-found', 'Snapshot record not found')
     }
-    const data = await readBounded(handle, maxBytes, Number(opened.size), POST_COMMIT_SIGNAL)
+    const data = await readBounded(handle, maxBytes, Number(opened.size), signal)
     if (data === null) throw new NoteVaultError('not-found', 'Snapshot record not found')
     const final = await handle.stat({ bigint: true })
     const current = await lstat(filePath, { bigint: true })
@@ -2311,6 +2315,7 @@ async function listSnapshotRecords(
   vault: VaultReference,
   relativePath: string,
   maxBodyBytes: number,
+  signal: AbortSignal = POST_COMMIT_SIGNAL,
 ): Promise<Array<{ body: Buffer; bodyPath: string; info: SnapshotInfo; metaPath: string }>> {
   const directory = await stateDirectory(
     stateRoot,
@@ -2321,17 +2326,19 @@ async function listSnapshotRecords(
   const names: string[] = []
   const stream = await opendir(directory)
   for await (const entry of stream) {
+    signal.throwIfAborted()
     if (names.length >= SNAPSHOT_SCAN_LIMIT) break
     if (entry.isFile() && entry.name.endsWith('.json')) names.push(entry.name)
   }
   const records = []
   for (const name of names.sort(compareVaultPaths)) {
+    signal.throwIfAborted()
     const id = name.slice(0, -'.json'.length)
     if (!validSnapshotId(id)) continue
     const metaPath = path.join(directory, name)
     try {
       const parsed = JSON.parse(
-        (await readStateBytes(metaPath, SNAPSHOT_METADATA_MAX_BYTES)).toString('utf8'),
+        (await readStateBytes(metaPath, SNAPSHOT_METADATA_MAX_BYTES, signal)).toString('utf8'),
       ) as Partial<SnapshotInfo>
       if (
         parsed.id !== id
@@ -2349,7 +2356,7 @@ async function listSnapshotRecords(
         || !/^sha256:[0-9a-f]{64}$/u.test(parsed.digest)
       ) continue
       const bodyPath = path.join(directory, `${id}.body`)
-      const body = await readStateBytes(bodyPath, maxBodyBytes)
+      const body = await readStateBytes(bodyPath, maxBodyBytes, signal)
       if (
         body.byteLength !== parsed.size
         || `sha256:${createHash('sha256').update(body).digest('hex')}` !== parsed.digest
@@ -2367,7 +2374,8 @@ async function listSnapshotRecords(
         },
         metaPath,
       })
-    } catch {
+    } catch (error) {
+      if (signal.aborted) throw error
       // Persisted recovery metadata is untrusted; malformed records are ignored.
     }
   }
@@ -2380,9 +2388,10 @@ async function readSnapshotRecord(
   relativePath: string,
   id: string,
   maxBodyBytes: number,
+  signal: AbortSignal = POST_COMMIT_SIGNAL,
 ) {
   if (!validSnapshotId(id)) throw new NoteVaultError('not-found', 'Snapshot record not found')
-  const records = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes)
+  const records = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes, signal)
   const record = records.find(candidate => candidate.info.id === id)
   if (record === undefined) throw new NoteVaultError('not-found', 'Snapshot record not found')
   return { body: record.body, info: record.info }
@@ -2397,13 +2406,19 @@ async function captureSnapshotRecord(
   maxBodyBytes: number,
   limit: number,
   retentionDays: number,
+  signal: AbortSignal = POST_COMMIT_SIGNAL,
+  assertCurrent: () => void = () => undefined,
 ): Promise<SnapshotInfo> {
+  signal.throwIfAborted()
+  assertCurrent()
   const body = Buffer.from(content, 'utf8')
   if (body.byteLength > maxBodyBytes) {
     throw new NoteVaultError('recovery-unavailable', 'Snapshot content exceeds the configured byte limit')
   }
   const digest = `sha256:${createHash('sha256').update(body).digest('hex')}`
-  const existing = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes)
+  const existing = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes, signal)
+  signal.throwIfAborted()
+  assertCurrent()
   if (existing[0]?.info.digest === digest) return existing[0].info
   const directory = await stateDirectory(
     stateRoot,
@@ -2411,18 +2426,26 @@ async function captureSnapshotRecord(
     true,
   )
   if (directory === null) throw new NoteVaultError('recovery-unavailable', 'Snapshot storage is unavailable')
+  signal.throwIfAborted()
+  assertCurrent()
   const createdAt = Date.now()
   const id = snapshotId(createdAt)
   const info: SnapshotInfo = { createdAt, digest, id, path: relativePath, reason, size: body.byteLength }
   const bodyPath = path.join(directory, `${id}.body`)
   const metaPath = path.join(directory, `${id}.json`)
   try {
-    await writeDocumentAtomic(bodyPath, body, true, async () => undefined)
+    await writeDocumentAtomic(bodyPath, body, true, async () => {
+      signal.throwIfAborted()
+      assertCurrent()
+    })
     await writeDocumentAtomic(
       metaPath,
       Buffer.from(JSON.stringify(info), 'utf8'),
       true,
-      async () => undefined,
+      async () => {
+        signal.throwIfAborted()
+        assertCurrent()
+      },
     )
   } catch (error) {
     await rm(bodyPath, { force: true }).catch(() => undefined)
@@ -2430,14 +2453,22 @@ async function captureSnapshotRecord(
     throw error
   }
 
-  const records = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes)
+  signal.throwIfAborted()
+  assertCurrent()
+  const records = await listSnapshotRecords(stateRoot, vault, relativePath, maxBodyBytes, signal)
+  signal.throwIfAborted()
+  assertCurrent()
   const cutoff = createdAt - retentionDays * 24 * 60 * 60_000
   for (const record of records.filter((candidate, index) => (
     index >= limit || candidate.info.createdAt < cutoff
   ))) {
+    signal.throwIfAborted()
+    assertCurrent()
     await rm(record.bodyPath, { force: true })
     await rm(record.metaPath, { force: true })
   }
+  signal.throwIfAborted()
+  assertCurrent()
   return info
 }
 
@@ -2513,23 +2544,26 @@ async function trashMetadataDirectory(
 async function listTrashRecords(
   stateRoot: string,
   vault: VaultReference,
+  signal: AbortSignal = POST_COMMIT_SIGNAL,
 ): Promise<Array<{ metaPath: string; record: TrashRecord }>> {
   const directory = await trashMetadataDirectory(stateRoot, vault, false)
   if (directory === null) return []
   const names: string[] = []
   const stream = await opendir(directory)
   for await (const entry of stream) {
+    signal.throwIfAborted()
     if (names.length >= SNAPSHOT_SCAN_LIMIT) break
     if (entry.isFile() && entry.name.endsWith('.json')) names.push(entry.name)
   }
   const records = []
   for (const name of names.sort(compareVaultPaths)) {
+    signal.throwIfAborted()
     const id = name.slice(0, -'.json'.length)
     if (!validTrashId(id)) continue
     const metaPath = path.join(directory, name)
     try {
       const parsed = JSON.parse(
-        (await readStateBytes(metaPath, SNAPSHOT_METADATA_MAX_BYTES)).toString('utf8'),
+        (await readStateBytes(metaPath, SNAPSHOT_METADATA_MAX_BYTES, signal)).toString('utf8'),
       ) as Partial<TrashRecord>
       if (
         parsed.id !== id
@@ -2545,21 +2579,29 @@ async function listTrashRecords(
         || !/^(?:entry|file):[0-9a-f]{64}$/u.test(parsed.revision)
       ) continue
       records.push({ metaPath, record: parsed as TrashRecord })
-    } catch {
+    } catch (error) {
+      if (signal.aborted) throw error
       // Persisted trash metadata is untrusted; malformed records are ignored.
     }
   }
   return records.sort((left, right) => right.record.createdAt - left.record.createdAt)
 }
 
-async function currentTrashRevision(root: string, record: TrashRecord): Promise<string | null> {
+async function currentTrashRevision(
+  root: string,
+  record: TrashRecord,
+  signal: AbortSignal = POST_COMMIT_SIGNAL,
+): Promise<string | null> {
+  signal.throwIfAborted()
   try {
     if (record.kind === 'document') {
       const target = await resolveDocumentTarget(root, record.trashPath)
+      signal.throwIfAborted()
       return entryRevision(target.alias, target.aliasEntry, target.targetEntry)
     }
     if (record.kind === 'attachment') {
       const target = await resolveAttachmentTarget(root, record.trashPath)
+      signal.throwIfAborted()
       return entryRevision(target.alias, target.aliasEntry, target.targetEntry)
     }
     const candidate = path.join(root, ...record.trashPath.split('/'))
@@ -2567,8 +2609,10 @@ async function currentTrashRevision(root: string, record: TrashRecord): Promise<
     const entry = await lstat(candidate, { bigint: true })
     if (!entry.isDirectory() || entry.isSymbolicLink()) return null
     assertInside(root, await realpath(candidate))
+    signal.throwIfAborted()
     return fileRevision(entry)
-  } catch {
+  } catch (error) {
+    if (signal.aborted) throw error
     return null
   }
 }
@@ -2577,7 +2621,11 @@ async function writeTrashRecord(
   stateRoot: string,
   vault: VaultReference,
   record: TrashRecord,
+  signal: AbortSignal = POST_COMMIT_SIGNAL,
+  assertCurrent: () => void = () => undefined,
 ): Promise<string> {
+  signal.throwIfAborted()
+  assertCurrent()
   const directory = await trashMetadataDirectory(stateRoot, vault, true)
   if (directory === null) throw new NoteVaultError('recovery-unavailable', 'Trash metadata storage is unavailable')
   const metaPath = path.join(directory, `${record.id}.json`)
@@ -2585,7 +2633,10 @@ async function writeTrashRecord(
     metaPath,
     Buffer.from(JSON.stringify(record), 'utf8'),
     true,
-    async () => undefined,
+    async () => {
+      signal.throwIfAborted()
+      assertCurrent()
+    },
   )
   return metaPath
 }
@@ -5710,6 +5761,7 @@ export class NoteVaultRuntime extends Service {
         rewrite.originalContent,
         state,
         'pre-link-rewrite',
+        signal,
       )
       rewriteSnapshots.push({ path: rewrite.snapshotPath, snapshotId: snapshot.id })
     }
@@ -5782,10 +5834,13 @@ export class NoteVaultRuntime extends Service {
     content: string,
     state: Extract<NoteVaultState, { active: true }>,
     reason: string,
+    signal: AbortSignal = POST_COMMIT_SIGNAL,
   ): Promise<SnapshotInfo> {
-    if (this.stateRoot === null) {
+    const root = this.vaultRoot
+    if (this.stateRoot === null || root === null) {
       throw new NoteVaultError('recovery-unavailable', 'Recovery storage is required before overwriting documents')
     }
+    const assertCurrent = (): void => { this.assertCapturedVault(state, root) }
     try {
       return await captureSnapshotRecord(
         this.stateRoot,
@@ -5796,9 +5851,11 @@ export class NoteVaultRuntime extends Service {
         this.maxReadBytes,
         this.snapshotLimit,
         this.snapshotRetentionDays,
+        signal,
+        assertCurrent,
       )
     } catch (error) {
-      if (error instanceof NoteVaultError) throw error
+      if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) throw error
       throw new NoteVaultError('recovery-unavailable', 'Could not capture a recovery snapshot')
     }
   }
@@ -5818,6 +5875,7 @@ export class NoteVaultRuntime extends Service {
       { id: state.id, generation: state.generation },
       relativePath,
       this.maxReadBytes,
+      signal,
     )
     this.assertCapturedVault(state, root)
     signal.throwIfAborted()
@@ -5840,6 +5898,7 @@ export class NoteVaultRuntime extends Service {
       relativePath,
       request.snapshotId,
       this.maxReadBytes,
+      signal,
     )
     this.assertCapturedVault(state, root)
     signal.throwIfAborted()
@@ -5859,7 +5918,7 @@ export class NoteVaultRuntime extends Service {
     const relativePath = normalizeDocumentPath(request.path)
     const reason = request.reason?.trim() || 'manual'
     if (reason.length > 200) throw new NoteVaultError('invalid-content', 'Snapshot reason is too long')
-    const snapshot = await this.captureRecoverySnapshot(relativePath, request.content, state, reason)
+    const snapshot = await this.captureRecoverySnapshot(relativePath, request.content, state, reason, signal)
     this.assertCapturedVault(state, root)
     signal.throwIfAborted()
     return { generation: state.generation, snapshot }
@@ -5873,7 +5932,7 @@ export class NoteVaultRuntime extends Service {
     signal.throwIfAborted()
     if (this.stateRoot === null) throw new NoteVaultError('recovery-unavailable', 'Recovery storage is not configured')
     const relativePath = normalizeDocumentPath(request.path)
-    const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes)
+    const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes, signal)
     for (const record of records) {
       signal.throwIfAborted()
       this.assertCapturedVault(state, root)
@@ -5989,13 +6048,17 @@ export class NoteVaultRuntime extends Service {
       revision: mutation.revision,
       trashPath: mutation.path,
     }
+    this.assertCapturedVault(state, root)
+    signal.throwIfAborted()
     try {
       await writeTrashRecord(
         this.stateRoot,
         { id: state.id, generation: state.generation },
         record,
+        signal,
+        () => { this.assertCapturedVault(state, root) },
       )
-    } catch {
+    } catch (error) {
       try {
         const rollbackRequest = {
           expectedRevision: mutation.revision,
@@ -6010,10 +6073,6 @@ export class NoteVaultRuntime extends Service {
         } else {
           await this.moveFileInternal(rollbackRequest, POST_COMMIT_SIGNAL, false)
         }
-        throw new NoteVaultError(
-          'recovery-unavailable',
-          'Trash metadata could not be stored; the entry was restored',
-        )
       } catch (rollbackError) {
         if (
           rollbackError instanceof NoteVaultError
@@ -6024,6 +6083,12 @@ export class NoteVaultRuntime extends Service {
           `Trash entry ${id} was retained at ${mutation.path} after metadata storage failed`,
         )
       }
+      if (error instanceof NoteVaultError && (error.code === 'stale-vault' || error.code === 'changed')) throw error
+      if (error instanceof Error && error.name === 'AbortError') throw error
+      throw new NoteVaultError(
+        'recovery-unavailable',
+        'Trash metadata could not be stored; the entry was restored',
+      )
     }
     const result: TrashMutationResult = {
       createdAt: record.createdAt,
@@ -6050,11 +6115,12 @@ export class NoteVaultRuntime extends Service {
     const records = await listTrashRecords(
       this.stateRoot,
       { id: state.id, generation: state.generation },
+      signal,
     )
     const validRecords = []
     for (const stored of records) {
       signal.throwIfAborted()
-      if (await currentTrashRevision(root, stored.record) === stored.record.revision) {
+      if (await currentTrashRevision(root, stored.record, signal) === stored.record.revision) {
         validRecords.push(stored)
       }
     }
@@ -6083,11 +6149,12 @@ export class NoteVaultRuntime extends Service {
     const records = await listTrashRecords(
       this.stateRoot,
       { id: state.id, generation: state.generation },
+      signal,
     )
     const stored = records.find(candidate => candidate.record.id === request.id)
     if (stored === undefined) throw new NoteVaultError('not-found', 'Trash entry not found')
     const record = stored.record
-    if (await currentTrashRevision(root, record) !== record.revision) {
+    if (await currentTrashRevision(root, record, signal) !== record.revision) {
       throw new NoteVaultError('not-found', 'Trash entry not found')
     }
     const toPath = request.toPath === undefined
@@ -6329,6 +6396,7 @@ export class NoteVaultRuntime extends Service {
         current.content,
         state,
         'save',
+        signal,
       )
       this.assertCapturedVault(state, root)
       await writeDocumentAtomic(target.canonical, data, false, async () => {

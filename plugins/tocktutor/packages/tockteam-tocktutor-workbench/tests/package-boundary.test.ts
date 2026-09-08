@@ -84,13 +84,15 @@ async function installPeerFixture(desktopVersion: string): Promise<boolean> {
         name: 'tocktutor-peer-consumer',
         private: true,
         dependencies: {
-          '@tockteam/desktop': `file:${desktopRoot}`,
-          '@tockteam/tocktutor-workbench': `file:${workbenchRoot}`,
+          '@tockteam/desktop': 'workspace:*',
+          '@tockteam/tocktutor-workbench': 'workspace:*',
         },
       }) + '\n'),
-      writeFile(join(consumerRoot, 'pnpm-workspace.yaml'), [
+      writeFile(join(root, 'pnpm-workspace.yaml'), [
         'packages:',
-        '  - .',
+        '  - desktop',
+        '  - workbench',
+        '  - consumer',
         '',
         'autoInstallPeers: false',
         '',
@@ -104,7 +106,7 @@ async function installPeerFixture(desktopVersion: string): Promise<boolean> {
         '--ignore-scripts',
         '--strict-peer-dependencies',
         '--no-frozen-lockfile',
-      ], { cwd: consumerRoot, env: process.env })
+      ], { cwd: root, env: process.env })
       return true
     } catch {
       return false

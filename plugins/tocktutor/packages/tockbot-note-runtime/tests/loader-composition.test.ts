@@ -3951,6 +3951,173 @@ test('save fails before mutation when recovery storage is unavailable', async ()
   }
 })
 
+test('recovery metadata scans honor cancellation before stale snapshot writes', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-snapshot-cancel-'))
+  try {
+    await writeFile(join(fixture, 'Note.md'), 'before')
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    try {
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      const signal = new AbortController().signal
+      const opened = await loaded.context.noteVault.openDocument('Note.md', expectedVault, signal)
+      await loaded.context.noteVault.saveDocument({
+        content: 'after',
+        expectedRevision: opened.revision,
+        expectedVault,
+        path: 'Note.md',
+      }, signal)
+      const savedSnapshots = await loaded.context.noteVault.listSnapshots({ expectedVault, path: 'Note.md' }, signal)
+      const snapshotId = savedSnapshots.snapshots[0]?.id
+      if (snapshotId === undefined) assert.fail('save must create a snapshot')
+      const stateFiles = await readdir(join(loaded.root, 'state'), { recursive: true })
+      const metadata = stateFiles.find(name => name.endsWith(`${snapshotId}.json`))
+      if (metadata === undefined) assert.fail('snapshot metadata must exist')
+      const metadataPath = join(loaded.root, 'state', metadata)
+      const probe = await openFile(metadataPath, 'r')
+      const prototype = Object.getPrototypeOf(probe) as { read: FileRead }
+      const originalRead = prototype.read
+      await probe.close()
+      let reads = 0
+      let aborted = false
+      const cancelled = new AbortController()
+      prototype.read = async function (...args) {
+        reads += 1
+        const result = await originalRead.apply(this, args)
+        if (!aborted) {
+          aborted = true
+          cancelled.abort()
+        }
+        return result
+      }
+      try {
+        await assert.rejects(
+          loaded.context.noteVault.listSnapshots({ expectedVault, path: 'Note.md' }, cancelled.signal),
+          error => error instanceof Error && error.name === 'AbortError',
+        )
+        assert.equal(reads, 1)
+      } finally {
+        prototype.read = originalRead
+      }
+
+      const beforeCapture = await loaded.context.noteVault.listSnapshots({ expectedVault, path: 'Note.md' }, signal)
+      const captureCancelled = new AbortController()
+      await duringFirstFileRead(metadataPath, () => { captureCancelled.abort() }, async () => {
+        await assert.rejects(
+          loaded.context.noteVault.captureSnapshot({
+            content: 'cancelled snapshot',
+            expectedVault,
+            path: 'Note.md',
+            reason: 'manual',
+          }, captureCancelled.signal),
+          error => error instanceof Error && error.name === 'AbortError',
+        )
+      })
+      const afterCapture = await loaded.context.noteVault.listSnapshots({ expectedVault, path: 'Note.md' }, signal)
+      assert.deepEqual(afterCapture.snapshots, beforeCapture.snapshots)
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('snapshot writes stop before commit when cancellation arrives mid-write', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-snapshot-write-cancel-'))
+  try {
+    const notePath = join(fixture, 'Note.md')
+    await writeFile(notePath, 'before')
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    try {
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      const signal = new AbortController().signal
+      const opened = await loaded.context.noteVault.openDocument('Note.md', expectedVault, signal)
+      const cancelled = new AbortController()
+      await duringFirstFileSync(notePath, () => { cancelled.abort() }, async () => {
+        await assert.rejects(
+          loaded.context.noteVault.captureSnapshot({
+            content: opened.content,
+            expectedVault,
+            path: 'Note.md',
+            reason: 'manual',
+          }, cancelled.signal),
+          error => error instanceof Error && error.name === 'AbortError',
+        )
+      })
+      const snapshots = await loaded.context.noteVault.listSnapshots({ expectedVault, path: 'Note.md' }, signal)
+      assert.deepEqual(snapshots.snapshots, [])
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('trash metadata scans honor cancellation between records', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-trash-cancel-'))
+  try {
+    await writeFile(join(fixture, 'First.md'), 'first')
+    await writeFile(join(fixture, 'Second.md'), 'second')
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    try {
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      const signal = new AbortController().signal
+      const first = await loaded.context.noteVault.openDocument('First.md', expectedVault, signal)
+      const firstTrash = await loaded.context.noteVault.trashEntry({
+        expectedRevision: first.revision,
+        expectedVault,
+        path: 'First.md',
+      }, signal)
+      const second = await loaded.context.noteVault.openDocument('Second.md', expectedVault, signal)
+      await loaded.context.noteVault.trashEntry({
+        expectedRevision: second.revision,
+        expectedVault,
+        path: 'Second.md',
+      }, signal)
+      const stateFiles = await readdir(join(loaded.root, 'state'), { recursive: true })
+      const metadata = stateFiles.find(name => name.endsWith(`${firstTrash.id}.json`))
+      if (metadata === undefined) assert.fail('trash metadata must exist')
+      const metadataPath = join(loaded.root, 'state', metadata)
+      const probe = await openFile(metadataPath, 'r')
+      const prototype = Object.getPrototypeOf(probe) as { read: FileRead }
+      const originalRead = prototype.read
+      await probe.close()
+      let reads = 0
+      let aborted = false
+      const cancelled = new AbortController()
+      prototype.read = async function (...args) {
+        reads += 1
+        const result = await originalRead.apply(this, args)
+        if (!aborted) {
+          aborted = true
+          cancelled.abort()
+        }
+        return result
+      }
+      try {
+        await assert.rejects(
+          loaded.context.noteVault.listTrash({ expectedVault }, cancelled.signal),
+          error => error instanceof Error && error.name === 'AbortError',
+        )
+        assert.equal(reads, 1)
+      } finally {
+        prototype.read = originalRead
+      }
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
 test('snapshot readers ignore malformed metadata and reject symlinked bodies', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-snapshot-tamper-'))
   const outside = await mkdtemp(join(tmpdir(), 'note-vault-snapshot-outside-'))

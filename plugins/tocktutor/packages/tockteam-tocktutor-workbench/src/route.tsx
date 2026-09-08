@@ -158,10 +158,12 @@ import type {
   SnapshotContentResult,
   SnapshotInfo,
   SnapshotMutationResult,
+  RestoreTrashResult,
   StoreAttachmentRequest,
   StoreAttachmentResult,
   TrashEntryInfo,
   TrashEntryRequest,
+  TrashMutationResult,
   VaultFacetsRequest,
   VaultFacetsResult,
   VaultGenerationRequest,
@@ -228,9 +230,9 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     readSnapshot(request: ReadSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<SnapshotContentResult>>
     restoreSnapshot(request: RestoreSnapshotOverwriteRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>
     restoreSnapshotAsNew(request: RestoreSnapshotRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>
-    trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>
+    trashEntry(request: TrashEntryRequest, signal?: AbortSignal): Promise<RemoteResult<TrashMutationResult>>
     listTrash(request: ListTrashRequest, signal?: AbortSignal): Promise<RemoteResult<{ entries: TrashEntryInfo[]; generation: number }>>
-    restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<unknown>>
+    restoreTrash(request: RestoreTrashRequest, signal?: AbortSignal): Promise<RemoteResult<RestoreTrashResult>>
     search(request: VaultSearchRequest, signal?: AbortSignal): Promise<RemoteResult<VaultSearchResult>>
     outline(request: VaultOutlineRequest, signal?: AbortSignal): Promise<RemoteResult<VaultOutlineResult>>
     links(request: VaultLinksRequest, signal?: AbortSignal): Promise<RemoteResult<VaultLinksResult>>
@@ -460,6 +462,47 @@ function validSearchResult(value: VaultSearchResult, vault: VaultReference): boo
       && typeof match.preview === 'string'
       && match.preview.length <= 4_096
       && (match.line === null || Number.isSafeInteger(match.line)))
+}
+
+function validTrashEntryInfo(value: unknown): value is TrashEntryInfo {
+  if (typeof value !== 'object' || value === null) return false
+  const entry = value as unknown as Record<string, unknown>
+  return Number.isSafeInteger(entry.createdAt)
+    && typeof entry.id === 'string' && entry.id.length > 0 && entry.id.length <= 255
+    && (entry.kind === 'attachment' || entry.kind === 'document' || entry.kind === 'folder')
+    && typeof entry.originalPath === 'string'
+    && isSafeVaultRelativePath(entry.originalPath)
+}
+
+function validTrashMutationResult(
+  value: unknown,
+  vault: VaultReference,
+  originalPath: string,
+): value is TrashMutationResult {
+  if (!validTrashEntryInfo(value) || typeof value !== 'object' || value === null) return false
+  const result = value as unknown as Record<string, unknown>
+  return result.generation === vault.generation
+    && result.originalPath === originalPath
+    && typeof result.revision === 'string'
+    && /^file:[0-9a-f]{64}$/u.test(result.revision)
+    && result.status === 'trashed'
+}
+
+function validRestoreTrashResult(
+  value: unknown,
+  vault: VaultReference,
+  entry: TrashEntryInfo,
+): value is RestoreTrashResult {
+  if (!validTrashEntryInfo(value) || typeof value !== 'object' || value === null) return false
+  const result = value as unknown as Record<string, unknown>
+  return result.generation === vault.generation
+    && result.id === entry.id
+    && result.kind === entry.kind
+    && result.originalPath === entry.originalPath
+    && result.path === entry.originalPath
+    && typeof result.revision === 'string'
+    && /^file:[0-9a-f]{64}$/u.test(result.revision)
+    && result.status === 'restored'
 }
 
 function documentKind(path: string): RouteDocumentKind | null {
@@ -1693,8 +1736,9 @@ export class WorkbenchRouteController {
     if (identity.path === null || identity.revision === null) return false
     const operation = this.nextRecoveryOperation()
     try {
-      remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: identity.revision, expectedVault: identity.vault, path: identity.path }, operation.signal))
-      if (!this.recoveryCurrent(operation.id, identity)) return false
+      const trashed = remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: identity.revision, expectedVault: identity.vault, path: identity.path }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity)
+        || !validTrashMutationResult(trashed, identity.vault, identity.path)) return false
       const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, identity.path)
       this.shellSession = closed.session
       this.syncShell()
@@ -1709,11 +1753,13 @@ export class WorkbenchRouteController {
 
   async restoreTrashEntry(id: string): Promise<boolean> {
     const identity = this.recoveryIdentity()
-    if (identity === null || this.snapshot.trash?.some(entry => entry.id === id) !== true) return false
+    const entry = this.snapshot.trash?.find(candidate => candidate.id === id)
+    if (identity === null || entry === undefined) return false
     const operation = this.nextRecoveryOperation()
     try {
-      remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: identity.vault, id }, operation.signal))
-      if (!this.recoveryCurrent(operation.id, identity)) return false
+      const restored = remoteValue(await this.remote.tocktutorWorkbench.restoreTrash({ expectedVault: identity.vault, id }, operation.signal))
+      if (!this.recoveryCurrent(operation.id, identity)
+        || !validRestoreTrashResult(restored, identity.vault, entry)) return false
       await this.refreshTree(identity.vault)
       if (!this.recoveryIdentityMatches(identity)) return false
       await this.setRecoveryOpen(true)

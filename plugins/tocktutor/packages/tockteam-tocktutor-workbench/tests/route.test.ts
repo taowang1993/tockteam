@@ -17,6 +17,8 @@ import type {
   CreateDocumentRequest,
   NoteVaultChangeEvent,
   OpenDocumentResult,
+  RestoreTrashResult,
+  TrashMutationResult,
   VaultLinksResult,
   VaultReference,
   VaultTreePage,
@@ -125,6 +127,8 @@ class FakeRemote implements WorkbenchRouteRemote {
   draftFailuresBeforeSuccess = 0
   snapshots: Array<{ createdAt: number; digest: string; id: string; path: string; reason: string; size: number }> = []
   trashEntries: Array<{ createdAt: number; id: string; kind: 'document'; originalPath: string }> = []
+  trashEntryResult: TrashMutationResult | unknown | null = null
+  restoreTrashResult: RestoreTrashResult | unknown | null = null
   readonly calls: Array<{ method: string; parameters: unknown[] }> = []
   readonly listeners = new Set<(event: NoteVaultChangeEvent) => void>()
   createOverride: ((request: CreateDocumentRequest) => Promise<{
@@ -262,7 +266,8 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     restoreTrash: (request: { expectedVault: VaultReference; id: string; toPath?: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'restoreTrash', parameters: [request, signal] })
-      return success({ generation: request.expectedVault.generation, status: 'restored' })
+      if (this.restoreTrashResult !== null) return success(this.restoreTrashResult as RestoreTrashResult)
+      return success({ createdAt: 1, generation: request.expectedVault.generation, id: request.id, kind: 'document' as const, originalPath: 'Deleted.md', path: request.toPath ?? 'Deleted.md', revision: secondRevision, status: 'restored' as const })
     },
     renameDocument: (request: { expectedRevision: string; expectedVault: VaultReference; fromPath: string; toPath: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'renameDocument', parameters: [request, signal] })
@@ -410,7 +415,8 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     trashEntry: (request: { expectedRevision: string; expectedVault: VaultReference; path: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'trashEntry', parameters: [request, signal] })
-      return success({ generation: request.expectedVault.generation, status: 'trashed' })
+      if (this.trashEntryResult !== null) return success(this.trashEntryResult as TrashMutationResult)
+      return success({ createdAt: 1, generation: request.expectedVault.generation, id: 'trash-12345678-1234-4123-8123-123456789abc', kind: 'document' as const, originalPath: request.path, revision: secondRevision, status: 'trashed' as const })
     },
   }
 
@@ -1380,6 +1386,42 @@ test('loads bounded recovery state and drives preview, restore, trash, and recov
   assert.equal(await controller.trashCurrent(), true)
   assert.equal(controller.getSnapshot().path, null)
   assert.equal(remote.calls.some(call => call.method === 'trashEntry'), true)
+  controller.dispose()
+})
+
+test('rejects malformed trash mutation results without changing the active note', async () => {
+  const remote = new FakeRemote()
+  const trashId = 'trash-123e4567-e89b-42d3-a456-426614174000'
+  remote.trashEntries = [{ createdAt: 2, id: trashId, kind: 'document', originalPath: 'Deleted.md' }]
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+
+  remote.trashEntryResult = {
+    createdAt: 1,
+    generation: firstVault.generation,
+    id: 'trash-12345678-1234-4123-8123-123456789abc',
+    kind: 'document',
+    originalPath: 'Other.md',
+    revision: secondRevision,
+    status: 'trashed',
+  }
+  assert.equal(await controller.trashCurrent(), false)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+
+  await controller.setRecoveryOpen(true)
+  remote.restoreTrashResult = {
+    createdAt: 2,
+    generation: firstVault.generation,
+    id: trashId,
+    kind: 'document',
+    originalPath: 'Deleted.md',
+    path: 'Other.md',
+    revision: secondRevision,
+    status: 'restored',
+  }
+  assert.equal(await controller.restoreTrashEntry(trashId), false)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
   controller.dispose()
 })
 
