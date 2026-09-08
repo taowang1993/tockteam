@@ -122,6 +122,11 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       }, ${expected}, { timeout: 15000 });
       const present = await launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"]').count();
       if (present !== (${expected} ? 1 : 0)) throw new Error('Unexpected Translate catalog visibility: ' + present);
+      if (${expected}) {
+        const marker = launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"] .launcher-command-row-icon');
+        const identity = await marker.evaluate(node => ({ src: node instanceof HTMLImageElement ? node.src : '', tag: node.tagName }));
+        if (identity.tag !== 'IMG' || !new URL(identity.src).pathname.endsWith('/trusted-raycast/google-translate.png')) throw new Error('Translate catalog did not use its reviewed extension icon: ' + JSON.stringify(identity));
+      }
       return { translateVisible: present === 1 };
     }`)
   }
@@ -151,6 +156,8 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await setup.waitFor({ timeout: 15000 });
       const labels = await setup.locator('form label').evaluateAll(nodes => nodes.map(node => node.childNodes[0]?.textContent?.trim()));
       if (JSON.stringify(labels) !== JSON.stringify(['Translate from', 'Primary Language', 'Secondary Language'])) throw new Error('Unexpected preference fields: ' + JSON.stringify(labels));
+      const setupMaterial = await setup.evaluate(section => { const style = getComputedStyle(section); return { backgroundColor: style.backgroundColor, backgroundImage: style.backgroundImage }; });
+      if (!['rgba(0, 0, 0, 0)', 'transparent'].includes(setupMaterial.backgroundColor) || setupMaterial.backgroundImage !== 'none') throw new Error('Preference setup obscured the shared command-surface theme: ' + JSON.stringify(setupMaterial));
       if (await launcher.evaluate(() => document.activeElement?.getAttribute('aria-label')) !== 'Translate from') throw new Error('First preference was not focused');
       const initialFocus = await launcher.evaluate(() => { const style = getComputedStyle(document.activeElement); return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth }; });
       if (initialFocus.outlineStyle !== 'none' && initialFocus.outlineWidth !== '0px') throw new Error('Programmatic preference focus painted a ring: ' + JSON.stringify(initialFocus));

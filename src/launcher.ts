@@ -1,6 +1,6 @@
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
 import { createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
-import { TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
+import { trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import {
   ArrowRight,
   History as HistoryIcon,
@@ -680,7 +680,7 @@ async function bootstrap(): Promise<void> {
       : undefined
     const packagedAsset = item.imageKey === undefined
       ? undefined
-      : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey)
+      : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey) ?? trustedRaycastAssetUrl(item.imageKey)
     const imageUrl = isLauncherImageUrl(item.imageUrl) ? item.imageUrl : localAsset ?? packagedAsset
     const marker = imageUrl === undefined ? document.createElement('span') : document.createElement('img')
     marker.className = 'launcher-command-row-icon text-[10px] font-semibold'

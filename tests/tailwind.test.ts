@@ -53,8 +53,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(tailwind, /@source .*src\/launcher-workflow-settings\.tsx/u)
   assert.match(tailwind.match(/@utility launcher-command-menu-item \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? '', /font-size: 0\.875rem/u, 'shared action menus keep the compact 14px type size')
   assert.ok(tailwind.indexOf('@utility launcher-command-error') > tailwind.indexOf('@utility launcher-command-empty'), 'error color must override the shared empty-state color')
-  const preferenceSurface = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
-  assert.match(preferenceSurface, /background: light-dark\(/u, 'preference setup derives Raycast-like material from DSH tokens')
+  assert.doesNotMatch(tailwind, /#launcher-root \[data-view='preference-setup'\] \{\s*background:/u, 'preference setup must expose the same command-surface material as the first screen')
   const preferenceHeader = tailwind.match(/#launcher-root \[data-view='preference-setup'\] > \.launcher-command-header \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceHeader, /height: 4rem/u, 'preference setup keeps Raycast’s 64px top region')
   const preferenceFields = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-field \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''

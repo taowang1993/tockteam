@@ -17,6 +17,7 @@ test('catalog requires live Host capability, an installed enabled candidate, and
   }
   const [item, trustItem] = trustedRaycastCatalog(true, { ...approved, installed: true, enabled: true })
   assert.equal(item!.defaultAction.hideWindowAfterInvocation, false)
+  assert.equal(item!.imageKey, 'trusted-raycast-google-translate')
   assert.equal(item!.id.startsWith('tockteam-route:'), false)
   assert.equal(trustItem!.id, 'trusted-raycast:trust')
 })

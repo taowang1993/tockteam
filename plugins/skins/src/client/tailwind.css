@@ -430,13 +430,6 @@
 }
 
 /* Launcher settings are derived from the shared DSH surface projection. */
-#launcher-root [data-view='preference-setup'] {
-  background: light-dark(
-    var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)),
-    color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 16%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
-  );
-}
-
 #launcher-root [data-view='preference-setup'] > .launcher-command-header {
   min-height: 4rem;
   height: 4rem;
