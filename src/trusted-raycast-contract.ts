@@ -85,6 +85,16 @@ export function isTrustedRaycastTrustResult(value: unknown): value is TrustedRay
   return value.ok === false && exactKeys(value, ['error', 'ok', 'state']) && boundedString(value.error, 512)
 }
 export type TrustedRaycastPreference = boolean | string
+export type KaomojiDisplayMode = 'list' | 'grid'
+export type KaomojiPrimaryAction = 'copy-to-clipboard' | 'paste-to-active-app'
+export type KaomojiPreferences = Readonly<{ displayMode: KaomojiDisplayMode; primaryAction: KaomojiPrimaryAction }>
+export const KAOMOJI_PREFERENCE_DEFAULTS: KaomojiPreferences = Object.freeze({ displayMode: 'list', primaryAction: 'paste-to-active-app' })
+export function isKaomojiPreferences(value: unknown): value is KaomojiPreferences {
+  return isRecord(value)
+    && exactKeys(value, ['displayMode', 'primaryAction'])
+    && (value.displayMode === 'list' || value.displayMode === 'grid')
+    && (value.primaryAction === 'copy-to-clipboard' || value.primaryAction === 'paste-to-active-app')
+}
 export type TrustedRaycastViewOpen = Readonly<{
   extensionId: TrustedRaycastExtensionId
   sessionId: string
@@ -155,6 +165,7 @@ export function isTrustedRaycastViewOpen(value: unknown): value is TrustedRaycas
   if (descriptor === undefined || value.command !== descriptor.command || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !isRecord(value.preferences)) return false
   const entries = Object.entries(value.preferences)
   if (entries.length > MAX_PREFERENCES || entries.some(([key, entry]) => key.length > MAX_PREFERENCE_KEY || (typeof entry !== 'string' && typeof entry !== 'boolean'))) return false
+  if (descriptor.extensionId === 'kaomoji-search' && entries.length > 0 && !isKaomojiPreferences(value.preferences)) return false
   return byteLength(JSON.stringify(value.preferences)) <= MAX_PREFERENCE_TOTAL
 }
 
@@ -170,10 +181,42 @@ export function isTrustedRaycastViewEvent(value: unknown): value is TrustedRayca
 }
 
 const VIEW_TYPES = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-action', 'raycast-action-panel', 'raycast-action-section', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
-function isViewNode(value: unknown, depth = 0, count = { value: 0, text: 0, actions: 0 }): value is TrustedRaycastViewNode {
-  if (!isRecord(value) || !exactKeys(value, ['type', 'props', 'children']) || !boundedString(value.type, 128) || !VIEW_TYPES.has(value.type) || !isRecord(value.props) || !Array.isArray(value.children)) return false
+const KAOMOJI_VIEW_TYPES = new Set([...VIEW_TYPES, 'raycast-grid', 'raycast-grid-item', 'raycast-section'])
+const KAOMOJI_ICONS = new Set(['Clipboard', 'Gear', 'Star', 'StarDisabled'])
+const KAOMOJI_PROPS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  root: ['navigationDepth', 'preferenceSetup', 'queryCurrent', 'querySequence', 'searchable', 'searchEventId'],
+  'raycast-list': ['isLoading', 'navigationDepth', 'preferenceSetup', 'queryCurrent', 'querySequence', 'searchable', 'searchBarPlaceholder', 'searchEventId', 'throttle'],
+  'raycast-grid': ['isLoading', 'navigationDepth', 'preferenceSetup', 'queryCurrent', 'querySequence', 'searchable', 'searchBarPlaceholder', 'searchEventId', 'throttle'],
+  'raycast-section': ['subtitle', 'title'],
+  'raycast-list-item': ['accessories', 'selected', 'subtitle', 'title'],
+  'raycast-grid-item': ['contentDark', 'contentLight', 'title'],
+  'raycast-empty': ['description', 'icon', 'title'],
+  'raycast-action': ['actionEventId', 'icon', 'shortcut', 'style', 'title', 'unavailable'],
+  'raycast-action-panel': [],
+  'raycast-action-section': ['title'],
+})
+function isKaomojiSvg(value: unknown, fill: '#000' | '#fff'): boolean {
+  if (typeof value !== 'string' || !value.startsWith('data:image/svg+xml;base64,') || value.length > 6144) return false
+  const encoded = value.slice('data:image/svg+xml;base64,'.length)
+  if (encoded.length === 0 || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return false
+  try {
+    const decoded = atob(encoded)
+    if (decoded.length > 4096) return false
+    const escapedFill = fill.replace('#', '\\#')
+    return new RegExp(`^<svg xmlns="http://www\\.w3\\.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" >\\n  <text dominant-baseline="middle" x="45" y="45" text-anchor="middle" fill="${escapedFill}" font-size="8px" text-length="90" length-adjust="spacing">\\n    (?:&#\\d{1,5};)+\\n  </text>\\n</svg>$`).test(decoded)
+  } catch { return false }
+}
+function isViewNode(value: unknown, extensionId: TrustedRaycastExtensionId, depth = 0, count = { value: 0, text: 0, actions: 0 }): value is TrustedRaycastViewNode {
+  const viewTypes = extensionId === 'kaomoji-search' ? KAOMOJI_VIEW_TYPES : VIEW_TYPES
+  if (!isRecord(value) || !exactKeys(value, ['type', 'props', 'children']) || !boundedString(value.type, 128) || !viewTypes.has(value.type) || !isRecord(value.props) || !Array.isArray(value.children)) return false
   if (++count.value > MAX_NODES || depth > MAX_DEPTH || value.children.length > 1024) return false
   if (Object.keys(value.props).length > 64 || Object.entries(value.props).some(([key, entry]) => !boundedString(key, 128) || (entry !== null && typeof entry !== 'string' && typeof entry !== 'number' && typeof entry !== 'boolean'))) return false
+  if (extensionId === 'kaomoji-search') {
+    const allowed = KAOMOJI_PROPS[value.type]
+    if (allowed === undefined || Object.keys(value.props).some(key => !allowed.includes(key))) return false
+    if (value.type === 'raycast-grid-item' && (!isKaomojiSvg(value.props.contentDark, '#fff') || !isKaomojiSvg(value.props.contentLight, '#000'))) return false
+    if (value.type === 'raycast-action' && value.props.icon !== undefined && (typeof value.props.icon !== 'string' || !KAOMOJI_ICONS.has(value.props.icon))) return false
+  }
   for (const entry of Object.values(value.props)) {
     if (typeof entry === 'string') count.text += byteLength(entry)
     if (typeof entry === 'number' && !Number.isFinite(entry)) return false
@@ -181,12 +224,12 @@ function isViewNode(value: unknown, depth = 0, count = { value: 0, text: 0, acti
   if (value.type.startsWith('raycast-action') && ++count.actions > 256) return false
   return value.children.every(child => {
     if (typeof child === 'string') { count.text += byteLength(child); return boundedString(child, MAX_TEXT) }
-    return isViewNode(child, depth + 1, count)
+    return isViewNode(child, extensionId, depth + 1, count)
   }) && count.text <= 256 * 1024
 }
 
 export function isTrustedRaycastViewPatch(value: unknown): value is TrustedRaycastViewPatch {
-  if (!isRecord(value) || !exactKeys(value, ['extensionId', 'sessionId', 'generation', 'revision', 'root', 'status']) || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || (value.status !== 'ready' && value.status !== 'loading' && value.status !== 'error') || !isViewNode(value.root)) return false
+  if (!isRecord(value) || !exactKeys(value, ['extensionId', 'sessionId', 'generation', 'revision', 'root', 'status']) || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || (value.status !== 'ready' && value.status !== 'loading' && value.status !== 'error') || !isViewNode(value.root, value.extensionId as TrustedRaycastExtensionId)) return false
   return isBoundedTrustedRaycastMessage(value)
 }
 
@@ -195,8 +238,8 @@ export function isTrustedRaycastViewMessage(value: unknown): value is TrustedRay
   const identity = ['extensionId', 'sessionId', 'generation', 'revision']
   if (value.type === 'toast') return exactKeys(value, ['type', ...identity, 'querySequence', 'title', 'message', 'style']) && Number.isSafeInteger(value.querySequence) && (value.querySequence as number) >= 0 && boundedString(value.title, 512) && boundedString(value.message, 4096) && ['failure', 'success', 'animated'].includes(value.style as string)
   if (value.type === 'outcome') return exactKeys(value, ['type', ...identity, 'eventId', 'succeeded', 'message']) && boundedString(value.eventId, 128) && typeof value.succeeded === 'boolean' && boundedString(value.message, 512)
-  if (value.type === 'ready') return exactKeys(value, ['type', ...identity, 'root']) && isViewNode(value.root)
-  if (value.type === 'patch') return exactKeys(value, ['type', ...identity, 'root', 'status']) && isViewNode(value.root) && (value.status === 'ready' || value.status === 'loading' || value.status === 'error')
+  if (value.type === 'ready') return exactKeys(value, ['type', ...identity, 'root']) && isViewNode(value.root, value.extensionId as TrustedRaycastExtensionId)
+  if (value.type === 'patch') return exactKeys(value, ['type', ...identity, 'root', 'status']) && isViewNode(value.root, value.extensionId as TrustedRaycastExtensionId) && (value.status === 'ready' || value.status === 'loading' || value.status === 'error')
   return value.type === 'error' && exactKeys(value, ['type', ...identity, 'message']) && boundedString(value.message, 512)
 }
 
@@ -221,7 +264,7 @@ export function isTrustedRaycastNativeRequest(value: unknown): value is TrustedR
   const scoped = ['revision', 'eventId']
   const scopedValue = (keys: readonly string[]): boolean => exactKeys(value, keys) && boundedString(value.eventId, 128) && Number.isSafeInteger(value.revision) && (value.revision as number) >= 0
   if (value.kind === 'copy' || value.kind === 'paste') return scopedValue([...base, ...scoped, 'text']) && boundedString(value.text, 128 * 1024)
-  if (value.kind === 'savePreferences') return scopedValue([...base, ...scoped, 'preferences']) && value.extensionId === 'google-translate' && isTrustedRaycastPreferences(value.preferences)
+  if (value.kind === 'savePreferences') return scopedValue([...base, ...scoped, 'preferences']) && (value.extensionId === 'google-translate' ? isTrustedRaycastPreferences(value.preferences) : value.extensionId === 'kaomoji-search' && isKaomojiPreferences(value.preferences))
   if (value.kind !== 'openGoogleTranslate' || value.extensionId !== 'google-translate' || !scopedValue([...base, ...scoped, 'url']) || !boundedString(value.url, 128 * 1024)) return false
   try {
     const url = new URL(value.url)

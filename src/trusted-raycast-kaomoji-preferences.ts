@@ -1,24 +1,9 @@
 import { lstatSync, readFileSync } from 'node:fs'
 import { atomicWrite } from './launcher-persistence.ts'
+import { KAOMOJI_PREFERENCE_DEFAULTS, isKaomojiPreferences, type KaomojiPreferences } from './trusted-raycast-contract.ts'
 
-export type KaomojiPreferences = Readonly<{
-  displayMode: 'grid' | 'list'
-  primaryAction: 'copy-to-clipboard' | 'paste-to-active-app'
-}>
+export { KAOMOJI_PREFERENCE_DEFAULTS, isKaomojiPreferences, type KaomojiPreferences } from './trusted-raycast-contract.ts'
 export type KaomojiPreferenceState = Readonly<{ configured: boolean; values: KaomojiPreferences }>
-
-export const KAOMOJI_PREFERENCE_DEFAULTS: KaomojiPreferences = Object.freeze({
-  displayMode: 'list',
-  primaryAction: 'paste-to-active-app',
-})
-
-export function isKaomojiPreferences(value: unknown): value is KaomojiPreferences {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
-  const record = value as Record<string, unknown>
-  if (JSON.stringify(Object.keys(record).sort()) !== JSON.stringify(['displayMode', 'primaryAction'])) return false
-  return (record.displayMode === 'grid' || record.displayMode === 'list')
-    && (record.primaryAction === 'copy-to-clipboard' || record.primaryAction === 'paste-to-active-app')
-}
 
 export function loadKaomojiPreferenceState(path: string): KaomojiPreferenceState {
   try {

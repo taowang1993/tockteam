@@ -1,4 +1,5 @@
 import React from 'react'
+import { afterSucceededEffect } from './trusted-raycast-effect-callback.ts'
 
 const element = (type: string, props: Record<string, unknown> | null, children: React.ReactNode[] = []) => React.createElement(type, props, ...children)
 const component = (type: string) => (props: Record<string, unknown>) => element(type, props, React.Children.toArray(props.children as React.ReactNode))
@@ -6,22 +7,33 @@ const component = (type: string) => (props: Record<string, unknown>) => element(
 // Search belongs to the view that rendered the List; navigation must not leak the previous handler.
 let searchHandler: ((value: string) => void) | undefined
 let searchable = false
-const list = (props: Record<string, unknown>) => {
+const searchableCollection = (type: 'raycast-grid' | 'raycast-list') => (props: Record<string, unknown>) => {
   if (typeof props.onSearchTextChange === 'function') {
     searchHandler = props.onSearchTextChange as (value: string) => void
     searchable = true
     ;(globalThis as { __trustedRaycastSearch?: ((value: string) => void) | undefined }).__trustedRaycastSearch = props.onSearchTextChange as (value: string) => void
   }
-  return element('raycast-list', props, [...(props.searchBarAccessory ? [props.searchBarAccessory as React.ReactNode] : []), props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)])
+  return element(type, props, [...(props.searchBarAccessory ? [props.searchBarAccessory as React.ReactNode] : []), props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)])
 }
+const section = component('raycast-section')
+const list = searchableCollection('raycast-list')
 export function viewSearchable(): boolean { return searchable }
 export const List = Object.assign(list, {
   Item: Object.assign((props: Record<string, unknown>) => element('raycast-list-item', { title: props.title, subtitle: String(props.subtitle ?? ''), selected: props.selected === true, accessories: JSON.stringify(props.accessories ?? []) }, [props.detail as React.ReactNode, props.actions as React.ReactNode]), { Detail: component('raycast-detail') }),
+  Section: section,
   EmptyView: component('raycast-empty'),
   Dropdown: Object.assign((props: Record<string, unknown>) => element('raycast-dropdown', { value: String(props.value ?? ''), fieldEventId: `dropdown-${++handleSequence}`, ...(typeof props.onChange === 'function' ? { onChange: props.onChange as (value: string) => void } : {}) }, React.Children.toArray(props.children as React.ReactNode)), { Item: component('raycast-dropdown-item') }),
 })
+export const Grid = Object.assign(searchableCollection('raycast-grid'), {
+  Item: (props: Record<string, unknown>) => {
+    const source = typeof props.content === 'object' && props.content !== null && typeof (props.content as { source?: unknown }).source === 'object' && (props.content as { source: object }).source !== null ? (props.content as { source: Record<string, unknown> }).source : {}
+    return element('raycast-grid-item', { contentDark: source.dark, contentLight: source.light, title: props.title }, [props.actions as React.ReactNode])
+  },
+  Section: section,
+  EmptyView: component('raycast-empty'),
+})
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
-type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void }
+type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void }
 let compatibility: Compatibility
 export let queryEpoch = 0
 export let queryText = ''
@@ -73,7 +85,7 @@ export const Form = Object.assign(form, { TextField: component('raycast-text-fie
 
 export const Icon = new Proxy({}, { get: (_target, key) => String(key) }) as Record<string, string>
 export const Color = new Proxy({}, { get: (_target, key) => String(key) }) as Record<string, string>
-export const Keyboard = { Shortcut: { Common: { Copy: { modifiers: ['cmd'], key: 'c' }, MoveUp: { modifiers: ['cmd', 'shift'], key: 'arrowup' }, MoveDown: { modifiers: ['cmd', 'shift'], key: 'arrowdown' }, New: { modifiers: ['cmd'], key: 'n' }, RemoveAll: { modifiers: ['cmd', 'shift'], key: 'backspace' } } } }
+export const Keyboard = { Shortcut: { Common: { Copy: { modifiers: ['cmd'], key: 'c' }, MoveUp: { modifiers: ['cmd', 'shift'], key: 'arrowup' }, MoveDown: { modifiers: ['cmd', 'shift'], key: 'arrowdown' }, New: { modifiers: ['cmd'], key: 'n' }, Pin: { modifiers: ['cmd', 'shift'], key: 'p' }, RemoveAll: { modifiers: ['cmd', 'shift'], key: 'backspace' } } } }
 export const Toast = { Style: { Failure: 'failure', Success: 'success', Animated: 'animated' } }
 export async function showToast(styleOrToast: 'failure' | 'success' | 'animated' | { title: string; message?: string; style?: 'failure' | 'success' | 'animated' }, title?: string, message?: string): Promise<void> {
   if (typeof styleOrToast === 'string') compatibility.toast({ title: title ?? '', message: message ?? '', style: styleOrToast })
@@ -82,9 +94,9 @@ export async function showToast(styleOrToast: 'failure' | 'success' | 'animated'
 const action = (props: Record<string, unknown>) => element('raycast-action', { ...props, shortcut: JSON.stringify(props.shortcut ?? null) })
 export const Action = Object.assign(action, {
   Style: { Regular: 'regular', Destructive: 'destructive' },
-  CopyToClipboard: (props: Record<string, unknown>) => element('raycast-action', { title: props.title ?? 'Copy to Clipboard', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => Clipboard.copy(props.content as string) }),
+  CopyToClipboard: (props: Record<string, unknown>) => element('raycast-action', { icon: props.icon, title: props.title ?? 'Copy to Clipboard', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => afterSucceededEffect(() => Clipboard.copy(props.content as string), props.onCopy, props.content) }),
   OpenInBrowser: (props: Record<string, unknown>) => element('raycast-action', { title: props.title ?? 'Open in Browser', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => compatibility.native({ kind: 'openGoogleTranslate', url: props.url as string }) }),
-  Paste: (props: Record<string, unknown>) => element('raycast-action', { title: props.title ?? 'Paste', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => compatibility.native({ kind: 'paste', text: props.content as string }) }),
+  Paste: (props: Record<string, unknown>) => element('raycast-action', { icon: props.icon, title: props.title ?? 'Paste', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => afterSucceededEffect(() => compatibility.native({ kind: 'paste', text: props.content as string }), props.onPaste, props.content) }),
   Push: (props: Record<string, unknown>) => element('raycast-action', { title: props.title, shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => navigationStack.push(props.target) && renderNavigationTop() }),
   SubmitForm: (props: Record<string, unknown>) => {
     const formId = React.useContext(FormContext)
@@ -102,10 +114,14 @@ const unsupported = (name: string): never => { throw new Error(`Raycast API ${na
 export async function clearSearchBar(): Promise<void> { return unsupported('clearSearchBar') }
 export async function showHUD(_message: string): Promise<void> { return unsupported('showHUD') }
 export const Clipboard = { copy: async (text: string) => compatibility.native({ kind: 'copy', text }), paste: async (_value: string) => unsupported('Clipboard.paste') }
+export function openExtensionPreferences(): void { compatibility.openPreferences?.() }
 let preferences: Record<string, unknown> | undefined
 export function getPreferenceValues<T>(): T {
   preferences ??= (() => { try { const parsed: unknown = JSON.parse(process.env.TRUSTED_RAYCAST_PREFERENCES ?? '{}'); return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {} } catch { return {} } })()
-  return { langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '', ...preferences } as T
+  const defaults = process.env.TRUSTED_RAYCAST_EXTENSION_ID === 'kaomoji-search'
+    ? { displayMode: 'list', primaryAction: 'paste-to-active-app' }
+    : { langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }
+  return { ...defaults, ...preferences } as T
 }
 export async function savePreferenceValues(next: Readonly<Record<string, boolean | string>>): Promise<void> {
   await compatibility.native({ kind: 'savePreferences', preferences: next })

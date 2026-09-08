@@ -57,6 +57,19 @@ test('trusted Raycast child message must match the active extension identity', (
   assert.equal(isTrustedRaycastViewOpen({ ...open, extensionId: 'google-translate' as const, command: 'index' }), false)
 })
 
+test('Kaomoji preferences are exact at session and native persistence boundaries', () => {
+  const preferences = { displayMode: 'list', primaryAction: 'paste-to-active-app' }
+  const kaomojiOpen = { ...open, extensionId: 'kaomoji-search', command: 'index', preferences }
+  assert.equal(isTrustedRaycastViewOpen(kaomojiOpen), true)
+  assert.equal(isTrustedRaycastViewOpen({ ...kaomojiOpen, preferences: {} }), true, 'isolated preview may use descriptor defaults')
+  assert.equal(isTrustedRaycastViewOpen({ ...kaomojiOpen, preferences: { ...preferences, unknown: true } }), false)
+  assert.equal(isTrustedRaycastViewOpen({ ...kaomojiOpen, preferences: { ...preferences, displayMode: 'table' } }), false)
+  const save = { type: 'native', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', requestId: 'n', revision: 0, eventId: 'a', kind: 'savePreferences', preferences }
+  assert.equal(isTrustedRaycastNativeRequest(save), true)
+  assert.equal(isTrustedRaycastNativeRequest({ ...save, extensionId: 'google-translate' }), false)
+  assert.equal(isTrustedRaycastNativeRequest({ ...save, preferences: { ...preferences, extra: 'no' } }), false)
+})
+
 test('native requests and outcomes carry finite extension identity and capability scope', () => {
   const selected = { type: 'native', extensionId: 'google-translate', sessionId: 's', generation: 'g', requestId: 'n', kind: 'selectedText' }
   const copy = { type: 'native', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', requestId: 'n', revision: 0, eventId: 'a', kind: 'copy', text: '(^_^)' }
