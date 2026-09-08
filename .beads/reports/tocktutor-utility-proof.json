@@ -269,7 +269,7 @@
       "screenshotBytes": 218060,
       "screenshotSha256": "sha256:65a04eb3eb3860026a57215c22c35907acd0f3f98335ad3ead3fcadcb72dc63e",
       "captureMethod": "background open -g -n -a launch with CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
-      "captureCommit": "tutor@26a1cbd9",
+      "captureCommit": "tutor@ab3d1cf4",
       "captureState": "fresh isolated fixture captured before New Note creation",
       "copiedVaultIdentity": "TockTutor Parity Fixture",
       "sameIsolatedFixture": true,
