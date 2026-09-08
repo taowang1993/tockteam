@@ -235,7 +235,7 @@
   },
   "reading": {
     "fixture": "plugins/tocktutor/parity/fixtures/vault",
-    "sourceRevision": "tutor@c39c53f3",
+    "sourceRevision": "tutor@a3535e41",
     "viewport": {
       "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
       "pixels": { "width": 3024, "height": 1898 }
@@ -243,7 +243,7 @@
     "tockTutor": {
       "path": "Notes/Welcome.md",
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "screenshotSha256": "sha256:2018c5dbbf3e4c523a20a5410a3b1860ddab9b76a9e5e54eb4e4fded15cf7525",
+      "screenshotSha256": "sha256:0956329acc908109e6db3ac95181e6b62b81d2acfc71ab7a653fe9b9d09788ca",
       "sameIsolatedFixture": true,
       "pristine": true,
       "link": {
@@ -282,7 +282,14 @@
       }
     },
     "resolutionCoverage": ["path", "basename", "alias", "fragment"],
-    "interactionOrder": ["capture pristine pair", "toggle task and save through Host", "open internal wikilink and scroll fragment"]
+    "interactionOrder": ["capture pristine pair", "toggle task and save through Host", "open internal wikilink and scroll fragment"],
+    "rendererProof": {
+      "activeHtml": "sanitized outside fenced and inline code while preserving authored order",
+      "blockIds": "hidden from visible text and attached to headings, paragraphs, and list items",
+      "callouts": "tinted semantic panel",
+      "mermaid": "bounded accessible SVG with edge arrowheads terminating at node boundaries"
+    },
+    "deferredLimitations": ["Raw image embeds remain deferred to the Attachments and Embeds tranche."]
   },
   "checks": {
     "properties": {
