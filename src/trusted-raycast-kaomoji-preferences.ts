@@ -1,5 +1,6 @@
-import { lstatSync, readFileSync } from 'node:fs'
+import { lstatSync } from 'node:fs'
 import { atomicWrite } from './launcher-persistence.ts'
+import { readBoundedRegularFile } from './trusted-raycast-bounded-file.ts'
 import { KAOMOJI_PREFERENCE_DEFAULTS, isKaomojiPreferences, type KaomojiPreferences } from './trusted-raycast-contract.ts'
 
 export { KAOMOJI_PREFERENCE_DEFAULTS, isKaomojiPreferences, type KaomojiPreferences } from './trusted-raycast-contract.ts'
@@ -7,7 +8,7 @@ export type KaomojiPreferenceState = Readonly<{ configured: boolean; values: Kao
 
 export function loadKaomojiPreferenceState(path: string): KaomojiPreferenceState {
   try {
-    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
+    const parsed: unknown = JSON.parse(readBoundedRegularFile(path, 4096))
     if (!isKaomojiPreferences(parsed)) throw new Error('invalid')
     return Object.freeze({ configured: true, values: Object.freeze({ ...parsed }) })
   } catch { return Object.freeze({ configured: false, values: KAOMOJI_PREFERENCE_DEFAULTS }) }
