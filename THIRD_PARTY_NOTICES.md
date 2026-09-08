@@ -124,3 +124,26 @@ loads no extension code and no extension assets into its sandboxed renderer.
 Missing approved payload means no Translate catalog command. This is trusted
 local execution, not filesystem/network/process confinement or a general Raycast
 extension installer. Web and TUI do not activate this capability.
+
+## Trusted Raycast Kaomoji Search Candidate
+
+Source-controlled candidate: the unchanged `index` command from Raycast extensions
+revision `b7845053e3f39dadcf984217be5249fb51ab2ce8`, Kaomoji Search extension
+(MIT). Exact reviewed archive SHA-256:
+`9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f`.
+Raycast currently labels this extension Featured; TockTeam does not relabel it
+Recommended.
+
+The candidate contains the exact upstream source subtree, an explicitly
+non-installable runtime subset, source/runtime checksums, provenance, official
+metadata assets, and license inventory. It includes exact runtime bytes for
+asciilib 1.0.1 (MIT), React 19.0.0 (MIT), react-reconciler 0.31.0 (MIT), and
+scheduler 0.25.0 (MIT). The asciilib registry package and matching source tag
+contain no standalone license text; the archive therefore labels its supplied
+MIT terms as a supplemental reconstructed notice based on package metadata.
+
+Source-control approval does not authorize execution. Kaomoji remains disabled
+until finite per-extension identity, state, List/Grid/image, preference, and
+action controls pass fail-closed tests and independent review. It receives no
+network, browser, selected-text, arbitrary filesystem, shell/process, OAuth,
+elevation, updater, Web, TUI, generic RPC, or generic extension authority.
