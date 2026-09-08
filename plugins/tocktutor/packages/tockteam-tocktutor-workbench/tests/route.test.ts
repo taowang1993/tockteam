@@ -917,6 +917,7 @@ test('owns bounded quick New, Capture, and Search route interactions', async () 
   assert.equal(controller.getSnapshot().saveStatus, 'saved')
   assert.equal(controller.getSnapshot().panes.find(pane => pane.id === controller.getSnapshot().focusedPaneId)?.activePath, 'Notes/Quick.md')
   assert.equal(controller.getSnapshot().source, '')
+  assert.equal(remote.calls.filter(call => call.method === 'listTree').length, 2)
 
   remote.createFailure = { code: 'exists', message: 'Notes/Quick.md already exists.' }
   const pendingCollision = controller.handleDispatch({

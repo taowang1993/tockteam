@@ -526,6 +526,12 @@ export class WorkbenchRouteController {
             if (result.generation !== vault.generation || result.path !== path
                 || (operation === 'created' ? result.status !== 'created' : result.status !== 'saved'))
                 return 'failed';
+            // Keep the bounded tree snapshot in sync before recording the new tab. Workspace
+            // restore filters persisted tabs against this snapshot, so a just-created note
+            // must be visible before another pane or workspace can capture it.
+            await this.refreshTree(vault);
+            if (!this.dispatchCurrent(revision, vault))
+                return 'stale';
             if (silent)
                 return 'handled';
             this.update({
