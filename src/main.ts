@@ -64,7 +64,7 @@ import {
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { isTockTutorProtocol, parseSingleInstanceProtocolUrls, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
-import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
+import { applyWebClipFixtureEnvironment, scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
 import { DesktopPrintExportChannel } from './desktop-print-export-channel.ts'
@@ -212,6 +212,7 @@ const launcherPackagedSmokeEnabled = app.isPackaged
       && process.env.TOCKTEAM_INSTALLED_SMOKE === '1'
   )
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
+const webClipFixtureUrl = !app.isPackaged ? process.env.TOCKTEAM_WEB_CLIP_FIXTURE_URL : undefined
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
@@ -1105,6 +1106,11 @@ function runtimeEnvironment(
     PATH: runtimeSearchPath(paths),
   }
   scrubDesktopAuthorityEnvironment(environment, [MARKETPLACE_AGENT_URL_ENV, MARKETPLACE_AGENT_TOKEN_ENV])
+  applyWebClipFixtureEnvironment(environment, {
+    appIsPackaged: app.isPackaged,
+    fixtureUrl: webClipFixtureUrl,
+    preview: overrides.preview !== undefined,
+  })
   const reveal = overrides.preview === undefined ? desktopRevealChannel.environment : undefined
   if (reveal !== undefined) {
     environment.DSH_DESKTOP_REVEAL_ENDPOINT = reveal.endpoint
