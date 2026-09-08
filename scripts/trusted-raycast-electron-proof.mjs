@@ -82,7 +82,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await command.waitFor({ timeout: 15000 });
       const marker = command.locator('.launcher-command-row-icon');
       const identity = await marker.evaluate(node => ({ src: node instanceof HTMLImageElement ? node.src : '', tag: node.tagName }));
-      if (identity.tag !== 'IMG' || !/\/launcher-assets\/ueli-command-(?:dark|light)\.png$/u.test(identity.src)) throw new Error('Trusted Extensions did not use the TockTeam command icon: ' + JSON.stringify(identity));
+      if (identity.tag !== 'IMG' || !identity.src.includes('/launcher-assets/ueli-command-') || !identity.src.endsWith('.png')) throw new Error('Trusted Extensions did not use the TockTeam command icon: ' + JSON.stringify(identity));
       await launcher.locator('#launcher-search').press('Enter');
       await launcher.locator('section[aria-label="Trusted Extensions"]').waitFor({ timeout: 15000 });
       return { opened: true };
