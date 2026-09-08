@@ -35,7 +35,7 @@ function success<T>(value: T) {
   return Promise.resolve({ ok: true as const, value })
 }
 
-function failure(code: 'conflict', message: string) {
+function failure(code: 'conflict' | 'exists', message: string) {
   return Promise.resolve({
     error: new NoteVaultError(code, message),
     ok: false as const,
@@ -132,6 +132,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   restoreTrashResult: RestoreTrashResult | unknown | null = null
   readonly calls: Array<{ method: string; parameters: unknown[] }> = []
   readonly listeners = new Set<(event: NoteVaultChangeEvent) => void>()
+  createFailure: { code: 'exists'; message: string } | null = null
   createOverride: ((request: CreateDocumentRequest) => Promise<{
     ok: true
     value: WriteDocumentResult
@@ -153,6 +154,7 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     createDocument: (request: CreateDocumentRequest, signal?: AbortSignal) => {
       this.calls.push({ method: 'createDocument', parameters: [request, signal] })
+      if (this.createFailure !== null) return failure(this.createFailure.code, this.createFailure.message)
       if (this.createOverride !== null) return this.createOverride(request)
       return success({
         digest: `sha256:${'e'.repeat(64)}`,
@@ -910,6 +912,23 @@ test('owns bounded quick New, Capture, and Search route interactions', async () 
     remote.calls.find(call => call.method === 'createDocument')?.parameters[0],
     { content: '', expectedVault: firstVault, path: 'Notes/Quick.md' },
   )
+  assert.equal(controller.getSnapshot().path, 'Notes/Quick.md')
+  assert.equal(controller.getSnapshot().documentKind, 'markdown')
+  assert.equal(controller.getSnapshot().saveStatus, 'saved')
+  assert.equal(controller.getSnapshot().panes.find(pane => pane.id === controller.getSnapshot().focusedPaneId)?.activePath, 'Notes/Quick.md')
+  assert.equal(controller.getSnapshot().source, '')
+
+  remote.createFailure = { code: 'exists', message: 'Notes/Quick.md already exists.' }
+  const pendingCollision = controller.handleDispatch({
+    action: 'new',
+    kind: 'quick-action',
+    operationId: 'quick-new-collision',
+  })
+  await controller.submitDispatchDialog({ path: 'Notes/Quick.md' })
+  assert.equal(await pendingCollision, 'failed')
+  assert.equal(controller.getSnapshot().path, 'Notes/Quick.md')
+  assert.equal(controller.getSnapshot().message, 'Notes/Quick.md already exists.')
+  remote.createFailure = null
 
   const pendingCapture = controller.handleDispatch({
     action: 'capture',
@@ -923,7 +942,7 @@ test('owns bounded quick New, Capture, and Search route interactions', async () 
     controller.submitDispatchDialog(captureDraft),
   ])
   assert.equal(await pendingCapture, 'handled')
-  assert.equal(remote.calls.filter(call => call.method === 'createDocument').length, 2)
+  assert.equal(remote.calls.filter(call => call.method === 'createDocument').length, 3)
   assert.deepEqual(
     remote.calls.filter(call => call.method === 'createDocument').at(-1)?.parameters[0],
     {
