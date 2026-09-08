@@ -119,14 +119,14 @@ TockTeam Electron Main
 The renderer provides:
 
 - one semantic search combobox and grouped `Pinned`, `Recent`, `Commands`, and `Applications` options for an empty query, with typed `Results`;
-- Enter, arrows, Home/End, Ctrl/Cmd+number, Ctrl/Cmd+K, Ctrl/Cmd+F, Ctrl/Cmd+Delete, F5, history, and layered Escape behavior;
+- Enter, arrows, Home/End, Ctrl/Cmd+number, Ctrl/Cmd+K, Ctrl/Cmd+F, Ctrl/Cmd+Delete, history, and layered Escape behavior;
 - keyboard-navigable additional-action, file-search, and network-tool menus;
 - finite Base64, Rowland, UUID, file-search, and network tools;
-- visible Rescan, Settings, and Close controls;
+- a `Rescan extensions` command, Ctrl/Cmd+, settings shortcut, and grouped primary/additional footer actions;
 - native buttons, listbox/menu/dialog semantics, live status, focus restoration, visible focus, and reduced-motion behavior;
 - semantic DSH color tokens, Tailwind v4, shared `@tockteam/ui` React controls, and Lucide icons.
 
-The settings button opens the canonical workbench settings page. There is no second settings application or renderer-owned persistence authority. Active text drafts survive background snapshot refreshes; committed drafts reconcile with the accepted main-owned snapshot. Rejected drafts stay editable after blur, and invalid structured values receive visible and announced field errors.
+The settings shortcut opens the canonical workbench settings page. There is no second settings application or renderer-owned persistence authority. Active text drafts survive background snapshot refreshes; committed drafts reconcile with the accepted main-owned snapshot. Rejected drafts stay editable after blur, and invalid structured values receive visible and announced field errors.
 
 ## Provider Composition
 
