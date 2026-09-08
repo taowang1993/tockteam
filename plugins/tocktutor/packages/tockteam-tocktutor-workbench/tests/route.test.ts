@@ -1160,6 +1160,31 @@ test('reuses the active note tab and dirty-gates pane transitions', async () => 
   controller.dispose()
 })
 
+test('closes panes through the save gate and keeps one focused pane', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Folder/Note.md'), true)
+  assert.equal(await controller.addPane(), true)
+  assert.equal(await controller.select('Second.md'), true)
+
+  controller.edit('# Dirty pane\n')
+  remote.saveFailure = { code: 'conflict', message: 'revision changed' }
+  assert.equal(await controller.closePane('pane-2'), false)
+  assert.equal(controller.getSnapshot().focusedPaneId, 'pane-2')
+  assert.equal(controller.getSnapshot().panes.length, 2)
+  assert.equal(controller.getSnapshot().message, 'Save Conflict: The note changed outside this editor. Your source remains unsaved.')
+
+  remote.saveFailure = null
+  assert.equal(await controller.closePane('pane-2'), true)
+  assert.equal(controller.getSnapshot().focusedPaneId, 'pane-1')
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  assert.equal(controller.getSnapshot().panes.length, 1)
+  assert.equal(await controller.closePane('pane-1'), false)
+  assert.equal(controller.getSnapshot().panes.length, 1)
+  controller.dispose()
+})
+
 test('keeps ordinary note switching in one reusable tab', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

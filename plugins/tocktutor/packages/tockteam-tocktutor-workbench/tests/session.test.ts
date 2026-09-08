@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   addPaneGroup,
+  closePaneGroup,
   captureOperation,
   createWorkbenchSession,
   hydrateWorkbenchSession,
@@ -78,6 +79,23 @@ test('renames the same note across every open pane without changing tab state', 
   assert.equal(renamed.groups.every(group => group.tabs.find(tab => tab.id === group.activeTabId)?.path === 'Folder/Renamed.md'), true)
   assert.equal(session.groups[0]?.tabs[0]?.path, 'Folder/Note.md')
   assert.equal(renameNoteTabPath(session, 'Folder/Note.md', 'Folder/../bad.md').groups[0]?.tabs[0]?.path, 'Folder/Note.md')
+})
+
+test('closes a focused pane onto its nearest sibling but keeps the final pane', () => {
+  let session = createWorkbenchSession('route-1', { id: 'vault-1', generation: 1 })
+  session = openNoteTab(session, session.focusedGroupId, 'one.md')
+  const second = addPaneGroup(session, 'pane-2')
+  session = openNoteTab(second.session, second.groupId, 'two.md')
+
+  const closed = closePaneGroup(session, 'pane-2')
+  assert.equal(closed.closed?.id, 'pane-2')
+  assert.equal(closed.nextGroupId, 'group-1')
+  assert.equal(closed.session.focusedGroupId, 'group-1')
+  assert.deepEqual(closed.session.groups.map(group => group.id), ['group-1'])
+
+  const protectedLast = closePaneGroup(closed.session, 'group-1')
+  assert.equal(protectedLast.closed, null)
+  assert.deepEqual(protectedLast.session.groups.map(group => group.id), ['group-1'])
 })
 
 test('coalesces a dirty save gate and blocks failed persistence', async () => {

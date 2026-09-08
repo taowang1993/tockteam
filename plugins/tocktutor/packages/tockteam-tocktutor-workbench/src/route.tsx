@@ -117,6 +117,7 @@ import {
 import {
   addPaneGroup,
   closeNoteTab,
+  closePaneGroup,
   createWorkbenchSession,
   focusPaneGroup,
   isSafeVaultRelativePath,
@@ -1809,6 +1810,33 @@ export class WorkbenchRouteController {
     return this.select(path)
   }
 
+  async closePane(id: string): Promise<boolean> {
+    if (this.snapshot.phase !== 'ready' || this.shellSession.groups.length <= 1) return false
+    const target = this.shellSession.groups.find(group => group.id === id)
+    if (target === undefined) return false
+    if (target.tabs.some(tab => tab.dirty)) {
+      const active = id === this.shellSession.focusedGroupId && target.tabs.some(tab => tab.path === this.snapshot.path)
+      if (!active) {
+        this.update({ message: 'Save the pane before closing it.' })
+        return false
+      }
+      if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    }
+    const active = id === this.shellSession.focusedGroupId
+    const result = closePaneGroup(this.shellSession, id)
+    if (result.closed === null) return false
+    this.shellSession = result.session
+    this.syncShell()
+    if (!active) return true
+    this.clearDocument()
+    const nextPath = this.pane()?.activePath ?? null
+    if (nextPath === null) {
+      this.navigate(ROUTE_PREFIX)
+      return true
+    }
+    return await this.select(nextPath)
+  }
+
   async activateTab(paneId: string, path: string): Promise<boolean> {
     const pane = this.pane(paneId)
     if (pane === undefined || !pane.tabs.some(tab => tab.path === path)) return false
@@ -2728,6 +2756,7 @@ export interface TockTutorRouteViewProps {
   onClearSnapshots?(): void
   onCloseAttachmentPreview?(): void
   onCloseCommandPalette?(): void
+  onClosePane?(paneId: string): void
   onCloseSearch?(): void
   onCloseTab?(paneId: string, path: string): void
   onConvertActiveNote?(): void
@@ -3944,6 +3973,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onClearSnapshots={() => { void controller.clearRecoverySnapshots() }}
         onCloseAttachmentPreview={() => { controller.closeAttachmentPreview() }}
         onCloseCommandPalette={() => { controller.setCommandPaletteOpen(false) }}
+        onClosePane={paneId => { void controller.closePane(paneId) }}
         onCloseSearch={() => { controller.closeSearch() }}
         onCloseTab={(paneId, path) => { void controller.closeTab(paneId, path) }}
         onConvertActiveNote={() => { controller.convertActiveNote() }}

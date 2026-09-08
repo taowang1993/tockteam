@@ -239,6 +239,7 @@ export declare class WorkbenchRouteController {
     restoreTrashEntry(id: string): Promise<boolean>;
     addPane(): Promise<boolean>;
     focusPane(id: string, pathOverride?: string): Promise<boolean>;
+    closePane(id: string): Promise<boolean>;
     activateTab(paneId: string, path: string): Promise<boolean>;
     togglePinTab(paneId: string, path: string): void;
     moveTab(paneId: string, path: string, direction: -1 | 1): void;
@@ -301,6 +302,7 @@ export interface TockTutorRouteViewProps {
     onClearSnapshots?(): void;
     onCloseAttachmentPreview?(): void;
     onCloseCommandPalette?(): void;
+    onClosePane?(paneId: string): void;
     onCloseSearch?(): void;
     onCloseTab?(paneId: string, path: string): void;
     onConvertActiveNote?(): void;

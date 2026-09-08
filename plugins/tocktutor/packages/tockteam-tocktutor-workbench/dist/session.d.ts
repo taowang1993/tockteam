@@ -55,6 +55,12 @@ export declare function addPaneGroup(source: WorkbenchSession, requestedId?: str
     session: WorkbenchSession;
     groupId: string;
 };
+export interface ClosePaneGroupResult {
+    closed: PaneGroup | null;
+    nextGroupId: string | null;
+    session: WorkbenchSession;
+}
+export declare function closePaneGroup(source: WorkbenchSession, groupId: string): ClosePaneGroupResult;
 export declare function openNoteTab(source: WorkbenchSession, groupId: string, path: string, options?: Partial<Pick<NoteTab, 'pinned' | 'mode' | 'lastEditingMode'>> & {
     replaceActive?: boolean;
 }): WorkbenchSession;

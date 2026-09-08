@@ -250,6 +250,28 @@ export function addPaneGroup(
   return { session, groupId }
 }
 
+export interface ClosePaneGroupResult {
+  closed: PaneGroup | null
+  nextGroupId: string | null
+  session: WorkbenchSession
+}
+
+export function closePaneGroup(
+  source: WorkbenchSession,
+  groupId: string,
+): ClosePaneGroupResult {
+  const session = cloneSession(source)
+  if (session.groups.length <= 1) return { closed: null, nextGroupId: session.focusedGroupId, session }
+  const index = session.groups.findIndex(group => group.id === groupId)
+  if (index < 0) return { closed: null, nextGroupId: session.focusedGroupId, session }
+  const [closed] = session.groups.splice(index, 1)
+  if (closed === undefined) return { closed: null, nextGroupId: session.focusedGroupId, session }
+  if (session.focusedGroupId === groupId) {
+    session.focusedGroupId = session.groups[index]?.id ?? session.groups[index - 1]?.id ?? session.groups[0]!.id
+  }
+  return { closed, nextGroupId: session.focusedGroupId, session }
+}
+
 function groupOf(session: WorkbenchSession, groupId: string): PaneGroup | undefined {
   return session.groups.find(group => group.id === groupId)
 }

@@ -35,6 +35,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onBack?(): void
   onCancelDispatch?(): void
   onCloseCommandPalette?(): void
+  onClosePane?(paneId: string): void
   onCloseTab?(paneId: string, path: string): void
   onCopyGraphPath?(path: string): void
   onCreateManagedVault?(name: string): void
@@ -184,6 +185,33 @@ describe('TockTutor titlebar panel controls', () => {
     expect(assistantButton.getAttribute('aria-expanded')).toBe('false')
     expect(assistant.getAttribute('data-open')).toBe('false')
     expect(assistant.hasAttribute('inert')).toBe(true)
+  })
+
+  it('exposes pane focus and close controls without removing the final pane', () => {
+    const onClosePane = vi.fn()
+    const onFocusPane = vi.fn()
+    renderRoute({
+      focusedPaneId: 'pane-2',
+      panes: [
+        { activePath: 'First.md', id: 'pane-1', tabs: [{ dirty: false, path: 'First.md', pinned: false }] },
+        { activePath: 'Second.md', id: 'pane-2', tabs: [{ dirty: false, path: 'Second.md', pinned: false }] },
+      ],
+    }, { onClosePane, onFocusPane })
+
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
+    expect(screen.getByRole('button', { name: 'Add Pane' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Pane 1 First.md' }))
+    expect(onFocusPane).toHaveBeenCalledWith('pane-1')
+    fireEvent.click(screen.getByRole('button', { name: 'Close Pane 2' }))
+    expect(onClosePane).toHaveBeenCalledWith('pane-2')
+
+    cleanup()
+    renderRoute({ panes: [{ activePath: 'First.md', id: 'pane-1', tabs: [{ dirty: false, path: 'First.md', pinned: false }] }] })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
+    const pane1Close = screen.getByRole('button', { name: 'Close Pane 1' })
+    expect(pane1Close.hasAttribute('disabled')).toBe(true)
   })
 
   it('exposes accessible tab lifecycle and history controls', () => {

@@ -436,9 +436,28 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
             </div>
             <div className="tocktutor-pane-list mt-2 grid grid-cols-2 gap-1.5">
               {snapshot.panes.map((pane, index) => (
-                <Button unstyled aria-pressed={pane.id === snapshot.focusedPaneId} className="overflow-hidden rounded-[5px] border border-[var(--tt-border)] bg-transparent p-1.5 text-left aria-pressed:border-[var(--tt-accent)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate" key={pane.id} onClick={() => { props.onFocusPane(pane.id) }} title={pane.activePath ?? `Pane ${String(index + 1)}`} type="button">
-                  <span>Pane {String(index + 1)}</span><small>{pane.activePath ?? 'Empty'}</small>
-                </Button>
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] overflow-hidden rounded-[5px] border border-[var(--tt-border)]" key={pane.id}>
+                  <Button
+                    unstyled
+                    aria-label={`Pane ${String(index + 1)}${pane.activePath === null ? '' : ` ${pane.activePath}`}`}
+                    aria-pressed={pane.id === snapshot.focusedPaneId}
+                    className="min-w-0 overflow-hidden rounded-l-[4px] border-0 bg-transparent p-1.5 text-left aria-pressed:bg-[var(--tt-selected)] aria-pressed:text-[var(--tt-text)] [&_small]:block [&_small]:truncate [&_small]:text-xs [&_small]:text-[var(--tt-muted)] [&_span]:block [&_span]:truncate"
+                    onClick={() => { props.onFocusPane(pane.id) }}
+                    title={pane.activePath ?? `Pane ${String(index + 1)}`}
+                    type="button"
+                  >
+                    <span>Pane {String(index + 1)}</span><small>{pane.activePath ?? 'Empty'}</small>
+                  </Button>
+                  <Button
+                    unstyled
+                    aria-label={`Close Pane ${String(index + 1)}`}
+                    className="flex size-7 items-center justify-center self-start rounded border-0 bg-transparent p-1 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={snapshot.panes.length <= 1}
+                    onClick={() => { props.onClosePane?.(pane.id) }}
+                    title={snapshot.panes.length <= 1 ? 'Keep at least one pane' : 'Close Pane'}
+                    type="button"
+                  ><WorkbenchGlyph kind="close" /></Button>
+                </div>
               ))}
             </div>
           </section>
