@@ -7,7 +7,7 @@ import {
   shouldStartEditorRectangularSelection,
 } from '../src/source-editor.tsx'
 import { LivePreviewEditor, splitLivePreviewSource } from '../src/live-preview-editor.tsx'
-import { MarkdownSlidesView, RichReadingView } from '../src/editor-surface.tsx'
+import { LivePreviewView, MarkdownSlidesView, RichReadingView } from '../src/editor-surface.tsx'
 import { projectEditorStaticWidgets, projectEditorWidgets } from '../src/editor-widgets.ts'
 
 afterEach(() => {
@@ -278,6 +278,40 @@ describe('Milkdown Live Preview editor', () => {
     expect(reading.textContent).toContain('Rendered from the Host.')
   })
 
+  it('renders resolved local media in Live Preview and Slides while routing external media through the viewer', async () => {
+    const mediaSource = '![[../Attachments/pixel.png|16x16]]'
+    const onOpenExternalUrl = vi.fn()
+    const embeds = [{
+      content: 'iVBORw0KGgo=',
+      mimeType: 'image/png',
+      target: { display: '16x16', fragment: null, kind: 'media' as const, path: 'Attachments/pixel.png', source: mediaSource },
+    }]
+    const { container, unmount } = render(
+      <LivePreviewView
+        documentKey="welcome"
+        embeds={embeds}
+        onEdit={() => {}}
+        onOpenExternalUrl={onOpenExternalUrl}
+        onToggleTask={() => {}}
+        source={`Before ${mediaSource} after\n\n![Remote](https://example.com/image.png)\n`}
+        title="Embeds"
+      />,
+    )
+    const rendered = screen.getByLabelText('Live Preview Rendered Content')
+    expect(rendered.querySelector('.tocktutor-local-embed img[alt="16x16"][height="16"][width="16"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
+    expect(rendered.textContent).not.toContain(mediaSource)
+    expect(rendered.querySelector('img[src^="https://"]')).toBeNull()
+    fireEvent.click(rendered.querySelector('button[data-external-url="https://example.com/image.png"]')!)
+    expect(onOpenExternalUrl).toHaveBeenCalledWith('https://example.com/image.png')
+    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
+    unmount()
+
+    render(<MarkdownSlidesView embeds={embeds} source={`Slide ${mediaSource}\n`} />)
+    const slides = screen.getByLabelText('Slides Preview')
+    expect(slides.querySelector('.tocktutor-local-embed img[height="16"][width="16"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
+    expect(slides.textContent).not.toContain(mediaSource)
+  })
+
   it('presents wikilinks without source brackets and shares Reading View link styling', async () => {
     const live = render(<LivePreviewEditor content={'Review [[Welcome]] and [[Guide|start here]].\n'} onMarkdownChange={() => {}} />)
 
@@ -390,6 +424,28 @@ describe('Milkdown Live Preview editor', () => {
     render(<MarkdownSlidesView onOpenExternalUrl={onOpenExternalUrl} source="![Video](https://www.youtube.com/watch?v=NnTvZWp5Q7o)" />)
     fireEvent.click(screen.getByRole('button', { name: /YouTube/u }))
     expect(onOpenExternalUrl).toHaveBeenCalledWith('https://www.youtube-nocookie.com/embed/NnTvZWp5Q7o')
+  })
+
+  it('renders nested local embeds inside the Live Preview note widget', async () => {
+    const noteSource = '![[Included.md]]'
+    const nestedSource = '![[Attachments/nested.png|8x8]]'
+    const { container } = render(
+      <LivePreviewEditor
+        content={`Before ${noteSource} after`}
+        onMarkdownChange={() => {}}
+        resolvedEmbeds={[
+          { content: `# Included\n\nNested ${nestedSource}\n`, depth: 0, target: { display: null, fragment: null, kind: 'note', path: 'Included.md', source: noteSource } },
+          { content: 'iVBORw0KGgo=', depth: 1, mimeType: 'image/png', parentPath: 'Included.md', target: { display: '8x8', fragment: null, kind: 'media', path: 'Attachments/nested.png', source: nestedSource } },
+        ]}
+      />,
+    )
+    const widget = await waitFor(() => {
+      const value = container.querySelector<HTMLElement>('.tocktutor-live-embed-widget')
+      expect(value).toBeTruthy()
+      return value!
+    }, { timeout: 5_000 })
+    expect(widget.querySelector('img[alt="8x8"][height="8"][width="8"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
+    expect(widget.textContent).not.toContain(nestedSource)
   })
 
   it('exposes a stable selection-aware widget hook without recreating the editor', async () => {

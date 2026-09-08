@@ -67,10 +67,11 @@ test('preserves active-looking markup inside inline code spans', () => {
 
 test('hides resolved local embed markers while preserving unresolved and code literals', () => {
   const marker = '![[Target.md]]'
-  const html = renderMarkdownHtml(`Before \`${marker}\`\n\n${marker}\n\n![[Other.md]]\n\n\`\`\`md\n${marker}\n\`\`\`\n`, { resolvedEmbedSources: [marker] })
+  const html = renderMarkdownHtml(`Before \`${marker}\`\n\n${marker}\n\n![[Other.md]]\n\n\\${marker}\n\n\`\`\`md\n${marker}\n\`\`\`\n`, { resolvedEmbedSources: [marker] })
   assert.match(html, /<p>Before <code>!\[\[Target\.md\]\]<\/code><\/p>/u)
   assert.match(html, /<p>!<a class="internal-link" data-target="Other\.md" href="#">Other\.md<\/a><\/p>/u)
   assert.match(html, /<pre data-language="md"><code>!\[\[Target\.md\]\]<\/code><\/pre>/u)
+  assert.match(html, /<p>\\!\[\[Target\.md\]\]<\/p>/u)
   assert.doesNotMatch(html, /<p>!\[\[Target\.md\]\]<\/p>/u)
 })
 
@@ -86,6 +87,23 @@ test('renders Host-resolved local media and note embeds at their authored positi
   assert.match(html, /<p>Before <span[^>]+data-embed-kind="media"[^>]*><img[^>]+height="16"[^>]+width="16"[^>]+src="data:image\/png;base64,iVBORw0KGgo="/u)
   assert.match(html, /data-embed-kind="note"[^>]*>.*<h1>Included<\/h1>.*Host content/su)
   assert.doesNotMatch(html, /!\[\[\.\.\/Attachments\/pixel\.png\|16x16\]\]/u)
+})
+
+test('renders nested Host-resolved embeds while keeping external media behind the viewer boundary', () => {
+  const noteSource = '![[Notes/Included.md]]'
+  const nestedSource = '![[Attachments/nested.png|8x8]]'
+  const html = renderMarkdownHtml(`Before ${noteSource} after`, {
+    externalEmbedMode: 'viewer',
+    resolvedEmbeds: [
+      { content: `# Included\n\nNested ${nestedSource}\n\n![Remote](https://example.com/image.png)\n`, depth: 0, target: { display: null, fragment: null, kind: 'note', path: 'Notes/Included.md', source: noteSource } },
+      { content: 'iVBORw0KGgo=', depth: 1, mimeType: 'image/png', parentPath: 'Notes/Included.md', target: { display: '8x8', fragment: null, kind: 'media', path: 'Attachments/nested.png', source: nestedSource } },
+    ],
+  })
+  assert.match(html, /data-embed-kind="note"[^>]*>/u)
+  assert.match(html, /data-embed-kind="media"[^>]*><img[^>]+height="8"[^>]+width="8"/u)
+  assert.doesNotMatch(html, /!\[\[Attachments\/nested\.png\|8x8\]\]/u)
+  assert.match(html, /data-external-embed-kind="image"/u)
+  assert.doesNotMatch(html, /<img[^>]+src="https:\/\//u)
 })
 
 test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {

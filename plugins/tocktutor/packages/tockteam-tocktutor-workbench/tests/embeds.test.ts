@@ -37,6 +37,22 @@ test('resolves relative media and note embeds from the source path without escap
   assert.deepEqual(collectEmbedTargets('![[../escape.md]]', 'Welcome.md'), [])
 })
 
+test('resolves nested relative embeds with parent identity and bounded reads', async () => {
+  const result = await resolveEmbedGraph({
+    entries: [{ path: 'Notes/Parent.md' }, { path: 'Attachments/nested.png' }],
+    readAttachment: async path => ({ dataBase64: 'iVBORw0KGgo=', mimeType: 'image/png', path }),
+    readDocument: async path => ({ content: path === 'Notes/Parent.md' ? '# Parent\n\n![[../Attachments/nested.png|8x8]]\n' : '', path }),
+    source: '![[./Parent.md]]\n',
+    sourcePath: 'Notes/Welcome.md',
+  })
+  assert.equal(result.status, 'ready')
+  assert.equal(result.truncated, false)
+  assert.deepEqual(result.embeds.map(embed => ({ depth: embed.depth, parentPath: embed.parentPath, path: embed.target.path })), [
+    { depth: 0, parentPath: undefined, path: 'Notes/Parent.md' },
+    { depth: 1, parentPath: 'Notes/Parent.md', path: 'Attachments/nested.png' },
+  ])
+})
+
 test('prefers an exact embed path before an otherwise ambiguous basename', () => {
   const entries = [{ path: 'Course/Note.md' }, { path: 'Archive/Note.md' }]
   assert.equal(resolveEmbedTargetPath(entries, 'Course/Note.md'), 'Course/Note.md')

@@ -2,10 +2,11 @@
 import { Plugin, PluginKey, TextSelection } from '@milkdown/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/prose/view'
 import { MAX_EMBED_TARGETS, type ResolvedEmbedNode } from './embeds.ts'
+import { renderMarkdownHtml } from './rich-markdown.ts'
 
 export const livePreviewEmbedPluginKey = new PluginKey('tocktutorLivePreviewEmbeds')
 
-function widgetDom(embed: ResolvedEmbedNode, from: number, to: number, reveal: () => void): HTMLElement {
+function widgetDom(embed: ResolvedEmbedNode, from: number, to: number, embeds: readonly ResolvedEmbedNode[], reveal: () => void): HTMLElement {
   const widget = document.createElement('span')
   widget.className = 'tocktutor-live-embed-widget inline-flex max-w-full flex-col gap-1 rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 align-top text-[var(--tt-text)]'
   widget.dataset.embedFrom = String(from)
@@ -36,7 +37,14 @@ function widgetDom(embed: ResolvedEmbedNode, from: number, to: number, reveal: (
   label.className = 'truncate text-xs'
   label.textContent = embed.target.display ?? embed.target.path
   widget.append(label)
-  const mime = embed.mimeType?.toLocaleLowerCase() ?? ''
+  if (embed.target.kind === 'note') {
+    const preview = document.createElement('div')
+    preview.className = 'prose text-sm'
+    preview.innerHTML = renderMarkdownHtml(embed.content, { externalEmbedMode: 'inert', resolvedEmbeds: embeds, resolvedEmbedParentPath: embed.target.path })
+    widget.append(preview)
+    return widget
+  }
+  const mime = embed.mimeType?.toLocaleLowerCase().split(';', 1)[0] ?? ''
   const src = `data:${mime};base64,${embed.content}`
   let media: HTMLElement | null = null
   if (mime.startsWith('image/')) {
@@ -62,6 +70,13 @@ function widgetDom(embed: ResolvedEmbedNode, from: number, to: number, reveal: (
   }
   if (media !== null) {
     media.className = 'max-h-80 max-w-full object-contain'
+    const dimensions = embed.target.display?.match(/^(\d{1,4})x(\d{1,4})$/u)
+    const width = Number(dimensions?.[1])
+    const height = Number(dimensions?.[2])
+    if (dimensions !== null && width >= 1 && width <= 2_000 && height >= 1 && height <= 2_000 && (media instanceof HTMLImageElement || media instanceof HTMLVideoElement)) {
+      media.width = width
+      media.height = height
+    }
     widget.append(media)
   } else {
     const preview = document.createElement('pre')
@@ -97,7 +112,7 @@ function decorationSet(state, embeds: readonly ResolvedEmbedNode[], revealed: Re
           || state.selection.from <= to && state.selection.to >= from) continue
         decorations.push(
           Decoration.inline(from, to, { class: 'hidden' }, { embedSource: 'true' }),
-          Decoration.widget(from, view => widgetDom(embed, from, to, () => { reveal(view, from, to) }), { side: -1, embedWidget: 'true' }),
+          Decoration.widget(from, view => widgetDom(embed, from, to, embeds, () => { reveal(view, from, to) }), { side: -1, embedWidget: 'true' }),
         )
       }
     }

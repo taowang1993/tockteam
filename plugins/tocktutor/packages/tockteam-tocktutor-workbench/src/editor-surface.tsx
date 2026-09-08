@@ -44,7 +44,6 @@ export function ResolvedEmbedsView(props: {
   onOpenExternalUrl?: ((url: string) => void) | undefined
 }): ReactNode {
   const embeds = props.embeds ?? []
-  const resolvedEmbedSources = useMemo(() => embeds.map(embed => embed.target.source), [props.embeds])
   if (embeds.length === 0) return null
   return (
     <section aria-label="Resolved Embeds" className="mt-5 grid gap-3">
@@ -63,7 +62,7 @@ export function ResolvedEmbedsView(props: {
             {audio && <audio aria-label={embed.target.display ?? embed.target.path} className="mt-2 w-full" controls preload="metadata" src={`data:${embed.mimeType};base64,${embed.content}`} />}
             {video && <video aria-label={embed.target.display ?? embed.target.path} className="mt-2 max-h-80 max-w-full" controls preload="metadata" src={`data:${embed.mimeType};base64,${embed.content}`} />}
             {pdf && <iframe className="mt-2 h-80 w-full" sandbox="" src={`data:${embed.mimeType};base64,${embed.content}`} title={embed.target.display ?? embed.target.path} />}
-            {embed.target.kind === 'note' && <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content, { externalEmbedMode: 'viewer', resolvedEmbedSources }) }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />}
+            {embed.target.kind === 'note' && <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content, { externalEmbedMode: 'viewer', resolvedEmbeds: embeds, resolvedEmbedParentPath: embed.target.path }) }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />}
             {(embed.target.kind === 'canvas' || embed.target.kind === 'base') && <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-xs">{embed.content}</pre>}
           </article>
         )
