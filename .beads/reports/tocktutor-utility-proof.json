@@ -266,10 +266,10 @@
     "tockTutor": {
       "path": "Notes/Welcome.md",
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "screenshotBytes": 218359,
-      "screenshotSha256": "sha256:ed3dd531709477037b18a34a6bb44f92f55147a7ea14ae7ec40340ff4ee19ebd",
+      "screenshotBytes": 218060,
+      "screenshotSha256": "sha256:65a04eb3eb3860026a57215c22c35907acd0f3f98335ad3ead3fcadcb72dc63e",
       "captureMethod": "background open -g -n -a launch with CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
-      "captureCommit": "tutor@ccda4c8c",
+      "captureCommit": "tutor@26a1cbd9",
       "captureState": "fresh isolated fixture captured before New Note creation",
       "copiedVaultIdentity": "TockTutor Parity Fixture",
       "sameIsolatedFixture": true,
@@ -368,8 +368,8 @@
       "captureCommit": "tutor@ccda4c8c",
       "copiedVaultIdentity": "TockTutor Parity Fixture",
       "readingScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "readingScreenshotBytes": 218359,
-      "readingScreenshotSha256": "sha256:ed3dd531709477037b18a34a6bb44f92f55147a7ea14ae7ec40340ff4ee19ebd",
+      "readingScreenshotBytes": 218060,
+      "readingScreenshotSha256": "sha256:65a04eb3eb3860026a57215c22c35907acd0f3f98335ad3ead3fcadcb72dc63e",
       "copiedVaultIdentity": "TockTutor Parity Fixture",
       "activePath": "Notes/Welcome.md",
       "resolvedEmbedCount": 1,
@@ -446,8 +446,8 @@
         "treePaths": ["Notes/Welcome.md", "Imports/Imported.md", "Notes/Alias Target.md"],
         "containsGeneratedUntitled": false,
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-        "screenshotBytes": 218359,
-        "screenshotSha256": "sha256:ed3dd531709477037b18a34a6bb44f92f55147a7ea14ae7ec40340ff4ee19ebd"
+        "screenshotBytes": 218060,
+        "screenshotSha256": "sha256:65a04eb3eb3860026a57215c22c35907acd0f3f98335ad3ead3fcadcb72dc63e"
       },
       "postCreate": {
         "createdPath": "Notes/Untitled.md",
@@ -512,7 +512,7 @@
         "reason": "Obsidian has no captured Attachments utility panel; retain this panel as additional evidence and compare the genuine Reading embed pair separately.",
         "readingPair": {
           "comparability": "genuine",
-          "tockTutor": { "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png", "bytes": 218359, "sha256": "sha256:ed3dd531709477037b18a34a6bb44f92f55147a7ea14ae7ec40340ff4ee19ebd" },
+          "tockTutor": { "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png", "bytes": 218060, "sha256": "sha256:65a04eb3eb3860026a57215c22c35907acd0f3f98335ad3ead3fcadcb72dc63e" },
           "obsidian": { "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png", "bytes": 182314, "sha256": "sha256:c83fcb60931f84631732d2e42b0a2a8f83dc259bd7201b6a2e49a715b3d6e74a" }
         }
       }
