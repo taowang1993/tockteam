@@ -121,6 +121,7 @@ test('install lifecycle: stage -> pinned candidate -> isolated preview -> explic
     assert.equal(applied.hasPrevious, false)
     assert.equal(applied.recovery, '')
     assert.equal(fixture.store().runtimeDir(), join(fixture.install, 'current'))
+    assert.equal(JSON.parse(readFileSync(fixture.state, 'utf8')).extensionId, 'google-translate')
     // Stage was consumed; nothing staged remains and nothing was auto-applied again.
     assert.equal(fixture.store().status().staged, false)
 
@@ -313,6 +314,19 @@ test('trust state persists across restarts and install/remove never touches user
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
 })
 
+test('persisted trust state is bound to its descriptor identity', async () => {
+  const fixture = makeFixture()
+  try {
+    await install(fixture)
+    const trust = JSON.parse(readFileSync(fixture.state, 'utf8'))
+    writeFileSync(fixture.state, JSON.stringify({ ...trust, extensionId: 'kaomoji-search' }))
+    const status = fixture.store().status()
+    assert.equal(status.installed, false)
+    assert.equal(status.digestApproved, false)
+    assert.equal(fixture.store().runtimeDir(), undefined)
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
 test('staging copies the admitted bytes verbatim and never executes install scripts', async () => {
   const fixture = makeFixture()
   try {
@@ -323,7 +337,7 @@ test('staging copies the admitted bytes verbatim and never executes install scri
     assert.equal(readFileSync(join(staged, 'resolution.mjs'), 'utf8'), 'resolution-v1')
     assert.equal(JSON.parse(readFileSync(join(staged, 'build.json'), 'utf8')).artifactSha256, DIGEST_V1)
     assert.equal(typeof JSON.parse(readFileSync(join(staged, 'build.json'), 'utf8')).metadataSha256, 'string')
-    assert.deepEqual(JSON.parse(readFileSync(join(staged, 'stage.json'), 'utf8')), { digest: DIGEST_V1, previewed: false })
+    assert.deepEqual(JSON.parse(readFileSync(join(staged, 'stage.json'), 'utf8')), { digest: DIGEST_V1, extensionId: 'google-translate', previewed: false })
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
 })
 
@@ -344,10 +358,14 @@ test('rotation journal blocks exposure until a crash recovery decision is comple
   try {
     await install(fixture)
     const identity = JSON.parse(readFileSync(join(fixture.install, 'current', 'build.json'), 'utf8'))
-    writeFileSync(join(fixture.install, 'rotation.json'), JSON.stringify({ candidate: identity }))
+    writeFileSync(join(fixture.install, 'rotation.json'), JSON.stringify({ extensionId: 'google-translate', candidate: identity }))
     assert.equal(fixture.store().status().installed, false)
     assert.equal(fixture.store().runtimeDir(), undefined)
     assert.equal(fixture.store().recover().installed, true)
+    writeFileSync(join(fixture.install, 'rotation.json'), JSON.stringify({ extensionId: 'kaomoji-search', candidate: identity }))
+    assert.equal(fixture.store().status().installed, false, 'a foreign journal cannot be ignored')
+    assert.equal(fixture.store().runtimeDir(), undefined)
+    assert.equal(fixture.store().recover().installed, true, 'recovery may clear a foreign journal only after the approved current identity is revalidated')
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
 })
 

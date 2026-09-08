@@ -9,6 +9,7 @@ import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
 import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER, TRUSTED_RAYCAST_RESULT_ID, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, type TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
 import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
+import { trustedRaycastDataPaths } from './trusted-raycast-paths.ts'
 import { randomBytes } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
@@ -2234,20 +2235,21 @@ function initializeLauncher(): void {
     },
   })
   launcherOs = os
-  const translatePreferencesPath = join(app.getPath('userData'), 'launcher', 'trusted-raycast-preferences.json')
+  const googleTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'google-translate')
+  const translatePreferencesPath = googleTrustedPaths.preferencesFile
   const selectionFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE === '1'
   const pasteFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE === '1'
   trustedRaycastTrust = new TrustedRaycastTrustStore({
     descriptor: trustedRaycastDescriptors['google-translate'],
-    installRoot: join(app.getPath('userData'), 'launcher', 'trusted-raycast-install'),
+    installRoot: googleTrustedPaths.installRoot,
     candidateDir: join(currentDir, 'trusted-raycast'),
-    stateFile: join(app.getPath('userData'), 'launcher', 'trusted-raycast-trust.json'),
+    stateFile: googleTrustedPaths.trustFile,
     preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Translate runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir),
   })
   trustedRaycast = new TrustedRaycastManager({
     runtimeDir: () => trustedRaycastTrust?.runtimeDir(),
     nodePath: runtimePaths().nodeBinary,
-    stateFile: join(app.getPath('userData'), 'launcher', 'trusted-raycast-state.json'),
+    stateFile: googleTrustedPaths.stateFile,
     preferencesConfigured: () => loadTrustedRaycastPreferenceState(translatePreferencesPath).configured,
     savePreferences: preferences => saveTrustedRaycastPreferences(translatePreferencesPath, preferences),
     readSelectedText: async () => {

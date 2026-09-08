@@ -10,6 +10,7 @@ const INSTALL_FILES = ['artifact.tar', 'child.mjs', 'resolution.mjs', 'build.jso
 const SHA256_PATTERN = /^[a-f0-9]{64}$/
 
 type TrustFile = Readonly<{
+  extensionId?: string
   enabled: boolean
   approvedSha256: string
   installedSha256: string
@@ -17,7 +18,7 @@ type TrustFile = Readonly<{
   previousApprovedSha256: string
   previousIdentity?: TrustedRaycastBuildIdentity
 }>
-type RotationJournal = Readonly<{ candidate: TrustedRaycastBuildIdentity; previous?: TrustedRaycastBuildIdentity }>
+type RotationJournal = Readonly<{ extensionId: string; candidate: TrustedRaycastBuildIdentity; previous?: TrustedRaycastBuildIdentity }>
 
 export type TrustedRaycastTrustOptions = Readonly<{
   installRoot: string
@@ -38,17 +39,18 @@ const identityFrom = (value: unknown, descriptor: TrustedRaycastDescriptor): Tru
   try { return expected === undefined ? undefined : assertTrustedRaycastBuildIdentity(value, expected) } catch { return undefined }
 }
 const sameIdentity = (left: TrustedRaycastBuildIdentity | undefined, right: TrustedRaycastBuildIdentity | undefined): boolean => left !== undefined && right !== undefined && JSON.stringify(left) === JSON.stringify(right)
-const readTrustFile = (path: string): TrustFile => {
+const readTrustFile = (path: string, descriptor: TrustedRaycastDescriptor): TrustFile => {
   try {
     const parsed: unknown = JSON.parse(readTrustedRaycastFile(path, 128 * 1024).toString('utf8'))
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('invalid')
     const record = parsed as Record<string, unknown>
+    if (record.extensionId !== descriptor.extensionId && !(record.extensionId === undefined && descriptor.extensionId === 'google-translate')) throw new Error('invalid')
     const approved = typeof record.approvedSha256 === 'string' && SHA256_PATTERN.test(record.approvedSha256) ? record.approvedSha256 : ''
     const installed = typeof record.installedSha256 === 'string' && SHA256_PATTERN.test(record.installedSha256) ? record.installedSha256 : ''
     const previous = typeof record.previousApprovedSha256 === 'string' && SHA256_PATTERN.test(record.previousApprovedSha256) ? record.previousApprovedSha256 : ''
     const approvedIdentity = record.approvedIdentity as TrustedRaycastBuildIdentity | undefined
     const previousIdentity = record.previousIdentity as TrustedRaycastBuildIdentity | undefined
-    return Object.freeze({ enabled: record.enabled === true, approvedSha256: approved, installedSha256: installed, previousApprovedSha256: previous, ...(approvedIdentity === undefined ? {} : { approvedIdentity }), ...(previousIdentity === undefined ? {} : { previousIdentity }) })
+    return Object.freeze({ extensionId: descriptor.extensionId, enabled: record.enabled === true, approvedSha256: approved, installedSha256: installed, previousApprovedSha256: previous, ...(approvedIdentity === undefined ? {} : { approvedIdentity }), ...(previousIdentity === undefined ? {} : { previousIdentity }) })
   } catch { return Object.freeze({ enabled: false, approvedSha256: '', installedSha256: '', previousApprovedSha256: '' }) }
 }
 
@@ -105,28 +107,30 @@ export class TrustedRaycastTrustStore {
       const parsed: unknown = JSON.parse(readTrustedRaycastFile(this.journalPath(), 128 * 1024).toString('utf8'))
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('invalid')
       const record = parsed as Record<string, unknown>
+      if (record.extensionId !== this.descriptor.extensionId) throw new Error('invalid')
       const candidate = identityFrom(record.candidate, this.descriptor)
       const previous = record.previous === undefined ? undefined : identityFrom(record.previous, this.descriptor)
       if (candidate === undefined || (record.previous !== undefined && previous === undefined)) throw new Error('invalid')
-      return Object.freeze({ candidate, ...(previous === undefined ? {} : { previous }) })
+      return Object.freeze({ extensionId: this.descriptor.extensionId, candidate, ...(previous === undefined ? {} : { previous }) })
     } catch { return undefined }
   }
   private candidateIdentity(): TrustedRaycastBuildIdentity | undefined { return this.readIdentity(this.options.candidateDir, false) }
 
   status(): TrustedRaycastDiskTrustState {
-    const trust = readTrustFile(this.options.stateFile)
+    const trust = readTrustFile(this.options.stateFile, this.descriptor)
+    const journalPresent = existsSync(this.journalPath())
     const journal = this.readJournal()
     const approvedIdentity = identityFrom(trust.approvedIdentity, this.descriptor)
     const previousIdentity = identityFrom(trust.previousIdentity, this.descriptor)
     const current = this.readIdentity(this.currentDir()) ?? this.readExact(this.currentDir(), approvedIdentity)
     const currentApproved = current !== undefined && (sameIdentity(current, approvedIdentity) || (approvedIdentity === undefined && current.artifactSha256 === trust.approvedSha256))
     const previous = this.readExact(this.previousDir(), previousIdentity)
-    const stage = (() => { try { const parsed = JSON.parse(readTrustedRaycastFile(join(this.stageDir(), 'stage.json'), 4096).toString('utf8')) as Record<string, unknown>; return typeof parsed.digest === 'string' && SHA256_PATTERN.test(parsed.digest) && typeof parsed.previewed === 'boolean' ? { digest: parsed.digest, previewed: parsed.previewed } : { digest: '', previewed: false } } catch { return { digest: '', previewed: false } } })()
+    const stage = (() => { try { const parsed = JSON.parse(readTrustedRaycastFile(join(this.stageDir(), 'stage.json'), 4096).toString('utf8')) as Record<string, unknown>; return parsed.extensionId === this.descriptor.extensionId && typeof parsed.digest === 'string' && SHA256_PATTERN.test(parsed.digest) && typeof parsed.previewed === 'boolean' ? { digest: parsed.digest, previewed: parsed.previewed } : { digest: '', previewed: false } } catch { return { digest: '', previewed: false } } })()
     const candidate = this.candidateIdentity()
     const currentPresent = existsSync(this.currentDir())
     let recovery: TrustedRaycastTrustRecovery = ''
-    if (journal !== undefined || !currentApproved) {
-      if (journal !== undefined || previous !== undefined || currentPresent || trust.installedSha256 !== '') recovery = journal !== undefined || previous !== undefined ? 'interrupted-rotation' : 'invalid-install'
+    if (journalPresent || !currentApproved) {
+      if (journalPresent || previous !== undefined || currentPresent || trust.installedSha256 !== '') recovery = journalPresent || previous !== undefined ? 'interrupted-rotation' : 'invalid-install'
     }
     const value: TrustedRaycastDiskTrustState = Object.freeze({
       candidateAvailable: candidate !== undefined,
@@ -135,7 +139,7 @@ export class TrustedRaycastTrustStore {
       digestApproved: currentApproved,
       enabled: trust.enabled,
       hasPrevious: previous !== undefined,
-      installed: currentApproved && journal === undefined,
+      installed: currentApproved && !journalPresent,
       previewed: stage.previewed && stage.digest === this.descriptor.artifactSha256,
       recovery,
       staged: stage.digest === this.descriptor.artifactSha256 && this.readIdentity(this.stageDir(), false) !== undefined,
@@ -151,7 +155,7 @@ export class TrustedRaycastTrustStore {
     try {
       for (const file of INSTALL_FILES) writeFileSync(join(this.stageTmpDir(), file), readTrustedRaycastFile(join(this.options.candidateDir, file)))
       rmSync(this.stageDir(), { recursive: true, force: true }); renameSync(this.stageTmpDir(), this.stageDir())
-      writeAtomic(join(this.stageDir(), 'stage.json'), Buffer.from(JSON.stringify({ digest: candidate.artifactSha256, previewed: false })))
+      writeAtomic(join(this.stageDir(), 'stage.json'), Buffer.from(JSON.stringify({ digest: candidate.artifactSha256, extensionId: this.descriptor.extensionId, previewed: false })))
       if (this.readIdentity(this.stageDir(), false) === undefined) throw new Error('Staged trusted extension candidate failed its isolated digest check')
       return this.status()
     } catch (error) { rmSync(this.stageTmpDir(), { recursive: true, force: true }); throw error }
@@ -162,7 +166,7 @@ export class TrustedRaycastTrustStore {
     if (!status.staged) throw new Error('No pinned Translate candidate is staged')
     const failure = await (this.options.preview ? this.options.preview(this.stageDir()) : Promise.resolve('')).catch(error => error instanceof Error ? error.message : 'Translate preview failed')
     if (failure !== '') throw new Error(failure.slice(0, 512))
-    writeAtomic(join(this.stageDir(), 'stage.json'), Buffer.from(JSON.stringify({ digest: this.descriptor.artifactSha256, previewed: true })))
+    writeAtomic(join(this.stageDir(), 'stage.json'), Buffer.from(JSON.stringify({ digest: this.descriptor.artifactSha256, extensionId: this.descriptor.extensionId, previewed: true })))
     return this.status()
   }
 
@@ -172,15 +176,15 @@ export class TrustedRaycastTrustStore {
     if (!status.previewed) throw new Error('The staged Translate candidate has not passed its isolated preview')
     const candidate = this.readIdentity(this.stageDir(), false)
     if (candidate === undefined) throw new Error('Staged Translate candidate failed its digest check')
-    const trust = readTrustFile(this.options.stateFile)
+    const trust = readTrustFile(this.options.stateFile, this.descriptor)
     const previous = this.readIdentity(this.currentDir())
-    writeAtomic(this.journalPath(), Buffer.from(JSON.stringify({ candidate, ...(previous === undefined ? {} : { previous }) })))
+    writeAtomic(this.journalPath(), Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, candidate, ...(previous === undefined ? {} : { previous }) })))
     try {
       this.ensureInstallRoot()
       rmSync(this.previousDir(), { recursive: true, force: true })
       if (existsSync(this.currentDir())) renameSync(this.currentDir(), this.previousDir())
       renameSync(this.stageDir(), this.currentDir())
-      writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ enabled: enabledOverride ?? trust.enabled, approvedSha256: candidate.artifactSha256, installedSha256: candidate.artifactSha256, approvedIdentity: candidate, ...(previous === undefined ? {} : { previousApprovedSha256: previous.artifactSha256, previousIdentity: previous }) })))
+      writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, enabled: enabledOverride ?? trust.enabled, approvedSha256: candidate.artifactSha256, installedSha256: candidate.artifactSha256, approvedIdentity: candidate, ...(previous === undefined ? {} : { previousApprovedSha256: previous.artifactSha256, previousIdentity: previous }) })))
       if (this.readExact(this.currentDir(), candidate) === undefined) throw new Error('Applied Translate candidate failed its digest check')
       rmSync(this.journalPath(), { force: true })
     } catch (error) { throw error }
@@ -205,8 +209,8 @@ export class TrustedRaycastTrustStore {
   }
 
   private setEnabled(enabled: boolean): TrustedRaycastDiskTrustState {
-    const trust = readTrustFile(this.options.stateFile)
-    writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ enabled, approvedSha256: trust.approvedSha256, installedSha256: trust.installedSha256, ...(trust.approvedIdentity === undefined ? {} : { approvedIdentity: trust.approvedIdentity }), ...(trust.previousIdentity === undefined ? {} : { previousApprovedSha256: trust.previousApprovedSha256, previousIdentity: trust.previousIdentity }) })))
+    const trust = readTrustFile(this.options.stateFile, this.descriptor)
+    writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, enabled, approvedSha256: trust.approvedSha256, installedSha256: trust.installedSha256, ...(trust.approvedIdentity === undefined ? {} : { approvedIdentity: trust.approvedIdentity }), ...(trust.previousIdentity === undefined ? {} : { previousApprovedSha256: trust.previousApprovedSha256, previousIdentity: trust.previousIdentity }) })))
     return this.status()
   }
   enable(): TrustedRaycastDiskTrustState { return this.setEnabled(true) }
@@ -215,16 +219,21 @@ export class TrustedRaycastTrustStore {
   remove(): TrustedRaycastDiskTrustState {
     for (const dir of [this.stageTmpDir(), this.stageDir(), this.currentDir(), this.previousDir()]) rmSync(dir, { recursive: true, force: true })
     rmSync(this.journalPath(), { force: true })
-    const trust = readTrustFile(this.options.stateFile)
-    writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ enabled: trust.enabled, approvedSha256: trust.approvedSha256, installedSha256: '' })))
+    const trust = readTrustFile(this.options.stateFile, this.descriptor)
+    writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, enabled: trust.enabled, approvedSha256: trust.approvedSha256, installedSha256: '' })))
     return this.status()
   }
 
   recover(): TrustedRaycastDiskTrustState {
     const healthy = this.status()
     if (healthy.recovery === '') return healthy
-    const trust = readTrustFile(this.options.stateFile)
+    const trust = readTrustFile(this.options.stateFile, this.descriptor)
     const journal = this.readJournal()
+    const approvedIdentity = identityFrom(trust.approvedIdentity, this.descriptor)
+    const currentApproved = this.readExact(this.currentDir(), approvedIdentity)
+    if (journal === undefined && existsSync(this.journalPath()) && currentApproved !== undefined) {
+      rmSync(this.journalPath(), { force: true }); return this.status()
+    }
     const previous = this.readExact(this.previousDir(), journal?.previous ?? trust.previousIdentity)
     const currentCandidate = journal === undefined ? undefined : this.readExact(this.currentDir(), journal.candidate)
     const journalPrevious = journal?.previous
@@ -237,11 +246,11 @@ export class TrustedRaycastTrustStore {
     }
     if (previous !== undefined) {
       rmSync(this.currentDir(), { recursive: true, force: true }); renameSync(this.previousDir(), this.currentDir())
-      writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ enabled: trust.enabled, approvedSha256: previous.artifactSha256, installedSha256: previous.artifactSha256, approvedIdentity: previous })))
+      writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, enabled: trust.enabled, approvedSha256: previous.artifactSha256, installedSha256: previous.artifactSha256, approvedIdentity: previous })))
       rmSync(this.journalPath(), { force: true }); return this.status()
     }
     rmSync(this.currentDir(), { recursive: true, force: true }); rmSync(this.stageTmpDir(), { recursive: true, force: true }); rmSync(this.journalPath(), { force: true })
-    writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ enabled: trust.enabled, approvedSha256: trust.approvedSha256, installedSha256: '' })))
+    writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, enabled: trust.enabled, approvedSha256: trust.approvedSha256, installedSha256: '' })))
     return this.status()
   }
 
