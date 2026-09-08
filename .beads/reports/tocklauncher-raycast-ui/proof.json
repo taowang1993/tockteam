@@ -1,6 +1,6 @@
 {
   "bead": "tockteam-62k",
-  "sourceCommit": "dbfcbc671eb1a3841297a3d328a3c4f13dc52ca4",
+  "sourceCommit": "304ae70aafc8e1c07314a29e9d3adc200495306b",
   "logicalViewport": {
     "width": 750,
     "height": 475
@@ -44,8 +44,8 @@
     ]
   },
   "installedSmoke": {
-    "command": "TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=/tmp/tockteam-62k-parity-followup.noindex pnpm test:launcher:installed",
-    "sourceCommit": "7eb5bb879b25df217158602dc6adb01de1149238",
+    "command": "TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=/tmp/tockteam-62k-final-304ae70a.noindex TOCKTEAM_INSTALLED_SMOKE_REPORT=.beads/reports/trusted-raycast-desktop/slice-4/installed-smoke.json pnpm test:launcher:installed",
+    "sourceCommit": "304ae70aafc8e1c07314a29e9d3adc200495306b",
     "result": "passed",
     "platform": "darwin-arm64",
     "processTreesGone": true,
