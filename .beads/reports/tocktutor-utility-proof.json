@@ -265,8 +265,9 @@
     "tockTutor": {
       "path": "Notes/Welcome.md",
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "screenshotBytes": 218363,
-      "screenshotSha256": "sha256:8b2078f28a889a021c842c457f52ef20cc2008362b6fcc512b94d54b4b6e87d8",
+      "screenshotBytes": 222681,
+      "screenshotSha256": "sha256:36bb82522832836628639eca95659ed568041b889f98b67706c0969947d92965",
+      "captureMethod": "background open -g -n -a launch with CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
       "sameIsolatedFixture": true,
       "pristine": true,
       "localEmbed": {
@@ -348,8 +349,9 @@
     },
     "tockTutor": {
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png",
-      "screenshotBytes": 250563,
-      "screenshotSha256": "sha256:3cf4f7109f36698b56c2c7a5f55a0f3e51adc46dc733d99a6555e62013057d98",
+      "screenshotBytes": 254675,
+      "screenshotSha256": "sha256:c1058a0f2c54d02f2877cb5b13d7feeba227fdfc50a11b77163c8a9846fdd31a",
+      "captureMethod": "background open -g -n -a launch with CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
       "readingScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
       "activePath": "Notes/Welcome.md",
       "resolvedEmbedCount": 1,
@@ -397,6 +399,79 @@
         "fragmentY": 400.5
       }
     }
+  },
+  "affectedRecapture": {
+    "capturedAt": "2026-09-08",
+    "fixture": "plugins/tocktutor/parity/fixtures/vault",
+    "sameIsolatedFixture": true,
+    "temporaryProfile": true,
+    "temporaryVault": true,
+    "backgroundLaunch": "open -g -n -a",
+    "physicalAutomation": false,
+    "noFocus": {
+      "foregroundBefore": "com.apple.loginwindow",
+      "foregroundAfter": "com.apple.loginwindow",
+      "probe": "NSWorkspace.shared.frontmostApplication bundle identifier"
+    },
+    "captureMethod": "CDP Runtime.evaluate, Input.dispatchMouseEvent, Input.dispatchKeyEvent, and Page.captureScreenshot",
+    "geometry": {
+      "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+      "pixels": { "width": 3024, "height": 1898 }
+    },
+    "surfaces": {
+      "noteActions": {
+        "comparability": "genuine",
+        "status": "reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-note-actions-menu.png",
+        "screenshotBytes": 332640,
+        "screenshotSha256": "sha256:15c049eb515947801ca7be5a59e92ec70032accd3188b981f434b3c5241b3a3e",
+        "activePath": "Welcome",
+        "menuLabels": ["Reading View", "Live Preview", "Source Mode", "Rename Note", "Move Note", "Bookmark Note", "File Recovery", "Properties", "Backlinks", "Graph View", "Web Viewer", "Bookmarks", "Tags", "Attachments and Embeds", "Note Tools", "Workspaces and Panes", "Reviews and Actions", "Move File to Trash"],
+        "visibleTooltips": 0
+      },
+      "newNote": {
+        "comparability": "genuine",
+        "status": "reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-new-note.png",
+        "screenshotBytes": 231257,
+        "screenshotSha256": "sha256:9e054bf868ef97cde3fb86b5b7bf873f033a841f2001ac26e455eb7a2a76154c",
+        "dialog": { "title": "New Note", "focused": "New Note Path", "path": "" },
+        "result": { "activePath": "/tocktutor/Notes/Quick.md", "editorTitle": "Quick", "message": "Notes/Quick.md created.", "source": "", "unsavedMarker": false, "saved": true }
+      },
+      "workspacesPanes": {
+        "comparability": "genuine",
+        "status": "reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-workspaces-panes.png",
+        "screenshotBytes": 172456,
+        "screenshotSha256": "sha256:0a0ddff8a0173c03be1a4ad76e4caa24a677e6f025998869cc0750629333232e",
+        "afterAddPane": { "activePath": "/tocktutor", "focused": "Pane 2", "panes": ["Pane 1 Notes/Quick.md", "Pane 2"] },
+        "saved": { "focused": "Pane 1 Notes/Quick.md", "loadButtons": ["Load Workspace 1"], "panes": [{ "label": "Pane 1 Notes/Quick.md", "pressed": "true" }, { "label": "Pane 2", "pressed": "false" }] },
+        "restored": { "activePath": "/tocktutor/Notes/Quick.md", "focused": "Pane 1 Notes/Quick.md", "panes": ["Pane 1 Notes/Quick.md", "Pane 2"], "finalPaneCloseDisabled": false }
+      }
+    },
+    "cleanup": { "electronTreesStopped": true, "temporaryProfilesRemoved": true }
+  },
+  "parityClassification": {
+    "checklistRows": 122,
+    "residualCapabilities": [
+      { "id": "editor-source-codemirror", "area": "editor", "status": "proven", "classification": "proven" },
+      { "id": "editor-source-fidelity", "area": "editor", "status": "proven", "classification": "proven" },
+      { "id": "editor-live-preview-milkdown", "area": "editor", "status": "proven", "classification": "proven" },
+      { "id": "editor-live-preview-blocks", "area": "editor", "status": "proven", "classification": "proven" },
+      { "id": "editor-live-preview-tables-commands", "area": "editor", "status": "proven", "classification": "proven" },
+      { "id": "embed-recursive-resolution", "area": "embeds", "status": "proven", "classification": "proven" },
+      { "id": "embed-reading-slides-export", "area": "embeds", "status": "proven", "classification": "proven" },
+      { "id": "embed-editor-widgets", "area": "embeds", "status": "proven", "classification": "proven" },
+      { "id": "render-safe-raw-html", "area": "rendering", "status": "proven", "classification": "proven" },
+      { "id": "render-external-embeds", "area": "rendering", "status": "proven", "classification": "proven" },
+      { "id": "protocol-vault-routing", "area": "protocol", "status": "proven", "classification": "proven" },
+      { "id": "protocol-pane-clipboard-callbacks", "area": "protocol", "status": "proven", "classification": "proven" },
+      { "id": "agent-note-read-tools", "area": "agent", "status": "proven", "classification": "proven" },
+      { "id": "agent-staged-write-tools", "area": "agent", "status": "proven", "classification": "proven" }
+    ],
+    "summary": { "total": 14, "proven": 14, "gaps": 0 },
+    "retainedSecurityDivergences": ["static-export-network-content", "static-export-active-media"],
+    "notApplicable": ["Assistant", "Reviews"]
   },
   "webViewer": {
     "fixture": "credential-free loopback HTTP fixture at 127.0.0.1.nip.io",
