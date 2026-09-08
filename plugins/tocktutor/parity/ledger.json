@@ -2011,6 +2011,32 @@
     "exhaustive": false,
     "text": "This ledger reports the scoped TockTeam parity contract and residual Tockbot behaviors; it does not claim exhaustive Tockbot or Obsidian parity."
   },
+  "visualEvidence": {
+    "capturedAt": "2026-09-08",
+    "gallery": ".agents/uiux/tocktutor/tocktutor.html",
+    "captureCount": 50,
+    "referenceVersion": "Obsidian 1.13.7",
+    "viewport": {
+      "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+      "pixels": { "width": 3024, "height": 1898 }
+    },
+    "genuineComparisons": [
+      { "surface": "Note Actions", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-note-actions.png" },
+      { "surface": "New Note", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-new-note.png" },
+      { "surface": "Attachments and Embeds", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-attachments-embeds.png" },
+      { "surface": "Web Viewer", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-web-viewer.png" }
+    ],
+    "closestComparisons": [
+      { "surface": "Note Tools", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-note-tools.png", "reason": "Obsidian command palette actions are not a unified Note Tools panel." },
+      { "surface": "Workspaces and Panes", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-workspaces-panes.png", "reason": "Obsidian Outline and pane context are not one-to-one workspace groups." }
+    ],
+    "notApplicable": ["Assistant", "Reviews"],
+    "noFocusGate": {
+      "backgroundLaunch": "open -g",
+      "cdpActionsOnlyForRecapturedSurfaces": true,
+      "nativeRecaptureBlockers": ["Note Actions: the renderer DOM click did not expose the overflow menu; no OS-level click was used under the gate."]
+    }
+  },
   "residualCapabilities": [
     {
       "id": "editor-source-codemirror",

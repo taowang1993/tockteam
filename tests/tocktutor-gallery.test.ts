@@ -10,10 +10,13 @@ const imageSources = [...gallery.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(m
 const screenshotLinks = [...gallery.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]!)
 
 test('keeps the TockTutor gallery capture count and screenshot links honest', () => {
-  assert.match(gallery, /Visual Design Audit · 46 Captures/u)
+  assert.match(gallery, /Visual Design Audit · 50 Captures/u)
   assert.match(gallery, /href="shared-note\.md"/u)
   assert.match(gallery, /href="\.\.\/\.\.\/\.\.\/plugins\/tocktutor\/parity\/fixtures\/vault\/"/u)
-  assert.equal(new Set(imageSources).size, 46)
+  assert.equal(new Set(imageSources).size, 50)
+  assert.equal([...gallery.matchAll(/<span class="badge">Not Applicable<\/span>/gu)].length, 2)
+  assert.match(gallery, /id="assistant"[\s\S]*?<span class="badge">Not Applicable<\/span>/u)
+  assert.match(gallery, /id="reviews"[\s\S]*?<span class="badge">Not Applicable<\/span>/u)
   for (const relativePath of new Set([...imageSources, ...screenshotLinks, 'shared-note.md', '../../../plugins/tocktutor/parity/fixtures/vault'])) {
     assert.equal(existsSync(resolve(galleryRoot, relativePath)), true, relativePath)
   }

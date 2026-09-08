@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-07",
+  "capturedAt": "2026-09-08",
   "viewport": {
     "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
     "pixels": { "width": 3024, "height": 1898 }
@@ -27,7 +27,13 @@
     ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png",
     ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
     ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png",
-    ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png"
+    ".agents/uiux/tocktutor/screenshots/tocktutor-attachments-embeds.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-note-actions.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-new-note.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-attachments-embeds.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-note-tools.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-workspaces-panes.png",
+    ".agents/uiux/tocktutor/screenshots/obsidian-web-viewer.png"
   ],
   "graphs": {
     "fixture": {
@@ -362,12 +368,15 @@
     },
     "obsidian": {
       "version": "1.13.7",
-      "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png",
-      "screenshotBytes": 182314,
-      "screenshotSha256": "sha256:c83fcb60931f84631732d2e42b0a2a8f83dc259bd7201b6a2e49a715b3d6e74a",
+      "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-attachments-embeds.png",
+      "screenshotBytes": 194801,
+      "screenshotSha256": "sha256:308483debe7a6b728cdbbe6c124c290557ae4ce090570dad0637f7843d967f15",
       "sameIsolatedFixture": true,
       "inlineEmbedVisible": true,
-      "directAttachmentPanelCapture": false
+      "attachmentVisible": true,
+      "rawMarkerVisible": false,
+      "directAttachmentPanelCapture": true,
+      "captureMethod": "background open -g launch with CDP DOM actions and Page.captureScreenshot"
     },
     "securityBoundary": "External HTTP(S) media remains inert or routes through the isolated Web Viewer; local media is rendered only from Host-resolved content.",
     "postCapture": {
@@ -386,6 +395,89 @@
         "fragmentY": 400.5
       }
     }
+  },
+  "installedObsidianEvidence": {
+    "version": "1.13.7",
+    "capturedAt": "2026-09-08",
+    "geometry": {
+      "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+      "pixels": { "width": 3024, "height": 1898 },
+      "preseededWindow": { "x": 1512, "y": 30, "width": 1366, "height": 949, "display": "non-primary" }
+    },
+    "backgroundCapture": {
+      "launch": "open -g",
+      "physicalAutomation": false,
+      "actions": ["Runtime.evaluate", "Input.dispatchMouseEvent", "Input.dispatchKeyEvent", "Page.captureScreenshot"],
+      "temporaryVault": true,
+      "temporaryProfile": true,
+      "cleanup": "Obsidian process tree and temporary profile stopped and removed"
+    },
+    "surfaces": [
+      {
+        "name": "Note Actions",
+        "comparability": "genuine",
+        "status": "reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-note-actions.png",
+        "screenshotBytes": 603987,
+        "screenshotSha256": "sha256:bfdc9fc00ee1a4128cbb17865a0c5a84080580465da9ba5cf36441831c3609f9",
+        "captureMethod": "installed capture retained from the pre-no-focus-gate run",
+        "noFocusRecapture": "blocked",
+        "blocker": "The renderer DOM click did not open Obsidian's overflow menu; no OS-level click was used under the no-focus gate."
+      },
+      {
+        "name": "New Note",
+        "comparability": "genuine",
+        "status": "reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-new-note.png",
+        "screenshotBytes": 81370,
+        "screenshotSha256": "sha256:2ab241eef8f25121e339127ec9e332257c00c2e3936f268a149ca3c87a0d2404",
+        "interaction": "Created an Untitled note through the File Explorer command",
+        "captureMethod": "background open -g launch with CDP actions and Page.captureScreenshot"
+      },
+      {
+        "name": "Attachments and Embeds",
+        "comparability": "genuine",
+        "status": "reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-attachments-embeds.png",
+        "screenshotBytes": 194801,
+        "screenshotSha256": "sha256:308483debe7a6b728cdbbe6c124c290557ae4ce090570dad0637f7843d967f15",
+        "interaction": "Opened Welcome in Reading View and expanded the Attachments folder; one local image embed was visible",
+        "captureMethod": "background open -g launch with CDP actions and Page.captureScreenshot"
+      },
+      {
+        "name": "Note Tools Commands",
+        "comparability": "approximate",
+        "status": "closest-reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-note-tools.png",
+        "screenshotBytes": 230440,
+        "screenshotSha256": "sha256:85b2449e694300b2df5e3534d81368c979db60bc5641c9c103927b3f2ec6b04a",
+        "interaction": "Filtered the installed command palette to Note composer",
+        "captureMethod": "background open -g launch with CDP actions and Page.captureScreenshot",
+        "reason": "Obsidian exposes comparable composition actions through commands rather than one unified Note Tools panel"
+      },
+      {
+        "name": "Outline and Pane Context",
+        "comparability": "approximate",
+        "status": "closest-reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-workspaces-panes.png",
+        "screenshotBytes": 255323,
+        "screenshotSha256": "sha256:b8cb8b35da5d3341c90bface1055f460f6b71bc2e70a95362100184e0662fd73",
+        "interaction": "Opened Outline for the active note and selected the Data heading",
+        "captureMethod": "background open -g launch with CDP actions and Page.captureScreenshot",
+        "reason": "The captured Outline and pane context is the nearest installed state, not a one-to-one workspace-group equivalent"
+      },
+      {
+        "name": "Web Viewer",
+        "comparability": "genuine",
+        "status": "reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-web-viewer.png",
+        "screenshotBytes": 101201,
+        "screenshotSha256": "sha256:303489721b5467f09d0ae1711b0acf23ac35e74c933673c9cac18ce6825e7fbe",
+        "interaction": "Loaded a credential-free loopback fixture in Web Viewer and verified Reader view afterward",
+        "captureMethod": "background open -g launch with CDP actions and Page.captureScreenshot"
+      }
+    ],
+    "notApplicable": ["Assistant", "Reviews"]
   },
   "checks": {
     "properties": {
@@ -429,8 +521,8 @@
     "duplicateUtilityHeading": false
   },
   "gallery": {
-    "uniqueImageSources": 46,
-    "captureCountLabel": "Visual Design Audit · 46 Captures",
+    "uniqueImageSources": 50,
+    "captureCountLabel": "Visual Design Audit · 50 Captures",
     "linkExistenceCheck": true,
     "checkCommand": "node --test tests/tocktutor-gallery.test.ts"
   },
@@ -463,6 +555,12 @@
     "source": ".agents/uiux/tocktutor/screenshots/obsidian-source-mode.png",
     "commandPalette": ".agents/uiux/tocktutor/screenshots/obsidian-command-palette.png",
     "recovery": ".agents/uiux/tocktutor/screenshots/obsidian-file-recovery.png",
-    "reading": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png"
+    "reading": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png",
+    "noteActions": ".agents/uiux/tocktutor/screenshots/obsidian-note-actions.png",
+    "newNote": ".agents/uiux/tocktutor/screenshots/obsidian-new-note.png",
+    "attachmentsEmbeds": ".agents/uiux/tocktutor/screenshots/obsidian-attachments-embeds.png",
+    "noteTools": ".agents/uiux/tocktutor/screenshots/obsidian-note-tools.png",
+    "workspacesPanes": ".agents/uiux/tocktutor/screenshots/obsidian-workspaces-panes.png",
+    "webViewer": ".agents/uiux/tocktutor/screenshots/obsidian-web-viewer.png"
   }
 }

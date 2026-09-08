@@ -2683,7 +2683,7 @@
     },
     {
       "path": "parity/ledger.json",
-      "sha256": "10af18aa147412979539b164deffb7fd99ca41acc17f9f6642c3805b26b0ba0a"
+      "sha256": "27ecbfa10ff2255f4baa2aac21f565bfe2e5921437f6224de86cc0106cdec1be"
     },
     {
       "path": "parity/validate.mjs",
