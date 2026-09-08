@@ -166,9 +166,12 @@ export function createLauncherFileSearchTool(options: Readonly<{
   })
   const closeMenuWithoutFocus = (): void => {
     if (openMenu === undefined) return
-    openMenu.menu.hidden = true
-    openMenu.toggle.setAttribute('aria-expanded', 'false')
+    const active = openMenu
+    const hiddenFocus = active.menu.contains(document.activeElement)
+    active.menu.hidden = true
+    active.toggle.setAttribute('aria-expanded', 'false')
     openMenu = undefined
+    if (hiddenFocus && active.toggle.isConnected) active.toggle.focus()
   }
   const closeMenuAndRestoreFocus = (): void => {
     const toggle = openMenu?.toggle

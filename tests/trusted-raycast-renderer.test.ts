@@ -276,6 +276,7 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.ok(nodes.some(node => node.className.includes('launcher-command-header')))
   assert.ok(nodes.some(node => node.className.includes('launcher-command-content')))
   assert.ok(nodes.some(node => node.className.includes('launcher-command-field')))
+  assert.equal(nodes.find(node => node.textContent === 'Translate from')?.className, 'text-right', 'preference labels align to the control edge')
   assert.ok(nodes.some(node => node.className.includes('launcher-command-control')))
   assert.ok(nodes.some(node => node.className.includes('launcher-command-footer')))
   assert.ok(nodes.some(node => node.className.includes('launcher-command-footer-identity')))

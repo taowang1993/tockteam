@@ -278,9 +278,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     for (const child of form.children) {
       if (typeof child === 'string') continue
       if (child.type === 'raycast-form-dropdown') {
-        const field = document.createElement('label'); field.className = 'launcher-command-field'; field.textContent = String(child.props.title ?? '')
+        const field = document.createElement('label'); field.className = 'launcher-command-field'
+        const fieldTitle = String(child.props.title ?? '')
+        const fieldLabel = document.createElement('span'); fieldLabel.className = 'text-right'; fieldLabel.textContent = fieldTitle
         const select = document.createElement('select'); select.className = 'launcher-command-control'
-        select.setAttribute('aria-label', String(child.props.title ?? ''))
+        select.setAttribute('aria-label', fieldTitle)
         firstFormControl ??= select
         for (const option of child.children) {
           if (typeof option === 'string') continue
@@ -292,16 +294,19 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
           const eventId = child.props.fieldEventId
           if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: select.value.slice(0, 128) })
         })
-        field.append(select); formArea.append(field)
+        field.append(fieldLabel, select); formArea.append(field)
       } else if (child.type === 'raycast-text-field') {
-        const field = document.createElement('label'); field.className = 'launcher-command-field'; field.textContent = String(child.props.title ?? '')
+        const field = document.createElement('label'); field.className = 'launcher-command-field'
+        const fieldTitle = String(child.props.title ?? '')
+        const fieldLabel = document.createElement('span'); fieldLabel.className = 'text-right'; fieldLabel.textContent = fieldTitle
         const fieldInput = document.createElement('input'); fieldInput.type = 'text'; firstFormControl ??= fieldInput; fieldInput.className = 'launcher-command-control'
+        fieldInput.setAttribute('aria-label', fieldTitle)
         fieldInput.value = String(child.props.value ?? '')
         fieldInput.addEventListener('change', () => {
           const eventId = child.props.fieldEventId
           if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: fieldInput.value.slice(0, 128) })
         })
-        field.append(fieldInput); formArea.append(field)
+        field.append(fieldLabel, fieldInput); formArea.append(field)
       }
     }
     const actions = descendants(form, 'raycast-action')

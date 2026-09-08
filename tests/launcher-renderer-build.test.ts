@@ -209,6 +209,8 @@ test('launcher renderer uses shared types, Lucide icons, visible selection, and 
   assert.doesNotMatch(html, /⌕/u)
   assert.match(launcher, /button\.className = 'launcher-command-row'/u)
   assert.match(tailwind, /@utility launcher-command-row[\s\S]+&\[aria-selected='true'\]/u)
+  assert.doesNotMatch(smoke, /className\.includes\('aria-selected:'\)/u)
+  assert.match(smoke, /getComputedStyle\(selected\)\.backgroundColor/u)
   assert.match(launcher, /tockteam-launcher-focus-search/u)
   assert.match(preload, /dispatchEvent\(new Event\('tockteam-launcher-focus-search'\)\)/u)
   assert.match(launcher, /No Recent Searches/u)

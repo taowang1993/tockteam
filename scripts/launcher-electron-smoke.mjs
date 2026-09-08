@@ -412,7 +412,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'rescan', 'search', 'trustedRaycastClose', 'trustedRaycastEvent'],
+    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'rescan', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastTrustAction'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
@@ -457,11 +457,14 @@ try {
   assert.equal(openingFlowFacts.accessible, true)
   assert.equal(openingFlowFacts.hasCommands, true)
 
-  const iconFacts = await launcherConnection.evaluate(`({
-    selected: document.querySelector('[data-result-id][aria-selected="true"]')?.className.includes('aria-selected:'),
-    searchIconSize: document.querySelector('#launcher-search-icon svg')?.getAttribute('width'),
-    historyIconSize: document.querySelector('#launcher-history-toggle svg')?.getAttribute('width'),
-  })`)
+  const iconFacts = await launcherConnection.evaluate(`(() => {
+    const selected = document.querySelector('[data-result-id][aria-selected="true"]')
+    return {
+      selected: selected?.classList.contains('launcher-command-row') === true && getComputedStyle(selected).backgroundColor !== 'rgba(0, 0, 0, 0)',
+      searchIconSize: document.querySelector('#launcher-search-icon svg')?.getAttribute('width'),
+      historyIconSize: document.querySelector('#launcher-history-toggle svg')?.getAttribute('width'),
+    }
+  })()`)
   assert.deepEqual(iconFacts, { selected: true, searchIconSize: '18', historyIconSize: '18' })
   const updateState = await workbenchConnection.evaluate('(async () => await window.dshDesktop?.appUpdate?.getState())()')
   assert.equal(updateState?.enabled, false)
@@ -2109,7 +2112,7 @@ try {
     const selected = document.querySelector('[data-result-id][aria-selected="true"]')
     return {
       selected: selected?.textContent?.includes('TockCoder'),
-      styled: selected?.className.includes('aria-selected:'),
+      styled: selected?.classList.contains('launcher-command-row') === true && getComputedStyle(selected).backgroundColor !== 'rgba(0, 0, 0, 0)',
     }
   })()`)
   assert.deepEqual(selectedAfterSearch, { selected: true, styled: true })
