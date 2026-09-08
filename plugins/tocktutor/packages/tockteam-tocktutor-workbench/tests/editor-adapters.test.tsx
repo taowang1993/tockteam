@@ -248,6 +248,34 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.className).toContain('[&_.mermaid-node-shape]:fill-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_12%,var(--tt-panel))]')
   })
 
+  it('renders resolved local media and note embeds without raw source markers in Reading View', () => {
+    const mediaSource = '![[../Attachments/pixel.png|16x16]]'
+    render(
+      <RichReadingView
+        embeds={[
+          {
+            content: 'iVBORw0KGgo=',
+            mimeType: 'image/png',
+            target: { display: '16x16', fragment: null, kind: 'media', path: 'Attachments/pixel.png', source: mediaSource },
+          },
+          {
+            content: '# Included note\n\nRendered from the Host.\n',
+            target: { display: null, fragment: null, kind: 'note', path: 'Notes/Included.md', source: '![[Included.md]]' },
+          },
+        ]}
+        onToggleTask={() => {}}
+        source={`Before\n\n${mediaSource}\n\n![[Included.md]]\n\nAfter\n`}
+        title="Embeds"
+      />,
+    )
+
+    const reading = screen.getByLabelText('Reading View')
+    expect(reading.textContent).not.toContain(mediaSource)
+    expect(reading.textContent).not.toContain('![[Included.md]]')
+    expect(reading.querySelector('img[alt="16x16"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
+    expect(reading.textContent).toContain('Rendered from the Host.')
+  })
+
   it('presents wikilinks without source brackets and shares Reading View link styling', async () => {
     const live = render(<LivePreviewEditor content={'Review [[Welcome]] and [[Guide|start here]].\n'} onMarkdownChange={() => {}} />)
 

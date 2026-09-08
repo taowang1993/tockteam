@@ -65,6 +65,7 @@ export interface EmbedResolverOptions {
   readDocument(path: string, signal: AbortSignal): Promise<EmbedDocumentResult>
   signal?: AbortSignal
   source: string
+  sourcePath?: string
 }
 
 function kind(path: string): EmbedKind | null {
@@ -89,7 +90,26 @@ function escapedAt(line: string, index: number): boolean {
   return slashes % 2 === 1
 }
 
-export function collectEmbedTargets(source: string): EmbedTarget[] {
+function resolveRelativeEmbedPath(sourcePath: string | undefined, targetPath: string): string | null {
+  const normalized = targetPath.replaceAll('\\', '/')
+  if (!normalized.startsWith('./') && !normalized.startsWith('../')) return normalized
+  if (sourcePath === undefined || !isSafeVaultRelativePath(sourcePath)) return null
+  const parts = sourcePath.split('/').slice(0, -1)
+  for (const segment of normalized.split('/')) {
+    if (segment === '.') continue
+    if (segment === '..') {
+      if (parts.length === 0) return null
+      parts.pop()
+      continue
+    }
+    if (segment === '' || /[\u0000-\u001f\u007f]/u.test(segment)) return null
+    parts.push(segment)
+  }
+  const resolved = parts.join('/')
+  return isSafeVaultRelativePath(resolved) ? resolved : null
+}
+
+export function collectEmbedTargets(source: string, sourcePath?: string): EmbedTarget[] {
   if (new TextEncoder().encode(source).byteLength > MAX_EMBED_CONTENT_BYTES) throw new Error('Embed source exceeds the content limit.')
   const targets: EmbedTarget[] = []
   const lines = source.split(/\r?\n/u)
@@ -111,8 +131,11 @@ export function collectEmbedTargets(source: string): EmbedTarget[] {
       const path = (hash < 0 ? targetPart : targetPart.slice(0, hash)).trim()
       const fragment = hash < 0 ? null : targetPart.slice(hash + 1).trim() || null
       const targetKind = kind(path)
-      const normalizedPath = targetKind === 'note' && !/\.(?:markdown|md)$/iu.test(path) ? `${path}.md` : path
-      if (targetKind === null || !isSafeVaultRelativePath(normalizedPath)) continue
+      const resolvedPath = resolveRelativeEmbedPath(sourcePath, path)
+      const normalizedPath = targetKind === 'note' && resolvedPath !== null && !/\.(?:markdown|md)$/iu.test(resolvedPath)
+        ? `${resolvedPath}.md`
+        : resolvedPath
+      if (targetKind === null || normalizedPath === null || !isSafeVaultRelativePath(normalizedPath)) continue
       targets.push({
         display: displayPart?.trim() || null,
         fragment,
@@ -417,10 +440,10 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
         target: freezeTarget({ ...target, path }),
       })
       if (depth >= maxDepth) {
-        if (collectEmbedTargets(content).length > 0) warn(`Embed depth limit reached: ${path}`)
+        if (collectEmbedTargets(content, path).length > 0) warn(`Embed depth limit reached: ${path}`)
         return
       }
-      for (const child of collectEmbedTargets(content)) await visit(child, depth + 1, [...stack, path], path)
+      for (const child of collectEmbedTargets(content, path)) await visit(child, depth + 1, [...stack, path], path)
     } catch (error) {
       if (error instanceof StaleEmbedError) throw error
       if (signal.aborted) throw error
@@ -428,7 +451,7 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
     }
   }
   try {
-    for (const target of collectEmbedTargets(options.source)) await visit(target, 0, [])
+    for (const target of collectEmbedTargets(options.source, options.sourcePath)) await visit(target, 0, [])
     check()
     return { embeds: Object.freeze(embeds.map(embed => Object.freeze(embed))), status: 'ready', truncated, warnings: Object.freeze([...warnings]) }
   } catch (error) {

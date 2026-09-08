@@ -29,6 +29,14 @@ test('collects bounded safe note, media, Canvas, and Base embeds outside code', 
   ])
 })
 
+test('resolves relative media and note embeds from the source path without escaping the vault', () => {
+  assert.deepEqual(collectEmbedTargets('![[../Attachments/pixel.png|16x16]]\n![[./Sibling.md]]', 'Notes/Welcome.md'), [
+    { display: '16x16', fragment: null, kind: 'media', path: 'Attachments/pixel.png', source: '![[../Attachments/pixel.png|16x16]]' },
+    { display: null, fragment: null, kind: 'note', path: 'Notes/Sibling.md', source: '![[./Sibling.md]]' },
+  ])
+  assert.deepEqual(collectEmbedTargets('![[../escape.md]]', 'Welcome.md'), [])
+})
+
 test('prefers an exact embed path before an otherwise ambiguous basename', () => {
   const entries = [{ path: 'Course/Note.md' }, { path: 'Archive/Note.md' }]
   assert.equal(resolveEmbedTargetPath(entries, 'Course/Note.md'), 'Course/Note.md')

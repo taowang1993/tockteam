@@ -13,6 +13,8 @@ export const MAX_RICH_MARKDOWN_FOOTNOTES = 1000
 export interface RenderMarkdownOptions {
   /** External HTTP(S) media is inert by default; viewer mode emits a button for the isolated Web Viewer. */
   externalEmbedMode?: 'inert' | 'viewer'
+  /** Hide only local embed markers that have already been resolved by the Host. */
+  resolvedEmbedSources?: readonly string[]
   strictLineBreaks?: boolean
 }
 
@@ -73,6 +75,39 @@ const ACTIVE_HTML_OPEN = /<\s*(embed|form|iframe|link|math|meta|object|script|st
 
 function activeHtmlClose(name: string): RegExp {
   return new RegExp(`</\\s*${name}\\s*>`, 'iu')
+}
+
+function inlineCodeRanges(line: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = []
+  for (const match of line.matchAll(/(`+)([^`]*?)\1/gu)) {
+    if (match.index !== undefined) ranges.push([match.index, match.index + match[0].length])
+  }
+  return ranges
+}
+
+function escapedAt(line: string, index: number): boolean {
+  let slashes = 0
+  for (let cursor = index - 1; cursor >= 0 && line[cursor] === '\\'; cursor -= 1) slashes += 1
+  return slashes % 2 === 1
+}
+
+/** Hide resolved local embed markers without touching fenced or inline code. */
+function hideResolvedEmbedSources(markdown: string, sources: ReadonlySet<string>): string {
+  if (sources.size === 0) return markdown
+  let fence: { character: string; length: number } | null = null
+  return markdown.split('\n').map(line => {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1]
+    if (marker !== undefined) {
+      if (fence === null) fence = { character: marker[0]!, length: marker.length }
+      else if (marker[0] === fence.character && marker.length >= fence.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line)) fence = null
+      return line
+    }
+    if (fence !== null) return line
+    const code = inlineCodeRanges(line)
+    return line.replace(/!\[\[([^\]\r\n]{1,4096})\]\]/gu, (match: string, _target: string, offset: number) => {
+      return sources.has(match) && !code.some(([start, end]) => offset >= start && offset < end) && !escapedAt(line, offset) ? '' : match
+    })
+  }).join('\n')
 }
 
 /** Remove active HTML outside fenced code without reordering the authored Markdown. */
@@ -420,7 +455,9 @@ function renderMarkdownList(
 
 export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOptions = {}): string {
   if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`
-  const source = stripActiveHtml(stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n'))
+  const normalized = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+  const resolvedEmbedSources = new Set(options.resolvedEmbedSources ?? [])
+  const source = stripActiveHtml(hideResolvedEmbedSources(normalized, resolvedEmbedSources))
   const lines = source.split('\n')
   const footnotes = collectFootnotes(lines)
   const externalEmbedMode = options.externalEmbedMode ?? 'inert'

@@ -1851,9 +1851,16 @@ test('resolves note, media, Canvas, and Base embeds under source identity', asyn
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
   assert.equal(await controller.select('Folder/Note.md'), true)
-  controller.edit('![[Second.md]]\n![[Attachments/existing.png]]\n![[Board.canvas]]\n![[Tasks.base]]\n')
+  controller.edit('![[Second.md]]\n![[../Attachments/existing.png|16x16]]\n![[Board.canvas]]\n![[Tasks.base]]\n')
   assert.equal(await controller.loadEmbeds(), true)
   assert.deepEqual(controller.getSnapshot().embeds?.map(embed => embed.target.kind), ['note', 'media', 'canvas', 'base'])
+  assert.deepEqual(controller.getSnapshot().embeds?.find(embed => embed.target.kind === 'media')?.target, {
+    display: '16x16',
+    fragment: null,
+    kind: 'media',
+    path: 'Attachments/existing.png',
+    source: '![[../Attachments/existing.png|16x16]]',
+  })
   assert.equal(controller.getSnapshot().embeds?.find(embed => embed.target.kind === 'media')?.content, 'AQID')
   controller.dispose()
 })

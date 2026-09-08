@@ -531,8 +531,8 @@ function boundedSource(source: string): boolean {
   return new TextEncoder().encode(source).byteLength <= MAX_ROUTE_SOURCE_BYTES
 }
 
-function embedTargetSources(source: string): readonly string[] {
-  try { return Object.freeze(collectEmbedTargets(source).map(target => target.source)) } catch { return Object.freeze([]) }
+function embedTargetSources(source: string, sourcePath?: string): readonly string[] {
+  try { return Object.freeze(collectEmbedTargets(source, sourcePath).map(target => target.source)) } catch { return Object.freeze([]) }
 }
 
 function sameStrings(left: readonly string[], right: readonly string[]): boolean {
@@ -2076,7 +2076,7 @@ export class WorkbenchRouteController {
         if (closed?.path === fromPath) this.recentlyClosed[index] = { ...closed, path: toPath }
       }
       this.cancelEmbedOperation()
-      this.embedTargets = embedTargetSources(this.snapshot.source)
+      this.embedTargets = embedTargetSources(this.snapshot.source, toPath)
       const bookmarks = remapBookmarks(this.bookmarks, fromPath, toPath)
       const bookmarksPersisted = this.storage === null || saveBookmarks(this.storage, vault.id, bookmarks)
       const renameWarnings = [
@@ -2179,7 +2179,7 @@ export class WorkbenchRouteController {
       const mode = pane.tabs.find(tab => tab.path === path)?.mode
         ?? (documentKind(path) === 'markdown' ? this.snapshot.settings?.defaultEditingMode ?? 'live-preview' : 'reading')
       this.cancelEmbedOperation()
-      this.embedTargets = embedTargetSources(content)
+      this.embedTargets = embedTargetSources(content, path)
       this.update({
         documentKind: documentKind(path),
         embeds: Object.freeze([]),
@@ -2223,7 +2223,7 @@ export class WorkbenchRouteController {
       this.update({ selectedSnapshot: null, snapshots: Object.freeze([]) })
     }
     this.invalidateDispatch()
-    const nextEmbedTargets = embedTargetSources(source)
+    const nextEmbedTargets = embedTargetSources(source, this.snapshot.path ?? undefined)
     const embedsChanged = !sameStrings(this.embedTargets, nextEmbedTargets)
     this.embedTargets = nextEmbedTargets
     if (embedsChanged) this.cancelEmbedOperation()
@@ -2428,7 +2428,7 @@ export class WorkbenchRouteController {
     if (vault === null || sourcePath === null || this.snapshot.documentKind !== 'markdown') return false
     const source = this.snapshot.source
     let targets: EmbedTarget[]
-    try { targets = collectEmbedTargets(source) } catch {
+    try { targets = collectEmbedTargets(source, sourcePath) } catch {
       this.cancelEmbedOperation()
       this.update({ embeds: Object.freeze([]) })
       return false
@@ -2456,6 +2456,7 @@ export class WorkbenchRouteController {
         },
         signal: operation.signal,
         source,
+        sourcePath,
       })
       if (result.status !== 'ready' || !this.currentEmbed(operation.id, vault, sourcePath)) return false
       this.update({

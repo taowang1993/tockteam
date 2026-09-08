@@ -65,6 +65,15 @@ test('preserves active-looking markup inside inline code spans', () => {
   assert.match(html, /<code>&lt;script&gt;alert\(1\)&lt;\/script&gt;<\/code>/u)
 })
 
+test('hides resolved local embed markers while preserving unresolved and code literals', () => {
+  const marker = '![[Target.md]]'
+  const html = renderMarkdownHtml(`Before \`${marker}\`\n\n${marker}\n\n![[Other.md]]\n\n\`\`\`md\n${marker}\n\`\`\`\n`, { resolvedEmbedSources: [marker] })
+  assert.match(html, /<p>Before <code>!\[\[Target\.md\]\]<\/code><\/p>/u)
+  assert.match(html, /<p>!<a class="internal-link" data-target="Other\.md" href="#">Other\.md<\/a><\/p>/u)
+  assert.match(html, /<pre data-language="md"><code>!\[\[Target\.md\]\]<\/code><\/pre>/u)
+  assert.doesNotMatch(html, /<p>!\[\[Target\.md\]\]<\/p>/u)
+})
+
 test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {
   const html = renderMarkdownHtml('> First line\n>\n> second line\n\nOpen [[Welcome]] and [[Study Guide|start here]].\n')
   assert.match(html, /<blockquote><p>First line<\/p><p>second line<\/p><\/blockquote>/u)

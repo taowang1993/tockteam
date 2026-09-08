@@ -91,6 +91,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
     .toSorted(([left], [right]) => left.localeCompare(right))
   const vaultProperties = snapshot.facets?.properties ?? []
   const vaultTags = snapshot.facets?.tags ?? []
+  const resolvedEmbedSources = (snapshot.embeds ?? []).map(embed => embed.target.source)
   const linkedMentions = snapshot.links?.backlinkDetails ?? []
   const unlinkedMentions = snapshot.links?.unlinkedMentions ?? []
   const snapshotOptionRefs = useRef(new Map<string, HTMLButtonElement>())
@@ -337,7 +338,7 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
                   {embed.target.kind === 'media' && embed.mimeType?.startsWith('audio/') && <audio className="mt-1 w-full" controls src={`data:${embed.mimeType};base64,${embed.content}`} />}
                   {embed.target.kind === 'media' && embed.mimeType?.startsWith('video/') && <video className="mt-1 max-h-48 max-w-full" controls src={`data:${embed.mimeType};base64,${embed.content}`} />}
                   {embed.target.kind === 'media' && embed.mimeType === 'application/pdf' && <iframe className="mt-1 h-48 w-full" sandbox="" src={`data:${embed.mimeType};base64,${embed.content}`} title={embed.target.path} />}
-                  {embed.target.kind === 'note' && <div className="prose text-xs" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content) }} />}
+                  {embed.target.kind === 'note' && <div className="prose text-xs" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(embed.content, { resolvedEmbedSources }) }} />}
                   {embed.target.kind === 'canvas' && <CanvasBoard disabled onChange={() => {}} revision="embedded" source={embed.content} />}
                   {embed.target.kind === 'base' && <ExecutableBaseView files={snapshot.baseFiles ?? []} source={embed.content} />}
                 </article>
