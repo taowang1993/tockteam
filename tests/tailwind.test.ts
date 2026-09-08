@@ -53,6 +53,13 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(tailwind, /@source .*src\/launcher-workflow-settings\.tsx/u)
   assert.match(tailwind.match(/@utility launcher-command-menu-item \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? '', /font-size: 0\.875rem/u, 'shared action menus keep the compact 14px type size')
   assert.ok(tailwind.indexOf('@utility launcher-command-error') > tailwind.indexOf('@utility launcher-command-empty'), 'error color must override the shared empty-state color')
+  const preferenceHeader = tailwind.match(/#launcher-root \[data-view='preference-setup'\] > \.launcher-command-header \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(preferenceHeader, /height: 4rem/u, 'preference setup keeps Raycast’s 64px top region')
+  const preferenceFields = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-field \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(preferenceFields, /gap: 1\.4375rem/u, 'preference labels and controls keep Raycast’s 23px gutter')
+  const preferenceControls = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-control \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(preferenceControls, /height: 2\.125rem/u, 'preference controls keep Raycast’s 34px height')
+  assert.match(preferenceControls, /border-radius: 0\.875rem/u, 'preference controls keep Raycast’s radius')
 
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
