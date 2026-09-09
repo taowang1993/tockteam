@@ -223,14 +223,18 @@ try {
 
   const actionPanel = await run(`
     const section = launcher.locator('section[aria-label="Kaomoji Search"]'); const input = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true });
+    const expected = ['Paste in Active App','Copy to Clipboard','Pin to Favorites','Open Extension Preferences'];
     await input.press('Meta+k'); const menu = section.locator('details[open] .launcher-command-menu'); await menu.waitFor();
-    const firstFocused = await launcher.evaluate(() => document.activeElement?.textContent?.replace(/\\s+/g, ' ').trim());
-    await launcher.keyboard.press('ArrowDown'); const secondFocused = await launcher.evaluate(() => document.activeElement?.textContent?.replace(/\\s+/g, ' ').trim());
+    const first = menu.getByRole('button', { name: expected[0], exact: true }); const second = menu.getByRole('button', { name: expected[1], exact: true });
+    const firstFocusCount = await first.count(); const firstFocused = firstFocusCount === 1 && await first.evaluate(node => node === document.activeElement);
+    await launcher.keyboard.press('ArrowDown'); const secondFocusCount = await second.count(); const secondFocused = secondFocusCount === 1 && await second.evaluate(node => node === document.activeElement);
     await launcher.keyboard.press('Escape'); const restoredToRow = await launcher.evaluate(() => document.activeElement?.classList.contains('launcher-command-row'));
     await input.focus(); await input.press('Meta+k'); await input.click(); const outsideDismissed = await section.locator('details[open]').count() === 0 && await input.evaluate(node => node === document.activeElement);
-    await input.press('Meta+k'); await menu.waitFor(); const order = (await menu.locator('button').allTextContents()).map(value => value.replace(/\\s+/g, ' ').trim());
-    if (JSON.stringify(order) !== JSON.stringify(['Paste in Active App','Copy to Clipboard','Pin to Favorites','Open Extension Preferences']) || firstFocused !== 'Paste in Active App' || secondFocused !== 'Copy to Clipboard' || !restoredToRow || !outsideDismissed) throw new Error('Action keyboard contract mismatch');
-    return { firstFocused, order, outsideDismissed, restoredToRow, secondFocused };
+    await input.press('Meta+k'); await menu.waitFor(); const buttons = menu.locator('button'); const buttonCount = await buttons.count(); const counts = []; const indexes = [];
+    for (const name of expected) { const named = menu.getByRole('button', { name, exact: true }); const count = await named.count(); counts.push(count); let index = -1; for (let candidate = 0; candidate < Math.min(buttonCount, 8); candidate += 1) if (await named.and(buttons.nth(candidate)).count() === 1) index = candidate; indexes.push(index); }
+    const facts = { buttonCount, counts, firstFocusCount, firstFocused, indexes, outsideDismissed, restoredToRow, secondFocusCount, secondFocused };
+    if (buttonCount !== 4 || JSON.stringify(counts) !== JSON.stringify([1,1,1,1]) || JSON.stringify(indexes) !== JSON.stringify([0,1,2,3]) || !firstFocused || !secondFocused || !restoredToRow || !outsideDismissed) throw new Error('Action keyboard contract mismatch: ' + JSON.stringify(facts));
+    return { ...facts, accessibleOrder: expected };
   `)
   await capture(await target('launcher'), join(evidence, 'action-panel-dark.png'))
   await run(`

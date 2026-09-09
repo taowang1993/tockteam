@@ -17,11 +17,12 @@ const checkpoint = (requestSequence: number, sequence: number) => ({ channel: 't
 
 test('Electron harness uses inherited IPC shutdown and read-only bounded residue checks', async () => {
   const harness = await readFile(new URL('../scripts/trusted-raycast-kaomoji-electron-proof.mts', import.meta.url), 'utf8')
-  const launcher = await readFile(new URL('../src/launcher.ts', import.meta.url), 'utf8')
-  assert.match(launcher, /actionsFor: 'Actions for'/u)
-  assert.match(launcher, /toggle\.setAttribute\('aria-label', `\$\{messages\(\)\.actionsFor\} \$\{item\.name\}`\)/u)
-  assert.doesNotMatch(harness, /getByLabel\('Search Kaomoji'\)/u)
+  const renderer = await readFile(new URL('../src/trusted-raycast-renderer.ts', import.meta.url), 'utf8')
+  assert.match(renderer, /key\.setAttribute\('aria-hidden', 'true'\)/u)
+  assert.doesNotMatch(harness, /getByLabel\('Search Kaomoji'\)|allTextContents\(\)/u)
   assert.match(harness, /getByRole\('searchbox', \{ name: 'Search Kaomoji', exact: true \}\)/u)
+  assert.match(harness, /menu\.getByRole\('button', \{ name, exact: true \}\)/u)
+  assert.match(harness, /named\.and\(buttons\.nth\(candidate\)\)/u)
   assert.match(harness, /stdio: \['ignore', 'pipe', 'pipe', 'ipc'\]/u)
   assert.match(harness, /TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE: focusProofNonce/u)
   assert.match(harness, /createFocusProofClient\(electronChild, focusProofNonce\)/u)

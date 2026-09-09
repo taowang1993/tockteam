@@ -5,6 +5,7 @@ import type { LauncherPreloadBridge } from '../src/launcher-preload-bridge.ts'
 import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage } from '../src/trusted-raycast-contract.ts'
 
 class Element extends EventTarget {
+  static activeElement: Element | undefined
   children: Element[] = []
   attributes = new Map<string, string>()
   value = ''; textContent = ''; placeholder = ''; hidden = false; disabled = false; isConnected = true; tabIndex = 0; open = false
@@ -17,7 +18,7 @@ class Element extends EventTarget {
   setAttribute(name: string, value: string) { this.attributes.set(name, value) }
   getAttribute(name: string) { return this.attributes.get(name) ?? null }
   replaceChildren() { this.children = [] }
-  focus(options?: FocusOptions) { this.focused = true; this.focusOptions = options }
+  focus(options?: FocusOptions) { Element.activeElement = this; this.focused = true; this.focusOptions = options }
   contains() { return false }
 }
 const flush = () => new Promise(resolve => setImmediate(resolve))
@@ -132,6 +133,27 @@ test('footer actions follow selection, open by pointer, and clamp after results 
   view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [item('Hello', 'Copy Translation', 'copy-translation')] } })
   primary = nodes.findLast(node => node.getAttribute('aria-label') === 'Copy Translation' && node.className.includes('launcher-command-footer-action'))!
   assert.equal(primary.disabled, false)
+})
+
+test('Kaomoji action semantics ignore shortcut glyphs and restore row or searchbox focus by layer', () => {
+  const nodes: Element[] = []
+  const document = { get activeElement() { return Element.activeElement }, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  const action = (title: string, key: string) => ({ type: 'raycast-action' as const, props: { actionEventId: title, shortcut: JSON.stringify({ macOS: { key, modifiers: ['cmd'] } }), title }, children: [] })
+  view.update({ type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 0, root: { type: 'raycast-list', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-list-item', props: { title: 'Happy' }, children: [action('Paste in Active App', 'enter'), action('Copy to Clipboard', 'c'), action('Pin to Favorites', 'p'), action('Open Extension Preferences', ',')] }] } })
+  const row = nodes.find(node => node.className.includes('launcher-command-row'))!
+  const trigger = nodes.findLast(node => node.textContent === 'Actions' && node.className.includes('launcher-command-footer-action'))!
+  trigger.dispatchEvent(new Event('click'))
+  const buttons = nodes.filter(node => node.className.includes('launcher-command-menu-item'))
+  assert.deepEqual(buttons.map(button => button.textContent), ['Paste in Active App', 'Copy to Clipboard', 'Pin to Favorites', 'Open Extension Preferences'])
+  assert.ok(buttons.every(button => button.getAttribute('aria-label') === null && button.children.every(child => child.getAttribute('aria-hidden') === 'true')))
+  assert.equal(Element.activeElement, buttons[0])
+  ;(view.element as unknown as Element).dispatchEvent(Object.assign(new Event('keydown'), { key: 'ArrowDown', isComposing: false, keyCode: 40, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false }))
+  assert.equal(Element.activeElement, buttons[1])
+  ;(view.element as unknown as Element).dispatchEvent(Object.assign(new Event('keydown'), { key: 'Escape', isComposing: false, keyCode: 27, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false }))
+  assert.equal(Element.activeElement, row)
+  const input = inputOf(nodes); trigger.dispatchEvent(new Event('click')); input.focus(); (view.element as unknown as Element).dispatchEvent(new Event('click'))
+  assert.equal(Element.activeElement, input)
 })
 
 test('empty results stay centered and retain root language-set actions', () => {
