@@ -37,6 +37,7 @@ describe('CodeMirror Source editor', () => {
     expect(title.value).toBe('Keep')
     expect(title.closest('.cm-editor')).toBeNull()
     expect(container.querySelector('.cm-content')?.getAttribute('data-inline-title')).toBeNull()
+    expect([...container.querySelectorAll('.cm-line')].find(line => line.textContent === '# Keep')?.className).toContain('cm-tock-heading-1')
     fireEvent.change(title, { target: { value: 'Renamed' } })
     fireEvent.keyDown(title, { key: 'Enter' })
     await waitFor(() => expect(onRenameTitle).toHaveBeenCalledWith('Renamed'))
@@ -119,6 +120,15 @@ describe('CodeMirror Source editor', () => {
     view.dispatch({ selection: { anchor: source.length } })
     await waitFor(() => expect(container.querySelector('[aria-label="Mermaid Diagram Preview"]')).toBeTruthy())
     expect(container.querySelector('.cm-content')?.textContent).toContain('Mermaid Diagram')
+  })
+
+  it('does not style Markdown-like text inside fenced blocks as headings', async () => {
+    const source = '```md\n# code\n```\n# Heading\n'
+    const { container } = render(<SourceEditor content={source} onContentChange={() => {}} />)
+    await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
+    const lines = [...container.querySelectorAll('.cm-line')]
+    expect(lines.find(line => line.textContent === '# code')?.className).not.toContain('cm-tock-heading-1')
+    expect(lines.find(line => line.textContent === '# Heading')?.className).toContain('cm-tock-heading-1')
   })
 
   it('renders resolved embed widgets without replacing their selected source', async () => {

@@ -98,6 +98,14 @@ function sourceDecorations(state: EditorState) {
     const text = line.text
     const fence = /^ {0,3}(`{3,}|~{3,})/u.test(text)
     if (fence) fenceOpen = !fenceOpen
+    const heading = !fenceOpen ? text.match(/^ {0,3}(#{1,6})(?:\s|$)/u) : null
+    if (heading !== null) {
+      const markerStart = line.from + heading[0].indexOf('#')
+      decorations.push(
+        Decoration.line({ class: `cm-tock-heading-${heading[1].length}` }).range(line.from),
+        Decoration.mark({ class: 'cm-tock-heading-mark' }).range(markerStart, markerStart + heading[1].length),
+      )
+    }
     if (fenceOpen || /^\s*(?:[-+*]|\d+[.)])\s+\[[^\]]\]/u.test(text)) {
       decorations.push(Decoration.line({ class: fenceOpen ? 'cm-tock-code-line' : 'cm-tock-task-line' }).range(line.from))
     }
@@ -324,5 +332,5 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     view.focus()
   }, [props.foldRequest])
 
-  return <div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className={`tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`} id={props.id}><div className="min-h-0 min-w-0 flex-1" ref={parentRef} /></div>
+  return <div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className={`tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-line.cm-tock-heading-1]:text-[22px] [&_.cm-line.cm-tock-heading-1]:leading-[1.35] [&_.cm-line.cm-tock-heading-2]:text-[20px] [&_.cm-line.cm-tock-heading-2]:leading-[1.35] [&_.cm-line.cm-tock-heading-3]:text-[18px] [&_.cm-line.cm-tock-heading-3]:leading-[1.4] [&_.cm-tock-heading-mark]:!text-[var(--tt-muted)] [&_.cm-tock-heading-mark]:no-underline [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`} id={props.id}><div className="min-h-0 min-w-0 flex-1" ref={parentRef} /></div>
 }

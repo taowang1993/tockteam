@@ -140,11 +140,9 @@ export function MarkdownDocumentHeader(props: { className?: string; onAddPropert
 }
 
 export function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode {
-  const protectedSource = useMemo(() => isLivePreviewSourceProtected(props.content), [props.content])
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]" source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
-      {protectedSource && <p className="m-0 border-b border-[var(--tt-border)] px-4 py-2 text-xs text-[var(--tt-muted)]" role="note">Protected Markdown stays exact in Live Preview. Use Source mode for free-form edits; task and fold controls remain available.</p>}
       <Suspense fallback={<div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={props.className}>Loading Live Preview…</div>}>
         <LazyLivePreviewEditor {...props} />
       </Suspense>
