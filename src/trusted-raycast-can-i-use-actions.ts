@@ -1,0 +1,654 @@
+import { TRUSTED_RAYCAST_CAN_I_USE_CATALOG_SIZE } from './trusted-raycast-can-i-use-catalog.ts'
+import { isTrustedRaycastCanIUseCanonicalTarget } from './trusted-raycast-can-i-use-query.ts'
+import { failTrustedRaycastCanIUseStage2 } from './trusted-raycast-can-i-use-stage2-errors.ts'
+
+export const TRUSTED_RAYCAST_CAN_I_USE_MAX_ROOT_ROWS = 64
+export const TRUSTED_RAYCAST_CAN_I_USE_MAX_DETAIL_ROWS = 64
+export const TRUSTED_RAYCAST_CAN_I_USE_MAX_LIVE_HANDLES = 256
+
+const MAX_IDENTIFIER_BYTES = 1_024
+const FEATURE_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/
+const CONTROL_PATTERN = /\p{Cc}/u
+let nextRegistryIdentity = 0
+
+export type TrustedRaycastCanIUseRevisionKind = 'search' | 'root' | 'detail' | 'error' | 'replacement' | 'close'
+export type TrustedRaycastCanIUseActionKind = 'show-details' | 'open-browser' | 'search' | 'error' | 'replacement' | 'close'
+export type TrustedRaycastCanIUseAuxiliaryActionKind = Extract<TrustedRaycastCanIUseActionKind, 'search' | 'error' | 'replacement' | 'close'>
+
+export type TrustedRaycastCanIUseRevisionContext = Readonly<{
+  extensionId: string
+  command: string
+  sessionId: string
+  workspaceId: string
+  snapshotIdentity: string
+  snapshotGeneration: number
+}>
+
+export type TrustedRaycastCanIUseRevisionTicket = Readonly<{
+  revision: number
+  kind: TrustedRaycastCanIUseRevisionKind
+  extensionId: string
+  command: string
+  sessionId: string
+  workspaceId: string
+  snapshotIdentity: string
+  snapshotGeneration: number
+  depth: 0 | 1
+  feature: string | null
+}>
+
+export type TrustedRaycastCanIUseActionHandle = Readonly<{
+  id: string
+  extensionId: string
+  command: string
+  sessionId: string
+  workspaceId: string
+  snapshotIdentity: string
+  snapshotGeneration: number
+  revision: number
+  depth: 0 | 1
+  row: number | null
+  feature: string | null
+  kind: TrustedRaycastCanIUseActionKind
+}>
+
+export type TrustedRaycastCanIUseActionAuthentication = Readonly<{
+  extensionId: string
+  command: string
+  sessionId: string
+  workspaceId: string
+  snapshotIdentity: string
+  snapshotGeneration: number
+  revision: number
+  depth: 0 | 1
+  row: number | null
+  feature: string | null
+  kind: TrustedRaycastCanIUseActionKind
+}>
+
+export type TrustedRaycastCanIUseFeatureRow = Readonly<{
+  slug: string
+  title: string
+  sourceIndex: number
+}>
+
+export type TrustedRaycastCanIUseDetailRow = Readonly<{
+  target: string
+  label: string
+  sourceIndex: number
+}>
+
+export type TrustedRaycastCanIUseRegistryStats = Readonly<{
+  revision: number
+  state: TrustedRaycastCanIUseRevisionKind | 'idle'
+  liveHandleCount: number
+  peakLiveHandleCount: number
+}>
+
+export type TrustedRaycastCanIUseAuthorizedAction = Readonly<{
+  kind: TrustedRaycastCanIUseActionKind
+  row: number | null
+  feature: string | null
+  revision: number
+  depth: 0 | 1
+}>
+
+type StoredAction = TrustedRaycastCanIUseActionHandle
+type StoredContext = TrustedRaycastCanIUseRevisionContext
+type StoredFeatureRow = TrustedRaycastCanIUseFeatureRow
+type StoredDetailRow = TrustedRaycastCanIUseDetailRow
+
+function fail(code: 'SNAPSHOT_STALE' | 'RENDER_INVALID' | 'ACTION_DENIED' | 'LIMIT_EXCEEDED'): never {
+  return failTrustedRaycastCanIUseStage2(code)
+}
+
+function byteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength
+}
+
+function hasUnpairedSurrogate(value: string): boolean {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index)
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1)
+      if (index + 1 >= value.length || next < 0xdc00 || next > 0xdfff) return true
+      index++
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return true
+    }
+  }
+  return false
+}
+
+function validIdentifier(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length > 0
+    && !hasUnpairedSurrogate(value)
+    && !CONTROL_PATTERN.test(value)
+    && byteLength(value) <= MAX_IDENTIFIER_BYTES
+}
+
+function readDataObject(value: unknown, names: readonly string[]): Record<string, PropertyDescriptor> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) fail('RENDER_INVALID')
+  try {
+    if (Object.getPrototypeOf(value) !== Object.prototype) fail('RENDER_INVALID')
+    const keys = Reflect.ownKeys(value)
+    if (keys.length !== names.length || keys.some(key => typeof key !== 'string' || !names.includes(key))) {
+      fail('RENDER_INVALID')
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value)
+    for (const name of names) {
+      const descriptor = descriptors[name]
+      if (!descriptor || descriptor.get || descriptor.set) fail('RENDER_INVALID')
+    }
+    return descriptors
+  } catch {
+    fail('RENDER_INVALID')
+  }
+}
+
+function readArrayValues(value: unknown, maxLength: number): unknown[] {
+  try {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype || value.length > maxLength) {
+      fail('RENDER_INVALID')
+    }
+    const keys = Reflect.ownKeys(value)
+    if (keys.length !== value.length + 1 || !keys.includes('length')
+      || keys.some(key => key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key)))) {
+      fail('RENDER_INVALID')
+    }
+    const values: unknown[] = []
+    for (let index = 0; index < value.length; index++) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+      if (!descriptor || descriptor.get || descriptor.set) fail('RENDER_INVALID')
+      values.push(descriptor.value)
+    }
+    return values
+  } catch {
+    fail('RENDER_INVALID')
+  }
+}
+
+function readContext(value: unknown): StoredContext {
+  const descriptors = readDataObject(value, [
+    'extensionId',
+    'command',
+    'sessionId',
+    'workspaceId',
+    'snapshotIdentity',
+    'snapshotGeneration',
+  ])
+  const extensionId = descriptors.extensionId!.value
+  const command = descriptors.command!.value
+  const sessionId = descriptors.sessionId!.value
+  const workspaceId = descriptors.workspaceId!.value
+  const snapshotIdentity = descriptors.snapshotIdentity!.value
+  const snapshotGeneration = descriptors.snapshotGeneration!.value
+  if (!validIdentifier(extensionId)
+    || !validIdentifier(command)
+    || !validIdentifier(sessionId)
+    || !validIdentifier(workspaceId)
+    || !validIdentifier(snapshotIdentity)
+    || !Number.isSafeInteger(snapshotGeneration)
+    || snapshotGeneration < 0) {
+    fail('ACTION_DENIED')
+  }
+  return Object.freeze({ extensionId, command, sessionId, workspaceId, snapshotIdentity, snapshotGeneration })
+}
+
+function readFeatureRow(value: unknown): StoredFeatureRow {
+  const descriptors = readDataObject(value, ['slug', 'title', 'sourceIndex'])
+  const slug = descriptors.slug!.value
+  const title = descriptors.title!.value
+  const sourceIndex = descriptors.sourceIndex!.value
+  if (typeof slug !== 'string' || !FEATURE_SLUG_PATTERN.test(slug)
+    || typeof title !== 'string' || title.length === 0 || hasUnpairedSurrogate(title)
+    || CONTROL_PATTERN.test(title) || byteLength(title) > MAX_IDENTIFIER_BYTES
+    || !Number.isSafeInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= TRUSTED_RAYCAST_CAN_I_USE_CATALOG_SIZE) {
+    fail('RENDER_INVALID')
+  }
+  return Object.freeze({ slug, title, sourceIndex })
+}
+
+function readFeatureRows(value: unknown): readonly StoredFeatureRow[] {
+  const values = readArrayValues(value, TRUSTED_RAYCAST_CAN_I_USE_MAX_ROOT_ROWS)
+  const rows: StoredFeatureRow[] = []
+  const slugs = new Set<string>()
+  let previousSourceIndex = -1
+  for (const rowValue of values) {
+    const row = readFeatureRow(rowValue)
+    if (row.sourceIndex <= previousSourceIndex || slugs.has(row.slug)) fail('RENDER_INVALID')
+    previousSourceIndex = row.sourceIndex
+    slugs.add(row.slug)
+    rows.push(row)
+  }
+  return Object.freeze(rows)
+}
+
+function readDetailRow(value: unknown): StoredDetailRow {
+  const descriptors = readDataObject(value, ['target', 'label', 'sourceIndex'])
+  const target = descriptors.target!.value
+  const label = descriptors.label!.value
+  const sourceIndex = descriptors.sourceIndex!.value
+  const browser = typeof target === 'string' ? target.slice(0, target.indexOf(' ')) : ''
+  if (!isTrustedRaycastCanIUseCanonicalTarget(target)
+    || browser === 'op_mini'
+    || !validIdentifier(label)
+    || !Number.isSafeInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= TRUSTED_RAYCAST_CAN_I_USE_CATALOG_SIZE) {
+    fail('RENDER_INVALID')
+  }
+  return Object.freeze({ target, label, sourceIndex })
+}
+
+function readDetailRows(value: unknown): readonly StoredDetailRow[] {
+  const values = readArrayValues(value, TRUSTED_RAYCAST_CAN_I_USE_MAX_DETAIL_ROWS)
+  const rows: StoredDetailRow[] = []
+  const targets = new Set<string>()
+  let previousSourceIndex = -1
+  for (const rowValue of values) {
+    const row = readDetailRow(rowValue)
+    if (row.sourceIndex <= previousSourceIndex || targets.has(row.target)) fail('RENDER_INVALID')
+    previousSourceIndex = row.sourceIndex
+    targets.add(row.target)
+    rows.push(row)
+  }
+  return Object.freeze(rows)
+}
+
+function readAuxiliaryKinds(value: unknown): readonly TrustedRaycastCanIUseAuxiliaryActionKind[] {
+  const values = readArrayValues(value, TRUSTED_RAYCAST_CAN_I_USE_MAX_LIVE_HANDLES)
+  const kinds: TrustedRaycastCanIUseAuxiliaryActionKind[] = []
+  for (const kind of values) {
+    if (kind !== 'search' && kind !== 'error' && kind !== 'replacement' && kind !== 'close') {
+      fail('RENDER_INVALID')
+    }
+    kinds.push(kind)
+  }
+  return Object.freeze(kinds)
+}
+
+function sameFeatureRows(left: readonly StoredFeatureRow[], right: readonly StoredFeatureRow[]): boolean {
+  return left.length === right.length && left.every((row, index) => {
+    const candidate = right[index]
+    return candidate !== undefined
+      && row.slug === candidate.slug
+      && row.title === candidate.title
+      && row.sourceIndex === candidate.sourceIndex
+  })
+}
+
+function sameDetailRows(left: readonly StoredDetailRow[], right: readonly StoredDetailRow[]): boolean {
+  return left.length === right.length && left.every((row, index) => {
+    const candidate = right[index]
+    return candidate !== undefined
+      && row.target === candidate.target
+      && row.label === candidate.label
+      && row.sourceIndex === candidate.sourceIndex
+  })
+}
+
+function readTicket(value: unknown): TrustedRaycastCanIUseRevisionTicket {
+  const descriptors = readDataObject(value, [
+    'revision',
+    'kind',
+    'extensionId',
+    'command',
+    'sessionId',
+    'workspaceId',
+    'snapshotIdentity',
+    'snapshotGeneration',
+    'depth',
+    'feature',
+  ])
+  const revision = descriptors.revision!.value
+  const kind = descriptors.kind!.value
+  const depth = descriptors.depth!.value
+  const feature = descriptors.feature!.value
+  if (!Number.isSafeInteger(revision) || revision < 0
+    || (kind !== 'search' && kind !== 'root' && kind !== 'detail' && kind !== 'error' && kind !== 'replacement' && kind !== 'close')
+    || (depth !== 0 && depth !== 1)
+    || (feature !== null && !FEATURE_SLUG_PATTERN.test(feature))) {
+    fail('SNAPSHOT_STALE')
+  }
+  const context = readContext({
+    extensionId: descriptors.extensionId!.value,
+    command: descriptors.command!.value,
+    sessionId: descriptors.sessionId!.value,
+    workspaceId: descriptors.workspaceId!.value,
+    snapshotIdentity: descriptors.snapshotIdentity!.value,
+    snapshotGeneration: descriptors.snapshotGeneration!.value,
+  })
+  return Object.freeze({ revision, kind, ...context, depth, feature })
+}
+
+function readHandle(value: unknown): TrustedRaycastCanIUseActionHandle {
+  const descriptors = readDataObject(value, [
+    'id',
+    'extensionId',
+    'command',
+    'sessionId',
+    'workspaceId',
+    'snapshotIdentity',
+    'snapshotGeneration',
+    'revision',
+    'depth',
+    'row',
+    'feature',
+    'kind',
+  ])
+  const id = descriptors.id!.value
+  const revision = descriptors.revision!.value
+  const depth = descriptors.depth!.value
+  const row = descriptors.row!.value
+  const feature = descriptors.feature!.value
+  const kind = descriptors.kind!.value
+  if (!validIdentifier(id)
+    || !Number.isSafeInteger(revision) || revision < 0
+    || (depth !== 0 && depth !== 1)
+    || (row !== null && (!Number.isSafeInteger(row) || row < 0 || row >= TRUSTED_RAYCAST_CAN_I_USE_MAX_DETAIL_ROWS))
+    || (feature !== null && !FEATURE_SLUG_PATTERN.test(feature))
+    || (kind !== 'show-details' && kind !== 'open-browser' && kind !== 'search' && kind !== 'error' && kind !== 'replacement' && kind !== 'close')) {
+    fail('ACTION_DENIED')
+  }
+  const context = readContext({
+    extensionId: descriptors.extensionId!.value,
+    command: descriptors.command!.value,
+    sessionId: descriptors.sessionId!.value,
+    workspaceId: descriptors.workspaceId!.value,
+    snapshotIdentity: descriptors.snapshotIdentity!.value,
+    snapshotGeneration: descriptors.snapshotGeneration!.value,
+  })
+  return Object.freeze({ id, ...context, revision, depth, row, feature, kind })
+}
+
+function readAuthentication(value: unknown): TrustedRaycastCanIUseActionAuthentication {
+  const descriptors = readDataObject(value, [
+    'extensionId',
+    'command',
+    'sessionId',
+    'workspaceId',
+    'snapshotIdentity',
+    'snapshotGeneration',
+    'revision',
+    'depth',
+    'row',
+    'feature',
+    'kind',
+  ])
+  const handle = readHandle({
+    id: 'authentication',
+    extensionId: descriptors.extensionId!.value,
+    command: descriptors.command!.value,
+    sessionId: descriptors.sessionId!.value,
+    workspaceId: descriptors.workspaceId!.value,
+    snapshotIdentity: descriptors.snapshotIdentity!.value,
+    snapshotGeneration: descriptors.snapshotGeneration!.value,
+    revision: descriptors.revision!.value,
+    depth: descriptors.depth!.value,
+    row: descriptors.row!.value,
+    feature: descriptors.feature!.value,
+    kind: descriptors.kind!.value,
+  })
+  const { id: _id, ...authentication } = handle
+  return Object.freeze(authentication)
+}
+
+function sameAction(left: TrustedRaycastCanIUseActionHandle, right: TrustedRaycastCanIUseActionHandle): boolean {
+  return left.id === right.id
+    && left.extensionId === right.extensionId
+    && left.command === right.command
+    && left.sessionId === right.sessionId
+    && left.workspaceId === right.workspaceId
+    && left.snapshotIdentity === right.snapshotIdentity
+    && left.snapshotGeneration === right.snapshotGeneration
+    && left.revision === right.revision
+    && left.depth === right.depth
+    && left.row === right.row
+    && left.feature === right.feature
+    && left.kind === right.kind
+}
+
+function sameAuthentication(action: StoredAction, authentication: TrustedRaycastCanIUseActionAuthentication): boolean {
+  return action.extensionId === authentication.extensionId
+    && action.command === authentication.command
+    && action.sessionId === authentication.sessionId
+    && action.workspaceId === authentication.workspaceId
+    && action.snapshotIdentity === authentication.snapshotIdentity
+    && action.snapshotGeneration === authentication.snapshotGeneration
+    && action.revision === authentication.revision
+    && action.depth === authentication.depth
+    && action.row === authentication.row
+    && action.feature === authentication.feature
+    && action.kind === authentication.kind
+}
+
+export class TrustedRaycastCanIUseActionRegistry {
+  readonly #registryIdentity: number
+  #revision = 0
+  #state: TrustedRaycastCanIUseRevisionKind | 'idle' = 'idle'
+  #closed = false
+  #peakLiveHandleCount = 0
+  readonly #live = new Map<string, StoredAction>()
+  #currentTicket: TrustedRaycastCanIUseRevisionTicket | undefined
+  #publishedTicket: TrustedRaycastCanIUseRevisionTicket | undefined
+  #rootRows: readonly StoredFeatureRow[] = Object.freeze([])
+  #detailRows: readonly StoredDetailRow[] = Object.freeze([])
+  #detailFeature: string | null = null
+
+  constructor() {
+    if (nextRegistryIdentity >= Number.MAX_SAFE_INTEGER) fail('LIMIT_EXCEEDED')
+    this.#registryIdentity = ++nextRegistryIdentity
+  }
+
+  private begin(
+    kind: TrustedRaycastCanIUseRevisionKind,
+    contextValue: unknown,
+    rowsValue: unknown,
+    feature: string | null,
+  ): TrustedRaycastCanIUseRevisionTicket {
+    if (this.#closed) fail('ACTION_DENIED')
+    const context = readContext(contextValue)
+    const rows = kind === 'detail' ? readDetailRows(rowsValue) : readFeatureRows(rowsValue)
+    if (feature !== null && !FEATURE_SLUG_PATTERN.test(feature)) fail('RENDER_INVALID')
+    if (this.#revision >= Number.MAX_SAFE_INTEGER) fail('LIMIT_EXCEEDED')
+
+    // Reuse one map: stale handles are retired before any new handle exists.
+    this.#live.clear()
+    this.#revision++
+    this.#rootRows = kind === 'detail' ? Object.freeze([]) : rows as readonly StoredFeatureRow[]
+    this.#detailRows = kind === 'detail' ? rows as readonly StoredDetailRow[] : Object.freeze([])
+    this.#detailFeature = kind === 'detail' ? feature : null
+    this.#state = kind
+    this.#publishedTicket = undefined
+    const ticket = Object.freeze({
+      revision: this.#revision,
+      kind,
+      ...context,
+      depth: kind === 'detail' ? 1 : 0,
+      feature: kind === 'detail' ? feature : null,
+    })
+    this.#currentTicket = ticket
+    if (kind === 'close') this.#closed = true
+    return ticket
+  }
+
+  startSearch(context: TrustedRaycastCanIUseRevisionContext, selectedRows: readonly TrustedRaycastCanIUseFeatureRow[]): TrustedRaycastCanIUseRevisionTicket {
+    return this.begin('search', context, selectedRows, null)
+  }
+
+  startRoot(context: TrustedRaycastCanIUseRevisionContext, selectedRows: readonly TrustedRaycastCanIUseFeatureRow[]): TrustedRaycastCanIUseRevisionTicket {
+    return this.begin('root', context, selectedRows, null)
+  }
+
+  startError(context: TrustedRaycastCanIUseRevisionContext): TrustedRaycastCanIUseRevisionTicket {
+    return this.begin('error', context, [], null)
+  }
+
+  startReplacement(context: TrustedRaycastCanIUseRevisionContext): TrustedRaycastCanIUseRevisionTicket {
+    return this.begin('replacement', context, [], null)
+  }
+
+  close(context: TrustedRaycastCanIUseRevisionContext): TrustedRaycastCanIUseRevisionTicket {
+    return this.begin('close', context, [], null)
+  }
+
+  startDetailFromRoot(
+    handleValue: TrustedRaycastCanIUseActionHandle,
+    authenticationValue: TrustedRaycastCanIUseActionAuthentication,
+    detailRows: readonly TrustedRaycastCanIUseDetailRow[],
+  ): TrustedRaycastCanIUseRevisionTicket {
+    const action = this.authorizeInternal(handleValue, authenticationValue)
+    if (action.kind !== 'show-details' || action.depth !== 0 || action.feature === null) fail('ACTION_DENIED')
+    const stored = this.#live.get(readHandle(handleValue).id)
+    if (!stored) fail('ACTION_DENIED')
+    const context: StoredContext = {
+      extensionId: stored.extensionId,
+      command: stored.command,
+      sessionId: stored.sessionId,
+      workspaceId: stored.workspaceId,
+      snapshotIdentity: stored.snapshotIdentity,
+      snapshotGeneration: stored.snapshotGeneration,
+    }
+    return this.begin('detail', context, detailRows, action.feature)
+  }
+
+  private assertTicket(value: unknown, allowed: readonly TrustedRaycastCanIUseRevisionKind[]): TrustedRaycastCanIUseRevisionTicket {
+    const ticket = readTicket(value)
+    if (this.#currentTicket !== value || this.#publishedTicket === value
+      || ticket.revision !== this.#revision || !allowed.includes(ticket.kind)) {
+      fail('SNAPSHOT_STALE')
+    }
+    return ticket
+  }
+
+  private validateRootRows(value: unknown): readonly StoredFeatureRow[] {
+    const rows = readFeatureRows(value)
+    if (!sameFeatureRows(rows, this.#rootRows)) fail('RENDER_INVALID')
+    return this.#rootRows
+  }
+
+  private validateDetailRows(value: unknown): readonly StoredDetailRow[] {
+    const rows = readDetailRows(value)
+    if (!sameDetailRows(rows, this.#detailRows)) fail('RENDER_INVALID')
+    return this.#detailRows
+  }
+
+  private addAction(
+    ticket: TrustedRaycastCanIUseRevisionTicket,
+    kind: TrustedRaycastCanIUseActionKind,
+    row: number | null,
+    feature: string | null,
+    ordinal: number,
+  ): void {
+    const id = `can-i-use:${this.#registryIdentity}:${ticket.revision}:${ordinal}`
+    const action: StoredAction = Object.freeze({
+      id,
+      extensionId: ticket.extensionId,
+      command: ticket.command,
+      sessionId: ticket.sessionId,
+      workspaceId: ticket.workspaceId,
+      snapshotIdentity: ticket.snapshotIdentity,
+      snapshotGeneration: ticket.snapshotGeneration,
+      revision: ticket.revision,
+      depth: ticket.depth,
+      row,
+      feature,
+      kind,
+    })
+    this.#live.set(id, action)
+  }
+
+  private updatePeak(): void {
+    if (this.#live.size > this.#peakLiveHandleCount) this.#peakLiveHandleCount = this.#live.size
+  }
+
+  publishRoot(
+    ticketValue: TrustedRaycastCanIUseRevisionTicket,
+    rowsValue: readonly TrustedRaycastCanIUseFeatureRow[],
+    auxiliaryKindsValue: readonly TrustedRaycastCanIUseAuxiliaryActionKind[] = [],
+  ): readonly TrustedRaycastCanIUseActionHandle[] {
+    const ticket = this.assertTicket(ticketValue, ['search', 'root'])
+    const rows = this.validateRootRows(rowsValue)
+    const auxiliaryKinds = readAuxiliaryKinds(auxiliaryKindsValue)
+    const required = rows.length * 2 + auxiliaryKinds.length
+    if (required > TRUSTED_RAYCAST_CAN_I_USE_MAX_LIVE_HANDLES) fail('LIMIT_EXCEEDED')
+
+    this.#live.clear()
+    let ordinal = 0
+    rows.forEach((row, index) => {
+      this.addAction(ticket, 'show-details', index, row.slug, ordinal++)
+      this.addAction(ticket, 'open-browser', index, row.slug, ordinal++)
+    })
+    for (const kind of auxiliaryKinds) this.addAction(ticket, kind, null, null, ordinal++)
+    this.updatePeak()
+    this.#state = 'root'
+    this.#publishedTicket = ticketValue
+    return this.liveActionHandles()
+  }
+
+  publishDetail(
+    ticketValue: TrustedRaycastCanIUseRevisionTicket,
+    rowsValue: readonly TrustedRaycastCanIUseDetailRow[],
+    auxiliaryKindsValue: readonly TrustedRaycastCanIUseAuxiliaryActionKind[] = [],
+  ): readonly TrustedRaycastCanIUseActionHandle[] {
+    const ticket = this.assertTicket(ticketValue, ['detail'])
+    const rows = this.validateDetailRows(rowsValue)
+    const auxiliaryKinds = readAuxiliaryKinds(auxiliaryKindsValue)
+    const required = rows.length + auxiliaryKinds.length
+    if (required > TRUSTED_RAYCAST_CAN_I_USE_MAX_LIVE_HANDLES) fail('LIMIT_EXCEEDED')
+
+    this.#live.clear()
+    rows.forEach((_row, index) => this.addAction(ticket, 'open-browser', index, this.#detailFeature, index))
+    auxiliaryKinds.forEach((kind, index) => this.addAction(ticket, kind, null, null, rows.length + index))
+    this.updatePeak()
+    this.#state = 'detail'
+    this.#publishedTicket = ticketValue
+    return this.liveActionHandles()
+  }
+
+  private authorizeInternal(
+    handleValue: unknown,
+    authenticationValue: unknown,
+  ): TrustedRaycastCanIUseAuthorizedAction {
+    const handle = readHandle(handleValue)
+    const stored = this.#live.get(handle.id)
+    if (!stored || !sameAction(handle, stored)) fail('ACTION_DENIED')
+    const authentication = readAuthentication(authenticationValue)
+    if (!sameAuthentication(stored, authentication)) fail('ACTION_DENIED')
+    return Object.freeze({
+      kind: stored.kind,
+      row: stored.row,
+      feature: stored.feature,
+      revision: stored.revision,
+      depth: stored.depth,
+    })
+  }
+
+  authorize(
+    handle: TrustedRaycastCanIUseActionHandle,
+    authentication: TrustedRaycastCanIUseActionAuthentication,
+  ): TrustedRaycastCanIUseAuthorizedAction {
+    return this.authorizeInternal(handle, authentication)
+  }
+
+  liveActionHandles(): readonly TrustedRaycastCanIUseActionHandle[] {
+    return Object.freeze([...this.#live.values()].map(action => Object.freeze({ ...action })))
+  }
+
+  stats(): TrustedRaycastCanIUseRegistryStats {
+    return Object.freeze({
+      revision: this.#revision,
+      state: this.#state,
+      liveHandleCount: this.#live.size,
+      peakLiveHandleCount: this.#peakLiveHandleCount,
+    })
+  }
+}
+
+export function trustedRaycastCanIUseAuthenticationFromHandle(
+  handle: TrustedRaycastCanIUseActionHandle,
+): TrustedRaycastCanIUseActionAuthentication {
+  const checked = readHandle(handle)
+  const { id: _id, ...authentication } = checked
+  return Object.freeze(authentication)
+}
