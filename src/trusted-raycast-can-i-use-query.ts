@@ -5,7 +5,7 @@ const MAX_QUERY_CLAUSES = 64
 const MAX_RESULT_TARGETS = 256
 const MAX_TARGET_BYTES = 64
 
-const TARGET_PATTERN = /^([a-z][a-z0-9_]*)([ \t]+)((?:0|[1-9][0-9]{0,3})(?:\.[0-9]{1,3})?(?:-(?:0|[1-9][0-9]{0,3})(?:\.[0-9]{1,3})?)?|all|TP)$/
+const TARGET_PATTERN = /^([a-z][a-z0-9_]*)([ \t]+)((?:0|[1-9][0-9]{0,3})(?:\.(?:0|[1-9][0-9]{0,2})){0,2}(?:-(?:0|[1-9][0-9]{0,3})(?:\.(?:0|[1-9][0-9]{0,2})){0,2})?|all|TP)$/
 const ENVIRONMENT_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 
 export type TrustedRaycastCanIUseTargetCollection = readonly string[] | ReadonlySet<string>

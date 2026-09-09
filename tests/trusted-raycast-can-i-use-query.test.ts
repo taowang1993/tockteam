@@ -45,6 +45,33 @@ test('requires exact canonical table buckets, including all, TP, and hyphenated 
   assertCode(TRUSTED_RAYCAST_CAN_I_USE_ERROR_CODES.QUERY_UNSUPPORTED, () => normalizeTrustedRaycastCanIUseQuery('op_mini all', { canonicalTargets }))
 })
 
+test('accepts at most three numeric components only through exact canonical membership', () => {
+  const targets = ['and_chr 4.4.3-4.4.4', 'and_chr 4.4.3', 'and_chr 0.0.0', 'and_chr 9999.999.999']
+  for (const target of targets) {
+    assert.equal(isTrustedRaycastCanIUseCanonicalTarget(target), true, target)
+    assert.deepEqual(normalizeTrustedRaycastCanIUseQuery(target, { canonicalTargets: targets }), [target])
+  }
+  for (const target of ['and_chr 4.4.4', 'and_chr 4.4.3-4.4.5', 'and_chr 4.4-4.4.4']) {
+    assertCode('QUERY_UNSUPPORTED', () => normalizeTrustedRaycastCanIUseQuery(target, { canonicalTargets: targets }))
+  }
+  assertCode('DATA_UNAVAILABLE', () => normalizeTrustedRaycastCanIUseQuery('defaults', { canonicalTargets: targets }))
+})
+
+test('rejects extra, empty, zero-padded numeric components and malformed or mixed range endpoints', () => {
+  for (const version of [
+    '4.4.3.1', '4.4.3-4.4.4.1', '4.4.3.1-4.4.4',
+    '4..3', '.4.3', '4.4.', '4.4.3-', '-4.4.4', '4.4.3--4.4.4',
+    '04.4.3', '4.04.3', '4.4.03', '4.04', '4.4.3-04.4.4', '4.4.3-4.04.4', '4.4.3-4.4.04',
+    '10000.4.3', '4.1000.3', '4.4.1000', '4.4.3-4.4.1000',
+    '4.4.3-all', 'TP-4.4.4', 'all-TP', '4.4.3 -4.4.4', '4.4.3- 4.4.4',
+  ]) {
+    const target = `and_chr ${version}`
+    assert.equal(isTrustedRaycastCanIUseCanonicalTarget(target), false, target)
+    assertCode('QUERY_UNSUPPORTED', () => normalizeTrustedRaycastCanIUseQuery(target, { canonicalTargets: [] }))
+    assertCode('DATA_UNAVAILABLE', () => normalizeTrustedRaycastCanIUseQuery(target, { canonicalTargets: [target] }))
+  }
+})
+
 test('defaults is unavailable without the separately approved immutable fixture', () => {
   assertCode(TRUSTED_RAYCAST_CAN_I_USE_ERROR_CODES.DATA_UNAVAILABLE, () => normalizeTrustedRaycastCanIUseQuery('defaults', { canonicalTargets }))
 })
