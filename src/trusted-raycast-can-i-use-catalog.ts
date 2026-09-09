@@ -1,5 +1,4 @@
-import { isTrustedRaycastCanIUseCanonicalTarget } from './trusted-raycast-can-i-use-query.ts'
-import { failTrustedRaycastCanIUseStage2 } from './trusted-raycast-can-i-use-stage2-errors.ts'
+import { failTrustedRaycastCanIUse } from './trusted-raycast-can-i-use-errors.ts'
 
 export const TRUSTED_RAYCAST_CAN_I_USE_CATALOG_SIZE = 581
 export const TRUSTED_RAYCAST_CAN_I_USE_VISIBLE_FEATURE_LIMIT = 64
@@ -34,20 +33,20 @@ export type TrustedRaycastCanIUseBoundFeature = TrustedRaycastCanIUseCatalogEntr
 export type TrustedRaycastCanIUseBoundFeatureTable = Readonly<Record<string, TrustedRaycastCanIUseBoundFeature>>
 
 export type TrustedRaycastCanIUseAgentCandidate = Readonly<{
-  target: string
+  browser: string
   label: string
   sourceIndex: number
   hasSupport: boolean
 }>
 
 export type TrustedRaycastCanIUseAgentRow = Readonly<{
-  target: string
+  browser: string
   label: string
   sourceIndex: number
 }>
 
 function fail(code: 'DATA_UNAVAILABLE' | 'LIMIT_EXCEEDED' | 'QUERY_UNSUPPORTED'): never {
-  return failTrustedRaycastCanIUseStage2(code)
+  return failTrustedRaycastCanIUse(code)
 }
 
 function byteLength(value: string): number {
@@ -128,18 +127,18 @@ function readCatalogEntry(value: unknown, expectedIndex?: number): TrustedRaycas
 }
 
 function readAgentCandidate(value: unknown, expectedIndex: number): TrustedRaycastCanIUseAgentCandidate {
-  const descriptors = readDataObject(value, ['target', 'label', 'sourceIndex', 'hasSupport'])
-  const target = descriptors.target!.value
+  const descriptors = readDataObject(value, ['browser', 'label', 'sourceIndex', 'hasSupport'])
+  const browser = descriptors.browser!.value
   const label = descriptors.label!.value
   const sourceIndex = descriptors.sourceIndex!.value
   const hasSupport = descriptors.hasSupport!.value
-  if (!isTrustedRaycastCanIUseCanonicalTarget(target)
+  if (typeof browser !== 'string' || !/^[a-z][a-z0-9_]{0,63}$/.test(browser)
     || !boundedText(label)
     || !Number.isSafeInteger(sourceIndex) || sourceIndex !== expectedIndex
     || typeof hasSupport !== 'boolean') {
     fail('DATA_UNAVAILABLE')
   }
-  return Object.freeze({ target, label, sourceIndex, hasSupport })
+  return Object.freeze({ browser, label, sourceIndex, hasSupport })
 }
 
 function readCatalog(value: unknown): readonly TrustedRaycastCanIUseCatalogEntry[] {
@@ -288,13 +287,15 @@ export function selectTrustedRaycastCanIUseAgentRows(
 ): readonly TrustedRaycastCanIUseAgentRow[] {
   const values = readArrayValues(value, TRUSTED_RAYCAST_CAN_I_USE_CATALOG_SIZE)
   const selected: TrustedRaycastCanIUseAgentRow[] = []
+  const browsers = new Set<string>()
   for (let index = 0; index < values.length; index++) {
     const candidate = readAgentCandidate(values[index], index)
-    const browser = candidate.target.slice(0, candidate.target.indexOf(' '))
-    if (browser === 'op_mini' || !candidate.hasSupport) continue
+    if (browsers.has(candidate.browser)) fail('DATA_UNAVAILABLE')
+    browsers.add(candidate.browser)
+    if (candidate.browser === 'op_mini' || !candidate.hasSupport) continue
     if (selected.length < TRUSTED_RAYCAST_CAN_I_USE_VISIBLE_FEATURE_LIMIT) {
       selected.push(Object.freeze({
-        target: candidate.target,
+        browser: candidate.browser,
         label: candidate.label,
         sourceIndex: candidate.sourceIndex,
       }))

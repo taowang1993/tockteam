@@ -1,4 +1,4 @@
-import { failTrustedRaycastCanIUseStage2 } from './trusted-raycast-can-i-use-stage2-errors.ts'
+import { failTrustedRaycastCanIUse } from './trusted-raycast-can-i-use-errors.ts'
 
 const MAX_WORKSPACE_COMPONENTS = 31
 const MAX_WORKSPACE_BYTES = 1_024
@@ -28,7 +28,7 @@ function byteLength(value: string): number {
 }
 
 function invalidSelection(): never {
-  return failTrustedRaycastCanIUseStage2('CONFIG_INVALID')
+  return failTrustedRaycastCanIUse('CONFIG_INVALID')
 }
 
 function isWindowsDeviceComponent(value: string): boolean {
@@ -67,12 +67,12 @@ export function validateTrustedRaycastCanIUseWorkspaceSelection(value: unknown):
 
 /**
  * No reviewed descriptor-anchored Host primitive exists yet.  This seam is
- * deliberately uncallable for production: it never accepts a path or reader.
+ * always unavailable: it never interprets the selection or accepts a reader.
  */
 export function useTrustedRaycastCanIUseAnchoredWorkspaceCapability(
   _selection: TrustedRaycastCanIUseWorkspaceSelection & { mode: 'workspace' },
 ): never {
-  return failTrustedRaycastCanIUseStage2('WORKSPACE_UNAVAILABLE')
+  return failTrustedRaycastCanIUse('WORKSPACE_UNAVAILABLE')
 }
 
 /**

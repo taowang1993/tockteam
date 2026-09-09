@@ -27,7 +27,7 @@ export type TrustedRaycastCanIUseSnapshot = Readonly<{
 export type TrustedRaycastCanIUseSnapshotCurrent = (identity: string, generation: number) => boolean
 export type TrustedRaycastCanIUseBrowserslistAlias = (...args: unknown[]) => string[]
 
-function fail(code: 'DATA_UNAVAILABLE' | 'PATH_UNSUPPORTED' | 'QUERY_UNSUPPORTED' | 'SNAPSHOT_STALE'): never {
+function fail(code: 'DATA_UNAVAILABLE' | 'PATH_UNSUPPORTED' | 'QUERY_UNSUPPORTED' | 'SNAPSHOT_STALE' | 'WORKSPACE_UNAVAILABLE'): never {
   throw trustedRaycastCanIUseError(code)
 }
 
@@ -169,7 +169,8 @@ export function createTrustedRaycastCanIUseAliases(
   const browserslist: TrustedRaycastCanIUseBrowserslistAlias = (...args) => {
     assertCurrent()
     if (args.length === 1 && typeof args[0] === 'string' && args[0] === bound.defaultQuery) return bound.targets.slice()
-    if (args.length === 2 && args[0] === null && isWorkspaceOptions(args[1], bound.environment)) return bound.targets.slice()
+    // Reserved syntax is not workspace authority. No anchored snapshot capability is admitted yet.
+    if (args.length === 2 && args[0] === null && isWorkspaceOptions(args[1], bound.environment)) fail('WORKSPACE_UNAVAILABLE')
     fail('QUERY_UNSUPPORTED')
   }
   return Object.freeze({ os: trustedRaycastCanIUseOsAlias, path: trustedRaycastCanIUsePathAlias, browserslist })

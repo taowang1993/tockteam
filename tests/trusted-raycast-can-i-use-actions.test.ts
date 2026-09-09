@@ -3,19 +3,25 @@ import test from 'node:test'
 import {
   TRUSTED_RAYCAST_CAN_I_USE_MAX_LIVE_HANDLES,
   TrustedRaycastCanIUseActionRegistry,
-  trustedRaycastCanIUseAuthenticationFromHandle,
+  type TrustedRaycastCanIUseActionHandle,
 } from '../src/trusted-raycast-can-i-use-actions.ts'
 import {
   TRUSTED_RAYCAST_CAN_I_USE_ERROR_CODES,
   TrustedRaycastCanIUseError,
 } from '../src/trusted-raycast-can-i-use-errors.ts'
 
+import {
+  createTrustedRaycastCanIUseCatalog,
+  materializeTrustedRaycastCanIUseFeatureTable,
+  searchTrustedRaycastCanIUseCatalog,
+} from '../src/trusted-raycast-can-i-use-catalog.ts'
+
 type FeatureRow = { slug: string; title: string; sourceIndex: number }
-type DetailRow = { target: string; label: string; sourceIndex: number }
+type DetailRow = { browser: string; label: string; sourceIndex: number }
 
 const context = {
-  extensionId: 'com.tockteam.can-i-use',
-  command: 'can-i-use',
+  extensionId: 'can-i-use',
+  command: 'index',
   sessionId: 'session-1',
   workspaceId: 'workspace-1',
   snapshotIdentity: 'snapshot-1',
@@ -32,10 +38,16 @@ function featureRows(count: number, prefix = 'feature'): FeatureRow[] {
 
 function detailRows(count: number): DetailRow[] {
   return Array.from({ length: count }, (_, sourceIndex) => ({
-    target: `chrome ${sourceIndex + 1}`,
-    label: `Chrome ${sourceIndex + 1}`,
+    browser: `agent${sourceIndex}`,
+    label: `Agent ${sourceIndex}`,
     sourceIndex,
   }))
+}
+
+// Test-only fixture convenience. Production authentication must come from the Host session.
+function trustedRaycastCanIUseAuthenticationFromHandle(handle: TrustedRaycastCanIUseActionHandle) {
+  const { id: _id, ...authentication } = handle
+  return authentication
 }
 
 function assertCode(code: string, action: () => unknown): void {
@@ -49,14 +61,16 @@ function auxiliaryKinds(count: number): Array<'search' | 'error' | 'replacement'
 test('registers the bounded root projection only after the full 256-handle budget fits', () => {
   const registry = new TrustedRaycastCanIUseActionRegistry()
   const rows = featureRows(64)
-  const ticket = registry.startSearch(context, rows)
-  assertCode(TRUSTED_RAYCAST_CAN_I_USE_ERROR_CODES.LIMIT_EXCEEDED, () => registry.publishRoot(ticket, rows, auxiliaryKinds(129)))
-  assert.deepEqual(registry.stats(), { revision: 1, state: 'search', liveHandleCount: 0, peakLiveHandleCount: 0 })
+  const failed = registry.startSearch(context, rows)
+  assertCode(TRUSTED_RAYCAST_CAN_I_USE_ERROR_CODES.LIMIT_EXCEEDED, () => registry.publishRoot(failed, rows, auxiliaryKinds(129)))
+  assert.deepEqual(registry.stats(), { revision: 1, state: 'error', liveHandleCount: 0, peakLiveHandleCount: 0 })
+  assertCode('SNAPSHOT_STALE', () => registry.publishRoot(failed, rows))
 
+  const ticket = registry.startSearch(context, rows)
   const handles = registry.publishRoot(ticket, rows, auxiliaryKinds(128))
   assert.equal(handles.length, TRUSTED_RAYCAST_CAN_I_USE_MAX_LIVE_HANDLES)
   assert.deepEqual(registry.stats(), {
-    revision: 1,
+    revision: 2,
     state: 'root',
     liveHandleCount: 256,
     peakLiveHandleCount: 256,
@@ -88,9 +102,11 @@ test('drops out-of-order search results without replacing the latest revision or
 test('validates root membership and action authentication against the current snapshot', () => {
   const registry = new TrustedRaycastCanIUseActionRegistry()
   const rows = featureRows(1)
-  const ticket = registry.startRoot(context, rows)
-  assertCode('RENDER_INVALID', () => registry.publishRoot(ticket, [{ ...rows[0]!, title: 'tampered' }]))
+  const failed = registry.startRoot(context, rows)
+  assertCode('RENDER_INVALID', () => registry.publishRoot(failed, [{ ...rows[0]!, title: 'tampered' }]))
   assert.equal(registry.stats().liveHandleCount, 0)
+  assertCode('SNAPSHOT_STALE', () => registry.publishRoot(failed, rows))
+  const ticket = registry.startRoot(context, rows)
   const handles = registry.publishRoot(ticket, rows)
   const details = handles.find(handle => handle.kind === 'show-details')!
   const authentication = trustedRaycastCanIUseAuthenticationFromHandle(details)
@@ -98,7 +114,7 @@ test('validates root membership and action authentication against the current sn
     kind: 'show-details',
     row: 0,
     feature: 'feature-0',
-    revision: 1,
+    revision: 2,
     depth: 0,
   })
   assertCode('ACTION_DENIED', () => registry.authorize(
@@ -185,6 +201,53 @@ test('invalidates search, error, replacement, detail, and close revisions', () =
   assertCode('ACTION_DENIED', () => registry.startRoot(context, rows))
 })
 
+test('Host selection limits row enumeration before registration and identical-query revisions cannot revive handles', () => {
+  const catalog = createTrustedRaycastCanIUseCatalog(featureRows(581))
+  const registry = new TrustedRaycastCanIUseActionRegistry()
+  let previous: TrustedRaycastCanIUseActionHandle | undefined
+  for (const query of ['', 'Feature 580', '']) {
+    const result = searchTrustedRaycastCanIUseCatalog(catalog, query)
+    const table = materializeTrustedRaycastCanIUseFeatureTable(catalog, result)
+    let materialized = 0
+    const rows = Object.entries(table).map(([_slug, feature]) => {
+      materialized++
+      return feature
+    })
+    assert.equal(materialized, query ? 1 : 64)
+    const ticket = registry.startRoot(context, rows)
+    assert.equal(registry.stats().liveHandleCount, 0)
+    const handles = registry.publishRoot(ticket, rows)
+    assert.equal(handles.length, materialized * 2)
+    if (previous) {
+      assertCode('ACTION_DENIED', () => registry.authorize(previous!, trustedRaycastCanIUseAuthenticationFromHandle(previous!)))
+    }
+    previous = handles[0]
+    assert.equal(registry.stats().peakLiveHandleCount, 128)
+  }
+})
+
+test('rejects any extension or command outside the exact candidate identity', () => {
+  for (const identity of [
+    { extensionId: 'google-translate', command: 'index' },
+    { extensionId: 'can-i-use', command: 'can-i-use' },
+  ]) {
+    const registry = new TrustedRaycastCanIUseActionRegistry()
+    assertCode('ACTION_DENIED', () => registry.startRoot({ ...context, ...identity }, featureRows(1)))
+    assert.equal(registry.stats().liveHandleCount, 0)
+  }
+})
+
+test('a failed transition retires old handles and render tickets instead of keeping stale authority', () => {
+  const registry = new TrustedRaycastCanIUseActionRegistry()
+  const rows = featureRows(1)
+  const ticket = registry.startRoot(context, rows)
+  const handle = registry.publishRoot(ticket, rows)[0]!
+  assertCode('RENDER_INVALID', () => registry.startSearch(context, featureRows(65)))
+  assert.equal(registry.stats().liveHandleCount, 0)
+  assertCode('ACTION_DENIED', () => registry.authorize(handle, trustedRaycastCanIUseAuthenticationFromHandle(handle)))
+  assertCode('SNAPSHOT_STALE', () => registry.publishRoot(ticket, rows))
+})
+
 test('rejects invalid detail rows before any handle allocation', () => {
   const registry = new TrustedRaycastCanIUseActionRegistry()
   const rows = featureRows(1)
@@ -193,7 +256,7 @@ test('rejects invalid detail rows before any handle allocation', () => {
   const showDetails = rootHandles.find(handle => handle.kind === 'show-details')!
   const detailTicket = registry.startDetailFromRoot(showDetails, trustedRaycastCanIUseAuthenticationFromHandle(showDetails), detailRows(1))
   assertCode('RENDER_INVALID', () => registry.publishDetail(detailTicket, [
-    { target: 'op_mini all', label: 'Opera Mini', sourceIndex: 0 },
+    { browser: 'op_mini', label: 'Opera Mini', sourceIndex: 0 },
   ]))
   assert.equal(registry.stats().liveHandleCount, 0)
   assert.equal(registry.stats().peakLiveHandleCount, 2)

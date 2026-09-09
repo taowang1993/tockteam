@@ -39,10 +39,9 @@ test('binds exact finite os, path, and Browserslist alias surfaces', () => {
   assert.deepEqual(Object.keys(aliases.path.default), ['join'])
   assert.equal(snapshot.defaultQuery, 'chrome 120,firefox 121')
   assert.deepEqual(aliases.browserslist(snapshot.defaultQuery), ['chrome 120', 'firefox 121'])
-  assert.deepEqual(aliases.browserslist(null, { path: '@workspace-config-v1', env: 'production' }), [
-    'chrome 120',
-    'firefox 121',
-  ])
+  assertCode('WORKSPACE_UNAVAILABLE', () => aliases.browserslist(null, {
+    path: '@workspace-config-v1', env: 'production',
+  }))
   assert.deepEqual(calls, [
     ['snapshot-1', 7],
     ['snapshot-1', 7],
@@ -68,7 +67,7 @@ test('throws fixed path errors and never supplies a home or lexical join fallbac
   assertCode(TRUSTED_RAYCAST_CAN_I_USE_ERROR_CODES.PATH_UNSUPPORTED, () => aliases.path.default.join('~', 'config'))
 })
 
-test('accepts only the two current Browserslist call shapes', () => {
+test('rejects all unlisted Browserslist call shapes', () => {
   const snapshot = createTrustedRaycastCanIUseSnapshot({
     identity: 'snapshot-3',
     generation: 2,
@@ -115,6 +114,21 @@ test('rejects stale identity and generation before returning a snapshot copy', (
   assertCode(TRUSTED_RAYCAST_CAN_I_USE_ERROR_CODES.SNAPSHOT_STALE, () => aliases.browserslist(null, {
     path: '@workspace-config-v1',
     env: 'production',
+  }))
+})
+
+test('the reserved workspace call cannot reinterpret a default-query snapshot as workspace configuration', () => {
+  const snapshot = createTrustedRaycastCanIUseSnapshot({
+    identity: 'snapshot-without-workspace-authority',
+    generation: 1,
+    defaultQuery: 'chrome 120',
+    environment: 'production',
+    canonicalTargets,
+  })
+  const aliases = createTrustedRaycastCanIUseAliases(snapshot, () => true)
+  assert.deepEqual(aliases.browserslist(snapshot.defaultQuery), ['chrome 120'])
+  assertCode('WORKSPACE_UNAVAILABLE', () => aliases.browserslist(null, {
+    path: '@workspace-config-v1', env: 'production',
   }))
 })
 

@@ -76,21 +76,35 @@ test('uses literal token matching with the documented Unicode and ASCII-fold rul
 
 test('selects finite detail rows before rendering and drops Opera Mini or missing support', () => {
   const candidates = [
-    { target: 'op_mini all', label: 'Opera Mini', sourceIndex: 0, hasSupport: true },
-    { target: 'chrome 120', label: 'Chrome 120', sourceIndex: 1, hasSupport: false },
-    { target: 'firefox 121', label: 'Firefox 121', sourceIndex: 2, hasSupport: true },
+    { browser: 'op_mini', label: 'Opera Mini', sourceIndex: 0, hasSupport: true },
+    { browser: 'chrome', label: 'Chrome', sourceIndex: 1, hasSupport: false },
+    { browser: 'firefox', label: 'Firefox', sourceIndex: 2, hasSupport: true },
     ...Array.from({ length: 70 }, (_, index) => ({
-      target: `safari ${index + 1}`,
-      label: `Safari ${index + 1}`,
+      browser: `agent${index}`,
+      label: `Agent ${index}`,
       sourceIndex: index + 3,
       hasSupport: true,
     })),
   ]
   const rows = selectTrustedRaycastCanIUseAgentRows(candidates)
   assert.equal(rows.length, 64)
-  assert.equal(rows[0]?.target, 'firefox 121')
-  assert.equal(rows.some(row => row.target.startsWith('op_mini ')), false)
+  assert.equal(rows[0]?.browser, 'firefox')
+  assert.equal(rows.some(row => row.browser === 'op_mini'), false)
   assert.deepEqual(rows.map(row => row.sourceIndex), Array.from({ length: 64 }, (_, index) => index + 2))
+})
+
+test('detail selection is keyed by unique browser agents, not browser-version targets', () => {
+  const candidates = [
+    { browser: 'op_mini', label: 'Opera Mini', sourceIndex: 0, hasSupport: true },
+    { browser: 'chrome', label: 'Chrome', sourceIndex: 1, hasSupport: false },
+    { browser: 'firefox', label: 'Firefox', sourceIndex: 2, hasSupport: true },
+  ]
+  assert.deepEqual(selectTrustedRaycastCanIUseAgentRows(candidates), [
+    { browser: 'firefox', label: 'Firefox', sourceIndex: 2 },
+  ])
+  assertCode('DATA_UNAVAILABLE', () => selectTrustedRaycastCanIUseAgentRows([
+    ...candidates, { browser: 'firefox', label: 'Firefox Again', sourceIndex: 3, hasSupport: true },
+  ]))
 })
 
 test('rejects an incomplete or tampered immutable catalog before search', () => {
