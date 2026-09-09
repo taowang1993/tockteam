@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { existsSync, lstatSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
@@ -8,7 +8,7 @@ import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { ensureElectronInstalled } from './electron-runtime.mjs'
-import { assertProcessTreeGone, stopChildProcess } from './process-cleanup.mjs'
+import { createFocusProofClient, findFocusProofResidue, focusProofDescendants, readFocusProofProcessSnapshot, type FocusProofCheckpoint, type ProofProcessRow } from './trusted-raycast-focus-proof-client.ts'
 import { extractKaomojiReferenceImages } from './trusted-raycast-kaomoji-reference.ts'
 import { cleanupPostBaselineTrustedRaycastWorkspaces } from './trusted-raycast-proof-cleanup.ts'
 import { TRUSTED_PROOF_PAGE_SELECTOR_SOURCE, waitForTrustedProofPage, type TrustedProofPageRole } from './trusted-raycast-proof-pages.ts'
@@ -36,7 +36,19 @@ async function freePort(): Promise<number> {
   await new Promise<void>(resolve => server.close(() => resolve()))
   return address.port
 }
-async function frontmost(): Promise<string> { return (await execFile('/usr/bin/lsappinfo', ['front'], { timeout: 5000 })).stdout.trim() }
+async function processGroupId(pid: number): Promise<number> {
+  const result = await execFile('/bin/ps', ['-o', 'pgid=', '-p', String(pid)], { timeout: 5000 })
+  const pgid = Number(result.stdout.trim()); assert.ok(Number.isSafeInteger(pgid) && pgid > 0, 'Could not establish proof process group'); return pgid
+}
+async function frontmostProcess(): Promise<{ bundleId: string; pgid: number; pid: number; timestampMs: number }> {
+  const asn = (await execFile('/usr/bin/lsappinfo', ['front'], { timeout: 5000 })).stdout.trim()
+  assert.match(asn, /^ASN:0x[0-9a-f]+-0x[0-9a-f]+:$/iu, 'Malformed frontmost application identity')
+  const info = (await execFile('/usr/bin/lsappinfo', ['info', '-only', 'pid,bundleID', asn], { timeout: 5000 })).stdout
+  const pid = Number(info.match(/^"pid"=(\d+)$/mu)?.[1]); assert.ok(Number.isSafeInteger(pid) && pid > 0, 'Missing frontmost process identity')
+  const rawBundleId = info.match(/^"CFBundleIdentifier"="([^"]*)"$/mu)?.[1] ?? '-'
+  const bundleId = /^(?:-|[A-Za-z0-9][A-Za-z0-9._-]{0,254})$/u.test(rawBundleId) ? rawBundleId : '-'
+  return { bundleId, pgid: await processGroupId(pid), pid, timestampMs: Date.now() }
+}
 async function pages(port: number): Promise<Array<{ title: string; url: string; webSocketDebuggerUrl: string }>> { return await (await fetch(`http://127.0.0.1:${port}/json/list`)).json() as Array<{ title: string; url: string; webSocketDebuggerUrl: string }> }
 function manifest(paths: readonly string[]): string {
   const rows: string[] = []
@@ -100,7 +112,13 @@ let userData = ''
 let electronChild: ReturnType<typeof spawn> | undefined
 let attached = false
 let debugPort = 0
-let frontBefore = ''
+let focusClient: ReturnType<typeof createFocusProofClient> | undefined
+const focusCheckpoints: Array<FocusProofCheckpoint & { frontmost: Awaited<ReturnType<typeof frontmostProcess>> }> = []
+let processBefore: readonly ProofProcessRow[] = []
+let gatePgid = 0
+let focusProofNonce = ''
+let residueMarkers: readonly string[] = []
+let observedDescendants: readonly ProofProcessRow[] = []
 let liveBefore = ''
 let tempGoogleBefore = ''
 let workspacesBefore: string[] = []
@@ -111,11 +129,12 @@ let failure: unknown
 let completed = false
 const session = `tockteam-kaomoji-visual-${process.pid}`
 try {
+  assert.equal(existsSync(finalEvidence), false, 'Final Kaomoji evidence already exists')
   assert.equal(process.platform, 'darwin', 'The bounded Retina visual gate requires macOS')
   evidence = await mkdtemp(join(tmpdir(), 'tockteam-kaomoji-visual-evidence-'))
   userData = await mkdtemp(join(tmpdir(), 'tockteam-kaomoji-electron-proof-'))
   await mkdir(join(evidence, 'reference'), { recursive: true })
-  frontBefore = await frontmost()
+  processBefore = await readFocusProofProcessSnapshot()
   workspacesBefore = readdirSync(tmpdir()).filter(name => name.startsWith('tockteam-trusted-raycast-')).sort()
   workspaceSnapshotCaptured = true
   liveBefore = manifest(protectedLivePaths())
@@ -151,18 +170,24 @@ try {
 
   debugPort = await freePort()
   const electron = ensureElectronInstalled(repository)
+  focusProofNonce = randomBytes(32).toString('hex')
+  residueMarkers = Object.freeze([userData, `--remote-debugging-port=${debugPort}`, `TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE=${focusProofNonce}`, electron.includes('.app/') ? electron.slice(0, electron.indexOf('.app/') + 4) : electron])
   electronChild = spawn(electron, ['.', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userData}`], {
     cwd: repository, detached: true,
-    env: { ...process.env, TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF: '1', TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY: '1', TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY: '1', TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF: '1' },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF: '1', TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY: '1', TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY: '1', TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE: focusProofNonce, TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF: '1' },
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   })
+  focusClient = createFocusProofClient(electronChild, focusProofNonce)
   electronChild.stdout?.on('data', chunk => { log = `${log}${chunk}`.slice(-16_384) }); electronChild.stderr?.on('data', chunk => { log = `${log}${chunk}`.slice(-16_384) })
+  await focusClient.ready()
+  gatePgid = await processGroupId(electronChild.pid!); assert.equal(gatePgid, electronChild.pid, 'Proof Electron did not own its process group')
+  const assertNoFocusTheft = async (checkpoint: string): Promise<void> => { focusCheckpoints.push({ ...(await focusClient!.checkpoint(checkpoint)), frontmost: await frontmostProcess() }) }
   const target = async (role: TrustedProofPageRole) => {
     const selected = await waitForTrustedProofPage(async () => (await pages(debugPort)).map(target => ({ target, title: async () => target.title, url: () => target.url })), role)
     return selected.target
   }
   await target('workbench')
-  assert.equal(await frontmost(), frontBefore, 'Electron changed the frontmost application during inactive launch')
+  await assertNoFocusTheft('workbench-ready')
   const cli = async (...args: string[]): Promise<string> => {
     const result = await execFile('playwright-cli', [`-s=${session}`, ...args], { cwd: evidence, timeout: 60_000, maxBuffer: 2 * 1024 * 1024 })
     if (/### Error/u.test(result.stdout)) throw new Error(result.stdout)
@@ -171,7 +196,7 @@ try {
   await cli('attach', `--cdp=http://127.0.0.1:${debugPort}`); attached = true
   await cli('run-code', `async page => { ${TRUSTED_PROOF_PAGE_SELECTOR_SOURCE} const workbench = await waitForTrustedProofPage(() => page.context().pages(), 'workbench'); await workbench.evaluate(() => window.dshDesktop.launcher.show()); return true; }`)
   await target('launcher')
-  assert.equal(await frontmost(), frontBefore, 'Showing the Launcher changed the frontmost application')
+  await assertNoFocusTheft('launcher-shown')
   const run = async (body: string): Promise<any> => {
     const output = await cli('run-code', `async page => { ${TRUSTED_PROOF_PAGE_SELECTOR_SOURCE} const [launcher, workbench] = await Promise.all([waitForTrustedProofPage(() => page.context().pages(), 'launcher'), waitForTrustedProofPage(() => page.context().pages(), 'workbench')]); ${body} }`)
     const match = output.match(/### Result\s*\n([^\n]+)/u); return match ? JSON.parse(match[1]!) : undefined
@@ -261,7 +286,7 @@ try {
   await run(`await launcher.getByLabel('Display Mode').selectOption('list'); await launcher.getByLabel('Primary Action').selectOption('paste-to-active-app'); await launcher.getByRole('button', { name: 'Save Preferences', exact: true }).click(); await launcher.waitForFunction(() => document.querySelectorAll('li.launcher-command-row').length === 64); return true;`)
   await capture(await target('launcher'), join(evidence, 'list-light.png'))
 
-  const frontAfterInteractions = await frontmost(); assert.equal(frontAfterInteractions, frontBefore)
+  await assertNoFocusTheft('interactions-complete')
   assert.equal(existsSync(kaomoji.stateFile), false)
   const tempGoogleAfter = manifest(extensionPaths(userData, 'google-translate'))
   const liveAfter = manifest(protectedLivePaths())
@@ -278,28 +303,39 @@ try {
     const width = Number(result.stdout.match(/pixelWidth: (\d+)/)?.[1]); const height = Number(result.stdout.match(/pixelHeight: (\d+)/)?.[1])
     assert.deepEqual({ width, height }, { width: 1500, height: 950 }); dimensions.push({ file, height, width })
   }
-  await writeFile(join(evidence, 'proof.json'), `${JSON.stringify({ accessibility: { actionPanel, firstPreferenceFocused: true, listLabel: 'Kaomoji Results', nestedEscapeReturned: true, searchLabel: 'Search Kaomoji' }, artifactSha256: expectedArtifact, captureMethod: 'CDP Page.captureScreenshot', derivedIdentities: identities, frontmost: { afterInteractions: frontAfterInteractions, before: frontBefore, unchanged: true }, geometry, manifestSnapshots: { disposableGoogle: { after: { file: 'disposable-google-after.manifest', sha256: fileDigest(join(evidence, 'disposable-google-after.manifest')) }, before: { file: 'disposable-google-before.manifest', sha256: fileDigest(join(evidence, 'disposable-google-before.manifest')) }, entries: tempGoogleBefore.split('\n').length }, liveProfiles: { after: { file: 'live-after.manifest', sha256: fileDigest(join(evidence, 'live-after.manifest')) }, before: { file: 'live-before.manifest', sha256: fileDigest(join(evidence, 'live-before.manifest')) }, completeDesktopProfileTrees: true, entries: liveBefore.split('\n').length, roots: ['TockTeam-Desktop-Dev', 'TockTeam-Desktop'] } }, mockedEffects: { copyDeniedWithoutStateMutation: true, pasteDeniedWithoutStateMutation: true }, preferenceContract, preferencesChanged, references, screenshots: dimensions, search, stateUnmutated: true, translateStateUnchanged: true, visualScope: 'Official Featured Kaomoji operational scope; not described as Recommended.' }, null, 2)}\n`)
+  await writeFile(join(evidence, 'proof.json'), `${JSON.stringify({ accessibility: { actionPanel, firstPreferenceFocused: true, listLabel: 'Kaomoji Results', nestedEscapeReturned: true, searchLabel: 'Search Kaomoji' }, artifactSha256: expectedArtifact, captureMethod: 'CDP Page.captureScreenshot', derivedIdentities: identities, focusProof: { checkpoints: focusCheckpoints, policy: 'Electron app activation or BrowserWindow focus is denied; unrelated frontmost application changes are allowed.' }, geometry, manifestSnapshots: { disposableGoogle: { after: { file: 'disposable-google-after.manifest', sha256: fileDigest(join(evidence, 'disposable-google-after.manifest')) }, before: { file: 'disposable-google-before.manifest', sha256: fileDigest(join(evidence, 'disposable-google-before.manifest')) }, entries: tempGoogleBefore.split('\n').length }, liveProfiles: { after: { file: 'live-after.manifest', sha256: fileDigest(join(evidence, 'live-after.manifest')) }, before: { file: 'live-before.manifest', sha256: fileDigest(join(evidence, 'live-before.manifest')) }, completeDesktopProfileTrees: true, entries: liveBefore.split('\n').length, roots: ['TockTeam-Desktop-Dev', 'TockTeam-Desktop'] } }, mockedEffects: { copyDeniedWithoutStateMutation: true, pasteDeniedWithoutStateMutation: true }, preferenceContract, preferencesChanged, references, screenshots: dimensions, search, stateUnmutated: true, translateStateUnchanged: true, visualScope: 'Official Featured Kaomoji operational scope; not described as Recommended.' }, null, 2)}\n`)
   completed = true
 } catch (error) { failure = error }
 
 const cleanupErrors: unknown[] = []
+let childClosed = electronChild === undefined
+let helperResidueGone = electronChild === undefined
 if (attached) await execFile('playwright-cli', [`-s=${session}`, 'detach'], { cwd: evidence || tmpdir(), timeout: 30_000 }).catch(error => cleanupErrors.push(error))
-if (electronChild) {
-  await stopChildProcess(electronChild).catch(error => cleanupErrors.push(error))
-  await assertProcessTreeGone(electronChild).catch(error => cleanupErrors.push(error))
+if (focusClient) {
+  if (electronChild?.pid) await readFocusProofProcessSnapshot().then(snapshot => { observedDescendants = focusProofDescendants(snapshot, electronChild!.pid!) }).catch(error => cleanupErrors.push(error))
+  await focusClient.shutdownAndWait().catch(error => cleanupErrors.push(error))
+  childClosed = focusClient.closed
 }
-if (workspaceSnapshotCaptured) await cleanupPostBaselineTrustedRaycastWorkspaces(tmpdir(), workspacesBefore).then(result => { workspaceCleanupRemoved = result.removed }).catch(error => cleanupErrors.push(error))
-if (userData) await rm(userData, { recursive: true, force: true }).catch(error => cleanupErrors.push(error))
-try { if (userData) assert.equal(existsSync(userData), false); if (workspaceSnapshotCaptured) assert.deepEqual(readdirSync(tmpdir()).filter(name => name.startsWith('tockteam-trusted-raycast-')).sort(), workspacesBefore); if (liveBefore) assert.equal(manifest(protectedLivePaths()), liveBefore); if (frontBefore) assert.equal(await frontmost(), frontBefore); if (debugPort > 0) await assert.rejects(() => fetch(`http://127.0.0.1:${debugPort}/json/list`)) } catch (error) { cleanupErrors.push(error) }
+if (electronChild && !focusClient) cleanupErrors.push(new Error('Proof Electron launched without an authenticated focus client'))
+if (childClosed && electronChild) {
+  await readFocusProofProcessSnapshot().then(after => {
+    const residue = findFocusProofResidue(processBefore, after, { gatePgid, markers: residueMarkers, observedDescendants })
+    if (residue.length > 0) throw new Error(`Proof Electron helper residue remained: ${residue.length}`)
+    helperResidueGone = true
+  }).catch(error => cleanupErrors.push(error))
+}
+const cleanupOwnershipReleased = childClosed && helperResidueGone
+if (workspaceSnapshotCaptured && cleanupOwnershipReleased) await cleanupPostBaselineTrustedRaycastWorkspaces(tmpdir(), workspacesBefore).then(result => { workspaceCleanupRemoved = result.removed }).catch(error => cleanupErrors.push(error))
+if (userData && cleanupOwnershipReleased) await rm(userData, { recursive: true, force: true }).catch(error => cleanupErrors.push(error))
+try { if (userData) assert.equal(existsSync(userData), false); if (workspaceSnapshotCaptured) assert.deepEqual(readdirSync(tmpdir()).filter(name => name.startsWith('tockteam-trusted-raycast-')).sort(), workspacesBefore); if (liveBefore) assert.equal(manifest(protectedLivePaths()), liveBefore); if (debugPort > 0) await assert.rejects(() => fetch(`http://127.0.0.1:${debugPort}/json/list`)) } catch (error) { cleanupErrors.push(error) }
 if (failure !== undefined || cleanupErrors.length > 0 || !completed) {
-  if (evidence) await rm(evidence, { recursive: true, force: true }).catch(() => {})
+  if (evidence && cleanupOwnershipReleased) await rm(evidence, { recursive: true, force: true }).catch(() => {})
   if (failure !== undefined && cleanupErrors.length > 0) throw new AggregateError([failure, ...cleanupErrors], 'Bounded Electron proof and cleanup failed')
   throw failure ?? new AggregateError(cleanupErrors, 'Bounded Electron proof cleanup failed')
 }
 const proofPath = join(evidence, 'proof.json')
 const proof = JSON.parse(await readFile(proofPath, 'utf8')) as Record<string, any>
-proof.frontmost.afterCleanup = await frontmost()
-proof.cleanup = { debugPortClosed: true, electronPid: electronChild?.pid, processGroupGone: true, temporaryRootRemoved: true, trustedWorkspaceRootsRemoved: workspaceCleanupRemoved, trustedWorkspacesRestored: true }
+proof.focusProof.messageCount = focusClient?.messageCount
+proof.cleanup = { childClosed, debugPortClosed: true, electronPid: electronChild?.pid, helperResidueGone, temporaryRootRemoved: true, trustedWorkspaceRootsRemoved: workspaceCleanupRemoved, trustedWorkspacesRestored: true }
 await writeFile(proofPath, `${JSON.stringify(proof, null, 2)}\n`)
-await rm(finalEvidence, { recursive: true, force: true })
 renameSync(evidence, finalEvidence)

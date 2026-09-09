@@ -1,0 +1,85 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
+import { readFile } from 'node:fs/promises'
+import { createFocusProofClient, findFocusProofResidue, focusProofDescendants, readFocusProofProcessSnapshot, type FocusProofChild } from '../scripts/trusted-raycast-focus-proof-client.ts'
+
+const nonce = 'b'.repeat(64)
+class FakeChild extends EventEmitter implements FocusProofChild {
+  connected = true
+  pid = 900
+  commands: unknown[] = []
+  disconnect(): void { this.connected = false; this.emit('disconnect'); this.emit('close', 1, null) }
+  send(message: unknown, callback: (error: Error | null) => void): boolean { this.commands.push(message); callback(null); return true }
+}
+const ready = (sequence = 1) => ({ channel: 'tockteam-launcher-focus-proof', faulted: false, focusFaultCount: 0, nonce, sequence, type: 'READY' })
+const checkpoint = (requestSequence: number, sequence: number) => ({ channel: 'tockteam-launcher-focus-proof', faulted: false, focusFaultCount: 0, focusedWindowCount: 0, nonce, requestSequence, sequence, type: 'CHECKPOINT_ACK', windows: [] })
+
+test('Electron harness uses inherited IPC shutdown and read-only bounded residue checks', async () => {
+  const harness = await readFile(new URL('../scripts/trusted-raycast-kaomoji-electron-proof.mts', import.meta.url), 'utf8')
+  assert.match(harness, /stdio: \['ignore', 'pipe', 'pipe', 'ipc'\]/u)
+  assert.match(harness, /TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE: focusProofNonce/u)
+  assert.match(harness, /createFocusProofClient\(electronChild, focusProofNonce\)/u)
+  assert.match(harness, /shutdownAndWait\(\)[\s\S]*findFocusProofResidue/u)
+  assert.match(harness, /Final Kaomoji evidence already exists/u)
+  assert.doesNotMatch(harness, /process\.kill|stopChildProcess|assertProcessTreeGone|System Events|rm\(finalEvidence/u)
+})
+
+test('attaches before READY and authenticates monotonic checkpoint traffic', async () => {
+  const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 100 })
+  child.emit('message', ready()); await client.ready()
+  const pending = client.checkpoint('workbench-ready'); child.emit('message', checkpoint(1, 2))
+  assert.equal((await pending).checkpoint, 'workbench-ready')
+  assert.deepEqual(child.commands, [{ channel: 'tockteam-launcher-focus-proof', command: 'CHECKPOINT', nonce, sequence: 1 }])
+})
+
+test('rejects malformed, replayed, wrong-nonce, and overflowed responses', async () => {
+  for (const message of [
+    { ...ready(), nonce: 'c'.repeat(64) },
+    { ...ready(), extra: true },
+    [ready()],
+  ]) {
+    const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 20 }); child.emit('message', message)
+    await assert.rejects(() => client.ready(), /focus proof protocol/u)
+  }
+  const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { maxMessages: 1, timeoutMs: 20 }); child.emit('message', ready()); child.emit('message', { ...ready(), sequence: 2 })
+  await assert.rejects(() => client.assertClean(), /bound|protocol/u)
+})
+
+test('focus after shutdown ACK remains fatal until exact child close', async () => {
+  const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 100 }); child.emit('message', ready()); await client.ready()
+  const closing = client.shutdownAndWait()
+  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: false, focusFaultCount: 0, nonce, requestSequence: 1, sequence: 2, type: 'SHUTDOWN_ACK' })
+  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: true, focusFaultCount: 1, kind: 'window-focus', nonce, sequence: 3, type: 'FOCUS_FAULT', windowId: 3 })
+  child.emit('close', 1, null)
+  await assert.rejects(closing, /focus fault/u)
+})
+
+test('shutdown timeout disconnects the identity-owned channel and awaits close', async () => {
+  const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 20 }); child.emit('message', ready()); await client.ready()
+  await assert.rejects(() => client.shutdownAndWait(), /shutdown acknowledgment timeout/u)
+  assert.equal(child.connected, false)
+})
+
+test('strict read-only process snapshots include the current test owner', async () => {
+  const rows = await readFocusProofProcessSnapshot()
+  assert.ok(rows.some(row => row.pid === process.pid && row.command.length > 0))
+})
+
+test('residue detection covers original PGID and newly detached marker processes', () => {
+  const baseline = [{ command: '/usr/bin/Code', pgid: 1, pid: 10, ppid: 1 }]
+  assert.deepEqual(findFocusProofResidue(baseline, baseline, { gatePgid: 900, markers: ['/proof-root'] }), [])
+  const live = [
+    ...baseline,
+    { command: '/Electron', pgid: 900, pid: 900, ppid: process.pid },
+    { command: '/detached-runtime', pgid: 999, pid: 903, ppid: 900 },
+  ]
+  const observedDescendants = focusProofDescendants(live, 900)
+  const residue = findFocusProofResidue(baseline, [
+    ...baseline,
+    { command: '/Electron Helper --type=renderer', pgid: 900, pid: 901, ppid: 1 },
+    { command: '/helper --state=/proof-root', pgid: 999, pid: 902, ppid: 1 },
+    { command: '/detached-runtime', pgid: 999, pid: 903, ppid: 1 },
+  ], { gatePgid: 900, markers: ['/proof-root'], observedDescendants })
+  assert.deepEqual(residue.map(row => row.pid), [901, 902, 903])
+})

@@ -210,6 +210,7 @@ import {
 import { createDesktopAppUpdater, type DesktopAppUpdater } from './app-update.ts'
 import { migrateLegacyDesktopState } from './data-root.ts'
 import { RuntimeStartCancelledError, RuntimeStartGate } from './runtime-start-gate.ts'
+import { installLauncherFocusProof, type LauncherFocusProofApp, type LauncherFocusProofChannel } from './launcher-focus-proof.ts'
 import {
   handleUnexpectedRuntimeExit,
   stopLiveRuntimeForMarketplace,
@@ -237,6 +238,15 @@ if (process.platform === 'darwin' && launcherPackagedSmokeEnabled) app.commandLi
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherInactiveVisualProofEnabled = !app.isPackaged && process.env.TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF === '1'
+installLauncherFocusProof({
+  app: app as unknown as LauncherFocusProofApp,
+  channel: typeof process.send === 'function' ? process as unknown as LauncherFocusProofChannel : undefined,
+  enabled: launcherInactiveVisualProofEnabled,
+  getAllWindows: () => BrowserWindow.getAllWindows(),
+  nonce: process.env.TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE,
+  scheduleExit: callback => { setImmediate(callback) },
+  shutdown: () => { void requestSecureQuit('visual-proof') },
+})
 const trustedRaycastDenyEffectsProofEnabled = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
@@ -3604,8 +3614,8 @@ function initializeLauncherTray(): void {
   })
 }
 
-function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-quit' | 'updater-install'): void {
-  if (secureTeardownPromise !== undefined) return
+function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-quit' | 'updater-install' | 'visual-proof'): Promise<void> {
+  if (secureTeardownPromise !== undefined) return secureTeardownPromise
   secureTeardownPromise = (async () => {
     quitting = true
     invalidateAllLauncherProviders('launcher-shutdown')
@@ -3648,6 +3658,7 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
     appendLog('desktop', `secure quit failed: ${error instanceof Error ? error.message : String(error)}`)
     app.quit()
   })
+  return secureTeardownPromise
 }
 
 async function reconcileLauncherAfterRelaunchFailure(reason: string): Promise<void> {
