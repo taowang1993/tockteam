@@ -393,6 +393,29 @@ test('nested AddLanguageForm renders fields and submits through the source actio
   assert.equal(sent[1]?.eventId, 'submit-action')
 })
 
+test('Kaomoji preference Escape accepts the current pop event and restores a newer searchable view', async () => {
+  Element.activeElement = undefined
+  const nodes: Element[] = []
+  let view: ReturnType<typeof createTrustedRaycastView>
+  let accepted = false
+  const document = { get activeElement() { return Element.activeElement }, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const bridge = { async trustedRaycastEvent(event: TrustedRaycastViewEvent) {
+    assert.deepEqual(event, { extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 7, eventId: 'language-nav', kind: 'navigation', value: 'language:pop' })
+    accepted = true
+    view.update({ type: 'patch', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 8, status: 'ready', root: { type: 'raycast-list', props: { navigationDepth: 0, queryCurrent: true, querySequence: 0, searchable: true, searchEventId: 'search-8' }, children: [] } })
+  } } as unknown as LauncherPreloadBridge
+  view = createTrustedRaycastView(document, bridge, () => assert.fail('nested Escape closed the trusted view'))
+  view.update({ type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 7, root: { type: 'raycast-form', props: { navigationDepth: 1, preferenceSetup: true }, children: [{ type: 'raycast-form-dropdown', props: { fieldEventId: 'display', title: 'Display Mode', value: 'list' }, children: [] }] } })
+  const select = nodes.find(node => node.getAttribute('aria-label') === 'Display Mode')!
+  assert.equal(Element.activeElement, select)
+  view.element.dispatchEvent(Object.assign(new Event('keydown'), { key: 'Escape', isComposing: false, keyCode: 27, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false }))
+  await flush()
+  const searchRow = nodes.find(node => node.className === 'flex min-w-0 flex-1 items-center gap-3')!
+  assert.equal(accepted, true)
+  assert.equal(searchRow.hidden, false)
+  assert.equal(Element.activeElement, inputOf(nodes))
+})
+
 test('Escape pops a nested view instead of closing the command', async () => {
   const nodes: Element[] = []
   const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document

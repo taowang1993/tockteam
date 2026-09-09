@@ -435,8 +435,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       if (message.root) render(message.root)
       if (restoreRow) rows[selected]?.item.focus()
       sendLatest()
-      const enteredForm = !previousHadForm && Boolean(message.root && descendants(message.root, 'raycast-form').length > 0)
-      if (message.type === 'ready' || enteredForm) { focus(); document.defaultView?.requestAnimationFrame(() => focus()) }
+      const hasForm = Boolean(message.root && descendants(message.root, 'raycast-form').length > 0)
+      if (message.type === 'ready' || previousHadForm !== hasForm) { focus(); document.defaultView?.requestAnimationFrame(() => focus()) }
     },
   }
 }

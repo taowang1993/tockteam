@@ -23,6 +23,8 @@ test('Electron harness uses inherited IPC shutdown and read-only bounded residue
   assert.match(harness, /getByRole\('searchbox', \{ name: 'Search Kaomoji', exact: true \}\)/u)
   assert.match(harness, /menu\.getByRole\('button', \{ name, exact: true \}\)/u)
   assert.match(harness, /named\.and\(buttons\.nth\(candidate\)\)/u)
+  assert.match(harness, /const before = \{ backVisible: await back\.isVisible\(\), formVisible: await form\.isVisible\(\), searchVisible: await searchbox\.isVisible\(\) \}/u)
+  assert.match(harness, /searchFocused: await searchbox\.evaluate\(node => node === document\.activeElement\)/u)
   assert.match(harness, /stdio: \['ignore', 'pipe', 'pipe', 'ipc'\]/u)
   assert.match(harness, /TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE: focusProofNonce/u)
   assert.match(harness, /createFocusProofClient\(electronChild, focusProofNonce\)/u)

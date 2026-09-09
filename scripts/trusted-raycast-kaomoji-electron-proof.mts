@@ -260,7 +260,14 @@ try {
     if (await launcher.evaluate(() => document.activeElement?.getAttribute('aria-label')) !== 'Display Mode') throw new Error('First preference is not focused'); return labels;
   `)
   await capture(await target('launcher'), join(evidence, 'preferences-list-paste-dark.png'))
-  await run(`await launcher.keyboard.press('Escape'); await launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }).waitFor(); return { nestedEscapeReturned: true };`)
+  await run(`
+    const section = launcher.locator('section[aria-label="Kaomoji Search"]'); const form = section.locator('form'); const searchbox = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }); const back = section.locator('button.launcher-command-footer-action.mx-4');
+    const before = { backVisible: await back.isVisible(), formVisible: await form.isVisible(), searchVisible: await searchbox.isVisible() };
+    await launcher.keyboard.press('Escape'); await searchbox.waitFor();
+    const after = { backVisible: await back.isVisible(), eventAccepted: true, formVisible: await form.isVisible(), searchFocused: await searchbox.evaluate(node => node === document.activeElement), searchVisible: await searchbox.isVisible() };
+    if (before.backVisible || !before.formVisible || before.searchVisible || after.backVisible || after.formVisible || !after.searchFocused || !after.searchVisible) throw new Error('Nested Escape contract mismatch: ' + JSON.stringify({ after, before }));
+    return { after, before, nestedEscapeReturned: true };
+  `)
   await run(`
     const input = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }); await input.press('Meta+k'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('Enter');
     await launcher.getByLabel('Display Mode').selectOption('grid'); await launcher.getByLabel('Primary Action').selectOption('copy-to-clipboard');

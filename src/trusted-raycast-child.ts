@@ -2,7 +2,7 @@ import React from 'react'
 // @ts-expect-error Build-time first-party projection alias.
 import { projectTrustedRaycastRoot } from '@tockteam/trusted-raycast-projection'
 // @ts-expect-error Build-time first-party alias, shared with unchanged source.
-import { Action, ActionPanel, Form, configureCompatibility, advanceQuery, getPreferenceValues, savePreferenceValues, queryText, registerNavigationRenderer, popView, viewSearchable, navigationDepth } from '@raycast/api'
+import { Action, ActionPanel, Form, configureCompatibility, advanceQuery, getPreferenceValues, savePreferenceValues, queryText, registerNavigationRenderer, popView, useNavigation, viewSearchable, navigationDepth } from '@raycast/api'
 // @ts-expect-error Build-time first-party contract alias.
 import { isTrustedRaycastNativeOutcome, isTrustedRaycastViewEvent } from '@tockteam/trusted-raycast-child-contract'
 // @ts-expect-error The approved child artifact supplies this runtime-only singleton.
@@ -60,7 +60,7 @@ const requestNative = (request: object, resolve: (result?: string) => void, reje
   process.stdout.write(`${JSON.stringify({ type: 'native', extensionId, sessionId, generation, requestId, ...request })}\n`)
 }
 configureCompatibility({
-  openPreferences: () => { showingPreferenceSetup = true; preferencesRoot = React.createElement(PreferencesSetup); mount(preferencesRoot) },
+  openPreferences: () => { showingPreferenceSetup = true; preferencesRoot = React.createElement(PreferencesSetup); useNavigation().push(preferencesRoot) },
   native: (request: { kind: 'copy' | 'paste'; text?: string } | { kind: 'openGoogleTranslate'; url?: string } | { kind: 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>> }) => new Promise<void>((resolve, reject) => {
     if (!activeAction) { reject(new Error('Native effect requires a current source action')); return }
     requestNative({ revision: activeAction.revision, eventId: activeAction.eventId, ...request }, () => resolve(), reject)
@@ -135,7 +135,8 @@ const PreferencesSetup = (): React.ReactElement => {
       : { ...defaults, langFrom: String(values.langFrom ?? defaults.langFrom), lang1: String(values.lang1 ?? defaults.lang1), lang2: String(values.lang2 ?? defaults.lang2) }
     await savePreferenceValues(next)
     showingPreferenceSetup = false
-    mount(undefined)
+    if (navigationDepth() > 0) popView()
+    else mount(undefined)
   }
   return React.createElement(Form, {
     actions: React.createElement(ActionPanel, null, React.createElement(Action.SubmitForm, { title: extensionId === 'google-translate' && process.env.TRUSTED_RAYCAST_PREFERENCES_CONFIGURED === '0' ? 'Continue' : 'Save Preferences', onSubmit: submit })),
@@ -176,6 +177,7 @@ process.stdin.on('data', chunk => {
     }
     if (message.kind === 'navigation') {
       if (message.value !== 'language:pop') throw new Error('Unsupported Translate navigation')
+      showingPreferenceSetup = false
       popView()
       continue
     }

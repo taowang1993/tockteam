@@ -241,6 +241,16 @@ await test('reviewed Kaomoji default and search projections stay finite in dispo
 
     await invoke('Open Extension Preferences', initialTitle)
     await waitFor(() => latestRoot().root!.props.preferenceSetup === true, 'managed preferences did not open')
+    const preferenceProjection = latestRoot()
+    assert.equal(preferenceProjection.root!.props.navigationDepth, 1)
+    assert.ok(currentNodes().some(node => node.type === 'raycast-form'))
+    const beforePop = messages.length
+    assert.doesNotThrow(() => manager!.send(owner, { extensionId: 'kaomoji-search', sessionId: currentSessionId, generation: currentGeneration, revision: preferenceProjection.revision, eventId: 'language-nav', kind: 'navigation', value: 'language:pop' }))
+    await waitFor(() => messages.slice(beforePop).some(message => message.root?.props.navigationDepth === 0 && message.root.props.searchable === true), 'managed preference pop did not restore search')
+    assert.ok(latestRoot().revision > preferenceProjection.revision)
+    assert.equal(latestRoot().root!.props.preferenceSetup, false)
+    await invoke('Open Extension Preferences', initialTitle)
+    await waitFor(() => latestRoot().root!.props.preferenceSetup === true && latestRoot().root!.props.navigationDepth === 1, 'managed preferences did not reopen')
     const fields = currentNodes().filter(node => node.type === 'raycast-form-dropdown')
     assert.deepEqual(fields.map(field => field.props.title), ['Display Mode', 'Primary Action'])
     for (const [field, value] of [[fields[0]!, 'grid'], [fields[1]!, 'copy-to-clipboard']] as const) {
