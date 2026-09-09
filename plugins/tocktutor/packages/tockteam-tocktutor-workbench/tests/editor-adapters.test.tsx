@@ -134,6 +134,15 @@ describe('CodeMirror Source editor', () => {
     expect(lines.find(line => line.textContent === '# Heading')?.className).toContain('cm-tock-heading-1')
   })
 
+  it('keeps headings inside multiline comments safe and unstyled', async () => {
+    const source = '%%\n  # Comment heading\n%%\n# Heading\n'
+    const { container } = render(<SourceEditor content={source} onContentChange={() => {}} />)
+    await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
+    const lines = [...container.querySelectorAll('.cm-line')]
+    expect(lines.find(line => line.textContent === '  # Comment heading')?.className).not.toContain('cm-tock-heading-1')
+    expect(lines.find(line => line.textContent === '# Heading')?.className).toContain('cm-tock-heading-1')
+  })
+
   it('renders resolved embed widgets without replacing their selected source', async () => {
     const source = 'Before ![[Target.md]] after'
     const { container } = render(<SourceEditor content={source} onContentChange={() => {}} resolvedEmbeds={[{

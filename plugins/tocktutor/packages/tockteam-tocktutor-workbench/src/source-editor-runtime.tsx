@@ -98,7 +98,7 @@ function sourceDecorations(state: EditorState) {
     const text = line.text
     const fence = /^ {0,3}(`{3,}|~{3,})/u.test(text)
     if (fence) fenceOpen = !fenceOpen
-    const heading = !fenceOpen ? text.match(/^ {0,3}(#{1,6})(?:\s|$)/u) : null
+    const heading = !fenceOpen && !commentOpen ? text.match(/^ {0,3}(#{1,6})(?:\s|$)/u) : null
     if (heading !== null) {
       const markerStart = line.from + heading[0].indexOf('#')
       decorations.push(
@@ -132,7 +132,7 @@ function sourceDecorations(state: EditorState) {
       }
     }
   }
-  return Decoration.set(decorations)
+  return Decoration.set(decorations, true)
 }
 
 function buildEditorExtensions(props: {
