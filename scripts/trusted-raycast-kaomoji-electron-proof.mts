@@ -222,7 +222,7 @@ try {
   await capture(await target('launcher'), join(evidence, 'list-dark.png'))
 
   const actionPanel = await run(`
-    const section = launcher.locator('section[aria-label="Kaomoji Search"]'); const input = launcher.getByLabel('Search Kaomoji');
+    const section = launcher.locator('section[aria-label="Kaomoji Search"]'); const input = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true });
     await input.press('Meta+k'); const menu = section.locator('details[open] .launcher-command-menu'); await menu.waitFor();
     const firstFocused = await launcher.evaluate(() => document.activeElement?.textContent?.replace(/\\s+/g, ' ').trim());
     await launcher.keyboard.press('ArrowDown'); const secondFocused = await launcher.evaluate(() => document.activeElement?.textContent?.replace(/\\s+/g, ' ').trim());
@@ -240,15 +240,15 @@ try {
   assert.equal(existsSync(kaomoji.stateFile), false, 'denied Paste mutated state')
 
   const search = await run(`
-    const input = launcher.getByLabel('Search Kaomoji'); await input.fill('Upside Down Lenny');
+    const input = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }); await input.fill('Upside Down Lenny');
     const row = launcher.locator('li.launcher-command-row').filter({ hasText: '( ͜。 ͡ʖ ͜。)' }); await row.waitFor();
     return { outsideInitialFound: true, value: await input.inputValue(), result: await row.innerText() };
   `)
   await capture(await target('launcher'), join(evidence, 'search-outside-initial-dark.png'))
-  await run(`const input = launcher.getByLabel('Search Kaomoji'); await input.fill('no-result-${randomUUID()}'); await launcher.getByText('No Results', { exact: true }).waitFor(); return { empty: true };`)
+  await run(`const input = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }); await input.fill('no-result-${randomUUID()}'); await launcher.getByText('No Results', { exact: true }).waitFor(); return { empty: true };`)
   await capture(await target('launcher'), join(evidence, 'empty-dark.png'))
   const preferenceContract = await run(`
-    const input = launcher.getByLabel('Search Kaomoji'); await input.fill(''); await launcher.waitForFunction(() => document.querySelectorAll('li.launcher-command-row').length === 64);
+    const input = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }); await input.fill(''); await launcher.waitForFunction(() => document.querySelectorAll('li.launcher-command-row').length === 64);
     await input.press('Meta+k'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('Enter');
     const form = launcher.locator('section[aria-label="Kaomoji Search"] form'); await form.waitFor();
     const labels = await form.locator('select').evaluateAll(nodes => nodes.map(node => ({ label: node.getAttribute('aria-label'), options: [...node.options].map(option => ({ title: option.textContent, value: option.value })), value: node.value })));
@@ -256,9 +256,9 @@ try {
     if (await launcher.evaluate(() => document.activeElement?.getAttribute('aria-label')) !== 'Display Mode') throw new Error('First preference is not focused'); return labels;
   `)
   await capture(await target('launcher'), join(evidence, 'preferences-list-paste-dark.png'))
-  await run(`await launcher.keyboard.press('Escape'); await launcher.getByLabel('Search Kaomoji').waitFor(); return { nestedEscapeReturned: true };`)
+  await run(`await launcher.keyboard.press('Escape'); await launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }).waitFor(); return { nestedEscapeReturned: true };`)
   await run(`
-    const input = launcher.getByLabel('Search Kaomoji'); await input.press('Meta+k'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('Enter');
+    const input = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }); await input.press('Meta+k'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('Enter');
     await launcher.getByLabel('Display Mode').selectOption('grid'); await launcher.getByLabel('Primary Action').selectOption('copy-to-clipboard');
     await launcher.getByRole('button', { name: 'Save Preferences', exact: true }).click(); await launcher.waitForFunction(() => document.querySelectorAll('li.launcher-command-row img[src^="data:image/svg+xml;base64,"]').length > 0);
     const section = launcher.locator('section[aria-label="Kaomoji Search"]'); const rows = section.locator('li.launcher-command-row'); const actions = section.locator('button.launcher-command-menu-item');
@@ -280,7 +280,7 @@ try {
   })
   await capture(await target('launcher'), join(evidence, 'grid-light.png'))
   const preferencesChanged = await run(`
-    const input = launcher.getByLabel('Search Kaomoji'); await input.focus(); await input.press('Meta+k'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('Enter');
+    const input = launcher.getByRole('searchbox', { name: 'Search Kaomoji', exact: true }); await input.focus(); await input.press('Meta+k'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('ArrowDown'); await launcher.keyboard.press('Enter');
     await launcher.getByLabel('Display Mode').waitFor(); return { displayMode: await launcher.getByLabel('Display Mode').inputValue(), primaryAction: await launcher.getByLabel('Primary Action').inputValue() };
   `)
   await capture(await target('launcher'), join(evidence, 'preferences-grid-copy-light.png'))
