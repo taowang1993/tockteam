@@ -10,6 +10,7 @@ export interface FocusProofChild {
   readonly pid?: number
   disconnect(): void
   on(event: 'close', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown
+  on(event: 'error', listener: (error: Error) => void): unknown
   on(event: 'message', listener: (message: unknown) => void): unknown
   send(message: unknown, callback: (error: Error | null) => void): boolean
 }
@@ -41,8 +42,10 @@ export async function readFocusProofProcessSnapshot(): Promise<readonly ProofPro
 }
 
 export function focusProofDescendants(snapshot: readonly ProofProcessRow[], rootPid: number): readonly ProofProcessRow[] {
-  const owned = new Set([rootPid]); let changed = true
-  while (changed) { changed = false; for (const row of snapshot) if (owned.has(row.ppid) && !owned.has(row.pid)) { owned.add(row.pid); changed = true } }
+  const children = new Map<number, ProofProcessRow[]>()
+  for (const row of snapshot) { const siblings = children.get(row.ppid); if (siblings) siblings.push(row); else children.set(row.ppid, [row]) }
+  const owned = new Set([rootPid]); const pending = [rootPid]
+  while (pending.length > 0) for (const row of children.get(pending.pop()!) ?? []) if (!owned.has(row.pid)) { owned.add(row.pid); pending.push(row.pid) }
   return Object.freeze(snapshot.filter(row => row.pid !== rootPid && owned.has(row.pid)))
 }
 
@@ -76,6 +79,7 @@ export function createFocusProofClient(child: FocusProofChild, nonce: string, op
     if (!readyMessage) readyReject(error)
     if (pendingResponse && pendingResponse.type !== 'SHUTDOWN') { pendingResponse.reject(error); pendingResponse = undefined }
   }
+  child.on('error', () => { fail(new Error('Focus proof child process failed')) })
   child.on('message', raw => {
     messageCount += 1
     if (messageCount > maxMessages) { fail(new Error('Focus proof response bound exceeded')); return }
@@ -121,7 +125,13 @@ export function createFocusProofClient(child: FocusProofChild, nonce: string, op
         shutdownError = error as Error
         if (child.connected) child.disconnect()
       }
-      await wait(closePromise, 'Focus proof child close')
+      try {
+        await wait(closePromise, 'Focus proof child close')
+      } catch (error) {
+        if (child.connected) child.disconnect()
+        await wait(closePromise, 'Focus proof child close after disconnect')
+        throw error
+      }
       if (fault) throw fault
       if (shutdownError) throw shutdownError
       if (!closed || closeCode !== 0) throw new Error('Focus proof child did not close cleanly')

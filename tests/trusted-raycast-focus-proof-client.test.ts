@@ -22,7 +22,8 @@ test('Electron harness uses inherited IPC shutdown and read-only bounded residue
   assert.match(harness, /createFocusProofClient\(electronChild, focusProofNonce\)/u)
   assert.match(harness, /shutdownAndWait\(\)[\s\S]*findFocusProofResidue/u)
   assert.match(harness, /Final Kaomoji evidence already exists/u)
-  assert.doesNotMatch(harness, /process\.kill|stopChildProcess|assertProcessTreeGone|System Events|rm\(finalEvidence/u)
+  assert.match(harness, /publishTrustedRaycastProofExclusive\(evidence, finalEvidence\)/u)
+  assert.doesNotMatch(harness, /process\.kill|stopChildProcess|assertProcessTreeGone|System Events|rm\(finalEvidence|renameSync\(evidence, finalEvidence/u)
 })
 
 test('attaches before READY and authenticates monotonic checkpoint traffic', async () => {
@@ -31,6 +32,12 @@ test('attaches before READY and authenticates monotonic checkpoint traffic', asy
   const pending = client.checkpoint('workbench-ready'); child.emit('message', checkpoint(1, 2))
   assert.equal((await pending).checkpoint, 'workbench-ready')
   assert.deepEqual(child.commands, [{ channel: 'tockteam-launcher-focus-proof', command: 'CHECKPOINT', nonce, sequence: 1 }])
+})
+
+test('child process errors reject READY without an unhandled error event', async () => {
+  const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 20 })
+  child.emit('error', new Error('spawn failed'))
+  await assert.rejects(() => client.ready(), /Focus proof child process failed/u)
 })
 
 test('rejects malformed, replayed, wrong-nonce, and overflowed responses', async () => {
@@ -59,6 +66,15 @@ test('shutdown timeout disconnects the identity-owned channel and awaits close',
   const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 20 }); child.emit('message', ready()); await client.ready()
   await assert.rejects(() => client.shutdownAndWait(), /shutdown acknowledgment timeout/u)
   assert.equal(child.connected, false)
+})
+
+test('child-close timeout disconnects after ACK and still observes exact close', async () => {
+  const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 20 }); child.emit('message', ready()); await client.ready()
+  const closing = client.shutdownAndWait()
+  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: false, focusFaultCount: 0, nonce, requestSequence: 1, sequence: 2, type: 'SHUTDOWN_ACK' })
+  await assert.rejects(closing, /child close timeout/u)
+  assert.equal(child.connected, false)
+  assert.equal(client.closed, true)
 })
 
 test('strict read-only process snapshots include the current test owner', async () => {

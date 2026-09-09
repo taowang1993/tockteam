@@ -43,6 +43,7 @@ export function installLauncherFocusProof(options: Readonly<{
   app: LauncherFocusProofApp
   channel: LauncherFocusProofChannel | undefined
   enabled: boolean
+  emergencyExit(exitCode: 1): void
   getAllWindows(): readonly LauncherFocusProofWindow[]
   nonce: string | undefined
   scheduleExit(callback: () => void): void
@@ -97,7 +98,12 @@ export function installLauncherFocusProof(options: Readonly<{
   options.app.on('browser-window-focus', (_event, window) => latchFocus('app-window-focus', window))
   options.app.on('browser-window-created', (_event, window) => attachWindow(window))
   for (const window of options.getAllWindows()) attachWindow(window)
-  channel.on('disconnect', () => { if (exited) return; protocolFault = true; shutdownRequested = true; exited = true; options.shutdown(1) })
+  channel.on('disconnect', () => {
+    protocolFault = true
+    shutdownRequested = true
+    if (!exited) { exited = true; options.shutdown(1) }
+    options.emergencyExit(1)
+  })
   channel.on('message', message => {
     if (shutdownRequested) { protocolFault = true; requestExit(); return }
     if (!parentCommand(message) || message.nonce !== nonce || message.sequence !== expectedRequestSequence) { protocolFault = true; return }

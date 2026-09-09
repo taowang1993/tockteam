@@ -241,6 +241,7 @@ const launcherInactiveVisualProofEnabled = !app.isPackaged && process.env.TOCKTE
 installLauncherFocusProof({
   app: app as unknown as LauncherFocusProofApp,
   channel: typeof process.send === 'function' ? process as unknown as LauncherFocusProofChannel : undefined,
+  emergencyExit: code => { const timer = setTimeout(() => { app.exit(code) }, 5_000); timer.unref() },
   enabled: launcherInactiveVisualProofEnabled,
   getAllWindows: () => BrowserWindow.getAllWindows(),
   nonce: process.env.TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE,

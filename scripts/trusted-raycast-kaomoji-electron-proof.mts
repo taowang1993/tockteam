@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
-import { existsSync, lstatSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { homedir, tmpdir } from 'node:os'
@@ -11,6 +11,7 @@ import { ensureElectronInstalled } from './electron-runtime.mjs'
 import { createFocusProofClient, findFocusProofResidue, focusProofDescendants, readFocusProofProcessSnapshot, type FocusProofCheckpoint, type ProofProcessRow } from './trusted-raycast-focus-proof-client.ts'
 import { extractKaomojiReferenceImages } from './trusted-raycast-kaomoji-reference.ts'
 import { cleanupPostBaselineTrustedRaycastWorkspaces } from './trusted-raycast-proof-cleanup.ts'
+import { publishTrustedRaycastProofExclusive } from './trusted-raycast-proof-publication.ts'
 import { TRUSTED_PROOF_PAGE_SELECTOR_SOURCE, waitForTrustedProofPage, type TrustedProofPageRole } from './trusted-raycast-proof-pages.ts'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 import { trustedRaycastDescriptors, type TrustedRaycastExtensionId } from '../src/trusted-raycast-descriptors.ts'
@@ -338,4 +339,4 @@ const proof = JSON.parse(await readFile(proofPath, 'utf8')) as Record<string, an
 proof.focusProof.messageCount = focusClient?.messageCount
 proof.cleanup = { childClosed, debugPortClosed: true, electronPid: electronChild?.pid, helperResidueGone, temporaryRootRemoved: true, trustedWorkspaceRootsRemoved: workspaceCleanupRemoved, trustedWorkspacesRestored: true }
 await writeFile(proofPath, `${JSON.stringify(proof, null, 2)}\n`)
-renameSync(evidence, finalEvidence)
+await publishTrustedRaycastProofExclusive(evidence, finalEvidence)
