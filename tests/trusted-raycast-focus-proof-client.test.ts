@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import { createFocusProofClient, findFocusProofResidue, focusProofDescendants, readFocusProofProcessSnapshot, type FocusProofChild } from '../scripts/trusted-raycast-focus-proof-client.ts'
+import { isTrustedRaycastKaomojiSvg } from '../src/trusted-raycast-contract.ts'
 
 const nonce = 'b'.repeat(64)
 class FakeChild extends EventEmitter implements FocusProofChild {
@@ -25,6 +26,9 @@ test('Electron harness uses inherited IPC shutdown and read-only bounded residue
   assert.match(harness, /named\.and\(buttons\.nth\(candidate\)\)/u)
   assert.match(harness, /const before = \{ backVisible: await back\.isVisible\(\), formVisible: await form\.isVisible\(\), searchVisible: await searchbox\.isVisible\(\) \}/u)
   assert.match(harness, /searchFocused: await searchbox\.evaluate\(node => node === document\.activeElement\)/u)
+  assert.match(harness, /isTrustedRaycastKaomojiSvg\(source, '#fff'\)/u)
+  assert.match(harness, /isTrustedRaycastKaomojiSvg\(source, '#000'\)/u)
+  assert.doesNotMatch(harness, /isTrustedRaycastKaomojiSvg\(Buffer\.from|isTrustedRaycastKaomojiSvg\(source\)/u)
   assert.match(harness, /stdio: \['ignore', 'pipe', 'pipe', 'ipc'\]/u)
   assert.match(harness, /TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE: focusProofNonce/u)
   assert.match(harness, /createFocusProofClient\(electronChild, focusProofNonce\)/u)
@@ -32,6 +36,15 @@ test('Electron harness uses inherited IPC shutdown and read-only bounded residue
   assert.match(harness, /Final Kaomoji evidence already exists/u)
   assert.match(harness, /publishTrustedRaycastProofExclusive\(evidence, finalEvidence\)/u)
   assert.doesNotMatch(harness, /process\.kill|stopChildProcess|assertProcessTreeGone|System Events|rm\(finalEvidence|renameSync\(evidence, finalEvidence/u)
+})
+
+test('Electron proof validates canonical Kaomoji data URLs with their rendered theme fill', () => {
+  const decoded = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" >\n  <text dominant-baseline="middle" x="45" y="45" text-anchor="middle" fill="#fff" font-size="8px" text-length="90" length-adjust="spacing">\n    &#40;&#94;&#95;&#94;&#41;\n  </text>\n</svg>'
+  const source = `data:image/svg+xml;base64,${Buffer.from(decoded).toString('base64')}`
+  assert.equal(isTrustedRaycastKaomojiSvg(source, '#fff'), true)
+  assert.equal(isTrustedRaycastKaomojiSvg(source, '#000'), false)
+  assert.equal(isTrustedRaycastKaomojiSvg(decoded, '#fff'), false)
+  assert.equal((isTrustedRaycastKaomojiSvg as (value: unknown, fill?: '#000' | '#fff') => boolean)(source), false)
 })
 
 test('attaches before READY and authenticates monotonic checkpoint traffic', async () => {

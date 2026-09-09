@@ -278,7 +278,7 @@ try {
     if (await section.locator('footer').getByRole('button', { name: 'Copy to Clipboard' }).count() !== 1) throw new Error('Copy did not become primary'); return { rows: await rows.count(), actions: await actions.count(), sources };
   `).then(grid => {
     assert.equal(grid.sources.length, grid.rows)
-    for (const source of grid.sources as string[]) assert.equal(isTrustedRaycastKaomojiSvg(Buffer.from(source.slice('data:image/svg+xml;base64,'.length), 'base64').toString('utf8')), true, 'non-canonical Kaomoji SVG reached the renderer')
+    for (const source of grid.sources as string[]) assert.equal(isTrustedRaycastKaomojiSvg(source, '#fff'), true, 'non-canonical Kaomoji SVG reached the renderer')
   })
   await capture(await target('launcher'), join(evidence, 'grid-dark.png'))
   await run(`
@@ -287,7 +287,7 @@ try {
   `)
   assert.equal(existsSync(kaomoji.stateFile), false, 'denied Copy mutated state')
   await run(`await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'light', skinId: null })); await launcher.waitForFunction(() => document.documentElement.style.colorScheme === 'light'); return await launcher.locator('li.launcher-command-row img').evaluateAll(images => images.map(image => image.getAttribute('src')));`).then(sources => {
-    for (const source of sources as string[]) { assert.ok(source.startsWith('data:image/svg+xml;base64,')); assert.equal(isTrustedRaycastKaomojiSvg(Buffer.from(source.slice('data:image/svg+xml;base64,'.length), 'base64').toString('utf8')), true, 'non-canonical light Kaomoji SVG reached the renderer') }
+    for (const source of sources as string[]) { assert.ok(source.startsWith('data:image/svg+xml;base64,')); assert.equal(isTrustedRaycastKaomojiSvg(source, '#000'), true, 'non-canonical light Kaomoji SVG reached the renderer') }
   })
   await capture(await target('launcher'), join(evidence, 'grid-light.png'))
   const preferencesChanged = await run(`
