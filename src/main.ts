@@ -246,7 +246,7 @@ installLauncherFocusProof({
   getAllWindows: () => BrowserWindow.getAllWindows(),
   nonce: process.env.TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE,
   scheduleExit: callback => { setImmediate(callback) },
-  shutdown: () => { void requestSecureQuit('visual-proof') },
+  shutdown: code => { void requestSecureQuit('visual-proof', code) },
 })
 const trustedRaycastDenyEffectsProofEnabled = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF === '1'
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
@@ -588,6 +588,7 @@ let launcherUpdater: DesktopAppUpdater | undefined
 let launcherIpcDisposer: (() => void) | undefined
 let workbenchLauncherIpcDisposer: (() => void) | undefined
 let secureTeardownPromise: Promise<void> | undefined
+let secureTeardownExitCode: 0 | 1 = 0
 let launcherUpdaterRuntimeWasActive = false
 let launcherRescan: ((owner?: LauncherActionOwner, preserveSignal?: AbortSignal, reason?: string) => Promise<unknown>) | undefined
 let launcherCoreFlush: (() => Promise<void>) | undefined
@@ -3615,7 +3616,9 @@ function initializeLauncherTray(): void {
   })
 }
 
-function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-quit' | 'updater-install' | 'visual-proof'): Promise<void> {
+function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-quit' | 'updater-install' | 'visual-proof', exitCode: 0 | 1 = 0): Promise<void> {
+  secureTeardownExitCode = Math.max(secureTeardownExitCode, exitCode) as 0 | 1
+  if (secureTeardownExitCode !== 0) process.exitCode = secureTeardownExitCode
   if (secureTeardownPromise !== undefined) return secureTeardownPromise
   secureTeardownPromise = (async () => {
     quitting = true
@@ -3653,11 +3656,13 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
       }
     }
     logStream?.end()
-    app.quit()
+    if (secureTeardownExitCode === 0) app.quit()
+    else app.exit(secureTeardownExitCode)
   })()
   void secureTeardownPromise.catch(error => {
     appendLog('desktop', `secure quit failed: ${error instanceof Error ? error.message : String(error)}`)
-    app.quit()
+    if (secureTeardownExitCode === 0) app.quit()
+    else app.exit(secureTeardownExitCode)
   })
   return secureTeardownPromise
 }

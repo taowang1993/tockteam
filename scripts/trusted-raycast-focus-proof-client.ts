@@ -18,15 +18,15 @@ export interface ProofProcessRow { readonly command: string; readonly pgid: numb
 export interface FocusProofCheckpoint { readonly checkpoint: string; readonly focusedWindowCount: number; readonly windows: readonly { focused: boolean; id: number }[] }
 
 const exactKeys = (value: Record<string, unknown>, keys: readonly string[]): boolean => Object.keys(value).sort().join(',') === [...keys].sort().join(',')
-const base = ['channel', 'faulted', 'focusFaultCount', 'nonce', 'sequence'] as const
+const base = ['channel', 'faulted', 'focusInconclusiveCount', 'nonce', 'sequence'] as const
 const validCount = (value: unknown, max: number): value is number => Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= max
 
 function parseMessage(value: unknown): LauncherFocusProofMessage {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('Invalid focus proof protocol response')
   const message = value as Record<string, unknown>
-  if (message.channel !== LAUNCHER_FOCUS_PROOF_CHANNEL || typeof message.nonce !== 'string' || !Number.isSafeInteger(message.sequence) || Number(message.sequence) <= 0 || typeof message.faulted !== 'boolean' || !validCount(message.focusFaultCount, 64)) throw new Error('Invalid focus proof protocol response')
+  if (message.channel !== LAUNCHER_FOCUS_PROOF_CHANNEL || typeof message.nonce !== 'string' || !Number.isSafeInteger(message.sequence) || Number(message.sequence) <= 0 || typeof message.faulted !== 'boolean' || !validCount(message.focusInconclusiveCount, 64)) throw new Error('Invalid focus proof protocol response')
   if (message.type === 'READY' && exactKeys(message, [...base, 'type'])) return message as unknown as LauncherFocusProofMessage
-  if (message.type === 'FOCUS_FAULT' && (message.kind === 'app-activate' || message.kind === 'app-window-focus' || message.kind === 'checkpoint-focused' || message.kind === 'window-focus') && (message.windowId === undefined || Number.isSafeInteger(message.windowId) && Number(message.windowId) > 0) && exactKeys(message, [...base, 'kind', 'type', ...(message.windowId === undefined ? [] : ['windowId'])])) return message as unknown as LauncherFocusProofMessage
+  if (message.type === 'FOCUS_INCONCLUSIVE' && (message.kind === 'app-activate' || message.kind === 'app-window-focus' || message.kind === 'checkpoint-focused' || message.kind === 'window-focus') && (message.windowId === undefined || Number.isSafeInteger(message.windowId) && Number(message.windowId) > 0) && exactKeys(message, [...base, 'kind', 'type', ...(message.windowId === undefined ? [] : ['windowId'])])) return message as unknown as LauncherFocusProofMessage
   if (message.type === 'CHECKPOINT_ACK' && validCount(message.focusedWindowCount, 32) && Number.isSafeInteger(message.requestSequence) && Number(message.requestSequence) > 0 && Array.isArray(message.windows) && message.windows.length <= 32 && message.windows.every(window => typeof window === 'object' && window !== null && !Array.isArray(window) && exactKeys(window as Record<string, unknown>, ['focused', 'id']) && typeof (window as Record<string, unknown>).focused === 'boolean' && Number.isSafeInteger((window as Record<string, unknown>).id) && Number((window as Record<string, unknown>).id) >= 0) && exactKeys(message, [...base, 'focusedWindowCount', 'requestSequence', 'type', 'windows'])) return message as unknown as LauncherFocusProofMessage
   if ((message.type === 'SHUTDOWN_ACK' || message.type === 'SHUTDOWN_REJECTED') && Number.isSafeInteger(message.requestSequence) && Number(message.requestSequence) > 0 && exactKeys(message, [...base, 'requestSequence', 'type'])) return message as unknown as LauncherFocusProofMessage
   throw new Error('Invalid focus proof protocol response')
@@ -87,9 +87,9 @@ export function createFocusProofClient(child: FocusProofChild, nonce: string, op
     try { message = parseMessage(raw) } catch { fail(new Error('Invalid focus proof protocol response')); return }
     if (message.nonce !== nonce || message.sequence !== inboundSequence + 1) { fail(new Error('Invalid focus proof protocol sequence or nonce')); return }
     inboundSequence = message.sequence
-    if (message.type === 'FOCUS_FAULT') { fail(new Error('TockTeam focus fault observed')); return }
+    if (message.type === 'FOCUS_INCONCLUSIVE') { fail(new Error('TockTeam gate-app focus made proof inconclusive')); return }
     if (message.type === 'READY') {
-      if (readyMessage || message.faulted || message.focusFaultCount !== 0) { fail(new Error('Invalid focus proof READY state')); return }
+      if (readyMessage || message.faulted || message.focusInconclusiveCount !== 0) { fail(new Error('Invalid focus proof READY state')); return }
       readyMessage = message; readyResolve(); return
     }
     if (!readyMessage || !pendingResponse) { fail(new Error('Unexpected focus proof response')); return }
@@ -113,14 +113,14 @@ export function createFocusProofClient(child: FocusProofChild, nonce: string, op
     async checkpoint(checkpoint: string): Promise<FocusProofCheckpoint> {
       if (fault) throw fault
       const { message } = await send('CHECKPOINT')
-      if (message.type !== 'CHECKPOINT_ACK' || message.faulted || message.focusFaultCount !== 0 || message.focusedWindowCount !== 0 || message.windows.some(window => window.focused)) throw new Error('Focus proof checkpoint reported focus')
+      if (message.type !== 'CHECKPOINT_ACK' || message.faulted || message.focusInconclusiveCount !== 0 || message.focusedWindowCount !== 0 || message.windows.some(window => window.focused)) throw new Error('Gate-app focus made the proof checkpoint inconclusive')
       return Object.freeze({ checkpoint, focusedWindowCount: message.focusedWindowCount, windows: message.windows })
     },
     async shutdownAndWait(): Promise<void> {
       let shutdownError: Error | undefined
       try {
         const { message } = await send('SHUTDOWN')
-        if (message.type !== 'SHUTDOWN_ACK' || message.faulted || message.focusFaultCount !== 0) shutdownError = new Error('Focus proof shutdown was rejected')
+        if (message.type !== 'SHUTDOWN_ACK' || message.faulted || message.focusInconclusiveCount !== 0) shutdownError = new Error('Focus proof shutdown was rejected')
       } catch (error) {
         shutdownError = error as Error
         if (child.connected) child.disconnect()

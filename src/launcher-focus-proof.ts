@@ -4,10 +4,10 @@ const MAX_WINDOWS = 32
 
 type FocusKind = 'app-activate' | 'app-window-focus' | 'checkpoint-focused' | 'window-focus'
 type WindowState = Readonly<{ focused: boolean; id: number }>
-interface MessageBase { readonly channel: typeof LAUNCHER_FOCUS_PROOF_CHANNEL; readonly focusFaultCount: number; readonly faulted: boolean; readonly nonce: string; readonly sequence: number }
+interface MessageBase { readonly channel: typeof LAUNCHER_FOCUS_PROOF_CHANNEL; readonly focusInconclusiveCount: number; readonly faulted: boolean; readonly nonce: string; readonly sequence: number }
 export type LauncherFocusProofMessage = Readonly<MessageBase & (
   | { type: 'READY' }
-  | { kind: FocusKind; type: 'FOCUS_FAULT'; windowId?: number }
+  | { kind: FocusKind; type: 'FOCUS_INCONCLUSIVE'; windowId?: number }
   | { focusedWindowCount: number; requestSequence: number; type: 'CHECKPOINT_ACK'; windows: readonly WindowState[] }
   | { requestSequence: number; type: 'SHUTDOWN_ACK' | 'SHUTDOWN_REJECTED' }
 )>
@@ -26,7 +26,7 @@ export interface LauncherFocusProofChannel {
   send(message: LauncherFocusProofMessage, callback: (error: Error | null) => void): boolean
 }
 
-export interface LauncherFocusProofController { readonly enabled: boolean; readonly focusFaultCount: number; readonly faulted: boolean }
+export interface LauncherFocusProofController { readonly enabled: boolean; readonly focusInconclusiveCount: number; readonly faulted: boolean }
 
 const validNonce = (value: string): boolean => /^[0-9a-f]{64}$/u.test(value)
 const parentCommand = (value: unknown): value is ParentCommand => {
@@ -49,30 +49,30 @@ export function installLauncherFocusProof(options: Readonly<{
   scheduleExit(callback: () => void): void
   shutdown(exitCode: 0 | 1): void
 }>): LauncherFocusProofController {
-  if (!options.enabled) return Object.freeze({ enabled: false, focusFaultCount: 0, faulted: false })
+  if (!options.enabled) return Object.freeze({ enabled: false, focusInconclusiveCount: 0, faulted: false })
   if (!options.channel?.connected || typeof options.nonce !== 'string' || !validNonce(options.nonce)) throw new Error('Inactive visual proof requires authenticated parent IPC')
   const channel = options.channel
   const nonce = options.nonce
   let outboundSequence = 0
   let expectedRequestSequence = 1
-  let focusFaultCount = 0
+  let focusInconclusiveCount = 0
   let protocolFault = false
   let pendingSends = 0
   let shutdownRequested = false
   let exitScheduled = false
   let exited = false
   const attachedWindows = new WeakSet<object>()
-  const isFaulted = (): boolean => protocolFault || focusFaultCount > 0
+  const isFaulted = (): boolean => protocolFault || focusInconclusiveCount > 0
   const response = <T extends Omit<LauncherFocusProofMessage, keyof MessageBase>>(message: T): void => {
-    const envelope = Object.freeze({ ...message, channel: LAUNCHER_FOCUS_PROOF_CHANNEL, focusFaultCount, faulted: isFaulted(), nonce, sequence: ++outboundSequence }) as LauncherFocusProofMessage
+    const envelope = Object.freeze({ ...message, channel: LAUNCHER_FOCUS_PROOF_CHANNEL, focusInconclusiveCount, faulted: isFaulted(), nonce, sequence: ++outboundSequence }) as LauncherFocusProofMessage
     pendingSends += 1
     try {
       channel.send(envelope, error => {
         pendingSends -= 1
-        if (error) protocolFault = true
+        if (error) { protocolFault = true; if (exited) options.shutdown(1) }
         requestExit()
       })
-    } catch { pendingSends -= 1; protocolFault = true; requestExit() }
+    } catch { pendingSends -= 1; protocolFault = true; if (exited) options.shutdown(1); requestExit() }
   }
   const performShutdown = (): void => {
     if (exited || !shutdownRequested || pendingSends > 0) return
@@ -84,18 +84,20 @@ export function installLauncherFocusProof(options: Readonly<{
     exitScheduled = true
     options.scheduleExit(() => { exitScheduled = false; if (pendingSends > 0) requestExit(); else performShutdown() })
   }
-  const latchFocus = (kind: FocusKind, window?: LauncherFocusProofWindow): void => {
-    if (focusFaultCount >= MAX_FOCUS_EVENTS) { protocolFault = true; requestExit(); return }
-    focusFaultCount += 1
+  const latchFocusInconclusive = (kind: FocusKind, window?: LauncherFocusProofWindow): void => {
+    if (focusInconclusiveCount >= MAX_FOCUS_EVENTS) { protocolFault = true; if (exited) options.shutdown(1); requestExit(); return }
+    focusInconclusiveCount += 1
+    if (exited) options.shutdown(1)
     const windowId = Number.isSafeInteger(window?.id) && window!.id > 0 ? window!.id : undefined
-    response({ kind, type: 'FOCUS_FAULT', ...(windowId === undefined ? {} : { windowId }) })
+    response({ kind, type: 'FOCUS_INCONCLUSIVE', ...(windowId === undefined ? {} : { windowId }) })
   }
-  const attachWindow = (window: LauncherFocusProofWindow): void => { if (attachedWindows.has(window)) return; attachedWindows.add(window); window.on('focus', () => latchFocus('window-focus', window)) }
+  const attachWindow = (window: LauncherFocusProofWindow): void => { if (attachedWindows.has(window)) return; attachedWindows.add(window); window.on('focus', () => latchFocusInconclusive('window-focus', window)) }
 
-  // These listeners are installed synchronously before READY and before main
-  // bootstrap can construct its first BrowserWindow.
-  options.app.on('activate', () => latchFocus('app-activate'))
-  options.app.on('browser-window-focus', (_event, window) => latchFocus('app-window-focus', window))
+  // These gate-app-only listeners are installed synchronously before READY and
+  // before main can construct a BrowserWindow. Unrelated app transitions are
+  // invisible and allowed; any gate-app focus is inconclusive and fails closed.
+  options.app.on('activate', () => latchFocusInconclusive('app-activate'))
+  options.app.on('browser-window-focus', (_event, window) => latchFocusInconclusive('app-window-focus', window))
   options.app.on('browser-window-created', (_event, window) => attachWindow(window))
   for (const window of options.getAllWindows()) attachWindow(window)
   channel.on('disconnect', () => {
@@ -114,7 +116,7 @@ export function installLauncherFocusProof(options: Readonly<{
       const states = windows.slice(0, MAX_WINDOWS).map(window => {
         let focused = false
         try { focused = window.isFocused() } catch { protocolFault = true }
-        if (focused) latchFocus('checkpoint-focused', window)
+        if (focused) latchFocusInconclusive('checkpoint-focused', window)
         return Object.freeze({ focused, id: Number.isSafeInteger(window.id) && window.id > 0 ? window.id : 0 })
       })
       response({ focusedWindowCount: states.filter(state => state.focused).length, requestSequence: message.sequence, type: 'CHECKPOINT_ACK', windows: Object.freeze(states) })
@@ -125,5 +127,5 @@ export function installLauncherFocusProof(options: Readonly<{
     requestExit()
   })
   response({ type: 'READY' })
-  return Object.freeze({ enabled: true, get focusFaultCount() { return focusFaultCount }, get faulted() { return isFaulted() } })
+  return Object.freeze({ enabled: true, get focusInconclusiveCount() { return focusInconclusiveCount }, get faulted() { return isFaulted() } })
 }

@@ -37,7 +37,9 @@ test('main installs the side-effect-free focus seam before bootstrap or any Brow
   const install = main.indexOf('installLauncherFocusProof({')
   assert.ok(install >= 0 && install < main.indexOf('new BrowserWindow(') && install < main.indexOf('void bootstrap()'))
   assert.match(main, /emergencyExit: code => \{ const timer = setTimeout\(\(\) => \{ app\.exit\(code\) \}, 5_000\); timer\.unref\(\) \}/u)
-  assert.match(main, /shutdown: \(\) => \{ void requestSecureQuit\('visual-proof'\) \}/u)
+  assert.match(main, /shutdown: code => \{ void requestSecureQuit\('visual-proof', code\) \}/u)
+  assert.match(main, /secureTeardownExitCode = Math\.max\(secureTeardownExitCode, exitCode\)/u)
+  assert.match(main, /if \(secureTeardownExitCode === 0\) app\.quit\(\)\s+else app\.exit\(secureTeardownExitCode\)/u)
   const src = new URL('../src/', import.meta.url)
   for (const path of await readdir(src, { recursive: true })) if (/\.[cm]?tsx?$/u.test(path) && path !== 'main.ts') assert.doesNotMatch(await readFile(new URL(path, src), 'utf8'), /new BrowserWindow\s*\(/u, `${path} constructs a BrowserWindow before the focus seam can be installed`)
   assert.doesNotMatch(seam, /from ['"]electron['"]|new BrowserWindow|app\.activate|\.focus\(\)/u)
@@ -56,19 +58,26 @@ test('installs app and per-window listeners before READY and latches pre-handsha
   assert.equal(app.listenerCount('activate'), 1)
   assert.equal(app.listenerCount('browser-window-focus'), 1)
   assert.equal(app.listenerCount('browser-window-created'), 1)
-  assert.deepEqual(channel.sent.map(message => message.type), ['FOCUS_FAULT', 'READY'])
-  assert.equal(channel.sent[1]!.focusFaultCount, 1)
+  assert.deepEqual(channel.sent.map(message => message.type), ['FOCUS_INCONCLUSIVE', 'READY'])
+  assert.equal(channel.sent[1]!.focusInconclusiveCount, 1)
   app.emit('browser-window-created', {}, window)
   assert.equal(window.listenerCount('focus'), 1)
 })
 
-test('app activation with zero focused windows and transient window focus stay sticky', () => {
+test('other-app transitions are invisible while any gate-app activation stays sticky', () => {
   const state = setup([]); state.channel.flush()
+  const unrelatedApp = new EventEmitter(); unrelatedApp.emit('activate')
+  state.channel.emit('message', { channel: 'tockteam-launcher-focus-proof', command: 'CHECKPOINT', nonce, sequence: 1 })
+  assert.equal(state.channel.sent.at(-1)!.faulted, false); state.channel.flush()
   state.app.emit('activate')
   const window = new FakeWindow(9); state.app.emit('browser-window-created', {}, window); window.emit('focus')
-  state.channel.emit('message', { channel: 'tockteam-launcher-focus-proof', command: 'CHECKPOINT', nonce, sequence: 1 })
-  assert.deepEqual(state.channel.sent.map(message => message.type), ['READY', 'FOCUS_FAULT', 'FOCUS_FAULT', 'CHECKPOINT_ACK'])
-  const checkpoint = state.channel.sent.at(-1)!; assert.equal(checkpoint.focusFaultCount, 2); assert.equal(checkpoint.faulted, true)
+  state.channel.emit('message', { channel: 'tockteam-launcher-focus-proof', command: 'CHECKPOINT', nonce, sequence: 2 })
+  assert.deepEqual(state.channel.sent.map(message => message.type), ['READY', 'CHECKPOINT_ACK', 'FOCUS_INCONCLUSIVE', 'FOCUS_INCONCLUSIVE', 'CHECKPOINT_ACK'])
+  const checkpoint = state.channel.sent.at(-1)!; assert.equal(checkpoint.focusInconclusiveCount, 2); assert.equal(checkpoint.faulted, true)
+  state.channel.emit('message', { channel: 'tockteam-launcher-focus-proof', command: 'SHUTDOWN', nonce, sequence: 3 })
+  assert.equal(state.channel.sent.at(-1)!.type, 'SHUTDOWN_REJECTED')
+  while (state.channel.callbacks.length > 0) state.channel.flush()
+  state.scheduled.shift()?.(); assert.deepEqual(state.app.exits, [1])
 })
 
 test('nonce and command sequence violations reject shutdown while preserving cleanup', () => {
@@ -80,14 +89,23 @@ test('nonce and command sequence violations reject shutdown while preserving cle
   assert.deepEqual(state.app.exits, [1])
 })
 
-test('focus after shutdown ACK is flushed and forces a failing exit', () => {
+test('gate-app focus after shutdown ACK is flushed and makes the proof inconclusive', () => {
   const window = new FakeWindow(3); const state = setup([window]); state.channel.flush()
   state.channel.emit('message', { channel: 'tockteam-launcher-focus-proof', command: 'SHUTDOWN', nonce, sequence: 1 })
   assert.equal(state.channel.sent.at(-1)!.type, 'SHUTDOWN_ACK')
   window.emit('focus')
   state.channel.flush(); state.channel.flush(); state.scheduled.shift()?.()
-  assert.deepEqual(state.channel.sent.map(message => message.type), ['READY', 'SHUTDOWN_ACK', 'FOCUS_FAULT'])
+  assert.deepEqual(state.channel.sent.map(message => message.type), ['READY', 'SHUTDOWN_ACK', 'FOCUS_INCONCLUSIVE'])
   assert.deepEqual(state.app.exits, [1])
+})
+
+test('gate-app focus after secure teardown starts upgrades the requested exit status', () => {
+  const window = new FakeWindow(4); const state = setup([window]); state.channel.flush()
+  state.channel.emit('message', { channel: 'tockteam-launcher-focus-proof', command: 'SHUTDOWN', nonce, sequence: 1 })
+  state.channel.flush(); state.scheduled.shift()?.(); assert.deepEqual(state.app.exits, [0])
+  window.emit('focus')
+  assert.deepEqual(state.app.exits, [0, 1])
+  assert.equal(state.channel.sent.at(-1)!.type, 'FOCUS_INCONCLUSIVE')
 })
 
 test('ACK send failure and parent disconnect exit fail closed', () => {

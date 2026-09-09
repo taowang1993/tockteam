@@ -12,8 +12,8 @@ class FakeChild extends EventEmitter implements FocusProofChild {
   disconnect(): void { this.connected = false; this.emit('disconnect'); this.emit('close', 1, null) }
   send(message: unknown, callback: (error: Error | null) => void): boolean { this.commands.push(message); callback(null); return true }
 }
-const ready = (sequence = 1) => ({ channel: 'tockteam-launcher-focus-proof', faulted: false, focusFaultCount: 0, nonce, sequence, type: 'READY' })
-const checkpoint = (requestSequence: number, sequence: number) => ({ channel: 'tockteam-launcher-focus-proof', faulted: false, focusFaultCount: 0, focusedWindowCount: 0, nonce, requestSequence, sequence, type: 'CHECKPOINT_ACK', windows: [] })
+const ready = (sequence = 1) => ({ channel: 'tockteam-launcher-focus-proof', faulted: false, focusInconclusiveCount: 0, nonce, sequence, type: 'READY' })
+const checkpoint = (requestSequence: number, sequence: number) => ({ channel: 'tockteam-launcher-focus-proof', faulted: false, focusInconclusiveCount: 0, focusedWindowCount: 0, nonce, requestSequence, sequence, type: 'CHECKPOINT_ACK', windows: [] })
 
 test('Electron harness uses inherited IPC shutdown and read-only bounded residue checks', async () => {
   const harness = await readFile(new URL('../scripts/trusted-raycast-kaomoji-electron-proof.mts', import.meta.url), 'utf8')
@@ -53,13 +53,13 @@ test('rejects malformed, replayed, wrong-nonce, and overflowed responses', async
   await assert.rejects(() => client.assertClean(), /bound|protocol/u)
 })
 
-test('focus after shutdown ACK remains fatal until exact child close', async () => {
+test('gate-app focus after shutdown ACK remains inconclusive until exact child close', async () => {
   const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 100 }); child.emit('message', ready()); await client.ready()
   const closing = client.shutdownAndWait()
-  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: false, focusFaultCount: 0, nonce, requestSequence: 1, sequence: 2, type: 'SHUTDOWN_ACK' })
-  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: true, focusFaultCount: 1, kind: 'window-focus', nonce, sequence: 3, type: 'FOCUS_FAULT', windowId: 3 })
+  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: false, focusInconclusiveCount: 0, nonce, requestSequence: 1, sequence: 2, type: 'SHUTDOWN_ACK' })
+  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: true, focusInconclusiveCount: 1, kind: 'window-focus', nonce, sequence: 3, type: 'FOCUS_INCONCLUSIVE', windowId: 3 })
   child.emit('close', 1, null)
-  await assert.rejects(closing, /focus fault/u)
+  await assert.rejects(closing, /gate-app focus made proof inconclusive/u)
 })
 
 test('shutdown timeout disconnects the identity-owned channel and awaits close', async () => {
@@ -71,7 +71,7 @@ test('shutdown timeout disconnects the identity-owned channel and awaits close',
 test('child-close timeout disconnects after ACK and still observes exact close', async () => {
   const child = new FakeChild(); const client = createFocusProofClient(child, nonce, { timeoutMs: 20 }); child.emit('message', ready()); await client.ready()
   const closing = client.shutdownAndWait()
-  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: false, focusFaultCount: 0, nonce, requestSequence: 1, sequence: 2, type: 'SHUTDOWN_ACK' })
+  child.emit('message', { channel: 'tockteam-launcher-focus-proof', faulted: false, focusInconclusiveCount: 0, nonce, requestSequence: 1, sequence: 2, type: 'SHUTDOWN_ACK' })
   await assert.rejects(closing, /child close timeout/u)
   assert.equal(child.connected, false)
   assert.equal(client.closed, true)
