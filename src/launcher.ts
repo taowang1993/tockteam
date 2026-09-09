@@ -338,7 +338,7 @@ async function bootstrap(): Promise<void> {
   const workflowInteractionBlocked = (): boolean => invokingWorkflow || activeCancellation !== undefined || cancellationPending
 
   const closeLocalTool = (): void => {
-    if (trustedView) { trustedView = undefined; void bridge.trustedRaycastClose().catch(() => undefined) }
+    if (trustedView) { trustedView.dispose(); trustedView = undefined; void bridge.trustedRaycastClose().catch(() => undefined) }
     const tool = activeLocalTool
     activeLocalTool = undefined
     activeLocalToolId = undefined
@@ -359,6 +359,7 @@ async function bootstrap(): Promise<void> {
   }
   bridge.onTrustedRaycastView(message => {
     if (message.type === 'ready') {
+      trustedView?.dispose()
       activeLocalTool?.remove()
       trustedView = createTrustedRaycastView(document, bridge, closeLocalTool, surfaceSettings.locale)
       activeLocalTool = trustedView.element
@@ -918,6 +919,7 @@ async function bootstrap(): Promise<void> {
   }
 
   launcherThemeRerender = () => {
+    if (trustedView !== undefined) { trustedView.refreshTheme(); return }
     if (activeLocalTool === undefined && !invokingWorkflow) void renderSearch(search.value)
   }
   historyToggle.addEventListener('click', () => {

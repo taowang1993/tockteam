@@ -1,9 +1,9 @@
 import { ChevronDown, ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
-import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage, TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
+import { isTrustedRaycastKaomojiSvg, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
 
 /** First-party finite DOM projection. Source callbacks stay in the child; native effects stay in main. */
-export function createTrustedRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void, locale = 'en-US'): { element: HTMLElement; focus(): void; update(message: TrustedRaycastViewMessage): void } {
+export function createTrustedRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void, locale = 'en-US'): { dispose(): void; element: HTMLElement; focus(): void; refreshTheme(): void; update(message: TrustedRaycastViewMessage): void } {
   const zh = locale.startsWith('zh')
   const setHidden = (target: HTMLElement, hidden: boolean): void => { target.hidden = hidden; target.classList?.toggle('!hidden', hidden) }
   const icon = (definition: IconNode, className = 'size-7 opacity-60'): Element => {
@@ -19,6 +19,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     return svg
   }
   let current: TrustedRaycastViewMessage | undefined
+  let themeImages: Array<{ dark: string; image: HTMLImageElement; light: string }> = []
+  const refreshTheme = (): void => {
+    const light = document.documentElement?.style?.colorScheme === 'light'
+    for (const entry of themeImages) entry.image.setAttribute('src', light ? entry.light : entry.dark)
+  }
   const sendEvent = (event: { kind: TrustedRaycastViewEvent['kind']; eventId: string; value?: string }): void => {
     if (!current?.root || current.type === 'error') return
     // Field and navigation events are superseded by the next projection; stale rejections stay silent.
@@ -195,6 +200,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if ([...languageSelect.options].some(option => option.value === value)) languageSelect.value = value
   }
   const render = (root: TrustedRaycastViewNode): void => {
+    themeImages = []
     rows = []; rootActionOwner = undefined
     primaryFooter = undefined; primaryFooterLabel = undefined
     submitAction = undefined
@@ -265,7 +271,13 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       }
       const item = document.createElement('li'); item.className = gridMode ? 'launcher-command-row flex aspect-square min-w-0 flex-col items-center justify-center gap-2 p-2 text-center [overflow-wrap:anywhere]' : 'launcher-command-row !block [overflow-wrap:anywhere]'
       item.tabIndex = 0; item.setAttribute('data-selected', String(index === selected)); if (gridMode) item.setAttribute('aria-label', String(node.props.title ?? 'Kaomoji'))
-      if (gridMode) { const image = document.createElement('img'); const light = document.documentElement?.style?.colorScheme === 'light'; image.setAttribute('src', String(light ? node.props.contentLight ?? '' : node.props.contentDark ?? '')); image.setAttribute('alt', ''); image.className = 'size-16 max-h-full max-w-full'; item.append(image) }
+      if (gridMode) {
+        const image = document.createElement('img'); const dark = node.props.contentDark; const light = node.props.contentLight
+        const admitted = themeImages.length < 64 && typeof dark === 'string' && typeof light === 'string' && isTrustedRaycastKaomojiSvg(dark, '#fff') && isTrustedRaycastKaomojiSvg(light, '#000')
+        if (admitted) themeImages.push({ dark, image, light })
+        image.setAttribute('src', admitted ? document.documentElement?.style?.colorScheme === 'light' ? light : dark : '')
+        image.setAttribute('alt', ''); image.className = 'size-16 max-h-full max-w-full'; item.append(image)
+      }
       const titleLine = document.createElement('div'); titleLine.className = gridMode ? 'flex min-w-0 max-w-full items-center justify-center' : 'flex min-w-0 items-center justify-between gap-3'
       const titleRow = document.createElement('p'); titleRow.className = 'm-0 min-w-0 flex-1 truncate'; titleRow.textContent = String(node.props.title ?? ''); titleLine.append(titleRow)
       try {
@@ -402,8 +414,10 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   })
   const focus = (): void => { if (firstFormControl && !formArea.hidden) firstFormControl.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus() }
   return {
+    dispose() { current = undefined; themeImages = [] },
     element,
     focus,
+    refreshTheme,
     update(message) {
       if (current && (message.extensionId !== current.extensionId || message.sessionId !== current.sessionId || message.generation !== current.generation)) return
       if (message.type === 'toast') {
@@ -423,6 +437,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       current = message
       syncIdentity()
       if (message.type === 'error') {
+        themeImages = []
         pending = undefined; queryPending = false; setActionPending()
         input.disabled = true; languageSelect.disabled = true; status.textContent = ''; setHidden(status, true)
         results.replaceChildren(); setHidden(panelActions, true); footerActions.replaceChildren()

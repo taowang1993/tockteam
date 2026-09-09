@@ -77,6 +77,12 @@ test('launcher shortcut matching requires exact modifiers and supports finite pr
   assert.equal(launcherShortcutAriaLabel('Shift+Enter'), 'Shift+Enter')
 })
 
+test('theme changes refresh an active trusted view without rerunning root search', () => {
+  assert.match(launcherSource, /if \(trustedView !== undefined\) \{ trustedView\.refreshTheme\(\); return \}/u)
+  assert.match(launcherSource, /if \(trustedView\) \{ trustedView\.dispose\(\); trustedView = undefined;/u)
+  assert.match(launcherSource, /if \(message\.type === 'ready'\) \{\s+trustedView\?\.dispose\(\)/u)
+})
+
 test('programmatic launcher scrolling is instant when reduced motion is active', () => {
   assert.equal(launcherEffectiveScrollBehavior('smooth', true), 'instant')
   assert.equal(launcherEffectiveScrollBehavior('smooth', false), 'smooth')

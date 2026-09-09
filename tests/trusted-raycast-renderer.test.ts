@@ -25,19 +25,69 @@ const flush = () => new Promise(resolve => setImmediate(resolve))
 const projection = (revision: number): TrustedRaycastViewMessage => ({ type: revision ? 'patch' : 'ready', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision, root: { type: 'raycast-list', props: { searchEventId: `e${revision}` }, children: [] } })
 const inputOf = (nodes: Element[]): Element => nodes.find(node => node.id === 'trusted-raycast-search')!
 const errorOf = (nodes: Element[]): Element => nodes.find(node => node.getAttribute('role') === 'alert')!
+const kaomojiSvg = (fill: '#000' | '#fff', text: string): string => `data:image/svg+xml;base64,${Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" >\n  <text dominant-baseline="middle" x="45" y="45" text-anchor="middle" fill="${fill}" font-size="8px" text-length="90" length-adjust="spacing">\n    ${[...text].map(value => `&#${value.charCodeAt(0)};`).join('')}\n  </text>\n</svg>`).toString('base64')}`
+
+test('Kaomoji Grid refreshes the same bounded images across theme changes without disturbing interaction state', () => {
+  Element.activeElement = undefined
+  const nodes: Element[] = []
+  const document = { documentElement: { style: { colorScheme: 'dark' } }, get activeElement() { return Element.activeElement }, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const sent: TrustedRaycastViewEvent[] = []
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  const dark = kaomojiSvg('#fff', '(^_^)'); const light = kaomojiSvg('#000', '(^_^)')
+  view.update({ type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 0, root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-grid-item', props: { contentDark: dark, contentLight: light, title: 'Happy' }, children: [{ type: 'raycast-action', props: { actionEventId: 'copy', title: 'Copy to Clipboard' }, children: [] }] }] } })
+  const image = nodes.find(node => node.getAttribute('src') === dark)!
+  const row = nodes.find(node => node.className.includes('launcher-command-row'))!; row.focus()
+  const input = inputOf(nodes); input.value = 'unchanged query'
+  const trigger = nodes.findLast(node => node.textContent === 'Actions' && node.className.includes('launcher-command-footer-action'))!; trigger.dispatchEvent(new Event('click'))
+  const menu = nodes.find(node => node.className === 'relative' && node.open)!
+  const focused = Element.activeElement
+  document.documentElement.style.colorScheme = 'light'; view.refreshTheme()
+  assert.equal(image.getAttribute('src'), light); assert.equal(Element.activeElement, focused); assert.equal(menu.open, true); assert.equal(input.value, 'unchanged query'); assert.deepEqual(sent, [])
+  document.documentElement.style.colorScheme = 'dark'; view.refreshTheme()
+  assert.equal(image.getAttribute('src'), dark); assert.equal(Element.activeElement, focused); assert.equal(menu.open, true); assert.equal(input.value, 'unchanged query'); assert.deepEqual(sent, [])
+  view.update({ type: 'patch', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 1, status: 'ready', root: { type: 'raycast-list', props: { queryCurrent: true, searchEventId: 'search-1' }, children: [] } })
+  document.documentElement.style.colorScheme = 'light'; view.refreshTheme(); assert.equal(image.getAttribute('src'), dark, 'a newer List projection releases old Grid image references')
+  document.documentElement.style.colorScheme = 'dark'; view.update({ type: 'patch', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 2, status: 'ready', root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search-2' }, children: [{ type: 'raycast-grid-item', props: { contentDark: dark, contentLight: light, title: 'Happy' }, children: [] }] } })
+  const erroredImage = nodes.findLast(node => node.getAttribute('src') === dark)!; view.update({ type: 'error', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 3, message: 'closed' })
+  document.documentElement.style.colorScheme = 'light'; view.refreshTheme(); assert.equal(erroredImage.getAttribute('src'), dark, 'an error releases current Grid image references')
+  document.documentElement.style.colorScheme = 'dark'; view.update({ type: 'patch', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 4, status: 'ready', root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search-4' }, children: [{ type: 'raycast-grid-item', props: { contentDark: dark, contentLight: light, title: 'Happy' }, children: [] }] } })
+  const disposedImage = nodes.findLast(node => node.getAttribute('src') === dark)!; view.dispose(); document.documentElement.style.colorScheme = 'light'; view.refreshTheme(); assert.equal(disposedImage.getAttribute('src'), dark, 'closing the view releases current Grid image references')
+})
+
+test('Kaomoji theme refresh retains at most 64 admitted image references', () => {
+  const nodes: Element[] = []
+  const document = { documentElement: { style: { colorScheme: 'dark' } }, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, {} as LauncherPreloadBridge, () => {})
+  const dark = kaomojiSvg('#fff', '(^_^)'); const light = kaomojiSvg('#000', '(^_^)')
+  view.update({ type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 0, root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: Array.from({ length: 65 }, (_, index) => ({ type: 'raycast-grid-item' as const, props: { contentDark: dark, contentLight: light, title: `Happy ${index}` }, children: [] })) } })
+  document.documentElement.style.colorScheme = 'light'; view.refreshTheme()
+  assert.equal(nodes.filter(node => node.getAttribute('src') === light).length, 64)
+  assert.equal(nodes.filter(node => node.getAttribute('src') === '').length, 1)
+})
+
+test('Translate theme refresh is an interaction no-op', () => {
+  Element.activeElement = undefined
+  const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
+  const document = { documentElement: { style: { colorScheme: 'dark' } }, get activeElement() { return Element.activeElement }, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  view.update(projection(0)); const input = inputOf(nodes); input.value = 'translate query'; view.focus(); const focused = Element.activeElement
+  document.documentElement.style.colorScheme = 'light'; view.refreshTheme()
+  assert.equal(Element.activeElement, focused); assert.equal(input.value, 'translate query'); assert.deepEqual(sent, [])
+})
 
 test('Kaomoji Grid renders bounded theme image data and extension identity', () => {
   const nodes: Element[] = []
   const document = { documentElement: { style: { colorScheme: 'light' } }, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
   const view = createTrustedRaycastView(document, {} as LauncherPreloadBridge, () => {})
+  const dark = kaomojiSvg('#fff', '(^_^)'); const light = kaomojiSvg('#000', '(^_^)')
   view.update({
     type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 0,
-    root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-section', props: { title: 'emotion' }, children: Array.from({ length: 64 }, (_, index) => ({ type: 'raycast-grid-item' as const, props: { contentDark: 'data:image/svg+xml;base64,dark', contentLight: 'data:image/svg+xml;base64,light', title: `Happy Face ${index}` }, children: [{ type: 'raycast-action' as const, props: { actionEventId: `copy-${index}`, title: 'Copy to Clipboard' }, children: [] }] })) }] },
+    root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-section', props: { title: 'emotion' }, children: Array.from({ length: 64 }, (_, index) => ({ type: 'raycast-grid-item' as const, props: { contentDark: dark, contentLight: light, title: `Happy Face ${index}` }, children: [{ type: 'raycast-action' as const, props: { actionEventId: `copy-${index}`, title: 'Copy to Clipboard' }, children: [] }] })) }] },
   })
   assert.equal((view.element as unknown as Element).getAttribute('aria-label'), 'Kaomoji Search')
   assert.ok(nodes.some(node => node.textContent === 'Search Kaomoji'))
   assert.ok(nodes.some(node => node.getAttribute('aria-label') === 'Kaomoji Results' && node.getAttribute('role') === 'list'))
-  assert.ok(nodes.some(node => node.getAttribute('src') === 'data:image/svg+xml;base64,light'))
+  assert.ok(nodes.some(node => node.getAttribute('src') === light))
   assert.ok(nodes.some(node => node.textContent === 'emotion'))
   assert.ok(nodes.some(node => node.getAttribute('aria-label') === 'Happy Face 0'))
   assert.ok(nodes.some(node => node.textContent === 'Showing 64 results. Search all 1,822 kaomoji.'))
