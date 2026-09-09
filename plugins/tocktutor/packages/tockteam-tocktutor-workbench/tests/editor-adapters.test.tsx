@@ -32,6 +32,9 @@ describe('CodeMirror Source editor', () => {
     expect(sourceEditor.className).toContain('[&_.cm-content]:max-w-3xl')
     expect(sourceEditor.className).toContain('[&_.cm-gutters]:hidden')
     expect(sourceEditor.className).toContain('[&_.cm-activeLine]:bg-transparent')
+    expect(sourceEditor.className).toContain('[&_.cm-tock-heading-mark]:text-inherit')
+    expect(sourceEditor.className).toContain('[&_.cm-tock-heading-mark]:[font-size:inherit]')
+    expect(sourceEditor.className).not.toContain('[&_.cm-tock-heading-mark]:!text-[var(--tt-muted)]')
     expect(screen.getByLabelText('Markdown Source Editor').className).toContain('[&_.cm-scroller]:leading-6')
     const title = screen.getByRole('textbox', { name: 'Note title' }) as HTMLInputElement
     expect(title.value).toBe('Keep')
