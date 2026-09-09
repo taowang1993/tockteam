@@ -80,7 +80,7 @@ function sourceDecorations(state) {
         const fence = /^ {0,3}(`{3,}|~{3,})/u.test(text);
         if (fence)
             fenceOpen = !fenceOpen;
-        const heading = !fenceOpen ? text.match(/^ {0,3}(#{1,6})(?:\s|$)/u) : null;
+        const heading = !fenceOpen && !commentOpen ? text.match(/^ {0,3}(#{1,6})(?:\s|$)/u) : null;
         if (heading !== null) {
             const markerStart = line.from + heading[0].indexOf('#');
             decorations.push(Decoration.line({ class: `cm-tock-heading-${heading[1].length}` }).range(line.from), Decoration.mark({ class: 'cm-tock-heading-mark' }).range(markerStart, markerStart + heading[1].length));
@@ -114,7 +114,7 @@ function sourceDecorations(state) {
             }
         }
     }
-    return Decoration.set(decorations);
+    return Decoration.set(decorations, true);
 }
 function buildEditorExtensions(props) {
     const hardBreak = (view) => {
