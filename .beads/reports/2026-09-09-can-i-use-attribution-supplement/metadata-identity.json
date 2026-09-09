@@ -1,0 +1,9 @@
+{
+  "package": "caniuse-lite@1.0.30001761",
+  "gitHead": "59e2d41ee743d54efec1bb8ce067957b9766ca50",
+  "archiveSha256": "dad057386ae3d0178226ca938355312c16e94b6680627ec297ce1b1dcf55e2d1",
+  "registryAndLockIntegrity": "sha512-JF9ptu1vP2coz98+5051jZ4PwQgd2ni8A+gYSN7EA7dPKIMf0pDlSUxhdmVOaV3/fYK5uWBkgSXJaRLr4+3A6g==",
+  "sha1": "4ca4c6e3792b24e8e2214baa568fc0e43de28191",
+  "match": true,
+  "limitation": "gitHead is registry metadata; npm provenance signature not independently verified"
+}
