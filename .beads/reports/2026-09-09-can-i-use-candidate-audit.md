@@ -16,6 +16,8 @@ The blocker is substantive: the unchanged command accepts an arbitrary `path`, e
 
 Admission requires a first-party, Session/Workspace-bound configuration snapshot and a filesystem-free Browserslist adapter. Exact source identity does not authorize those future derived bytes, dependencies, or capabilities.
 
+**Independent review of `5da5367f`: BLOCK** (`a337ec36-283b-4a44-b5a8-e6bab70aaf1a`). The original proposed design did not close intermediate-directory races, enumerate query grammar, seal real `os`/`path`, or bound rows before source materialization. [Finite Contract — Revision 2](./2026-09-09-can-i-use-finite-contract.md) now supersedes that proposal and is submitted for parent rereview; it is not implementation or execution approval.
+
 ## Exact Source Identity
 
 | Field | Exact Value |
@@ -141,7 +143,7 @@ The complete package-path/version/dev/optional/license/integrity/resolved invent
 | --- | --- | --- | --- |
 | `@raycast/api` | `1.104.1` | MIT | Its 102-record production closure is excluded. The existing finite compatibility API must expose only the APIs listed above. |
 | `browserslist` | `4.28.1` | MIT | Ordinary Node build is denied in the child. Future use is limited to a separately reviewed, filesystem-free query evaluator and finite adapter. |
-| `caniuse-api` | `3.0.0` | MIT | Prefer a finite compatibility adapter for only `isSupported` and `getSupport`; do not carry its generic API or implicit Browserslist call path. |
+| `caniuse-api` | `3.0.0` | MIT | Require a finite compatibility adapter for only `isSupported` and `getSupport`; do not carry its generic API or implicit Browserslist call path. |
 | `caniuse-lite` | `1.0.30001761` | CC-BY-4.0 | Exact static data may be admitted only with the complete license and attribution notice. |
 
 ### Non-Raycast Declared Production Closure
@@ -162,7 +164,7 @@ The union reachable from Browserslist, `caniuse-api`, and `caniuse-lite` contain
 | `picocolors` | `1.1.1` | `d3aedb2807967b7eb37fd11b03b7e3701e725af79c650d0812ff7213f8f882d9` | ISC | Exclude with updater/CLI. |
 | `update-browserslist-db` | `1.2.3` | `6bafda00d4356a4df5d0463b4e4ad45ebc9f438bfede793e218a9f9f7c6844c3` | MIT | Exclude; contains filesystem mutation, subprocess, network-through-package-manager, and package-update authority. |
 
-Exact registry byte sizes, lock integrities, license-file paths, and direct closure memberships are in the companion JSON.
+Exact registry byte sizes, lock integrities, license-file paths, and direct closure memberships are in the companion JSON. Registry/license verification is **external-only evidence** from `/tmp/tockteam-can-i-use-audit`; registry archives and standalone license bytes are not retained in this commit. A clean checkout can verify the source/lock inventory but cannot reproduce those external-byte claims without separately retrieving the exact archives. Revision 2 adds external license-file byte counts/hashes and archive-match attestations; these still are not committed license bytes or distribution approval.
 
 ### License Evidence and Obligations
 
@@ -176,85 +178,29 @@ No dependency notice changes were made in this static checkpoint because no runt
 
 ## Proposed Finite Capability Design
 
-### 1. Bind Configuration to the Active Session and Workspace
+The normative revised proposal is [Finite Contract — Revision 2](./2026-09-09-can-i-use-finite-contract.md). The rejected revision remains available in commit `5da5367f`; do not implement its path-check-then-open flow, broad query selectors, or third Browserslist call shape.
 
-- The main process, not the extension child, resolves the active Session and Workspace from the existing launcher/session authority.
-- The child receives an opaque, nonce-bound configuration snapshot identity, never the host workspace path or a filesystem object.
-- `path` is reinterpreted as an optional workspace-relative directory. Reject absolute paths, drive/UNC paths, `~`, NUL, empty/dot/dot-dot traversal components, and paths longer than 1,024 UTF-8 bytes.
-- Resolve against the active workspace root and require lexical containment, realpath containment, matching ownership policy, ordinary directories, and no symlink in any traversed component.
-- A snapshot is bound to extension ID, command `index`, session ID, workspace identity, preference revision, generation, and nonce. A stale or cross-workspace snapshot fails closed.
-- Saving relevant preferences tears down the old child and creates a new authenticated generation; no live generic file-read RPC is added.
+Revision 2 requires:
 
-This intentionally narrows upstream `~` and arbitrary absolute-path behavior. That compatibility difference must be visible in managed preference helper text and approved before runtime admission.
+- an authorized root capability and anchored descriptor walk (`openat`/`O_DIRECTORY|O_NOFOLLOW` or proven equivalent), never reopening validated paths; unsupported platforms remain blocked;
+- bounded declarative config parsing with explicit forms/conflicts/environment/byte limits and no arbitrary file, module, statistics, or process-environment access;
+- complete grammar for `defaults` or canonical target unions only, exact table membership, deterministic normalization, and no generic runtime Browserslist parser; the immutable default fixture still requires separate generation/approval;
+- explicit throwing `os.homedir` and `path.join` aliases, two Browserslist snapshot-call shapes, and two-function `caniuse-api` support computation;
+- Host search across the fixed catalog before supplying the <=64-entry `caniuse-lite.features` table to the unchanged source's `.map`, with <=256 total handles and full stale-revision invalidation before materialization;
+- authenticated main-owned canonical browser effects, separate exact-byte identities, truthful trusted-child—not OS-sandbox—semantics, and unchanged Translate/Kaomoji isolation;
+- external-only registry/license evidence labels and full MIT/CC-BY-4.0 attribution before distribution.
 
-### 2. Perform One Bounded Declarative Discovery in Main
-
-When `path` is set, the Host may perform this exact internal operation only:
-
-1. Start at the validated workspace-relative directory.
-2. Inspect at most 32 directory levels, stopping at and including the active workspace root; never cross it.
-3. At each level, inspect only `browserslist`, `.browserslistrc`, and `package.json`, for at most 96 candidate probes.
-4. Reject symlinks and non-regular files. Open the final file read-only with `O_NOFOLLOW`; revalidate identity/size after open.
-5. Bound `browserslist` and `.browserslistrc` to 64 KiB and `package.json` to 1 MiB. Read at most one selected configuration file.
-6. Preserve Browserslist's same-directory conflict failure if multiple configuration forms are present.
-7. From `package.json`, parse only the top-level `browserslist` string, string array, or environment object. Do not project any other package data.
-8. Select only the explicit managed `environment`, limited to 64 ASCII letters, digits, `_`, or `-`; default to `production`. Do not consult `NODE_ENV` or any `BROWSERSLIST_*` process variable.
-9. Do not read `browserslist-stats.json`, JavaScript configuration, Node modules, lockfiles, source files, or any arbitrary filename.
-
-The implementation should reuse the repository's bounded-file and symlink-safe patterns, but expose a dedicated `CanIUseConfigSnapshot` operation rather than generic path/read APIs.
-
-### 3. Use a Filesystem-Free Query Evaluator
-
-- Parse at most 4,096 UTF-8 bytes and 64 comma/newline clauses.
-- Validate an explicit safe query grammar before evaluation. Reject `extends`, `browserslist config`, custom/my statistics, country/region statistics, file/config references, module names, and any unknown clause rather than trying to sanitize them.
-- Evaluate only static browser/version/popularity/date selectors against exact pinned data. Use a separately reviewed Browserslist browser-target build whose Node environment module is replaced by its filesystem-free browser module, or a smaller first-party equivalent with oracle parity tests.
-- The evaluator gets no `fs`, `path`, `os`, `process.env`, `require`, dynamic import, module resolution, network, subprocess, or write authority.
-- Cap the result at 256 canonical browser targets, each at most 64 ASCII characters and drawn from the exact pinned browser/version table. Deduplicate and sort deterministically where upstream ordering does not carry UI meaning.
-- On invalid configuration, return a bounded error code and no paths, configuration bytes, query text, stack, or item data. The child adapter throws a fixed error so the unchanged source's existing catch path leaves `browsers` empty.
-
-### 4. Keep the Child Adapter Finite
-
-Provide a descriptor-owned `browserslist` alias with only three accepted call shapes:
-
-1. the exact current `defaultQuery` string from the preference snapshot;
-2. `null` plus the exact virtual path/environment values derived from that snapshot;
-3. the canonical browser-target array passed by the finite `caniuse.isSupported` adapter, with only `{ ignoreUnknownVersions: true }`.
-
-The first two return the authenticated Host snapshot. The third validates and returns the bounded canonical array. Every other argument/options shape fails closed. The virtual `os.homedir`/`path.join` behavior is lexical only and cannot reveal or access the real home directory.
-
-Prefer a finite `caniuse-api` alias exposing exactly `isSupported(feature, browserTargets)` and `getSupport(feature)`, implemented against the exact admitted `caniuse-lite` dataset. Feature slugs must belong to its fixed 581-entry set. This removes generic Browserslist, Lodash global discovery, and unused `caniuse-api` exports from the child. Oracle tests must prove parity with the pinned upstream packages before approval.
-
-### 5. Bound Views, Navigation, and Actions
-
-- Root is one searchable List over the fixed 581-feature dataset; emit at most 64 visible items per projection and disclose that the full set remains searchable.
-- Each root row has one title, one fixed feature-slug keyword, at most two accessories, and exactly two actions in order: `Show Details`, then `Open in Browser`.
-- Navigation depth is at most `1`. A detail projection is bound to the selected feature handle and emits at most the finite admitted agent count, excluding Opera Mini exactly as source does.
-- Each detail row has one title, at most two accessories, and exactly one `Open in Browser` action.
-- Keep total action handles at or below the existing 256-handle ceiling; bind every handle to extension, command, session, generation, revision, projection, navigation depth, and fixed feature slug.
-- Allow only the four icons, three colors, four support tooltips, fixed standards-status strings, and bounded text described above. Deny arbitrary React props, components, HTML, DOM, Markdown, image URLs, file paths, data URLs, SVG, or remote assets.
-- Search input is renderer-owned, at most 256 characters, and produces a new authenticated projection revision without exposing a generic event/RPC surface.
-
-### 6. Keep Browser Opening Main-Owned
-
-- The child emits an admitted action handle, not a URL chosen at invocation time.
-- Main reconstructs the URL from the handle's fixed feature slug: `https://caniuse.com/<slug>`.
-- Require HTTPS, exact lowercase hostname `caniuse.com`, default port, no userinfo, query, or fragment, and exactly one ASCII path segment from the pinned 581-feature set.
-- Require current authenticated session/generation/revision and a user activation. Open through the existing main-owned external-browser effect.
-- Record only bounded success/failure metadata. Never fetch the URL in the child or renderer.
-
-### 7. Explicitly Deny Everything Else
-
-Deny child filesystem access, real home/workspace paths, arbitrary Browserlist configuration, JS/module `extends`, custom statistics, environment-variable controls, network clients, Clipboard, Paste, selected text, shell, subprocess, package managers, executables, native modules, OAuth, credentials, secrets, keychain, state, updater, elevation, arbitrary URLs, arbitrary commands, generic extension discovery, generic RPC, Web/TUI composition, and live-profile mutation during review.
+This is a design correction only. No native capability, adapter, query/default fixture, bounded projection, descriptor, or new runtime dependency has been implemented.
 
 ## Required Gates Before Any Runtime Admission
 
 1. Obtain independent approval for this exact source archive and design. Self-review is not exact-byte approval.
 2. Build a separate deterministic derived runtime artifact only after approval; attest source, dependency, resolution, metadata, and projection identities independently.
-3. Prove by bundle/import inspection that the child contains no Node Browserslist environment module, `fs`, `os`, real `path`, module resolver, `update-browserslist-db`, `escalade`, `picocolors`, CLI, install script, compiler, package manager, or dynamic code loader.
-4. Add red-first tests for absolute/home/traversal/out-of-root paths; intermediate/final symlinks; races; non-regular and oversized files; parent-scan ceiling; multiple configs; malformed package JSON; unsupported environment; and stale/cross-workspace capability identities.
+3. Prove by bundle/import inspection that candidate-visible code contains no Node Browserslist environment module, real `fs`/`os`/`path`, module resolver, `update-browserslist-db`, `escalade`, `picocolors`, CLI, install script, compiler, package manager, or dynamic code loader. Only the explicit throwing builtin aliases in Revision 2 are permitted; trusted bootstrap authority is not advertised as an OS sandbox.
+4. Add red-first tests for absolute/home/traversal/out-of-root paths; descriptor-anchored intermediate/final symlink races and replacement; unsupported-platform refusal; non-regular/hard-linked and oversized files; parent-scan and aggregate-byte ceilings; multiple configs; malformed/duplicate-key package JSON; unsupported environment; and stale/cross-workspace capability identities.
 5. Add red-first tests rejecting `extends`, config-file directives, custom/my stats, country stats, unknown query grammar, overlong/high-clause queries, overlarge target arrays, unknown browser/version pairs, environment overrides, and diagnostic leakage.
 6. Add parity tests for every admitted finite Browserslist and `caniuse-api` adapter call shape against the exact pinned packages, using inert fixtures only after exact-byte execution approval.
-7. Add projection/navigation/action tests for 581 searchable features, 64-item projection, fixed disclosure, one-level detail, fixed icon/color/status tokens, handle bounds, stale/tampered handles, exact action order, search/focus, Escape, and both themes.
+7. Add projection/navigation/action tests for Host search across 581 features before source enumeration, <=64 materialized rows, <=256 peak registered handles (not just final serialized size), fixed disclosure, one-level detail, fixed icon/color/status tokens, invalidation before every revision, stale/tampered handles, exact action order, search/focus, Escape, and both themes.
 8. Add browser-effect tests for exact origin/path reconstruction and rejection of tampered slugs, ports, userinfo, query, fragments, schemes, hosts, revisions, sessions, and generations.
 9. Preserve complete live Google Translate and Kaomoji install/state/preference/recovery manifests before and after every disposable gate. Keep one globally owned active/preview child.
 10. Run an approved disposable manager/child gate with fixture workspaces, denied native/network/process effects, strict teardown, and no live profile mutation.
@@ -284,7 +230,9 @@ These official images do not prove light theme, initial unfiltered List, unsuppo
 - Verified both official screenshot dimensions, byte sizes, and hashes without launching Raycast or TockTeam.
 - Did not build, transpile, install, stage, package, preview, load, or execute the candidate or any dependency module.
 
-## Self-Review
+## Initial Self-Review at `5da5367f`
+
+The following is historical self-review, subsequently superseded by independent BLOCK findings. It is not an approval of the original design.
 
 Self-review re-opened the artifact, source, lock, Browserslist Node environment, Browserslist browser environment, `caniuse-api` entry, updater entry, license files, official screenshots, and generated JSON. It found and resolved these audit risks before commit:
 
@@ -298,4 +246,10 @@ Self-review re-opened the artifact, source, lock, Browserslist Node environment,
 - preserved Featured terminology and did not relabel it Recommended;
 - left Kaomoji closed and unchanged.
 
-**Self-review verdict:** coherent static checkpoint with no runtime approval. The exact source and risk boundary are sufficiently pinned to request independent review. Implementation, execution, profile mutation, packaging, installed smoke, Mole work, and pushing remain outside this checkpoint.
+**Initial self-review verdict:** static checkpoint submitted for independent review, with no runtime approval. That review returned BLOCK as recorded above.
+
+## Revision 2 Self-Audit
+
+Applied the review skill's simplification, security/hardening, and performance/operability references. Re-read the unchanged source imports and enumeration flow, then traced each independent finding into the revised contract. Corrected the race-prone reader proposal, made config-read totals explicit (up to 32 package JSON reads, not one file total), rejected unsupported platforms rather than assuming Node has `openat`, reduced public queries to a fully enumerated grammar, eliminated fake home/path behavior and the unnecessary third Browserslist shape, and specified Host selection before source enumeration/handle allocation.
+
+A Luna scout performed only mechanical external license-byte/hash comparison; it was not a substitute independent reviewer. The parent independently rehashed all 11 tarballs, compared each archived/extracted license byte-for-byte, and rechecked root MIT before recording evidence. Fresh static validation also parsed the source-only USTAR without loading its modules: 14 source-file sizes/Git blobs/SHA-256 values, 19 safe entries, 335 lock records, local report links, JSON fields, and absence of a Can I Use descriptor matched. `git diff --check` and `shasum -a 256 plugins/trusted-raycast/vendor/{google-translate,kaomoji-search,can-i-use-source}.tar` passed with the previously pinned digests. These are static design/evidence corrections, not runtime tests or implemented fixes. Required runtime, parity, platform, UI, license/distribution, and parent rereview gates remain unmet. `tockteam-3l3.4` stays open; Kaomoji remains closed and untouched. No candidate execution, build, stage, Electron, package, live effect, Mole work, or push occurred.

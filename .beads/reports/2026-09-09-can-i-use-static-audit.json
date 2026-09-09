@@ -1,6 +1,42 @@
 {
   "schemaVersion": 1,
   "auditKind": "static-only",
+  "designRevision": 2,
+  "designContract": ".beads/reports/2026-09-09-can-i-use-finite-contract.md",
+  "independentReview": {
+    "runId": "a337ec36-283b-4a44-b5a8-e6bab70aaf1a",
+    "reviewedCommit": "5da5367f642d8111b2da8bc1a694afe73028f49b",
+    "verdict": "BLOCK",
+    "revision2Status": "Static corrections proposed; awaiting parent rereview; no implementation or runtime approval"
+  },
+  "externalEvidence": {
+    "location": "/tmp/tockteam-can-i-use-audit",
+    "registryAndLicenseEvidenceExternalOnly": true,
+    "registryArchivesAndLicenseBytesCommitted": false,
+    "cleanCheckoutReproducibleWithoutRetrieval": false,
+    "distributionApproval": false,
+    "mechanicalScoutRun": "6c55ae06-390b-4289-9218-057184a6c847",
+    "parentRecheckedAllTarAndLicenseHashes": true,
+    "rootLicense": {
+      "license": "MIT",
+      "gitBlobSha1": "be595ac54db717d018cee4500381d46b0e0d085b",
+      "bytes": 1064,
+      "sha256": "7f727f8b20cdd0e65f84e70b9cac2fce337dcecee4dc88955eb012ea27f02755"
+    },
+    "licenseFiles": [
+      { "name": "baseline-browser-mapping", "version": "2.9.11", "path": "package/LICENSE.txt", "bytes": 11357, "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4", "archiveMatch": true },
+      { "name": "browserslist", "version": "4.28.1", "path": "package/LICENSE", "bytes": 1118, "sha256": "f25bf9bf3ae8984bcd43bf7fb8f78e7eec8d577081fb8d0989cfa7c67ecebb8e", "archiveMatch": true },
+      { "name": "caniuse-api", "version": "3.0.0", "path": "package/LICENSE", "bytes": 1084, "sha256": "6dba40acdc8df5c99941018d203bc5507edfb0d99ad0f13c1fe365f8b564be0f", "archiveMatch": true },
+      { "name": "caniuse-lite", "version": "1.0.30001761", "path": "package/LICENSE", "bytes": 18651, "sha256": "fd3a263fe19ed8faa9068b43abaebafc02c77897b0c6fc09abc04bb592e5f16e", "archiveMatch": true },
+      { "name": "electron-to-chromium", "version": "1.5.267", "path": "package/LICENSE", "bytes": 728, "sha256": "25ba5c59dad3e0dd8f9540beaa0f0a86a10e3aec35af5fdc8e88c5f6a5c0d8c6", "archiveMatch": true },
+      { "name": "escalade", "version": "3.2.0", "path": "package/license", "bytes": 1104, "sha256": "9a9edad7baae52622bddf3c15b2ef8a33d2c89f2d25408ad13e8a7481c6b0c97", "archiveMatch": true },
+      { "name": "lodash.memoize", "version": "4.1.2", "path": "package/LICENSE", "bytes": 1951, "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272", "archiveMatch": true },
+      { "name": "lodash.uniq", "version": "4.5.0", "path": "package/LICENSE", "bytes": 1951, "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272", "archiveMatch": true },
+      { "name": "node-releases", "version": "2.0.27", "path": "package/LICENSE", "bytes": 1107, "sha256": "3706296ed611888111ceccc1dff4712844dea4bde0b185c82d718c3b69895abe", "archiveMatch": true },
+      { "name": "picocolors", "version": "1.1.1", "path": "package/LICENSE", "bytes": 787, "sha256": "6582629e2979466878f6014313dcc2f3756c9616148682227ce3063dde310750", "archiveMatch": true },
+      { "name": "update-browserslist-db", "version": "1.2.3", "path": "package/LICENSE", "bytes": 1118, "sha256": "c414dde36704bd9c8a76c7aa2921b19270ff9abeb478ea0050250d16cf29b0f6", "archiveMatch": true }
+    ]
+  },
   "generatedAt": "2026-09-09T05:03:04Z",
   "executionStatus": "No candidate source, lifecycle script, install script, build script, package CLI, or runtime dependency module was executed.",
   "scope": {
