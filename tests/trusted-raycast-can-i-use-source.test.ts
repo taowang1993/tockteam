@@ -14,7 +14,8 @@ import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from '../src/trusted-raycast-artifact-admission.ts'
 import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
 import { inspectTrustedRaycastProjection } from '../src/trusted-raycast-contract.ts'
-import { decodeTrustedRaycastCanIUseData, TRUSTED_RAYCAST_CAN_I_USE_ASSET } from '../src/trusted-raycast-can-i-use-assets.ts'
+import { TRUSTED_RAYCAST_CAN_I_USE_ASSET } from '../src/trusted-raycast-can-i-use-assets.ts'
+import { loadTrustedRaycastCanIUseData } from '../src/trusted-raycast-can-i-use-runtime.ts'
 import { prepareTrustedRaycastCanIUseRoot } from '../src/trusted-raycast-can-i-use-command.ts'
 import { TrustedRaycastCanIUseActionRegistry } from '../src/trusted-raycast-can-i-use-actions.ts'
 import { TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS } from '../src/trusted-raycast-can-i-use-preferences.ts'
@@ -30,7 +31,7 @@ for (const rejection of ['component', 'environment', 'replay', 'context', 'overs
   assert.equal(archive.length, 3246080)
   assert.equal(sha(archive), sourcePin)
   const reactArchive = admitTrustedRaycastArtifact(trustedRaycastDescriptors['google-translate'], join(repository, 'plugins/trusted-raycast/vendor/google-translate.tar'))
-  const data = decodeTrustedRaycastCanIUseData(readTrustedRaycastFile(join(repository, 'plugins/trusted-raycast/vendor', TRUSTED_RAYCAST_CAN_I_USE_ASSET.file), TRUSTED_RAYCAST_CAN_I_USE_ASSET.bytes))
+  const data = loadTrustedRaycastCanIUseData(join(repository, 'plugins/trusted-raycast/vendor'))
   const work = mkdtempSync(join(tmpdir(), 'tockteam-can-i-use-source-proof-'))
   let child: ReturnType<typeof spawn> | undefined
   try {

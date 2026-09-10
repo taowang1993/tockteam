@@ -22,7 +22,7 @@ export type TrustedRaycastBuildIdentity = Readonly<{
 
 /** Read one regular file through an O_NOFOLLOW descriptor; the descriptor is the checked object. */
 export function readTrustedRaycastFile(path: string, maxBytes = MAX_DERIVED_FILE): Buffer {
-  const flags = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0)
+  const flags = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_NONBLOCK ?? 0)
   const file = openSync(path, flags)
   try {
     const stat = fstatSync(file)

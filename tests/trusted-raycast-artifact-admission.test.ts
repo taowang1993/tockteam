@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { execFileSync, spawn } from 'node:child_process'
+// @ts-expect-error First-party process-group cleanup.
+import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 import { mkdtempSync, rmSync, truncateSync, writeFileSync } from 'node:fs'
 import test from 'node:test'
 import { tmpdir } from 'node:os'
@@ -12,6 +15,37 @@ import {
 import { TRUSTED_RAYCAST_EXTENSION_IDS, getTrustedRaycastDescriptor } from '../src/trusted-raycast-descriptors.ts'
 
 const digest = (value: string): string => createHash('sha256').update(value).digest('hex')
+
+test('bounded artifact reads reject a FIFO without waiting for a writer', { skip: process.platform === 'win32', timeout: 10000 }, async t => {
+  const root = mkdtempSync(join(tmpdir(), 'raycast-admission-fifo-'))
+  let child: ReturnType<typeof spawn> | undefined
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    const fifo = join(root, 'asset')
+    execFileSync('/usr/bin/mkfifo', [fifo], { timeout: 1000 })
+    const reader = new URL('../src/trusted-raycast-artifact-admission.ts', import.meta.url).href
+    child = spawn(process.execPath, ['--input-type=module', '-e', `
+      import assert from 'node:assert/strict';
+      import { readTrustedRaycastFile } from ${JSON.stringify(reader)};
+      assert.throws(() => readTrustedRaycastFile(process.argv[1], 1024), /not a regular file/);
+    `, fifo], { cwd: root, detached: true, env: { PATH: '/usr/bin:/bin', HOME: root, TMPDIR: root }, stdio: ['ignore', 'ignore', 'pipe'] })
+    let diagnostic = ''
+    child.stderr!.on('data', chunk => { diagnostic = (diagnostic + chunk).slice(-4096) })
+    const code = await new Promise<number | null>((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('Bounded reader blocked on a FIFO')), 1500)
+      child!.once('error', reject)
+      child!.once('exit', resolve)
+    })
+    assert.equal(code, 0, diagnostic)
+  } finally {
+    clearTimeout(timer)
+    if (child) {
+      await stopOwnedChild(child, 250, true)
+      t.diagnostic(JSON.stringify({ pid: child.pid, processGroupGone: true }))
+    }
+    rmSync(root, { recursive: true, force: true })
+  }
+})
 
 test('artifact admission resolves only descriptor-owned digests before reading bytes', () => {
   const root = mkdtempSync(join(tmpdir(), 'raycast-admission-test-'))
