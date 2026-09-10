@@ -53,7 +53,7 @@
     },
     "theme": { "themePreference": "dark", "activeSkin": null, "base": "#151517" },
     "screenshots": {
-      "tocktutor-editor-reading.png": { "surfaces": [2, 14], "state": "Notes/Welcome.md in Reading View with the resolved local image embed", "bytes": 283790, "sha256": "sha256:e407f5bf4a8c1468911350f6213f6fdd8bb40dc9140919fef55a4eafed9575fc" },
+      "tocktutor-editor-reading.png": { "surfaces": [2, 14], "state": "Notes/Welcome.md in Reading View with the resolved local image embed", "captureRun": "tocktutor-reading-polish-refresh-vXCHpq", "bytes": 215618, "sha256": "sha256:377492904722b2d286557a5007c7edb3eabdf4ca570c938a1758b96c2e5aef40" },
       "tocktutor-editor-source.png": { "surfaces": [4], "state": "Notes/Alias Target.md in Source Mode", "bytes": 232698, "sha256": "sha256:c416c11e5e3637fdcad564dede0b642e487d9144f8eb2ac8cffbc3dcf87217b5" },
       "tocktutor-note-actions-menu.png": { "surfaces": [5], "state": "UIUX Comparison.md in Live Preview with More Note Actions open", "bytes": 441959, "sha256": "sha256:3760f771e694fa90bb617fb18c92dc3a4b0198cc9b72a6b273387b5128360cf9" },
       "tocktutor-command-palette.png": { "surfaces": [6], "state": "UIUX Comparison.md with the 14-item Command Palette open", "bytes": 310729, "sha256": "sha256:827fb8ed1f3e51c3456c34320dd6a0846fc4d66c1d16dba5ef7dae2aa174ac57" },
@@ -73,6 +73,32 @@
       "tocktutor-web-viewer.png": { "surfaces": [24], "state": "Notes/Welcome.md with the isolated loopback Web Viewer fixture loaded", "bytes": 345463, "sha256": "sha256:89edbc49bd6aacc00eb663d8f8efc91fd4b97da6fd440a3fc0945063c42f1880" }
     },
     "verification": { "runtimeErrorsAtCapture": 0, "visibleStatesVerified": true, "cleanupVerified": true }
+  },
+  "polishRecapture": {
+    "capturedAt": "2026-09-10",
+    "captureRun": "tocktutor-reading-polish-refresh-vXCHpq",
+    "captureCommit": "tutor@9c9daa43",
+    "captureMethod": "bounded Playwright browser session attached over app-scoped Electron CDP",
+    "fixture": "temporary copy of plugins/tocktutor/parity/fixtures/vault",
+    "temporaryProfile": true,
+    "temporaryVault": true,
+    "physicalAutomation": false,
+    "geometry": {
+      "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+      "pixels": { "width": 3024, "height": 1898 }
+    },
+    "theme": { "themePreference": "dark", "activeSkin": null },
+    "route": "/tocktutor/Notes/Welcome.md",
+    "mode": "reading",
+    "checkedFavorite": { "background": "#a68af9", "checkmark": "#000000" },
+    "tabCurvePx": 10,
+    "localImageCount": 1,
+    "screenshot": {
+      "path": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
+      "bytes": 215618,
+      "sha256": "sha256:377492904722b2d286557a5007c7edb3eabdf4ca570c938a1758b96c2e5aef40"
+    },
+    "verification": { "runtimeErrorsAtCapture": 0, "cleanupVerified": true }
   },
   "graphs": {
     "fixture": {
@@ -309,7 +335,7 @@
       "sameNormalizedFixture": true,
       "explicitEquality": "tracked.bytes === copied.bytes && tracked.sha256 === copied.sha256"
     },
-    "sourceRevision": "tutor@f3e01944",
+    "sourceRevision": "tutor@9c9daa43",
     "viewport": {
       "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
       "pixels": { "width": 3024, "height": 1898 }
@@ -317,10 +343,10 @@
     "tockTutor": {
       "path": "Notes/Welcome.md",
       "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "screenshotBytes": 283790,
-      "screenshotSha256": "sha256:e407f5bf4a8c1468911350f6213f6fdd8bb40dc9140919fef55a4eafed9575fc",
+      "screenshotBytes": 215618,
+      "screenshotSha256": "sha256:377492904722b2d286557a5007c7edb3eabdf4ca570c938a1758b96c2e5aef40",
       "captureMethod": "bounded Playwright browser session attached over app-scoped Electron CDP",
-      "captureCommit": "tutor@9bdae74e",
+      "captureCommit": "tutor@9c9daa43",
       "captureState": "fresh isolated fixture captured before New Note creation",
       "copiedVaultIdentity": "TockTutor Parity Fixture",
       "sameIsolatedFixture": true,
@@ -419,8 +445,8 @@
       "captureCommit": "tutor@9bdae74e",
       "copiedVaultIdentity": "TockTutor Parity Fixture",
       "readingScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "readingScreenshotBytes": 283790,
-      "readingScreenshotSha256": "sha256:e407f5bf4a8c1468911350f6213f6fdd8bb40dc9140919fef55a4eafed9575fc",
+      "readingScreenshotBytes": 215618,
+      "readingScreenshotSha256": "sha256:377492904722b2d286557a5007c7edb3eabdf4ca570c938a1758b96c2e5aef40",
       "copiedVaultIdentity": "TockTutor Parity Fixture",
       "activePath": "Notes/Welcome.md",
       "resolvedEmbedCount": 1,
@@ -497,8 +523,9 @@
         "treePaths": ["Notes/Welcome.md", "Imports/Imported.md", "Notes/Alias Target.md"],
         "containsGeneratedUntitled": false,
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-        "screenshotBytes": 283790,
-        "screenshotSha256": "sha256:e407f5bf4a8c1468911350f6213f6fdd8bb40dc9140919fef55a4eafed9575fc"
+        "captureRun": "tocktutor-reading-polish-refresh-vXCHpq",
+        "screenshotBytes": 215618,
+        "screenshotSha256": "sha256:377492904722b2d286557a5007c7edb3eabdf4ca570c938a1758b96c2e5aef40"
       },
       "postCreate": {
         "createdPath": "Notes/Untitled.md",
@@ -606,7 +633,7 @@
         "reason": "Obsidian has no captured Attachments utility panel; retain this panel as additional evidence and compare the genuine Reading embed pair separately.",
         "readingPair": {
           "comparability": "genuine",
-          "tockTutor": { "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png", "bytes": 283790, "sha256": "sha256:e407f5bf4a8c1468911350f6213f6fdd8bb40dc9140919fef55a4eafed9575fc" },
+          "tockTutor": { "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png", "bytes": 215618, "sha256": "sha256:377492904722b2d286557a5007c7edb3eabdf4ca570c938a1758b96c2e5aef40" },
           "obsidian": { "screenshot": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png", "bytes": 182314, "sha256": "sha256:c83fcb60931f84631732d2e42b0a2a8f83dc259bd7201b6a2e49a715b3d6e74a" }
         }
       }
