@@ -1,0 +1,184 @@
+{
+  "at": "2026-09-10T01:51:47.550Z",
+  "method": "Independent inspector; read-only no-follow held descriptors through validation and final metadata/path checks; no selector import or candidate evaluation",
+  "parents": [
+    {
+      "path": "/",
+      "dev": "16777233",
+      "ino": "2",
+      "mode": "16877",
+      "uid": "0",
+      "gid": "0",
+      "nlink": "22",
+      "size": "704",
+      "mtimeNs": "1786589515000000000",
+      "ctimeNs": "1786589515000000000",
+      "identityUnchanged": true
+    },
+    {
+      "path": "/private",
+      "dev": "16777233",
+      "ino": "1476425",
+      "mode": "16877",
+      "uid": "0",
+      "gid": "0",
+      "nlink": "6",
+      "size": "192",
+      "mtimeNs": "1788625675502231874",
+      "ctimeNs": "1788625675502231874",
+      "identityUnchanged": true
+    },
+    {
+      "path": "/private/tmp",
+      "dev": "16777233",
+      "ino": "63764231",
+      "mode": "17407",
+      "uid": "0",
+      "gid": "0",
+      "nlink": "1586",
+      "size": "50752",
+      "mtimeNs": "1789005095820842780",
+      "ctimeNs": "1789005095820842780",
+      "identityUnchanged": true
+    }
+  ],
+  "capsule": {
+    "path": "/private/tmp/tockteam-can-i-use-inert-capsule-r1.noindex",
+    "dev": "16777233",
+    "ino": "140922638",
+    "mode": "33152",
+    "uid": "501",
+    "gid": "0",
+    "nlink": "1",
+    "size": "11301166",
+    "mtimeNs": "1789004992664205441",
+    "ctimeNs": "1789004992664205441",
+    "sha256": "09a21a4f83e27fe07d4b71ac5b8e531ac1fb8f4713ca0f7305b8cf07d5d49035",
+    "schemaVersion": 1,
+    "kind": "can-i-use-inert-assets",
+    "status": "complete",
+    "source": {
+      "fixtureSha256": "3e2e16d1b9764f9df605f666c590e5ac86997259a5b480a75e7a59dc680e2d55",
+      "generatorSha256": "f42b9935b3e3b2dc6b43ed6c5fe7a1a27ca03578add9b219da5f85afb35d2767",
+      "noticeSha256": "791f9758d274b29ee450352421702dd1b855790f2b2fe3416d7b90e6a9f95bc1",
+      "supplementSha256": "4afcc353b08ab365fb8464202aa58dd63653766fc7ffa03b5ae80475fe0bbe2a"
+    },
+    "runtimeAdmitted": false,
+    "canonical": true,
+    "receiptDigestMatched": true,
+    "decodedBytes": 8473611,
+    "entries": [
+      {
+        "path": "CAN_I_USE_ATTRIBUTION.md",
+        "bytes": 910,
+        "sha256": "791f9758d274b29ee450352421702dd1b855790f2b2fe3416d7b90e6a9f95bc1"
+      },
+      {
+        "path": "THIRD_PARTY_NOTICES.md",
+        "bytes": 3365,
+        "sha256": "34a64c8a2e2f82bff781800a546ec78502b4a2aed40aea56e239a42c48b7c068"
+      },
+      {
+        "path": "agents.json",
+        "bytes": 26939,
+        "sha256": "29dfea89783e681989119c42db3242672aeded5049afcd02a62fe909247771ca"
+      },
+      {
+        "path": "canonical-targets.json",
+        "bytes": 10202,
+        "sha256": "ff486a8af2f3d41d5cef835788cc82b4e2802757cd1c0aa3d93c0fc5e597bea9"
+      },
+      {
+        "path": "catalog.json",
+        "bytes": 70845,
+        "sha256": "03c6c8d744d920a56585a8315f8f390a9205f97692f1afb4d78155c97f78e3bb"
+      },
+      {
+        "path": "defaults.json",
+        "bytes": 806,
+        "sha256": "a9fb212d0916d2741a2c21611d9d7765f6dffb94b4bd91a95ab8707f0081739f"
+      },
+      {
+        "path": "licenses/baseline-browser-mapping.txt",
+        "bytes": 11357,
+        "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+      },
+      {
+        "path": "licenses/browserslist.txt",
+        "bytes": 1118,
+        "sha256": "f25bf9bf3ae8984bcd43bf7fb8f78e7eec8d577081fb8d0989cfa7c67ecebb8e"
+      },
+      {
+        "path": "licenses/caniuse-api.txt",
+        "bytes": 1084,
+        "sha256": "6dba40acdc8df5c99941018d203bc5507edfb0d99ad0f13c1fe365f8b564be0f"
+      },
+      {
+        "path": "licenses/caniuse-lite.txt",
+        "bytes": 18651,
+        "sha256": "fd3a263fe19ed8faa9068b43abaebafc02c77897b0c6fc09abc04bb592e5f16e"
+      },
+      {
+        "path": "licenses/electron-to-chromium.txt",
+        "bytes": 728,
+        "sha256": "25ba5c59dad3e0dd8f9540beaa0f0a86a10e3aec35af5fdc8e88c5f6a5c0d8c6"
+      },
+      {
+        "path": "licenses/node-releases.txt",
+        "bytes": 1107,
+        "sha256": "3706296ed611888111ceccc1dff4712844dea4bde0b185c82d718c3b69895abe"
+      },
+      {
+        "path": "licenses/raycast-extensions.txt",
+        "bytes": 1064,
+        "sha256": "7f727f8b20cdd0e65f84e70b9cac2fce337dcecee4dc88955eb012ea27f02755"
+      },
+      {
+        "path": "support.json",
+        "bytes": 8325435,
+        "sha256": "92dd73ad9440c7814d300c820d4376eee91407e02640d6efc80df29a478f351c"
+      }
+    ],
+    "counts": {
+      "entries": 14,
+      "defaults": 36,
+      "canonicalTargets": 649,
+      "features": 581,
+      "agents": 19,
+      "supportScopeAgents": 15,
+      "licenses": 7,
+      "supportFeatures": 581,
+      "statsFeatures": 581
+    }
+  },
+  "preserved": {
+    "r1": {
+      "path": "/private/tmp/tockteam-can-i-use-fixture-gate-r1.noindex",
+      "dev": "16777233",
+      "ino": "139928215",
+      "mode": "33152",
+      "uid": "501",
+      "gid": "0",
+      "nlink": "1",
+      "size": "248",
+      "mtimeNs": "1788990840813333603",
+      "ctimeNs": "1788990840813333603",
+      "sha256": "3236c3f254ab2aec74aa09103eba653511422c6d6db9e71f75ef8480e845500a"
+    },
+    "r2": {
+      "path": "/private/tmp/tockteam-can-i-use-fixture-gate-r2.noindex",
+      "dev": "16777233",
+      "ino": "140171023",
+      "mode": "33152",
+      "uid": "501",
+      "gid": "0",
+      "nlink": "1",
+      "size": "27679242",
+      "mtimeNs": "1788991950710443205",
+      "ctimeNs": "1788991950710443205",
+      "sha256": "3e2e16d1b9764f9df605f666c590e5ac86997259a5b480a75e7a59dc680e2d55"
+    }
+  },
+  "runtimeAdmitted": false,
+  "packageAdmitted": false
+}
