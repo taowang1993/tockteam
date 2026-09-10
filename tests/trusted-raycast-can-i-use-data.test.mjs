@@ -143,6 +143,24 @@ test('support retains fixed scope while detail omits only Opera Mini and exposes
   assert.deepEqual(data.support(id(),'firefox 1').agents,data.support(id(),'chrome 1').agents)
 })
 
+test('source detail exposes only exact threshold release dates for the selected feature',()=>{
+  const input=fixture()
+  input.agents[3].release_date['1']=123456
+  const data=createTrustedRaycastCanIUseData(input)
+  const detail=data.sourceDetail(id())
+  assert.equal(detail.agents.length,14)
+  assert.deepEqual(detail.agents.map(({release_date,...row})=>row),data.detail(id()).agents)
+  assert.deepEqual(detail.agents.find(row=>row.browser==='chrome').release_date,{'1':123456})
+  for(const row of detail.agents) {
+    assert.ok(Object.keys(row.release_date).length<=3)
+    assert.ok(Object.keys(row.release_date).every(key=>['y','a','x'].some(flag=>row.flags[flag]!==null&&String(row.flags[flag])===key)))
+  }
+  input.agents[3].release_date['1']=999
+  assert.deepEqual(data.sourceDetail(id()),detail)
+  frozen(detail)
+  unavailable(()=>data.sourceDetail({slug:'feature-0',sourceIndex:1}))
+})
+
 test('raw notes, nonnumeric buckets and three-component lower endpoints do not become exact-y support',()=>{
   const input=fixture()
   input.support.stats['feature-0'].android={'1':'n','4.4.3-4.4.4':'y x'}

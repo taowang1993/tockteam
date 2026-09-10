@@ -375,7 +375,7 @@ function sameAuthentication(action: StoredAction, authentication: TrustedRaycast
     && action.kind === authentication.kind
 }
 
-export { readContext as validateTrustedRaycastCanIUseContext }
+export { readContext as validateTrustedRaycastCanIUseContext, readDetailRows as validateTrustedRaycastCanIUseDetailRows }
 
 export class TrustedRaycastCanIUseActionRegistry {
   readonly #registryIdentity: number

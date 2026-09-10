@@ -213,7 +213,18 @@ export function createTrustedRaycastCanIUseData(input: unknown) {
       const selected = selectTrustedRaycastCanIUseAgentRows(agents.map(({ browser, label, sourceIndex }) => ({ browser, label, sourceIndex, hasSupport: SCOPE.includes(browser) })))
       return Object.freeze({ feature, status: statusBySlug[feature.slug]!.status, agents: Object.freeze(selected.map(row => rows.find(candidate => candidate.browser === row.browser)!)) })
     }
+    // Host-only, selected-feature source input. Preserve exact numeric-key lookup semantics;
+    // do not expose the complete version/date tables or synthesize dates for version ranges.
+    const sourceDetail = (value: unknown) => {
+      const selected = detail(value)
+      return Object.freeze({ ...selected, agents: Object.freeze(selected.agents.map(row => {
+        const dates = agents[row.sourceIndex]!.release_date
+        const keys = [row.flags.y, row.flags.a, row.flags.x].filter(version => version !== null).map(String)
+        const release_date = Object.freeze(Object.fromEntries(keys.filter(key => Object.hasOwn(dates, key)).map(key => [key, dates[key] as number | null])))
+        return Object.freeze({ ...row, release_date })
+      })) })
+    }
     // Host-only membership for exact-query preparation; never send the full collection to the child.
-    return Object.freeze({ catalog, statusBySlug, canonicalTargets, defaultTargets, rootTargets, support, detail })
+    return Object.freeze({ catalog, statusBySlug, canonicalTargets, defaultTargets, rootTargets, support, detail, sourceDetail })
   } catch { return fail() }
 }
