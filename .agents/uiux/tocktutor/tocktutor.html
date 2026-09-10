@@ -127,7 +127,7 @@
 <body>
   <header class="page-header">
     <div class="header-inner">
-      <p class="eyebrow">Visual Design Audit · 50 Captures</p>
+      <p class="eyebrow">Visual Design Audit · 51 Captures</p>
       <h1>TockTutor and Obsidian</h1>
       <p class="intro">A surface-by-surface comparison using the standard capture geometry. TockTutor appears on the left and the installed Obsidian 1.13.7 reference appears on the right where the states are genuinely comparable; approximate equivalents are labeled as closest references. Each capture uses the fixture named in its proof: the <a href="shared-note.md">shared Markdown fixture</a> where noted, or the matching <a href="../../../plugins/tocktutor/parity/fixtures/vault/">parity fixture files</a> for Source, Reading View, Recovery, and Attachments and Embeds. Click any screenshot to inspect its full-resolution pixels.</p>
       <div class="capture-standard">1512 × 949 CSS pixels · 2× scale · 3024 × 1898 output · Built-in Dark Theme · No Active Skin</div>
@@ -137,12 +137,21 @@
         <span class="gap">No Direct Reference</span>
       </div>
       <nav class="toc" aria-label="Surface index">
-        <a href="#workspace">Workspace</a><a href="#reading">Reading</a><a href="#live-preview">Live Preview</a><a href="#source">Source</a><a href="#note-actions">Note Actions</a><a href="#command-palette">Commands</a><a href="#new-note">New Note</a><a href="#search">Search</a><a href="#recovery">Recovery</a><a href="#properties">Properties</a><a href="#backlinks">Backlinks</a><a href="#tags">Tags</a><a href="#bookmarks">Bookmarks</a><a href="#graph">Graph</a><a href="#attachments">Attachments</a><a href="#note-tools">Note Tools</a><a href="#workspaces">Panes</a><a href="#vault">Vault</a><a href="#settings">Settings</a><a href="#marketplace">Marketplace</a><a href="#assistant">Assistant</a><a href="#reviews">Reviews</a><a href="#base">Base</a><a href="#canvas">Canvas</a><a href="#web-viewer">Web Viewer</a>
+        <a href="#polish">Polish Check</a><a href="#workspace">Workspace</a><a href="#reading">Reading</a><a href="#live-preview">Live Preview</a><a href="#source">Source</a><a href="#note-actions">Note Actions</a><a href="#command-palette">Commands</a><a href="#new-note">New Note</a><a href="#search">Search</a><a href="#recovery">Recovery</a><a href="#properties">Properties</a><a href="#backlinks">Backlinks</a><a href="#tags">Tags</a><a href="#bookmarks">Bookmarks</a><a href="#graph">Graph</a><a href="#attachments">Attachments</a><a href="#note-tools">Note Tools</a><a href="#workspaces">Panes</a><a href="#vault">Vault</a><a href="#settings">Settings</a><a href="#marketplace">Marketplace</a><a href="#assistant">Assistant</a><a href="#reviews">Reviews</a><a href="#base">Base</a><a href="#canvas">Canvas</a><a href="#web-viewer">Web Viewer</a>
       </nav>
     </div>
   </header>
 
   <main>
+    <section class="surface" id="polish">
+      <p class="section-number">Focused Check</p><h2>Checkbox and Tab Polish</h2><p class="section-note">Targeted verification of the selected favorite property and the active tab’s softened bottom corners.</p>
+      <p class="fixture-proof"><strong>Capture Proof:</strong> the current <code>TockTutorRouteView</code> source rendered in a bounded component harness with Reading View active, <code>favorite: true</code>, and <code>Welcome.md</code> selected. Capture geometry is 1512 × 949 CSS pixels at 2× scale (3024 × 1898 output); the browser reported zero runtime errors. This focused check is separate from the parity-fixture evidence below.</p>
+      <div class="comparison">
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Checkbox and Tab Polish</span><span class="badge">Focused Verification</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-checkbox-tab-polish.png"><img src="screenshots/tocktutor-checkbox-tab-polish.png" alt="TockTutor selected favorite checkbox and softened active tab corners"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Tab Shape</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-reading-view.png"><img src="screenshots/obsidian-reading-view.png" alt="Obsidian Reading View tab shape reference"></a></figure>
+      </div>
+    </section>
+
     <section class="surface" id="workspace">
       <p class="section-number">Surface 01</p><h2>Main Workspace</h2><p class="section-note">Primary navigation, file tree, document canvas, tabs, and utility-panel composition.</p>
       <div class="comparison">

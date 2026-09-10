@@ -23,11 +23,14 @@ const imageSources = [...gallery.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(m
 const screenshotLinks = [...gallery.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]!)
 
 test('keeps the TockTutor gallery capture count and screenshot links honest', () => {
-  assert.match(gallery, /Visual Design Audit · 50 Captures/u)
+  assert.match(gallery, /Visual Design Audit · 51 Captures/u)
   assert.match(gallery, /Built-in Dark Theme · No Active Skin/u)
   assert.match(gallery, /href="shared-note\.md"/u)
   assert.match(gallery, /href="\.\.\/\.\.\/\.\.\/plugins\/tocktutor\/parity\/fixtures\/vault\/"/u)
-  assert.equal(new Set(imageSources).size, 50)
+  assert.equal(new Set(imageSources).size, 51)
+  assert.match(gallery, /id="polish"[\s\S]*?screenshots\/tocktutor-checkbox-tab-polish\.png/u)
+  const polishCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-checkbox-tab-polish.png'))
+  assert.deepEqual({ width: polishCapture.readUInt32BE(16), height: polishCapture.readUInt32BE(20) }, { width: 3024, height: 1898 })
   assert.equal([...gallery.matchAll(/<span class="badge">Not Applicable<\/span>/gu)].length, 2)
   assert.match(gallery, /id="assistant"[\s\S]*?<span class="badge">Not Applicable<\/span>/u)
   assert.match(gallery, /id="reviews"[\s\S]*?<span class="badge">Not Applicable<\/span>/u)
