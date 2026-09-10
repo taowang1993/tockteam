@@ -32,12 +32,19 @@ function fixture() {
   ])
   for(const path of selector.ASSET_PATHS)if(path!=='CAN_I_USE_ATTRIBUTION.md'&&!files.has(path))files.set(path,Buffer.from('Synthetic legal text: '+path+'\n'))
   const notice=Buffer.from('Synthetic approved notice\n'), generatorSha256=selector.sha(Buffer.from('synthetic generator'))
-  const moduleManifest=Array.from({length:599},(_,i)=>{const id='pkg/m'+i+'.js',bytes=Buffer.from('Inert synthetic bytes '+i);return{id,bytes:bytes.length,sha256:selector.sha(bytes),kind:'executed-if-loaded-js'}}).sort((a,b)=>a.id<b.id?-1:1)
-  const treeFiles=new Map(moduleManifest.map(row=>['extracted/'+row.id,Buffer.from('Inert synthetic bytes '+Number(row.id.match(/m(\d+)/)[1]))]))
+  const moduleFiles=new Map(Array.from({length:599},(_,i)=>[i===0?'browserslist/index.js':i===1?'node-releases/envs.json':'pkg/m'+i+'.js',Buffer.from(i===1?'[]':'Inert synthetic bytes '+i)]))
+  const moduleManifest=[...moduleFiles].map(([id,bytes])=>({id,bytes:bytes.length,sha256:selector.sha(bytes),kind:id.endsWith('.json')?'json-data':'executed-if-loaded-js'})).sort((a,b)=>a.id<b.id?-1:1)
+  const treeFiles=new Map([...moduleFiles].map(([id,bytes])=>['extracted/'+id,bytes]))
   for(const [path,bytes] of files)treeFiles.set('output/'+path,bytes)
-  treeFiles.set('output/provenance.json',selector.canonicalJson({generatorSha256,moduleManifest}))
-  treeFiles.set('output/module-trace.json',selector.canonicalJson({loads:moduleManifest.map(row=>row.id),requests:Array.from({length:600},()=>[]),denials:[],configCalls:0}))
+  const ids=moduleManifest.map(row=>row.id)
+  const graph=Object.fromEntries(ids.map((id,index)=>[id,id.endsWith('.json')?{}:{'./next':ids[(index+1)%ids.length]}]))
+  graph['browserslist/index.js'].path='@denied-path'
+  const requests=Object.entries(graph).flatMap(([id,edges])=>Object.entries(edges).map(([spec,target])=>[id,spec,target]))
+  requests.push([...requests[0]])
+  treeFiles.set('output/module-trace.json',selector.canonicalJson({loads:ids,requests,denials:[],configCalls:0}))
   treeFiles.set('output/adaptation-source/caniuse-api-utils.js.txt',Buffer.from('Inert synthetic adaptation evidence'))
+  const outputs=[...treeFiles].filter(([path])=>path.startsWith('output/')).map(([path,bytes])=>({path:path.slice(7),bytes:bytes.length,sha256:selector.sha(bytes)}))
+  treeFiles.set('output/provenance.json',selector.canonicalJson({schemaVersion:1,node:'v24.20.0',generatorSha256,epoch:1777030995000,sourceCommit:'186d955eda64f9e956b25a3fdf5566b1d38f57f2',sourceArtifactSha256:'cd79b55c49f36836970b56d9f7ecef39f89a4855bb5d20aca5576299edb2837c',archives:selector.PROVENANCE_ARCHIVES,moduleManifest,graph,outputs,adaptation:'caniuse-api UI support flags only; no candidate command execution',runtimeAdmitted:false}))
   const tree=selector.logicalTree(treeFiles)
   const envelope=selector.canonicalJson(selector.evidenceEnvelope(generatorSha256,{first:tree,second:structuredClone(tree)}))
   const fixtureSha256=selector.sha(envelope)
@@ -46,9 +53,14 @@ function fixture() {
   return {envelope,notice,supplement,pins}
 }
 
-function reseal(input, change) {
+function reseal(input, change, refreshOutputs=true) {
   const value=JSON.parse(input.envelope), files=new Map(value.trees.first.map(row=>[row.path,Buffer.from(row.base64,'base64')]))
   change(files)
+  if(refreshOutputs){
+    const provenance=JSON.parse(files.get('output/provenance.json'))
+    provenance.outputs=[...files].filter(([path])=>path.startsWith('output/')&&path!=='output/provenance.json').map(([path,bytes])=>({path:path.slice(7),bytes:bytes.length,sha256:selector.sha(bytes)}))
+    files.set('output/provenance.json',selector.canonicalJson(provenance))
+  }
   const tree=selector.logicalTree(files), envelope=selector.canonicalJson(selector.evidenceEnvelope(input.pins.generatorSha256,{first:tree,second:structuredClone(tree)}))
   const fixtureSha256=selector.sha(envelope), supplementValue=JSON.parse(input.supplement)
   supplementValue.fixture.sha256=fixtureSha256
@@ -124,6 +136,67 @@ test('resealed synthetic sources still reject unlisted paths, invalid datasets, 
   const input=fixture(), value=JSON.parse(input.supplement);value.runtimeAdmitted=true
   const supplement=selector.canonicalJson(value),pins={...input.pins,supplementSha256:selector.sha(supplement),supplementBytes:supplement.length}
   assert.throws(()=>selector.selectInertAssets(input.envelope,supplement,input.notice,pins),/SUPPLEMENT_BINDING/)
+})
+
+test('comma-key and empty-key collisions cannot masquerade as schema fields or tree names',()=>{
+  for(const trees of [{'first,second':[]},{'':[]}]){
+    const value={schemaVersion:2,generatorSha256:'0'.repeat(64),runtimeAdmitted:false,status:'failed',trees,failure:{message:'synthetic failure',trace:null}}
+    const bytes=selector.canonicalJson(value)
+    assert.throws(()=>selector.verifyEnvelopeBytes(bytes,bytes),/ENVELOPE_TREES/)
+  }
+  const input=fixture(),value=JSON.parse(selector.selectInertAssets(input.envelope,input.supplement,input.notice,input.pins))
+  delete value.schemaVersion;delete value.source;value['schemaVersion,source']={}
+  assert.throws(()=>selector.validateInertCapsule(value,input.pins),/ENVELOPE_SCHEMA/)
+})
+
+test('source provenance has exact fields and fixed scalar/archive identities',()=>{
+  for(const mutate of [
+    value=>value.extra=true,value=>delete value.graph,value=>value.schemaVersion=2,value=>value.node='v99.0.0',
+    value=>value.epoch++,value=>value.sourceCommit='0'.repeat(40),value=>value.sourceArtifactSha256='0'.repeat(64),
+    value=>value.runtimeAdmitted=true,value=>value.adaptation='different',value=>value.archives[0].sha256='0'.repeat(64),
+    value=>value.archives[0].extra=true,value=>value.archives.reverse(),
+  ]){
+    const input=reseal(fixture(),files=>{const value=JSON.parse(files.get('output/provenance.json'));mutate(value);files.set('output/provenance.json',selector.canonicalJson(value))},false)
+    assert.throws(()=>selector.selectInertAssets(input.envelope,input.supplement,input.notice,input.pins),/ENVELOPE_SCHEMA|SOURCE_PROVENANCE/)
+  }
+})
+
+test('source graph rejects missing nodes, malformed edges and unknown or misplaced targets',()=>{
+  for(const mutate of [
+    graph=>delete graph[Object.keys(graph)[0]],graph=>graph.unlisted={},
+    graph=>graph[Object.keys(graph)[0]]=[],graph=>graph[Object.keys(graph)[0]]['./next']=null,
+    graph=>graph[Object.keys(graph)[0]]['./next']='unlisted/module.js',
+    graph=>graph[Object.keys(graph)[0]]['./next']='@denied-path',
+    graph=>graph['pkg/m2.js'].path='@denied-path',
+    graph=>graph['node-releases/envs.json'].edge=Object.keys(graph)[0],
+    graph=>graph[Object.keys(graph)[0]]['']=Object.keys(graph)[0],
+  ]){
+    const input=reseal(fixture(),files=>{const value=JSON.parse(files.get('output/provenance.json'));mutate(value.graph);files.set('output/provenance.json',selector.canonicalJson(value))})
+    assert.throws(()=>selector.selectInertAssets(input.envelope,input.supplement,input.notice,input.pins),/ENVELOPE_SCHEMA|SOURCE_GRAPH/)
+  }
+})
+
+test('source output descriptors are an exact unique binding to every non-provenance output',()=>{
+  for(const mutate of [
+    rows=>rows.pop(),rows=>rows.push(rows[0]),rows=>rows[0]=rows[1],rows=>rows[0].path='provenance.json',
+    rows=>rows[0].path='unlisted.json',rows=>rows[0].bytes++,rows=>rows[0].sha256='0'.repeat(64),rows=>rows[0].extra=true,
+  ]){
+    const input=reseal(fixture(),files=>{const value=JSON.parse(files.get('output/provenance.json'));mutate(value.outputs);files.set('output/provenance.json',selector.canonicalJson(value))},false)
+    assert.throws(()=>selector.selectInertAssets(input.envelope,input.supplement,input.notice,input.pins),/ENVELOPE_SCHEMA|SOURCE_OUTPUTS/)
+  }
+})
+
+test('source request tuples must name an own graph edge and its exact authorized target',()=>{
+  for(const mutate of [
+    tuple=>[],tuple=>tuple.slice(0,2),tuple=>[...tuple,'extra'],tuple=>({0:tuple[0],1:tuple[1],2:tuple[2]}),
+    tuple=>[0,tuple[1],tuple[2]],tuple=>[tuple[0],null,tuple[2]],tuple=>[tuple[0],tuple[1],0],
+    tuple=>['unlisted/module.js',tuple[1],tuple[2]],tuple=>[tuple[0],'absent-edge',tuple[2]],
+    tuple=>[tuple[0],'toString',tuple[2]],tuple=>[tuple[0],tuple[1],tuple[0]],
+    tuple=>[tuple[0],tuple[1],'unlisted/module.js'],tuple=>[tuple[0],tuple[1],'@denied-path'],
+  ]){
+    const input=reseal(fixture(),files=>{const value=JSON.parse(files.get('output/module-trace.json'));value.requests[0]=mutate(value.requests[0]);files.set('output/module-trace.json',selector.canonicalJson(value))})
+    assert.throws(()=>selector.selectInertAssets(input.envelope,input.supplement,input.notice,input.pins),/SOURCE_REQUEST/)
+  }
 })
 
 test('held descriptor publishes capsule with full readback; partial I/O succeeds without reopening and cannot repeat',()=>temp((path,open)=>{

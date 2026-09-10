@@ -56,7 +56,7 @@ export function validateData(data) {
 
 const MAX_ENVELOPE = 3 * MAX_OUTPUT
 const treeManifest = tree => tree.map(({path, bytes, sha256}) => ({path, bytes, sha256}))
-const exactKeys = (value, keys) => demand(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).sort().join(',') === [...keys].sort().join(','), 'ENVELOPE_SCHEMA')
+const exactKeys = (value, keys) => demand(value && typeof value === 'object' && !Array.isArray(value) && Reflect.ownKeys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key)), 'ENVELOPE_SCHEMA')
 
 function validateTree(tree) {
   demand(Array.isArray(tree) && tree.length <= 2048, 'TREE_BOUND')
@@ -89,11 +89,11 @@ function validateEnvelope(value) {
   exactKeys(value, ['schemaVersion', 'generatorSha256', 'runtimeAdmitted', 'status', 'trees', value.status === 'complete' ? 'proof' : 'failure'])
   demand(value.schemaVersion === 2 && typeof value.generatorSha256 === 'string' && /^[0-9a-f]{64}$/.test(value.generatorSha256) && value.runtimeAdmitted === false, 'ENVELOPE_SCHEMA')
   demand(value.trees && typeof value.trees === 'object' && !Array.isArray(value.trees), 'ENVELOPE_TREES')
-  const names = Object.keys(value.trees).sort()
-  demand(['', 'first', 'first,second'].includes(names.join(',')), 'ENVELOPE_TREES')
+  const names = Reflect.ownKeys(value.trees)
+  demand(names.length === 0 || (names.length === 1 && Object.hasOwn(value.trees, 'first')) || (names.length === 2 && Object.hasOwn(value.trees, 'first') && Object.hasOwn(value.trees, 'second')), 'ENVELOPE_TREES')
   for (const tree of Object.values(value.trees)) validateTree(tree)
   if (value.status === 'complete') {
-    demand(names.join(',') === 'first,second', 'ENVELOPE_TREES')
+    demand(names.length === 2 && Object.hasOwn(value.trees, 'first') && Object.hasOwn(value.trees, 'second'), 'ENVELOPE_TREES')
     demand(canonicalJson(value.trees.first).equals(canonicalJson(value.trees.second)), 'REPRODUCIBILITY')
     exactKeys(value.proof, ['twiceIdentical', 'treeManifest', 'treeSha256'])
     demand(value.proof.twiceIdentical === true && canonicalJson(value.proof.treeManifest).equals(canonicalJson(treeManifest(value.trees.first))) && value.proof.treeSha256 === sha(canonicalJson(value.trees.first)), 'ENVELOPE_PROOF')
@@ -204,6 +204,14 @@ export const REAL_OUTPUT = '/private/tmp/tockteam-can-i-use-inert-capsule-r1.noi
 const SUPPLEMENT_ROOT = new URL('../.beads/reports/2026-09-09-can-i-use-attribution-supplement/', import.meta.url)
 const EPOCH = 1777030995000
 const SELECTORS = ['> 0.5%', 'last 2 versions', 'Firefox ESR', 'not dead']
+export const PROVENANCE_ARCHIVES = Object.freeze([
+  ['browserslist', '4.28.1', '2e3c9b9e665358cd2e9a8f1fa6a0475645ba63251b93c762d3064323a5451dd5'],
+  ['caniuse-lite', '1.0.30001761', 'dad057386ae3d0178226ca938355312c16e94b6680627ec297ce1b1dcf55e2d1'],
+  ['baseline-browser-mapping', '2.9.11', 'f50e29a47036f22f9895de65f75172010d6b886ba4c10059d118529188a178ca'],
+  ['electron-to-chromium', '1.5.267', 'a8e9df057647f51b7a731177921184cee326f95108bf1904f4db6e30d3c9f61a'],
+  ['node-releases', '2.0.27', '7ba0a43673e36ffb18211bea5dec9a5ba1356e39417d81fa5d7468f78d1b5a85'],
+  ['caniuse-api', '3.0.0', 'b85f2ba18f0ea60eb433d075ff139674201e428d2658e1eaf2bcc63c817d674d'],
+].map(([name, version, sha256]) => Object.freeze({name, version, sha256})))
 const asset = (path, bytes, sha256) => Object.freeze({path, bytes, sha256})
 const ASSETS = Object.freeze([
   asset('defaults.json', 806, 'a9fb212d0916d2741a2c21611d9d7765f6dffb94b4bd91a95ab8707f0081739f'),
@@ -291,6 +299,8 @@ export function selectInertAssets(envelopeBytes, supplementBytes, noticeBytes, p
   const sourceOutputs = new Set([...ASSET_PATHS.filter(path => path !== 'CAN_I_USE_ATTRIBUTION.md').map(path => 'output/' + path), 'output/provenance.json', 'output/module-trace.json', 'output/adaptation-source/caniuse-api-utils.js.txt'])
   demand([...rows.keys()].filter(path => path.startsWith('output/')).length === 16 && [...sourceOutputs].every(path => rows.has(path)), 'SOURCE_PATHS')
   const provenance = parseCanonical(content('output/provenance.json'))
+  exactKeys(provenance, ['schemaVersion', 'node', 'generatorSha256', 'epoch', 'sourceCommit', 'sourceArtifactSha256', 'archives', 'moduleManifest', 'graph', 'outputs', 'adaptation', 'runtimeAdmitted'])
+  demand(provenance.schemaVersion === 1 && provenance.node === 'v24.20.0' && provenance.epoch === EPOCH && provenance.sourceCommit === '186d955eda64f9e956b25a3fdf5566b1d38f57f2' && provenance.sourceArtifactSha256 === 'cd79b55c49f36836970b56d9f7ecef39f89a4855bb5d20aca5576299edb2837c' && provenance.adaptation === 'caniuse-api UI support flags only; no candidate command execution' && provenance.runtimeAdmitted === false && canonicalJson(provenance.archives).equals(canonicalJson(PROVENANCE_ARCHIVES)), 'SOURCE_PROVENANCE')
   demand(provenance.generatorSha256 === pins.generatorSha256 && Array.isArray(provenance.moduleManifest) && provenance.moduleManifest.length === 599 && sha(canonicalJson(provenance.moduleManifest)) === pins.moduleManifestSha256, 'MODULE_MANIFEST')
   const ids = new Set()
   for (const module of provenance.moduleManifest) {
@@ -299,9 +309,31 @@ export function selectInertAssets(envelopeBytes, supplementBytes, noticeBytes, p
     demand(!ids.has(module.id) && row && row.bytes === module.bytes && row.sha256 === module.sha256 && ['json-data', 'executed-if-loaded-js'].includes(module.kind), 'MODULE_MANIFEST')
     ids.add(module.id)
   }
+  exactKeys(provenance.graph, [...ids])
+  for (const [id, edges] of Object.entries(provenance.graph)) {
+    demand(edges && typeof edges === 'object' && !Array.isArray(edges), 'SOURCE_GRAPH')
+    demand(!id.endsWith('.json') || Object.keys(edges).length === 0, 'SOURCE_GRAPH')
+    for (const [spec, target] of Object.entries(edges)) {
+      demand(/^[A-Za-z0-9@_./-]{1,256}$/.test(spec) && typeof target === 'string' && (ids.has(target) || (target === '@denied-path' && id === 'browserslist/index.js' && spec === 'path')), 'SOURCE_GRAPH')
+    }
+  }
+  demand(Array.isArray(provenance.outputs) && provenance.outputs.length === 15, 'SOURCE_OUTPUTS')
+  const outputNames = new Set()
+  for (const output of provenance.outputs) {
+    exactKeys(output, ['path', 'bytes', 'sha256'])
+    demand(typeof output.path === 'string' && output.path !== 'provenance.json' && sourceOutputs.has('output/' + output.path) && !outputNames.has(output.path), 'SOURCE_OUTPUTS')
+    const row = rows.get('output/' + output.path)
+    demand(row.bytes === output.bytes && row.sha256 === output.sha256, 'SOURCE_OUTPUTS')
+    outputNames.add(output.path)
+  }
   const trace = parseCanonical(content('output/module-trace.json'))
   exactKeys(trace, ['loads', 'requests', 'denials', 'configCalls'])
   demand(Array.isArray(trace.loads) && trace.loads.length === 599 && new Set(trace.loads).size === 599 && trace.loads.every(id => ids.has(id)) && Array.isArray(trace.requests) && trace.requests.length === 600 && Array.isArray(trace.denials) && trace.denials.length === 0 && trace.configCalls === 0, 'SOURCE_TRACE')
+  for (const request of trace.requests) {
+    demand(Array.isArray(request) && request.length === 3 && request.every(value => typeof value === 'string'), 'SOURCE_REQUEST')
+    const [from, spec, target] = request
+    demand(ids.has(from) && Object.hasOwn(provenance.graph[from], spec) && provenance.graph[from][spec] === target && (ids.has(target) || (target === '@denied-path' && from === 'browserslist/index.js' && spec === 'path')), 'SOURCE_REQUEST')
+  }
   demand(Buffer.isBuffer(supplementBytes) && supplementBytes.length <= 128 * 1024, 'SUPPLEMENT_BOUND')
   pinnedBytes(supplementBytes, pins.supplementSha256, pins.supplementBytes, 'SUPPLEMENT_DIGEST')
   pinnedBytes(noticeBytes, pins.noticeSha256, pins.noticeBytes, 'NOTICE_DIGEST')
