@@ -76,10 +76,10 @@
   },
   "polishRecapture": {
     "capturedAt": "2026-09-10",
-    "captureRun": "tocktutor-reading-polish-refresh-vXCHpq",
-    "captureCommit": "tutor@9c9daa43",
+    "captureRun": "tocktutor-tag-tab-capture-NF19Ye",
+    "captureCommit": "tutor@f7c56a5e",
     "captureMethod": "bounded Playwright browser session attached over app-scoped Electron CDP",
-    "fixture": "temporary copy of plugins/tocktutor/parity/fixtures/vault",
+    "fixture": "temporary copy of plugins/tocktutor/parity/fixtures/vault with .agents/uiux/tocktutor/shared-note.md copied to Notes/Welcome.md and favorite: true added",
     "temporaryProfile": true,
     "temporaryVault": true,
     "physicalAutomation": false,
@@ -89,14 +89,14 @@
     },
     "theme": { "themePreference": "dark", "activeSkin": null },
     "route": "/tocktutor/Notes/Welcome.md",
-    "mode": "reading",
+    "mode": "live-preview",
     "checkedFavorite": { "background": "#a68af9", "checkmark": "#000000" },
-    "tabCurvePx": 10,
-    "localImageCount": 1,
+    "tagStyle": { "backgroundMixPercent": 10, "foregroundAccentMixPercent": 85, "resolvedForeground": "#b29bf9" },
+    "tabCurvePx": 16,
     "screenshot": {
-      "path": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png",
-      "bytes": 215618,
-      "sha256": "sha256:377492904722b2d286557a5007c7edb3eabdf4ca570c938a1758b96c2e5aef40"
+      "path": ".agents/uiux/tocktutor/screenshots/tocktutor-tag-tab-polish.png",
+      "bytes": 274670,
+      "sha256": "sha256:b867af32204163b0bf4521b81425b28fd8fa408cf4b74a0494242189a231df40"
     },
     "verification": { "runtimeErrorsAtCapture": 0, "cleanupVerified": true }
   },

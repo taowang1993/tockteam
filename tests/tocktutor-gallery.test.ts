@@ -13,6 +13,7 @@ const proof = JSON.parse(readFileSync(resolve('.beads/reports/tocktutor-utility-
     captureRun: string
     checkedFavorite: { background: string; checkmark: string }
     screenshot: { bytes: number; path: string; sha256: string }
+    tagStyle: { backgroundMixPercent: number; foregroundAccentMixPercent: number; resolvedForeground: string }
     tabCurvePx: number
     verification: { cleanupVerified: boolean; runtimeErrorsAtCapture: number }
   }
@@ -35,20 +36,21 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
   assert.match(gallery, /href="shared-note\.md"/u)
   assert.match(gallery, /href="\.\.\/\.\.\/\.\.\/plugins\/tocktutor\/parity\/fixtures\/vault\/"/u)
   assert.equal(new Set(imageSources).size, 51)
-  assert.match(gallery, /id="polish"[\s\S]*?screenshots\/tocktutor-checkbox-tab-polish\.png/u)
-  const polishCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-checkbox-tab-polish.png'))
+  assert.match(gallery, /id="polish"[\s\S]*?screenshots\/tocktutor-tag-tab-polish\.png/u)
+  const polishCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-tag-tab-polish.png'))
   assert.deepEqual({ width: polishCapture.readUInt32BE(16), height: polishCapture.readUInt32BE(20) }, { width: 3024, height: 1898 })
-  const readingCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-editor-reading.png'))
-  assert.deepEqual({ width: readingCapture.readUInt32BE(16), height: readingCapture.readUInt32BE(20) }, { width: 3024, height: 1898 })
-  assert.equal(createHash('sha256').update(polishCapture).digest('hex'), createHash('sha256').update(readingCapture).digest('hex'))
+  const livePreviewCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-editor-live-preview.png'))
+  assert.deepEqual({ width: livePreviewCapture.readUInt32BE(16), height: livePreviewCapture.readUInt32BE(20) }, { width: 3024, height: 1898 })
+  assert.equal(createHash('sha256').update(polishCapture).digest('hex'), createHash('sha256').update(livePreviewCapture).digest('hex'))
   assert.deepEqual({
     background: proof.polishRecapture?.checkedFavorite.background,
     checkmark: proof.polishRecapture?.checkedFavorite.checkmark,
+    tagStyle: proof.polishRecapture?.tagStyle,
     tabCurvePx: proof.polishRecapture?.tabCurvePx,
-  }, { background: '#a68af9', checkmark: '#000000', tabCurvePx: 10 })
-  assert.equal(proof.polishRecapture?.screenshot.path, '.agents/uiux/tocktutor/screenshots/tocktutor-editor-reading.png')
-  assert.equal(proof.polishRecapture?.screenshot.bytes, readingCapture.length)
-  assert.equal(proof.polishRecapture?.screenshot.sha256, `sha256:${createHash('sha256').update(readingCapture).digest('hex')}`)
+  }, { background: '#a68af9', checkmark: '#000000', tagStyle: { backgroundMixPercent: 10, foregroundAccentMixPercent: 85, resolvedForeground: '#b29bf9' }, tabCurvePx: 16 })
+  assert.equal(proof.polishRecapture?.screenshot.path, '.agents/uiux/tocktutor/screenshots/tocktutor-tag-tab-polish.png')
+  assert.equal(proof.polishRecapture?.screenshot.bytes, polishCapture.length)
+  assert.equal(proof.polishRecapture?.screenshot.sha256, `sha256:${createHash('sha256').update(polishCapture).digest('hex')}`)
   assert.deepEqual(proof.polishRecapture?.verification, { cleanupVerified: true, runtimeErrorsAtCapture: 0 })
   assert.equal([...gallery.matchAll(/<span class="badge">Not Applicable<\/span>/gu)].length, 2)
   assert.match(gallery, /id="assistant"[\s\S]*?<span class="badge">Not Applicable<\/span>/u)
