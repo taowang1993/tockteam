@@ -13,6 +13,7 @@ import { trustedRaycastCanIUseAliases } from '../scripts/trusted-raycast-can-i-u
 import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from '../src/trusted-raycast-artifact-admission.ts'
 import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
+import { inspectTrustedRaycastProjection } from '../src/trusted-raycast-contract.ts'
 import { decodeTrustedRaycastCanIUseData, TRUSTED_RAYCAST_CAN_I_USE_ASSET } from '../src/trusted-raycast-can-i-use-assets.ts'
 import { prepareTrustedRaycastCanIUseRoot } from '../src/trusted-raycast-can-i-use-command.ts'
 import { TrustedRaycastCanIUseActionRegistry } from '../src/trusted-raycast-can-i-use-actions.ts'
@@ -22,7 +23,8 @@ const repository = fileURLToPath(new URL('../', import.meta.url))
 const sha = (value: Uint8Array) => createHash('sha256').update(value).digest('hex')
 const sourcePin = 'cd79b55c49f36836970b56d9f7ecef39f89a4855bb5d20aca5576299edb2837c'
 
-test('unchanged pinned source renders main-selected roots in an isolated, bounded Node process', { timeout: 20000 }, async t => {
+for (const rejection of ['component', 'environment', 'replay', 'context', 'oversized', 'action'] as const) test(`unchanged pinned source renders main-selected roots through ${rejection === 'component' ? 'a component probe' : `the production reconciler (${rejection} rejection)`}`, { timeout: 20000 }, async t => {
+  const reconciled = rejection !== 'component'
   const sourcePath = join(repository, 'plugins/trusted-raycast/vendor/can-i-use-source.tar')
   const archive = readTrustedRaycastFile(sourcePath, 3246080)
   assert.equal(archive.length, 3246080)
@@ -36,7 +38,9 @@ test('unchanged pinned source renders main-selected roots in an isolated, bounde
     for (const input of [archive, reactArchive]) execFileSync('/usr/bin/tar', ['xf', '-', '-C', work], { input, timeout: 5000, env })
     symlinkSync(join(work, trustedRaycastDescriptors['google-translate'].artifactRoot, 'runtime/node_modules'), join(work, 'node_modules'))
     const entry = join(work, 'probe.ts')
-    writeFileSync(entry, `import Command from ${JSON.stringify(join(work, 'can-i-use/src/index.tsx'))};
+    writeFileSync(entry, reconciled ? readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8')
+      .replaceAll('/tmp/trusted-raycast-source/src/translate', join(work, 'can-i-use/src/index.tsx'))
+      .replaceAll('/tmp/trusted-raycast-source', join(work, 'can-i-use')) : `import Command from ${JSON.stringify(join(work, 'can-i-use/src/index.tsx'))};
 import { replaceTrustedRaycastCanIUseRoot, trustedRaycastCanIUseRootCounts } from ${JSON.stringify(join(repository, 'src/trusted-raycast-can-i-use-source.ts'))};
 function emit() {
   const view = Command();
@@ -53,15 +57,19 @@ process.stdin.on('end', () => process.exit(0));
 `, { flag: 'wx', mode: 0o600 })
     const probe = join(work, 'probe.mjs')
     const built = await build({ entryPoints: [entry], outfile: probe, bundle: true, packages: 'external', format: 'esm', platform: 'node', target: 'node24', jsx: 'automatic', metafile: true,
-      alias: { '@raycast/api': join(repository, 'src/trusted-raycast-compat-api.ts') }, plugins: [trustedRaycastCanIUseAliases()], logLevel: 'silent' })
+      alias: { '@raycast/api': join(repository, 'src/trusted-raycast-compat-api.ts'),
+        '@tockteam/trusted-raycast-child-contract': join(repository, 'src/trusted-raycast-contract.ts'),
+        '@tockteam/trusted-raycast-projection': join(repository, 'src/trusted-raycast-projection.ts'),
+        '@tockteam/trusted-raycast-can-i-use-source': join(repository, 'src/trusted-raycast-can-i-use-source.ts'),
+      }, plugins: [trustedRaycastCanIUseAliases()], logLevel: 'silent' })
     const imports = Object.values(built.metafile!.outputs).flatMap(output => output.imports.map(value => value.path))
-    assert.deepEqual([...new Set(imports)].sort(), ['react', 'react/jsx-runtime'])
+    assert.deepEqual([...new Set(imports)].sort(), reconciled ? ['react', 'react-reconciler', 'react/jsx-runtime'] : ['react', 'react/jsx-runtime'])
     const derivedSha = sha(readTrustedRaycastFile(probe))
     const registry = new TrustedRaycastCanIUseActionRegistry()
     const context = { extensionId: 'can-i-use', command: 'index', sessionId: 'source-proof', workspaceId: 'no-workspace', snapshotIdentity: TRUSTED_RAYCAST_CAN_I_USE_ASSET.sha256, snapshotGeneration: 0 }
     const preferences = { ...TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS, defaultQuery: 'chrome 100' }
     const root = prepareTrustedRaycastCanIUseRoot(data, preferences, context, registry, '')
-    child = spawn(process.execPath, [probe], { cwd: work, detached: true, env: { ...env, TRUSTED_RAYCAST_EXTENSION_ID: 'can-i-use', TRUSTED_RAYCAST_SESSION_ID: context.sessionId,
+    child = spawn(process.execPath, [probe], { cwd: work, detached: true, env: { ...env, TRUSTED_RAYCAST_EXTENSION_ID: 'can-i-use', TRUSTED_RAYCAST_SESSION_ID: context.sessionId, TRUSTED_RAYCAST_GENERATION: 'root-proof-generation',
       TRUSTED_RAYCAST_CAN_I_USE_CONTEXT: JSON.stringify(context), TRUSTED_RAYCAST_CAN_I_USE_ROOT: root.message, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(root.preferences) }, stdio: ['pipe', 'pipe', 'pipe'] })
     const messages: Array<{ rows: Array<{ title: string; slug: string; accessories: unknown[]; actions: string[] }>; visibleCount: number; matchCount: number; totalCount: number }> = []
     let pending = '', diagnostics = '', outputBytes = 0
@@ -76,7 +84,29 @@ process.stdin.on('end', () => process.exit(0));
       let end: number
       while ((end = pending.indexOf('\n')) >= 0) {
         const line = pending.slice(0, end); pending = pending.slice(end + 1)
-        try { messages.push(JSON.parse(line)) } catch { failure = new Error('Invalid source output') }
+        try {
+          const message = JSON.parse(line)
+          if (!reconciled) { messages.push(message); continue }
+          assert.equal(message.type, messages.length === 0 ? 'ready' : 'patch')
+          assert.equal(message.extensionId, 'can-i-use')
+          assert.equal(message.sessionId, context.sessionId)
+          assert.equal(message.generation, 'root-proof-generation')
+          assert.equal(message.revision, messages.length)
+          const metrics = inspectTrustedRaycastProjection(message.root)
+          assert.ok(metrics.itemNodes <= 64)
+          assert.ok(metrics.actionNodes <= 128)
+          assert.equal(metrics.actionableHandles, 0, 'root-only scope must not publish actionable source callbacks')
+          assert.ok(metrics.rootBytes <= 128 * 1024)
+          assert.equal(message.root.props.searchable, true)
+          assert.equal(message.root.props.querySequence, messages.length)
+          type Node = { type: string; props: Record<string, any>; children: Array<Node | string> }
+          const nodes = (node: Node): Node[] => [node, ...node.children.flatMap(child => typeof child === 'string' ? [] : nodes(child))]
+          const all = nodes(message.root)
+          assert.ok(all.filter(node => node.type === 'raycast-action').every(node => node.props.unavailable === true))
+          const rows = all.filter(node => node.type === 'raycast-list-item').map(node => ({ title: node.props.title,
+            slug: '', accessories: JSON.parse(node.props.accessories), actions: nodes(node).filter(child => child.type === 'raycast-action').map(child => child.props.title) }))
+          messages.push({ rows, ...message.root.props })
+        } catch (error) { failure = error instanceof Error ? error : new Error('Invalid source output') }
       }
     })
     const next = async (count: number) => {
@@ -93,35 +123,47 @@ process.stdin.on('end', () => process.exit(0));
     assert.equal(initial.rows.length, 64)
     assert.equal(initial.matchCount, 581)
     assert.equal(initial.totalCount, 581)
-    assert.deepEqual(initial.rows.map(row => row.slug), root.rows.map(row => row.slug))
+    assert.deepEqual(initial.rows.map(row => row.title), root.rows.map(row => row.title))
+    if (!reconciled) assert.deepEqual(initial.rows.map(row => row.slug), root.rows.map(row => row.slug))
     assert.ok(initial.rows.every(row => row.actions.join(',') === 'Show Details,Open in Browser'))
     const target = data.catalog.entries[500]!
-    assert.ok(!initial.rows.some(row => row.slug === target.slug))
+    assert.ok(!initial.rows.some(row => row.title === target.title))
     const found = prepareTrustedRaycastCanIUseRoot(data, preferences, context, registry, target.slug)
     child.stdin!.write(found.message + '\n')
-    assert.ok((await next(2)).rows.some(row => row.slug === target.slug && row.title === target.title))
+    assert.ok((await next(2)).rows.some(row => row.title === target.title))
     child.stdin!.write(prepareTrustedRaycastCanIUseRoot(data, preferences, context, registry, 'css-grid').message + '\n')
-    const grid = (await next(3)).rows.find(row => row.slug === 'css-grid')!
+    const grid = (await next(3)).rows.find(row => row.title === data.catalog.entries.find(feature => feature.slug === 'css-grid')!.title)!
     assert.deepEqual(grid.accessories, [{ text: 'W3C candidate recommendation' }, { icon: { source: 'Checkmark', tintColor: 'Green' }, tooltip: 'Supported' }])
     child.stdin!.write(prepareTrustedRaycastCanIUseRoot(data, preferences, context, registry, 'zzzz-no-matching-feature').message + '\n')
     const empty = await next(4)
     assert.equal(empty.rows.length, 0)
     assert.equal(empty.matchCount, 0)
     assert.equal(diagnostics, '')
-    // A search update cannot silently change the snapshot's preference environment.
-    child.stdin!.write(prepareTrustedRaycastCanIUseRoot(data, { ...preferences, environment: 'modern' }, context, registry, 'css-grid').message + '\n')
+    // A rejected parent packet cannot publish another source view or execute an action.
+    let invalid = prepareTrustedRaycastCanIUseRoot(data, { ...preferences, environment: 'modern' }, context, registry, 'css-grid').message
+    if (rejection === 'replay') invalid = root.message
+    if (rejection === 'context') invalid = prepareTrustedRaycastCanIUseRoot(data, preferences, { ...context, sessionId: 'another-session' }, registry, 'css-grid').message
+    if (rejection === 'oversized') {
+      const decoded = JSON.parse(root.message)
+      decoded.revision += 100
+      decoded.features.push(decoded.features[0])
+      invalid = JSON.stringify(decoded)
+    }
+    if (rejection === 'action') invalid = JSON.stringify({ extensionId: 'can-i-use', sessionId: context.sessionId, generation: 'root-proof-generation', revision: 3, eventId: 'action-0', kind: 'action', value: 'action-0' })
+    child.stdin!.write(invalid + '\n')
     const rejectedBy = Date.now() + 2000
     while (messages.length === 4 && child.exitCode === null && Date.now() < rejectedBy) await new Promise(resolve => setTimeout(resolve, 10))
-    assert.equal(messages.length, 4, 'changed snapshot preferences must not produce a source view')
+    if (failure) throw failure
+    assert.equal(messages.length, 4, 'invalid packets must not produce another source view or effect')
     assert.notEqual(child.exitCode, null)
     assert.notEqual(child.exitCode, 0)
-    assert.match(diagnostics, /SNAPSHOT_STALE/)
+    assert.match(diagnostics, rejection === 'action' ? /ACTION_DENIED/ : rejection === 'oversized' ? /RENDER_INVALID/ : /SNAPSHOT_STALE/)
     assert.equal(sha(readTrustedRaycastFile(probe)), derivedSha)
     assert.equal(sha(readTrustedRaycastFile(sourcePath, 3246080)), sourcePin)
   } finally {
     if (child) {
       await stopOwnedChild(child, 250, true)
-      t.diagnostic(JSON.stringify({ scope: 'root-source-only', pid: child.pid, processGroupGone: true }))
+      t.diagnostic(JSON.stringify({ scope: reconciled ? 'root-reconciler-only' : 'root-source-only', pid: child.pid, processGroupGone: true }))
     }
     stop()
     rmSync(work, { recursive: true, force: true })

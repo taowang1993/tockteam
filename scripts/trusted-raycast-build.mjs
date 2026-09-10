@@ -31,6 +31,7 @@ export async function buildTrustedRaycast(dist, artifact, extensionId = 'google-
     // Only compatibility aliases are bundled; all third-party bare imports resolve in the private artifact.
     await build({ entryPoints: [join(work, 'child.ts')], outfile: join(output, 'child.mjs'), bundle: true, packages: 'external', format: 'esm', platform: 'node', target: 'node24', alias: {
       '@tockteam/trusted-raycast-child-contract': join(repository, 'src/trusted-raycast-contract.ts'),
+      '@tockteam/trusted-raycast-can-i-use-source': join(repository, 'src/trusted-raycast-can-i-use-source.ts'),
       '@tockteam/trusted-raycast-projection': projectionSource,
       '@raycast/api': join(repository, 'src/trusted-raycast-compat-api.ts'),
       '@raycast/utils': join(repository, 'src/trusted-raycast-compat-utils.ts'),

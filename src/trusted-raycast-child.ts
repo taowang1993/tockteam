@@ -21,6 +21,8 @@ let fieldHandles = new Map<string, (value: string) => void>()
 const serialize = (node: Node | string): unknown => {
   if (typeof node === 'string') return node
   const props = Object.fromEntries(Object.entries(node.props).filter(([key, value]) => key !== 'children' && typeof value !== 'function' && (typeof value !== 'object' || value === null)))
+  // Root-only Can I Use admission does not grant detail/navigation/native callbacks.
+  if (canIUseSource && node.type === 'raycast-action') props.unavailable = true
   if (node.type === 'raycast-action' && !props.unavailable && typeof node.props.onAction === 'function') {
     const id = `action-${handles.size}`
     handles.set(id, node.props.onAction as () => unknown)
@@ -32,7 +34,10 @@ const serialize = (node: Node | string): unknown => {
   return { type: node.type, props, children: node.children.map(serialize) }
 }
 const extensionId = process.env.TRUSTED_RAYCAST_EXTENSION_ID
-if (extensionId !== 'google-translate' && extensionId !== 'kaomoji-search') throw new Error('Invalid trusted extension identity')
+if (extensionId !== 'google-translate' && extensionId !== 'kaomoji-search' && extensionId !== 'can-i-use') throw new Error('Invalid trusted extension identity')
+// This internal source path does not admit a public descriptor or renderer IPC identity.
+// @ts-expect-error Build-time first-party alias; imported only by the finite candidate.
+const canIUseSource = extensionId === 'can-i-use' ? await import('@tockteam/trusted-raycast-can-i-use-source') : undefined
 const sessionId = process.env.TRUSTED_RAYCAST_SESSION_ID!
 const generation = process.env.TRUSTED_RAYCAST_GENERATION!
 let revision = -1
@@ -44,7 +49,8 @@ const emit = () => {
   fieldHandles = new Map()
   rootNode.props.querySequence = querySequence
   rootNode.props.preferenceSetup = showingPreferenceSetup
-  rootNode.props.searchable = viewSearchable()
+  rootNode.props.searchable = canIUseSource !== undefined || viewSearchable()
+  if (canIUseSource) Object.assign(rootNode.props, canIUseSource.trustedRaycastCanIUseRootCounts())
   rootNode.props.navigationDepth = navigationDepth()
   const root = serialize(projectTrustedRaycastRoot(rootNode, extensionId))
   process.stdout.write(`${JSON.stringify({ type: ready ? 'patch' : 'ready', extensionId, sessionId, generation, revision: ++revision, root, ...(ready ? { status: 'ready' } : {}) })}\n`)
@@ -144,9 +150,9 @@ const PreferencesSetup = (): React.ReactElement => {
 }
 preferencesRoot = React.createElement(PreferencesSetup)
 const mount = (view: unknown): void => {
-  renderer.updateContainer(view === undefined ? commandRoot : view, container, null, () => {
+  renderer.updateContainer(view === undefined ? (canIUseSource ? React.createElement(Command) : commandRoot) : view, container, null, () => {
     searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
-    if (view === undefined && typeof searchHandler !== 'function') throw new Error('trusted extension did not expose a search handler')
+    if (!canIUseSource && view === undefined && typeof searchHandler !== 'function') throw new Error('trusted extension did not expose a search handler')
   })
 }
 registerNavigationRenderer(mount)
@@ -160,6 +166,15 @@ process.stdin.on('data', chunk => {
   while ((end = pending.indexOf('\n')) >= 0) {
     const line = pending.slice(0, end); pending = pending.slice(end + 1)
     const message = JSON.parse(line)
+    if (canIUseSource) {
+      handles.clear(); fieldHandles.clear()
+      // Only the parent may replace its already bounded snapshot, never a renderer event.
+      if (message?.type !== 'can-i-use-root') throw new Error('ACTION_DENIED')
+      canIUseSource.replaceTrustedRaycastCanIUseRoot(line)
+      querySequence++
+      mount(undefined)
+      continue
+    }
     if (isTrustedRaycastNativeOutcome(message)) {
       if (message.extensionId !== extensionId) throw new Error('Unsupported native outcome identity')
       const waiting = nativePending.get(message.requestId)
