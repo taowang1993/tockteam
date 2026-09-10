@@ -1475,11 +1475,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "6964611f2692db6afec9082e407857046f6834fc57c5185e24b47eb7f1b898f3"
+      "sha256": "3ad0a7e1c9bed2ecdcbf17b8b22e05d07863ef6c6c0ef4ed9a98218d980450f1"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "a03706eef0df427fc10c5ccd3ba932395d367200d0a00b30c63bbb0f49531f8b"
+      "sha256": "59ce1c20c6e5b8e8fdc6791ad99df63b6b6cc594babddc894a7e00b54ea25ca3"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -1576,6 +1576,14 @@
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/external-embeds.js.map",
       "sha256": "5be026cf04e78b80b1e07a72bb14a734fdc9e8dfba08885ad8dd16a1138fac34"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/fonts/FiraCode-VF.woff2",
+      "sha256": "408e876a202f15ea6ee307a70a65cf40ceb222c589a0b17e0a3a371db96dd49f"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/dist/fonts/LICENSE.txt",
+      "sha256": "1d41e10031ab125302780a05ec4c91d218e47db0c7e37cf315cce5e608cdc25c"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/graph.d.ts",
@@ -2143,15 +2151,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/source-editor-runtime.d.ts.map",
-      "sha256": "744664caad8c9941acd1ba2a5213f6083633d99127bf08a3f761981bc10af984"
+      "sha256": "38a17c7823743067bf35a5def5c411b6ce6ecb5a21a2ea67bd386d1afe643a6a"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/source-editor-runtime.js",
-      "sha256": "596699c4e266dab4d6808893f2722858a25bfb2baa4bb4d5d268d1f611dfca2f"
+      "sha256": "00b9e79916a56f3985a22e6cec759c69017ddfc7cb508f606d4203995a1321ea"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/source-editor-runtime.js.map",
-      "sha256": "dd6f27b5a2f590ada512ef60486f679611bcd16f6087c8f37719ecf372334657"
+      "sha256": "71cc741c1162f1e8b959fae69109df2b504819a1fd9c531f5b4d6afb234de9f3"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/source-editor.d.ts",
@@ -2323,11 +2331,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/scripts/build-client.mjs",
-      "sha256": "8bae62ba22f466c06e543e5e15e1fdd9ca187655ccbb5d555c0322dff7f2702a"
+      "sha256": "6ae64a898d5ce8374c8d0d2a81aca0f00f1d6ffc6b95b20c28f95839a7ec2863"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/scripts/generate-typert.mjs",
       "sha256": "9a396259b73a5d012c948c91f2d3e4137b0c1ef541d4202460599c10cd01c14c"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/assets.d.ts",
+      "sha256": "67e8ca5f62ffaba4e5679d7a655710842b976e9ef2f8e733e4326ff0e3a57358"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/assistant-panel.ts",
@@ -2448,6 +2460,14 @@
     {
       "path": "packages/tockteam-tocktutor-workbench/src/external-embeds.ts",
       "sha256": "b162c42e525eda8068f30061bf85f40fe8228da3c12b5571c6899d2e38e281fc"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/fonts/FiraCode-VF.woff2",
+      "sha256": "408e876a202f15ea6ee307a70a65cf40ceb222c589a0b17e0a3a371db96dd49f"
+    },
+    {
+      "path": "packages/tockteam-tocktutor-workbench/src/fonts/LICENSE.txt",
+      "sha256": "1d41e10031ab125302780a05ec4c91d218e47db0c7e37cf315cce5e608cdc25c"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/graph.ts",
@@ -2595,7 +2615,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/source-editor-runtime.tsx",
-      "sha256": "09f13ce459d20c3e5d864e2e4be4463c8bbf0d782302300f765ed08ab966d224"
+      "sha256": "4cd9577b5371dcd68ee46254e6f4fc46c48da0c8fe7156fc269c50914eafdcbe"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/source-editor.tsx",

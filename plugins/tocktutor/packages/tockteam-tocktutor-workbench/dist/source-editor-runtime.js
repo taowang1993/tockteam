@@ -11,6 +11,10 @@ import { buildSourceChange, preserveEditorLineEndings, shouldAddEditorSelectionR
 import { buildSourceEmbedWidgetExtension, refreshSourceEmbedWidgets } from "./source-embed-widgets.js";
 import { applyEditorCommandToSelections } from "./editor-commands.js";
 import { buildSourceTaskWidgetExtension } from "./source-task-widgets.js";
+import firaCodeUrl from './fonts/FiraCode-VF.woff2';
+const firaCode = typeof FontFace === 'undefined'
+    ? null
+    : new FontFace('Fira Code VF', `url(${firaCodeUrl})`, { style: 'normal', weight: '300 700' });
 function normalizeEditorSource(source) {
     return source.replace(/\r\n?/gu, '\n');
 }
@@ -230,6 +234,12 @@ export function SourceEditorRuntime(props) {
     const lastFoldIdRef = useRef(null);
     const editable = props.editable !== false;
     const showFoldGutter = props.showFoldGutter === true;
+    useEffect(() => {
+        if (firaCode === null)
+            return;
+        document.fonts.add(firaCode);
+        void firaCode.load().catch(() => undefined);
+    }, []);
     const userExtensions = props.extraExtensions ?? EMPTY_EXTENSIONS;
     const chromeExtensions = useMemo(() => [
         ...buildSourceEmbedWidgetExtension(() => embedsRef.current),
@@ -314,6 +324,6 @@ export function SourceEditorRuntime(props) {
             unfoldCode(view);
         view.focus();
     }, [props.foldRequest]);
-    return _jsx("div", { "aria-label": props.ariaLabel ?? 'Markdown Source Editor', className: `tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-line.cm-tock-heading-1]:text-[22px] [&_.cm-line.cm-tock-heading-1]:leading-[1.35] [&_.cm-line.cm-tock-heading-2]:text-[20px] [&_.cm-line.cm-tock-heading-2]:leading-[1.35] [&_.cm-line.cm-tock-heading-3]:text-[18px] [&_.cm-line.cm-tock-heading-3]:leading-[1.4] [&_.cm-tock-heading-mark]:text-inherit [&_.cm-tock-heading-mark]:[font-size:inherit] [&_.cm-tock-heading-mark]:no-underline [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`, id: props.id, children: _jsx("div", { className: "min-h-0 min-w-0 flex-1", ref: parentRef }) });
+    return _jsx("div", { "aria-label": props.ariaLabel ?? 'Markdown Source Editor', className: `tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_'Fira_Code_VF','Fira_Code',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation_Mono','Courier_New',monospace] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-line.cm-tock-heading-1]:text-[22px] [&_.cm-line.cm-tock-heading-1]:leading-[1.35] [&_.cm-line.cm-tock-heading-2]:text-[20px] [&_.cm-line.cm-tock-heading-2]:leading-[1.35] [&_.cm-line.cm-tock-heading-3]:text-[18px] [&_.cm-line.cm-tock-heading-3]:leading-[1.4] [&_.cm-tock-heading-mark]:!text-inherit [&_.cm-tock-heading-mark]:[font-size:inherit] [&_.cm-tock-heading-mark]:no-underline [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`, id: props.id, children: _jsx("div", { className: "min-h-0 min-w-0 flex-1", ref: parentRef }) });
 }
 //# sourceMappingURL=source-editor-runtime.js.map

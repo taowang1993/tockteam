@@ -27,6 +27,14 @@ TockTeam uses Tailwind CSS at build time to generate a browser-only utility
 layer mapped to DSH semantic theme tokens. TockTeam TUI continues to use its
 native renderer and the shared TockTeam skin palette.
 
+## Fira Code
+
+- Project: <https://github.com/tonsky/FiraCode>
+- Declared license: SIL Open Font License 1.1
+
+TockTeam bundles Fira Code for source editors. The license text is distributed
+with the font under the TockTutor workbench package.
+
 ## dsh-web-panel
 
 - Historical project: dsh-web-panel (its previous public locator is no longer available)
