@@ -80,7 +80,7 @@ Folder: `.agents/uiux/`
 | --------- | --------------------------------------- |
 | Tocktutor | `.agents/uiux/tocktutor/tocktutor.html` |
 
-Use a bounded Playwright browser session (including Playwright’s Electron/CDP connection when Desktop is the target) for app-scoped navigation, interaction, and screenshot capture on the selected display; record and verify the actual CSS/device-pixel geometry (extended-display dimensions are allowed), exact route/content/mode, visible-state, and runtime-error evidence, publish only allowlisted screenshots transactionally, and stop the full browser/app/server process tree.
+Use a bounded Playwright browser session (including Playwright’s Electron/CDP connection when Desktop is the target) for app-scoped navigation, interaction, and screenshot capture at a 1512 × 949 CSS-pixel viewport with a 2× device scale, producing 3024 × 1898-pixel screenshots; record and verify that exact CSS/device-pixel geometry, route/content/mode, visible state, and runtime-error evidence, publish only allowlisted screenshots transactionally, and stop the full browser/app/server process tree.
 
 ## Development Guidelines
 
