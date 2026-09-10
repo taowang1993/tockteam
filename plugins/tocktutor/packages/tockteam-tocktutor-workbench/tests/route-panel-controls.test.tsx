@@ -116,7 +116,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByText('1 Result')).toBeTruthy()
   })
 
-  it('opens note search in a modal dialog without replacing the active editor', () => {
+  it('opens note search in a modal dialog that matches the Files sidebar surface', () => {
     const revision = '1'.repeat(64)
     renderRoute({
       entries: [
@@ -131,6 +131,7 @@ describe('TockTutor titlebar panel controls', () => {
     const dialog = screen.getByRole('dialog', { name: 'Search Notes' })
     const query = screen.getByRole('searchbox', { name: 'Search Notes Query' })
     expect(dialog.contains(query)).toBe(true)
+    expect(dialog.className).toContain('[--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))]')
     expect(query.getAttribute('placeholder')).toBe('Search notes...')
     expect(document.querySelector('aside[aria-label="Files"]')?.contains(query)).toBe(false)
     expect(screen.getByRole('list', { name: 'Matching Note Paths' }).textContent).toContain('Second.md')

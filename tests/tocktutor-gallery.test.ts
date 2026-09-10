@@ -9,7 +9,7 @@ const gallery = readFileSync(galleryPath, 'utf8')
 const proof = JSON.parse(readFileSync(resolve('.beads/reports/tocktutor-utility-proof.json'), 'utf8')) as {
   reading: { tockTutor: { containsGeneratedUntitled?: boolean; copiedVaultIdentity?: string; treePaths?: string[] } }
   attachmentsEmbeds: { obsidian?: { directAttachmentPanelCapture?: boolean } }
-  affectedRecapture: { copiedVaultIdentity?: string; surfaces: { noteActions: { menuLabels: string[] }; workspacesPanes: { comparability?: string }; newNote: { captureState?: string; copiedVaultIdentity?: string; collisionIsolation?: string } } }
+  affectedRecapture: { copiedVaultIdentity?: string; surfaces: { noteActions: { menuLabels: string[] }; workspacesPanes: { comparability?: string }; newNote: { captureState?: string; copiedVaultIdentity?: string; collisionIsolation?: string }; search: { geometry: { css: { width: number; height: number }; pixels: { width: number; height: number } }; theme: { activeSkin: string | null; backgroundMatchesSidebar: boolean; themePreference: string } } } }
 }
 const imageSources = [...gallery.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]!)
 const screenshotLinks = [...gallery.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]!)
@@ -37,6 +37,18 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
   assert.equal(proof.affectedRecapture.surfaces.newNote.copiedVaultIdentity, 'TockTutor Parity Fixture')
   assert.equal(proof.affectedRecapture.surfaces.newNote.collisionIsolation, 'fresh temporary vault had no pre-existing Notes/Untitled.md')
   assert.equal(proof.affectedRecapture.surfaces.noteActions.menuLabels.includes('Backlinks in Document'), true)
+  assert.deepEqual(proof.affectedRecapture.surfaces.search.geometry, {
+    css: { width: 1512, height: 949, deviceScaleFactor: 2 },
+    pixels: { width: 3024, height: 1898 },
+  })
+  assert.deepEqual({
+    themePreference: proof.affectedRecapture.surfaces.search.theme.themePreference,
+    activeSkin: proof.affectedRecapture.surfaces.search.theme.activeSkin,
+    backgroundMatchesSidebar: proof.affectedRecapture.surfaces.search.theme.backgroundMatchesSidebar,
+  }, { themePreference: 'dark', activeSkin: null, backgroundMatchesSidebar: true })
+  const searchCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-search.png'))
+  assert.deepEqual({ width: searchCapture.readUInt32BE(16), height: searchCapture.readUInt32BE(20) }, { width: 3024, height: 1898 })
+  assert.doesNotMatch(gallery, /approved extended-display geometry|Current · Extended Display|data-geometry="extended-display"|1366 × 994 CSS-pixel extended-display geometry/u)
   for (const relativePath of new Set([...imageSources, ...screenshotLinks, 'shared-note.md', '../../../plugins/tocktutor/parity/fixtures/vault'])) {
     assert.equal(existsSync(resolve(galleryRoot, relativePath)), true, relativePath)
   }
