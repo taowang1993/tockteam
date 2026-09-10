@@ -11,10 +11,13 @@ import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 import { loadTrustedRaycastCanIUseData } from '../src/trusted-raycast-can-i-use-runtime.ts'
 import { TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS } from '../src/trusted-raycast-can-i-use-preferences.ts'
 import { getTrustedRaycastDescriptor, getTrustedRaycastRuntimeDescriptor } from '../src/trusted-raycast-descriptors.ts'
-import { inspectTrustedRaycastProjection, isTrustedRaycastTrustRequest, isTrustedRaycastNativeRequest, type TrustedRaycastViewMessage } from '../src/trusted-raycast-contract.ts'
+import { inspectTrustedRaycastProjection, isTrustedRaycastTrustRequest, isTrustedRaycastNativeRequest, type TrustedRaycastViewMessage, type TrustedRaycastViewNode } from '../src/trusted-raycast-contract.ts'
 
 const preferences = { ...TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS, defaultQuery: 'chrome 100' }
 const owner = { webContentsId: 7801 }
+const nodes = (root: TrustedRaycastViewNode, type: string): TrustedRaycastViewNode[] => [
+  ...(root.type === type ? [root] : []), ...root.children.flatMap(child => typeof child === 'string' ? [] : nodes(child, type)),
+]
 
 test('the internal Can I Use candidate does not admit public trust or native requests', () => {
   assert.equal(getTrustedRaycastRuntimeDescriptor('can-i-use')!.extensionId, 'can-i-use')
@@ -66,8 +69,34 @@ test('real manager searches all Can I Use features and rejects foreign or stale 
     assert.ok(inspectTrustedRaycastProjection(found.root).itemNodes <= 64)
     assert.equal(found.root!.props.queryCurrent, true)
     assert.throws(() => manager.send(owner, search), /stale/)
-    manager.send(owner, { ...search, revision: found.revision, eventId: String(found.root!.props.searchEventId), value: 'zzzz-no-match' })
-    const empty = await waitFor(3)
+    const details = nodes(found.root!, 'raycast-action')[0]!
+    assert.equal(details.props.title, 'Show Details')
+    assert.equal(details.props.unavailable, false)
+    assert.equal(typeof details.props.actionEventId, 'string')
+    const open = { extensionId: 'can-i-use' as const, sessionId: found.sessionId, generation: found.generation,
+      revision: found.revision, eventId: String(details.props.actionEventId), kind: 'action' as const }
+    assert.throws(() => manager.send({ webContentsId: owner.webContentsId + 1 }, open), /stale/)
+    assert.throws(() => manager.send(owner, { ...open, eventId: 'forged' }), /stale/)
+    manager.send(owner, open)
+    assert.throws(() => manager.send(owner, open), /stale/)
+    const detail = await waitFor(3)
+    assert.equal(detail.root!.props.navigationDepth, 1)
+    assert.equal(inspectTrustedRaycastProjection(detail.root).itemNodes, 14)
+    assert.equal(nodes(detail.root!, 'raycast-list')[0]!.props.navigationTitle, feature.title)
+    assert.ok(nodes(detail.root!, 'raycast-list-item').some(row => row.props.title === 'Chrome'))
+    assert.equal(nodes(detail.root!, 'raycast-action').some(action => action.props.title === 'Show Details'), false)
+    assert.throws(() => manager.send(owner, { ...open, revision: detail.revision }), /stale/)
+    const back = { ...open, kind: 'navigation' as const, revision: detail.revision, eventId: String(detail.root!.props.navigationEventId), value: 'can-i-use:pop' }
+    assert.throws(() => manager.send(owner, { ...back, eventId: 'forged' }), /stale/)
+    manager.send(owner, back)
+    assert.throws(() => manager.send(owner, back), /stale/)
+    const returned = await waitFor(4)
+    assert.equal(returned.root!.props.navigationDepth, 0)
+    assert.equal(returned.root!.props.matchCount, 1, 'Back must preserve the root search')
+    assert.ok(JSON.stringify(returned.root).includes(feature.title))
+    assert.throws(() => manager.send(owner, open), /stale/)
+    manager.send(owner, { ...search, revision: returned.revision, eventId: String(returned.root!.props.searchEventId), value: 'zzzz-no-match' })
+    const empty = await waitFor(5)
     assert.equal(empty.root!.props.visibleCount, 0)
     assert.equal(empty.root!.props.matchCount, 0)
     assert.equal(inspectTrustedRaycastProjection(empty.root).itemNodes, 0)

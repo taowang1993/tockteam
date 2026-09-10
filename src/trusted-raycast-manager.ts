@@ -26,7 +26,7 @@ export type TrustedRaycastManagerOptions = Readonly<{
   savePreferences?: (preferences: Readonly<Record<string, boolean | string>>, extensionId: TrustedRaycastExtensionId) => void | Promise<void>
   stateFile?: string | ((extensionId: TrustedRaycastExtensionId) => string | undefined)
 }>
-type Session = { canIUse?: ReturnType<typeof createTrustedRaycastCanIUseRuntime>; revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
+type Session = { navigationEventId?: string | undefined; canIUse?: ReturnType<typeof createTrustedRaycastCanIUseRuntime>; revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
 type Preview = { child: ChildProcessWithoutNullStreams; workspace: string; phase: 'running' | 'cleanup-failed'; stopping?: Promise<void> }
 
 /** Main owns identity and the sole live child. Trusted code is not an OS sandbox. */
@@ -198,8 +198,9 @@ export class TrustedRaycastManager {
             if (!Number.isSafeInteger(querySequence) || (querySequence as number) < 0 || (querySequence as number) > session.querySequence) throw new Error('Invalid Translate query sequence')
             if (session.canIUse) {
               if (querySequence !== session.querySequence) throw new Error('SNAPSHOT_STALE')
-              session.canIUse.publish(message.root!)
             }
+            const sourceRoot = session.canIUse?.publish(message.root!) ?? message.root!
+            session.navigationEventId = typeof sourceRoot.props.navigationEventId === 'string' ? sourceRoot.props.navigationEventId : undefined
             const wrap = (node: TrustedRaycastViewNode): TrustedRaycastViewNode => {
               const props = { ...node.props }
               if (Object.hasOwn(props, 'actionEventId')) {
@@ -214,7 +215,7 @@ export class TrustedRaycastManager {
               }
               return { ...node, props, children: node.children.map(child => typeof child === 'string' ? child : wrap(child)) }
             }
-            const root = wrap(message.root!)
+            const root = wrap(sourceRoot)
             this.options.onMessage(owner, { ...message, root: { ...root, props: { ...root.props, ...(root.props.searchable === true ? { searchEventId: session.eventId = randomUUID() } : {}), queryCurrent: querySequence === session.querySequence } } })
             resolveReady()
           } catch (error) { fail(error instanceof Error ? error : new Error('Invalid Translate output')); return }
@@ -266,7 +267,22 @@ export class TrustedRaycastManager {
       session.child.stdin.write(`${JSON.stringify(event)}\n`)
       return
     }
-    if (session.canIUse) throw new Error('ACTION_DENIED')
+    if (session.canIUse) {
+      const actionId = session.actions.get(event.eventId)
+      const back = event.kind === 'navigation' && event.value === 'can-i-use:pop' && session.navigationEventId === event.eventId
+      if (!back && (event.kind !== 'action' || event.value !== undefined || actionId === undefined)) throw new Error('Can I Use event is stale')
+      try {
+        const packet = back ? session.canIUse.pop(event.eventId) : session.canIUse.showDetails(actionId!)
+        session.eventId = ''; session.navigationEventId = undefined
+        session.actions.clear(); session.fields.clear(); session.action = undefined
+        session.querySequence++
+        session.child.stdin.write(`${packet}\n`)
+      } catch (error) {
+        void this.stop('navigation-failed').catch(error => this.options.onError?.(owner, error))
+        throw error
+      }
+      return
+    }
     if (event.kind === 'fieldChanged') {
       if (!session.fields.has(event.eventId)) throw new Error('Translate event is stale')
       session.child.stdin.write(`${JSON.stringify({ ...event, eventId: session.fields.get(event.eventId) })}\n`)

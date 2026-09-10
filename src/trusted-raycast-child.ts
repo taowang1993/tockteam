@@ -18,11 +18,21 @@ console.log = (...values: unknown[]) => console.error(...values)
 const rootNode: Node = { type: 'root', props: {}, children: [] }
 let handles = new Map<string, () => unknown>()
 let fieldHandles = new Map<string, (value: string) => void>()
-const serialize = (node: Node | string): unknown => {
+let canIUsePushes = new Map<string, () => unknown>()
+const serialize = (node: Node | string, feature?: string): unknown => {
   if (typeof node === 'string') return node
   const props = Object.fromEntries(Object.entries(node.props).filter(([key, value]) => key !== 'children' && typeof value !== 'function' && (typeof value !== 'object' || value === null)))
-  // Root-only Can I Use admission does not grant detail/navigation/native callbacks.
-  if (canIUseSource && node.type === 'raycast-action') props.unavailable = true
+  // Keep source callbacks private. Only a main-prepared detail packet may invoke a root Push.
+  if (canIUseSource && node.type === 'raycast-list-item') feature = typeof props.featureName === 'string' ? props.featureName : undefined
+  if (canIUseSource && node.type === 'raycast-action') {
+    props.unavailable = true
+    if (props.canIUsePush === true) {
+      if (navigationDepth() !== 0 || !feature || !Object.hasOwn(canIUseSource.features, feature)
+        || canIUsePushes.has(feature) || canIUsePushes.size >= 64 || typeof node.props.onAction !== 'function') throw new Error('ACTION_DENIED')
+      canIUsePushes.set(feature, node.props.onAction as () => unknown)
+    }
+    delete props.canIUsePush
+  }
   if (node.type === 'raycast-action' && !props.unavailable && typeof node.props.onAction === 'function') {
     const id = `action-${handles.size}`
     handles.set(id, node.props.onAction as () => unknown)
@@ -31,7 +41,7 @@ const serialize = (node: Node | string): unknown => {
   if ((node.type === 'raycast-form-dropdown' || node.type === 'raycast-dropdown') && typeof node.props.onChange === 'function' && typeof node.props.fieldEventId === 'string') {
     fieldHandles.set(node.props.fieldEventId, node.props.onChange as (value: string) => void)
   }
-  return { type: node.type, props, children: node.children.map(serialize) }
+  return { type: node.type, props, children: node.children.map(child => serialize(child, feature)) }
 }
 const extensionId = process.env.TRUSTED_RAYCAST_EXTENSION_ID
 if (extensionId !== 'google-translate' && extensionId !== 'kaomoji-search' && extensionId !== 'can-i-use') throw new Error('Invalid trusted extension identity')
@@ -47,9 +57,10 @@ let searchHandler: ((value: string) => void) | undefined
 const emit = () => {
   handles = new Map()
   fieldHandles = new Map()
+  canIUsePushes = new Map()
   rootNode.props.querySequence = querySequence
   rootNode.props.preferenceSetup = showingPreferenceSetup
-  rootNode.props.searchable = canIUseSource !== undefined || viewSearchable()
+  rootNode.props.searchable = canIUseSource ? navigationDepth() === 0 : viewSearchable()
   if (canIUseSource) Object.assign(rootNode.props, canIUseSource.trustedRaycastCanIUseRootCounts())
   rootNode.props.navigationDepth = navigationDepth()
   const root = serialize(projectTrustedRaycastRoot(rootNode, extensionId))
@@ -168,11 +179,22 @@ process.stdin.on('data', chunk => {
     const message = JSON.parse(line)
     if (canIUseSource) {
       handles.clear(); fieldHandles.clear()
-      // Only the parent may replace its already bounded snapshot, never a renderer event.
-      if (message?.type !== 'can-i-use-root') throw new Error('ACTION_DENIED')
-      canIUseSource.replaceTrustedRaycastCanIUseRoot(line)
-      querySequence++
-      mount(undefined)
+      // Only the parent may replace a bounded snapshot, never a renderer event or native callback.
+      if (message?.type === 'can-i-use-detail') {
+        if (navigationDepth() !== 0) throw new Error('ACTION_DENIED')
+        const feature = canIUseSource.replaceTrustedRaycastCanIUseDetail(line)
+        const push = canIUsePushes.get(feature)
+        if (!push) throw new Error('ACTION_DENIED')
+        canIUsePushes.clear()
+        querySequence++
+        push()
+      } else {
+        if (message?.type !== 'can-i-use-root') throw new Error('ACTION_DENIED')
+        canIUseSource.replaceTrustedRaycastCanIUseRoot(line)
+        querySequence++
+        if (navigationDepth() > 0) popView()
+        else mount(undefined)
+      }
       continue
     }
     if (isTrustedRaycastNativeOutcome(message)) {

@@ -232,7 +232,7 @@ export function isTrustedRaycastViewEvent(value: unknown): value is TrustedRayca
   if (!Object.hasOwn(value, 'value')) return value.kind === 'navigation' || value.kind === 'action'
   if (!boundedString(value.value)) return false
   const max = value.kind === 'searchChanged' ? MAX_TEXT : value.kind === 'submit' ? 4096 : 128
-  return value.value.length <= max && (value.kind !== 'navigation' || value.value.startsWith('language:'))
+  return value.value.length <= max && (value.kind !== 'navigation' || (value.extensionId === 'can-i-use' ? value.value === 'can-i-use:pop' : value.value.startsWith('language:')))
 }
 
 const VIEW_TYPES = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-action', 'raycast-action-panel', 'raycast-action-section', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])

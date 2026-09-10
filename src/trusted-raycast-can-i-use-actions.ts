@@ -11,8 +11,8 @@ const CONTROL_PATTERN = /\p{Cc}/u
 let nextRegistryIdentity = 0
 
 export type TrustedRaycastCanIUseRevisionKind = 'search' | 'root' | 'detail' | 'error' | 'replacement' | 'close'
-export type TrustedRaycastCanIUseActionKind = 'show-details' | 'open-browser' | 'search' | 'error' | 'replacement' | 'close'
-export type TrustedRaycastCanIUseAuxiliaryActionKind = Extract<TrustedRaycastCanIUseActionKind, 'search' | 'error' | 'replacement' | 'close'>
+export type TrustedRaycastCanIUseActionKind = 'show-details' | 'open-browser' | 'search' | 'pop' | 'error' | 'replacement' | 'close'
+export type TrustedRaycastCanIUseAuxiliaryActionKind = Extract<TrustedRaycastCanIUseActionKind, 'search' | 'pop' | 'error' | 'replacement' | 'close'>
 
 export type TrustedRaycastCanIUseRevisionContext = Readonly<{
   extensionId: string
@@ -246,7 +246,7 @@ function readAuxiliaryKinds(value: unknown): readonly TrustedRaycastCanIUseAuxil
   const values = readArrayValues(value, TRUSTED_RAYCAST_CAN_I_USE_MAX_LIVE_HANDLES)
   const kinds: TrustedRaycastCanIUseAuxiliaryActionKind[] = []
   for (const kind of values) {
-    if (kind !== 'search' && kind !== 'error' && kind !== 'replacement' && kind !== 'close') {
+    if (kind !== 'search' && kind !== 'pop' && kind !== 'error' && kind !== 'replacement' && kind !== 'close') {
       fail('RENDER_INVALID')
     }
     kinds.push(kind)
@@ -300,7 +300,7 @@ function readHandle(value: unknown): TrustedRaycastCanIUseActionHandle {
     || (depth !== 0 && depth !== 1)
     || (row !== null && (!Number.isSafeInteger(row) || row < 0 || row >= TRUSTED_RAYCAST_CAN_I_USE_MAX_DETAIL_ROWS))
     || (feature !== null && (typeof feature !== 'string' || !FEATURE_SLUG_PATTERN.test(feature)))
-    || (kind !== 'show-details' && kind !== 'open-browser' && kind !== 'search' && kind !== 'error' && kind !== 'replacement' && kind !== 'close')) {
+    || (kind !== 'show-details' && kind !== 'open-browser' && kind !== 'search' && kind !== 'pop' && kind !== 'error' && kind !== 'replacement' && kind !== 'close')) {
     fail('ACTION_DENIED')
   }
   const context = readContext({
@@ -537,6 +537,7 @@ export class TrustedRaycastCanIUseActionRegistry {
     try {
       const rows = this.validateRootRows(rowsValue)
       const auxiliaryKinds = readAuxiliaryKinds(auxiliaryKindsValue)
+      if (auxiliaryKinds.includes('pop')) fail('RENDER_INVALID')
       const required = rows.length * 2 + auxiliaryKinds.length
       if (required > TRUSTED_RAYCAST_CAN_I_USE_MAX_LIVE_HANDLES) fail('LIMIT_EXCEEDED')
 

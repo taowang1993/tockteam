@@ -105,7 +105,7 @@ export const Action = Object.assign(action, {
   CopyToClipboard: (props: Record<string, unknown>) => element('raycast-action', { icon: props.icon, title: props.title ?? 'Copy to Clipboard', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => afterSucceededEffect(() => Clipboard.copy(props.content as string), props.onCopy, props.content) }),
   OpenInBrowser: (props: Record<string, unknown>) => element('raycast-action', { title: props.title ?? 'Open in Browser', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => compatibility.native({ kind: 'openGoogleTranslate', url: props.url as string }) }),
   Paste: (props: Record<string, unknown>) => element('raycast-action', { icon: props.icon, title: props.title ?? 'Paste', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => afterSucceededEffect(() => compatibility.native({ kind: 'paste', text: props.content as string }), props.onPaste, props.content) }),
-  Push: (props: Record<string, unknown>) => element('raycast-action', { title: props.title, shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => navigationStack.push(props.target) && renderNavigationTop() }),
+  Push: (props: Record<string, unknown>) => element('raycast-action', { title: props.title, shortcut: JSON.stringify(props.shortcut ?? null), ...(process.env.TRUSTED_RAYCAST_EXTENSION_ID === 'can-i-use' ? { canIUsePush: true } : {}), onAction: () => navigationStack.push(props.target) && renderNavigationTop() }),
   SubmitForm: (props: Record<string, unknown>) => {
     const formId = React.useContext(FormContext)
     return element('raycast-action', { title: props.title ?? 'Submit', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => {

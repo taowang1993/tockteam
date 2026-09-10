@@ -1,3 +1,4 @@
+import { createTrustedRaycastCanIUseSourceDetail } from './trusted-raycast-can-i-use-source-detail.ts'
 import { createTrustedRaycastCanIUseSourceRoot } from './trusted-raycast-can-i-use-source-root.ts'
 import { validateTrustedRaycastCanIUseContext } from './trusted-raycast-can-i-use-actions.ts'
 import { prepareTrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preferences.ts'
@@ -15,11 +16,17 @@ if (process.env.TRUSTED_RAYCAST_EXTENSION_ID !== 'can-i-use' || context.sessionI
 let current: ReturnType<typeof createTrustedRaycastCanIUseSourceRoot>
 let lastRevision = 0
 let invalidate: (() => void) | undefined
+let detail: ReturnType<typeof createTrustedRaycastCanIUseSourceDetail> | undefined
+let invalidateDetail: (() => void) | undefined
+export let agents: Readonly<Record<string, Readonly<{ browser: string; release_date: Readonly<Record<string, number | null>> }>>> = Object.freeze({})
 export let features: Readonly<Record<string, Readonly<object>>> = Object.freeze({})
 
 /** Parent stdin controls replacement. This is not a renderer-callable RPC. */
 export function replaceTrustedRaycastCanIUseRoot(message: unknown): void {
   invalidate?.()
+  invalidateDetail?.()
+  detail = undefined
+  agents = Object.freeze({})
   features = Object.freeze({})
   const previous = lastRevision
   let live = true
@@ -29,6 +36,19 @@ export function replaceTrustedRaycastCanIUseRoot(message: unknown): void {
   lastRevision = next.revision
   invalidate = () => { live = false }
   features = next.features
+}
+export function replaceTrustedRaycastCanIUseDetail(message: unknown): string {
+  if (detail) return fail('ACTION_DENIED')
+  const previous = lastRevision
+  let live = true
+  const next = createTrustedRaycastCanIUseSourceDetail(message, context, revision => live && revision > previous, slug => Object.hasOwn(features, slug))
+  invalidate?.()
+  features = Object.freeze({})
+  detail = next
+  agents = next.agents
+  lastRevision = next.revision
+  invalidateDetail = () => { live = false }
+  return next.feature
 }
 replaceTrustedRaycastCanIUseRoot(process.env.TRUSTED_RAYCAST_CAN_I_USE_ROOT)
 // The unchanged source initializes its query at module scope and catches query errors.
@@ -45,9 +65,11 @@ export function feature(value: unknown) { return current.feature(value) }
 export function isSupported(...args: unknown[]): boolean { return current.isSupported(...args) }
 export const homedir = trustedRaycastCanIUseOsAlias.homedir
 export const join = trustedRaycastCanIUsePathAlias.default.join
-// Root-only execution scope. No detail table or navigation authority is admitted here yet.
-export const agents = Object.freeze({})
-export function getSupport(..._args: unknown[]): never { return fail('DATA_UNAVAILABLE') }
+export function getSupport(...args: unknown[]) { return detail ? detail.getSupport(...args) : fail('DATA_UNAVAILABLE') }
 export function trustedRaycastCanIUseRootCounts() {
+  if (detail) {
+    const count = Object.keys(detail.agents).length
+    return Object.freeze({ visibleCount: count, matchCount: count, totalCount: count })
+  }
   return Object.freeze({ visibleCount: current.visibleCount, matchCount: current.matchCount, totalCount: current.totalCount })
 }
