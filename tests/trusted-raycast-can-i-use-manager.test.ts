@@ -23,7 +23,8 @@ test('the internal Can I Use candidate does not admit public trust or native req
   assert.equal(isTrustedRaycastNativeRequest({ type: 'nativeRequest', extensionId: 'can-i-use', sessionId: 's', generation: 'g', requestId: 'request', kind: 'openBrowser', payload: 'https://caniuse.com/css-grid' }), false)
 })
 
-test('real manager searches all Can I Use features and rejects foreign or stale requests', { timeout: 30000 }, async t => {
+// Candidate creation currently uses macOS BSD tar; this is not a cross-platform packaging gate.
+test('real manager searches all Can I Use features and rejects foreign or stale requests', { timeout: 30000, skip: process.platform !== 'darwin' }, async t => {
   const work = mkdtempSync(join(tmpdir(), 'can-i-use-manager-'))
   const messages: TrustedRaycastViewMessage[] = []
   const errors: string[] = []

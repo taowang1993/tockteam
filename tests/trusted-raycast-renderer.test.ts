@@ -27,6 +27,23 @@ const inputOf = (nodes: Element[]): Element => nodes.find(node => node.id === 't
 const errorOf = (nodes: Element[]): Element => nodes.find(node => node.getAttribute('role') === 'alert')!
 const kaomojiSvg = (fill: '#000' | '#fff', text: string): string => `data:image/svg+xml;base64,${Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" >\n  <text dominant-baseline="middle" x="45" y="45" text-anchor="middle" fill="${fill}" font-size="8px" text-length="90" length-adjust="spacing">\n    ${[...text].map(value => `&#${value.charCodeAt(0)};`).join('')}\n  </text>\n</svg>`).toString('base64')}`
 
+test('Can I Use discloses visible, matching and total feature counts with its own identity', () => {
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  for (const [revision, visible, matches] of [[0, 64, 581], [1, 1, 1], [2, 0, 0]]) {
+    view.update({ type: revision ? 'patch' : 'ready', extensionId: 'can-i-use', sessionId: 'can', generation: 'g', revision: revision!,
+      root: { type: 'raycast-list', props: { queryCurrent: true, searchEventId: `search-${revision}`, visibleCount: visible!, matchCount: matches!, totalCount: 581 },
+        children: Array.from({ length: visible! }, (_, index) => ({ type: 'raycast-list-item', props: { title: `Feature ${index}` }, children: [] })) } })
+    assert.equal(view.element.getAttribute('aria-label'), 'Can I Use')
+    const status = nodes.find(node => node.getAttribute('role') === 'status')!
+    assert.equal(status.hidden, false)
+    assert.equal(status.textContent, `Showing ${visible} of ${matches} matches. Search covers all 581 features.`)
+    assert.ok(nodes.some(node => node.textContent === 'Search Web Features'))
+  }
+  view.dispose()
+})
+
 test('Kaomoji Grid refreshes the same bounded images across theme changes without disturbing interaction state', () => {
   Element.activeElement = undefined
   const nodes: Element[] = []

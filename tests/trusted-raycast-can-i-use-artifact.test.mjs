@@ -71,7 +71,7 @@ const copyPinned = (directory, names = Object.keys(pinned)) => {
   return paths
 }
 
-test('assembles the pinned candidate twice with exact source, legal bytes, and the three-package closure', () => {
+test('assembles the pinned candidate twice with exact source, legal bytes, and the three-package closure', { skip: process.platform !== 'darwin' }, () => {
   const directory = temp('can-i-use-artifact-test-')
   try {
     const first = join(directory, 'first.tar')

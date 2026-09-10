@@ -24,6 +24,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// Candidate creation is currently a macOS/BSD-tar proof, not a portable packaging gate.
 const TAR = '/usr/bin/tar'
 const ARTIFACT_ROOT = 'tockteam-raycast-can-i-use-artifact'
 const SOURCE_REVISION = '186d955eda64f9e956b25a3fdf5566b1d38f57f2'

@@ -90,17 +90,19 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   let rootActionOwner: ActionOwner | undefined
   let rows: (ActionOwner & { detail: HTMLElement | undefined })[] = []
   const descendants = (node: TrustedRaycastViewNode, type: string): TrustedRaycastViewNode[] => [ ...(node.type === type ? [node] : []), ...node.children.flatMap(child => typeof child === 'string' ? [] : descendants(child, type)) ]
-  const identity = (): { image: string; title: string } => current?.extensionId === 'kaomoji-search'
+  const identity = (): { image: string; title: string } => current?.extensionId === 'can-i-use'
+    ? { image: './trusted-raycast-can-i-use/can-i-use.png', title: 'Can I Use' }
+    : current?.extensionId === 'kaomoji-search'
     ? { image: './trusted-raycast-kaomoji/kaomoji-search.png', title: 'Kaomoji Search' }
     : { image: './trusted-raycast/google-translate.png', title: 'Google Translate' }
   const syncIdentity = (): void => {
     const value = identity()
     element.setAttribute('aria-label', value.title); title.textContent = value.title; titleIcon.setAttribute('src', value.image)
-    searchLabel.textContent = current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '要翻译的文本' : 'Text to Translate')
-    results.setAttribute('aria-label', current?.extensionId === 'kaomoji-search' ? 'Kaomoji Results' : (zh ? '翻译结果' : 'Translations'))
+    searchLabel.textContent = current?.extensionId === 'can-i-use' ? 'Search Web Features' : current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '要翻译的文本' : 'Text to Translate')
+    results.setAttribute('aria-label', current?.extensionId === 'can-i-use' ? 'Web Features' : current?.extensionId === 'kaomoji-search' ? 'Kaomoji Results' : (zh ? '翻译结果' : 'Translations'))
     heroTitle.textContent = value.title; logo.setAttribute('src', value.image); logo.setAttribute('alt', value.title)
-    footerIcon.setAttribute('src', value.image); footerText.textContent = current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '翻译' : 'Translate')
-    aboutText.textContent = current?.extensionId === 'kaomoji-search'
+    footerIcon.setAttribute('src', value.image); footerText.textContent = current?.extensionId === 'can-i-use' ? 'Can I Use' : current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '翻译' : 'Translate')
+    aboutText.textContent = current?.extensionId === 'can-i-use' ? 'Can I Use is bundled from the exact extension archive reviewed by TockTeam.' : current?.extensionId === 'kaomoji-search'
       ? 'Kaomoji Search is bundled from the exact extension archive reviewed by TockTeam.'
       : (zh ? '由 TockTeam 固定并审核的 Google Translate 扩展。' : 'Google Translate is bundled from the exact extension archive reviewed by TockTeam.')
   }
@@ -158,7 +160,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     setActionPending()
     actionFeedback = ''
     setHidden(error, true)
-    status.textContent = current?.extensionId === 'kaomoji-search' ? 'Searching…' : (zh ? '正在翻译…' : 'Translating…')
+    status.textContent = current?.extensionId === 'can-i-use' || current?.extensionId === 'kaomoji-search' ? 'Searching…' : (zh ? '正在翻译…' : 'Translating…')
     queryPending = true; syncBusy()
     sendLatest()
   })
@@ -205,7 +207,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     primaryFooter = undefined; primaryFooterLabel = undefined
     submitAction = undefined
     preferenceSetup = root.props.preferenceSetup === true
-    element.setAttribute('data-view', preferenceSetup ? 'preference-setup' : current?.extensionId === 'kaomoji-search' ? 'kaomoji' : 'translate')
+    element.setAttribute('data-view', preferenceSetup ? 'preference-setup' : current?.extensionId === 'can-i-use' ? 'can-i-use' : current?.extensionId === 'kaomoji-search' ? 'kaomoji' : 'translate')
     setHidden(hero, !preferenceSetup)
     setHidden(intro, !preferenceSetup)
     setHidden(commandFooter, false)
@@ -234,7 +236,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const waiting = root.props.queryCurrent === false
     queryPending = waiting; syncBusy()
     const emptyProjection = descendants(root, 'raycast-empty')[0]
-    const emptyTitle = waiting ? (current?.extensionId === 'kaomoji-search' ? 'Searching…' : (zh ? '正在翻译…' : 'Translating…')) : String(emptyProjection?.props.title ?? '')
+    const emptyTitle = waiting ? (current?.extensionId === 'can-i-use' || current?.extensionId === 'kaomoji-search' ? 'Searching…' : (zh ? '正在翻译…' : 'Translating…')) : String(emptyProjection?.props.title ?? '')
     const showingDetail = descendants(root, 'raycast-list').some(list => list.props.isShowingDetail === true)
     const gridMode = grid !== undefined
     results.className = gridMode ? 'grid grid-cols-5 content-start gap-3 overflow-y-auto p-3' : 'launcher-command-list'
@@ -297,6 +299,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       item.addEventListener('focusin', () => { selected = index; syncPrimaryFooter(); for (const row of rows) { row.item.setAttribute('data-selected', String(row.item === item)); if (row.detail) row.detail.hidden = row.item !== item } })
       rows.push({ ...owner, detail }); results.append(item)
     })
+    if (current?.extensionId === 'can-i-use' && !waiting && Number.isSafeInteger(root.props.matchCount) && Number.isSafeInteger(root.props.totalCount)) {
+      status.textContent = `Showing ${items.length} of ${root.props.matchCount} matches. Search covers all ${root.props.totalCount} features.`
+    }
     if (current?.extensionId === 'kaomoji-search' && items.length === 64 && input.value === '') {
       status.textContent = 'Showing 64 results. Search all 1,822 kaomoji.'
     }
