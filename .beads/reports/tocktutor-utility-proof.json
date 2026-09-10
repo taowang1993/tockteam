@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-08",
+  "capturedAt": "2026-09-10",
   "viewport": {
     "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
     "pixels": { "width": 3024, "height": 1898 }
@@ -187,6 +187,9 @@
         "sourceSha256": "sha256:a487cc40dd7e711233a178c2b7bda7620dfaddcd9e50f4bee9f17d2d7b208284",
         "exactRawSource": true,
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-editor-source.png",
+        "screenshotBytes": 171014,
+        "screenshotSha256": "sha256:7574b2fccd84566ee26d175ce4dead1560b9e866beecca6d7540a1ff8782077c",
+        "captureRun": "tocktutor-capture-mtvcv21a-58eef715",
         "pristine": true,
         "visibleTooltips": 0
       },
@@ -208,6 +211,17 @@
         "activated": true,
         "cancelled": true,
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-command-palette.png",
+        "screenshotBytes": 248040,
+        "screenshotSha256": "sha256:0cc13e5e8a2469dbeb01229e99188e099610a573de27637f7446cae9bb4d035f",
+        "captureRun": "tocktutor-capture-mtvcv21a-58eef715",
+        "path": "UIUX Comparison.md",
+        "rowMetrics": { "visibleRowCount": 14, "rowHeightPx": 28, "adjacentGapPx": 0, "paddingTopPx": 4, "paddingBottomPx": 4 },
+        "sourceBytes": 1309,
+        "sourceSha256": "sha256:664e985275cf6e1a38afd7843c6866382656b04cc728a4aae70a1c2783ebfef8",
+        "exactRawSourceBeforeCapture": true,
+        "left": 430,
+        "width": 642,
+        "backgroundMatchesSidebar": true,
         "pristine": true,
         "visibleTooltips": 0
       },
@@ -425,7 +439,7 @@
     }
   },
   "affectedRecapture": {
-    "capturedAt": "2026-09-08",
+    "capturedAt": "2026-09-10",
     "fixture": "plugins/tocktutor/parity/fixtures/vault",
     "sameIsolatedFixture": true,
     "temporaryProfile": true,
@@ -453,8 +467,8 @@
         "createdPath": "Notes/Untitled.md",
         "treeContainsPath": true,
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-new-note.png",
-        "screenshotBytes": 111371,
-        "screenshotSha256": "sha256:470342ff2726db6e42082e006827a8076918cf434b6815e187dc4c6c06f4cc6d"
+        "screenshotBytes": 111333,
+        "screenshotSha256": "sha256:03d3144b97ecfdccf7e8151359d98496a2952fe0040855163a084643c9a66aeb"
       }
     },
     "geometry": {
@@ -466,19 +480,27 @@
         "comparability": "genuine",
         "status": "reference",
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-note-actions-menu.png",
-        "screenshotBytes": 332090,
-        "screenshotSha256": "sha256:14c254a8e38663ec5f8fd45cf81b19df446595d5ef6029167d1ce582e43f1909",
+        "screenshotBytes": 380473,
+        "screenshotSha256": "sha256:39a0692ef83dd3a015f8fe728eeb8487928cd6b941ddd14204e359f190ef8ea6",
+        "captureRun": "tocktutor-capture-mtvcv21a-58eef715",
         "copiedVaultIdentity": "TockTutor Parity Fixture",
-        "activePath": "Welcome",
-        "menuLabels": ["Reading View", "Live Preview", "Source Mode", "Rename Note", "Move Note", "Bookmark Note", "File Recovery", "Properties", "Backlinks in Document", "Graph View", "Web Viewer", "Bookmarks", "Tags", "Attachments and Embeds", "Note Tools", "Workspaces and Panes", "Reviews and Actions", "Move File to Trash"],
+        "activePath": "UIUX Comparison.md",
+        "sourceBytes": 1309,
+        "sourceSha256": "sha256:664e985275cf6e1a38afd7843c6866382656b04cc728a4aae70a1c2783ebfef8",
+        "exactRawSourceBeforeCapture": true,
+        "menuLabels": ["Reading View", "Live Preview", "Source Mode", "Rename Note", "Move Note", "Backlinks in Document", "Bookmark Note", "File Recovery", "Properties", "Backlinks", "Graph View", "Web Viewer", "Bookmarks", "Tags", "Attachments and Embeds", "Note Tools", "Workspaces and Panes", "Reviews and Actions", "Move File to Trash"],
+        "menuRight": 1476,
+        "triggerLeft": 1476,
+        "rightGap": 26,
+        "triggerWidth": 26,
         "visibleTooltips": 0
       },
       "newNote": {
         "comparability": "genuine",
         "status": "reference",
         "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-new-note.png",
-        "screenshotBytes": 111371,
-        "screenshotSha256": "sha256:470342ff2726db6e42082e006827a8076918cf434b6815e187dc4c6c06f4cc6d",
+        "screenshotBytes": 111333,
+        "screenshotSha256": "sha256:03d3144b97ecfdccf7e8151359d98496a2952fe0040855163a084643c9a66aeb",
         "captureState": "post-create opened and focused Untitled note, phase-matched with Obsidian Untitled result",
         "copiedVaultIdentity": "TockTutor Parity Fixture",
         "dialogScreenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-new-note-dialog.png",
@@ -489,6 +511,37 @@
         "dialog": { "title": "New Note", "focused": "New Note Path", "path": "" },
         "result": { "activePath": "/tocktutor/Notes/Untitled.md", "editorTitle": "Untitled", "message": "Notes/Untitled.md created.", "source": "", "unsavedMarker": false, "saved": true },
         "postCreate": { "activePath": "/tocktutor/Notes/Untitled.md", "editorTitle": "Untitled", "editorVisible": true, "treeContainsUntitled": true, "saved": true }
+      },
+      "search": {
+        "comparability": "genuine",
+        "status": "reference",
+        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-search.png",
+        "screenshotBytes": 466816,
+        "screenshotSha256": "sha256:7aecd04facbc03502c50c02b8ecd4f3c33b7491c3ccbf81022caf7fbad4ac37f",
+        "captureMethod": "bounded Playwright browser session attached over app-scoped CDP",
+        "captureState": "Search Notes dialog open with Search Options expanded over the active Live Preview note",
+        "copiedVaultIdentity": "TockTutor Sandbox",
+        "activePath": "Dedao AI Search Samples/一张图能装下多少文字？DeepSeek-OCR探索AI的“遗忘机制”.md",
+        "searchSurface": "dialog",
+        "filesSidebar": "independent",
+        "searchOptions": "visible",
+        "livePreview": "visible",
+        "query": "",
+        "resultSelection": {
+          "query": "DeepSeek",
+          "resultPath": "Dedao AI Search Samples/一张图能装下多少文字？DeepSeek-OCR探索AI的“遗忘机制”.md",
+          "dialogAfterSelection": false,
+          "editorTitleAfterSelection": "一张图能装下多少文字？DeepSeek-OCR探索AI的“遗忘机制”",
+          "filesSidebarAfterSelection": "true"
+        },
+        "geometry": {
+          "css": { "width": 1366, "height": 994, "deviceScaleFactor": 2 },
+          "pixels": { "width": 2732, "height": 1988 }
+        },
+        "routeVerified": true,
+        "contentVerified": true,
+        "runtimeErrors": 0,
+        "cleanupVerified": true
       },
       "workspacesPanes": {
         "comparability": "approximate",
