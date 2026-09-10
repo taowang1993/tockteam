@@ -83,7 +83,7 @@ export function MarkdownDocumentHeader(props: { className?: string; onAddPropert
                     <dd className={`m-0 flex min-h-6 min-w-0 items-center text-[var(--tt-text)] ${tags === null ? 'truncate' : 'flex-wrap gap-1'}`}>
                       {tags === null
                         ? checkbox
-                          ? <Checkbox aria-label={property.key} checked={property.value === true} className="size-3.5 cursor-default disabled:opacity-100" disabled />
+                          ? <Checkbox aria-label={property.key} checked={property.value === true} className="size-3.5 cursor-default disabled:opacity-100 data-[state=checked]:!border-[var(--tt-accent)] data-[state=checked]:!bg-[var(--tt-accent)] data-[state=checked]:!text-[#000]" disabled />
                           : Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')
                         : tags.map((tag, index) => (
                             <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_15%,transparent)] px-2 text-[var(--dsw-specific-markdown-accent)]" key={tag}>
