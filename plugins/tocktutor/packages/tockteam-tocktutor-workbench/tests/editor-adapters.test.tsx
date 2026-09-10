@@ -241,7 +241,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(favorite.getAttribute('data-state')).toBe('checked')
     expect(favorite.getAttribute('aria-checked')).toBe('true')
     expect(favorite.hasAttribute('disabled')).toBe(true)
-    expect(favorite.className).toContain('data-[state=checked]:!bg-[var(--tt-accent)]')
+    expect(favorite.className).toContain('data-[state=checked]:!bg-[var(--dsw-specific-markdown-accent)]')
     expect(favorite.className).toContain('data-[state=checked]:!text-[#000]')
     expect(screen.getByRole('link', { name: '[1]' }).textContent).toBe('[1]')
   })
