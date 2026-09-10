@@ -171,6 +171,59 @@ test('adapter detaches every retained input and rejects forged feature identitie
   assert.throws(()=>{detail.agents.push({})},TypeError)
 })
 
+test('successful singleton normalization is reused across features but stays factory-local',()=>{
+  const input=fixture();input.support.stats['feature-1'].chrome['1']='n';input.support.flags['feature-1'].chrome.y=2
+  const first=createTrustedRaycastCanIUseData(input),second=createTrustedRaycastCanIUseData(fixture())
+  const original=TextEncoder.prototype.encode;let encodes=0
+  // Observe the normalizer's platform encoding work, not wall-clock time or an exposed cache API.
+  TextEncoder.prototype.encode=function(...args){encodes++;return Reflect.apply(original,this,args)}
+  try {
+    assert.equal(first.support(id(),'chrome 1').allSupported,true)
+    const warm=encodes;assert(warm>0)
+    for(let i=0;i<581;i++)assert.equal(first.support(id(i),'chrome 1').allSupported,i!==1)
+    assert.equal(encodes,warm)
+    assert.equal(second.support(id(),'chrome 1').allSupported,true);assert(encodes>warm)
+  } finally {TextEncoder.prototype.encode=original}
+})
+
+test('normalization cache holds at most 1024 strings with deterministic clear-on-capacity',()=>{
+  const data=createTrustedRaycastCanIUseData(fixture())
+  const original=TextEncoder.prototype.encode;let encodes=0
+  TextEncoder.prototype.encode=function(...args){encodes++;return Reflect.apply(original,this,args)}
+  try {
+    for(let i=0;i<1024;i++)data.support(id(),'chrome 1'+' '.repeat(i))
+    const full=encodes
+    data.support(id(),'chrome 1');assert.equal(encodes,full)
+    // A new successful raw string clears the full map, then occupies one slot.
+    data.support(id(),'chrome 1'+' '.repeat(1024));assert(encodes>full)
+    const cleared=encodes
+    data.support(id(),'chrome 1');assert(encodes>cleared)
+    const rewarmed=encodes
+    data.support(id(2),'chrome 1');assert.equal(encodes,rewarmed)
+  } finally {TextEncoder.prototype.encode=original}
+})
+
+test('normalization failures and nonstrings never populate or evict successful entries',()=>{
+  const data=createTrustedRaycastCanIUseData(fixture())
+  const original=TextEncoder.prototype.encode;let encodes=0
+  TextEncoder.prototype.encode=function(...args){encodes++;return Reflect.apply(original,this,args)}
+  try {
+    for(let i=0;i<1024;i++)data.support(id(),'chrome 1'+' '.repeat(i))
+    for(const query of ['defaults','chrome 999','chrome 1,',' '.repeat(4097)]) {
+      const code=query==='defaults'?'DATA_UNAVAILABLE':query.length>4096?'LIMIT_EXCEEDED':'QUERY_UNSUPPORTED'
+      for(let repeat=0;repeat<2;repeat++){const before=encodes;assert.throws(()=>data.support(id(),query),error=>error.code===code);assert(encodes>before)}
+    }
+    let coercions=0
+    for(const query of [null,undefined,1,[],{},new String('chrome 1'),{toString(){coercions++;throw Error('secret')}}]) {
+      assert.throws(()=>data.support(id(),query),error=>error.code==='QUERY_UNSUPPORTED')
+    }
+    assert.equal(coercions,0)
+    const before=encodes;data.support(id(),'chrome 1');assert.equal(encodes,before)
+    // A cached valid query still performs feature authentication on every call.
+    unavailable(()=>data.support({slug:'feature-0',sourceIndex:1},'chrome 1'))
+  } finally {TextEncoder.prototype.encode=original}
+})
+
 test('terminal newlines in raw statuses are invalid even when aggregate bindings are resealed',()=>{
   for(const raw of ['n\n','y\n']) {
     const input=fixture();input.support.stats['feature-0'].chrome={'1':raw};input.support.flags['feature-0'].chrome={}

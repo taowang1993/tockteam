@@ -178,9 +178,18 @@ export function createTrustedRaycastCanIUseData(input: unknown) {
         return Object.freeze({ slug: row.slug, sourceIndex: row.sourceIndex as number })
       } catch { return fail() }
     }
+    // Factory-local raw-query keys; successful normalizations only. Clear deterministically at 1024.
+    const normalizedQueries = new Map<string, readonly string[]>()
     const support = (value: unknown, query: unknown): TrustedRaycastCanIUseFeatureSupport => {
       const feature = featureId(value)
-      const normalized = normalizeTrustedRaycastCanIUseQuery(query, { canonicalTargets })
+      let normalized = typeof query === 'string' ? normalizedQueries.get(query) : undefined
+      if (normalized === undefined) {
+        normalized = normalizeTrustedRaycastCanIUseQuery(query, { canonicalTargets })
+        if (typeof query === 'string') {
+          if (normalizedQueries.size >= 1024) normalizedQueries.clear()
+          normalizedQueries.set(query, normalized)
+        }
+      }
       const selected = normalized.map(target => {
         const [browser, version] = target.split(' ') as [string, string]
         const table = allStats[feature.slug]![browser]
