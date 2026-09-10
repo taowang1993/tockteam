@@ -28,7 +28,7 @@ export function MarkdownDocumentHeader(props) {
         setName('');
         setError('');
     };
-    const showProperties = properties.length > 0 || props.onAddProperty !== undefined;
+    const showProperties = properties.length > 0 || (props.onAddProperty !== undefined && props.source.trim() !== '');
     if (props.title === undefined && !showProperties)
         return null;
     return (_jsxs("header", { className: props.className, children: [props.title !== undefined && _jsx("h1", { className: "m-0 mb-5 text-[30px] leading-tight font-[650] tracking-[-.01em] text-[var(--tt-text)]", children: props.title }), showProperties && (_jsxs("section", { children: [_jsx("h2", { className: "m-0 mb-2 text-xs font-semibold text-[var(--tt-text)]", children: "Properties" }), properties.length > 0 && (_jsx("dl", { "aria-label": "Document Properties", className: "m-0 grid grid-cols-[112px_minmax(0,1fr)] gap-x-3 text-xs", children: properties.map(property => {

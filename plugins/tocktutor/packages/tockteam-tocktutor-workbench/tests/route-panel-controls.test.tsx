@@ -36,6 +36,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onBack?(): void
   onCancelDispatch?(): void
   onCloseCommandPalette?(): void
+  onCloseSearch?(): void
   onClosePane?(paneId: string): void
   onCloseTab?(paneId: string, path: string): void
   onCopyGraphPath?(path: string): void
@@ -115,7 +116,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByText('1 Result')).toBeTruthy()
   })
 
-  it('opens note search in a persistent Files sidebar without replacing the active editor', () => {
+  it('opens note search in a modal dialog without replacing the active editor', () => {
     const revision = '1'.repeat(64)
     renderRoute({
       entries: [
@@ -127,12 +128,11 @@ describe('TockTutor titlebar panel controls', () => {
       searchQuery: 'second',
     })
 
-    const search = screen.getByRole('region', { name: 'Search Notes' })
+    const dialog = screen.getByRole('dialog', { name: 'Search Notes' })
     const query = screen.getByRole('searchbox', { name: 'Search Notes Query' })
-    expect(search.contains(query)).toBe(true)
+    expect(dialog.contains(query)).toBe(true)
     expect(query.getAttribute('placeholder')).toBe('Search notes...')
-    expect(document.querySelector('aside[aria-label="Files"]')?.contains(query)).toBe(true)
-    expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()
+    expect(document.querySelector('aside[aria-label="Files"]')?.contains(query)).toBe(false)
     expect(screen.getByRole('list', { name: 'Matching Note Paths' }).textContent).toContain('Second.md')
     expect(screen.queryByText('Folder/Note.md')).toBeNull()
     expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
@@ -345,17 +345,26 @@ describe('TockTutor titlebar panel controls', () => {
     const dialog = screen.getByRole('dialog', { name: 'Command Palette' })
     expect(dialog.className).toContain('z-[2147483647]')
     expect(dialog.className).toContain('max-w-[640px]')
-    expect(dialog.className).toContain('[--tt-panel:var(--dsw-alias-bg-layer-1,#fff)]')
+    expect(dialog.className).toContain('left-1/2')
+    expect(dialog.className).toContain('-ml-[5px]')
+    expect(dialog.className).toContain('[--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))]')
     expect(document.querySelector('[data-slot="dialog-overlay"]')?.className).toContain('z-[2147483646]')
     expect(document.querySelector('[data-slot="dialog-overlay"]')?.className).toContain('!bg-transparent')
-    expect(screen.getByRole('listbox', { name: 'Command Search Results' })).toBeTruthy()
+    const commandList = screen.getByRole('listbox', { name: 'Command Search Results' })
+    expect(commandList).toBeTruthy()
+    expect(commandList.querySelector('[data-slot="command-group"]')?.className).toContain('gap-0')
+    const newNote = screen.getByRole('option', { name: 'New Note' })
+    expect(newNote.className).toContain('box-border')
+    expect(newNote.className).toContain('h-7')
+    expect(newNote.className).toContain('py-1')
+    expect(newNote.className).not.toContain('min-h-9')
     expect(screen.queryByRole('region', { name: 'Command Preview' })).toBeNull()
     expect(screen.queryByText('Best Matches')).toBeNull()
     expect(screen.getByText('Dismiss')).toBeTruthy()
     fireEvent.click(screen.getByRole('option', { name: 'Search Notes' }))
     expect(onOpenSearch).toHaveBeenCalledOnce()
     expect(onCloseCommandPalette).not.toHaveBeenCalled()
-    expect(screen.getByRole('region', { name: 'Search Notes' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Commands' }))
     const commandInput = screen.getByRole('combobox', { name: 'Search Commands' })
     fireEvent.change(commandInput, { target: { value: 'focus' } })
@@ -373,7 +382,7 @@ describe('TockTutor titlebar panel controls', () => {
     await waitFor(() => expect(screen.getByRole('option', { name: 'Search Notes' }).getAttribute('aria-selected')).toBe('true'))
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(onOpenSearch).toHaveBeenCalledOnce()
-    expect(screen.getByRole('region', { name: 'Search Notes' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
   })
 
   it('renders editable source-preserving Live Preview chrome', async () => {
@@ -1047,6 +1056,7 @@ describe('TockTutor titlebar panel controls', () => {
   })
 
   it('keeps the active editor while selecting a search result', () => {
+    const onCloseSearch = vi.fn()
     const onSelect = vi.fn()
     renderRoute({
       searchMatches: [
@@ -1054,16 +1064,18 @@ describe('TockTutor titlebar panel controls', () => {
         { kind: 'content', line: 8, path: 'Notes/Lesson.md', preview: 'Second lesson match' },
       ],
       searchMode: 'query',
-      searchOpen: true,
       searchQuery: 'lesson',
-    }, { onSelect })
+    }, { onCloseSearch, onOpenSearch: vi.fn(), onSelect })
 
+    fireEvent.click(screen.getByRole('button', { name: 'Search Notes' }))
+    expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
     expect(screen.getByRole('radiogroup', { name: 'Search Mode' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Search Results' })).toBeTruthy()
-    expect(screen.queryByRole('region', { name: 'Note Preview' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Note Preview' })).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: 'Open Notes/Lesson.md' })[1]!)
     expect(onSelect).toHaveBeenCalledWith('Notes/Lesson.md')
-    expect(screen.getByRole('region', { name: 'Search Notes' })).toBeTruthy()
+    expect(onCloseSearch).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()
     expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
   })
 
@@ -1085,16 +1097,20 @@ describe('TockTutor titlebar panel controls', () => {
     await waitFor(() => { expect(document.activeElement).toBe(query) })
   })
 
-  it('restores a collapsed sidebar after closing Search', () => {
-    renderRoute({}, { onOpenSearch: vi.fn() })
+  it('hides Search Notes when the Files sidebar is collapsed', () => {
+    const onOpenSearch = vi.fn()
+    renderRoute({}, { onOpenSearch })
     const sidebarButton = screen.getByRole('button', { name: 'Toggle Files Sidebar' })
     fireEvent.click(sidebarButton)
     expect(document.querySelector('aside[aria-label="Files"]')?.getAttribute('data-open')).toBe('false')
+    expect(screen.queryByRole('button', { name: 'Search Notes' })).toBeNull()
+    fireEvent.click(sidebarButton)
+    expect(screen.getByRole('button', { name: 'Search Notes' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Search Notes' }))
-    expect(screen.getByRole('region', { name: 'Search Notes' })).toBeTruthy()
-    expect(document.querySelector('aside[aria-label="Files"]')?.getAttribute('data-open')).toBe('true')
-    fireEvent.click(screen.getByRole('button', { name: 'Close Search' }))
-    expect(document.querySelector('aside[aria-label="Files"]')?.getAttribute('data-open')).toBe('false')
+    expect(onOpenSearch).toHaveBeenCalledOnce()
+    expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()
   })
 
   it('hides query operators in Related mode', () => {

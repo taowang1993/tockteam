@@ -210,7 +210,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(screen.queryByRole('form', { name: 'Add Property' })).toBeNull()
   })
 
-  it('adds a property from Reading View', () => {
+  it('adds a property from Reading View without existing frontmatter', () => {
     const onAddProperty = vi.fn(() => true)
     render(<RichReadingView onAddProperty={onAddProperty} onToggleTask={() => {}} source="# Lesson\n" title="Lesson note" />)
 
@@ -218,6 +218,20 @@ describe('Milkdown Live Preview editor', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Property Name' }), { target: { value: 'area' } })
     fireEvent.submit(screen.getByRole('form', { name: 'Add Property' }))
     expect(onAddProperty).toHaveBeenCalledWith('area')
+  })
+
+  it('does not render property controls for an empty note without frontmatter', () => {
+    const onAddProperty = vi.fn(() => true)
+    render(<LivePreviewEditor content="" onAddProperty={onAddProperty} onMarkdownChange={() => {}} title="Untitled" />)
+
+    expect(screen.queryByRole('heading', { level: 2, name: 'Properties' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add Property' })).toBeNull()
+  })
+
+  it('renders property controls for empty frontmatter', () => {
+    render(<LivePreviewEditor content={'---\n---\n'} onAddProperty={() => true} onMarkdownChange={() => {}} title="Untitled" />)
+
+    expect(screen.getByRole('button', { name: 'Add Property' })).toBeTruthy()
   })
 
   it('renders boolean properties as checkboxes and brackets footnote references in Reading View', () => {

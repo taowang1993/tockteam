@@ -63,7 +63,7 @@ export function MarkdownDocumentHeader(props: { className?: string; onAddPropert
     setName('')
     setError('')
   }
-  const showProperties = properties.length > 0 || props.onAddProperty !== undefined
+  const showProperties = properties.length > 0 || (props.onAddProperty !== undefined && props.source.trim() !== '')
   if (props.title === undefined && !showProperties) return null
   return (
     <header className={props.className}>
