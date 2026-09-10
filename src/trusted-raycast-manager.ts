@@ -6,13 +6,15 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync 
 import { tmpdir } from 'node:os'
 import { join, isAbsolute, dirname } from 'node:path'
 import { admitTrustedRaycastArtifact, readTrustedRaycastBuildIdentity, readTrustedRaycastDerivedFile, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
-import { trustedRaycastDescriptors, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
+import { getTrustedRaycastRuntimeDescriptor, type TrustedRaycastExtensionId, type TrustedRaycastRuntimeExtensionId } from './trusted-raycast-descriptors.ts'
+import { createTrustedRaycastCanIUseRuntime } from './trusted-raycast-can-i-use-runtime.ts'
+import { TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS } from './trusted-raycast-can-i-use-preferences.ts'
 import { isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, KAOMOJI_PREFERENCE_DEFAULTS, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
 
 export type TrustedRaycastOwner = Readonly<{ webContentsId: number }>
 export type TrustedRaycastManagerOptions = Readonly<{
   /** The live runtime directory, or a main-owned resolver when the install store owns it. */
-  runtimeDir: string | ((extensionId: TrustedRaycastExtensionId) => string | undefined)
+  runtimeDir: string | ((extensionId: TrustedRaycastRuntimeExtensionId) => string | undefined)
   nodePath: string
   onMessage: (owner: TrustedRaycastOwner, message: TrustedRaycastViewMessage) => void
   onError?: (owner: TrustedRaycastOwner, error: Error) => void
@@ -24,7 +26,7 @@ export type TrustedRaycastManagerOptions = Readonly<{
   savePreferences?: (preferences: Readonly<Record<string, boolean | string>>, extensionId: TrustedRaycastExtensionId) => void | Promise<void>
   stateFile?: string | ((extensionId: TrustedRaycastExtensionId) => string | undefined)
 }>
-type Session = { revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
+type Session = { canIUse?: ReturnType<typeof createTrustedRaycastCanIUseRuntime>; revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
 type Preview = { child: ChildProcessWithoutNullStreams; workspace: string; phase: 'running' | 'cleanup-failed'; stopping?: Promise<void> }
 
 /** Main owns identity and the sole live child. Trusted code is not an OS sandbox. */
@@ -36,21 +38,21 @@ export class TrustedRaycastManager {
   private readonly options: TrustedRaycastManagerOptions
   constructor(options: TrustedRaycastManagerOptions) { this.options = options }
   get active(): boolean { return this.session !== undefined && !this.session.revoked }
-  get activeExtensionId(): TrustedRaycastExtensionId | undefined { return this.session?.revoked ? undefined : this.session?.input.extensionId }
-  private resolveRuntimeDir(extensionId: TrustedRaycastExtensionId): string | undefined {
+  get activeExtensionId(): TrustedRaycastRuntimeExtensionId | undefined { return this.session?.revoked ? undefined : this.session?.input.extensionId }
+  private resolveRuntimeDir(extensionId: TrustedRaycastRuntimeExtensionId): string | undefined {
     const resolved = typeof this.options.runtimeDir === 'function' ? this.options.runtimeDir(extensionId) : this.options.runtimeDir
     return resolved === '' ? undefined : resolved
   }
   get available(): boolean { return this.availableFor('google-translate') }
-  availableFor(extensionId: TrustedRaycastExtensionId): boolean {
+  availableFor(extensionId: TrustedRaycastRuntimeExtensionId): boolean {
     if (process.platform !== 'darwin') return false
     const runtimeDir = this.resolveRuntimeDir(extensionId)
     if (runtimeDir === undefined) return false
-    try { readTrustedRaycastBuildIdentity(runtimeDir, trustedRaycastDescriptors[extensionId]); return true } catch { return false }
+    try { readTrustedRaycastBuildIdentity(runtimeDir, getTrustedRaycastRuntimeDescriptor(extensionId)!); return true } catch { return false }
   }
   /** Shared admission and workspace staging; main calls this before any child can load. */
-  private createWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen): { child: ChildProcessWithoutNullStreams; workspace: string } {
-    const descriptor = trustedRaycastDescriptors[input.extensionId]
+  private createWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen): { child: ChildProcessWithoutNullStreams; workspace: string; canIUse?: ReturnType<typeof createTrustedRaycastCanIUseRuntime> } {
+    const descriptor = getTrustedRaycastRuntimeDescriptor(input.extensionId)!
     const identity = readTrustedRaycastBuildIdentity(runtimeDir, descriptor)
     const bytes = admitTrustedRaycastArtifact(descriptor, join(runtimeDir, 'artifact.tar'))
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-trusted-raycast-'))
@@ -62,15 +64,16 @@ export class TrustedRaycastManager {
       writeFileSync(join(workspace, 'child.mjs'), readTrustedRaycastDerivedFile(join(runtimeDir, 'child.mjs'), identity.childSha256))
       writeFileSync(join(workspace, 'resolution.mjs'), readTrustedRaycastDerivedFile(join(runtimeDir, 'resolution.mjs'), identity.resolutionSha256))
       mkdirSync(join(workspace, 'tmp'))
-      const stateFile = typeof this.options.stateFile === 'function' ? this.options.stateFile(input.extensionId) : this.options.stateFile
+      const canIUse = input.extensionId === 'can-i-use' ? createTrustedRaycastCanIUseRuntime(join(workspace, descriptor.artifactRoot), input.sessionId, input.preferences) : undefined
+      const stateFile = input.extensionId === 'can-i-use' ? undefined : typeof this.options.stateFile === 'function' ? this.options.stateFile(input.extensionId) : this.options.stateFile
       if (stateFile !== undefined) mkdirSync(dirname(stateFile), { recursive: true })
       const defaults = input.extensionId === 'kaomoji-search' ? KAOMOJI_PREFERENCE_DEFAULTS : TRUSTED_RAYCAST_PREFERENCE_DEFAULTS
       const child = spawn(this.options.nodePath, ['--import', join(workspace, 'resolution.mjs'), join(workspace, 'child.mjs')], {
         cwd: workspace, detached: true,
-        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_EXTENSION_ID: input.extensionId, TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(Object.keys(input.preferences).length === 0 ? defaults : input.preferences), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: this.options.preferencesConfigured?.(input.extensionId) === false ? '0' : '1', ...(stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: stateFile }) },
+        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_EXTENSION_ID: input.extensionId, TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(canIUse?.preferences ?? (Object.keys(input.preferences).length === 0 ? defaults : input.preferences)), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: input.extensionId !== 'can-i-use' && this.options.preferencesConfigured?.(input.extensionId) === false ? '0' : '1', ...(stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: stateFile }), ...(canIUse ? { TRUSTED_RAYCAST_CAN_I_USE_CONTEXT: JSON.stringify(canIUse.context), TRUSTED_RAYCAST_CAN_I_USE_ROOT: canIUse.initialMessage } : {}) },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
-      return { child, workspace }
+      return { child, workspace, ...(canIUse ? { canIUse } : {}) }
     } catch (error) {
       rmSync(workspace, { recursive: true, force: true })
       throw error
@@ -90,12 +93,13 @@ export class TrustedRaycastManager {
   }
 
   /** Isolated bounded boot of a staged install: first valid readiness or a typed failure, then teardown. */
-  async previewRuntime(runtimeDir: string, extensionId: TrustedRaycastExtensionId = 'google-translate'): Promise<string> {
+  async previewRuntime(runtimeDir: string, extensionId: TrustedRaycastRuntimeExtensionId = 'google-translate'): Promise<string> {
     if (this.disposed || this.session || this.stopping || (this.preview && this.preview.phase !== 'cleanup-failed')) throw new Error('Trusted extension runtime is busy or closed')
     if (this.preview?.phase === 'cleanup-failed') await this.stopPreview()
-    const descriptor = trustedRaycastDescriptors[extensionId]
-    const input: TrustedRaycastViewOpen = Object.freeze({ extensionId, sessionId: randomUUID(), generation: randomUUID(), command: descriptor.command, preferences: Object.freeze({}) })
-    const { child, workspace } = this.createWorkspace(runtimeDir, input)
+    const descriptor = getTrustedRaycastRuntimeDescriptor(extensionId)!
+    // Candidate preview uses an explicit, already reviewed exact query, never the unsupported defaults token.
+    const input: TrustedRaycastViewOpen = Object.freeze({ extensionId, sessionId: randomUUID(), generation: randomUUID(), command: descriptor.command, preferences: extensionId === 'can-i-use' ? Object.freeze({ ...TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS, defaultQuery: 'chrome 100' }) : Object.freeze({}) })
+    const { child, workspace, canIUse } = this.createWorkspace(runtimeDir, input)
     this.preview = { child, workspace, phase: 'running' }
     try {
       await new Promise<void>((resolve, reject) => {
@@ -122,7 +126,7 @@ export class TrustedRaycastManager {
             const line = pending.slice(0, end); pending = pending.slice(end + 1)
             try {
               const message = parseTrustedRaycastChildMessage(line, input, -1)
-              if (message.type === 'ready') { finish(); return }
+              if (message.type === 'ready') { canIUse?.publish(message.root!); finish(); return }
               if (message.type === 'error') { finish(new Error(message.message)); return }
             } catch (error) { finish(error instanceof Error ? error : new Error('Invalid Translate preview output')); return }
           }
@@ -131,7 +135,7 @@ export class TrustedRaycastManager {
         child.once('close', () => finish(new Error('Translate preview closed before readiness')))
       })
       return ''
-    } finally { await this.stopPreview() }
+    } finally { try { canIUse?.close() } finally { await this.stopPreview() } }
   }
   async start(owner: TrustedRaycastOwner, input: TrustedRaycastViewOpen): Promise<void> {
     const startedAt = Date.now()
@@ -150,7 +154,7 @@ export class TrustedRaycastManager {
       let resolveReady!: () => void
       let rejectReady!: (error: Error) => void
       const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
-      current = { child, owner, input, workspace, revision: -1, querySequence: 0, eventId: '', actions: new Map(), fields: new Map(), reject: rejectReady }
+      current = { ...(created.canIUse ? { canIUse: created.canIUse } : {}), child, owner, input, workspace, revision: -1, querySequence: 0, eventId: '', actions: new Map(), fields: new Map(), reject: rejectReady }
       this.session = current
       const session = current
       const fail = (error: Error): void => {
@@ -192,6 +196,10 @@ export class TrustedRaycastManager {
             session.fields.clear()
             const querySequence = message.root!.props.querySequence
             if (!Number.isSafeInteger(querySequence) || (querySequence as number) < 0 || (querySequence as number) > session.querySequence) throw new Error('Invalid Translate query sequence')
+            if (session.canIUse) {
+              if (querySequence !== session.querySequence) throw new Error('SNAPSHOT_STALE')
+              session.canIUse.publish(message.root!)
+            }
             const wrap = (node: TrustedRaycastViewNode): TrustedRaycastViewNode => {
               const props = { ...node.props }
               if (Object.hasOwn(props, 'actionEventId')) {
@@ -240,11 +248,25 @@ export class TrustedRaycastManager {
     if (session.child.stdin.writableLength > 32768) throw new Error('Translate input is busy')
     if (event.kind === 'searchChanged') {
       if (event.eventId !== session.eventId || session.eventId === '') throw new Error('Translate event is stale')
+      if (session.canIUse) {
+        session.eventId = ''
+        session.actions.clear(); session.fields.clear(); session.action = undefined
+        try {
+          const packet = session.canIUse.search(event.value)
+          session.querySequence++
+          session.child.stdin.write(`${packet}\n`)
+        } catch (error) {
+          void this.stop('search-failed').catch(error => this.options.onError?.(owner, error))
+          throw error
+        }
+        return
+      }
       session.querySequence++
       session.actions.clear(); session.fields.clear(); session.action = undefined
       session.child.stdin.write(`${JSON.stringify(event)}\n`)
       return
     }
+    if (session.canIUse) throw new Error('ACTION_DENIED')
     if (event.kind === 'fieldChanged') {
       if (!session.fields.has(event.eventId)) throw new Error('Translate event is stale')
       session.child.stdin.write(`${JSON.stringify({ ...event, eventId: session.fields.get(event.eventId) })}\n`)
@@ -298,6 +320,7 @@ export class TrustedRaycastManager {
     if (this.stopping) return await this.stopping
     const session = this.session
     if (!session) return
+    if (!session.revoked) session.canIUse?.close()
     session.revoked = true
     session.reject(new Error('Translate session closed'))
     const operation = (async () => {

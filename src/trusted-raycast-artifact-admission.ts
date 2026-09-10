@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { closeSync, fstatSync, openSync, readSync, constants as fsConstants } from 'node:fs'
 import { join } from 'node:path'
-import { trustedRaycastDescriptors, type TrustedRaycastCommand, type TrustedRaycastDescriptor, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
+import { trustedRaycastDescriptors, type TrustedRaycastCommand, type TrustedRaycastDescriptor, type TrustedRaycastRuntimeExtensionId } from './trusted-raycast-descriptors.ts'
 
 /** Compatibility export for existing Google Translate evidence and callers. */
 export const TRUSTED_RAYCAST_ARTIFACT_SHA256 = trustedRaycastDescriptors['google-translate'].artifactSha256
@@ -12,7 +12,7 @@ export type TrustedRaycastBuildIdentity = Readonly<{
   artifactSha256: string
   childSha256: string
   command: TrustedRaycastCommand
-  extensionId: TrustedRaycastExtensionId
+  extensionId: TrustedRaycastRuntimeExtensionId
   metadataSha256: string
   projectionSha256?: string
   react: string

@@ -1,12 +1,13 @@
 export const TRUSTED_RAYCAST_EXTENSION_IDS = Object.freeze(['google-translate', 'kaomoji-search'] as const)
 export type TrustedRaycastExtensionId = (typeof TRUSTED_RAYCAST_EXTENSION_IDS)[number]
+export type TrustedRaycastRuntimeExtensionId = TrustedRaycastExtensionId | 'can-i-use'
 export type TrustedRaycastCommand = 'translate' | 'index'
 
 export type TrustedRaycastDescriptor = Readonly<{
   artifactRoot: string
   artifactSha256: string
   command: TrustedRaycastCommand
-  extensionId: TrustedRaycastExtensionId
+  extensionId: TrustedRaycastRuntimeExtensionId
   previousArtifactSha256s: readonly string[]
   react: '19.0.0'
   reconciler: '0.31.0'
@@ -41,6 +42,19 @@ export const trustedRaycastDescriptors: Readonly<Record<TrustedRaycastExtensionI
     vendorFile: 'kaomoji-search.tar',
   }),
 })
+
+/** Internal candidate only. Public trust/IPC/catalog admission still uses the registry above. */
+const canIUseCandidate: TrustedRaycastDescriptor = Object.freeze({
+  artifactRoot: 'tockteam-raycast-can-i-use-artifact',
+  artifactSha256: '0e23b06703ad85e91f9c6793c5de689204e9fe3bdb0fed3106a1324406bf3858',
+  command: 'index', extensionId: 'can-i-use', previousArtifactSha256s: Object.freeze([]),
+  react: '19.0.0', reconciler: '0.31.0', sourceEntry: 'src/index.tsx',
+  sourceRevision: '186d955eda64f9e956b25a3fdf5566b1d38f57f2', vendorFile: 'can-i-use.tar',
+})
+
+export function getTrustedRaycastRuntimeDescriptor(value: unknown): TrustedRaycastDescriptor | undefined {
+  return value === 'can-i-use' ? canIUseCandidate : getTrustedRaycastDescriptor(value)
+}
 
 export function getTrustedRaycastDescriptor(value: unknown): TrustedRaycastDescriptor | undefined {
   return typeof value === 'string' && (TRUSTED_RAYCAST_EXTENSION_IDS as readonly string[]).includes(value)

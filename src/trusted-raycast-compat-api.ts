@@ -26,7 +26,7 @@ const section = component('raycast-section')
 const list = searchableCollection('raycast-list')
 export function viewSearchable(): boolean { return searchable }
 export const List = Object.assign(list, {
-  Item: Object.assign((props: Record<string, unknown>) => renderedCollectionItems++ < MAX_COLLECTION_ITEMS ? element('raycast-list-item', { title: props.title, subtitle: String(props.subtitle ?? ''), selected: props.selected === true, accessories: JSON.stringify(props.accessories ?? []) }, [props.detail as React.ReactNode, props.actions as React.ReactNode]) : null, { Detail: component('raycast-detail') }),
+  Item: Object.assign((props: Record<string, unknown>) => renderedCollectionItems++ < MAX_COLLECTION_ITEMS ? element('raycast-list-item', { title: props.title, subtitle: String(props.subtitle ?? ''), selected: props.selected === true, accessories: JSON.stringify(props.accessories ?? []), ...(process.env.TRUSTED_RAYCAST_EXTENSION_ID === 'can-i-use' && Array.isArray(props.keywords) ? { featureName: props.keywords[0] } : {}) }, [props.detail as React.ReactNode, props.actions as React.ReactNode]) : null, { Detail: component('raycast-detail') }),
   Section: section,
   EmptyView: component('raycast-empty'),
   Dropdown: Object.assign((props: Record<string, unknown>) => element('raycast-dropdown', { value: String(props.value ?? ''), fieldEventId: `dropdown-${++handleSequence}`, ...(typeof props.onChange === 'function' ? { onChange: props.onChange as (value: string) => void } : {}) }, React.Children.toArray(props.children as React.ReactNode)), { Item: component('raycast-dropdown-item') }),
