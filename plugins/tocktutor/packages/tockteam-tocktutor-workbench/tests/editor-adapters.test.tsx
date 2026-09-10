@@ -188,7 +188,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(tagsTerm.querySelector('.lucide-tags')).toBeTruthy()
     expect(tagsTerm.parentElement?.querySelector('dd')?.textContent).toContain('onetwo')
     expect(screen.getByText('one').className).toContain('var(--dsw-specific-markdown-accent)_10%')
-    expect(screen.getByText('one').className).toContain('text-[var(--dsw-specific-markdown-accent)]')
+    expect(screen.getByText('one').className).toContain('text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]')
     fireEvent.click(screen.getByRole('button', { name: 'Remove one tag' }))
     expect(onSetProperty).toHaveBeenCalledWith('tags', ['two'])
   })
