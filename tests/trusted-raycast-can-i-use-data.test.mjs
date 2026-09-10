@@ -242,6 +242,112 @@ test('empty flags are distinct from missing data and prefixed/noted statuses nev
   assert.deepEqual(data.support(id(1),'chrome 1').agents.find(row=>row.browser==='chrome').flags,{y:1,a:null,x:4,u:5})
 })
 
+test('missing scoped tables with empty flags retain immutable aggregate rows and unavailable queries',()=>{
+  for(const browser of ['chrome','op_mini']) {
+    const input=fixture(),query=browser==='op_mini'?'op_mini all':'chrome 1'
+    delete input.support.stats['feature-0'][browser];input.support.flags['feature-0'][browser]={}
+    const data=createTrustedRaycastCanIUseData(input),detail=data.detail(id())
+    const row=data.support(id(),'firefox 1').agents.find(row=>row.browser===browser)
+    assert.deepEqual(row,{browser,label:identities.find(([name])=>name===browser)[1],sourceIndex:identities.findIndex(([name])=>name===browser),flags:{y:null,a:null,x:null,u:null}})
+    frozen(row);frozen(detail)
+    if(browser==='chrome')assert.deepEqual(detail.agents.find(row=>row.browser===browser),row)
+    else assert(!detail.agents.some(row=>row.browser===browser))
+    assert.throws(()=>{row.flags.y=0},TypeError)
+    // Even a cold unavailable query can normalize successfully; cached targets never cache support.
+    unavailable(()=>data.support(id(),query))
+    assert.equal(data.support(id(1),query).allSupported,true)
+    unavailable(()=>data.support(id(),query))
+    unavailable(()=>data.support({slug:'feature-0',sourceIndex:1},query))
+    input.support.stats['feature-0'][browser]={'1':'y',all:'y'};input.support.flags['feature-0'][browser].y=1
+    assert.deepEqual(data.detail(id()),detail);assert.deepEqual(row.flags,{y:null,a:null,x:null,u:null})
+    unavailable(()=>data.support(id(),query));assert.equal(data.support(id(1),query).allSupported,true)
+  }
+})
+
+for(const browser of ['chrome','op_mini']) for(const timing of ['before factory','after factory']) test(`missing scoped tables ignore inherited ${browser} tables ${timing}`,()=>{
+  const input=fixture(),query=browser==='op_mini'?'op_mini all':'chrome 1'
+  delete input.support.stats['feature-0'][browser];input.support.flags['feature-0'][browser]={}
+  const previous=Object.getOwnPropertyDescriptor(Object.prototype,browser)
+  const pollute=()=>Object.defineProperty(Object.prototype,browser,{configurable:true,writable:true,value:browser==='op_mini'?{all:'y'}:{'1':'y'}})
+  try {
+    if(timing==='before factory')pollute()
+    const data=createTrustedRaycastCanIUseData(input)
+    if(timing==='after factory')pollute()
+    const row=data.support(id(),'firefox 1').agents.find(row=>row.browser===browser)
+    assert.deepEqual(row.flags,{y:null,a:null,x:null,u:null});frozen(row)
+    unavailable(()=>data.support(id(),query))
+    assert.equal(data.support(id(1),query).allSupported,true)
+    unavailable(()=>data.support(id(),query))
+    const detail=data.detail(id());frozen(detail)
+    if(browser==='chrome')assert.deepEqual(detail.agents.find(row=>row.browser===browser).flags,row.flags)
+    else assert(!detail.agents.some(row=>row.browser===browser))
+  } finally {
+    if(previous)Object.defineProperty(Object.prototype,browser,previous)
+    else delete Object.prototype[browser]
+  }
+})
+
+test('optional aggregate flags never read inherited y a x u getters',()=>{
+  const input=fixture(),flags=['y','a','x','u'],reads={y:0,a:0,x:0,u:0}
+  delete input.support.stats['feature-0'].chrome;input.support.flags['feature-0'].chrome={}
+  input.support.stats['feature-1'].chrome={'1':'y a x u'};input.support.flags['feature-1'].chrome={y:1,a:1,x:1,u:1}
+  const previous=Object.fromEntries(flags.map(flag=>[flag,Object.getOwnPropertyDescriptor(Object.prototype,flag)]))
+  try {
+    for(const flag of flags)Object.defineProperty(Object.prototype,flag,{configurable:true,get(){reads[flag]++;return 999}})
+    const data=createTrustedRaycastCanIUseData(input),missing=data.detail(id()).agents.find(row=>row.browser==='chrome')
+    assert.deepEqual(missing.flags,{y:null,a:null,x:null,u:null});frozen(missing)
+    unavailable(()=>data.support(id(),'chrome 1'))
+    assert.deepEqual(data.support(id(1),'chrome 1').agents.find(row=>row.browser==='chrome').flags,{y:1,a:1,x:1,u:1})
+    assert.deepEqual(data.detail(id(2)).agents.find(row=>row.browser==='chrome').flags,{y:1,a:null,x:null,u:null})
+    assert.equal(data.support(id(2),'chrome 1').allSupported,true)
+    unavailable(()=>data.support(id(),'chrome 1'))
+    assert.deepEqual(reads,{y:0,a:0,x:0,u:0})
+  } finally {
+    for(const flag of flags){if(previous[flag])Object.defineProperty(Object.prototype,flag,previous[flag]);else delete Object.prototype[flag]}
+  }
+})
+
+test('internal feature maps do not invoke inherited feature getters or setters',()=>{
+  const input=fixture(),key='feature-0',previous=Object.getOwnPropertyDescriptor(Object.prototype,key);let reads=0,writes=0
+  try {
+    Object.defineProperty(Object.prototype,key,{configurable:true,get(){reads++;return {chrome:{'1':'y'}}},set(){writes++}})
+    const data=createTrustedRaycastCanIUseData(input)
+    assert.equal(data.support(id(),'chrome 1').allSupported,true)
+    assert.deepEqual(data.detail(id()).feature,id())
+    assert.equal(reads,0);assert.equal(writes,0)
+    unavailable(()=>data.support({slug:'feature-0',sourceIndex:1},'chrome 1'))
+  } finally {
+    if(previous)Object.defineProperty(Object.prototype,key,previous)
+    else delete Object.prototype[key]
+  }
+})
+
+test('missing scoped tables reject nonempty or malformed flags rather than inventing raw support',()=>{
+  for(const flags of [{y:0},{a:0},{x:0},{u:0},{y:1,a:2,x:3,u:4},{y:null},{y:NaN},{n:1},null,[]]) {
+    const input=fixture();delete input.support.stats['feature-0'].chrome;input.support.flags['feature-0'].chrome=flags
+    unavailable(()=>createTrustedRaycastCanIUseData(input))
+  }
+  const input=fixture();delete input.support.stats['feature-0'].chrome;delete input.support.flags['feature-0'].chrome
+  unavailable(()=>createTrustedRaycastCanIUseData(input))
+})
+
+test('missing scoped tables do not relax malformed table or unknown browser validation',()=>{
+  for(const mutate of [
+    input=>input.support.stats['feature-0'].chrome=null,
+    input=>input.support.stats['feature-0'].chrome=[],
+    input=>input.support.stats['feature-0'].chrome=Object.create(null),
+    input=>input.support.stats['feature-0'].unknown={'1':'y'},
+    input=>input.support.stats['feature-0'].firefox['1']='yes',
+    input=>input.support.stats['feature-0'].chrome={'999':'y'},
+  ]) {
+    const input=fixture();delete input.support.stats['feature-0'].chrome;input.support.flags['feature-0'].chrome={};mutate(input)
+    unavailable(()=>createTrustedRaycastCanIUseData(input))
+  }
+  const input=fixture();delete input.support.stats['feature-0'].chrome;input.support.flags['feature-0'].chrome={};let reads=0
+  Object.defineProperty(input.support.stats['feature-0'],'chrome',{enumerable:true,get(){reads++;throw Error('secret')}})
+  unavailable(()=>createTrustedRaycastCanIUseData(input));assert.equal(reads,0)
+})
+
 test('zero thresholds are retained rather than confused with absent flags',()=>{
   const input=fixture(),chrome=input.agents[3]
   chrome.versions[0]='0';delete chrome.release_date['1'];chrome.release_date['0']=0
@@ -311,7 +417,7 @@ for(const [name,mutate] of [
   ['negative flag',input=>input.support.flags['feature-0'].chrome.y=-1],
   ['mismatched flag',input=>input.support.flags['feature-0'].chrome.y=9],
   ['missing feature stats',input=>delete input.support.stats['feature-0']],
-  ['missing scoped browser stats',input=>delete input.support.stats['feature-0'].chrome],
+  ['missing scoped browser stats with nonempty flags',input=>delete input.support.stats['feature-0'].chrome],
   ['extra feature stats',input=>input.support.stats.unknown={}],
   ['too many version stats',input=>input.support.stats['feature-0'].chrome=Object.fromEntries(Array.from({length:513},(_,i)=>[String(i),'n']))],
   ['oversized raw status',input=>input.support.stats['feature-0'].chrome['1']=Array(130).fill('n').join(' ')],

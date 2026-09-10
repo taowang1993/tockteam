@@ -71,7 +71,12 @@ function readFlags(value: unknown): TrustedRaycastCanIUseFlags {
   const row = dictionary(value, 4)
   if (Object.keys(row).some(key => !FLAG_NAMES.includes(key as typeof FLAG_NAMES[number]))) fail()
   for (const number of Object.values(row)) if (typeof number !== 'number' || !Number.isFinite(number) || number < 0) fail()
-  return Object.freeze({ y: row.y as number ?? null, a: row.a as number ?? null, x: row.x as number ?? null, u: row.u as number ?? null })
+  return Object.freeze({
+    y: Object.hasOwn(row, 'y') ? row.y as number : null,
+    a: Object.hasOwn(row, 'a') ? row.a as number : null,
+    x: Object.hasOwn(row, 'x') ? row.x as number : null,
+    u: Object.hasOwn(row, 'u') ? row.u as number : null,
+  })
 }
 function aggregate(versions: Readonly<Record<string, string>>): TrustedRaycastCanIUseFlags {
   const flags: { -readonly [K in keyof TrustedRaycastCanIUseFlags]: number | null } = { y: null, a: null, x: null, u: null }
@@ -140,12 +145,12 @@ export function createTrustedRaycastCanIUseData(input: unknown) {
     const slugs = catalog.entries.map(row => row.slug)
     const inputFlags = record(inputSupport.flags, slugs)
     const inputStats = record(inputSupport.stats, slugs)
-    const allStats: Record<string, Readonly<Record<string, Readonly<Record<string, string>>>>> = {}
-    const allRows: Record<string, readonly TrustedRaycastCanIUseSupportRow[]> = {}
+    const allStats: Record<string, Readonly<Record<string, Readonly<Record<string, string>>>>> = Object.create(null)
+    const allRows: Record<string, readonly TrustedRaycastCanIUseSupportRow[]> = Object.create(null)
     const browserNames: readonly string[] = agents.map(agent => agent.browser)
     for (const slug of slugs) {
       const browserStats = dictionary(inputStats[slug], 19)
-      const copied: Record<string, Readonly<Record<string, string>>> = {}
+      const copied: Record<string, Readonly<Record<string, string>>> = Object.create(null)
       for (const [browser, value] of Object.entries(browserStats)) {
         if (!browserNames.includes(browser)) fail()
         const table = dictionary(value, 512)
@@ -160,9 +165,9 @@ export function createTrustedRaycastCanIUseData(input: unknown) {
       const rows: TrustedRaycastCanIUseSupportRow[] = []
       for (const { browser, label, sourceIndex } of agents) {
         if (!SCOPE.includes(browser)) continue
-        if (!Object.hasOwn(copied, browser)) fail()
         const expected = readFlags(flags[browser])
-        const computed = aggregate(copied[browser]!)
+        // Missing tables may have empty aggregates, but remain absent for fail-closed queries.
+        const computed = aggregate(Object.hasOwn(copied, browser) ? copied[browser]! : {})
         if (FLAG_NAMES.some(flag => expected[flag] !== computed[flag])) fail()
         rows.push(Object.freeze({ browser, label, sourceIndex, flags: computed }))
       }
@@ -190,9 +195,12 @@ export function createTrustedRaycastCanIUseData(input: unknown) {
           normalizedQueries.set(query, normalized)
         }
       }
+      if (!Object.hasOwn(allStats, feature.slug)) fail()
+      const stats = allStats[feature.slug]!
       const selected = normalized.map(target => {
         const [browser, version] = target.split(' ') as [string, string]
-        const table = allStats[feature.slug]![browser]
+        if (!Object.hasOwn(stats, browser)) fail()
+        const table = stats[browser]
         if (!table || !Object.hasOwn(table, version)) fail()
         const rawStatus = table[version]!
         return Object.freeze({ target, rawStatus, supported: rawStatus === 'y' })
