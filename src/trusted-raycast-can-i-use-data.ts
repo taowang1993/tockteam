@@ -213,6 +213,7 @@ export function createTrustedRaycastCanIUseData(input: unknown) {
       const selected = selectTrustedRaycastCanIUseAgentRows(agents.map(({ browser, label, sourceIndex }) => ({ browser, label, sourceIndex, hasSupport: SCOPE.includes(browser) })))
       return Object.freeze({ feature, status: statusBySlug[feature.slug]!.status, agents: Object.freeze(selected.map(row => rows.find(candidate => candidate.browser === row.browser)!)) })
     }
-    return Object.freeze({ catalog, statusBySlug, defaultTargets, rootTargets, support, detail })
+    // Host-only membership for exact-query preparation; never send the full collection to the child.
+    return Object.freeze({ catalog, statusBySlug, canonicalTargets, defaultTargets, rootTargets, support, detail })
   } catch { return fail() }
 }

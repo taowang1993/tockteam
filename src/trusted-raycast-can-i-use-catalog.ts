@@ -225,6 +225,8 @@ function readSearchResult(value: unknown): TrustedRaycastCanIUseSearchResult {
   })
 }
 
+export { readSearchResult as validateTrustedRaycastCanIUseSearchResult }
+
 /** Search the complete inert catalog before constructing any bounded feature table. */
 export function searchTrustedRaycastCanIUseCatalog(
   catalog: TrustedRaycastCanIUseCatalog,

@@ -15,6 +15,9 @@ test('the admitted snapshot supplies immutable real feature data without enablin
   bytes.fill(0) // Returned data must not retain caller-owned buffers.
   assert.equal(data.catalog.totalCount, 581)
   assert.equal(data.catalog.entries.length, 581)
+  assert.equal(data.canonicalTargets.length, 649)
+  assert.ok(Object.isFrozen(data.canonicalTargets))
+  assert.ok(data.canonicalTargets.includes('chrome 100'))
   const result = searchTrustedRaycastCanIUseCatalog(data.catalog, 'css-grid')
   const row = result.selected.find(row => row.slug === 'css-grid')!
   assert.ok(row)
