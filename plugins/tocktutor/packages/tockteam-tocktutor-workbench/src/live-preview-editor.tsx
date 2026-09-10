@@ -86,7 +86,7 @@ export function MarkdownDocumentHeader(props: { className?: string; onAddPropert
                           ? <Checkbox aria-label={property.key} checked={property.value === true} className="size-3.5 cursor-default disabled:opacity-100 data-[state=checked]:!border-[var(--dsw-specific-markdown-accent)] data-[state=checked]:!bg-[var(--dsw-specific-markdown-accent)] data-[state=checked]:!text-[#000]" disabled />
                           : Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')
                         : tags.map((tag, index) => (
-                            <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_15%,transparent)] px-2 text-[var(--dsw-specific-markdown-accent)]" key={tag}>
+                            <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-2 text-[var(--dsw-specific-markdown-accent)]" key={tag}>
                               {tag}
                               {props.onSetProperty !== undefined && <Button unstyled aria-label={`Remove ${tag} tag`} className="inline-flex size-3 items-center justify-center border-0 bg-transparent p-0 text-current" onClick={() => { props.onSetProperty?.(property.key, tags.filter((_value, valueIndex) => valueIndex !== index)) }} type="button"><X aria-hidden="true" className="size-3" /></Button>}
                             </span>

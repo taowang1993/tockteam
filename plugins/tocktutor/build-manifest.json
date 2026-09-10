@@ -1475,11 +1475,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "dec120f038ddfffa93ba8766ab7f852aa5977ae1e6535e8b428a6228afcd33f1"
+      "sha256": "9045427eb2e56737a3f1b2f521c393c33f2117b31406d82f777d8d7bf273532d"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "2dd38c1091e169f65af080eb29b1f205e8cdb721086bc5e4cb0954f46efebbd1"
+      "sha256": "46c7b34d8e795434e603bed7f4aba9e9019e1c05ee926905d5d64fc0748c8818"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -1667,7 +1667,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js",
-      "sha256": "d2a5182c676b189400824ce45f5054395dca95779477e60a35d32355b0e13cf4"
+      "sha256": "860a1c053717b8f4f033de9a45f2a9a33fa60138e05b3878bc6a0fb2bea1c904"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js.map",
@@ -2099,7 +2099,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js",
-      "sha256": "a04e8b08a99b8be75d5ca044b34877241438b18f19b89a31d79fcc0a0940f44b"
+      "sha256": "4a0d66291bdf2515cc508311a0a1d514da26a8c73a1b157e88c9944778f9578e"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js.map",
@@ -2471,7 +2471,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/live-preview-editor.tsx",
-      "sha256": "e3684920f25965105584443d03e41185aefb3a37bef4d747a5aee423684caf05"
+      "sha256": "53622110cc150faaffba93a476c705b680f7a374c2665d9384d458bb15045add"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/live-preview-embed-widgets.ts",
@@ -2583,7 +2583,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/route.tsx",
-      "sha256": "1c810727ce5a70f88923c3d1da61b17c30e0833e7bf540a39c30e7c853b50c81"
+      "sha256": "38d35b86edc16e1bcd7c4381d64182f88825423630d29bf4bc8115e0c4b780d6"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/session.ts",

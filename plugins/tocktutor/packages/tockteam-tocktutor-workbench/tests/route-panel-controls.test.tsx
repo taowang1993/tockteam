@@ -668,7 +668,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(shell?.className).not.toContain('data-[active=false]:mb-0.5')
     expect(screen.getByRole('tab', { name: 'Other.md' }).parentElement?.className).toContain('h-[34px]')
     expect(shell?.className).toContain('rounded-t-[5px]')
-    expect(screen.getByRole('tablist', { name: 'Note Tabs' }).className).toContain('[--tt-tab-curve:10px]')
+    expect(screen.getByRole('tablist', { name: 'Note Tabs' }).className).toContain('[--tt-tab-curve:16px]')
     expect(screen.getByRole('button', { name: 'Close Welcome.md' }).className).toContain('[&_svg]:size-3!')
     expect(screen.getByRole('button', { name: 'Close Welcome.md' }).className).toContain('translate-x-0.5')
     expect(tab.className).not.toContain('before:')
