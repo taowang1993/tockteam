@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 import { decodeTrustedRaycastCanIUseData, TRUSTED_RAYCAST_CAN_I_USE_ASSET } from './trusted-raycast-can-i-use-assets.ts'
 import { failTrustedRaycastCanIUse } from './trusted-raycast-can-i-use-errors.ts'
+import { prepareTrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preferences.ts'
 import { prepareTrustedRaycastCanIUseRoot } from './trusted-raycast-can-i-use-command.ts'
 import { TrustedRaycastCanIUseActionRegistry, type TrustedRaycastCanIUseActionHandle, type TrustedRaycastCanIUseRevisionTicket } from './trusted-raycast-can-i-use-actions.ts'
 import { inspectTrustedRaycastProjection, type TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
@@ -31,6 +32,7 @@ export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId:
   ]
   return Object.freeze({
     context, preferences: prepared.preferences, initialMessage: prepared.message,
+    validatePreferences(value: unknown) { return prepareTrustedRaycastCanIUsePreferences(value, { canonicalTargets: data.canonicalTargets }).preferences },
     publish(root: TrustedRaycastViewNode): TrustedRaycastViewNode {
       try {
         revoke()

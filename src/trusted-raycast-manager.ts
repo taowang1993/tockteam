@@ -36,6 +36,7 @@ export class TrustedRaycastManager {
   private stopping: Promise<void> | undefined
   private preview: Preview | undefined
   private disposed = false
+  private lifecycleToken = Symbol()
   private readonly options: TrustedRaycastManagerOptions
   constructor(options: TrustedRaycastManagerOptions) { this.options = options }
   get active(): boolean { return this.session !== undefined && !this.session.revoked }
@@ -353,10 +354,24 @@ export class TrustedRaycastManager {
     } catch (error) { message = error instanceof Error ? error.message.slice(0, 512) : 'Native action failed' }
     if (this.session === session && !session.revoked) session.child.stdin.write(`${JSON.stringify({ type: 'nativeOutcome', extensionId: session.input.extensionId, requestId: request.requestId, succeeded, message, ...(result === undefined ? {} : { result }) })}\n`)
   }
+  /** Host-only replacement for managed preferences/theme. Close/disable wins over a pending restart. */
+  async restartCanIUse(owner: TrustedRaycastOwner, preferences?: Readonly<Record<string, boolean | string>>): Promise<void> {
+    const session = this.session
+    if (!session?.canIUse || session.revoked || owner.webContentsId !== session.owner.webContentsId) throw new Error('Can I Use session is stale')
+    let next: Readonly<Record<string, boolean | string>>
+    try { next = session.canIUse.validatePreferences(preferences ?? session.canIUse.preferences) }
+    catch (error) { await this.stop('configuration-invalid'); throw error }
+    const stopping = this.stop('capability-rotation')
+    const token = this.lifecycleToken
+    await stopping
+    if (this.disposed || this.session || token !== this.lifecycleToken) throw new Error('Can I Use replacement was cancelled')
+    await this.start(owner, { ...session.input, sessionId: randomUUID(), generation: randomUUID(), preferences: next })
+  }
   async closeOwner(owner: TrustedRaycastOwner): Promise<void> {
     if (this.session?.owner.webContentsId === owner.webContentsId) await this.stop('owner-closed')
   }
   async stop(reason = 'closed'): Promise<void> {
+    this.lifecycleToken = Symbol()
     if (this.stopping) return await this.stopping
     const session = this.session
     if (!session) return

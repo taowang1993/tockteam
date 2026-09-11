@@ -35,6 +35,10 @@ Native opening used a recording sink: no external browser application was opened
 
 Server 52055, child/group 52071, browser daemon 52698 and all ten recorded owned processes were stopped and checked absent. See `cleanup.json` and `verified-cleanup.json`.
 
+## Host Replacement Follow-Up
+
+`restartCanIUse()` now validates and detaches new preferences, retires the old child/group, and imports the unchanged source in a new session/generation. The real manager check observes uppercase status accessories after enabling brief mode, rejects old action handles, and proves a close racing with restart cancels replacement instead of reopening a closed view. The same Host seam can restart unchanged preferences for a theme change; application theme wiring is still pending. Red: `/tmp/can-i-use-restart-red.txt`; green: `/tmp/can-i-use-restart-green.txt`; manager/lifecycle checks: `/tmp/can-i-use-restart-checked.txt` (6 passed, 2 live-service checks skipped). Typecheck passed.
+
 ## Still Open
 
 `tockteam-3l3.4.3` remains in progress: managed preference setup/restart and theme-triggered invalidation are not yet fully wired. Detail browser search is intentionally hidden rather than exposing a nonfunctional input. These limitations must be resolved or explicitly recorded at final admission. Public trust, native IPC, install/package activation, and Electron proof remain disabled/pending under `.4.4`. No push or changes to Mole.

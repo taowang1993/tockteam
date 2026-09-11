@@ -123,7 +123,29 @@ test('real manager searches all Can I Use features and rejects foreign or stale 
     assert.equal(empty.root!.props.visibleCount, 0)
     assert.equal(empty.root!.props.matchCount, 0)
     assert.equal(inspectTrustedRaycastProjection(empty.root).itemNodes, 0)
-    await manager.closeOwner(owner)
+    const changedPreferences = { ...preferences, briefMode: true, showReleaseDate: false }
+    await assert.rejects(manager.restartCanIUse({ webContentsId: owner.webContentsId + 1 }, changedPreferences), /stale/)
+    await manager.restartCanIUse(owner, changedPreferences)
+    const replaced = messages.at(-1)!
+    assert.equal(replaced.type, 'ready')
+    assert.notEqual(replaced.generation, initial.generation)
+    assert.notEqual(replaced.sessionId, initial.sessionId)
+    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' })
+    pids.push((manager as unknown as { session: { child: { pid: number } } }).session.child.pid)
+    for (const row of nodes(replaced.root!, 'raycast-list-item')) {
+      const accessory = JSON.parse(String(row.props.accessories))[0]
+      assert.match(accessory.text, /^(LS|REC|PR|CR|WD|OTHER|UNOFF)$/, 'fresh import must use the new brief-mode preference')
+    }
+    assert.throws(() => manager.send(owner, browse), /stale/)
+    // The same Host replacement seam supports theme changes without accepting child authority.
+    await manager.restartCanIUse(owner)
+    const themed = messages.at(-1)!
+    assert.notEqual(themed.generation, replaced.generation)
+    pids.push((manager as unknown as { session: { child: { pid: number } } }).session.child.pid)
+    const interrupted = manager.restartCanIUse(owner)
+    const closed = manager.closeOwner(owner)
+    await assert.rejects(interrupted, /cancelled/)
+    await closed
     assert.equal(manager.active, false)
     assert.throws(() => manager.send(owner, search), /stale/)
     for (const bad of [TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS, { ...preferences, defaultQuery: 'last 2 versions' }, { ...preferences, path: '.' }]) {
