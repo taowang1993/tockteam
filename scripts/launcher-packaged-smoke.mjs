@@ -469,7 +469,7 @@ async function listPages(port) {
   return await response.json()
 }
 
-class CdpPage {
+export class CdpPage {
   #nextId = 1
   #pending = new Map()
   #socket
@@ -529,8 +529,9 @@ class CdpPage {
     const payload = virtualKeyCode === undefined
       ? { key, code: key }
       : { key, code: key, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode }
-    await this.call('Input.dispatchKeyEvent', { type: 'keyDown', ...payload })
-    if (key === 'Enter' || key === ' ') await this.call('Input.dispatchKeyEvent', { type: 'char', ...payload, text: key === 'Enter' ? '\r' : ' ' })
+    // A separate char event bypasses preventDefault and can submit a newly opened form.
+    const text = key === 'Enter' ? '\r' : key === ' ' ? ' ' : undefined
+    await this.call('Input.dispatchKeyEvent', { type: 'keyDown', ...payload, text })
     await this.call('Input.dispatchKeyEvent', { type: 'keyUp', ...payload })
   }
 

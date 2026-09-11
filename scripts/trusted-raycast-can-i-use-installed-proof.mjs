@@ -11,7 +11,7 @@ export async function runCanIUseInstalledSmoke(launcher, userData, { waitFor, cl
   const input = (selector, value) => launcher.evaluate(`(() => { const input = document.querySelector(${JSON.stringify(selector)}); if (!(input instanceof HTMLInputElement)) throw Error('Expected input is missing'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event('input', { bubbles: true })); })()`)
   const click = async text => {
     await wait(`([...document.querySelectorAll('button, summary')].some(element => element.textContent?.trim() === ${JSON.stringify(text)} && element.getClientRects().length && !element.matches(':disabled')))`)
-    assert.equal(await clickExactText(launcher, text), true)
+    assert.equal(await clickExactText(launcher, text), true, `Could not click ${text}`)
   }
   const open = async (query, id) => {
     await input('#launcher-search', query)
@@ -36,15 +36,15 @@ export async function runCanIUseInstalledSmoke(launcher, userData, { waitFor, cl
   await wait(`document.querySelector('[aria-label="Trusted Extensions"] [role="status"]')?.textContent?.includes('Installed · Enabled') === true`)
   await click('Back to Results')
   await open('Can I Use', 'can-i-use:index')
-  await wait(`document.querySelector('section[aria-label="Can I Use"]') !== null`)
+  await wait(`document.querySelector('input[aria-label="Browser Targets"]') !== null || document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 64 of 581 matches.') === true`)
   if (await launcher.evaluate(`document.querySelector('input[aria-label="Browser Targets"]') !== null`)) {
     await input('input[aria-label="Browser Targets"]', 'chrome 100')
-    assert.equal(await launcher.clickSelector('button[aria-label="Continue"]'), true)
+    assert.equal(await launcher.clickSelector('button[aria-label="Continue"]'), true, 'Can I Use Continue is not actionable')
   }
   await wait(`document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 64 of 581 matches.') === true`)
   await input('#trusted-raycast-search', 'textcontent')
   await wait(`document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 1 of 1 matches.') === true`)
-  assert.equal(await launcher.clickSelector('button[aria-label="Show Details"]'), true)
+  assert.equal(await launcher.clickSelector('button[aria-label="Show Details"]'), true, 'Can I Use Show Details is not actionable')
   await wait(`document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 14 of 14 browsers.') === true`)
   await launcher.pressKey('Escape')
   await wait(`document.querySelector('#trusted-raycast-search')?.value === 'textcontent' && document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 1 of 1 matches.') === true`)

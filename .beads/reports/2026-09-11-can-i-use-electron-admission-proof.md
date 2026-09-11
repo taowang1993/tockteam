@@ -67,3 +67,13 @@ The user subsequently authorized the final installation check, including foregro
 Log: `/tmp/can-i-use-final-installed-dfa76704.log`. Diagnostic receipt: `$HOME/Library/Caches/tockteam-smoke.noindex/tockteam-installed-smoke-95165-diagnostics.json`. Runner PID 95165 exited; process inspection found no remaining installed-test processes. No Electron app was launched.
 
 The pnpm invocation also performed automatic dependency installation and rewrote `pnpm-lock.yaml` (775 additions, 919 deletions). No peer session was active in this checkout. The diff is preserved at `/tmp/can-i-use-installed-lockfile.patch`; the lockfile is left unstaged and unchanged pending ownership/cleanup approval. The installed gate was not rerun at this commit.
+
+## Packaging and Keyboard Corrections
+
+The user approved fixing the blockers and rerunning. Commit `291fc206` adds the two missing release entries. The previously captured dependency-file rewrite was reversed with approval. The package feasibility check and 40 focused tests then passed.
+
+The next serialized installed attempt reached the actual packaged Can I Use UI but failed during interaction. Runner 99762 and Electron root 3629 stopped; no installed-test processes remained. Receipt: `$HOME/Library/Caches/tockteam-smoke.noindex/tockteam-installed-smoke-99762-diagnostics.json`. The same automatic lockfile rewrite recurred and was reversed under the cleanup approval.
+
+A minimized headless browser reproduction isolated a test-driver bug: `CdpPage.pressKey` dispatched a separate `char` event after a prevented Enter keydown, submitting the newly opened form. The real browser recorded **one unintended submission before the fix and zero after**. The driver now sends text with keydown, allowing Chromium to honor cancellation. The Can I Use gate also waits for an actual setup/ready view rather than an empty section. No product behavior changed. Browser evidence is in `tocklauncher-can-i-use-electron/keyboard-{red,green}.txt`; all recorded browser PIDs stopped.
+
+Verification after the correction: **383 tests, 376 passed, 7 skipped, zero failed**, plus typecheck and diff check. Command: `node --test --test-concurrency=4 tests/trusted-raycast-*.test.ts tests/trusted-raycast-*.test.mjs tests/launcher-preload-bridge.test.ts tests/launcher-installed.test.ts tests/launcher-cdp-keyboard.test.mjs tests/ueli-package-feasibility.test.ts`. Log: `/tmp/can-i-use-final-regression-cdp.txt`.
