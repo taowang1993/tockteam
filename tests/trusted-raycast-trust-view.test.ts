@@ -7,7 +7,7 @@ import type { TrustedRaycastTrustState } from '../src/trusted-raycast-contract.t
 class Element extends EventTarget {
   children: Element[] = []
   attributes = new Map<string, string>()
-  value = ''; textContent = ''; hidden = false; disabled = false; title = ''; tag = ''
+  value = ''; textContent = ''; hidden = false; disabled = false; open = false; title = ''; tag = ''
   className = ''
   get options(): Element[] { return this.children }
   append(...children: Element[]) { this.children.push(...children) }
@@ -149,6 +149,12 @@ test('first use reviews exact candidate without mutation; approval is explicit a
   const view = createTrustedRaycastFirstUseView(document, { getTrustedRaycastTrust: async () => trustState() } as unknown as LauncherPreloadBridge, 'can-i-use', () => {}, async (...args) => { approvals.push(args); await new Promise<void>(resolve => { finish = resolve }) }, () => {})
   await flush()
   assert.deepEqual(approvals, [])
+  const section = nodes.find(node => node.attributes.get('aria-label') === 'Can I Use')!
+  assert.equal(section.attributes.get('data-view'), 'extension-first-use')
+  assert.ok(nodes.some(node => node.attributes.get('data-part') === 'approval-card'))
+  assert.equal(nodes.find(node => node.tag === 'details')?.open, true)
+  assert.equal(nodes.find(node => node.tag === 'details')?.hidden, false)
+  assert.ok(nodes.some(node => node.textContent === 'Reviewed Archive'))
   assert.ok(nodes.some(node => node.textContent.includes('d'.repeat(64))))
   const button = nodes.find(node => node.textContent === 'Approve and Open')!
   const key = new Event('keydown', { cancelable: true }); Object.defineProperties(key, { key: { value: 'Enter' }, repeat: { value: true } })
@@ -175,13 +181,24 @@ test('retry refreshes partial success and new candidates without automatically c
   assert.ok(nodes.some(node => node.textContent === 'Enable and Open' && !node.disabled))
   assert.ok(nodes.some(node => node.textContent === 'Launch failed' && !node.hidden))
 })
+test('first-use copy reflects an installed but disabled extension', async () => {
+  const { createTrustedRaycastFirstUseView } = await import('../src/trusted-raycast-trust-view.ts')
+  const nodes: Element[] = []
+  const document = { createElement(tag: string) { const node = new Element(); node.tag = tag; nodes.push(node); return node } } as unknown as Document
+  const state = trustState({ installed: true, enabled: false, digest: 'd'.repeat(64), digestApproved: true })
+  createTrustedRaycastFirstUseView(document, { getTrustedRaycastTrust: async () => state } as unknown as LauncherPreloadBridge, 'can-i-use', () => {}, async () => {}, () => {})
+  await flush()
+  assert.ok(nodes.some(node => node.textContent === 'This extension is installed but disabled. Enable it to open.'))
+  assert.ok(nodes.some(node => node.textContent === 'Enable and Open'))
+})
+
 test('recovery is reachable without a candidate and selected management rows are not disabled', async () => {
   const { createTrustedRaycastFirstUseView } = await import('../src/trusted-raycast-trust-view.ts')
   const nodes: Element[] = []
   const document = { createElement(tag: string) { const node = new Element(); node.tag = tag; nodes.push(node); return node } } as unknown as Document
   let managed = false
   createTrustedRaycastFirstUseView(document, { getTrustedRaycastTrust: async () => trustState({ candidateAvailable: false, recovery: 'invalid-install' }) } as unknown as LauncherPreloadBridge, 'can-i-use', () => {}, async () => { assert.fail('no implicit recovery') }, () => { managed = true })
-  await flush(); const recover = nodes.find(node => node.textContent === 'Extensions')!; assert.equal(recover.disabled, false); recover.dispatchEvent(new Event('click')); assert.equal(managed, true)
+  await flush(); const recover = nodes.find(node => node.textContent === 'Extensions')!; assert.equal(recover.disabled, false); assert.ok(nodes.some(node => node.textContent === 'This extension needs recovery before it can open.')); recover.dispatchEvent(new Event('click')); assert.equal(managed, true)
   const h = await makeView(trustState()); const tab = h.nodes.find(node => node.getAttribute('aria-selected') === 'true')!; assert.equal(tab.disabled, false)
 })
 

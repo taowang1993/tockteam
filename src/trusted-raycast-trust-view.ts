@@ -27,6 +27,19 @@ const COPY = Object.freeze({
     recover: 'Recover Installation',
     actionFailed: 'Action failed',
     previousRetained: 'Previous install retained for recovery.',
+    reviewBeforeOpen: 'Review Before You Open',
+    securityNote: 'Security Note',
+    reviewedArchive: 'Reviewed Archive',
+    sha256: 'SHA-256',
+    backHint: 'Back',
+    loading: 'Loading…',
+    preparing: 'Preparing…',
+    oneTimeApproval: 'One-time approval required.',
+    installedLead: 'This extension is installed and ready to run.',
+    disabledLead: 'This extension is installed but disabled. Enable it to open.',
+    recoveryLead: 'This extension needs recovery before it can open.',
+    unavailableLead: 'The reviewed candidate is currently unavailable.',
+    inactiveLead: 'This capability is unavailable right now.',
   }),
   zh: Object.freeze({
     back: '返回结果',
@@ -51,6 +64,19 @@ const COPY = Object.freeze({
     recover: '恢复安装',
     actionFailed: '操作失败',
     previousRetained: '已保留上一次安装以用于恢复。',
+    reviewBeforeOpen: '打开前查看',
+    securityNote: '安全提示',
+    reviewedArchive: '已审核归档',
+    sha256: 'SHA-256',
+    backHint: '返回',
+    loading: '正在读取…',
+    preparing: '正在准备…',
+    oneTimeApproval: '首次使用需要批准一次。',
+    installedLead: '此扩展已安装，可以运行。',
+    disabledLead: '此扩展已安装但已停用。启用后即可打开。',
+    recoveryLead: '此扩展需要恢复后才能打开。',
+    unavailableLead: '当前无法使用已审核候选版本。',
+    inactiveLead: '此能力当前不可用。',
   }),
 })
 
@@ -141,6 +167,7 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
     for (const tab of tabs.querySelectorAll('button')) { tab.setAttribute('aria-selected', String(tab.getAttribute('data-extension-id') === extensionId)); tab.tabIndex = tab.getAttribute('data-extension-id') === extensionId ? 0 : -1 }
     void bridge.getTrustedRaycastTrust(extensionId).then(next => { if (!disposed && sequence === requestSequence && selected === extensionId) render(next) }).catch(failure => {
       if (disposed || sequence !== requestSequence || selected !== extensionId) return
+      status.setAttribute('data-state', 'unavailable')
       status.textContent = copy.capabilityInactive
       error.textContent = `${copy.actionFailed}: ${failure instanceof Error ? failure.message : 'Unavailable'}`; error.hidden = false
     }).finally(() => { if (!disposed && sequence === requestSequence) { busy = false; if (state) render(state) } })
@@ -170,38 +197,54 @@ export function createTrustedRaycastFirstUseView(
   locale = 'en-US',
 ): { element: HTMLElement; dispose: () => void; focus: () => void } {
   const zh = locale.startsWith('zh')
+  const copy = zh ? COPY.zh : COPY.en
   const command = trustedRaycastCommands.find(command => command.extensionId === extensionId)!
   const name = command.extensionName
   let disposed = false
   let busy = false
   let state: TrustedRaycastTrustState | undefined
-  const element = document.createElement('section'); element.className = 'launcher-local-tool text-sm'; element.setAttribute('aria-label', name)
+  const element = document.createElement('section'); element.className = 'launcher-local-tool extension-first-use-view text-sm'; element.setAttribute('aria-label', name); element.setAttribute('data-view', 'extension-first-use')
   const header = document.createElement('header'); header.className = 'launcher-command-header justify-between'
-  const title = document.createElement('h2'); title.className = 'm-0 text-sm font-semibold'; title.textContent = name
-  const back = document.createElement('button'); back.type = 'button'; back.className = 'launcher-command-footer-action'; back.textContent = zh ? '返回结果' : 'Back to Results'; back.addEventListener('click', onClose)
+  const title = document.createElement('h2'); title.className = 'm-0 text-sm font-semibold extension-first-use-title'; title.textContent = name
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'launcher-command-footer-action extension-first-use-back'; back.textContent = copy.back; back.addEventListener('click', onClose)
   const identity = document.createElement('div'); identity.className = 'flex min-w-0 items-center gap-2'
-  const image = document.createElement('img'); image.className = 'launcher-command-row-icon'; image.alt = ''; image.src = trustedRaycastAssetUrl(command.imageKey)!
+  const image = document.createElement('img'); image.className = 'launcher-command-row-icon extension-first-use-icon'; image.alt = ''; image.src = trustedRaycastAssetUrl(command.imageKey)!
   identity.append(image, title); header.append(identity, back)
-  const content = document.createElement('div'); content.className = 'launcher-command-content'
-  const intro = document.createElement('p'); intro.className = 'launcher-command-status'
-  intro.textContent = zh ? `批准将安装、启用并运行 ${name}。第三方本地代码拥有您的账户级文件、网络和进程权限；独立进程不是沙箱。` : `Approve to install, enable, and run ${name}. This reviewed third-party local code can access files, network, and processes with your account's authority. Its separate process is not a sandbox.`
-  const details = document.createElement('details')
-  const summary = document.createElement('summary'); summary.className = 'launcher-command-footer-action'; summary.textContent = zh ? '验证详情' : 'Verification Details'
-  const digest = document.createElement('p'); digest.className = 'launcher-command-status [overflow-wrap:anywhere]'
-  details.append(summary, digest)
-  const status = document.createElement('p'); status.className = 'launcher-command-status'; status.setAttribute('role', 'status'); status.textContent = zh ? '正在读取…' : 'Loading…'
-  const error = document.createElement('p'); error.className = 'launcher-command-error'; error.setAttribute('role', 'alert'); error.hidden = true
-  const footer = document.createElement('footer'); footer.className = 'launcher-command-footer'
-  const approve = document.createElement('button'); approve.type = 'button'; approve.className = 'launcher-command-footer-action'; approve.disabled = true
-  const escape = document.createElement('span'); escape.className = 'launcher-command-status'; escape.textContent = zh ? 'Esc 返回' : 'Esc Back'
-  footer.append(approve, escape); content.append(intro, details, status, error); element.append(header, content, footer)
+  const content = document.createElement('div'); content.className = 'launcher-command-content extension-first-use-content'
+  const review = document.createElement('div'); review.className = 'extension-first-use-review'; review.setAttribute('data-part', 'approval-card')
+  const eyebrow = document.createElement('p'); eyebrow.className = 'extension-first-use-eyebrow'; eyebrow.textContent = zh ? '首次使用' : copy.reviewBeforeOpen
+  const lead = document.createElement('p'); lead.className = 'extension-first-use-lead'; lead.textContent = zh ? `批准安装、启用并运行 ${name}。` : `Approve to install, enable, and run ${name}.`
+  const warning = document.createElement('aside'); warning.className = 'extension-first-use-warning'; warning.setAttribute('role', 'note')
+  const warningTitle = document.createElement('strong'); warningTitle.className = 'extension-first-use-warning-title'; warningTitle.textContent = copy.securityNote
+  const warningText = document.createElement('p'); warningText.className = 'extension-first-use-warning-text'; warningText.textContent = zh ? '此经审核的第三方本地代码可使用您账户的文件、网络和进程权限；其独立进程不是沙箱。' : "This reviewed third-party local code can access files, network, and processes with your account's authority. Its separate process is not a sandbox."
+  warning.append(warningTitle, warningText)
+  const details = document.createElement('details'); details.className = 'extension-first-use-details'; details.open = true; details.hidden = true
+  const summary = document.createElement('summary'); summary.className = 'extension-first-use-details-summary'; summary.textContent = copy.reviewedArchive
+  const digestLabel = document.createElement('span'); digestLabel.className = 'extension-first-use-digest-label'; digestLabel.textContent = copy.sha256
+  const digest = document.createElement('code'); digest.className = 'extension-first-use-digest'
+  const digestLine = document.createElement('p'); digestLine.className = 'extension-first-use-digest-line'; digestLine.append(digestLabel, digest)
+  details.append(summary, digestLine)
+  const status = document.createElement('p'); status.className = 'launcher-command-status extension-first-use-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); status.textContent = copy.loading
+  const error = document.createElement('p'); error.className = 'launcher-command-error extension-first-use-error'; error.setAttribute('role', 'alert'); error.hidden = true
+  const footer = document.createElement('footer'); footer.className = 'launcher-command-footer extension-first-use-footer'
+  const approve = document.createElement('button'); approve.type = 'button'; approve.className = 'launcher-command-footer-action extension-first-use-primary'; approve.disabled = true
+  const escape = document.createElement('span'); escape.className = 'extension-first-use-escape'
+  const escapeKey = document.createElement('kbd'); escapeKey.textContent = 'Esc'
+  const escapeLabel = document.createElement('span'); escapeLabel.textContent = copy.backHint
+  escape.append(escapeKey, escapeLabel)
+  footer.append(approve, escape); review.append(eyebrow, lead, warning, details, status, error); content.append(review); element.append(header, content, footer)
   const render = (): void => {
     if (disposed || !state) return
     const unavailable = !state.active || (!state.recovery && !state.installed && !state.candidateAvailable)
-    digest.textContent = `${zh ? '已审核 SHA-256' : 'Reviewed SHA-256'}: ${state.installed ? state.digest : state.candidateDigest}`
+    lead.textContent = !state.active ? copy.inactiveLead : state.recovery ? copy.recoveryLead : state.installed ? state.enabled ? copy.installedLead : copy.disabledLead : unavailable ? copy.unavailableLead : (zh ? `批准安装、启用并运行 ${name}。` : `Approve to install, enable, and run ${name}.`)
+    const reviewedDigest = state.installed ? state.digest : state.candidateDigest
+    details.hidden = reviewedDigest.length === 0
+    digest.textContent = reviewedDigest
     approve.textContent = state.recovery ? (zh ? '扩展' : 'Extensions') : state.installed ? state.enabled ? (zh ? '打开' : 'Open') : (zh ? '启用并打开' : 'Enable and Open') : (zh ? '批准并打开' : 'Approve and Open')
     approve.disabled = busy || unavailable
-    status.textContent = busy ? (zh ? '正在准备…' : 'Preparing…') : state.recovery ? (zh ? '需要恢复。请在扩展中明确恢复安装。' : 'Recovery required. Recover explicitly in Extensions.') : unavailable ? (zh ? '已审核候选不可用。' : 'Reviewed candidate unavailable.') : state.installed ? state.enabled ? (zh ? '已安装 · 已启用' : 'Installed · Enabled') : (zh ? '已安装 · 已停用' : 'Installed · Disabled') : (zh ? '首次使用需要批准一次。' : 'One-time approval required.')
+    const statusState = busy ? 'busy' : state.recovery ? 'recovery' : unavailable ? 'unavailable' : state.installed ? state.enabled ? 'installed' : 'disabled' : 'ready'
+    status.setAttribute('data-state', statusState)
+    status.textContent = busy ? copy.preparing : state.recovery ? (zh ? '需要恢复。请在扩展中明确恢复安装。' : 'Recovery required. Recover explicitly in Extensions.') : unavailable ? (zh ? '已审核候选不可用。' : 'Reviewed candidate unavailable.') : state.installed ? state.enabled ? (zh ? '已安装 · 已启用' : 'Installed · Enabled') : (zh ? '已安装 · 已停用' : 'Installed · Disabled') : copy.oneTimeApproval
   }
   approve.addEventListener('click', () => {
     if (disposed || busy || approve.disabled) return
@@ -220,12 +263,12 @@ export function createTrustedRaycastFirstUseView(
     if (event.key === 'Enter' && (event.repeat || event.isComposing || busy)) { event.preventDefault(); event.stopPropagation() }
   })
   const load = (): void => {
-    busy = true; approve.disabled = true; error.hidden = true
+    busy = true; approve.disabled = true; error.hidden = true; details.hidden = true; status.setAttribute('data-state', 'busy'); status.textContent = copy.loading
     void bridge.getTrustedRaycastTrust(extensionId).then(next => {
       if (!disposed) { busy = false; state = next; render(); (approve.disabled ? back : approve).focus() }
     }).catch(failure => {
       if (!disposed) {
-        busy = false; state = undefined; status.textContent = ''
+        busy = false; state = undefined; details.hidden = true; status.setAttribute('data-state', 'unavailable'); status.textContent = copy.capabilityInactive
         error.textContent = failure instanceof Error ? failure.message : 'Unavailable'; error.hidden = false
         approve.textContent = zh ? '重试' : 'Retry'; approve.disabled = false; approve.focus()
       }

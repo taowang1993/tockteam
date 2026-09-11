@@ -447,6 +447,271 @@
   color: var(--dsw-alias-brand-primary-invert, Canvas);
 }
 
+/* First-use approval is a short security review, not an empty form. */
+#launcher-root [data-view='extension-first-use'] {
+  --tockteam-approval-panel: color-mix(in srgb, var(--dsw-alias-bg-layer-2, Canvas) 72%, var(--dsw-alias-bg-overlay, Canvas));
+  --tockteam-approval-border: color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 82%, transparent);
+}
+
+#launcher-root [data-view='extension-first-use'] > .launcher-command-header {
+  min-height: 4rem;
+  height: 4rem;
+  padding-inline: 1.25rem;
+  border-bottom-color: var(--tockteam-approval-border);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-icon {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 60%, transparent);
+  border-radius: 0.625rem;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-title {
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-back {
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-weight: 500;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-back::before {
+  content: '←';
+  margin-inline-end: 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+
+#launcher-root [data-view='extension-first-use'] > .extension-first-use-content {
+  gap: 0;
+  overflow: auto;
+  padding: 1.125rem 1.25rem 1rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-review {
+  display: flex;
+  width: min(100%, 42rem);
+  min-width: 0;
+  margin-block: auto;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-eyebrow {
+  margin: 0;
+  color: var(--dsw-alias-brand-primary, CanvasText);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-lead {
+  max-width: 42rem;
+  margin: -0.125rem 0 0;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-warning {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary, CanvasText) 30%, var(--tockteam-approval-border));
+  border-inline-start: 3px solid var(--dsw-alias-state-warn-primary, CanvasText);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary, Canvas) 8%, var(--tockteam-approval-panel));
+  padding: 0.75rem 0.875rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-warning-title {
+  display: block;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-warning-text {
+  margin: 0.25rem 0 0;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-details {
+  overflow: hidden;
+  border: 1px solid var(--tockteam-approval-border);
+  border-radius: 0.75rem;
+  background: var(--tockteam-approval-panel);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-details-summary {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-details-summary::after {
+  content: '+';
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-details[open] > .extension-first-use-details-summary::after {
+  content: '−';
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-details-summary:hover {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 5%, transparent);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-details-summary:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, CanvasText);
+  outline-offset: -2px;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-digest-line {
+  margin: 0;
+  border-top: 1px solid var(--tockteam-approval-border);
+  padding: 0.625rem 0.875rem 0.75rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-digest-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-digest {
+  display: block;
+  overflow-wrap: anywhere;
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, var(--dsw-alias-bg-base, Canvas) 72%, transparent);
+  padding: 0.5rem 0.625rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.025em;
+  line-height: 1.125rem;
+  user-select: text;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status {
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 4%, transparent);
+  padding: 0.4375rem 0.625rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status::before {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  flex: none;
+  border-radius: 9999px;
+  background: var(--dsw-alias-label-tertiary, CanvasText);
+  content: '';
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='ready']::before,
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='installed']::before {
+  background: var(--dsw-alias-state-success-primary, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='busy']::before {
+  background: var(--dsw-alias-brand-primary, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='recovery']::before {
+  background: var(--dsw-alias-state-warn-primary, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='unavailable']::before {
+  background: var(--dsw-alias-state-error-primary, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-error {
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary, CanvasText) 30%, var(--tockteam-approval-border));
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, Canvas) 8%, var(--tockteam-approval-panel));
+  padding: 0.5rem 0.625rem;
+  overflow-wrap: anywhere;
+}
+
+#launcher-root [data-view='extension-first-use'] > .extension-first-use-footer {
+  min-height: 3.5rem;
+  height: auto;
+  padding: 0.625rem 1.25rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-primary {
+  min-height: 2.25rem;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 72%, transparent);
+  border-radius: 0.625rem;
+  background: var(--dsw-alias-brand-primary, CanvasText);
+  padding-inline: 0.875rem;
+  color: var(--dsw-alias-brand-primary-invert, Canvas);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 20%, transparent);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-primary:hover {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 88%, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-primary:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, CanvasText);
+  outline-offset: 2px;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-escape {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--dsw-alias-label-tertiary, CanvasText);
+  font-size: 0.75rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-escape kbd {
+  min-width: 1.75rem;
+  border: 1px solid var(--tockteam-approval-border);
+  border-radius: 0.375rem;
+  background: var(--tockteam-approval-panel);
+  padding: 0.125rem 0.375rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-family: inherit;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  text-align: center;
+}
+
 /* Launcher settings are derived from the shared DSH surface projection. */
 #launcher-root [data-view='preference-setup'] {
   --tockteam-preference-control-light: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 4%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)));
