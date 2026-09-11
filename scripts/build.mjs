@@ -78,6 +78,7 @@ const tailwindDefine = {
 
 await buildTrustedRaycast(dist, join(root, 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar'), 'google-translate')
 await buildTrustedRaycast(dist, join(root, 'plugins', 'trusted-raycast', 'vendor', 'kaomoji-search.tar'), 'kaomoji-search')
+await buildTrustedRaycast(dist, join(root, 'plugins', 'trusted-raycast', 'vendor', 'can-i-use.tar'), 'can-i-use')
 
 const pluginPackages = [
   { directory: 'trusted-raycast', hostOnly: true },
