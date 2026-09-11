@@ -149,15 +149,15 @@ class PersistentSearchIndex {
                 request.modifiedFrom === undefined ? null : 'modifiedAt >= ?',
                 request.modifiedTo === undefined ? null : 'modifiedAt <= ?',
             ].filter((clause) => clause !== null);
-            const rows = await allSearchDatabase(this.database.db, `SELECT id, path FROM documents WHERE id IN (${chunk.map(() => '?').join(',')})${dateClauses.length === 0 ? '' : ` AND ${dateClauses.join(' AND ')}`}`, [...chunk, ...[request.modifiedFrom, request.modifiedTo].filter((value) => value !== undefined)]);
+            const rows = await allSearchDatabase(this.database.db, `SELECT id, modifiedAt, path, revision FROM documents WHERE id IN (${chunk.map(() => '?').join(',')})${dateClauses.length === 0 ? '' : ` AND ${dateClauses.join(' AND ')}`}`, [...chunk, ...[request.modifiedFrom, request.modifiedTo].filter((value) => value !== undefined)]);
             paths.push(...rows
-                .map(row => row.path)
-                .filter(candidate => !request.directory || candidate.startsWith(`${request.directory}/`)));
+                .filter(row => !request.directory || row.path.startsWith(`${request.directory}/`))
+                .map(row => ({ modifiedMs: row.modifiedAt, path: row.path, revision: row.revision })));
         }
         signal.throwIfAborted();
         if (!this.ready || index !== this.index)
             return null;
-        return { complete: true, epoch: this.epoch, paths };
+        return { complete: true, epoch: this.epoch, entries: paths };
     }
     async close() {
         this.ready = false;
@@ -3707,7 +3707,7 @@ export class NoteVaultRuntime extends Service {
                 if (Buffer.byteLength(document.content, 'utf8') > maxBytes) {
                     throw new Error(`Vault file exceeds the configured ${String(maxBytes)}-byte limit.`);
                 }
-                return { content: document.content, path: document.path };
+                return { content: document.content, path: document.path, revision: document.revision };
             },
             searchCandidates: async (request, signal) => (await this.searchCandidates(expectedVault, request, signal)),
         };

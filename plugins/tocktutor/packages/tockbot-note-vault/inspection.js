@@ -1558,6 +1558,7 @@ async function readInspectionDocument(input, requestedPath, limit, signal) {
     !document
     || document.path !== normalized
     || typeof document.content !== 'string'
+    || document.revision !== undefined && typeof document.revision !== 'string'
     || Buffer.byteLength(document.content) > limit
   ) {
     if (typeof document?.content === 'string' && Buffer.byteLength(document.content) > limit) {
@@ -1565,7 +1566,11 @@ async function readInspectionDocument(input, requestedPath, limit, signal) {
     }
     throw new Error('Vault inspection provider returned an invalid document.')
   }
-  return { path: normalized, content: document.content }
+  return {
+    path: normalized,
+    content: document.content,
+    ...(document.revision === undefined ? {} : { revision: document.revision }),
+  }
 }
 
 async function scanVault(input, config, signal, visitor, options = {}) {
@@ -2074,20 +2079,29 @@ function validCandidateResult(result, limit) {
     || typeof result.epoch !== 'string'
     || result.epoch.length === 0
     || result.epoch.length > 128
-    || !Array.isArray(result.paths)
-    || result.paths.length > limit
+    || !Array.isArray(result.entries)
+    || result.entries.length > limit
   ) return null
-  const paths = []
+  const entries = []
   const seen = new Set()
-  for (const value of result.paths) {
-    const candidate = safeInspectionPath(value)
-    if (!candidate || !isVaultDocument(candidate)) return null
+  for (const value of result.entries) {
+    if (!value || typeof value !== 'object') return null
+    const candidate = safeInspectionPath(value.path)
+    if (
+      !candidate
+      || !isVaultDocument(candidate)
+      || typeof value.revision !== 'string'
+      || value.revision.length === 0
+      || value.revision.length > 4_096
+      || !Number.isFinite(value.modifiedMs)
+    ) return null
     if (!seen.has(candidate)) {
       seen.add(candidate)
-      paths.push(candidate)
+      entries.push({ path: candidate, modifiedMs: value.modifiedMs, revision: value.revision })
     }
   }
-  return { epoch: result.epoch, paths: paths.sort(compareVaultPaths) }
+  entries.sort((left, right) => compareVaultPaths(left.path, right.path))
+  return { epoch: result.epoch, entries }
 }
 
 async function scanCandidateVault(input, candidates, config, signal, visitor, options) {
@@ -2101,11 +2115,12 @@ async function scanCandidateVault(input, candidates, config, signal, visitor, op
     truncationReason: null,
     warnings: [],
   }
+  const paths = Object.freeze(candidates.map(candidate => candidate.path))
   let lastPath = position.path
   for (const candidate of candidates) {
     signal.throwIfAborted()
-    if (position.path && compareVaultPaths(candidate, position.path) < 0) continue
-    if (position.path === candidate && position.offset === 0) continue
+    if (position.path && compareVaultPaths(candidate.path, position.path) < 0) continue
+    if (position.path === candidate.path && position.offset === 0) continue
     const remaining = config.maxSearchBytes - state.bytes
     if (remaining <= 0) {
       state.truncated = true
@@ -2117,7 +2132,7 @@ async function scanCandidateVault(input, candidates, config, signal, visitor, op
     try {
       document = await readInspectionDocument(
         input,
-        candidate,
+        candidate.path,
         Math.min(config.maxSearchFileBytes, remaining),
         signal,
       )
@@ -2125,20 +2140,24 @@ async function scanCandidateVault(input, candidates, config, signal, visitor, op
       if (error?.name === 'AbortError') throw error
       return null
     }
+    if (document.revision !== candidate.revision) return null
     state.files += 1
     state.bytes += Buffer.byteLength(document.content)
-    lastPath = candidate
-    const resumeOffset = position.path === candidate ? position.offset : 0
+    lastPath = candidate.path
+    const resumeOffset = position.path === candidate.path ? position.offset : 0
     const result = await visitor({
       content: document.content,
+      createdMs: undefined,
+      modifiedMs: candidate.modifiedMs,
       path: document.path,
+      revision: document.revision,
       size: Buffer.byteLength(document.content),
-    }, Object.freeze(candidates), resumeOffset)
+    }, paths, resumeOffset)
     if (result) {
       const nextPosition = typeof result === 'object' && result.position
         ? result.position
-        : { path: candidate, offset: 0 }
-      const hasMore = nextPosition.offset > 0 || candidate !== candidates.at(-1)
+        : { path: candidate.path, offset: 0 }
+      const hasMore = nextPosition.offset > 0 || candidate.path !== candidates.at(-1)?.path
       if (hasMore) {
         state.truncated = true
         state.truncationReason = 'result-limit'
@@ -2164,11 +2183,15 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
     wholeWord: options.wholeWord,
   })
   const matches = []
-  const visit = (document, _paths, resumeOffset) => {
+  const visit = (document, _paths, resumeOffset, collectAll = false) => {
     if (options.modifiedFrom !== undefined && document.modifiedMs < options.modifiedFrom) return false
     if (options.modifiedTo !== undefined && document.modifiedMs > options.modifiedTo) return false
     const documentMatches = queryDocumentMatches(document, groups, signal, options.titleOnly)
       .map(match => document.revision === undefined ? match : { ...match, revision: document.revision })
+    if (collectAll) {
+      matches.push(...documentMatches)
+      return false
+    }
     const available = documentMatches.slice(resumeOffset)
     const taken = available.slice(0, limit - matches.length)
     matches.push(...taken)
@@ -2178,6 +2201,7 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
     return matches.length >= limit
   }
   let state = null
+  let candidatePosition = null
   const request = typeof input.searchCandidates === 'function'
     ? candidateRequest(groups, start.path, config.maxSearchEntries, options)
     : null
@@ -2188,10 +2212,42 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
         config.maxSearchEntries,
       )
       if (candidates) {
-        state = await scanCandidateVault(input, candidates.paths, config, signal, visit, {
+        const candidateKey = `${key}:${candidates.epoch}`
+        candidatePosition = decodeCursor(cursor, 'query-candidates', candidateKey)
+        state = await scanCandidateVault(input, candidates.entries, config, signal, (document, paths, resumeOffset) => (
+          visit(document, paths, resumeOffset, true)
+        ), {
           cursor,
-          key: `${key}:${candidates.epoch}`,
+          key: candidateKey,
         })
+        if (state) {
+          matches.sort((left, right) => (
+            (right.score ?? 0) - (left.score ?? 0)
+            || compareVaultPaths(left.path, right.path)
+            || (left.line ?? -1) - (right.line ?? -1)
+            || left.kind.localeCompare(right.kind)
+            || (left.operator ?? '').localeCompare(right.operator ?? '')
+            || left.preview.localeCompare(right.preview)
+          ))
+          const pageOffset = candidatePosition.path ? 0 : candidatePosition.offset
+          const totalMatches = matches.length
+          const page = matches.slice(pageOffset, pageOffset + limit)
+          matches.length = 0
+          matches.push(...page)
+          if (state.cursor !== null) {
+            state.truncated = true
+            state.truncationReason ??= 'entry-limit'
+          } else if (pageOffset + page.length < totalMatches) {
+            state.truncated = true
+            state.truncationReason = 'result-limit'
+            state.cursor = encodeCursor('query-candidates', candidateKey, {
+              path: '',
+              offset: pageOffset + page.length,
+            })
+          } else {
+            state.cursor = null
+          }
+        }
       }
     } catch (error) {
       if (error?.name === 'AbortError' || cursor != null) throw error

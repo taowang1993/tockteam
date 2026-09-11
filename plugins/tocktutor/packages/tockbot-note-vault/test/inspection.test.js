@@ -817,13 +817,20 @@ test('query search uses complete indexed candidates only as input to the exact v
       listCalls += 1
       return await provider.input.list(...args)
     },
+    async read(path, maxBytes, signal) {
+      return { ...(await provider.input.read(path, maxBytes, signal)), revision: `revision:${path}` }
+    },
     async searchCandidates(request, signal) {
       signal.throwIfAborted()
       candidateRequests.push(request)
       return {
         complete: true,
         epoch: 'index-v1',
-        paths: ['notes/alpha.md', 'beta.md', 'notes/alpha.md'],
+        entries: [
+          { modifiedMs: 20, path: 'notes/alpha.md', revision: 'revision:notes/alpha.md' },
+          { modifiedMs: 20, path: 'beta.md', revision: 'revision:beta.md' },
+          { modifiedMs: 20, path: 'notes/alpha.md', revision: 'revision:notes/alpha.md' },
+        ],
       }
     },
   }
@@ -841,8 +848,8 @@ test('query search uses complete indexed candidates only as input to the exact v
   assert.equal(listCalls, 0)
   assert.deepEqual(provider.readPaths, ['beta.md', 'notes/alpha.md'])
   assert.deepEqual(result.matches.map(match => [match.path, match.operator]), [
-    ['notes/alpha.md', undefined],
     ['notes/alpha.md', 'tag'],
+    ['notes/alpha.md', undefined],
   ])
   assert.deepEqual(result.scan, { bytes: 72, entries: 2, files: 2 })
 
@@ -854,8 +861,15 @@ test('indexed candidate cursors resume exact projections without duplicates', as
   const provider = memoryInput()
   const inspection = createVaultInspection({
     ...provider.input,
+    async read(path, maxBytes, signal) {
+      return { ...(await provider.input.read(path, maxBytes, signal)), revision: `revision:${path}` }
+    },
     async searchCandidates() {
-      return { complete: true, epoch: 'stable-index', paths: ['notes/alpha.md'] }
+      return {
+        complete: true,
+        epoch: 'stable-index',
+        entries: [{ modifiedMs: 20, path: 'notes/alpha.md', revision: 'revision:notes/alpha.md' }],
+      }
     },
   }, limits)
   const first = await inspection.search({
@@ -875,8 +889,102 @@ test('indexed candidate cursors resume exact projections without duplicates', as
   assert.equal(second.cursor, null)
   assert.deepEqual(
     [...first.matches, ...second.matches].map(match => [match.kind, match.operator]),
-    [['content', undefined], ['tag', 'tag']],
+    [['tag', 'tag'], ['content', undefined]],
   )
+})
+
+test('indexed query candidates are globally ranked before pagination', async () => {
+  const contents = new Map([
+    ['a.md', '---\ntags: [project]\n---\n# A\nneedle in the body.\n'],
+    ['z-needle.md', '---\ntags: [project]\n---\n# Z\nother body.\n'],
+  ])
+  const input = {
+    async list() {
+      throw new Error('indexed search must not enumerate the vault')
+    },
+    async read(path, maxBytes, signal) {
+      signal.throwIfAborted()
+      const content = contents.get(path)
+      if (content === undefined) throw new Error('missing document')
+      if (Buffer.byteLength(content) > maxBytes) throw new Error('document is too large')
+      return { path, content, revision: `revision:${path}` }
+    },
+    async searchCandidates() {
+      return {
+        complete: true,
+        epoch: 'ranked-index',
+        entries: [...contents].map(([path]) => ({
+          modifiedMs: 20,
+          path,
+          revision: `revision:${path}`,
+        })),
+      }
+    },
+  }
+  const inspection = createVaultInspection(input, { ...limits, maxSearchResults: 1 })
+  const first = await inspection.search({ mode: 'query', query: 'tag:project needle', limit: 1 }, new AbortController().signal)
+
+  assert.deepEqual(first.matches.map(match => [match.path, match.kind, match.score]), [['z-needle.md', 'path', 300]])
+  assert.notEqual(first.cursor, null)
+  const second = await inspection.search({ cursor: first.cursor, limit: 1, mode: 'query', query: 'tag:project needle' }, new AbortController().signal)
+  assert.deepEqual(second.matches.map(match => [match.path, match.kind, match.score]), [['a.md', 'tag', 200]])
+})
+
+test('indexed candidates carry date and revision metadata through exact verification', async () => {
+  const contents = new Map([
+    ['old.md', '---\ntags: [project]\n---\n# Old\n'],
+    ['new.md', '---\ntags: [project]\n---\n# New\n'],
+  ])
+  const revisions = new Map([...contents].map(([path]) => [path, `revision:${path}`]))
+  let listCalls = 0
+  let candidateCalls = 0
+  const inventory = [...contents].map(([path]) => ({
+    createdMs: 1,
+    kind: 'document',
+    modifiedMs: path === 'old.md' ? 1 : 20,
+    path,
+    revision: revisions.get(path),
+    size: Buffer.byteLength(contents.get(path)),
+  })).sort((left, right) => left.path.localeCompare(right.path))
+  const input = {
+    async list() {
+      listCalls += 1
+      return { entries: inventory, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path, maxBytes, signal) {
+      signal.throwIfAborted()
+      const content = contents.get(path)
+      if (content === undefined) throw new Error('missing document')
+      if (Buffer.byteLength(content) > maxBytes) throw new Error('document is too large')
+      return { path, content, revision: revisions.get(path) }
+    },
+    async searchCandidates() {
+      candidateCalls += 1
+      return {
+        complete: true,
+        epoch: `metadata-index-${String(candidateCalls)}`,
+        entries: inventory.map(({ modifiedMs, path, revision }) => ({
+          modifiedMs,
+          path,
+          revision: candidateCalls === 1 ? revision : `stale:${revision}`,
+        })),
+      }
+    },
+  }
+  const inspection = createVaultInspection(input, limits)
+  const filtered = await inspection.search({ mode: 'query', modifiedFrom: 10, query: 'tag:project' }, new AbortController().signal)
+
+  assert.equal(candidateCalls, 1)
+  assert.equal(listCalls, 0)
+  assert.deepEqual(filtered.matches.map(match => [match.path, match.revision]), [['new.md', 'revision:new.md']])
+
+  const staleCandidate = await inspection.search({ mode: 'query', query: 'tag:project' }, new AbortController().signal)
+  assert.equal(candidateCalls, 2)
+  assert.equal(listCalls, 1)
+  assert.deepEqual(staleCandidate.matches.map(match => [match.path, match.revision]), [
+    ['new.md', 'revision:new.md'],
+    ['old.md', 'revision:old.md'],
+  ])
 })
 
 test('query search falls back to the bounded scanner when candidates are unavailable, unsafe, or unsupported', async () => {

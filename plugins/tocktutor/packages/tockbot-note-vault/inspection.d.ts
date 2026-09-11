@@ -61,6 +61,7 @@ export interface VaultInspectionInventoryPage {
 export interface VaultInspectionDocument {
   path: string
   content: string
+  revision?: string
 }
 
 export interface VaultSearchCandidateRequest {
@@ -71,10 +72,16 @@ export interface VaultSearchCandidateRequest {
   modifiedTo?: number
 }
 
+export interface VaultSearchCandidateEntry {
+  path: string
+  modifiedMs: number
+  revision: string
+}
+
 export interface VaultSearchCandidateResult {
   complete: true
   epoch: string
-  paths: string[]
+  entries: VaultSearchCandidateEntry[]
 }
 
 export interface VaultInspectionInput {
@@ -88,7 +95,7 @@ export interface VaultInspectionInput {
     maxBytes: number,
     signal: AbortSignal,
   ): Promise<VaultInspectionDocument>
-  /** Return a complete conservative path superset, or null to use the bounded scanner. */
+  /** Return a complete conservative candidate set with inventory metadata, or null to use the bounded scanner. */
   searchCandidates?(
     request: VaultSearchCandidateRequest,
     signal: AbortSignal,
