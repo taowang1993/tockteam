@@ -361,9 +361,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   }
   const renderFormSelect = (child: TrustedRaycastViewNode, fieldTitle: string): HTMLElement => {
     const wrapper = document.createElement('span'); wrapper.className = 'relative block min-w-0'
-    const trigger = document.createElement('button'); trigger.type = 'button'; trigger.className = 'launcher-command-control flex items-center justify-between gap-1.5 text-left'; trigger.setAttribute('data-slot', 'select-trigger'); trigger.setAttribute('aria-label', fieldTitle); trigger.setAttribute('aria-haspopup', 'listbox'); trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('data-state', 'closed')
+    const trigger = document.createElement('button'); trigger.type = 'button'; trigger.className = 'launcher-command-control relative flex items-center pr-8 text-left'; trigger.setAttribute('data-slot', 'select-trigger'); trigger.setAttribute('aria-label', fieldTitle); trigger.setAttribute('aria-haspopup', 'listbox'); trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('data-state', 'closed')
     const valueLabel = document.createElement('span'); valueLabel.className = 'min-w-0 flex-1 truncate'; valueLabel.setAttribute('data-slot', 'select-value')
-    trigger.append(valueLabel, icon(ChevronDown, 'pointer-events-none size-4 shrink-0 text-[var(--dsw-alias-label-secondary,CanvasText)]'))
+    trigger.append(valueLabel, icon(ChevronDown, 'pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]'))
     const content = document.createElement('div'); content.className = 'launcher-command-select-content'; content.setAttribute('data-slot', 'select-content'); content.setAttribute('role', 'listbox'); content.setAttribute('aria-label', fieldTitle); content.hidden = true
     const items = child.children.flatMap(option => {
       if (typeof option === 'string') return []

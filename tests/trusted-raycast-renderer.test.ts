@@ -109,7 +109,8 @@ test('first-use identity and fields share one scroll region', () => {
 
 test('Can I Use preference dropdowns use shadcn-style listboxes with pointer and keyboard selection', async () => {
   const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
-  const document = { get activeElement() { return Element.activeElement }, createElement(tagName: string) { const node = new Element(); node.tagName = tagName; nodes.push(node); return node } } as unknown as Document
+  const createElement = (tagName: string): Element => { const node = new Element(); node.tagName = tagName; nodes.push(node); return node }
+  const document = { get activeElement() { return Element.activeElement }, createElement, createElementNS(_namespace: string, tagName: string) { return createElement(tagName) } } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
   const root = createTrustedRaycastCanIUsePreferenceForm({ defaultQuery: 'chrome 100', showReleaseDate: true, showPartialSupport: false, briefMode: false, path: '', environment: 'production' }, { defaultQuery: 'query', showReleaseDate: 'date', showPartialSupport: 'partial', briefMode: 'brief' }, 'save')
   view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, root })
@@ -119,6 +120,7 @@ test('Can I Use preference dropdowns use shadcn-style listboxes with pointer and
   assert.equal(triggers.length, 3)
   const releaseDate = triggers.find(node => node.getAttribute('aria-label') === 'Show Release Dates')!
   const content = nodes.find(node => node.getAttribute('data-slot') === 'select-content' && node.getAttribute('aria-label') === 'Show Release Dates')!
+  assert.ok(releaseDate.children.at(-1)?.getAttribute('class')?.includes('absolute right-3 top-1/2'), 'the chevron matches the Google Translate selector right gutter')
   assert.equal(releaseDate.getAttribute('aria-haspopup'), 'listbox')
   assert.equal(releaseDate.getAttribute('aria-expanded'), 'false')
   assert.equal(content.hidden, true)
