@@ -57,3 +57,13 @@ Earlier attempts were not counted as passing. They uncovered fixture timing/copy
 Self-review applied the simplification, security/hardening, and performance references. The implementation reuses the existing trust transaction, finite renderer, profile namespaces, and atomic writer. No dependency was added. There is no claimed performance improvement; existing row, action, input, and message bounds remain enforced.
 
 Remaining limitations: details have no browser-search field; a theme change returns details to the preserved root search; dynamic Browserslist selectors and project configuration are unsupported. The separate installed-application smoke is still required for `.4.4`. It now also drives Can I Use installation, preferences, search, details, and Back from the actual packaged app and checks the installed identity and legacy preference preservation. Its existing macOS launch flow can take foreground focus, unlike this background-only proof; it must not run without fresh permission. Consult the issue's final verification receipt for that gate's outcome.
+
+## Installed Gate Attempt at `dfa76704`
+
+The user subsequently authorized the final installation check, including foreground activation. Ran `pnpm test:launcher:installed` with Node 24 and `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=$HOME/Library/Caches/tockteam-smoke.noindex`.
+
+**Failed before packaging or app launch:** `scripts/ueli/check-package-feasibility.mjs` reported `npm package files differ from the release contract` and `Builder application files differ from the release contract`. Both lists in `scripts/ueli/desktop-release-contract.json` omit `dist/trusted-raycast-can-i-use/**`, which is present in both package manifest lists. Installed behavior remains unverified; `.4.4` remains open.
+
+Log: `/tmp/can-i-use-final-installed-dfa76704.log`. Diagnostic receipt: `$HOME/Library/Caches/tockteam-smoke.noindex/tockteam-installed-smoke-95165-diagnostics.json`. Runner PID 95165 exited; process inspection found no remaining installed-test processes. No Electron app was launched.
+
+The pnpm invocation also performed automatic dependency installation and rewrote `pnpm-lock.yaml` (775 additions, 919 deletions). No peer session was active in this checkout. The diff is preserved at `/tmp/can-i-use-installed-lockfile.patch`; the lockfile is left unstaged and unchanged pending ownership/cleanup approval. The installed gate was not rerun at this commit.
