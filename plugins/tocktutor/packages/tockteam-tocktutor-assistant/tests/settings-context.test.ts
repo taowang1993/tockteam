@@ -64,6 +64,7 @@ const defaults: AssistantSettings = {
   provider: 'deepseek-official',
   model: 'deepseek-v4-flash',
   writePermission: 'read-only',
+  aiSearch: 'on-demand',
 }
 
 async function installStorage(ctx: Context, root: string): Promise<void> {
@@ -100,11 +101,13 @@ test('settings are bounded, persisted through DSH settings, and unregistered on 
       provider: 'gateway/acme',
       model: 'acme:model-v2',
       writePermission: 'propose',
+      aiSearch: 'automatic',
     })
     assert.deepEqual(assistant.currentSettings(), {
       provider: 'gateway/acme',
       model: 'acme:model-v2',
       writePermission: 'propose',
+      aiSearch: 'automatic',
     })
     assert.equal(ctx.settings.describe().some(entry => entry.ns === ASSISTANT_SETTINGS_NAMESPACE), true)
 

@@ -1,4 +1,5 @@
 export type AssistantRemotePermission = 'read-only' | 'propose';
+export type AssistantAiSearchPolicy = 'off' | 'on-demand' | 'automatic';
 export type AssistantRemoteTurnMode = 'followup' | 'inject' | 'steer';
 export type AssistantRemoteOperation = 'create' | 'update';
 export type AssistantRemoteAuditOutcome = 'staged' | 'approval-consumed' | 'approval-denied' | 'approval-failed' | 'applied' | 'rejected';
@@ -6,6 +7,30 @@ export interface AssistantSettingsView {
     provider: string;
     model: string;
     writePermission: AssistantRemotePermission;
+    aiSearch?: AssistantAiSearchPolicy;
+}
+export interface AssistantSearchIntelligenceRequest {
+    query: string;
+    vaultGeneration: number;
+    mode: 'related';
+    directory?: string;
+    modifiedFrom?: number;
+    modifiedTo?: number;
+    titleOnly?: boolean;
+}
+export interface AssistantSearchIntelligenceResult {
+    status: 'applied' | 'disabled' | 'provider-unavailable' | 'invalid-output' | 'error' | 'cancelled';
+    matches: Array<{
+        id?: string;
+        path: string;
+        kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task';
+        line: number | null;
+        preview: string;
+        lineEnd?: number | null;
+        score?: number;
+        operator?: 'any' | 'block' | 'content' | 'file' | 'line' | 'path' | 'property' | 'related' | 'section' | 'tag' | 'task' | 'task-done' | 'task-todo';
+        provenance?: 'body' | 'canvas' | 'frontmatter' | 'path' | 'section' | 'task';
+    }>;
 }
 export interface AssistantTurnRequest {
     mode: AssistantRemoteTurnMode;

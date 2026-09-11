@@ -160,15 +160,29 @@ function validActiveVault(value) {
         && typeof value.name === 'string' && value.name.length > 0 && value.name.length <= 255
         && typeof value.displayPath === 'string' && value.displayPath.length > 0 && value.displayPath.length <= 32_768;
 }
+function recentSearchMatches(entries) {
+    return Object.freeze(entries
+        .filter((entry) => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path))
+        .toSorted((left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path))
+        .slice(0, 100)
+        .map(entry => ({ kind: 'path', line: null, path: entry.path, preview: 'Recently modified note.' })));
+}
 function validSearchResult(value, vault) {
+    const ids = new Set();
     return value?.generation === vault.generation
         && typeof value.query === 'string'
+        && (value.cursor === null || typeof value.cursor === 'string')
+        && (value.cursor === null || value.cursor.length > 0 && value.cursor.length <= 4_096)
         && Array.isArray(value.matches)
         && value.matches.length <= 100
         && value.matches.every(match => isSafeVaultRelativePath(match.path)
+            && (match.id === undefined || typeof match.id === 'string' && match.id.length > 0 && match.id.length <= 128 && !ids.has(match.id) && (ids.add(match.id), true))
             && typeof match.preview === 'string'
             && match.preview.length <= 4_096
-            && (match.line === null || Number.isSafeInteger(match.line)));
+            && (match.line === null || Number.isSafeInteger(match.line) && match.line >= 1)
+            && (match.lineEnd === undefined || match.lineEnd === null || Number.isSafeInteger(match.lineEnd) && match.lineEnd >= 1)
+            && (match.line === null || match.lineEnd === undefined || match.lineEnd === null || match.lineEnd >= match.line)
+            && (match.score === undefined || Number.isFinite(match.score)));
 }
 function validEntryRevision(value) {
     return typeof value === 'string' && /^(?:entry|file):[0-9a-f]{64}$/u.test(value);
@@ -295,9 +309,20 @@ function initialSnapshot() {
         recoveryOpen: false,
         revision: null,
         saveStatus: 'saved',
+        searchActiveIndex: null,
+        searchError: null,
+        searchIntelligenceStatus: null,
         searchLoading: false,
         searchMatches: Object.freeze([]),
         searchMode: 'query',
+        searchPreview: null,
+        searchPreviewError: null,
+        searchPreviewLoading: false,
+        searchCursor: null,
+        searchTitleOnly: false,
+        searchDirectory: '',
+        searchModifiedFrom: null,
+        searchModifiedTo: null,
         searchOpen: false,
         searchQuery: '',
         selectedSnapshot: null,
@@ -341,6 +366,9 @@ export class WorkbenchRouteController {
     embedTargets = Object.freeze([]);
     dispatchRevision = 0;
     operationAbort = null;
+    searchTimer = null;
+    searchPreviewAbort = null;
+    searchPreviewOperation = 0;
     embedAbort = null;
     saveAbort = null;
     saving = null;
@@ -604,48 +632,348 @@ export class WorkbenchRouteController {
     cancelDispatchDialog() {
         this.settlePendingDispatch('failed');
     }
+    searchMatchIndex(match) {
+        return (this.snapshot.searchMatches ?? []).findIndex(candidate => candidate.id !== undefined && match.id !== undefined
+            ? candidate.id === match.id
+            : candidate.path === match.path
+                && candidate.kind === match.kind
+                && candidate.line === match.line
+                && candidate.preview === match.preview);
+    }
+    setSearchActiveIndex(index) {
+        const matches = this.snapshot.searchMatches ?? [];
+        if (!Number.isSafeInteger(index) || index < 0 || index >= matches.length)
+            return false;
+        this.cancelSearchPreview();
+        this.update({ searchActiveIndex: index, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false });
+        void this.previewSearchMatch(index);
+        return true;
+    }
+    moveSearchActive(delta) {
+        const matches = this.snapshot.searchMatches ?? [];
+        if (matches.length === 0 || !Number.isSafeInteger(delta) || delta === 0)
+            return false;
+        const current = this.snapshot.searchActiveIndex ?? 0;
+        const next = (current + delta % matches.length + matches.length) % matches.length;
+        return this.setSearchActiveIndex(next);
+    }
+    async openSearchMatch(match, newTab = false) {
+        const index = this.searchMatchIndex(match);
+        if (index < 0 || !validSearchResult({
+            cursor: null,
+            generation: this.snapshot.vault?.generation ?? -1,
+            matches: [match],
+            query: this.snapshot.searchQuery.trim(),
+            scan: { bytes: 0, entries: 0, files: 0 },
+            truncated: false,
+            truncationReason: null,
+            warnings: [],
+        }, this.snapshot.vault ?? { generation: -1, id: '' }))
+            return false;
+        this.cancelSearchPreview();
+        this.update({ searchActiveIndex: index, searchPreview: null, searchPreviewLoading: false });
+        const opened = await this.select(match.path, true, undefined, true, newTab);
+        if (!opened)
+            return false;
+        if (match.line !== null)
+            this.jumpToMatch(match.line, match.lineEnd ?? match.line);
+        return true;
+    }
+    async previewSearchMatch(matchOrIndex) {
+        const index = typeof matchOrIndex === 'number'
+            ? matchOrIndex
+            : this.searchMatchIndex(matchOrIndex);
+        const match = this.snapshot.searchMatches?.[index];
+        const vault = this.snapshot.vault;
+        if (match === undefined || vault === null || !this.snapshot.searchOpen)
+            return false;
+        this.update({ searchActiveIndex: index, searchPreview: null, searchPreviewError: null, searchPreviewLoading: true });
+        const operation = this.nextSearchPreviewOperation();
+        try {
+            const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(match.path, vault, operation.signal));
+            if (!this.currentSearchPreview(operation.id, vault, match.path)
+                || opened.generation !== vault.generation
+                || opened.path !== match.path
+                || typeof opened.revision !== 'string'
+                || !boundedSource(opened.content))
+                return false;
+            this.update({
+                searchPreview: Object.freeze({
+                    content: opened.content,
+                    generation: opened.generation,
+                    line: match.line,
+                    lineEnd: match.lineEnd ?? match.line,
+                    path: opened.path,
+                    revision: opened.revision,
+                }),
+                searchPreviewError: null,
+                searchPreviewLoading: false,
+            });
+            return true;
+        }
+        catch {
+            if (this.currentSearchPreview(operation.id, vault, match.path)) {
+                this.update({ searchPreviewError: 'Preview could not be loaded.', searchPreviewLoading: false });
+            }
+            return false;
+        }
+    }
+    hideSearchPreview() {
+        this.cancelSearchPreview();
+        this.update({ searchPreview: null, searchPreviewError: null, searchPreviewLoading: false });
+    }
     setSearchQuery(query) {
-        if (query.length <= 1_000)
-            this.update({ searchQuery: query });
+        if (query.length > 1_000)
+            return;
+        this.nextOperation();
+        const trimmed = query.trim();
+        this.update({
+            searchActiveIndex: null,
+            searchError: null,
+            searchIntelligenceStatus: null,
+            searchLoading: trimmed !== '' && this.snapshot.vault !== null,
+            searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
+            searchCursor: null,
+            searchPreview: null,
+            searchPreviewError: null,
+            searchPreviewLoading: false,
+            searchQuery: query,
+        });
+        this.scheduleSearch();
     }
     closeSearch() {
-        this.update({ searchLoading: false, searchMatches: Object.freeze([]), searchOpen: false, searchQuery: '' });
+        this.nextOperation();
+        this.update({ searchActiveIndex: null, searchDirectory: '', searchError: null, searchIntelligenceStatus: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false });
     }
     openSearch(query) {
-        this.update({ searchMatches: Object.freeze([]), searchOpen: true, searchQuery: query });
+        if (query.length > 1_000)
+            return;
+        this.nextOperation();
+        const trimmed = query.trim();
+        this.update({
+            searchActiveIndex: null,
+            searchError: null,
+            searchIntelligenceStatus: null,
+            searchLoading: trimmed !== '' && this.snapshot.vault !== null,
+            searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
+            searchCursor: null,
+            searchOpen: true,
+            searchPreview: null,
+            searchPreviewError: null,
+            searchPreviewLoading: false,
+            searchQuery: query,
+        });
+        this.scheduleSearch();
     }
     setSearchMode(mode) {
-        this.update({ searchMode: mode });
+        this.nextOperation();
+        const trimmed = this.snapshot.searchQuery.trim();
+        this.update({
+            searchActiveIndex: null,
+            searchError: null,
+            searchIntelligenceStatus: null,
+            searchLoading: trimmed !== '' && this.snapshot.vault !== null,
+            searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
+            searchCursor: null,
+            searchMode: mode,
+            searchPreview: null,
+            searchPreviewError: null,
+            searchPreviewLoading: false,
+        });
+        this.scheduleSearch();
+    }
+    setSearchFilters(filters) {
+        this.nextOperation();
+        const trimmed = this.snapshot.searchQuery.trim();
+        this.update({
+            searchActiveIndex: null,
+            searchDirectory: filters.directory ?? '',
+            searchError: null,
+            searchIntelligenceStatus: null,
+            searchLoading: trimmed !== '' && this.snapshot.vault !== null,
+            searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
+            searchCursor: null,
+            searchModifiedFrom: filters.modifiedFrom ?? null,
+            searchModifiedTo: filters.modifiedTo ?? null,
+            searchPreview: null,
+            searchPreviewError: null,
+            searchPreviewLoading: false,
+            searchTitleOnly: filters.titleOnly === true,
+        });
+        this.scheduleSearch();
+    }
+    scheduleSearch() {
+        if (this.searchTimer !== null)
+            clearTimeout(this.searchTimer);
+        this.searchTimer = null;
+        if (this.snapshot.searchQuery.trim() === '' || this.snapshot.vault === null || !this.snapshot.searchOpen)
+            return;
+        const query = this.snapshot.searchQuery.trim();
+        this.searchTimer = setTimeout(() => {
+            this.searchTimer = null;
+            if (this.snapshot.searchOpen && this.snapshot.searchQuery.trim() === query)
+                void this.runSearch();
+        }, 200);
     }
     async runSearch() {
+        if (this.searchTimer !== null)
+            clearTimeout(this.searchTimer);
+        this.searchTimer = null;
         const vault = this.snapshot.vault;
         const query = this.snapshot.searchQuery.trim();
         if (vault === null || query.length === 0 || query.length > 1_000) {
-            this.update({ searchMatches: Object.freeze([]) });
+            this.update({ searchError: null, searchLoading: false, searchMatches: query.length === 0 ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]) });
             return false;
         }
         const mode = this.snapshot.searchMode ?? 'query';
         const operation = this.nextOperation();
-        this.update({ searchLoading: true });
+        this.update({ searchError: null, searchIntelligenceStatus: null, searchLoading: true, searchMatches: Object.freeze([]) });
         try {
             const result = remoteValue(await this.remote.tocktutorWorkbench.search({
+                ...(this.snapshot.searchDirectory === undefined || this.snapshot.searchDirectory === '' ? {} : { directory: this.snapshot.searchDirectory }),
+                ...(this.snapshot.searchModifiedFrom === undefined || this.snapshot.searchModifiedFrom === null ? {} : { modifiedFrom: this.snapshot.searchModifiedFrom }),
+                ...(this.snapshot.searchModifiedTo === undefined || this.snapshot.searchModifiedTo === null ? {} : { modifiedTo: this.snapshot.searchModifiedTo }),
+                ...(this.snapshot.searchTitleOnly === true ? { titleOnly: true } : {}),
                 expectedVault: vault,
                 limit: 100,
                 mode,
                 query,
             }, operation.signal));
-            if (!this.current(operation.id, vault) || !validSearchResult(result, vault))
+            if (!this.current(operation.id, vault))
                 return false;
+            if (!validSearchResult(result, vault) || result.query !== query) {
+                this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false });
+                return false;
+            }
+            const matches = Object.freeze(result.matches.map(match => Object.freeze({ ...match })));
             this.update({
                 message: result.truncated ? 'Search returned a bounded partial result.' : `${String(result.matches.length)} search results.`,
+                searchActiveIndex: matches.length > 0 ? 0 : null,
+                searchError: null,
+                searchIntelligenceStatus: null,
                 searchLoading: false,
-                searchMatches: Object.freeze(result.matches.map(match => Object.freeze({ ...match }))),
+                searchMatches: matches,
+                searchPreview: null,
+                searchPreviewError: null,
+                searchPreviewLoading: false,
+                searchCursor: result.cursor,
+            });
+            await this.enhanceSearch(operation, vault, query, mode);
+            if (!this.current(operation.id, vault))
+                return false;
+            const enhancedMatches = this.snapshot.searchMatches ?? matches;
+            if (enhancedMatches.length > 0 && this.snapshot.searchActiveIndex === null)
+                void this.previewSearchMatch(0);
+            else if (matches.length > 0 && this.snapshot.searchPreview === null)
+                void this.previewSearchMatch(0);
+            return true;
+        }
+        catch {
+            if (this.current(operation.id, vault) && !operation.signal.aborted) {
+                this.update({ message: 'Search could not be completed.', searchError: 'Search could not be completed.', searchLoading: false });
+            }
+            return false;
+        }
+    }
+    async enhanceSearch(operation, vault, query, mode) {
+        const intelligence = this.remote.tocktutorAssistant;
+        if (intelligence?.searchIntelligence === undefined)
+            return;
+        let automatic = false;
+        if (mode === 'query' && intelligence.currentSettings !== undefined) {
+            try {
+                const settings = remoteValue(await intelligence.currentSettings(operation.signal));
+                automatic = settings.aiSearch === 'automatic';
+            }
+            catch {
+                return;
+            }
+        }
+        if (mode !== 'related' && !automatic)
+            return;
+        try {
+            const result = remoteValue(await intelligence.searchIntelligence({
+                query,
+                vaultGeneration: vault.generation,
+                mode: 'related',
+                ...(this.snapshot.searchDirectory ? { directory: this.snapshot.searchDirectory } : {}),
+                ...(this.snapshot.searchModifiedFrom == null ? {} : { modifiedFrom: this.snapshot.searchModifiedFrom }),
+                ...(this.snapshot.searchModifiedTo == null ? {} : { modifiedTo: this.snapshot.searchModifiedTo }),
+                ...(this.snapshot.searchTitleOnly ? { titleOnly: true } : {}),
+            }, operation.signal));
+            if (!this.current(operation.id, vault))
+                return;
+            this.update({ searchIntelligenceStatus: result.status });
+            if (result.status === 'applied' && result.matches.length > 0 && validSearchResult({
+                cursor: null,
+                generation: vault.generation,
+                matches: result.matches,
+                query,
+                scan: { bytes: 0, entries: 0, files: 0 },
+                truncated: false,
+                truncationReason: null,
+                warnings: [],
+            }, vault)) {
+                const matches = Object.freeze(result.matches.map(match => Object.freeze({ ...match })));
+                this.update({
+                    message: `${String(matches.length)} related search results.`,
+                    searchActiveIndex: 0,
+                    searchMatches: matches,
+                });
+            }
+        }
+        catch {
+            if (this.current(operation.id, vault) && !operation.signal.aborted)
+                this.update({ searchIntelligenceStatus: 'error' });
+        }
+    }
+    async loadMoreSearch() {
+        const vault = this.snapshot.vault;
+        const cursor = this.snapshot.searchCursor;
+        const query = this.snapshot.searchQuery.trim();
+        if (vault === null || cursor === null || query.length === 0)
+            return false;
+        const mode = this.snapshot.searchMode ?? 'query';
+        const operation = this.nextOperation();
+        this.update({ searchError: null, searchLoading: true });
+        try {
+            const result = remoteValue(await this.remote.tocktutorWorkbench.search({
+                ...(cursor === null ? {} : { cursor }),
+                ...(this.snapshot.searchDirectory === undefined || this.snapshot.searchDirectory === '' ? {} : { directory: this.snapshot.searchDirectory }),
+                ...(this.snapshot.searchModifiedFrom === undefined || this.snapshot.searchModifiedFrom === null ? {} : { modifiedFrom: this.snapshot.searchModifiedFrom }),
+                ...(this.snapshot.searchModifiedTo === undefined || this.snapshot.searchModifiedTo === null ? {} : { modifiedTo: this.snapshot.searchModifiedTo }),
+                ...(this.snapshot.searchTitleOnly === true ? { titleOnly: true } : {}),
+                expectedVault: vault,
+                limit: 100,
+                mode,
+                query,
+            }, operation.signal));
+            if (!this.current(operation.id, vault) || !validSearchResult(result, vault) || result.query !== query || result.cursor === cursor) {
+                this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false });
+                return false;
+            }
+            const existing = this.snapshot.searchMatches ?? [];
+            const seen = new Set(existing.map(match => match.id ?? `${match.path}:${match.kind}:${String(match.line)}:${match.preview}`));
+            const additions = result.matches.filter(match => {
+                const id = match.id ?? `${match.path}:${match.kind}:${String(match.line)}:${match.preview}`;
+                if (seen.has(id))
+                    return false;
+                seen.add(id);
+                return true;
+            });
+            this.update({
+                message: result.truncated ? 'Search returned a bounded partial result.' : `${String(existing.length + additions.length)} search results.`,
+                searchActiveIndex: this.snapshot.searchActiveIndex ?? (existing.length + additions.length > 0 ? 0 : null),
+                searchError: null,
+                searchLoading: false,
+                searchMatches: Object.freeze([...existing, ...additions].map(match => Object.freeze({ ...match }))),
+                searchCursor: result.cursor,
             });
             return true;
         }
         catch {
             if (this.current(operation.id, vault) && !operation.signal.aborted) {
-                this.update({ message: 'Search could not be completed.', searchLoading: false });
+                this.update({ message: 'Search could not be completed.', searchError: 'Search could not be completed.', searchLoading: false });
             }
             return false;
         }
@@ -738,12 +1066,7 @@ export class WorkbenchRouteController {
     async openSmartView(kind) {
         this.openSearch('');
         if (kind === 'recent') {
-            const matches = this.snapshot.entries
-                .filter((entry) => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path))
-                .toSorted((left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path))
-                .slice(0, 100)
-                .map(entry => ({ kind: 'path', line: null, path: entry.path, preview: 'Recently modified note.' }));
-            this.update({ searchMatches: Object.freeze(matches) });
+            this.update({ searchMatches: recentSearchMatches(this.snapshot.entries) });
             return true;
         }
         if (kind === 'tags')
@@ -787,19 +1110,21 @@ export class WorkbenchRouteController {
             return false;
         }
     }
-    jumpToLine(line) {
-        if (!Number.isSafeInteger(line) || line < 1 || this.snapshot.path === null)
+    jumpToMatch(line, lineEnd) {
+        if (!Number.isSafeInteger(line) || line < 1 || !Number.isSafeInteger(lineEnd) || lineEnd < line || this.snapshot.path === null)
             return false;
-        let offset = 0;
-        for (let current = 1; current < line; current += 1) {
-            const next = this.snapshot.source.indexOf('\n', offset);
-            if (next < 0)
-                return false;
-            offset = next + 1;
-        }
+        const lines = this.snapshot.source.split('\n');
+        if (line > lines.length)
+            return false;
+        const start = lines.slice(0, line - 1).reduce((offset, current) => offset + current.length + 1, 0);
+        const endLine = Math.min(lineEnd, lines.length);
+        const end = start + lines.slice(line - 1, endLine).reduce((offset, current, index) => offset + current.length + (index + line < endLine ? 1 : 0), 0);
         this.setMode('source');
-        this.setSelection(offset, offset);
+        this.setSelection(start, end);
         return true;
+    }
+    jumpToLine(line) {
+        return this.jumpToMatch(line, line);
     }
     settlePendingDispatch(result) {
         const pending = this.pendingDispatch;
@@ -1015,7 +1340,31 @@ export class WorkbenchRouteController {
             && this.recoveryAbort?.signal.aborted === false
             && this.recoveryIdentityMatches(identity);
     }
+    cancelSearchPreview() {
+        this.searchPreviewAbort?.abort();
+        this.searchPreviewAbort = null;
+        this.searchPreviewOperation += 1;
+    }
+    nextSearchPreviewOperation() {
+        this.cancelSearchPreview();
+        this.searchPreviewAbort = new AbortController();
+        return { id: this.searchPreviewOperation, signal: this.searchPreviewAbort.signal };
+    }
+    currentSearchPreview(id, vault, path) {
+        const active = this.snapshot.searchActiveIndex;
+        return !this.disposed
+            && id === this.searchPreviewOperation
+            && this.searchPreviewAbort?.signal.aborted === false
+            && sameVault(this.snapshot.vault, vault)
+            && this.snapshot.searchOpen
+            && active !== null && active !== undefined
+            && this.snapshot.searchMatches?.[active]?.path === path;
+    }
     nextOperation() {
+        if (this.searchTimer !== null)
+            clearTimeout(this.searchTimer);
+        this.searchTimer = null;
+        this.cancelSearchPreview();
         this.cancelRecoveryOperations();
         this.operationAbort?.abort();
         this.operationAbort = new AbortController();
@@ -1098,9 +1447,12 @@ export class WorkbenchRouteController {
             recoveryOpen: false,
             revision: null,
             saveStatus: 'saved',
+            searchError: null,
+            searchIntelligenceStatus: null,
             searchLoading: false,
             searchMatches: Object.freeze([]),
             searchMode: 'query',
+            searchCursor: null,
             searchOpen: false,
             searchQuery: '',
             selectedSnapshot: null,
@@ -1911,7 +2263,7 @@ export class WorkbenchRouteController {
                 this.pendingRename = null;
         }
     }
-    async select(path, navigate = true, dispatchRevision, recordHistory = true) {
+    async select(path, navigate = true, dispatchRevision, recordHistory = true, newTab = false) {
         const activeVault = this.snapshot.vault;
         if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== 'ready')
             return false;
@@ -1936,6 +2288,10 @@ export class WorkbenchRouteController {
             if (this.snapshot.path !== null)
                 this.navigate(routeForPath(this.snapshot.path), 'replace');
             return false;
+        }
+        if (newTab && path !== this.snapshot.path && !pane.tabs.some(tab => tab.path === path)) {
+            this.shellSession = openNoteTab(this.shellSession, this.shellSession.focusedGroupId, path);
+            this.syncShell();
         }
         const vault = activeVault;
         const operation = this.nextOperation();
@@ -2533,6 +2889,9 @@ export class WorkbenchRouteController {
             return this.disposal;
         const flush = this.flushPendingDraft();
         this.settlePendingDispatch('stale');
+        if (this.searchTimer !== null)
+            clearTimeout(this.searchTimer);
+        this.searchTimer = null;
         this.disposed = true;
         this.dispatchRevision += 1;
         this.operation += 1;
@@ -2568,6 +2927,7 @@ const SEARCH_OPTIONS = [
     { description: 'match path of the file', label: 'path:', value: 'path:' },
     { description: 'match file name', label: 'file:', value: 'file:' },
     { description: 'search for tags', label: 'tag:', value: 'tag:' },
+    { description: 'search tasks', label: 'task:', value: 'task:' },
     { description: 'search keywords on same line', label: 'line:', value: 'line:' },
     { description: 'search keywords under same heading', label: 'section:', value: 'section:' },
     { description: 'match property', label: '[property]', value: '[]' },
@@ -2602,22 +2962,64 @@ function NotePathDialog(props) {
             props.onCancel(); }, children: _jsx(DialogContent, { unstyled: true, className: "fixed top-1/2 left-1/2 z-[2147483647] grid w-[calc(100%-48px)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 gap-3.5 overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 text-[var(--tt-text)] shadow-xl [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-text:var(--dsw-alias-label-primary,#27272a)]", overlayClassName: "z-[2147483646] !bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#27272a)_28%,transparent)]", showCloseButton: false, children: _jsxs("form", { className: "grid gap-3", onSubmit: submit, children: [_jsx(DialogTitle, { className: "m-0 text-[17px]", children: label }), _jsxs(Label, { unstyled: true, className: "grid gap-1.5 text-sm font-[650]", children: [rename ? 'Note Title' : 'Note Folder', _jsx(Input, { unstyled: true, "aria-label": rename ? 'Note Title' : 'Note Folder', autoFocus: true, disabled: pending, maxLength: 4_096, onChange: event => { setValue(event.target.value); setError(null); }, placeholder: rename ? undefined : 'Folder/Subfolder (optional)', value: value })] }), !rename && _jsx("p", { className: "m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]", children: "Leave the folder empty to move the note to the vault root." }), error !== null && _jsx("p", { className: "m-0 text-xs text-[var(--dsw-alias-state-error-primary,#dc2626)]", role: "alert", children: error }), _jsxs("div", { className: "flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit", children: [_jsx(Button, { unstyled: true, disabled: pending, onClick: props.onCancel, type: "button", children: "Cancel" }), _jsx(Button, { unstyled: true, disabled: pending, type: "submit", children: label })] })] }) }) }));
 }
 function NoteSearchPreview(props) {
-    return (_jsx("aside", { "aria-label": "Note Preview", className: "min-h-0 p-3 max-sm:hidden", role: "region", children: props.path === null ? (_jsx("div", { className: "flex h-full items-center justify-center rounded-lg border border-[var(--tt-border)] px-6 text-center text-sm text-[var(--tt-muted)]", children: "Select a result to preview it." })) : (_jsxs("div", { className: "h-full overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)]", children: [_jsx("div", { className: "h-20 border-b border-[var(--tt-border)] bg-[var(--tt-selected)]" }), _jsxs("div", { className: "p-5", children: [_jsx("span", { className: "text-xs text-[var(--tt-muted)]", children: "Note" }), _jsx("strong", { className: "mt-1 block truncate text-xl font-semibold tracking-[-0.01em]", children: noteTitle(props.path) }), props.match === undefined ? (_jsx("p", { className: "mt-3 mb-0 truncate text-sm leading-5 text-[var(--tt-muted)]", children: props.path })) : (_jsxs(_Fragment, { children: [_jsx("p", { className: "mt-3 mb-0 text-sm leading-5 text-[var(--tt-text)]", children: props.match.preview }), _jsxs("p", { className: "mt-2 mb-0 truncate text-xs text-[var(--tt-muted)]", children: [props.match.path, props.match.line === null ? '' : `:${String(props.match.line)}`] })] }))] })] })) }));
+    const html = useMemo(() => props.preview === null || props.preview === undefined
+        ? ''
+        : renderMarkdownHtml(props.preview.content, { externalEmbedMode: 'inert' }), [props.preview]);
+    const matchedHtml = useMemo(() => {
+        if (props.preview === null || props.preview === undefined || props.preview.line === null)
+            return '';
+        const lines = props.preview.content.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
+        const start = Math.max(0, props.preview.line - 1);
+        const end = Math.min(lines.length, props.preview.lineEnd ?? props.preview.line);
+        return renderMarkdownHtml(lines.slice(start, Math.max(start + 1, end)).join('\n'), { externalEmbedMode: 'inert' });
+    }, [props.preview]);
+    return (_jsx("aside", { "aria-label": "Note Preview", className: "min-h-0 p-3 max-sm:hidden", role: "region", children: props.path === null ? (_jsx("div", { className: "flex h-full items-center justify-center rounded-lg border border-[var(--tt-border)] px-6 text-center text-sm text-[var(--tt-muted)]", children: "Select a result to preview it." })) : (_jsxs("div", { className: "flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)]", children: [_jsxs("div", { className: "flex items-center justify-between gap-2 border-b border-[var(--tt-border)] px-4 py-2", children: [_jsx("span", { className: "truncate text-xs text-[var(--tt-muted)]", children: props.path }), _jsx(Button, { unstyled: true, "aria-label": "Hide Preview", className: "shrink-0 rounded-md border-0 bg-transparent p-1 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]", onClick: props.onHide, type: "button", children: _jsx(X, { "aria-hidden": "true", className: "size-4" }) })] }), _jsxs("div", { className: "min-h-0 overflow-auto p-5", children: [_jsx("strong", { className: "block truncate text-xl font-semibold tracking-[-0.01em]", children: noteTitle(props.path) }), props.loading ? _jsx("p", { className: "mt-3 mb-0 text-sm text-[var(--tt-muted)]", role: "status", children: "Loading preview\u2026" })
+                            : props.error !== null && props.error !== undefined ? _jsx("p", { className: "mt-3 mb-0 text-sm text-[var(--dsw-alias-state-error-primary,#dc2626)]", role: "alert", children: props.error })
+                                : props.preview === null || props.preview === undefined ? _jsx("p", { className: "mt-3 mb-0 text-sm text-[var(--tt-muted)]", children: "Preview unavailable." })
+                                    : _jsxs(_Fragment, { children: [props.match !== undefined && _jsxs("p", { className: "mt-2 mb-3 text-xs text-[var(--tt-muted)]", children: ["Match at line ", String(props.preview.line ?? 1), props.preview.lineEnd !== props.preview.line ? `–${String(props.preview.lineEnd)}` : ''] }), matchedHtml !== '' && _jsx("div", { "aria-label": "Matched Lines", className: "mb-4 rounded-md border border-[var(--tt-border)] bg-[var(--tt-selected)] p-2 text-sm", dangerouslySetInnerHTML: { __html: matchedHtml } }), _jsx("div", { className: "tocktutor-search-preview prose text-sm", dangerouslySetInnerHTML: { __html: html } })] })] })] })) }));
+}
+function highlightSearchText(text, query) {
+    const needle = query.trim().split(/\s+/u).find(token => token.length > 0 && !token.includes(':')) ?? '';
+    if (needle.length === 0)
+        return text;
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+    const parts = text.split(new RegExp(`(${escaped})`, 'iu'));
+    return parts.map((part, index) => index % 2 === 0 ? part : _jsx("mark", { className: "rounded-sm bg-[var(--tt-selected)] text-inherit", children: part }, `${part}:${String(index)}`));
 }
 function NoteSearchResultList(props) {
-    return (_jsx("div", { className: "min-h-0 overflow-auto", children: props.matches.length > 0 ? (_jsx("ul", { className: "m-0 grid list-none gap-0.5 p-0", "aria-label": "Vault Search Results", children: props.matches.map((match, index) => (_jsx("li", { children: _jsxs(Button, { unstyled: true, "aria-current": props.previewMatchIndex === index ? 'true' : undefined, "aria-label": `Open ${match.path}`, className: "grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]", onClick: () => { props.onSelect(match.path); props.onClose(); }, onFocus: () => { props.onPreview(index); }, onMouseEnter: () => { props.onPreview(index); }, type: "button", children: [_jsx(FileText, { "aria-hidden": "true", className: "mt-0.5 text-[var(--tt-muted)]", strokeWidth: 1.6 }), _jsxs("span", { className: "min-w-0", children: [_jsx("strong", { className: "block truncate text-sm font-medium", children: noteTitle(match.path) }), _jsx("span", { className: "block truncate text-xs text-[var(--tt-muted)]", children: match.preview })] })] }) }, `${match.kind}:${match.path}:${String(match.line ?? 0)}:${match.preview}`))) })) : props.pathResults.length > 0 ? (_jsx("ul", { className: "m-0 grid list-none gap-0.5 p-0", "aria-label": "Matching Note Paths", children: props.pathResults.map(path => (_jsx("li", { children: _jsxs(Button, { unstyled: true, "aria-current": props.previewResultPath === path ? 'true' : undefined, "aria-label": `Open ${path}`, className: "grid min-h-9 w-full grid-cols-[18px_minmax(0,1fr)] items-center gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-sm outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]", onClick: () => { props.onSelect(path); props.onClose(); }, onFocus: () => { props.onPreview(path); }, onMouseEnter: () => { props.onPreview(path); }, type: "button", children: [_jsx(FileText, { "aria-hidden": "true", className: "text-[var(--tt-muted)]", strokeWidth: 1.6 }), _jsx("span", { className: "truncate", children: path })] }) }, path))) })) : _jsx(Alert, { unstyled: true, className: "px-2 py-3 text-sm text-[var(--tt-muted)]", role: "status", children: props.query.trim() === '' ? 'Type to search notes.' : 'No matching notes.' }) }));
+    const pathsByTitle = new Map();
+    for (const match of props.matches) {
+        const title = noteTitle(match.path);
+        const paths = pathsByTitle.get(title) ?? new Set();
+        paths.add(match.path);
+        pathsByTitle.set(title, paths);
+    }
+    const groups = [...props.matches.reduce((result, match, index) => {
+            const group = result.get(match.path) ?? { index, matches: [], path: match.path };
+            group.matches.push({ index, match });
+            result.set(match.path, group);
+            return result;
+        }, new Map()).values()];
+    return (_jsx("div", { className: "min-h-0 overflow-auto", children: props.loading ? _jsx(Alert, { unstyled: true, className: "px-2 py-3 text-sm text-[var(--tt-muted)]", role: "status", children: "Searching notes\u2026" })
+            : props.error !== null && props.error !== undefined ? _jsx(Alert, { unstyled: true, className: "px-2 py-3 text-sm text-[var(--dsw-alias-state-error-primary,#dc2626)]", role: "alert", children: props.error })
+                : groups.length > 0 ? (_jsxs(_Fragment, { children: [_jsx("ul", { className: "m-0 grid list-none gap-0.5 p-0", "aria-label": props.query.trim() === '' ? 'Recent Notes' : 'Vault Search Results', children: groups.map(group => {
+                                const first = group.matches[0];
+                                const title = noteTitle(first.match.path);
+                                const active = group.matches.some(entry => entry.index === props.previewMatchIndex);
+                                return _jsx("li", { children: _jsxs(Button, { unstyled: true, "aria-current": active ? 'true' : undefined, "aria-label": `Open ${first.match.path}`, className: "grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]", onClick: () => { props.onSelect(first.match); props.onClose(); }, onFocus: () => { props.onPreview(first.index); }, onMouseEnter: () => { props.onPreview(first.index); }, type: "button", children: [_jsx(FileText, { "aria-hidden": "true", className: "mt-0.5 text-[var(--tt-muted)]", strokeWidth: 1.6 }), _jsxs("span", { className: "min-w-0", children: [_jsx("strong", { className: "block truncate text-sm font-medium", children: pathsByTitle.get(title)?.size === 1 ? title : group.path }), group.matches.map(entry => _jsxs("span", { className: "block truncate text-xs text-[var(--tt-muted)]", children: [entry.match.line !== null && _jsxs(_Fragment, { children: [String(entry.match.line), ": "] }), highlightSearchText(entry.match.preview, props.query)] }, entry.match.id ?? `${entry.match.kind}:${String(entry.match.line)}:${entry.match.preview}`))] })] }) }, group.path);
+                            }) }), props.canLoadMore && _jsx(Button, { unstyled: true, className: "mt-2 w-full rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-xs text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]", disabled: props.loading, onClick: props.onLoadMore, type: "button", children: "Load More" })] })) : _jsx(Alert, { unstyled: true, className: "px-2 py-3 text-sm text-[var(--tt-muted)]", role: "status", children: props.query.trim() === '' ? 'No recent notes.' : 'No matching notes.' }) }));
 }
 function WorkbenchNoteSearchPalette(props) {
     const { snapshot } = props;
     const matches = snapshot.searchMatches ?? [];
-    const pathResults = snapshot.searchQuery.trim() === '' || matches.length > 0 ? [] : props.notePaths.slice(0, 100);
     const searchInputContainer = useRef(null);
     const searchCaret = useRef(null);
     const [searchOptionsOpen, setSearchOptionsOpen] = useState(false);
-    const [previewChoice, setPreviewChoice] = useState(null);
-    const previewMatchIndex = typeof previewChoice === 'number' && matches[previewChoice] !== undefined ? previewChoice : 0;
+    const previewMatchIndex = snapshot.searchActiveIndex !== null && snapshot.searchActiveIndex !== undefined && matches[snapshot.searchActiveIndex] !== undefined
+        ? snapshot.searchActiveIndex
+        : 0;
     const previewMatch = matches[previewMatchIndex];
-    const previewResultPath = previewMatch?.path ?? pathResults.find(path => path === previewChoice) ?? pathResults[0] ?? null;
+    const previewResultPath = previewMatch?.path ?? null;
     const insertSearchOption = (value) => {
         const input = searchInputContainer.current?.querySelector('input');
         const start = input?.selectionStart ?? snapshot.searchQuery.length;
@@ -2633,10 +3035,21 @@ function WorkbenchNoteSearchPalette(props) {
     };
     return (_jsx(Dialog, { open: true, onOpenChange: open => { if (!open)
             props.onClose(); }, children: _jsxs(DialogContent, { unstyled: true, className: "fixed top-1/2 left-1/2 z-[2147483647] grid h-[640px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[960px] -translate-1/2 grid-rows-[56px_42px_minmax(0,1fr)_40px] overflow-hidden rounded-[14px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-[0_18px_48px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)] outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-text)_6%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]", overlayClassName: "z-[2147483646] !bg-transparent", showCloseButton: false, children: [_jsx(DialogTitle, { className: "sr-only", children: "Search Notes" }), _jsxs("div", { ref: searchInputContainer, className: "flex min-w-0 items-center gap-3 px-4 text-[var(--tt-muted)] [&>svg]:size-[18px]", children: [_jsx(Search, { "aria-hidden": "true" }), _jsx(Input, { unstyled: true, "aria-label": "Search Notes Query", autoFocus: true, className: "h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] font-medium text-[var(--tt-text)] outline-none placeholder:text-[var(--tt-muted)]", maxLength: 1_000, onChange: event => { props.onSearchChange?.(event.target.value); }, onKeyDown: event => {
-                                if (event.key !== 'Enter' || snapshot.searchQuery.trim() === '')
+                                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                                    event.preventDefault();
+                                    props.onSearchActiveMove?.(event.key === 'ArrowDown' ? 1 : -1);
+                                    return;
+                                }
+                                if (event.key !== 'Enter')
                                     return;
                                 event.preventDefault();
-                                props.onRunSearch?.();
+                                const active = matches[previewMatchIndex];
+                                if (active !== undefined && props.onSelectSearchMatch !== undefined) {
+                                    props.onSelectSearchMatch(active, event.metaKey);
+                                    return;
+                                }
+                                if (snapshot.searchQuery.trim() !== '')
+                                    props.onRunSearch?.();
                             }, placeholder: "Search notes...", type: "search", value: snapshot.searchQuery }), (snapshot.searchMode ?? 'query') === 'query' && (_jsxs(Popover, { open: searchOptionsOpen, onOpenChange: setSearchOptionsOpen, children: [_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(PopoverTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Search Options", className: "flex size-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] data-[state=open]:bg-[var(--tt-selected)] data-[state=open]:text-[var(--tt-text)] [&_svg]:size-[15px]", type: "button", children: _jsx(SlidersHorizontal, { "aria-hidden": "true", strokeWidth: 1.75 }) }) }) }), _jsx(TooltipContent, { children: "Search Options" })] }), _jsxs(PopoverContent, { unstyled: true, align: "end", "aria-label": "Search Options", className: "z-[2147483647] box-border flex w-[300px] flex-col gap-2 rounded-xl border border-[var(--dsw-alias-border-l1,#e1e3e7)] bg-[var(--dsw-alias-bg-layer-1,#fff)] p-2.5 text-sm text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl outline-none", onCloseAutoFocus: event => {
                                         if (searchCaret.current === null)
                                             return;
@@ -2648,8 +3061,13 @@ function WorkbenchNoteSearchPalette(props) {
                                             input?.focus();
                                             input?.setSelectionRange(caret, caret);
                                         });
-                                    }, role: "dialog", sideOffset: 8, children: [_jsxs(PopoverHeader, { className: "gap-0.5 px-1.5 pt-0.5", children: [_jsx(PopoverTitle, { className: "text-xs font-semibold", children: "Search syntax" }), _jsx(PopoverDescription, { className: "m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]", children: "Insert an operator at the cursor." })] }), _jsx("ul", { className: "m-0 grid list-none gap-1 p-0", children: SEARCH_OPTIONS.map(option => (_jsx("li", { children: _jsxs(Button, { unstyled: true, className: "grid w-full cursor-pointer grid-cols-[76px_1fr] items-start gap-2 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus-visible:outline-none", onClick: () => { insertSearchOption(option.value); }, type: "button", children: [_jsx("code", { className: "font-mono text-xs font-semibold leading-4 text-[var(--dsw-alias-brand-primary,#533afd)]", children: option.label }), _jsx("span", { className: "text-xs leading-4 text-[var(--dsw-alias-label-secondary,#71717a)]", children: option.description })] }) }, option.label))) })] })] }))] }), _jsxs("header", { className: "flex items-center justify-between gap-3 border-b border-[var(--tt-border)] px-3 text-xs font-medium text-[var(--tt-muted)]", children: [_jsxs("div", { className: "flex items-center gap-0.5", children: [_jsxs(ToggleGroup, { unstyled: true, type: "single", "aria-label": "Search Mode", className: "flex items-center gap-0.5", value: snapshot.searchMode ?? 'query', onValueChange: value => { if (value === 'query' || value === 'related')
-                                        props.onSearchMode?.(value); }, children: [_jsx(ToggleGroupItem, { unstyled: true, className: "rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] data-[state=on]:bg-[var(--tt-selected)] data-[state=on]:text-[var(--tt-text)]", value: "query", children: "Keyword" }), _jsx(ToggleGroupItem, { unstyled: true, className: "rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] data-[state=on]:bg-[var(--tt-selected)] data-[state=on]:text-[var(--tt-text)]", value: "related", children: "Related" })] }), _jsx(Button, { unstyled: true, className: "rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] disabled:opacity-40", disabled: snapshot.searchLoading === true || snapshot.searchQuery.trim() === '', onClick: props.onRunSearch, type: "button", children: snapshot.searchLoading === true ? 'Searching…' : 'Search' })] }), _jsx(Alert, { unstyled: true, "aria-live": "polite", className: "text-xs font-normal text-[var(--tt-muted)]", role: "status", children: matches.length > 0 ? `${String(matches.length)} vault results` : `${String(pathResults.length)} matching note paths` })] }), _jsxs("section", { className: "grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1", "aria-label": "Search Results", children: [_jsxs("div", { className: "grid min-h-0 grid-rows-[36px_minmax(0,1fr)] border-r border-[var(--tt-border)] px-3 pb-3 max-sm:border-r-0", children: [_jsx("div", { className: "flex items-end px-2 pb-1 text-[11px] font-medium text-[var(--tt-muted)]", children: "Results" }), _jsx(NoteSearchResultList, { matches: matches, onClose: props.onClose, onPreview: setPreviewChoice, onSelect: props.onSelect, pathResults: pathResults, previewMatchIndex: previewMatchIndex, previewResultPath: previewResultPath, query: snapshot.searchQuery })] }), _jsx(NoteSearchPreview, { match: previewMatch, path: previewResultPath })] }), _jsxs("footer", { className: "flex items-center gap-4 border-t border-[var(--tt-border)] px-3 text-[11px] text-[var(--tt-muted)]", children: [_jsx(Button, { unstyled: true, className: "rounded-md border-0 bg-transparent px-2 py-1 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]", onClick: props.onCommands, type: "button", children: "Commands" }), _jsxs("span", { className: "ml-auto flex items-center gap-1.5", children: [_jsx("kbd", { className: "font-[inherit] text-[var(--tt-text)]", children: "\u21B5" }), " Search"] }), _jsxs("span", { className: "flex items-center gap-1.5", children: [_jsx("kbd", { className: "font-[inherit] text-[var(--tt-text)]", children: "Esc" }), " Dismiss"] })] })] }) }));
+                                    }, role: "dialog", sideOffset: 8, children: [_jsxs(PopoverHeader, { className: "gap-0.5 px-1.5 pt-0.5", children: [_jsx(PopoverTitle, { className: "text-xs font-semibold", children: "Search Filters" }), _jsx(PopoverDescription, { className: "m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]", children: "Narrow local results before they are limited." })] }), _jsxs("div", { className: "grid gap-2 border-b border-[var(--dsw-alias-border-l1,#e1e3e7)] px-1.5 pb-2", children: [_jsxs(Label, { unstyled: true, className: "flex items-center justify-between gap-2 text-xs font-medium", children: ["Title Only", _jsx(Checkbox, { checked: snapshot.searchTitleOnly === true, onCheckedChange: checked => { props.onSearchFilters?.({ directory: snapshot.searchDirectory ?? '', modifiedFrom: snapshot.searchModifiedFrom ?? null, modifiedTo: snapshot.searchModifiedTo ?? null, titleOnly: checked === true }); } })] }), _jsxs(Label, { unstyled: true, className: "grid gap-1 text-xs font-medium", children: ["In Folder", _jsx(Input, { unstyled: true, "aria-label": "Search In Folder", maxLength: 1_000, onChange: event => { props.onSearchFilters?.({ directory: event.target.value, modifiedFrom: snapshot.searchModifiedFrom ?? null, modifiedTo: snapshot.searchModifiedTo ?? null, titleOnly: snapshot.searchTitleOnly ?? false }); }, placeholder: "Vault root", value: snapshot.searchDirectory ?? '' })] }), _jsxs("div", { className: "grid grid-cols-2 gap-2", children: [_jsxs(Label, { unstyled: true, className: "grid gap-1 text-xs font-medium", children: ["Modified From", _jsx(Input, { unstyled: true, "aria-label": "Modified From", onChange: event => { const value = event.target.value === '' ? null : Date.parse(event.target.value); props.onSearchFilters?.({ directory: snapshot.searchDirectory ?? '', modifiedFrom: value === null || Number.isNaN(value) ? null : value, modifiedTo: snapshot.searchModifiedTo ?? null, titleOnly: snapshot.searchTitleOnly ?? false }); }, type: "date", value: snapshot.searchModifiedFrom == null ? '' : new Date(snapshot.searchModifiedFrom).toISOString().slice(0, 10) })] }), _jsxs(Label, { unstyled: true, className: "grid gap-1 text-xs font-medium", children: ["Modified To", _jsx(Input, { unstyled: true, "aria-label": "Modified To", onChange: event => { const value = event.target.value === '' ? null : Date.parse(event.target.value) + 86_399_999; props.onSearchFilters?.({ directory: snapshot.searchDirectory ?? '', modifiedFrom: snapshot.searchModifiedFrom ?? null, modifiedTo: value === null || Number.isNaN(value) ? null : value, titleOnly: snapshot.searchTitleOnly ?? false }); }, type: "date", value: snapshot.searchModifiedTo == null ? '' : new Date(snapshot.searchModifiedTo).toISOString().slice(0, 10) })] })] })] }), _jsxs(PopoverHeader, { className: "gap-0.5 px-1.5 pt-0.5", children: [_jsx(PopoverTitle, { className: "text-xs font-semibold", children: "Search Syntax" }), _jsx(PopoverDescription, { className: "m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]", children: "Insert an operator at the cursor." })] }), _jsx("ul", { className: "m-0 grid list-none gap-1 p-0", children: SEARCH_OPTIONS.map(option => (_jsx("li", { children: _jsxs(Button, { unstyled: true, className: "grid w-full cursor-pointer grid-cols-[76px_1fr] items-start gap-2 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus-visible:outline-none", onClick: () => { insertSearchOption(option.value); }, type: "button", children: [_jsx("code", { className: "font-mono text-xs font-semibold leading-4 text-[var(--dsw-alias-brand-primary,#533afd)]", children: option.label }), _jsx("span", { className: "text-xs leading-4 text-[var(--dsw-alias-label-secondary,#71717a)]", children: option.description })] }) }, option.label))) })] })] }))] }), _jsxs("header", { className: "flex items-center justify-between gap-3 border-b border-[var(--tt-border)] px-3 text-xs font-medium text-[var(--tt-muted)]", children: [_jsxs("div", { className: "flex items-center gap-0.5", children: [_jsxs(ToggleGroup, { unstyled: true, type: "single", "aria-label": "Search Mode", className: "flex items-center gap-0.5", value: snapshot.searchMode ?? 'query', onValueChange: value => { if (value === 'query' || value === 'related')
+                                        props.onSearchMode?.(value); }, children: [_jsx(ToggleGroupItem, { unstyled: true, className: "rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] data-[state=on]:bg-[var(--tt-selected)] data-[state=on]:text-[var(--tt-text)]", value: "query", children: "Keyword" }), _jsx(ToggleGroupItem, { unstyled: true, className: "rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] data-[state=on]:bg-[var(--tt-selected)] data-[state=on]:text-[var(--tt-text)]", value: "related", children: "Related" })] }), _jsx(Button, { unstyled: true, className: "rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] disabled:opacity-40", disabled: snapshot.searchLoading === true || snapshot.searchQuery.trim() === '', onClick: props.onRunSearch, type: "button", children: snapshot.searchLoading === true ? 'Searching…' : 'Search' })] }), _jsx(Alert, { unstyled: true, "aria-live": "polite", className: "text-xs font-normal text-[var(--tt-muted)]", role: snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert', children: snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchIntelligenceStatus !== null && snapshot.searchIntelligenceStatus !== undefined && snapshot.searchIntelligenceStatus !== 'applied' ? `AI Search ${snapshot.searchIntelligenceStatus}; showing local results.` : snapshot.searchQuery.trim() === '' ? `${String(matches.length)} recent notes` : `${String(matches.length)} vault results`) })] }), _jsxs("section", { className: "grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1", "aria-label": "Search Results", children: [_jsxs("div", { className: "grid min-h-0 grid-rows-[36px_minmax(0,1fr)] border-r border-[var(--tt-border)] px-3 pb-3 max-sm:border-r-0", children: [_jsx("div", { className: "flex items-end px-2 pb-1 text-[11px] font-medium text-[var(--tt-muted)]", children: "Results" }), _jsx(NoteSearchResultList, { canLoadMore: snapshot.searchCursor !== null, error: snapshot.searchError, loading: snapshot.searchLoading === true, matches: matches, onClose: props.onClose, onLoadMore: () => { props.onLoadMoreSearch?.(); }, onPreview: choice => { props.onSearchActiveSet?.(choice); }, onSelect: match => {
+                                        if (props.onSelectSearchMatch !== undefined)
+                                            props.onSelectSearchMatch(match, false);
+                                        else
+                                            props.onSelect(match.path);
+                                    }, previewMatchIndex: previewMatchIndex, query: snapshot.searchQuery })] }), _jsx(NoteSearchPreview, { error: snapshot.searchPreviewError, loading: snapshot.searchPreviewLoading === true, match: previewMatch, onHide: () => { props.onHidePreview?.(); }, path: previewResultPath, preview: snapshot.searchPreview })] }), _jsxs("footer", { className: "flex items-center gap-4 border-t border-[var(--tt-border)] px-3 text-[11px] text-[var(--tt-muted)]", children: [_jsx(Button, { unstyled: true, className: "rounded-md border-0 bg-transparent px-2 py-1 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]", onClick: props.onCommands, type: "button", children: "Commands" }), _jsxs("span", { className: "ml-auto flex items-center gap-1.5", children: [_jsx("kbd", { className: "font-[inherit] text-[var(--tt-text)]", children: "\u21B5" }), " Search"] }), _jsxs("span", { className: "flex items-center gap-1.5", children: [_jsx("kbd", { className: "font-[inherit] text-[var(--tt-text)]", children: "Esc" }), " Dismiss"] })] })] }) }));
 }
 function WorkbenchCommandPalette(props) {
     const [query, setQuery] = useState('');
@@ -2832,7 +3250,7 @@ export function TockTutorRouteView(props) {
                         ? noteTitle(snapshot.path)
                         : snapshot.path.includes('/') ? snapshot.path.slice(0, snapshot.path.lastIndexOf('/')) : '', kind: noteAction, onCancel: () => { setNoteAction(null); }, onSubmit: value => noteAction === 'rename'
                         ? props.onRenameTitle?.(value) ?? false
-                        : props.onMoveNote?.(value) ?? false })), visiblePalette === 'commands' && (_jsx(WorkbenchCommandPalette, { canGoBack: snapshot.canGoBack === true, canGoForward: snapshot.canGoForward === true, canReopen: (snapshot.recentlyClosed?.length ?? 0) > 0, editorEnabled: snapshot.documentKind === 'markdown' && snapshot.mode !== 'reading', onBack: props.onBack, onClose: () => { setPaletteView(null); props.onCloseCommandPalette?.(); }, onEditorCommand: props.onEditorCommand, onForward: props.onForward, onNewNote: props.onNewNote, onReopen: props.onReopenClosedTab, onSearch: () => { setPaletteView('notes'); props.onOpenSearch?.(); }, onToggleFocus: props.onToggleFocusMode })), visiblePalette === 'notes' && (_jsx(WorkbenchNoteSearchPalette, { notePaths: documents.map(document => document.path), onClose: () => { setPaletteView(null); props.onCloseCommandPalette?.(); props.onCloseSearch?.(); }, onCommands: () => { setPaletteView('commands'); props.onOpenCommandPalette?.(); props.onCloseSearch?.(); }, onRunSearch: props.onRunSearch, onSearchChange: props.onSearchChange, onSearchMode: props.onSearchMode, onSelect: props.onSelect, snapshot: snapshot })), _jsxs("div", { className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out", style: {
+                        : props.onMoveNote?.(value) ?? false })), visiblePalette === 'commands' && (_jsx(WorkbenchCommandPalette, { canGoBack: snapshot.canGoBack === true, canGoForward: snapshot.canGoForward === true, canReopen: (snapshot.recentlyClosed?.length ?? 0) > 0, editorEnabled: snapshot.documentKind === 'markdown' && snapshot.mode !== 'reading', onBack: props.onBack, onClose: () => { setPaletteView(null); props.onCloseCommandPalette?.(); }, onEditorCommand: props.onEditorCommand, onForward: props.onForward, onNewNote: props.onNewNote, onReopen: props.onReopenClosedTab, onSearch: () => { setPaletteView('notes'); props.onOpenSearch?.(); }, onToggleFocus: props.onToggleFocusMode })), visiblePalette === 'notes' && (_jsx(WorkbenchNoteSearchPalette, { onClose: () => { setPaletteView(null); props.onCloseCommandPalette?.(); props.onCloseSearch?.(); }, onCommands: () => { setPaletteView('commands'); props.onOpenCommandPalette?.(); props.onCloseSearch?.(); }, ...(props.onHideSearchPreview === undefined ? {} : { onHidePreview: props.onHideSearchPreview }), onLoadMoreSearch: props.onLoadMoreSearch, onRunSearch: props.onRunSearch, onSearchActiveMove: props.onSearchActiveMove, onSearchActiveSet: props.onSearchActiveSet, onSearchChange: props.onSearchChange, onSearchMode: props.onSearchMode, onSearchFilters: props.onSearchFilters, onSelect: props.onSelect, onSelectSearchMatch: props.onSelectSearchMatch, snapshot: snapshot })), _jsxs("div", { className: "tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out", style: {
                         gridTemplateColumns: contentColumns,
                         transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
                         '--tocktutor-sidebar-width': `${String(sidebarWidth)}px`,
@@ -2993,7 +3411,7 @@ export function TockTutorRoute(props) {
                 anchor.download = request.filename;
                 anchor.click();
                 URL.revokeObjectURL(url);
-            }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCancelOrganization: () => { controller.cancelOrganization(); }, onCanvasChange: change => { void controller.applyCanvasChange(change); }, onCaptureSnapshot: () => { void controller.captureRecoverySnapshot(); }, onClearSnapshots: () => { void controller.clearRecoverySnapshots(); }, onCloseAttachmentPreview: () => { controller.closeAttachmentPreview(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onClosePane: paneId => { void controller.closePane(paneId); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onConvertActiveNote: () => { controller.convertActiveNote(); }, onCopyGraphPath: path => { void globalThis.navigator?.clipboard?.writeText(path); }, onCreateBuiltinTemplate: name => { void controller.createBuiltinTemplateNote(name); }, onCreateManagedVault: name => { void controller.createManagedVault(name); }, onEdit: source => { controller.edit(source); }, onEditorCommand: command => { controller.runEditorCommand(command); }, onExtractSelection: () => { void controller.extractActiveSelection(); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onInsertCurrentDateTime: kind => { controller.insertCurrentDateTime(kind); }, onJumpToLine: line => { controller.jumpToLine(line); }, onLoadFacets: () => { void controller.loadFacets(); }, onLoadGraph: mode => { void controller.loadGraph(mode); }, onLoadRelationships: () => { void controller.loadRelationships(); }, onLoadWorkspace: id => { void controller.loadWorkspace(id); }, onMode: mode => { controller.setMode(mode); }, onMoveNote: folder => controller.moveActiveNote(folder), onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenBookmark: id => { void controller.openBookmark(id); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenExternalUrl: url => { setExternalUrl(url); }, onOpenGraphNode: (path, mode) => controller.openGraphNode(path, mode), onOpenInternalLink: target => controller.openInternalLink(target), onOpenRecovery: () => { void controller.setRecoveryOpen(true); }, onOpenSearch: () => { controller.openSearch(''); }, onOpenSmartView: kind => { void controller.openSmartView(kind); }, onPrepareOrganization: () => { void controller.prepareOrganization(); }, onPreviewAttachment: path => { void controller.previewAttachment(path); }, onReadSnapshot: id => { void controller.readRecoverySnapshot(id); }, onRenameTitle: title => controller.renameActiveTitle(title), onRemoveBookmark: id => { controller.removeBookmark(id); }, onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onRestoreSnapshot: id => { void controller.restoreRecoverySnapshot(id); }, onRestoreSnapshotOverwrite: id => { void controller.restoreRecoverySnapshotOverwrite(id); }, onRestoreTrash: id => { void controller.restoreTrashEntry(id); }, onRunSearch: () => { void controller.runSearch(); }, onSave: () => { void controller.save(); }, onSaveWorkspace: () => { controller.saveCurrentWorkspace(); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSearchMode: mode => { controller.setSearchMode(mode); }, onSettingsChange: change => { controller.updateSettings(change); }, onSelect: path => { void controller.select(path); }, onSelectionChange: (start, end) => { controller.setSelection(start, end); }, onSetProperty: (key, value) => controller.setProperty(key, value), onStoreAttachment: (fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onToggleTask: index => { controller.toggleTask(index); }, onTrashCurrent: () => { void controller.trashCurrent(); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), active: active, renderVaultActions: (placement, close, closeMenu, beginRename, renderMenuItem) => (_jsx(TockTutorVaultActionsOutlet, { beginRename: beginRename, close: close, closeMenu: closeMenu, placement: placement, renderMenuItem: renderMenuItem, renderSlot: props.renderSlot, saveCurrent: () => controller.save(), vault: snapshot.vault, vaultName: snapshot.vaultName ?? null })), snapshot: snapshot, webViewerPanel: (_jsx(TockTutorWebViewerOutlet, { activePath: snapshot.path, addLinkBookmark: (title, url) => controller.addLinkBookmark(title, url), externalUrl: externalUrl, renderSlot: props.renderSlot, vault: snapshot.vault, webClipFolder: snapshot.settings?.webClipFolder ?? 'Clips' })), ...(active && typeof document !== 'undefined'
+            }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCancelOrganization: () => { controller.cancelOrganization(); }, onCanvasChange: change => { void controller.applyCanvasChange(change); }, onCaptureSnapshot: () => { void controller.captureRecoverySnapshot(); }, onClearSnapshots: () => { void controller.clearRecoverySnapshots(); }, onCloseAttachmentPreview: () => { controller.closeAttachmentPreview(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onClosePane: paneId => { void controller.closePane(paneId); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onConvertActiveNote: () => { controller.convertActiveNote(); }, onCopyGraphPath: path => { void globalThis.navigator?.clipboard?.writeText(path); }, onCreateBuiltinTemplate: name => { void controller.createBuiltinTemplateNote(name); }, onCreateManagedVault: name => { void controller.createManagedVault(name); }, onEdit: source => { controller.edit(source); }, onEditorCommand: command => { controller.runEditorCommand(command); }, onExtractSelection: () => { void controller.extractActiveSelection(); }, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onInsertCurrentDateTime: kind => { controller.insertCurrentDateTime(kind); }, onJumpToLine: line => { controller.jumpToLine(line); }, onLoadFacets: () => { void controller.loadFacets(); }, onLoadGraph: mode => { void controller.loadGraph(mode); }, onLoadRelationships: () => { void controller.loadRelationships(); }, onLoadWorkspace: id => { void controller.loadWorkspace(id); }, onMode: mode => { controller.setMode(mode); }, onMoveNote: folder => controller.moveActiveNote(folder), onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenBookmark: id => { void controller.openBookmark(id); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenExternalUrl: url => { setExternalUrl(url); }, onOpenGraphNode: (path, mode) => controller.openGraphNode(path, mode), onOpenInternalLink: target => controller.openInternalLink(target), onOpenRecovery: () => { void controller.setRecoveryOpen(true); }, onOpenSearch: () => { controller.openSearch(''); }, onOpenSmartView: kind => { void controller.openSmartView(kind); }, onPrepareOrganization: () => { void controller.prepareOrganization(); }, onPreviewAttachment: path => { void controller.previewAttachment(path); }, onReadSnapshot: id => { void controller.readRecoverySnapshot(id); }, onRenameTitle: title => controller.renameActiveTitle(title), onRemoveBookmark: id => { controller.removeBookmark(id); }, onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onRestoreSnapshot: id => { void controller.restoreRecoverySnapshot(id); }, onRestoreSnapshotOverwrite: id => { void controller.restoreRecoverySnapshotOverwrite(id); }, onRestoreTrash: id => { void controller.restoreTrashEntry(id); }, onLoadMoreSearch: () => { void controller.loadMoreSearch(); }, onRunSearch: () => { void controller.runSearch(); }, onSave: () => { void controller.save(); }, onSaveWorkspace: () => { controller.saveCurrentWorkspace(); }, onSearchActiveMove: delta => { controller.moveSearchActive(delta); }, onSearchActiveSet: index => { controller.setSearchActiveIndex(index); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSearchMode: mode => { controller.setSearchMode(mode); }, onSearchFilters: filters => { controller.setSearchFilters(filters); }, onSelectSearchMatch: (match, newTab) => { void controller.openSearchMatch(match, newTab); }, onHideSearchPreview: () => { controller.hideSearchPreview(); }, onSettingsChange: change => { controller.updateSettings(change); }, onSelect: path => { void controller.select(path); }, onSelectionChange: (start, end) => { controller.setSelection(start, end); }, onSetProperty: (key, value) => controller.setProperty(key, value), onStoreAttachment: (fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onToggleTask: index => { controller.toggleTask(index); }, onTrashCurrent: () => { void controller.trashCurrent(); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), active: active, renderVaultActions: (placement, close, closeMenu, beginRename, renderMenuItem) => (_jsx(TockTutorVaultActionsOutlet, { beginRename: beginRename, close: close, closeMenu: closeMenu, placement: placement, renderMenuItem: renderMenuItem, renderSlot: props.renderSlot, saveCurrent: () => controller.save(), vault: snapshot.vault, vaultName: snapshot.vaultName ?? null })), snapshot: snapshot, webViewerPanel: (_jsx(TockTutorWebViewerOutlet, { activePath: snapshot.path, addLinkBookmark: (title, url) => controller.addLinkBookmark(title, url), externalUrl: externalUrl, renderSlot: props.renderSlot, vault: snapshot.vault, webClipFolder: snapshot.settings?.webClipFolder ?? 'Clips' })), ...(active && typeof document !== 'undefined'
                 ? { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body }
                 : {}) }) }));
 }

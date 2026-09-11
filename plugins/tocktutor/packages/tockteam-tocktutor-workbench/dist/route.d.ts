@@ -3,6 +3,7 @@ import type { TockTutorRouteOwnerProps } from '@tockteam/desktop/client';
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots';
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts';
+import type { WorkbenchSearchIntelligenceRemote, WorkbenchSearchIntelligenceResult } from './search-intelligence.ts';
 import { type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx';
 import { type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts';
 import type { BaseHydratedFile } from './base-query.ts';
@@ -24,6 +25,7 @@ import { type NoteVaultEventRemote } from './vault-events.ts';
 import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, RestoreTrashResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
+    tocktutorAssistant?: WorkbenchSearchIntelligenceRemote;
     tocktutorWorkbench: {
         currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>;
         createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
@@ -81,6 +83,14 @@ export interface ResolvedEmbed {
     parentPath?: string;
     target: EmbedTarget;
 }
+export interface WorkbenchSearchPreview {
+    content: string;
+    generation: number;
+    line: number | null;
+    lineEnd: number | null;
+    path: string;
+    revision: string;
+}
 export interface WorkbenchRouteSnapshot {
     attachmentPreview?: AttachmentPreviewResult | null;
     baseFiles?: readonly BaseHydratedFile[];
@@ -110,9 +120,20 @@ export interface WorkbenchRouteSnapshot {
     recoveryOpen?: boolean;
     revision: string | null;
     saveStatus: EditorStatus;
+    searchActiveIndex?: number | null;
+    searchError?: string | null;
+    searchIntelligenceStatus?: WorkbenchSearchIntelligenceResult['status'] | null;
     searchLoading?: boolean;
     searchMatches?: readonly VaultSearchMatch[];
     searchMode?: 'query' | 'related';
+    searchPreview?: WorkbenchSearchPreview | null;
+    searchPreviewError?: string | null;
+    searchPreviewLoading?: boolean;
+    searchCursor?: string | null;
+    searchTitleOnly?: boolean;
+    searchDirectory?: string;
+    searchModifiedFrom?: number | null;
+    searchModifiedTo?: number | null;
     searchOpen: boolean;
     searchQuery: string;
     selectedSnapshot?: SnapshotContentResult | null;
@@ -166,6 +187,9 @@ export declare class WorkbenchRouteController {
     private embedTargets;
     private dispatchRevision;
     private operationAbort;
+    private searchTimer;
+    private searchPreviewAbort;
+    private searchPreviewOperation;
     private embedAbort;
     private saveAbort;
     private saving;
@@ -186,17 +210,33 @@ export declare class WorkbenchRouteController {
     private openDispatchDialog;
     submitDispatchDialog(draft: NativeDispatchDraft): Promise<void>;
     cancelDispatchDialog(): void;
+    private searchMatchIndex;
+    setSearchActiveIndex(index: number): boolean;
+    moveSearchActive(delta: number): boolean;
+    openSearchMatch(match: VaultSearchMatch, newTab?: boolean): Promise<boolean>;
+    previewSearchMatch(matchOrIndex: VaultSearchMatch | number): Promise<boolean>;
+    hideSearchPreview(): void;
     setSearchQuery(query: string): void;
     closeSearch(): void;
     openSearch(query: string): void;
     setSearchMode(mode: 'query' | 'related'): void;
+    setSearchFilters(filters: {
+        directory?: string;
+        modifiedFrom?: number | null;
+        modifiedTo?: number | null;
+        titleOnly?: boolean;
+    }): void;
+    private scheduleSearch;
     runSearch(): Promise<boolean>;
+    private enhanceSearch;
+    loadMoreSearch(): Promise<boolean>;
     loadFacets(): Promise<boolean>;
     loadGraph(mode: 'global' | 'local'): Promise<boolean>;
     openGraphNode(path: string, mode: 'local' | 'note'): Promise<boolean>;
     openInternalLink(target: string): Promise<ReadingLinkResult | null>;
     openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean>;
     loadRelationships(): Promise<boolean>;
+    private jumpToMatch;
     jumpToLine(line: number): boolean;
     private settlePendingDispatch;
     private dispatchCurrent;
@@ -218,6 +258,9 @@ export declare class WorkbenchRouteController {
     private nextRecoveryOperation;
     private recoveryIdentityMatches;
     private recoveryCurrent;
+    private cancelSearchPreview;
+    private nextSearchPreviewOperation;
+    private currentSearchPreview;
     private nextOperation;
     private cancelEmbedOperation;
     private nextEmbedOperation;
@@ -259,7 +302,7 @@ export declare class WorkbenchRouteController {
     renameActiveTitle(title: string): Promise<boolean>;
     moveActiveNote(folder: string): Promise<boolean>;
     private renameActivePath;
-    select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean): Promise<boolean>;
+    select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean, newTab?: boolean): Promise<boolean>;
     edit(source: string): void;
     setSelection(start: number, end: number): void;
     setProperty(key: string, value: PropertyValue): boolean;
@@ -346,10 +389,21 @@ export interface TockTutorRouteViewProps {
     onRestoreSnapshotOverwrite?(id: string): void;
     onRestoreTrash?(id: string): void;
     onSave(): void;
+    onLoadMoreSearch?(): void;
     onRunSearch?(): void;
     onSaveWorkspace?(): void;
+    onSearchActiveMove?(delta: number): void;
+    onSearchActiveSet?(index: number): void;
     onSearchChange?(query: string): void;
     onSearchMode?(mode: 'query' | 'related'): void;
+    onSearchFilters?(filters: {
+        directory?: string;
+        modifiedFrom?: number | null;
+        modifiedTo?: number | null;
+        titleOnly?: boolean;
+    }): void;
+    onSelectSearchMatch?(match: VaultSearchMatch, newTab: boolean): void;
+    onHideSearchPreview?(): void;
     onSettingsChange?(change: Partial<TockTutorSettings>): void;
     onSelectionChange?(start: number, end: number): void;
     onStoreAttachment?(fileName: string, dataBase64: string): void;

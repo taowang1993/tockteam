@@ -1,12 +1,13 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type { Agent, AgentRegistry, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
+import type { LlmCallConfig, LlmRuntime } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-tools'
 import Schema from '@deepseek-ai/schemastery'
 import type { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
 import type NoteVaultRuntime from 'tockbot-note-runtime'
 import type { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 import type { SettingsScope } from '@deepseek-ai/dsh-settings'
+import { expandAndSearch } from './search-intelligence.ts'
 import {
   ProposalApprovalExecutor,
   type ApprovalResult,
@@ -51,6 +52,7 @@ import {
   TockTutorAssistantGateway,
   type AssistantRemoteHost,
 } from './remote.ts'
+import type { AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts'
 import {
   PennivoChildManager,
   type PennivoBinding,
@@ -78,6 +80,7 @@ export * from './read-tool-registration.ts'
 export * from './read-tools.ts'
 export * from './remote.ts'
 export * from './remote-types.ts'
+export * from './search-intelligence.ts'
 export * from './text-turn.ts'
 export * from './turn-bindings.ts'
 export * from './write-tool-registration.ts'
@@ -89,6 +92,7 @@ declare module '@deepseek-ai/cordis' {
     settings: import('@deepseek-ai/dsh-settings').SettingsProvider
     storageDomain: DomainFacility
     subprocess: SubprocessRuntime
+    llm: LlmRuntime
   }
 }
 
@@ -114,10 +118,13 @@ export interface BindAssistantTurnInput {
   requestModelOverride?: true
 }
 
+export type AssistantAiSearchPolicy = 'off' | 'on-demand' | 'automatic'
+
 export interface AssistantSettings {
   provider: string
   model: string
   writePermission: AssistantWritePermission
+  aiSearch?: AssistantAiSearchPolicy
 }
 
 export type Config = AssistantSettings
@@ -129,6 +136,11 @@ export const Config: Schema<Config> = Schema.object({
     Schema.const('read-only'),
     Schema.const('propose'),
   ]).default('read-only'),
+  aiSearch: Schema.union([
+    Schema.const('off'),
+    Schema.const('on-demand'),
+    Schema.const('automatic'),
+  ]).default('on-demand'),
 })
 
 export const ASSISTANT_SETTINGS_NAMESPACE = 'tocktutor-assistant'
@@ -139,6 +151,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
 
   private readonly agents: AgentRegistry
   private readonly noteVault: NoteVaultRuntime
+  private readonly llm: LlmRuntime | undefined
   private readonly settings: SettingsScope<AssistantSettings>
   private observedSettings: AssistantSettings
   private settingsAbort = new AbortController()
@@ -162,6 +175,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     super(ctx, 'noteAssistant')
     this.agents = ctx.agents
     this.noteVault = ctx.noteVault
+    this.llm = ctx.get('llm') as LlmRuntime | undefined
     this.settings = ctx.settings.register(ASSISTANT_SETTINGS_NAMESPACE, Config, { base: config })
     this.observedSettings = { ...this.settings.get() }
     this.continuation = new AgentContinuationRouter(
@@ -718,6 +732,41 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     const current = this.settings.get()
     this.observeSettings(current)
     return { ...current }
+  }
+
+  async searchIntelligence(
+    request: AssistantSearchIntelligenceRequest,
+    signal: AbortSignal,
+  ): Promise<AssistantSearchIntelligenceResult> {
+    const settings = this.currentSettings()
+    if ((settings.aiSearch ?? 'on-demand') === 'off') return { status: 'disabled', matches: [] }
+    const vault = this.noteVault.state
+    if (!vault.active || vault.generation !== request.vaultGeneration) return { status: 'error', matches: [] }
+    return await expandAndSearch(
+      this.llm,
+      request,
+      settings.provider,
+      settings.model,
+      async (searchRequest, searchSignal) => {
+        const result = await this.noteVault.search(searchRequest, {
+          id: vault.id,
+          generation: vault.generation,
+        }, searchSignal)
+        if (result.generation !== vault.generation) throw new Error('Search vault changed.')
+        return result
+      },
+      signal,
+      current => {
+        const currentVault = this.noteVault.state
+        const currentSettings = this.settings.get()
+        return current.vaultGeneration === request.vaultGeneration
+          && currentVault.active
+          && currentVault.id === vault.id
+          && currentVault.generation === vault.generation
+          && currentSettings.provider === settings.provider
+          && currentSettings.model === settings.model
+      },
+    )
   }
 
   async saveSettings(settings: AssistantSettings): Promise<void> {

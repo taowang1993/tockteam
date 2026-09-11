@@ -45,6 +45,7 @@ test('publishes deterministic strict Remote descriptors for only the browser con
     'listProposals',
     'rejectProposal',
     'saveSettings',
+    'searchIntelligence',
   ])
   for (const descriptor of remote.descriptors) {
     assert.deepEqual(descriptor.cancellation, { parameter: 'signal' })

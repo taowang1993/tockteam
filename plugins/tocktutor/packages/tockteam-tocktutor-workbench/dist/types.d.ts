@@ -269,6 +269,9 @@ export interface VaultSearchRequest {
     directory?: string;
     expectedVault: VaultReference;
     limit?: number;
+    modifiedFrom?: number;
+    modifiedTo?: number;
+    titleOnly?: boolean;
     mode?: 'literal' | 'query' | 'related';
     query: string;
     regex?: boolean;
@@ -276,6 +279,7 @@ export interface VaultSearchRequest {
     wholeWord?: boolean;
 }
 export interface VaultSearchMatch {
+    id?: string;
     kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task';
     line: number | null;
     lineEnd?: number | null;

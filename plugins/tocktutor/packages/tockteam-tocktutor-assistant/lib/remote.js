@@ -47,6 +47,17 @@ function safeInteger(value, label) {
         throw failure(label);
     return value;
 }
+function isSafeDirectory(value) {
+    if (typeof value !== 'string' || value.length > 1_000 || value === '')
+        return false;
+    try {
+        assertSafeRelativePath(value);
+    }
+    catch {
+        return false;
+    }
+    return true;
+}
 function safeRelativePath(value, label) {
     if (typeof value !== 'string')
         throw failure(label);
@@ -76,13 +87,16 @@ function checkSignal(signal) {
     throw error;
 }
 function settingsView(value, label = 'Settings result') {
-    assertPlainRecord(value, ['provider', 'model', 'writePermission'], label);
+    assertPlainRecord(value, ['provider', 'model', 'writePermission', 'aiSearch'], label);
     const provider = route(value.provider, 128, label);
     const model = route(value.model, 256, label);
     if (value.writePermission !== 'read-only' && value.writePermission !== 'propose') {
         throw failure(label);
     }
-    return { provider, model, writePermission: value.writePermission };
+    const aiSearch = value.aiSearch === undefined ? undefined : value.aiSearch;
+    if (aiSearch !== undefined && aiSearch !== 'off' && aiSearch !== 'on-demand' && aiSearch !== 'automatic')
+        throw failure(label);
+    return { provider, model, writePermission: value.writePermission, ...(aiSearch === undefined ? {} : { aiSearch }) };
 }
 function turnRequest(value) {
     assertPlainRecord(value, ['mode', 'text'], 'Turn request');
@@ -191,6 +205,24 @@ function approvalView(value) {
         snapshotCaptured: value.snapshotCaptured,
         status: acceptedOperation === 'create' ? 'created' : 'saved',
     };
+}
+function searchIntelligenceResult(value) {
+    assertPlainRecord(value, ['status', 'matches'], 'Search intelligence result');
+    const acceptedStatuses = ['applied', 'disabled', 'provider-unavailable', 'invalid-output', 'error', 'cancelled'];
+    if (!acceptedStatuses.includes(value.status) || !Array.isArray(value.matches) || value.matches.length > 100)
+        throw failure('Search intelligence result');
+    const matches = value.matches.map(candidate => {
+        assertPlainRecord(candidate, ['id', 'path', 'kind', 'line', 'lineEnd', 'preview', 'score', 'operator', 'provenance'], 'Search intelligence result');
+        const path = safeRelativePath(candidate.path, 'Search intelligence result');
+        if (typeof candidate.preview !== 'string' || candidate.preview.length > 4_096
+            || (candidate.id !== undefined && (typeof candidate.id !== 'string' || candidate.id.length < 1 || candidate.id.length > 128))
+            || (candidate.line !== null && !Number.isSafeInteger(candidate.line))
+            || (candidate.lineEnd !== undefined && candidate.lineEnd !== null && !Number.isSafeInteger(candidate.lineEnd))
+            || (candidate.score !== undefined && !Number.isFinite(candidate.score)))
+            throw failure('Search intelligence result');
+        return { ...candidate, path };
+    });
+    return { status: value.status, matches };
 }
 function decisionView(value, label) {
     assertPlainRecord(value, ['proposalId', 'auditCorrelationId'], label);
@@ -302,6 +334,30 @@ export class TockTutorAssistantGateway extends TypertRemoteService {
         checkSignal(signal);
         return decisionView(await this.assistant.rejectProposal(accepted.proposalId, accepted.reason), 'Rejection result');
     }
+    async searchIntelligence(request, signal) {
+        assertPlainRecord(request, ['query', 'vaultGeneration', 'mode', 'directory', 'modifiedFrom', 'modifiedTo', 'titleOnly'], 'Search intelligence request');
+        const query = boundaryText(request.query, 1_000, 'Search intelligence request');
+        const vaultGeneration = safeInteger(request.vaultGeneration, 'Search intelligence request');
+        if (request.mode !== 'related' || vaultGeneration < 1 || (request.directory !== undefined && !isSafeDirectory(request.directory))
+            || (request.modifiedFrom !== undefined && !Number.isSafeInteger(request.modifiedFrom))
+            || (request.modifiedTo !== undefined && !Number.isSafeInteger(request.modifiedTo))
+            || (request.titleOnly !== undefined && typeof request.titleOnly !== 'boolean'))
+            throw failure('Search intelligence request');
+        checkSignal(signal);
+        const result = this.assistant.searchIntelligence === undefined
+            ? { status: 'provider-unavailable', matches: [] }
+            : await this.assistant.searchIntelligence({
+                query,
+                vaultGeneration,
+                mode: 'related',
+                ...(request.directory === undefined ? {} : { directory: request.directory }),
+                ...(request.modifiedFrom === undefined ? {} : { modifiedFrom: request.modifiedFrom }),
+                ...(request.modifiedTo === undefined ? {} : { modifiedTo: request.modifiedTo }),
+                ...(request.titleOnly === undefined ? {} : { titleOnly: request.titleOnly }),
+            }, signal);
+        checkSignal(signal);
+        return searchIntelligenceResult(result);
+    }
     async audit(request, signal) {
         const page = pageRequest(request);
         checkSignal(signal);
@@ -341,6 +397,7 @@ const REMOTE_METHODS = [
     'approveProposal',
     'rejectProposal',
     'audit',
+    'searchIntelligence',
 ];
 function installRemoteMethods(instance) {
     const runtimeRemote = Remote;

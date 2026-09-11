@@ -57,6 +57,7 @@ import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
+import type { WorkbenchSearchIntelligenceRemote, WorkbenchSearchIntelligenceResult } from './search-intelligence.ts'
 import { ExecutableBaseView, type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx'
 import { executableBasePropertyIdentity, type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts'
 import type { BaseHydratedFile } from './base-query.ts'
@@ -201,6 +202,7 @@ const clampAssistantPanelWidth = (width: number): number => Math.min(
 export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
 
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
+  tocktutorAssistant?: WorkbenchSearchIntelligenceRemote
   tocktutorWorkbench: {
     currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>
     createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
@@ -310,6 +312,7 @@ export interface WorkbenchRouteSnapshot {
   saveStatus: EditorStatus
   searchActiveIndex?: number | null
   searchError?: string | null
+  searchIntelligenceStatus?: WorkbenchSearchIntelligenceResult['status'] | null
   searchLoading?: boolean
   searchMatches?: readonly VaultSearchMatch[]
   searchMode?: 'query' | 'related'
@@ -633,6 +636,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     saveStatus: 'saved',
     searchActiveIndex: null,
     searchError: null,
+    searchIntelligenceStatus: null,
     searchLoading: false,
     searchMatches: Object.freeze([]),
     searchMode: 'query',
@@ -1050,6 +1054,7 @@ export class WorkbenchRouteController {
     this.update({
       searchActiveIndex: null,
       searchError: null,
+      searchIntelligenceStatus: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
@@ -1063,7 +1068,7 @@ export class WorkbenchRouteController {
 
   closeSearch(): void {
     this.nextOperation()
-    this.update({ searchActiveIndex: null, searchDirectory: '', searchError: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false })
+    this.update({ searchActiveIndex: null, searchDirectory: '', searchError: null, searchIntelligenceStatus: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false })
   }
 
   openSearch(query: string): void {
@@ -1073,6 +1078,7 @@ export class WorkbenchRouteController {
     this.update({
       searchActiveIndex: null,
       searchError: null,
+      searchIntelligenceStatus: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
@@ -1091,6 +1097,7 @@ export class WorkbenchRouteController {
     this.update({
       searchActiveIndex: null,
       searchError: null,
+      searchIntelligenceStatus: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
@@ -1109,6 +1116,7 @@ export class WorkbenchRouteController {
       searchActiveIndex: null,
       searchDirectory: filters.directory ?? '',
       searchError: null,
+      searchIntelligenceStatus: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
@@ -1144,7 +1152,7 @@ export class WorkbenchRouteController {
     }
     const mode = this.snapshot.searchMode ?? 'query'
     const operation = this.nextOperation()
-    this.update({ searchError: null, searchLoading: true, searchMatches: Object.freeze([]) })
+    this.update({ searchError: null, searchIntelligenceStatus: null, searchLoading: true, searchMatches: Object.freeze([]) })
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
         ...(this.snapshot.searchDirectory === undefined || this.snapshot.searchDirectory === '' ? {} : { directory: this.snapshot.searchDirectory }),
@@ -1166,6 +1174,7 @@ export class WorkbenchRouteController {
         message: result.truncated ? 'Search returned a bounded partial result.' : `${String(result.matches.length)} search results.`,
         searchActiveIndex: matches.length > 0 ? 0 : null,
         searchError: null,
+        searchIntelligenceStatus: null,
         searchLoading: false,
         searchMatches: matches,
         searchPreview: null,
@@ -1173,13 +1182,67 @@ export class WorkbenchRouteController {
         searchPreviewLoading: false,
         searchCursor: result.cursor,
       })
-      if (matches.length > 0) void this.previewSearchMatch(0)
+      await this.enhanceSearch(operation, vault, query, mode)
+      if (!this.current(operation.id, vault)) return false
+      const enhancedMatches = this.snapshot.searchMatches ?? matches
+      if (enhancedMatches.length > 0 && this.snapshot.searchActiveIndex === null) void this.previewSearchMatch(0)
+      else if (matches.length > 0 && this.snapshot.searchPreview === null) void this.previewSearchMatch(0)
       return true
     } catch {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
         this.update({ message: 'Search could not be completed.', searchError: 'Search could not be completed.', searchLoading: false })
       }
       return false
+    }
+  }
+
+  private async enhanceSearch(
+    operation: { id: number; signal: AbortSignal },
+    vault: VaultReference,
+    query: string,
+    mode: 'query' | 'related',
+  ): Promise<void> {
+    const intelligence = this.remote.tocktutorAssistant
+    if (intelligence?.searchIntelligence === undefined) return
+    let automatic = false
+    if (mode === 'query' && intelligence.currentSettings !== undefined) {
+      try {
+        const settings = remoteValue(await intelligence.currentSettings(operation.signal))
+        automatic = settings.aiSearch === 'automatic'
+      } catch { return }
+    }
+    if (mode !== 'related' && !automatic) return
+    try {
+      const result = remoteValue(await intelligence.searchIntelligence({
+        query,
+        vaultGeneration: vault.generation,
+        mode: 'related',
+        ...(this.snapshot.searchDirectory ? { directory: this.snapshot.searchDirectory } : {}),
+        ...(this.snapshot.searchModifiedFrom == null ? {} : { modifiedFrom: this.snapshot.searchModifiedFrom }),
+        ...(this.snapshot.searchModifiedTo == null ? {} : { modifiedTo: this.snapshot.searchModifiedTo }),
+        ...(this.snapshot.searchTitleOnly ? { titleOnly: true } : {}),
+      }, operation.signal))
+      if (!this.current(operation.id, vault)) return
+      this.update({ searchIntelligenceStatus: result.status })
+      if (result.status === 'applied' && result.matches.length > 0 && validSearchResult({
+        cursor: null,
+        generation: vault.generation,
+        matches: result.matches,
+        query,
+        scan: { bytes: 0, entries: 0, files: 0 },
+        truncated: false,
+        truncationReason: null,
+        warnings: [],
+      }, vault)) {
+        const matches = Object.freeze(result.matches.map(match => Object.freeze({ ...match })))
+        this.update({
+          message: `${String(matches.length)} related search results.`,
+          searchActiveIndex: 0,
+          searchMatches: matches,
+        })
+      }
+    } catch {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) this.update({ searchIntelligenceStatus: 'error' })
     }
   }
 
@@ -1731,6 +1794,7 @@ export class WorkbenchRouteController {
       revision: null,
       saveStatus: 'saved',
       searchError: null,
+      searchIntelligenceStatus: null,
       searchLoading: false,
       searchMatches: Object.freeze([]),
       searchMode: 'query',
@@ -3555,7 +3619,7 @@ function WorkbenchNoteSearchPalette(props: {
             </ToggleGroup>
             <Button unstyled className="rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] disabled:opacity-40" disabled={snapshot.searchLoading === true || snapshot.searchQuery.trim() === ''} onClick={props.onRunSearch} type="button">{snapshot.searchLoading === true ? 'Searching…' : 'Search'}</Button>
           </div>
-          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchQuery.trim() === '' ? `${String(matches.length)} recent notes` : `${String(matches.length)} vault results`)}</Alert>
+          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchIntelligenceStatus !== null && snapshot.searchIntelligenceStatus !== undefined && snapshot.searchIntelligenceStatus !== 'applied' ? `AI Search ${snapshot.searchIntelligenceStatus}; showing local results.` : snapshot.searchQuery.trim() === '' ? `${String(matches.length)} recent notes` : `${String(matches.length)} vault results`)}</Alert>
         </header>
         <section className="grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1" aria-label="Search Results">
           <div className="grid min-h-0 grid-rows-[36px_minmax(0,1fr)] border-r border-[var(--tt-border)] px-3 pb-3 max-sm:border-r-0">

@@ -49,5 +49,6 @@ export * from "./composer.js";
 export * from "./attachments.js";
 export * from "./embeds.js";
 export * from "./external-embeds.js";
+export * from "./search-intelligence.js";
 export * from "./web-viewer-panel.js";
 //# sourceMappingURL=index.js.map

@@ -4,7 +4,7 @@ import type {
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { AssistantApprovalRequest, AssistantApprovalView, AssistantAuditResult, AssistantDecisionView, AssistantPageRequest, AssistantProposalListResult, AssistantRejectionRequest, AssistantSettingsView, AssistantTurnRequest, AssistantTurnResult } from '@tockteam/tocktutor-assistant/client'
+import type { AssistantApprovalRequest, AssistantApprovalView, AssistantAuditResult, AssistantDecisionView, AssistantPageRequest, AssistantProposalListResult, AssistantRejectionRequest, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult, AssistantSettingsView, AssistantTurnRequest, AssistantTurnResult } from '@tockteam/tocktutor-assistant/client'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$746f636b7475746f72417373697374616e74 {
@@ -14,6 +14,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     listProposals: (request: AssistantPageRequest, signal?: AbortSignal) => Promise<RemoteResult<AssistantProposalListResult>>
     rejectProposal: (request: AssistantRejectionRequest, signal?: AbortSignal) => Promise<RemoteResult<AssistantDecisionView>>
     saveSettings: (request: AssistantSettingsView, signal?: AbortSignal) => Promise<RemoteResult<AssistantSettingsView>>
+    searchIntelligence: (request: AssistantSearchIntelligenceRequest, signal?: AbortSignal) => Promise<RemoteResult<AssistantSearchIntelligenceResult>>
   }
   interface TypertRemoteMap {
     'tocktutorAssistant/approveProposal': (request: AssistantApprovalRequest, signal?: AbortSignal) => Promise<RemoteResult<AssistantApprovalView>>
@@ -22,6 +23,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorAssistant/listProposals': (request: AssistantPageRequest, signal?: AbortSignal) => Promise<RemoteResult<AssistantProposalListResult>>
     'tocktutorAssistant/rejectProposal': (request: AssistantRejectionRequest, signal?: AbortSignal) => Promise<RemoteResult<AssistantDecisionView>>
     'tocktutorAssistant/saveSettings': (request: AssistantSettingsView, signal?: AbortSignal) => Promise<RemoteResult<AssistantSettingsView>>
+    'tocktutorAssistant/searchIntelligence': (request: AssistantSearchIntelligenceRequest, signal?: AbortSignal) => Promise<RemoteResult<AssistantSearchIntelligenceResult>>
   }
   interface TypertRemoteNamespaceMap {
     'tocktutorAssistant': TypertRemoteNamespace$746f636b7475746f72417373697374616e74

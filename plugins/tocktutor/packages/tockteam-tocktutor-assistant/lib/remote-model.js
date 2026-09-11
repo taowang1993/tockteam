@@ -42,6 +42,7 @@ let TockTutorAssistantRemoteModel = (() => {
     let _listProposals_decorators;
     let _approveProposal_decorators;
     let _rejectProposal_decorators;
+    let _searchIntelligence_decorators;
     let _audit_decorators;
     return class TockTutorAssistantRemoteModel extends _classSuper {
         static {
@@ -52,6 +53,7 @@ let TockTutorAssistantRemoteModel = (() => {
             _listProposals_decorators = [Remote];
             _approveProposal_decorators = [Remote];
             _rejectProposal_decorators = [Remote];
+            _searchIntelligence_decorators = [Remote];
             _audit_decorators = [Remote];
             __esDecorate(this, null, _currentSettings_decorators, { kind: "method", name: "currentSettings", static: false, private: false, access: { has: obj => "currentSettings" in obj, get: obj => obj.currentSettings }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveSettings_decorators, { kind: "method", name: "saveSettings", static: false, private: false, access: { has: obj => "saveSettings" in obj, get: obj => obj.saveSettings }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -59,6 +61,7 @@ let TockTutorAssistantRemoteModel = (() => {
             __esDecorate(this, null, _listProposals_decorators, { kind: "method", name: "listProposals", static: false, private: false, access: { has: obj => "listProposals" in obj, get: obj => obj.listProposals }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _approveProposal_decorators, { kind: "method", name: "approveProposal", static: false, private: false, access: { has: obj => "approveProposal" in obj, get: obj => obj.approveProposal }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _rejectProposal_decorators, { kind: "method", name: "rejectProposal", static: false, private: false, access: { has: obj => "rejectProposal" in obj, get: obj => obj.rejectProposal }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _searchIntelligence_decorators, { kind: "method", name: "searchIntelligence", static: false, private: false, access: { has: obj => "searchIntelligence" in obj, get: obj => obj.searchIntelligence }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _audit_decorators, { kind: "method", name: "audit", static: false, private: false, access: { has: obj => "audit" in obj, get: obj => obj.audit }, metadata: _metadata }, null, _instanceExtraInitializers);
             if (_metadata) Object.defineProperty(this, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
         }
@@ -82,6 +85,9 @@ let TockTutorAssistantRemoteModel = (() => {
             throw new Error('Typert reflection model is not executable.');
         }
         async rejectProposal(request, signal) {
+            throw new Error('Typert reflection model is not executable.');
+        }
+        async searchIntelligence(request, signal) {
             throw new Error('Typert reflection model is not executable.');
         }
         async audit(request, signal) {

@@ -22,7 +22,7 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_audit_result$schema = z.o
   'auditCorrelationId': z.string(),
   'proposalId': z.string(),
   'timestamp': z.number(),
-  'outcome': z.union([z.literal("staged"), z.literal("approval-consumed"), z.literal("approval-denied"), z.literal("approval-failed"), z.literal("applied"), z.literal("rejected")]),
+  'outcome': z.union([z.literal("applied"), z.literal("staged"), z.literal("approval-consumed"), z.literal("approval-denied"), z.literal("approval-failed"), z.literal("rejected")]),
   'destination': z.string(),
   'operation': z.union([z.literal("create"), z.literal("update")]),
   'contentBytes': z.number(),
@@ -47,6 +47,7 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_currentSettings_result$sc
   'provider': z.string(),
   'model': z.string(),
   'writePermission': z.union([z.literal("read-only"), z.literal("propose")]),
+  'aiSearch': z.union([z.literal("off"), z.literal("on-demand"), z.literal("automatic")]).optional(),
 })
 const _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_parameter_0$schema = z.object({
   'offset': z.number().optional(),
@@ -82,11 +83,36 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_saveSettings_parameter_0$
   'provider': z.string(),
   'model': z.string(),
   'writePermission': z.union([z.literal("read-only"), z.literal("propose")]),
+  'aiSearch': z.union([z.literal("off"), z.literal("on-demand"), z.literal("automatic")]).optional(),
 })
 const _tockteam_tocktutor_assistant_tocktutorAssistant_saveSettings_result$schema = z.object({
   'provider': z.string(),
   'model': z.string(),
   'writePermission': z.union([z.literal("read-only"), z.literal("propose")]),
+  'aiSearch': z.union([z.literal("off"), z.literal("on-demand"), z.literal("automatic")]).optional(),
+})
+const _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_parameter_0$schema = z.object({
+  'query': z.string(),
+  'vaultGeneration': z.number(),
+  'mode': z.literal("related"),
+  'directory': z.string().optional(),
+  'modifiedFrom': z.number().optional(),
+  'modifiedTo': z.number().optional(),
+  'titleOnly': z.boolean().optional(),
+})
+const _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_result$schema = z.object({
+  'status': z.union([z.literal("applied"), z.literal("disabled"), z.literal("provider-unavailable"), z.literal("invalid-output"), z.literal("error"), z.literal("cancelled")]),
+  'matches': z.array(z.object({
+  'id': z.string().optional(),
+  'path': z.string(),
+  'kind': z.union([z.literal("base"), z.literal("block"), z.literal("canvas"), z.literal("content"), z.literal("line"), z.literal("path"), z.literal("property"), z.literal("section"), z.literal("tag"), z.literal("task")]),
+  'line': z.union([z.literal(null), z.number()]),
+  'preview': z.string(),
+  'lineEnd': z.union([z.literal(null), z.number()]).optional(),
+  'score': z.number().optional(),
+  'operator': z.union([z.literal("related"), z.literal("block"), z.literal("content"), z.literal("line"), z.literal("path"), z.literal("property"), z.literal("section"), z.literal("tag"), z.literal("task"), z.literal("any"), z.literal("file"), z.literal("task-done"), z.literal("task-todo")]).optional(),
+  'provenance': z.union([z.literal("canvas"), z.literal("path"), z.literal("section"), z.literal("task"), z.literal("body"), z.literal("frontmatter")]).optional(),
+})),
 })
 
 export const TYPERT = {
@@ -119,7 +145,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantApprovalView',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_approveProposal_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":55,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":57,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/audit',
@@ -145,7 +171,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantAuditResult',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_audit_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":71,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":81,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/continueTurn',
@@ -180,7 +206,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantTurnResult',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_continueTurn_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":39,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":41,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/currentSettings',
@@ -196,7 +222,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantSettingsView',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_currentSettings_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":26,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":28,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/listProposals',
@@ -222,7 +248,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantProposalListResult',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":47,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":49,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/rejectProposal',
@@ -248,7 +274,7 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantDecisionView',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_rejectProposal_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":63,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":65,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/saveSettings',
@@ -274,7 +300,33 @@ export const TYPERT = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantSettingsView',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_saveSettings_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":31,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":33,"column":9},
+    },
+    {
+      id: '@tockteam/tocktutor-assistant#tocktutorAssistant/searchIntelligence',
+      service: 'tocktutorAssistant',
+      namespace: 'tocktutorAssistant',
+      method: 'searchIntelligence',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantSearchIntelligenceRequest',
+            schema: _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_parameter_0$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantSearchIntelligenceResult',
+        schema: _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_result$schema,
+      },
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":73,"column":9},
     },
   ],
   model: {

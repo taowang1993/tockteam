@@ -149,6 +149,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   linksGate: Promise<void> | null = null
   linksOverride: ((request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => Promise<{ ok: true; value: VaultLinksResult }>) | null = null
   searchContinuation: VaultSearchResult | null = null
+  tocktutorAssistant?: NonNullable<WorkbenchRouteRemote['tocktutorAssistant']>
 
   private readonly createdPaths: Set<string>
 
@@ -1982,6 +1983,24 @@ test('clears stale relationship projections before refreshing the active note', 
   assert.equal(controller.getSnapshot().outline, null)
   gate.resolve()
   assert.equal(await refresh, true)
+  controller.dispose()
+})
+
+test('uses optional bounded search intelligence without making local search depend on the assistant', async () => {
+  const remote = new FakeRemote()
+  remote.tocktutorAssistant = {
+    searchIntelligence: async request => success({
+      status: 'applied',
+      matches: [{ kind: 'content', line: 1, path: 'Mobility.md', preview: `Related ${request.query}`, score: 4 }],
+    }),
+  }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('car')
+  controller.setSearchMode('related')
+  assert.equal(await controller.runSearch(), true)
+  assert.equal(controller.getSnapshot().searchMatches?.[0]?.path, 'Mobility.md')
+  assert.equal(controller.getSnapshot().searchIntelligenceStatus, 'applied')
   controller.dispose()
 })
 

@@ -1,5 +1,6 @@
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
+import { expandAndSearch } from "./search-intelligence.js";
 import { ProposalApprovalExecutor, } from "./approval.js";
 import { ProposalQueue, } from "./proposals.js";
 import { AssistantProposalStateStore } from "./proposal-state.js";
@@ -20,6 +21,7 @@ export * from "./read-tool-registration.js";
 export * from "./read-tools.js";
 export * from "./remote.js";
 export * from "./remote-types.js";
+export * from "./search-intelligence.js";
 export * from "./text-turn.js";
 export * from "./turn-bindings.js";
 export * from "./write-tool-registration.js";
@@ -32,6 +34,11 @@ export const Config = Schema.object({
         Schema.const('read-only'),
         Schema.const('propose'),
     ]).default('read-only'),
+    aiSearch: Schema.union([
+        Schema.const('off'),
+        Schema.const('on-demand'),
+        Schema.const('automatic'),
+    ]).default('on-demand'),
 });
 export const ASSISTANT_SETTINGS_NAMESPACE = 'tocktutor-assistant';
 export class NoteAssistant extends Service {
@@ -39,6 +46,7 @@ export class NoteAssistant extends Service {
     static inject = ['agents', 'noteVault', 'settings', 'storageDomain', 'subprocess', 'tools'];
     agents;
     noteVault;
+    llm;
     settings;
     observedSettings;
     settingsAbort = new AbortController();
@@ -61,6 +69,7 @@ export class NoteAssistant extends Service {
         super(ctx, 'noteAssistant');
         this.agents = ctx.agents;
         this.noteVault = ctx.noteVault;
+        this.llm = ctx.get('llm');
         this.settings = ctx.settings.register(ASSISTANT_SETTINGS_NAMESPACE, Config, { base: config });
         this.observedSettings = { ...this.settings.get() };
         this.continuation = new AgentContinuationRouter(ctx.agents, (agentId, agent) => agent.id === agentId && this.agents.get(agent.id) === agent);
@@ -549,6 +558,32 @@ export class NoteAssistant extends Service {
         const current = this.settings.get();
         this.observeSettings(current);
         return { ...current };
+    }
+    async searchIntelligence(request, signal) {
+        const settings = this.currentSettings();
+        if ((settings.aiSearch ?? 'on-demand') === 'off')
+            return { status: 'disabled', matches: [] };
+        const vault = this.noteVault.state;
+        if (!vault.active || vault.generation !== request.vaultGeneration)
+            return { status: 'error', matches: [] };
+        return await expandAndSearch(this.llm, request, settings.provider, settings.model, async (searchRequest, searchSignal) => {
+            const result = await this.noteVault.search(searchRequest, {
+                id: vault.id,
+                generation: vault.generation,
+            }, searchSignal);
+            if (result.generation !== vault.generation)
+                throw new Error('Search vault changed.');
+            return result;
+        }, signal, current => {
+            const currentVault = this.noteVault.state;
+            const currentSettings = this.settings.get();
+            return current.vaultGeneration === request.vaultGeneration
+                && currentVault.active
+                && currentVault.id === vault.id
+                && currentVault.generation === vault.generation
+                && currentSettings.provider === settings.provider
+                && currentSettings.model === settings.model;
+        });
     }
     async saveSettings(settings) {
         await this.settings.replace(settings);
