@@ -9,6 +9,16 @@ const galleryRoot = dirname(galleryPath)
 const gallery = readFileSync(galleryPath, 'utf8')
 const proof = JSON.parse(readFileSync(resolve('.beads/reports/tocktutor-utility-proof.json'), 'utf8')) as {
   reading: { tockTutor: { containsGeneratedUntitled?: boolean; copiedVaultIdentity?: string; treePaths?: string[] } }
+  sourceCommandRecovery: { source: { tockTutor: {
+    captureRun: string
+    cleanupVerified: boolean
+    font: { family: string; loaded: boolean; sizePx: number }
+    markerColor: string
+    runtimeErrorsAtCapture: number
+    screenshotBytes: number
+    screenshotSha256: string
+    visibleTooltips: number
+  } } }
   polishRecapture?: {
     captureRun: string
     checkedFavorite: { background: string; checkmark: string }
@@ -52,6 +62,23 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
   assert.equal(proof.polishRecapture?.screenshot.bytes, polishCapture.length)
   assert.equal(proof.polishRecapture?.screenshot.sha256, `sha256:${createHash('sha256').update(polishCapture).digest('hex')}`)
   assert.deepEqual(proof.polishRecapture?.verification, { cleanupVerified: true, runtimeErrorsAtCapture: 0 })
+  const sourceCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-editor-source.png'))
+  assert.deepEqual({ width: sourceCapture.readUInt32BE(16), height: sourceCapture.readUInt32BE(20) }, { width: 3024, height: 1898 })
+  assert.deepEqual({
+    cleanupVerified: proof.sourceCommandRecovery.source.tockTutor.cleanupVerified,
+    font: proof.sourceCommandRecovery.source.tockTutor.font,
+    markerColor: proof.sourceCommandRecovery.source.tockTutor.markerColor,
+    runtimeErrorsAtCapture: proof.sourceCommandRecovery.source.tockTutor.runtimeErrorsAtCapture,
+    visibleTooltips: proof.sourceCommandRecovery.source.tockTutor.visibleTooltips,
+  }, {
+    cleanupVerified: true,
+    font: { family: 'Fira Code VF', loaded: true, sizePx: 16 },
+    markerColor: '#ffffff',
+    runtimeErrorsAtCapture: 0,
+    visibleTooltips: 0,
+  })
+  assert.equal(proof.sourceCommandRecovery.source.tockTutor.screenshotBytes, sourceCapture.length)
+  assert.equal(proof.sourceCommandRecovery.source.tockTutor.screenshotSha256, `sha256:${createHash('sha256').update(sourceCapture).digest('hex')}`)
   assert.equal([...gallery.matchAll(/<span class="badge">Not Applicable<\/span>/gu)].length, 2)
   assert.match(gallery, /id="assistant"[\s\S]*?<span class="badge">Not Applicable<\/span>/u)
   assert.match(gallery, /id="reviews"[\s\S]*?<span class="badge">Not Applicable<\/span>/u)
