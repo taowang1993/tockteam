@@ -56,6 +56,9 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onRestoreSnapshot?(id: string): void
   onRestoreTrash?(id: string): void
   onRunSearch?(): void
+  onQuickAnswer?(): void
+  onCancelQuickAnswer?(): void
+  onRetryQuickAnswer?(): void
   onSaveWorkspace?(): void
   onLoadWorkspace?(id: string): void
   onSearchActiveMove?(delta: number): void
@@ -142,6 +145,27 @@ describe('TockTutor titlebar panel controls', () => {
     expect(within(dialog).queryByText('Second.md')).toBeNull()
     expect(within(dialog).queryByText('Folder/Note.md')).toBeNull()
     expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
+  })
+
+  it('shows a bounded Quick Answer and opens its exact captured citation', () => {
+    const selected: string[] = []
+    renderRoute({
+      entries: [{ createdAt: 1, kind: 'document', modifiedAt: 2, path: 'Second.md', revision: '1'.repeat(64), size: 12 }],
+      phase: 'ready',
+      searchAnswer: {
+        status: 'completed',
+        answer: 'The answer is in the note.',
+        citations: [{ id: 'qa-1', path: 'Second.md', line: 2, lineEnd: 2 }],
+      },
+      searchMatches: [{ id: 'source-hit', kind: 'content', line: 2, path: 'Second.md', preview: 'supporting text' }],
+      searchOpen: true,
+      searchQuery: 'second',
+    }, { onSelectSearchMatch: match => { selected.push(match.path) } })
+
+    expect(screen.getByRole('region', { name: 'Quick Answer' })).toBeTruthy()
+    expect(screen.getByText('The answer is in the note.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Second.md:2' }))
+    expect(selected).toEqual(['Second.md'])
   })
 
   it('does not label unrelated note paths as query matches', () => {

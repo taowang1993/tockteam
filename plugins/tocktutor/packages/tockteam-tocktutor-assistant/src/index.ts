@@ -7,7 +7,7 @@ import type { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
 import type NoteVaultRuntime from 'tockbot-note-runtime'
 import type { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 import type { SettingsScope } from '@deepseek-ai/dsh-settings'
-import { expandAndSearch } from './search-intelligence.ts'
+import { answerSearchQuery, expandAndSearch } from './search-intelligence.ts'
 import {
   ProposalApprovalExecutor,
   type ApprovalResult,
@@ -52,7 +52,7 @@ import {
   TockTutorAssistantGateway,
   type AssistantRemoteHost,
 } from './remote.ts'
-import type { AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts'
+import type { AssistantQuickAnswerRequest, AssistantQuickAnswerResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts'
 import {
   PennivoChildManager,
   type PennivoBinding,
@@ -765,6 +765,39 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
           && currentVault.generation === vault.generation
           && currentSettings.provider === settings.provider
           && currentSettings.model === settings.model
+      },
+    )
+  }
+
+  async quickAnswer(
+    request: AssistantQuickAnswerRequest,
+    signal: AbortSignal,
+  ): Promise<AssistantQuickAnswerResult> {
+    const settings = this.currentSettings()
+    if ((settings.aiSearch ?? 'on-demand') === 'off') return { status: 'disabled', answer: '', citations: [] }
+    const vault = this.noteVault.state
+    if (!vault.active || vault.generation !== request.vaultGeneration) return { status: 'error', answer: '', citations: [] }
+    return await answerSearchQuery(
+      this.llm,
+      request,
+      settings.provider,
+      settings.model,
+      async path => {
+        const result = await this.noteVault.read({ path }, { id: vault.id, generation: vault.generation }, signal)
+        if (result.generation !== vault.generation || result.path !== path) throw new Error('Search vault changed.')
+        return result
+      },
+      signal,
+      current => {
+        const currentVault = this.noteVault.state
+        const currentSettings = this.settings.get()
+        return current.vaultGeneration === request.vaultGeneration
+          && currentVault.active
+          && currentVault.id === vault.id
+          && currentVault.generation === vault.generation
+          && currentSettings.provider === settings.provider
+          && currentSettings.model === settings.model
+          && currentSettings.aiSearch === settings.aiSearch
       },
     )
   }

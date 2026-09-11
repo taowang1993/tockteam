@@ -1,6 +1,6 @@
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
-import { expandAndSearch } from "./search-intelligence.js";
+import { answerSearchQuery, expandAndSearch } from "./search-intelligence.js";
 import { ProposalApprovalExecutor, } from "./approval.js";
 import { ProposalQueue, } from "./proposals.js";
 import { AssistantProposalStateStore } from "./proposal-state.js";
@@ -583,6 +583,30 @@ export class NoteAssistant extends Service {
                 && currentVault.generation === vault.generation
                 && currentSettings.provider === settings.provider
                 && currentSettings.model === settings.model;
+        });
+    }
+    async quickAnswer(request, signal) {
+        const settings = this.currentSettings();
+        if ((settings.aiSearch ?? 'on-demand') === 'off')
+            return { status: 'disabled', answer: '', citations: [] };
+        const vault = this.noteVault.state;
+        if (!vault.active || vault.generation !== request.vaultGeneration)
+            return { status: 'error', answer: '', citations: [] };
+        return await answerSearchQuery(this.llm, request, settings.provider, settings.model, async (path) => {
+            const result = await this.noteVault.read({ path }, { id: vault.id, generation: vault.generation }, signal);
+            if (result.generation !== vault.generation || result.path !== path)
+                throw new Error('Search vault changed.');
+            return result;
+        }, signal, current => {
+            const currentVault = this.noteVault.state;
+            const currentSettings = this.settings.get();
+            return current.vaultGeneration === request.vaultGeneration
+                && currentVault.active
+                && currentVault.id === vault.id
+                && currentVault.generation === vault.generation
+                && currentSettings.provider === settings.provider
+                && currentSettings.model === settings.model
+                && currentSettings.aiSearch === settings.aiSearch;
         });
     }
     async saveSettings(settings) {

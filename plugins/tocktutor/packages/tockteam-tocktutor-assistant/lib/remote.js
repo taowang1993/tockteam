@@ -14,6 +14,9 @@ const MAX_SKIPPED_ENTRIES = 20;
 const MAX_PAGE_SIZE = 20;
 const MAX_REMOTE_RESULT_BYTES = 256 * 1024;
 const MAX_BOUNDARY_INPUT_CHARS = 100_000;
+const MAX_QUICK_ANSWER_CANDIDATES = 20;
+const MAX_QUICK_ANSWER_CITATIONS = 5;
+const MAX_QUICK_ANSWER_CHARS = 8_000;
 function failure(label) {
     return new TypeError(`${label} is invalid or exceeds its boundary.`);
 }
@@ -224,6 +227,51 @@ function searchIntelligenceResult(value) {
     });
     return { status: value.status, matches };
 }
+function quickAnswerRequest(value) {
+    assertPlainRecord(value, ['query', 'vaultGeneration', 'candidates'], 'Quick Answer request');
+    const query = boundaryText(value.query, 1_000, 'Quick Answer request');
+    const vaultGeneration = safeInteger(value.vaultGeneration, 'Quick Answer request');
+    if (vaultGeneration < 1 || !Array.isArray(value.candidates) || value.candidates.length > MAX_QUICK_ANSWER_CANDIDATES)
+        throw failure('Quick Answer request');
+    const ids = new Set();
+    const candidates = value.candidates.map(candidate => {
+        assertPlainRecord(candidate, ['id', 'path', 'line', 'lineEnd', 'preview'], 'Quick Answer request');
+        const id = opaqueId(candidate.id, 'Quick Answer request');
+        const line = candidate.line;
+        const lineEnd = candidate.lineEnd;
+        if (ids.has(id) || typeof candidate.preview !== 'string' || candidate.preview.length > 4_096 || (line !== null && (line === undefined || !Number.isSafeInteger(line) || line < 1)) || (lineEnd !== undefined && lineEnd !== null && (!Number.isSafeInteger(lineEnd) || lineEnd < 1)) || (line !== null && line !== undefined && lineEnd !== undefined && lineEnd !== null && lineEnd < line))
+            throw failure('Quick Answer request');
+        ids.add(id);
+        return {
+            id,
+            path: safeRelativePath(candidate.path, 'Quick Answer request'),
+            line: line,
+            ...(lineEnd === undefined ? {} : { lineEnd: lineEnd }),
+            preview: boundaryText(candidate.preview, 4_096, 'Quick Answer request'),
+        };
+    });
+    return { query, vaultGeneration, candidates };
+}
+function quickAnswerResult(value) {
+    assertPlainRecord(value, ['status', 'answer', 'citations'], 'Quick Answer result');
+    const statuses = ['completed', 'no-evidence', 'provider-unavailable', 'disabled', 'invalid-output', 'error', 'cancelled'];
+    if (!statuses.includes(value.status) || typeof value.answer !== 'string' || value.answer.length > MAX_QUICK_ANSWER_CHARS || !Array.isArray(value.citations) || value.citations.length > MAX_QUICK_ANSWER_CITATIONS)
+        throw failure('Quick Answer result');
+    const citations = value.citations.map(citation => {
+        assertPlainRecord(citation, ['id', 'path', 'line', 'lineEnd'], 'Quick Answer result');
+        const line = citation.line;
+        const lineEnd = citation.lineEnd;
+        if ((line !== null && (line === undefined || !Number.isSafeInteger(line) || line < 1)) || (lineEnd !== null && (lineEnd === undefined || !Number.isSafeInteger(lineEnd) || lineEnd < 1)) || (line !== null && line !== undefined && lineEnd !== null && lineEnd !== undefined && lineEnd < line))
+            throw failure('Quick Answer result');
+        return {
+            id: opaqueId(citation.id, 'Quick Answer result'),
+            path: safeRelativePath(citation.path, 'Quick Answer result'),
+            line: line,
+            lineEnd: lineEnd,
+        };
+    });
+    return { status: value.status, answer: redactBoundaryText(value.answer), citations };
+}
 function decisionView(value, label) {
     assertPlainRecord(value, ['proposalId', 'auditCorrelationId'], label);
     return {
@@ -358,6 +406,13 @@ export class TockTutorAssistantGateway extends TypertRemoteService {
         checkSignal(signal);
         return searchIntelligenceResult(result);
     }
+    async quickAnswer(request, signal) {
+        const accepted = quickAnswerRequest(request);
+        checkSignal(signal);
+        const result = await this.assistant.quickAnswer(accepted, signal);
+        checkSignal(signal);
+        return quickAnswerResult(result);
+    }
     async audit(request, signal) {
         const page = pageRequest(request);
         checkSignal(signal);
@@ -398,6 +453,7 @@ const REMOTE_METHODS = [
     'rejectProposal',
     'audit',
     'searchIntelligence',
+    'quickAnswer',
 ];
 function installRemoteMethods(instance) {
     const runtimeRemote = Remote;

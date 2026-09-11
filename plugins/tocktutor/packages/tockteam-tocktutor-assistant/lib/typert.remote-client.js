@@ -71,6 +71,27 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_result$sche
   'total': z.number(),
   'nextOffset': z.union([z.literal(null), z.number()]),
 })
+const _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_parameter_0$schema = z.object({
+  'query': z.string(),
+  'vaultGeneration': z.number(),
+  'candidates': z.array(z.object({
+  'id': z.string(),
+  'path': z.string(),
+  'line': z.union([z.literal(null), z.number()]),
+  'lineEnd': z.union([z.literal(null), z.number()]).optional(),
+  'preview': z.string(),
+})),
+})
+const _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_result$schema = z.object({
+  'status': z.union([z.literal("disabled"), z.literal("provider-unavailable"), z.literal("invalid-output"), z.literal("error"), z.literal("cancelled"), z.literal("completed"), z.literal("no-evidence")]),
+  'answer': z.string(),
+  'citations': z.array(z.object({
+  'id': z.string(),
+  'path': z.string(),
+  'line': z.union([z.literal(null), z.number()]),
+  'lineEnd': z.union([z.literal(null), z.number()]),
+})),
+})
 const _tockteam_tocktutor_assistant_tocktutorAssistant_rejectProposal_parameter_0$schema = z.object({
   'proposalId': z.string(),
   'reason': z.string(),
@@ -142,7 +163,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantApprovalView',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_approveProposal_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":57,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":59,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/audit',
@@ -168,7 +189,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantAuditResult',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_audit_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":81,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":91,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/continueTurn',
@@ -203,7 +224,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantTurnResult',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_continueTurn_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":41,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":43,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/currentSettings',
@@ -219,7 +240,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantSettingsView',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_currentSettings_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":28,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":30,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/listProposals',
@@ -245,7 +266,33 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantProposalListResult',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":49,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":51,"column":9},
+    },
+    {
+      id: '@tockteam/tocktutor-assistant#tocktutorAssistant/quickAnswer',
+      service: 'tocktutorAssistant',
+      namespace: 'tocktutorAssistant',
+      method: 'quickAnswer',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantQuickAnswerRequest',
+            schema: _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_parameter_0$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantQuickAnswerResult',
+        schema: _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_result$schema,
+      },
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":83,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/rejectProposal',
@@ -271,7 +318,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantDecisionView',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_rejectProposal_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":65,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":67,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/saveSettings',
@@ -297,7 +344,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantSettingsView',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_saveSettings_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":33,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":35,"column":9},
     },
     {
       id: '@tockteam/tocktutor-assistant#tocktutorAssistant/searchIntelligence',
@@ -323,7 +370,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@tockteam/tocktutor-assistant/client#AssistantSearchIntelligenceResult',
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_result$schema,
       },
-      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":73,"column":9},
+      sourceLocation: {"file":"packages/assistant/src/remote-model.ts","line":75,"column":9},
     },
   ],
 }

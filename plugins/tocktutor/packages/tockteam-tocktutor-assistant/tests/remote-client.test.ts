@@ -43,6 +43,7 @@ test('publishes deterministic strict Remote descriptors for only the browser con
     'continueTurn',
     'currentSettings',
     'listProposals',
+    'quickAnswer',
     'rejectProposal',
     'saveSettings',
     'searchIntelligence',

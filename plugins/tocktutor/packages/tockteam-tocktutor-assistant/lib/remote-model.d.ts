@@ -4,7 +4,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
-import type { AssistantApprovalRequest, AssistantApprovalView, AssistantAuditResult, AssistantDecisionView, AssistantPageRequest, AssistantProposalListResult, AssistantRejectionRequest, AssistantSettingsView, AssistantTurnRequest, AssistantTurnResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts';
+import type { AssistantApprovalRequest, AssistantApprovalView, AssistantAuditResult, AssistantDecisionView, AssistantPageRequest, AssistantProposalListResult, AssistantRejectionRequest, AssistantSettingsView, AssistantTurnRequest, AssistantTurnResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult, AssistantQuickAnswerRequest, AssistantQuickAnswerResult } from './remote-types.ts';
 export declare class TockTutorAssistantRemoteModel extends TypertRemoteService {
     constructor(ctx: Context);
     currentSettings(signal: AbortSignal): Promise<AssistantSettingsView>;
@@ -14,6 +14,7 @@ export declare class TockTutorAssistantRemoteModel extends TypertRemoteService {
     approveProposal(request: AssistantApprovalRequest, signal: AbortSignal): Promise<AssistantApprovalView>;
     rejectProposal(request: AssistantRejectionRequest, signal: AbortSignal): Promise<AssistantDecisionView>;
     searchIntelligence(request: AssistantSearchIntelligenceRequest, signal: AbortSignal): Promise<AssistantSearchIntelligenceResult>;
+    quickAnswer(request: AssistantQuickAnswerRequest, signal: AbortSignal): Promise<AssistantQuickAnswerResult>;
     audit(request: AssistantPageRequest, signal: AbortSignal): Promise<AssistantAuditResult>;
 }
 //# sourceMappingURL=remote-model.d.ts.map

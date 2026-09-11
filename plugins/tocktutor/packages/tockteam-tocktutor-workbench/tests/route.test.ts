@@ -2004,6 +2004,26 @@ test('uses optional bounded search intelligence without making local search depe
   controller.dispose()
 })
 
+test('cancels Quick Answer on query changes and drops late citations', async () => {
+  const remote = new FakeRemote()
+  const answer = deferred<{ ok: true; value: { status: 'completed'; answer: string; citations: [] } }>()
+  remote.tocktutorAssistant = {
+    quickAnswer: async () => answer.promise,
+  }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('lesson')
+  assert.equal(await controller.runSearch(), true)
+  const pending = controller.runQuickAnswer()
+  assert.equal(controller.getSnapshot().searchAnswer?.status, 'thinking')
+  controller.setSearchQuery('new query')
+  answer.resolve({ ok: true, value: { status: 'completed', answer: 'stale', citations: [] } })
+  assert.equal(await pending, false)
+  assert.equal(controller.getSnapshot().searchAnswer?.status, 'idle')
+  assert.equal(controller.getSnapshot().searchAnswer?.answer, '')
+  controller.dispose()
+})
+
 test('runs bounded vault search and Related results against the captured generation', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

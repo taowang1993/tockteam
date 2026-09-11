@@ -42,6 +42,33 @@ export interface AssistantSearchIntelligenceResult {
   }>
 }
 
+export interface AssistantQuickAnswerCandidate {
+  id: string
+  path: string
+  line: number | null
+  lineEnd?: number | null
+  preview: string
+}
+
+export interface AssistantQuickAnswerRequest {
+  query: string
+  vaultGeneration: number
+  candidates: AssistantQuickAnswerCandidate[]
+}
+
+export interface AssistantQuickAnswerCitation {
+  id: string
+  path: string
+  line: number | null
+  lineEnd: number | null
+}
+
+export interface AssistantQuickAnswerResult {
+  status: 'completed' | 'no-evidence' | 'provider-unavailable' | 'disabled' | 'invalid-output' | 'error' | 'cancelled'
+  answer: string
+  citations: AssistantQuickAnswerCitation[]
+}
+
 export interface AssistantTurnRequest {
   mode: AssistantRemoteTurnMode
   text: string

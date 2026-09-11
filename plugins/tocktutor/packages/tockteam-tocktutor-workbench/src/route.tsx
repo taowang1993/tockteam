@@ -57,7 +57,7 @@ import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
-import type { WorkbenchSearchIntelligenceRemote, WorkbenchSearchIntelligenceResult } from './search-intelligence.ts'
+import type { WorkbenchQuickAnswerState, WorkbenchSearchIntelligenceRemote, WorkbenchSearchIntelligenceResult } from './search-intelligence.ts'
 import { ExecutableBaseView, type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx'
 import { executableBasePropertyIdentity, type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts'
 import type { BaseHydratedFile } from './base-query.ts'
@@ -311,6 +311,7 @@ export interface WorkbenchRouteSnapshot {
   revision: string | null
   saveStatus: EditorStatus
   searchActiveIndex?: number | null
+  searchAnswer?: WorkbenchQuickAnswerState
   searchError?: string | null
   searchIntelligenceStatus?: WorkbenchSearchIntelligenceResult['status'] | null
   searchLoading?: boolean
@@ -635,6 +636,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     revision: null,
     saveStatus: 'saved',
     searchActiveIndex: null,
+    searchAnswer: { status: 'idle' as const, answer: '', citations: [] },
     searchError: null,
     searchIntelligenceStatus: null,
     searchLoading: false,
@@ -1053,6 +1055,7 @@ export class WorkbenchRouteController {
     const trimmed = query.trim()
     this.update({
       searchActiveIndex: null,
+      searchAnswer: { status: 'idle', answer: '', citations: [] },
       searchError: null,
       searchIntelligenceStatus: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
@@ -1068,7 +1071,7 @@ export class WorkbenchRouteController {
 
   closeSearch(): void {
     this.nextOperation()
-    this.update({ searchActiveIndex: null, searchDirectory: '', searchError: null, searchIntelligenceStatus: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false })
+    this.update({ searchActiveIndex: null, searchAnswer: { status: 'idle', answer: '', citations: [] }, searchDirectory: '', searchIntelligenceStatus: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false })
   }
 
   openSearch(query: string): void {
@@ -1077,6 +1080,7 @@ export class WorkbenchRouteController {
     const trimmed = query.trim()
     this.update({
       searchActiveIndex: null,
+      searchAnswer: { status: 'idle', answer: '', citations: [] },
       searchError: null,
       searchIntelligenceStatus: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
@@ -1096,6 +1100,7 @@ export class WorkbenchRouteController {
     const trimmed = this.snapshot.searchQuery.trim()
     this.update({
       searchActiveIndex: null,
+      searchAnswer: { status: 'idle', answer: '', citations: [] },
       searchError: null,
       searchIntelligenceStatus: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
@@ -1114,6 +1119,7 @@ export class WorkbenchRouteController {
     const trimmed = this.snapshot.searchQuery.trim()
     this.update({
       searchActiveIndex: null,
+      searchAnswer: { status: 'idle', answer: '', citations: [] },
       searchDirectory: filters.directory ?? '',
       searchError: null,
       searchIntelligenceStatus: null,
@@ -1152,7 +1158,7 @@ export class WorkbenchRouteController {
     }
     const mode = this.snapshot.searchMode ?? 'query'
     const operation = this.nextOperation()
-    this.update({ searchError: null, searchIntelligenceStatus: null, searchLoading: true, searchMatches: Object.freeze([]) })
+    this.update({ searchAnswer: { status: 'idle', answer: '', citations: [] }, searchError: null, searchIntelligenceStatus: null, searchLoading: true, searchMatches: Object.freeze([]) })
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
         ...(this.snapshot.searchDirectory === undefined || this.snapshot.searchDirectory === '' ? {} : { directory: this.snapshot.searchDirectory }),
@@ -1244,6 +1250,50 @@ export class WorkbenchRouteController {
     } catch {
       if (this.current(operation.id, vault) && !operation.signal.aborted) this.update({ searchIntelligenceStatus: 'error' })
     }
+  }
+
+  async runQuickAnswer(): Promise<boolean> {
+    const intelligence = this.remote.tocktutorAssistant
+    const vault = this.snapshot.vault
+    const query = this.snapshot.searchQuery.trim()
+    if (intelligence?.quickAnswer === undefined || vault === null || query === '' || !this.snapshot.searchOpen) {
+      this.update({ searchAnswer: { status: intelligence?.quickAnswer === undefined ? 'unavailable' : 'no-evidence', answer: '', citations: [] } })
+      return false
+    }
+    const matches = (this.snapshot.searchMatches ?? []).slice(0, 20)
+    if (matches.length === 0) {
+      this.update({ searchAnswer: { status: 'no-evidence', answer: '', citations: [] } })
+      return false
+    }
+    const operation = this.nextOperation()
+    const candidates = matches.map((match, index) => ({
+      id: `qa-${String(index + 1)}`,
+      path: match.path,
+      line: match.line,
+      ...(match.lineEnd === undefined ? {} : { lineEnd: match.lineEnd }),
+      preview: match.preview,
+    }))
+    this.update({ searchAnswer: { status: 'thinking', answer: '', citations: [] } })
+    try {
+      const result = remoteValue(await intelligence.quickAnswer({ query, vaultGeneration: vault.generation, candidates }, operation.signal))
+      if (!this.current(operation.id, vault)) return false
+      const status = result.status === 'provider-unavailable' || result.status === 'disabled' ? 'unavailable' : result.status
+      this.update({ searchAnswer: { status, answer: result.answer, citations: result.citations } })
+      return result.status === 'completed'
+    } catch {
+      if (this.current(operation.id, vault) && !operation.signal.aborted) this.update({ searchAnswer: { status: 'error', answer: '', citations: [] } })
+      return false
+    }
+  }
+
+  cancelQuickAnswer(): void {
+    if (this.snapshot.searchAnswer?.status !== 'thinking') return
+    this.nextOperation()
+    this.update({ searchAnswer: { status: 'cancelled', answer: '', citations: [] } })
+  }
+
+  retryQuickAnswer(): Promise<boolean> {
+    return this.runQuickAnswer()
   }
 
   async loadMoreSearch(): Promise<boolean> {
@@ -1793,6 +1843,7 @@ export class WorkbenchRouteController {
       recoveryOpen: false,
       revision: null,
       saveStatus: 'saved',
+      searchAnswer: { status: 'idle', answer: '', citations: [] },
       searchError: null,
       searchIntelligenceStatus: null,
       searchLoading: false,
@@ -2318,7 +2369,8 @@ export class WorkbenchRouteController {
     const vault = this.snapshot.vault
     if (vault === null || this.storage === null) return false
     const settings = saveTockTutorSettings(this.storage, vault.id, change)
-    this.update({ settings })
+    this.nextOperation()
+    this.update({ searchAnswer: { status: 'idle', answer: '', citations: [] }, settings })
     return true
   }
 
@@ -3204,6 +3256,9 @@ export interface TockTutorRouteViewProps {
   onRestoreTrash?(id: string): void
   onSave(): void
   onLoadMoreSearch?(): void
+  onQuickAnswer?(): void
+  onCancelQuickAnswer?(): void
+  onRetryQuickAnswer?(): void
   onRunSearch?(): void
   onSaveWorkspace?(): void
   onSearchActiveMove?(delta: number): void
@@ -3471,6 +3526,41 @@ function NoteSearchResultList(props: {
   )
 }
 
+function NoteSearchAnswer(props: {
+  answer: WorkbenchRouteSnapshot['searchAnswer']
+  matches: readonly VaultSearchMatch[]
+  onCancel(): void
+  onRetry(): void
+  onSelect(match: VaultSearchMatch): void
+  onStart(): void
+}): ReactNode {
+  const answer = props.answer ?? { status: 'idle' as const, answer: '', citations: [] }
+  const citationMatch = (id: string): VaultSearchMatch | undefined => {
+    const index = Number(id.slice(3)) - 1
+    return /^qa-[1-9][0-9]*$/u.test(id) ? props.matches[index] : undefined
+  }
+  return <section aria-label="Quick Answer" className="border-b border-[var(--tt-border)] px-3 py-2 text-sm" aria-live="polite">
+    <div className="flex items-center gap-2">
+      <strong className="text-xs font-semibold">Quick Answer</strong>
+      {answer.status === 'idle' && <Button unstyled className="rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs hover:bg-[var(--tt-selected)] disabled:opacity-40" disabled={props.matches.length === 0} onClick={props.onStart} type="button">Ask</Button>}
+      {answer.status === 'thinking' && <><span className="text-xs text-[var(--tt-muted)]">Thinking…</span><Button unstyled className="ml-auto rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs hover:bg-[var(--tt-selected)]" onClick={props.onCancel} type="button">Cancel</Button></>}
+      {answer.status === 'unavailable' && <span className="text-xs text-[var(--tt-muted)]">Unavailable for the current assistant provider.</span>}
+      {answer.status === 'no-evidence' && <span className="text-xs text-[var(--tt-muted)]">No supporting note evidence.</span>}
+      {answer.status === 'cancelled' && <><span className="text-xs text-[var(--tt-muted)]">Cancelled.</span><Button unstyled className="ml-auto rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs hover:bg-[var(--tt-selected)]" onClick={props.onRetry} type="button">Retry</Button></>}
+      {(answer.status === 'error' || answer.status === 'invalid-output') && <><span className="text-xs text-[var(--dsw-alias-state-error-primary,#dc2626)]">Quick Answer failed.</span><Button unstyled className="ml-auto rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs hover:bg-[var(--tt-selected)]" onClick={props.onRetry} type="button">Retry</Button></>}
+    </div>
+    {answer.status === 'completed' && <>
+      <p className="mt-1.5 mb-1 whitespace-pre-wrap text-xs leading-5">{answer.answer}</p>
+      <div className="flex flex-wrap gap-1">
+        {answer.citations.map(citation => {
+          const match = citationMatch(citation.id)
+          return match === undefined ? null : <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-0.5 text-[11px] text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]" key={citation.id} onClick={() => { props.onSelect(match) }} type="button">{citation.path}{citation.line === null ? '' : `:${String(citation.line)}`}</Button>
+        })}
+      </div>
+    </>}
+  </section>
+}
+
 function WorkbenchNoteSearchPalette(props: {
   onClose(): void
   onCommands(): void
@@ -3480,6 +3570,9 @@ function WorkbenchNoteSearchPalette(props: {
   onSearchChange: ((query: string) => void) | undefined
   onSearchMode: ((mode: 'query' | 'related') => void) | undefined
   onSearchFilters: ((filters: { directory?: string; modifiedFrom?: number | null; modifiedTo?: number | null; titleOnly?: boolean }) => void) | undefined
+  onQuickAnswer: (() => void) | undefined
+  onCancelQuickAnswer: (() => void) | undefined
+  onRetryQuickAnswer: (() => void) | undefined
   onSearchActiveMove: ((delta: number) => void) | undefined
   onSearchActiveSet: ((index: number) => void) | undefined
   onSelect(path: string): void
@@ -3513,7 +3606,7 @@ function WorkbenchNoteSearchPalette(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
         unstyled
-        className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[640px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[960px] -translate-1/2 grid-rows-[56px_42px_minmax(0,1fr)_40px] overflow-hidden rounded-[14px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-[0_18px_48px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)] outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-text)_6%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[640px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[960px] -translate-1/2 grid-rows-[56px_42px_auto_minmax(0,1fr)_40px] overflow-hidden rounded-[14px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-[0_18px_48px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)] outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-text)_6%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
         overlayClassName="z-[2147483646] !bg-transparent"
         showCloseButton={false}
       >
@@ -3621,6 +3714,7 @@ function WorkbenchNoteSearchPalette(props: {
           </div>
           <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchIntelligenceStatus !== null && snapshot.searchIntelligenceStatus !== undefined && snapshot.searchIntelligenceStatus !== 'applied' ? `AI Search ${snapshot.searchIntelligenceStatus}; showing local results.` : snapshot.searchQuery.trim() === '' ? `${String(matches.length)} recent notes` : `${String(matches.length)} vault results`)}</Alert>
         </header>
+        <NoteSearchAnswer answer={snapshot.searchAnswer} matches={matches} onCancel={() => { props.onCancelQuickAnswer?.() }} onRetry={() => { props.onRetryQuickAnswer?.() }} onSelect={match => { if (props.onSelectSearchMatch !== undefined) props.onSelectSearchMatch(match, false); else props.onSelect(match.path) }} onStart={() => { props.onQuickAnswer?.() }} />
         <section className="grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1" aria-label="Search Results">
           <div className="grid min-h-0 grid-rows-[36px_minmax(0,1fr)] border-r border-[var(--tt-border)] px-3 pb-3 max-sm:border-r-0">
             <div className="flex items-end px-2 pb-1 text-[11px] font-medium text-[var(--tt-muted)]">Results</div>
@@ -4060,6 +4154,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onCommands={() => { setPaletteView('commands'); props.onOpenCommandPalette?.(); props.onCloseSearch?.() }}
           {...(props.onHideSearchPreview === undefined ? {} : { onHidePreview: props.onHideSearchPreview })}
           onLoadMoreSearch={props.onLoadMoreSearch}
+          onQuickAnswer={props.onQuickAnswer}
+          onCancelQuickAnswer={props.onCancelQuickAnswer}
+          onRetryQuickAnswer={props.onRetryQuickAnswer}
           onRunSearch={props.onRunSearch}
           onSearchActiveMove={props.onSearchActiveMove}
           onSearchActiveSet={props.onSearchActiveSet}
@@ -4601,6 +4698,9 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onRestoreSnapshotOverwrite={id => { void controller.restoreRecoverySnapshotOverwrite(id) }}
         onRestoreTrash={id => { void controller.restoreTrashEntry(id) }}
         onLoadMoreSearch={() => { void controller.loadMoreSearch() }}
+        onQuickAnswer={() => { void controller.runQuickAnswer() }}
+        onCancelQuickAnswer={() => { controller.cancelQuickAnswer() }}
+        onRetryQuickAnswer={() => { void controller.retryQuickAnswer() }}
         onRunSearch={() => { void controller.runSearch() }}
         onSave={() => { void controller.save() }}
         onSaveWorkspace={() => { controller.saveCurrentWorkspace() }}

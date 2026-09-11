@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import LlmRuntime, { LlmAdapter, type GenerateOptions, type LlmResolvedModelInfo, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { Context } from '@deepseek-ai/cordis'
-import { expandAndSearch, parseSearchExpansion } from '../src/search-intelligence.ts'
+import { answerSearchQuery, expandAndSearch, parseSearchExpansion } from '../src/search-intelligence.ts'
 
 test('accepts only bounded strict query expansion JSON', () => {
   assert.deepEqual(parseSearchExpansion('{"queries":["automobile"]}'), ['automobile'])
@@ -44,6 +44,43 @@ test('expands a zero-overlap query and merges bounded local candidates', async (
     }), new AbortController().signal)
     assert.equal(result.status, 'applied')
     assert.equal(result.matches[0]?.path, 'Mobility.md')
+  } finally {
+    await context.fiber.dispose()
+  }
+})
+
+test('answers from bounded excerpts and projects only captured citation metadata', async () => {
+  const context = new Context()
+  await context.plugin(LlmRuntime)
+  context.llm.registerAdapter(['fake'], new ExpansionAdapter('{"answer":"Use the checklist.","citations":["qa-1"]}'))
+  try {
+    const result = await answerSearchQuery(context.llm, {
+      query: 'where',
+      vaultGeneration: 4,
+      candidates: [{ id: 'qa-1', path: 'Answer.md', line: 2, lineEnd: 2, preview: 'The answer.' }],
+    }, 'fake', 'model', async path => ({ path, content: '# Answer\nThe checklist.\n' }), new AbortController().signal)
+    assert.deepEqual(result, {
+      status: 'completed',
+      answer: 'Use the checklist.',
+      citations: [{ id: 'qa-1', path: 'Answer.md', line: 2, lineEnd: 2 }],
+    })
+  } finally {
+    await context.fiber.dispose()
+  }
+})
+
+test('rejects unknown and duplicate Quick Answer citations from the captured candidate map', async () => {
+  const context = new Context()
+  await context.plugin(LlmRuntime)
+  context.llm.registerAdapter(['fake'], new ExpansionAdapter('{"answer":"unsafe","citations":["qa-unknown","qa-unknown"]}'))
+  try {
+    const result = await answerSearchQuery(context.llm, {
+      query: 'where',
+      vaultGeneration: 4,
+      candidates: [{ id: 'qa-1', path: 'Answer.md', line: 2, lineEnd: 2, preview: 'The answer.' }],
+    }, 'fake', 'model', async path => ({ path, content: '# Answer\nThe answer.\n' }), new AbortController().signal)
+    assert.equal(result.status, 'invalid-output')
+    assert.deepEqual(result.citations, [])
   } finally {
     await context.fiber.dispose()
   }

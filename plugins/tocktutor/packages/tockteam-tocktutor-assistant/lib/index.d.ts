@@ -10,7 +10,7 @@ import { type ApprovalContext, type ProposalAuditEntry, type ProposalAuditStatus
 import { type AgentContinuationRequest, type AgentContinuationResult } from './agent-continuation.ts';
 import { type AssistantToolName, type AssistantTurnLease } from './turn-bindings.ts';
 import { type AssistantRemoteHost } from './remote.ts';
-import type { AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts';
+import type { AssistantQuickAnswerRequest, AssistantQuickAnswerResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts';
 export { buildAssistantPrompt, boundToolText, redactBoundaryText, type AssistantPrompt, type AssistantPromptAttachment, type AssistantPromptHistory, type AssistantPromptInput, } from './context.ts';
 export * from './agent-continuation.ts';
 export * from './approval.ts';
@@ -106,6 +106,7 @@ export declare class NoteAssistant extends Service implements AssistantRemoteHos
     private productionRequestConfig;
     currentSettings(): AssistantSettings;
     searchIntelligence(request: AssistantSearchIntelligenceRequest, signal: AbortSignal): Promise<AssistantSearchIntelligenceResult>;
+    quickAnswer(request: AssistantQuickAnswerRequest, signal: AbortSignal): Promise<AssistantQuickAnswerResult>;
     saveSettings(settings: AssistantSettings): Promise<void>;
     stageProposal(input: StageProposalInput): Promise<ProposalSummary>;
     listProposals(): Promise<ProposalSummary[]>;

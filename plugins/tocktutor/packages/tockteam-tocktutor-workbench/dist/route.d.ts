@@ -3,7 +3,7 @@ import type { TockTutorRouteOwnerProps } from '@tockteam/desktop/client';
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots';
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts';
-import type { WorkbenchSearchIntelligenceRemote, WorkbenchSearchIntelligenceResult } from './search-intelligence.ts';
+import type { WorkbenchQuickAnswerState, WorkbenchSearchIntelligenceRemote, WorkbenchSearchIntelligenceResult } from './search-intelligence.ts';
 import { type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx';
 import { type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts';
 import type { BaseHydratedFile } from './base-query.ts';
@@ -121,6 +121,7 @@ export interface WorkbenchRouteSnapshot {
     revision: string | null;
     saveStatus: EditorStatus;
     searchActiveIndex?: number | null;
+    searchAnswer?: WorkbenchQuickAnswerState;
     searchError?: string | null;
     searchIntelligenceStatus?: WorkbenchSearchIntelligenceResult['status'] | null;
     searchLoading?: boolean;
@@ -229,6 +230,9 @@ export declare class WorkbenchRouteController {
     private scheduleSearch;
     runSearch(): Promise<boolean>;
     private enhanceSearch;
+    runQuickAnswer(): Promise<boolean>;
+    cancelQuickAnswer(): void;
+    retryQuickAnswer(): Promise<boolean>;
     loadMoreSearch(): Promise<boolean>;
     loadFacets(): Promise<boolean>;
     loadGraph(mode: 'global' | 'local'): Promise<boolean>;
@@ -390,6 +394,9 @@ export interface TockTutorRouteViewProps {
     onRestoreTrash?(id: string): void;
     onSave(): void;
     onLoadMoreSearch?(): void;
+    onQuickAnswer?(): void;
+    onCancelQuickAnswer?(): void;
+    onRetryQuickAnswer?(): void;
     onRunSearch?(): void;
     onSaveWorkspace?(): void;
     onSearchActiveMove?(delta: number): void;
