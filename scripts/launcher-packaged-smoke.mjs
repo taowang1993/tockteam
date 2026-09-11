@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import { statSync } from 'node:fs'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { createServer } from 'node:net'
 import { spawn as spawnProcess, spawnSync } from 'node:child_process'
 import { cp, lstat, open, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -15,6 +15,8 @@ import { stopChildProcess } from './process-cleanup.mjs'
 import { runCanIUseInstalledSmoke } from './trusted-raycast-can-i-use-installed-proof.mjs'
 import { LAUNCHER_CSP, LAUNCHER_SESSION_PARTITION } from '../src/launcher-security.ts'
 import { canonicalPath, pathContained } from './path-identity.mjs'
+import { createFocusProofClient } from './trusted-raycast-focus-proof-client.ts'
+import { LAUNCHER_INSTALLED_FIRST_USE_FLAG } from '../src/launcher-proof-mode.ts'
 
 export { canonicalPath, pathContained }
 
@@ -593,9 +595,13 @@ async function clickExactText(page, text) {
   return true
 }
 
-async function clearStartupDialogs(page) {
+async function clickExactTextInactive(page, text) {
+  return await page.evaluate(`(() => { const element = [...document.querySelectorAll('button, summary')].find(candidate => candidate instanceof HTMLElement && candidate.textContent?.trim() === ${JSON.stringify(text)} && !candidate.hidden && candidate.getClientRects().length > 0 && !candidate.matches(':disabled')); if (!(element instanceof HTMLElement)) return false; element.click(); return true })()`)
+}
+
+async function clearStartupDialogs(page, click = clickExactText) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
-    const clicked = await clickExactText(page, 'Configure later') || await clickExactText(page, 'Continue')
+    const clicked = await click(page, 'Configure later') || await click(page, 'Continue')
     if (clicked) {
       await sleep(250)
       continue
@@ -964,9 +970,13 @@ export async function inspectPackage(outputDir, target, options = {}) {
 export async function launchPackaged(executable, userData, port, extraArgs = [], launchOptions = {}) {
   const childFlag = launchOptions.flag ?? smokeFlag
   const childEnvironment = launchOptions.env ?? { TOCKTEAM_PACKAGED_SMOKE: '1' }
+  const inactiveVisualProof = launchOptions.inactiveVisualProof === true
+  const focusProofNonce = inactiveVisualProof ? randomBytes(32).toString('hex') : undefined
   const temporaryRoot = process.platform === 'linux' ? await mkdtemp(join(tmpdir(), 'tt-')) : undefined
   await prepareSmokeEnvironmentRoots(userData, temporaryRoot)
   const childArgs = [
+    ...(inactiveVisualProof && process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
+    ...(inactiveVisualProof ? [LAUNCHER_INSTALLED_FIRST_USE_FLAG] : []),
     ...extraArgs,
     `--remote-debugging-address=127.0.0.1`,
     `--remote-debugging-port=${String(port)}`,
@@ -979,8 +989,15 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     child = spawnProcess(executable, childArgs, {
       cwd: root,
       detached: true,
-      env: smokeEnvironment(childEnvironment, userData, temporaryRoot),
-      stdio: ['ignore', 'pipe', 'pipe'],
+      env: smokeEnvironment({
+        ...childEnvironment,
+        ...(inactiveVisualProof ? {
+          TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF: '1',
+          TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE: focusProofNonce,
+          TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF: '1',
+        } : {}),
+      }, userData, temporaryRoot),
+      stdio: inactiveVisualProof ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe'],
     })
   } catch (error) {
     if (temporaryRoot !== undefined) await rm(temporaryRoot, { recursive: true, force: true })
@@ -989,6 +1006,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
   if (temporaryRoot !== undefined) packagedChildTempRoots.set(child, temporaryRoot)
   let stdout = ''
   let stderr = ''
+  const focus = inactiveVisualProof ? createFocusProofClient(child, focusProofNonce) : undefined
   const debug = process.env.TOCKTEAM_VERBOSE_PACKAGED_SMOKE === '1'
   child.stdout?.on('data', chunk => {
     const value = String(chunk)
@@ -1001,6 +1019,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     if (debug) process.stderr.write(`[packaged-app stderr] ${value}`)
   })
   try {
+    if (focus !== undefined) await focus.ready()
     const debug = process.env.TOCKTEAM_VERBOSE_PACKAGED_SMOKE === '1'
     const step = async (name, operation) => {
       if (debug) console.error(`[packaged-smoke] ${name}`)
@@ -1021,7 +1040,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     const workbenchDescriptor = selectCdpDescriptor(workbenchPages, 'TockCoder', port)
     assert.ok(workbenchDescriptor?.webSocketDebuggerUrl, 'TockCoder CDP page is missing its loopback debugger endpoint')
     const workbench = await step('connect to TockCoder', () => CdpPage.connect(workbenchDescriptor.webSocketDebuggerUrl))
-    await step('clear startup dialogs', () => clearStartupDialogs(workbench))
+    await step('clear startup dialogs', () => clearStartupDialogs(workbench, inactiveVisualProof ? clickExactTextInactive : clickExactText))
     await step('wait for runtime ready', () => waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.getRuntimeSnapshot())?.status)()'), status => status === 'ready', 120_000))
     await step('wait for Desktop browser client', () => waitFor(() => workbench.evaluate('document.documentElement.dataset.tockteamDesktop'), ready => ready === 'true', 60_000))
     await step('mark and show launcher', () => workbench.evaluate(`(async () => { window.__tockteamPackagedSmoke = { href: location.href, marker: 'workbench-alive' }; return await window.dshDesktop?.launcher?.show() })()`))
@@ -1034,6 +1053,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     return Object.freeze({
       child,
       diagnostics: () => collectPackagedProcessDiagnostics({ child, command: executable, args: childArgs, userData, stdout, stderr }),
+      focus,
       launcher,
       temporaryRoot,
       workbench,
@@ -1048,6 +1068,11 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
       processDiagnostics = `[packaged diagnostics unavailable: ${diagnosticText(diagnosticsError)}]`
     }
     const failure = new Error(`${error instanceof Error ? error.message : String(error)}\n${processDiagnostics}`)
+    try {
+      if (focus !== undefined && !focus.closed) await focus.shutdownAndWait()
+    } catch {
+      // Process cleanup below remains authoritative when the child already failed.
+    }
     try {
       await stopPackagedChild(child)
     } catch (cleanupError) {

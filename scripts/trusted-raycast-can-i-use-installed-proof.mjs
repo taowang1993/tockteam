@@ -5,7 +5,7 @@ import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts
 import { trustedRaycastDataPaths } from '../src/trusted-raycast-paths.ts'
 
 /** Real packaged renderer/main/child flow. The caller owns the disposable app and cleanup. */
-export async function runCanIUseInstalledSmoke(launcher, userData, { waitFor, clickExactText }) {
+export async function runCanIUseInstalledSmoke(launcher, userData, { waitFor, clickExactText }, { firstUseOnly = false, clickSelector = selector => launcher.clickSelector(selector) } = {}) {
   if (process.platform === 'win32') return Object.freeze({ verified: false, reason: 'Trusted runtime extraction requires /usr/bin/tar' })
   const wait = expression => waitFor(() => launcher.evaluate(expression), value => value === true, 15000)
   const input = (selector, value) => launcher.evaluate(`(() => { const input = document.querySelector(${JSON.stringify(selector)}); if (!(input instanceof HTMLInputElement)) throw Error('Expected input is missing'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event('input', { bubbles: true })); })()`)
@@ -42,17 +42,30 @@ export async function runCanIUseInstalledSmoke(launcher, userData, { waitFor, cl
   await wait(`document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 64 of 581 matches.') === true`)
   await input('#trusted-raycast-search', 'textcontent')
   await wait(`document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 1 of 1 matches.') === true`)
-  assert.equal(await launcher.clickSelector('button[aria-label="Show Details"]'), true, 'Can I Use Show Details is not actionable')
+  assert.equal(await clickSelector('button[aria-label="Show Details"]'), true, 'Can I Use Show Details is not actionable')
   await wait(`document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 14 of 14 browsers.') === true`)
+  if (firstUseOnly) {
+    assert.equal(await clickSelector('button[aria-label="Open in Browser"]'), true, 'Can I Use browser effect is not actionable')
+    await wait(`document.querySelector('[role="alert"]')?.textContent?.includes('Browser opening is disabled') === true`)
+  }
   await launcher.pressKey('Escape')
   await wait(`document.querySelector('#trusted-raycast-search')?.value === 'textcontent' && document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 1 of 1 matches.') === true`)
   await launcher.pressKey('Escape')
   await wait(`document.querySelector('section[aria-label="Can I Use"]') === null`)
+  let warmReopen = false
+  if (firstUseOnly) {
+    await open('Can I Use', 'can-i-use:index')
+    await wait(`document.querySelector('section[aria-label="Can I Use"]') !== null`)
+    assert.equal(await launcher.evaluate(`[...document.querySelectorAll('button')].some(button => button.textContent === 'Approve and Open')`), false, 'warm Can I Use unexpectedly requested approval')
+    await launcher.pressKey('Escape')
+    await wait(`document.querySelector('section[aria-label="Can I Use"]') === null`)
+    warmReopen = true
+  }
   const paths = trustedRaycastDataPaths(userData, 'can-i-use')
   const preferences = JSON.parse(await readFile(paths.preferencesFile, 'utf8'))
   assert.equal(preferences.defaultQuery, 'chrome 100')
   const identity = JSON.parse(await readFile(join(paths.installRoot, 'current/build.json'), 'utf8'))
   assert.equal(identity.artifactSha256, trustedRaycastDescriptors['can-i-use'].artifactSha256)
   assert.deepEqual(await legacy(), before)
-  return Object.freeze({ verified: true, artifactSha256: identity.artifactSha256, childSha256: identity.childSha256, detailRows: 14, preferencesPersisted: true, backPreservedQuery: true, legacyPreferencesUnchanged: true, externalEffectsInvoked: false })
+  return Object.freeze({ verified: true, artifactSha256: identity.artifactSha256, childSha256: identity.childSha256, detailRows: 14, preferencesPersisted: true, backPreservedQuery: true, legacyPreferencesUnchanged: true, externalEffectsInvoked: false, ...(firstUseOnly ? { warmReopen } : {}) })
 }

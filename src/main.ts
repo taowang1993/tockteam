@@ -214,6 +214,7 @@ import { createDesktopAppUpdater, type DesktopAppUpdater } from './app-update.ts
 import { migrateLegacyDesktopState } from './data-root.ts'
 import { RuntimeStartCancelledError, RuntimeStartGate } from './runtime-start-gate.ts'
 import { installLauncherFocusProof, type LauncherFocusProofApp, type LauncherFocusProofChannel } from './launcher-focus-proof.ts'
+import { resolveLauncherProofMode } from './launcher-proof-mode.ts'
 import {
   handleUnexpectedRuntimeExit,
   stopLiveRuntimeForMarketplace,
@@ -240,7 +241,16 @@ const launcherPackagedSmokeEnabled = app.isPackaged
 if (process.platform === 'darwin' && launcherPackagedSmokeEnabled) app.commandLine.appendSwitch('use-mock-keychain')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
-const launcherInactiveVisualProofEnabled = !app.isPackaged && process.env.TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF === '1'
+const launcherProofMode = resolveLauncherProofMode({
+  argv: process.argv,
+  denyEffectsRequested: process.env.TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF === '1',
+  inactiveRequested: process.env.TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF === '1',
+  ipcConnected: typeof process.send === 'function' && process.connected === true,
+  isPackaged: app.isPackaged,
+  nonce: process.env.TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE,
+  packagedSmokeEnabled: launcherPackagedSmokeEnabled,
+})
+const launcherInactiveVisualProofEnabled = launcherProofMode.inactive
 installLauncherFocusProof({
   app: app as unknown as LauncherFocusProofApp,
   channel: typeof process.send === 'function' ? process as unknown as LauncherFocusProofChannel : undefined,
@@ -251,7 +261,7 @@ installLauncherFocusProof({
   scheduleExit: callback => { setImmediate(callback) },
   shutdown: code => { void requestSecureQuit('visual-proof', code) },
 })
-const trustedRaycastDenyEffectsProofEnabled = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF === '1'
+const trustedRaycastDenyEffectsProofEnabled = launcherProofMode.installedFirstUse || (!app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF === '1')
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
 const configuredLauncherWorkflowFixtureActionTtlMs = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS !== undefined
