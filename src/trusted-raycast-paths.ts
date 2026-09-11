@@ -19,9 +19,9 @@ export function trustedRaycastDataPaths(userData: string, extensionId: TrustedRa
     trustFile: join(launcher, 'trusted-raycast-trust.json'),
   })
   return Object.freeze({
-    installRoot: join(launcher, 'trusted-raycast-install', 'kaomoji-search'),
-    preferencesFile: join(launcher, 'trusted-raycast-preferences-kaomoji-search.json'),
-    stateFile: join(launcher, 'trusted-raycast-state-kaomoji-search.json'),
-    trustFile: join(launcher, 'trusted-raycast-trust-kaomoji-search.json'),
+    installRoot: join(launcher, 'trusted-raycast-install', extensionId),
+    preferencesFile: join(launcher, `trusted-raycast-preferences-${extensionId}.json`),
+    stateFile: join(launcher, `trusted-raycast-state-${extensionId}.json`),
+    trustFile: join(launcher, `trusted-raycast-trust-${extensionId}.json`),
   })
 }

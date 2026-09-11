@@ -29,10 +29,16 @@ const EXPECTED = Object.freeze({
     sourceRevision: 'b7845053e3f39dadcf984217be5249fb51ab2ce8',
     vendorFile: 'kaomoji-search.tar',
   }),
+  'can-i-use': Object.freeze({
+    artifactRoot: 'tockteam-raycast-can-i-use-artifact',
+    artifactSha256: '0e23b06703ad85e91f9c6793c5de689204e9fe3bdb0fed3106a1324406bf3858',
+    command: 'index', previousArtifactSha256s: [], react: '19.0.0', reconciler: '0.31.0',
+    sourceEntry: 'src/index.tsx', sourceRevision: '186d955eda64f9e956b25a3fdf5566b1d38f57f2', vendorFile: 'can-i-use.tar',
+  }),
 })
 
-test('trusted Raycast registry contains exactly the two reviewed extension descriptors', () => {
-  assert.deepEqual(TRUSTED_RAYCAST_EXTENSION_IDS, ['google-translate', 'kaomoji-search'])
+test('trusted Raycast registry contains exactly the three reviewed extension descriptors', () => {
+  assert.deepEqual(TRUSTED_RAYCAST_EXTENSION_IDS, ['google-translate', 'kaomoji-search', 'can-i-use'])
   assert.deepEqual(Object.keys(trustedRaycastDescriptors), TRUSTED_RAYCAST_EXTENSION_IDS)
   for (const id of TRUSTED_RAYCAST_EXTENSION_IDS) {
     const descriptor = getTrustedRaycastDescriptor(id)

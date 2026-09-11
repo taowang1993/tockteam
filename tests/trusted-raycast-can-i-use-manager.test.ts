@@ -20,11 +20,12 @@ const nodes = (root: TrustedRaycastViewNode, type: string): TrustedRaycastViewNo
   ...(root.type === type ? [root] : []), ...root.children.flatMap(child => typeof child === 'string' ? [] : nodes(child, type)),
 ]
 
-test('the internal Can I Use candidate does not admit public trust or native requests', () => {
+test('Can I Use admits explicit trust management but never child-native effects', () => {
   assert.equal(getTrustedRaycastRuntimeDescriptor('can-i-use')!.extensionId, 'can-i-use')
-  assert.equal(getTrustedRaycastDescriptor('can-i-use'), undefined)
-  for (const action of ['prepare', 'approve', 'cancel', 'disable']) assert.equal(isTrustedRaycastTrustRequest({ extensionId: 'can-i-use', action }), false)
-  assert.equal(isTrustedRaycastNativeRequest({ type: 'nativeRequest', extensionId: 'can-i-use', sessionId: 's', generation: 'g', requestId: 'request', kind: 'openBrowser', payload: 'https://caniuse.com/css-grid' }), false)
+  assert.equal(getTrustedRaycastDescriptor('can-i-use')!.extensionId, 'can-i-use')
+  for (const action of ['prepare', 'apply', 'enable', 'disable', 'recover', 'remove']) assert.equal(isTrustedRaycastTrustRequest({ extensionId: 'can-i-use', action }), true)
+  for (const kind of ['copy', 'paste']) assert.equal(isTrustedRaycastNativeRequest({ type: 'native', extensionId: 'can-i-use', sessionId: 's', generation: 'g', requestId: 'request', kind, revision: 0, eventId: 'event', text: 'owned' }), false)
+  assert.equal(isTrustedRaycastNativeRequest({ type: 'native', extensionId: 'can-i-use', sessionId: 's', generation: 'g', requestId: 'request', kind: 'selectedText' }), false)
 })
 
 test('Can I Use configures before source import and rejects invalid or replayed preference submissions', { timeout: 30000, skip: process.platform !== 'darwin' }, async () => {

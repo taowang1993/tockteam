@@ -332,7 +332,7 @@ export type TrustedRaycastNativeRequest = Readonly<
 export type TrustedRaycastNativeOutcome = Readonly<{ type: 'nativeOutcome'; extensionId: TrustedRaycastExtensionId; requestId: string; succeeded: boolean; message: string; result?: string }>
 
 export function isTrustedRaycastNativeRequest(value: unknown): value is TrustedRaycastNativeRequest {
-  if (!isRecord(value) || value.type !== 'native' || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.requestId, 128)) return false
+  if (!isRecord(value) || value.type !== 'native' || value.extensionId === 'can-i-use' || getTrustedRaycastDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.requestId, 128)) return false
   const base = ['type', 'extensionId', 'sessionId', 'generation', 'requestId', 'kind']
   if (value.kind === 'selectedText') return value.extensionId === 'google-translate' && exactKeys(value, base)
   const scoped = ['revision', 'eventId']

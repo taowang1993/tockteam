@@ -33,6 +33,12 @@ test('view IPC authenticates before parsing and disposes only its finite handler
   await assert.rejects(Promise.resolve(trust(sender, { extensionId: 'google-translate', action: 'enable' }, 'extra')), /Invalid/)
   const enabled = (await trust(sender, { extensionId: 'google-translate', action: 'enable' })) as Readonly<{ ok: true; state: { enabled: boolean } }>
   assert.equal(enabled.state.enabled, true)
+  const bridge = createLauncherPreloadBridge({ invoke: async (channel, ...args) => await handlers.get(channel)!(sender, ...args), on: () => {} })
+  assert.deepEqual(await bridge.getTrustedRaycastTrust('can-i-use'), trustState)
+  const canIUse = await bridge.trustedRaycastTrustAction('can-i-use', 'enable')
+  assert.equal(canIUse.extensionId, 'can-i-use'); assert.equal(canIUse.state.enabled, true)
+  await assert.rejects(Promise.resolve(handlers.get(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.state)!({}, 'can-i-use')), /untrusted/)
+  await assert.rejects((bridge.trustedRaycastTrustAction as (id: string, action: string) => Promise<unknown>)('can-i-use', 'launch'), /Invalid/)
   dispose(); dispose(); assert.equal(handlers.size, 0)
 })
 test('projection rejects unknown families, oversized text, nonfinite properties and foreign keys', () => {

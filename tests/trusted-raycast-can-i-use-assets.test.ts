@@ -30,7 +30,7 @@ test('the admitted snapshot supplies immutable real feature data without enablin
   assert.ok(Object.isFrozen(row))
   assert.throws(() => data.support(identity, 'defaults'), { code: 'DATA_UNAVAILABLE' })
   assert.throws(() => data.support(identity, '> 1%'), { code: 'QUERY_UNSUPPORTED' })
-  assert.deepEqual(TRUSTED_RAYCAST_EXTENSION_IDS, ['google-translate', 'kaomoji-search'])
+  assert.deepEqual(TRUSTED_RAYCAST_EXTENSION_IDS, ['google-translate', 'kaomoji-search', 'can-i-use'])
 })
 
 test('missing, alternate, damaged and path-shaped inputs fail with a fixed error', () => {

@@ -10,6 +10,7 @@ const COPY = Object.freeze({
     intro: 'Reviewed trusted extensions execute third-party code with account-level authority outside the launcher renderer. Installation verifies the reviewed archive digest before anything loads.',
     name: 'Google Translate · Trusted Raycast',
     kaomojiName: 'Kaomoji Search · Trusted Raycast',
+    canIUseName: 'Can I Use · Trusted Raycast',
     notInstalled: 'Not Installed',
     installedDisabled: 'Installed · Disabled',
     installedEnabled: 'Installed · Enabled',
@@ -33,6 +34,7 @@ const COPY = Object.freeze({
     intro: '经审核的可信扩展会在启动器渲染器之外以账户级权限执行第三方代码。安装会在任何代码加载前校验已审核归档的摘要。',
     name: 'Google 翻译 · 可信 Raycast',
     kaomojiName: 'Kaomoji Search · 可信 Raycast',
+    canIUseName: 'Can I Use · 可信 Raycast',
     notInstalled: '未安装',
     installedDisabled: '已安装 · 已停用',
     installedEnabled: '已安装 · 已启用',
@@ -72,7 +74,7 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   header.append(title, close)
   const content = document.createElement('div'); content.className = 'launcher-command-content'
   const intro = document.createElement('p'); intro.className = 'launcher-command-status'; intro.textContent = copy.intro
-  const tabs = document.createElement('div'); tabs.className = 'flex gap-2'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', copy.title)
+  const tabs = document.createElement('div'); tabs.className = 'flex flex-wrap gap-2'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', copy.title)
   const status = document.createElement('p'); status.className = 'launcher-command-status'; status.setAttribute('role', 'status')
   const digestLine = document.createElement('p'); digestLine.className = 'launcher-command-status [overflow-wrap:anywhere]'; digestLine.hidden = true
   const previous = document.createElement('p'); previous.className = 'launcher-command-status'; previous.hidden = true
@@ -138,7 +140,7 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
       error.textContent = `${copy.actionFailed}: ${failure instanceof Error ? failure.message : 'Unavailable'}`; error.hidden = false
     }).finally(() => { if (sequence === requestSequence) { busy = false; if (state) render(state) } })
   }
-  for (const [extensionId, label] of [['google-translate', copy.name], ['kaomoji-search', copy.kaomojiName]] as const) {
+  for (const [extensionId, label] of [['google-translate', copy.name], ['kaomoji-search', copy.kaomojiName], ['can-i-use', copy.canIUseName]] as const) {
     const tab = document.createElement('button'); tab.type = 'button'; tab.className = buttonClass; tab.textContent = label; tab.setAttribute('role', 'tab'); tab.setAttribute('data-extension-id', extensionId); tab.addEventListener('click', () => load(extensionId)); tabs.append(tab)
   }
   load('google-translate')

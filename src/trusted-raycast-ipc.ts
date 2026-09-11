@@ -10,7 +10,7 @@ import {
   type TrustedRaycastTrustStateEnvelope,
   type TrustedRaycastViewEvent,
 } from './trusted-raycast-contract.ts'
-import type { TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
+import { getTrustedRaycastDescriptor, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 import type { LauncherIpcGuard, LauncherIpcMain } from './launcher-window-ipc.ts'
 import { registerLauncherOwnedIpcHandlers } from './launcher-window-ipc.ts'
 
@@ -37,8 +37,9 @@ export function registerTrustedRaycastIpcHandlers(args: Readonly<{
     }],
     [TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.state, async (event: unknown, extensionId: unknown, ...extra: unknown[]) => {
       args.guard.assert(event, 'launcher')
-      if (extra.length !== 0 || (extensionId !== 'google-translate' && extensionId !== 'kaomoji-search')) throw new Error('Invalid Trusted Extensions state identity')
-      const state = args.getTrust(extensionId)
+      const descriptor = getTrustedRaycastDescriptor(extensionId)
+      if (extra.length !== 0 || descriptor === undefined) throw new Error('Invalid Trusted Extensions state identity')
+      const state = args.getTrust(descriptor.extensionId)
       if (!isTrustedRaycastTrustStateEnvelope(state) || state.extensionId !== extensionId) throw new Error('Invalid Trusted Extensions state')
       return state
     }],

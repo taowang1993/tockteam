@@ -21,7 +21,7 @@ import {
 import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastTrustAction, isTrustedRaycastTrustResult, isTrustedRaycastTrustStateEnvelope, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastTrustAction, type TrustedRaycastTrustResult, type TrustedRaycastTrustState, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
-import type { TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
+import { getTrustedRaycastDescriptor, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 
 type IpcInvoker = Readonly<{
   invoke: (channel: string, args?: unknown) => Promise<unknown>
@@ -143,14 +143,14 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
     },
     getTrustedRaycastTrust: async (extensionId: TrustedRaycastExtensionId, ...extra: unknown[]): Promise<TrustedRaycastTrustState> => {
       assertArity('getTrustedRaycastTrust', [extensionId, ...extra], 1)
-      if (extensionId !== 'google-translate' && extensionId !== 'kaomoji-search') throw new Error('Invalid Trusted Extensions state identity')
+      if (getTrustedRaycastDescriptor(extensionId) === undefined) throw new Error('Invalid Trusted Extensions state identity')
       const envelope = await ipcRenderer.invoke(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.state, extensionId)
       if (!isTrustedRaycastTrustStateEnvelope(envelope) || envelope.extensionId !== extensionId) throw new Error('Invalid Trusted Extensions state')
       return envelope.state
     },
     trustedRaycastTrustAction: async (extensionId: TrustedRaycastExtensionId, action: unknown, ...extra: unknown[]): Promise<TrustedRaycastTrustResult> => {
       assertArity('trustedRaycastTrustAction', [extensionId, action, ...extra], 2)
-      if ((extensionId !== 'google-translate' && extensionId !== 'kaomoji-search') || !isTrustedRaycastTrustAction(action)) throw new Error('Invalid Trusted Extensions action')
+      if (getTrustedRaycastDescriptor(extensionId) === undefined || !isTrustedRaycastTrustAction(action)) throw new Error('Invalid Trusted Extensions action')
       const result = await ipcRenderer.invoke(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.action, { extensionId, action })
       if (!isTrustedRaycastTrustResult(result) || result.extensionId !== extensionId) throw new Error('Invalid Trusted Extensions action result')
       return result

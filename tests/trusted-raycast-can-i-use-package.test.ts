@@ -3,13 +3,14 @@ import { test } from 'node:test'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 // @ts-expect-error First-party source builder.
 import { buildTrustedRaycast } from '../scripts/trusted-raycast-build.mjs'
 import { getTrustedRaycastRuntimeDescriptor } from '../src/trusted-raycast-descriptors.ts'
 import { admitTrustedRaycastArtifact, readTrustedRaycastBuildIdentity } from '../src/trusted-raycast-artifact-admission.ts'
 import { TrustedRaycastTrustStore } from '../src/trusted-raycast-trust.ts'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
+import { trustedRaycastDataPaths } from '../src/trusted-raycast-paths.ts'
 
 test('Can I Use ships its admitted artifact and surviving legal inventory without touching other extensions', { skip: process.platform === 'win32', timeout: 30000 }, async () => {
   const descriptor = getTrustedRaycastRuntimeDescriptor('can-i-use')!
@@ -30,13 +31,17 @@ test('Can I Use ships its admitted artifact and surviving legal inventory withou
   const manager = new TrustedRaycastManager({ runtimeDir: join(root, 'trusted-raycast-can-i-use'), nodePath: process.execPath, onMessage: () => {} })
   try {
     mkdirSync(join(root, 'profile'), { recursive: true })
-    const legacy = ['google-translate', 'kaomoji-search'].map(id => join(root, 'profile', `${id}.json`))
-    for (const file of legacy) writeFileSync(file, 'user-owned legacy state')
+    const paths = trustedRaycastDataPaths(join(root, 'profile'), 'can-i-use')
+    const legacy = (['google-translate', 'kaomoji-search'] as const).flatMap(id => {
+      const other = trustedRaycastDataPaths(join(root, 'profile'), id)
+      return [other.preferencesFile, other.stateFile, other.trustFile]
+    })
+    for (const file of legacy) { assert.equal(Object.values(paths).includes(file), false); mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, 'user-owned legacy state') }
     await buildTrustedRaycast(root, artifact, 'can-i-use')
     const candidate = join(root, 'trusted-raycast-can-i-use')
     assert.equal(readTrustedRaycastBuildIdentity(candidate, descriptor).artifactSha256, descriptor.artifactSha256)
     const store = new TrustedRaycastTrustStore({ descriptor, candidateDir: candidate,
-      installRoot: join(root, 'profile', 'can-i-use'), stateFile: join(root, 'profile', 'can-i-use-trust.json'),
+      installRoot: paths.installRoot, stateFile: paths.trustFile,
       preview: directory => manager.previewRuntime(directory, 'can-i-use') })
     store.stage(); await store.preview(); store.apply(); store.enable()
     assert.equal(store.status().digestApproved, true)

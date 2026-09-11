@@ -30,6 +30,20 @@ test('catalog requires live Host capability, an installed enabled candidate, and
   assert.equal(manage!.id, 'trusted-raycast:trust')
   assert.equal(trustedRaycastCatalog(true, { ...approved, installed: false, enabled: false }, { ...approved, installed: true, enabled: true })[0]!.id, 'trusted-raycast:kaomoji-search:index')
 })
+test('Can I Use appears only with its own approved installation and fixed command image', () => {
+  const approved = { digest: 'c'.repeat(64), digestApproved: true, enabled: true, installed: true }
+  const absent = { ...approved, enabled: false, installed: false }
+  for (const trust of [absent, { ...approved, digestApproved: false }, { ...approved, digest: '' }]) {
+    assert.deepEqual(trustedRaycastCatalog(true, absent, absent, trust).map(row => row.id), ['trusted-raycast:trust'])
+  }
+  assert.deepEqual(trustedRaycastCatalog(false, approved, approved, approved), [])
+  const [row] = trustedRaycastCatalog(true, absent, absent, approved)
+  assert.equal(row!.id, 'trusted-raycast:can-i-use:index')
+  assert.equal(row!.defaultAction.handlerKey, 'trusted-raycast-can-i-use')
+  assert.equal(row!.defaultAction.hideWindowAfterInvocation, false)
+  assert.equal(trustedRaycastAssetUrl(row!.imageKey), './trusted-raycast-can-i-use/can-i-use.png')
+})
+
 test('Desktop Host effect alone owns activation and disposal', async () => {
   const channel = new DesktopTrustedRaycastChannel(async () => {})
   const env = await channel.start()
