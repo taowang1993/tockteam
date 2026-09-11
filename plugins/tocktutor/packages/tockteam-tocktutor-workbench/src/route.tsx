@@ -3661,8 +3661,10 @@ function NoteSearchAnswer(props: {
 
 function WorkbenchNoteSearchPalette(props: {
   onClose(): void
+  onCloseAutoFocus(event: Event): void
   onCommands(): void
   onHidePreview?: () => void
+  onOpenAutoFocus(): void
   onLoadMoreSearch: (() => void) | undefined
   onRunSearch: (() => void) | undefined
   onSearchChange: ((query: string) => void) | undefined
@@ -3710,6 +3712,8 @@ function WorkbenchNoteSearchPalette(props: {
       <DialogContent
         unstyled
         className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[640px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[960px] -translate-1/2 grid-rows-[56px_42px_auto_minmax(0,1fr)_40px] overflow-hidden rounded-[14px] border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-text)_6%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        onCloseAutoFocus={props.onCloseAutoFocus}
+        onOpenAutoFocus={props.onOpenAutoFocus}
         overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--tt-text)_28%,transparent)]"
         showCloseButton={false}
       >
@@ -3722,7 +3726,6 @@ function WorkbenchNoteSearchPalette(props: {
             aria-controls="tocktutor-search-results"
             aria-expanded="true"
             aria-label="Search Notes Query"
-            autoFocus
             role="combobox"
             className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] font-medium text-[var(--tt-text)] outline-none placeholder:text-[var(--tt-muted)]"
             maxLength={1_000}
@@ -3866,6 +3869,7 @@ function WorkbenchNoteSearchPalette(props: {
 
 function WorkbenchCommandPalette(props: {
   canGoBack: boolean
+  onOpenAutoFocus(): void
   canGoForward: boolean
   canReopen: boolean
   editorEnabled: boolean
@@ -3903,6 +3907,7 @@ function WorkbenchCommandPalette(props: {
       <DialogContent
         unstyled
         className="fixed top-[42%] left-1/2 -ml-[5px] z-[2147483647] grid h-[520px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[640px] -translate-x-1/2 -translate-y-[42%] grid-rows-[60px_minmax(0,1fr)_44px] overflow-hidden rounded-[12px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        onOpenAutoFocus={() => { props.onOpenAutoFocus() }}
         overlayClassName="z-[2147483646] !bg-transparent"
         showCloseButton={false}
       >
@@ -3913,7 +3918,6 @@ function WorkbenchCommandPalette(props: {
             <CommandInput
               unstyled
               aria-label="Search Commands"
-              autoFocus
               className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] font-medium text-[var(--tt-text)] outline-none placeholder:text-[var(--tt-muted)]"
               maxLength={200}
               onValueChange={setQuery}
@@ -4047,6 +4051,25 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [baseSearches, setBaseSearches] = useState<Record<string, string>>({})
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  const paletteOpener = useRef<HTMLElement | null>(null)
+  const rememberPaletteOpener = (): void => {
+    if (paletteOpener.current?.isConnected === true) return
+    const activeElement = document.activeElement
+    if (activeElement instanceof HTMLElement && activeElement !== document.body) paletteOpener.current = activeElement
+  }
+  const restorePaletteOpener = (event: Event): void => {
+    const opener = paletteOpener.current
+    paletteOpener.current = null
+    if (opener === null || !opener.isConnected || opener.closest('[aria-hidden="true"], [inert]') !== null) return
+    event.preventDefault()
+    opener.focus()
+  }
+  const openSearch = (opener?: HTMLElement): void => {
+    if (opener !== undefined) paletteOpener.current = opener
+    else rememberPaletteOpener()
+    setPaletteView('notes')
+    props.onOpenSearch?.()
+  }
   useEffect(() => {
     setBaseView(null)
     setBaseSearches({})
@@ -4140,7 +4163,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
-                  <Button unstyled aria-label="Search Notes" className="border-0 bg-transparent p-0" disabled={props.onOpenSearch === undefined} onClick={() => { setPaletteView('notes'); props.onOpenSearch?.() }} type="button"><Search aria-hidden="true" /></Button>
+                  <Button unstyled aria-label="Search Notes" className="border-0 bg-transparent p-0" disabled={props.onOpenSearch === undefined} onClick={event => { openSearch(event.currentTarget); }} type="button"><Search aria-hidden="true" /></Button>
                 </span>
               </TooltipTrigger>
               <TooltipContent>Search Notes</TooltipContent>
@@ -4262,18 +4285,21 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           editorEnabled={snapshot.documentKind === 'markdown' && snapshot.mode !== 'reading'}
           onBack={props.onBack}
           onClose={() => { setPaletteView(null); props.onCloseCommandPalette?.() }}
+          onOpenAutoFocus={rememberPaletteOpener}
           onEditorCommand={props.onEditorCommand}
           onForward={props.onForward}
           onNewNote={props.onNewNote}
           onReopen={props.onReopenClosedTab}
-          onSearch={() => { setPaletteView('notes'); props.onOpenSearch?.() }}
+          onSearch={() => { openSearch() }}
           onToggleFocus={props.onToggleFocusMode}
         />
       )}
       {visiblePalette === 'notes' && (
         <WorkbenchNoteSearchPalette
           onClose={() => { setPaletteView(null); props.onCloseCommandPalette?.(); props.onCloseSearch?.() }}
+          onCloseAutoFocus={restorePaletteOpener}
           onCommands={() => { setPaletteView('commands'); props.onOpenCommandPalette?.(); props.onCloseSearch?.() }}
+          onOpenAutoFocus={rememberPaletteOpener}
           {...(props.onHideSearchPreview === undefined ? {} : { onHidePreview: props.onHideSearchPreview })}
           onLoadMoreSearch={props.onLoadMoreSearch}
           onQuickAnswer={props.onQuickAnswer}

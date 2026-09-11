@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   TockTutorRoute,
@@ -1183,6 +1183,72 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onCloseSearch).toHaveBeenCalledOnce()
     expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()
     expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
+  })
+
+  it('returns focus to the Search Notes button after pointer dismissal', async () => {
+    renderRoute({ searchQuery: 'lesson' }, { onOpenSearch: vi.fn() })
+    const opener = screen.getByRole('button', { name: 'Search Notes' })
+    opener.focus()
+    fireEvent.click(opener)
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]')
+    if (!(overlay instanceof HTMLElement)) throw new Error('Search Notes overlay not found')
+    await new Promise(resolve => setTimeout(resolve, 0))
+    fireEvent.pointerDown(overlay, { button: 0 })
+    fireEvent.click(overlay)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull())
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('returns focus to the Search Notes button after keyboard dismissal', async () => {
+    renderRoute({ searchQuery: 'lesson' }, { onOpenSearch: vi.fn() })
+    const opener = screen.getByRole('button', { name: 'Search Notes' })
+    opener.focus()
+    fireEvent.click(opener)
+    const dialog = await screen.findByRole('dialog', { name: 'Search Notes' })
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull())
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('restores focus to the previous control when a shortcut command opens Search Notes', async () => {
+    function ShortcutHarness(): ReactNode {
+      const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+      return <div onKeyDown={event => {
+        if (event.metaKey && event.key.toLocaleLowerCase() === 'p') {
+          event.preventDefault()
+          setCommandPaletteOpen(true)
+        }
+      }}>
+        <button onClick={() => {}} type="button">Editor Focus</button>
+        <TockTutorRouteView
+          onActivateTab={() => {}}
+          onAddPane={() => {}}
+          onCloseCommandPalette={() => { setCommandPaletteOpen(false) }}
+          onEdit={() => {}}
+          onFocusPane={() => {}}
+          onMode={() => {}}
+          onMoveCanvas={() => {}}
+          onOpenSearch={() => {}}
+          onSave={() => {}}
+          onSelect={() => {}}
+          onToggleTask={() => {}}
+          snapshot={{ ...snapshot, commandPaletteOpen }}
+        />
+      </div>
+    }
+
+    render(<ShortcutHarness />)
+    const previousFocus = screen.getByRole('button', { name: 'Editor Focus' })
+    previousFocus.focus()
+    fireEvent.keyDown(previousFocus, { key: 'p', metaKey: true })
+    const commandInput = await screen.findByRole('combobox', { name: 'Search Commands' })
+    fireEvent.keyDown(commandInput, { key: 'ArrowDown' })
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Search Notes' }).getAttribute('aria-selected')).toBe('true'))
+    fireEvent.keyDown(commandInput, { key: 'Enter' })
+    await screen.findByRole('dialog', { name: 'Search Notes' })
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Search Notes Query' }), { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull())
+    expect(document.activeElement).toBe(previousFocus)
   })
 
   it('shows Obsidian search operators and inserts the selected operator', async () => {
