@@ -38,6 +38,12 @@ test('Electron harness uses inherited IPC shutdown and read-only bounded residue
   assert.doesNotMatch(harness, /process\.kill|stopChildProcess|assertProcessTreeGone|System Events|rm\(finalEvidence|renameSync\(evidence, finalEvidence/u)
 })
 
+test('inactive Electron proof windows cannot accept focus and avoid implicit maximize activation', async () => {
+  const main = await readFile(new URL('../src/main.ts', import.meta.url), 'utf8')
+  assert.equal(main.match(/focusable: !launcherInactiveVisualProofEnabled/g)?.length, 2)
+  assert.match(main, /options.preview !== true && !launcherInactiveVisualProofEnabled\) window.maximize\(\)/)
+})
+
 test('Electron proof validates canonical Kaomoji data URLs with their rendered theme fill', () => {
   const decoded = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" >\n  <text dominant-baseline="middle" x="45" y="45" text-anchor="middle" fill="#fff" font-size="8px" text-length="90" length-adjust="spacing">\n    &#40;&#94;&#95;&#94;&#41;\n  </text>\n</svg>'
   const source = `data:image/svg+xml;base64,${Buffer.from(decoded).toString('base64')}`

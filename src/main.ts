@@ -1662,6 +1662,7 @@ function createLauncherWindow(args: Readonly<{
 }>): BrowserWindow {
   const window = new BrowserWindow({
     alwaysOnTop: true,
+    focusable: !launcherInactiveVisualProofEnabled,
     frame: false,
     fullscreenable: false,
     height: 475,
@@ -3042,6 +3043,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     height: options.preview === true ? 760 : 840,
     minWidth: 900,
     minHeight: 620,
+    focusable: !launcherInactiveVisualProofEnabled,
     show: false,
     title: options.title ?? PRODUCT_NAME,
     ...(process.platform === 'darwin'
@@ -3060,7 +3062,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   })
   const windowId = String(window.webContents.id)
   window.webContents.setZoomFactor(DEFAULT_UI_ZOOM_FACTOR)
-  if (options.preview !== true) window.maximize()
+  if (options.preview !== true && !launcherInactiveVisualProofEnabled) window.maximize()
   window.once('ready-to-show', () => { if (launcherInactiveVisualProofEnabled) window.showInactive(); else window.show() })
   window.on('close', event => {
     if (options.preview === true || !shouldCloseToTray({
