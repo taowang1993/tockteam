@@ -51,7 +51,7 @@ async function boot(phase: 'seed' | 'verify'): Promise<void> {
     page = await CdpPage.connect(target.webSocketDebuggerUrl)
     let mounted = false
     while (Date.now() < deadline) {
-      const state = await page.evaluate('({ mounted: document.documentElement.dataset.tockteamDesktop === "true", body: document.body?.innerText ?? "" })')
+      const state = await page.evaluate('({ mounted: document.documentElement?.dataset.tockteamDesktop === "true", body: document.body?.innerText ?? "" })')
       assert.ok(!state.body.includes('Failed to load plugins'), state.body.slice(0, 5000))
       if (state.mounted) { mounted = true; break }
       await new Promise(resolve => setTimeout(resolve, 100))
