@@ -365,6 +365,7 @@ export interface TockTutorRouteViewProps {
     onEdit(source: string): void;
     onEditorCommand?(command: EditorCommandId): void;
     onExtractSelection?(): void;
+    onFocusEditor?(): void;
     onFocusPane(paneId: string): void;
     onForward?(): void;
     onInsertCurrentDateTime?(kind: 'date' | 'time'): void;

@@ -13,6 +13,7 @@ import { Textarea } from '@tockteam/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@tockteam/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -3303,6 +3304,7 @@ export interface TockTutorRouteViewProps {
   onEdit(source: string): void
   onEditorCommand?(command: EditorCommandId): void
   onExtractSelection?(): void
+  onFocusEditor?(): void
   onFocusPane(paneId: string): void
   onForward?(): void
   onInsertCurrentDateTime?(kind: 'date' | 'time'): void
@@ -3567,10 +3569,9 @@ function NoteSearchResultList(props: {
   error: string | null | undefined
   loading: boolean
   matches: readonly VaultSearchMatch[]
-  onClose(): void
   onLoadMore(): void
   onPreview(choice: number): void
-  onSelect(match: VaultSearchMatch): Promise<boolean> | boolean | void
+  onSelect(match: VaultSearchMatch): void
   previewMatchIndex: number
   query: string
 }): ReactNode {
@@ -3600,9 +3601,7 @@ function NoteSearchResultList(props: {
                   const active = group.matches.some(entry => entry.index === props.previewMatchIndex)
                   return <li key={group.path}>
                     <Button unstyled aria-current={active ? 'true' : undefined} aria-label={`Open ${first.match.path}`} aria-selected={active} className="grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" id={`tocktutor-search-result-${String(group.index)}`} onClick={() => {
-                        const selected = props.onSelect(first.match)
-                        if (selected instanceof Promise) void selected.then(success => { if (success !== false) props.onClose() })
-                        else if (selected !== false) props.onClose()
+                        void props.onSelect(first.match)
                       }} onFocus={() => { props.onPreview(first.index) }} onMouseEnter={() => { props.onPreview(first.index) }} role="option" type="button">
                       <FileText aria-hidden="true" className="mt-0.5 text-[var(--tt-muted)]" strokeWidth={1.6} />
                       <span className="min-w-0">
@@ -3660,7 +3659,7 @@ function NoteSearchAnswer(props: {
 }
 
 function WorkbenchNoteSearchPalette(props: {
-  onClose(): void
+  onClose(navigation?: boolean): void
   onCloseAutoFocus(event: Event): void
   onCommands(): void
   onHidePreview?: () => void
@@ -3682,6 +3681,12 @@ function WorkbenchNoteSearchPalette(props: {
   const { snapshot } = props
   const matches = snapshot.searchMatches ?? []
   const resultCount = new Set(matches.map(match => match.path)).size
+  const selectSearchMatch = async (match: VaultSearchMatch, newTab = false): Promise<void> => {
+    const selected = props.onSelectSearchMatch !== undefined
+      ? await props.onSelectSearchMatch(match, newTab)
+      : props.onSelect(match.path)
+    if (selected !== false) props.onClose(true)
+  }
   const searchInputContainer = useRef<HTMLDivElement>(null)
   const searchCaret = useRef<number | null>(null)
   const [searchOptionsOpen, setSearchOptionsOpen] = useState(false)
@@ -3740,9 +3745,7 @@ function WorkbenchNoteSearchPalette(props: {
               event.preventDefault()
               const active = matches[previewMatchIndex]
               if (active !== undefined && props.onSelectSearchMatch !== undefined) {
-                const selected = props.onSelectSearchMatch(active, event.metaKey)
-                if (selected instanceof Promise) void selected.then(success => { if (success !== false) props.onClose() })
-                else if (selected !== false) props.onClose()
+                void selectSearchMatch(active, event.metaKey)
                 return
               }
               if (snapshot.searchQuery.trim() !== '') props.onRunSearch?.()
@@ -3822,7 +3825,7 @@ function WorkbenchNoteSearchPalette(props: {
           </div>
           <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchIntelligenceStatus !== null && snapshot.searchIntelligenceStatus !== undefined && snapshot.searchIntelligenceStatus !== 'applied' ? `AI Search ${snapshot.searchIntelligenceStatus}; showing local results.` : snapshot.searchQuery.trim() === '' ? `${String(resultCount)} recent note${resultCount === 1 ? '' : 's'}` : `${String(resultCount)} note${resultCount === 1 ? '' : 's'} · ${String(matches.length)} match${matches.length === 1 ? '' : 'es'}`)}{snapshot.searchIntelligenceProvider !== null && snapshot.searchIntelligenceProvider !== undefined && snapshot.searchIntelligenceModel !== null && snapshot.searchIntelligenceModel !== undefined ? ` · AI uses ${snapshot.searchIntelligenceProvider}/${snapshot.searchIntelligenceModel}` : ''}</Alert>
         </header>
-        <NoteSearchAnswer answer={snapshot.searchAnswer} matches={matches} onCancel={() => { props.onCancelQuickAnswer?.() }} onRetry={() => { props.onRetryQuickAnswer?.() }} onSelect={match => { if (props.onSelectSearchMatch !== undefined) props.onSelectSearchMatch(match, false); else props.onSelect(match.path) }} onStart={() => { props.onQuickAnswer?.() }} />
+        <NoteSearchAnswer answer={snapshot.searchAnswer} matches={matches} onCancel={() => { props.onCancelQuickAnswer?.() }} onRetry={() => { props.onRetryQuickAnswer?.() }} onSelect={match => { void selectSearchMatch(match) }} onStart={() => { props.onQuickAnswer?.() }} />
         <section className="grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1" aria-label="Search Results">
           <div className="grid min-h-0 grid-rows-[36px_minmax(0,1fr)] border-r border-[var(--tt-border)] px-3 pb-3 max-sm:border-r-0">
             <div className="flex items-end px-2 pb-1 text-[11px] font-medium text-[var(--tt-muted)]">Results</div>
@@ -3831,13 +3834,9 @@ function WorkbenchNoteSearchPalette(props: {
               error={snapshot.searchError}
               loading={snapshot.searchLoading === true}
               matches={matches}
-              onClose={props.onClose}
               onLoadMore={() => { props.onLoadMoreSearch?.() }}
               onPreview={choice => { props.onSearchActiveSet?.(choice) }}
-              onSelect={match => {
-                if (props.onSelectSearchMatch !== undefined) props.onSelectSearchMatch(match, false)
-                else props.onSelect(match.path)
-              }}
+              onSelect={selectSearchMatch}
               previewMatchIndex={previewMatchIndex}
               query={snapshot.searchQuery}
             />
@@ -3869,6 +3868,7 @@ function WorkbenchNoteSearchPalette(props: {
 
 function WorkbenchCommandPalette(props: {
   canGoBack: boolean
+  onCloseAutoFocus(event: Event): void
   onOpenAutoFocus(): void
   canGoForward: boolean
   canReopen: boolean
@@ -3907,7 +3907,8 @@ function WorkbenchCommandPalette(props: {
       <DialogContent
         unstyled
         className="fixed top-[42%] left-1/2 -ml-[5px] z-[2147483647] grid h-[520px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[640px] -translate-x-1/2 -translate-y-[42%] grid-rows-[60px_minmax(0,1fr)_44px] overflow-hidden rounded-[12px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
-        onOpenAutoFocus={() => { props.onOpenAutoFocus() }}
+        onCloseAutoFocus={props.onCloseAutoFocus}
+        onOpenAutoFocus={props.onOpenAutoFocus}
         overlayClassName="z-[2147483646] !bg-transparent"
         showCloseButton={false}
       >
@@ -4051,15 +4052,29 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [baseSearches, setBaseSearches] = useState<Record<string, string>>({})
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  const activePalette = useRef(visiblePalette)
+  useEffect(() => { activePalette.current = visiblePalette }, [visiblePalette])
   const paletteOpener = useRef<HTMLElement | null>(null)
+  const paletteNavigating = useRef(false)
   const rememberPaletteOpener = (): void => {
     if (paletteOpener.current?.isConnected === true) return
     const activeElement = document.activeElement
     if (activeElement instanceof HTMLElement && activeElement !== document.body) paletteOpener.current = activeElement
   }
   const restorePaletteOpener = (event: Event): void => {
+    // Radix closes the old FocusScope after the next palette has mounted.
+    if (activePalette.current !== null) {
+      event.preventDefault()
+      return
+    }
     const opener = paletteOpener.current
     paletteOpener.current = null
+    if (paletteNavigating.current) {
+      paletteNavigating.current = false
+      event.preventDefault()
+      props.onFocusEditor?.()
+      return
+    }
     if (opener === null || !opener.isConnected || opener.closest('[aria-hidden="true"], [inert]') !== null) return
     event.preventDefault()
     opener.focus()
@@ -4285,6 +4300,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           editorEnabled={snapshot.documentKind === 'markdown' && snapshot.mode !== 'reading'}
           onBack={props.onBack}
           onClose={() => { setPaletteView(null); props.onCloseCommandPalette?.() }}
+          onCloseAutoFocus={restorePaletteOpener}
           onOpenAutoFocus={rememberPaletteOpener}
           onEditorCommand={props.onEditorCommand}
           onForward={props.onForward}
@@ -4296,7 +4312,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       )}
       {visiblePalette === 'notes' && (
         <WorkbenchNoteSearchPalette
-          onClose={() => { setPaletteView(null); props.onCloseCommandPalette?.(); props.onCloseSearch?.() }}
+          onClose={navigation => { paletteNavigating.current = navigation === true; setPaletteView(null); props.onCloseCommandPalette?.(); props.onCloseSearch?.() }}
           onCloseAutoFocus={restorePaletteOpener}
           onCommands={() => { setPaletteView('commands'); props.onOpenCommandPalette?.(); props.onCloseSearch?.() }}
           onOpenAutoFocus={rememberPaletteOpener}
@@ -4720,10 +4736,11 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
   useEffect(() => () => {
     trackTockTutorRouteFlush(controller.dispose())
   }, [controller])
-  useEffect(() => {
+  const focusEditor = useCallback(() => {
     if (!active || snapshot.path === null) return
     root.current?.querySelector<HTMLElement>(snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]')?.focus()
   }, [active, snapshot.mode, snapshot.path])
+  useEffect(focusEditor, [focusEditor])
   useEffect(() => {
     if (!active || snapshot.documentKind !== 'markdown' || snapshot.path === null || snapshot.settings === undefined) return
     const timer = setInterval(() => { void controller.captureRecoverySnapshot() }, snapshot.settings.recoveryIntervalMinutes * 60_000)
@@ -4815,6 +4832,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onEdit={source => { controller.edit(source) }}
         onEditorCommand={command => { controller.runEditorCommand(command) }}
         onExtractSelection={() => { void controller.extractActiveSelection() }}
+        onFocusEditor={focusEditor}
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onForward={() => { void controller.goForward() }}
         onInsertCurrentDateTime={kind => { controller.insertCurrentDateTime(kind) }}

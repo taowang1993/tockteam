@@ -1185,6 +1185,25 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
   })
 
+  it('waits for Quick Answer citation navigation before closing Search Notes', async () => {
+    const match = { kind: 'content' as const, line: 2, path: 'Notes/Lesson.md', preview: 'Lesson match' }
+    let complete!: (opened: boolean) => void
+    const onSelectSearchMatch = vi.fn(() => new Promise<boolean>(resolve => { complete = resolve }))
+    const onCloseSearch = vi.fn()
+    renderRoute({
+      searchMatches: [match],
+      searchAnswer: { status: 'completed', answer: 'A cited answer.', citations: [{ id: 'qa-1', path: match.path, line: 2, lineEnd: 2 }] },
+    }, { onOpenSearch: vi.fn(), onSelectSearchMatch, onCloseSearch })
+    fireEvent.click(screen.getByRole('button', { name: 'Search Notes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Notes/Lesson.md:2' }))
+    expect(onSelectSearchMatch).toHaveBeenCalledWith(match, false)
+    expect(onCloseSearch).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
+    complete(true)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull())
+    expect(onCloseSearch).toHaveBeenCalledOnce()
+  })
+
   it('returns focus to the Search Notes button after pointer dismissal', async () => {
     renderRoute({ searchQuery: 'lesson' }, { onOpenSearch: vi.fn() })
     const opener = screen.getByRole('button', { name: 'Search Notes' })
@@ -1210,7 +1229,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(document.activeElement).toBe(opener)
   })
 
-  it('restores focus to the previous control when a shortcut command opens Search Notes', async () => {
+  it.each(['direct', 'roundtrip', 'fresh shortcut'])('restores the shortcut opener after $0 palette dismissal', async flow => {
     function ShortcutHarness(): ReactNode {
       const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
       return <div onKeyDown={event => {
@@ -1220,6 +1239,7 @@ describe('TockTutor titlebar panel controls', () => {
         }
       }}>
         <button onClick={() => {}} type="button">Editor Focus</button>
+        <button onClick={() => {}} type="button">Fresh Focus</button>
         <TockTutorRouteView
           onActivateTab={() => {}}
           onAddPane={() => {}}
@@ -1238,7 +1258,15 @@ describe('TockTutor titlebar panel controls', () => {
     }
 
     render(<ShortcutHarness />)
-    const previousFocus = screen.getByRole('button', { name: 'Editor Focus' })
+    let previousFocus = screen.getByRole('button', { name: 'Editor Focus' })
+    if (flow === 'fresh shortcut') {
+      previousFocus.focus()
+      fireEvent.keyDown(previousFocus, { key: 'p', metaKey: true })
+      fireEvent.keyDown(await screen.findByRole('combobox', { name: 'Search Commands' }), { key: 'Escape' })
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Command Palette' })).toBeNull())
+      await waitFor(() => expect(document.activeElement).toBe(previousFocus))
+      previousFocus = screen.getByRole('button', { name: 'Fresh Focus' })
+    }
     previousFocus.focus()
     fireEvent.keyDown(previousFocus, { key: 'p', metaKey: true })
     const commandInput = await screen.findByRole('combobox', { name: 'Search Commands' })
@@ -1246,9 +1274,97 @@ describe('TockTutor titlebar panel controls', () => {
     await waitFor(() => expect(screen.getByRole('option', { name: 'Search Notes' }).getAttribute('aria-selected')).toBe('true'))
     fireEvent.keyDown(commandInput, { key: 'Enter' })
     await screen.findByRole('dialog', { name: 'Search Notes' })
+    if (flow === 'roundtrip') {
+      fireEvent.click(screen.getByRole('button', { name: 'Commands', exact: true }))
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Search Commands' })))
+      fireEvent.click(screen.getByRole('option', { name: 'Search Notes' }))
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Search Notes Query' })))
+    }
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Search Notes Query' }), { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull())
     expect(document.activeElement).toBe(previousFocus)
+  })
+
+  it.each([
+    { activation: 'pointer', content: false, sameNote: false, fails: false },
+    { activation: 'keyboard', content: false, sameNote: false, fails: false },
+    { activation: 'pointer', content: true, sameNote: false, fails: false },
+    { activation: 'keyboard', content: true, sameNote: false, fails: false },
+    { activation: 'pointer', content: false, sameNote: true, fails: false },
+    { activation: 'keyboard', content: true, sameNote: true, fails: false },
+    { activation: 'pointer', content: false, sameNote: false, fails: true },
+  ])('preserves search focus lifecycle ($activation, content=$content, sameNote=$sameNote, fails=$fails)', async ({ activation, content, sameNote, fails }) => {
+    const vault = { generation: 1, id: `vault:${'a'.repeat(64)}` }
+    const revision = `file:${'b'.repeat(64)}`
+    const sources: Record<string, string> = {
+      'Notes/Welcome.md': '# Welcome\n',
+      'Notes/Result.md': '# Result\n\nA search match.\n',
+    }
+    const resultPath = sameNote ? 'Notes/Welcome.md' : 'Notes/Result.md'
+    let release: (() => void) | undefined
+    let holdOpen = false
+    const navigate = vi.fn()
+    const remote = {
+      $on: () => () => {},
+      tocktutorWorkbench: {
+        currentVault: async () => ({ ok: true, value: { displayPath: '~/Fixture', generation: 1, name: 'Fixture', vault } }),
+        listTree: async () => ({ ok: true, value: {
+          complete: true, cursor: null,
+          entries: Object.keys(sources).map(path => ({ createdAt: 1, kind: 'document', modifiedAt: 1, path, revision, size: sources[path]!.length })),
+          generation: 1, scan: { entries: 2 }, truncated: false, truncationReason: null, warnings: [],
+        } }),
+        openDocument: async (path: string) => {
+          if (holdOpen) {
+            await new Promise<void>(resolve => { release = resolve })
+            if (fails) throw new Error('Fixture open failed')
+          }
+          return { ok: true, value: { content: sources[path]!, digest: `sha256:${'c'.repeat(64)}`, generation: 1, path, revision } }
+        },
+        search: async () => ({ ok: true, value: {
+          cursor: null, generation: 1, query: 'match',
+          matches: [{ kind: 'content', line: 1, path: resultPath, preview: 'match' }],
+          scan: { bytes: 10, entries: 2, files: 2 }, truncated: false, truncationReason: null, warnings: [],
+        } }),
+        readDraft: async () => ({ ok: true, value: { draft: null, generation: 1 } }),
+      },
+    }
+    render(<TockTutorRoute
+      location={{ hash: '', pathname: '/tocktutor/Notes/Welcome.md', search: '' }}
+      navigate={navigate}
+      remote={remote as never}
+      renderSlot={() => null}
+    />)
+    await screen.findByRole('button', { name: 'Switch to Reading View' })
+    fireEvent.click(screen.getByRole('button', { name: 'Search Notes' }))
+    if (content) {
+      fireEvent.change(screen.getByRole('combobox', { name: 'Search Notes Query' }), { target: { value: 'match' } })
+      await screen.findByRole('button', { name: 'Search', exact: true })
+    }
+    const result = await screen.findByRole('option', { name: `Open ${resultPath}` })
+    // Preview is a separate request; complete it before delaying actual navigation.
+    fireEvent.mouseEnter(result)
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Search Notes Query' }).getAttribute('aria-activedescendant')).toBe(result.id))
+    holdOpen = !sameNote
+    if (activation === 'pointer') fireEvent.click(result)
+    else fireEvent.keyDown(screen.getByRole('combobox', { name: 'Search Notes Query' }), { key: 'Enter' })
+    if (!sameNote) {
+      await waitFor(() => expect(release).toBeTypeOf('function'))
+      expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
+      holdOpen = false
+      release!()
+    }
+    if (fails) {
+      await screen.findByText('Fixture open failed')
+      expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
+      expect(navigate).not.toHaveBeenCalled()
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Search Notes Query' }), { key: 'Escape' })
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Search Notes' })))
+      return
+    }
+    if (!sameNote) await waitFor(() => expect(navigate).toHaveBeenCalledWith('/tocktutor/Notes/Result.md'))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull())
+    await waitFor(() => expect(document.activeElement?.classList.contains(content ? 'cm-content' : 'ProseMirror')).toBe(true))
+    expect(document.activeElement?.textContent).toContain(sameNote ? 'Welcome' : 'Result')
   })
 
   it('shows Obsidian search operators and inserts the selected operator', async () => {
