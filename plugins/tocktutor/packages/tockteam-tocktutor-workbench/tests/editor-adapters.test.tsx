@@ -32,7 +32,7 @@ describe('CodeMirror Source editor', () => {
     expect(sourceEditor.className).toContain('[&_.cm-content]:max-w-3xl')
     expect(sourceEditor.className).toContain('[&_.cm-gutters]:hidden')
     expect(sourceEditor.className).toContain('[&_.cm-activeLine]:bg-transparent')
-    expect(sourceEditor.className).toContain('[&_.cm-tock-heading-mark]:!text-inherit')
+    expect(sourceEditor.className).toContain('[&_.cm-tock-heading-mark]:[color:light-dark(var(--tt-text),#fff)]')
     expect(sourceEditor.className).toContain('[&_.cm-tock-heading-mark_*]:!text-inherit')
     expect(sourceEditor.className).toContain('[&_.cm-tock-heading-mark]:[font-size:inherit]')
     expect(sourceEditor.className).not.toContain('[&_.cm-tock-heading-mark]:!text-[var(--tt-muted)]')
