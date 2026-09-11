@@ -2025,6 +2025,63 @@ test('binds local search filters to every request and cursor page', async () => 
   controller.dispose()
 })
 
+test('navigates active search matches and rejects a stale local preview', async () => {
+  const remote = new FakeRemote()
+  const preview = deferred<{ ok: true; value: OpenDocumentResult }>()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  remote.searchContinuation = {
+    cursor: null,
+    generation: firstVault.generation,
+    matches: [{ id: 'second-hit', kind: 'content', line: 8, path: 'Second.md', preview: 'Second lesson match' }],
+    query: 'lesson',
+    scan: { bytes: 60, entries: 4, files: 3 },
+    truncated: false,
+    truncationReason: null,
+    warnings: [],
+  }
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('lesson')
+  assert.equal(await controller.runSearch(), true)
+  assert.equal(await controller.loadMoreSearch(), true)
+  assert.equal(controller.getSnapshot().searchActiveIndex, 0)
+  controller.moveSearchActive(1)
+  assert.equal(controller.getSnapshot().searchActiveIndex, 1)
+  const match = controller.getSnapshot().searchMatches?.[0]
+  assert.ok(match)
+  assert.equal(await controller.openSearchMatch(match), true)
+  assert.equal(controller.getSnapshot().path, match.path)
+  assert.equal(controller.getSnapshot().selectionStart, 9)
+  const secondMatch = controller.getSnapshot().searchMatches?.[1]
+  assert.ok(secondMatch)
+  assert.equal(await controller.openSearchMatch(secondMatch, true), true)
+  assert.equal(controller.getSnapshot().path, secondMatch.path)
+  assert.equal(controller.getSnapshot().panes[0]?.tabs.length, 2)
+  assert.equal(await controller.openSearchMatch(match), true)
+  remote.openOverride = path => path === 'Folder/Note.md' ? preview.promise : success({
+    content: '# Second\\n',
+    digest: `sha256:${'d'.repeat(64)}`,
+    generation: firstVault.generation,
+    path,
+    revision: secondRevision,
+  })
+  const pending = controller.previewSearchMatch(match)
+  await new Promise(resolve => setImmediate(resolve))
+  controller.setSearchQuery('new query')
+  preview.resolve({
+    ok: true,
+    value: {
+      content: '# Stale Preview\\n',
+      digest: `sha256:${'e'.repeat(64)}`,
+      generation: firstVault.generation,
+      path: match.path,
+      revision: firstRevision,
+    },
+  })
+  assert.equal(await pending, false)
+  assert.equal(controller.getSnapshot().searchPreview, null)
+  controller.dispose()
+})
+
 test('loads one cursor page, merges stable matches, and keeps the cursor bound to the query', async () => {
   const remote = new FakeRemote()
   remote.searchContinuation = {

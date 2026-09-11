@@ -270,6 +270,15 @@ export interface ResolvedEmbed {
   target: EmbedTarget
 }
 
+export interface WorkbenchSearchPreview {
+  content: string
+  generation: number
+  line: number | null
+  lineEnd: number | null
+  path: string
+  revision: string
+}
+
 export interface WorkbenchRouteSnapshot {
   attachmentPreview?: AttachmentPreviewResult | null
   baseFiles?: readonly BaseHydratedFile[]
@@ -299,10 +308,14 @@ export interface WorkbenchRouteSnapshot {
   recoveryOpen?: boolean
   revision: string | null
   saveStatus: EditorStatus
+  searchActiveIndex?: number | null
   searchError?: string | null
   searchLoading?: boolean
   searchMatches?: readonly VaultSearchMatch[]
   searchMode?: 'query' | 'related'
+  searchPreview?: WorkbenchSearchPreview | null
+  searchPreviewError?: string | null
+  searchPreviewLoading?: boolean
   searchCursor?: string | null
   searchTitleOnly?: boolean
   searchDirectory?: string
@@ -481,8 +494,9 @@ function validSearchResult(value: VaultSearchResult, vault: VaultReference): boo
       && (match.id === undefined || typeof match.id === 'string' && match.id.length > 0 && match.id.length <= 128 && !ids.has(match.id) && (ids.add(match.id), true))
       && typeof match.preview === 'string'
       && match.preview.length <= 4_096
-      && (match.line === null || Number.isSafeInteger(match.line))
-      && (match.lineEnd === undefined || match.lineEnd === null || Number.isSafeInteger(match.lineEnd))
+      && (match.line === null || Number.isSafeInteger(match.line) && match.line >= 1)
+      && (match.lineEnd === undefined || match.lineEnd === null || Number.isSafeInteger(match.lineEnd) && match.lineEnd >= 1)
+      && (match.line === null || match.lineEnd === undefined || match.lineEnd === null || match.lineEnd >= match.line)
       && (match.score === undefined || Number.isFinite(match.score)))
 }
 
@@ -617,10 +631,14 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     recoveryOpen: false,
     revision: null,
     saveStatus: 'saved',
+    searchActiveIndex: null,
     searchError: null,
     searchLoading: false,
     searchMatches: Object.freeze([]),
     searchMode: 'query',
+    searchPreview: null,
+    searchPreviewError: null,
+    searchPreviewLoading: false,
     searchCursor: null,
     searchTitleOnly: false,
     searchDirectory: '',
@@ -667,6 +685,8 @@ export class WorkbenchRouteController {
   private dispatchRevision = 0
   private operationAbort: AbortController | null = null
   private searchTimer: ReturnType<typeof setTimeout> | null = null
+  private searchPreviewAbort: AbortController | null = null
+  private searchPreviewOperation = 0
   private embedAbort: AbortController | null = null
   private saveAbort: AbortController | null = null
   private saving: Promise<boolean> | null = null
@@ -935,15 +955,107 @@ export class WorkbenchRouteController {
     this.settlePendingDispatch('failed')
   }
 
+  private searchMatchIndex(match: VaultSearchMatch): number {
+    return (this.snapshot.searchMatches ?? []).findIndex(candidate => candidate.id !== undefined && match.id !== undefined
+      ? candidate.id === match.id
+      : candidate.path === match.path
+        && candidate.kind === match.kind
+        && candidate.line === match.line
+        && candidate.preview === match.preview)
+  }
+
+  setSearchActiveIndex(index: number): boolean {
+    const matches = this.snapshot.searchMatches ?? []
+    if (!Number.isSafeInteger(index) || index < 0 || index >= matches.length) return false
+    this.cancelSearchPreview()
+    this.update({ searchActiveIndex: index, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false })
+    void this.previewSearchMatch(index)
+    return true
+  }
+
+  moveSearchActive(delta: number): boolean {
+    const matches = this.snapshot.searchMatches ?? []
+    if (matches.length === 0 || !Number.isSafeInteger(delta) || delta === 0) return false
+    const current = this.snapshot.searchActiveIndex ?? 0
+    const next = (current + delta % matches.length + matches.length) % matches.length
+    return this.setSearchActiveIndex(next)
+  }
+
+  async openSearchMatch(match: VaultSearchMatch, newTab = false): Promise<boolean> {
+    const index = this.searchMatchIndex(match)
+    if (index < 0 || !validSearchResult({
+      cursor: null,
+      generation: this.snapshot.vault?.generation ?? -1,
+      matches: [match],
+      query: this.snapshot.searchQuery.trim(),
+      scan: { bytes: 0, entries: 0, files: 0 },
+      truncated: false,
+      truncationReason: null,
+      warnings: [],
+    }, this.snapshot.vault ?? { generation: -1, id: '' })) return false
+    this.cancelSearchPreview()
+    this.update({ searchActiveIndex: index, searchPreview: null, searchPreviewLoading: false })
+    const opened = await this.select(match.path, true, undefined, true, newTab)
+    if (!opened) return false
+    if (match.line !== null) this.jumpToMatch(match.line, match.lineEnd ?? match.line)
+    return true
+  }
+
+  async previewSearchMatch(matchOrIndex: VaultSearchMatch | number): Promise<boolean> {
+    const index = typeof matchOrIndex === 'number'
+      ? matchOrIndex
+      : this.searchMatchIndex(matchOrIndex)
+    const match = this.snapshot.searchMatches?.[index]
+    const vault = this.snapshot.vault
+    if (match === undefined || vault === null || !this.snapshot.searchOpen) return false
+    this.update({ searchActiveIndex: index, searchPreview: null, searchPreviewError: null, searchPreviewLoading: true })
+    const operation = this.nextSearchPreviewOperation()
+    try {
+      const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(match.path, vault, operation.signal))
+      if (!this.currentSearchPreview(operation.id, vault, match.path)
+        || opened.generation !== vault.generation
+        || opened.path !== match.path
+        || typeof opened.revision !== 'string'
+        || !boundedSource(opened.content)) return false
+      this.update({
+        searchPreview: Object.freeze({
+          content: opened.content,
+          generation: opened.generation,
+          line: match.line,
+          lineEnd: match.lineEnd ?? match.line,
+          path: opened.path,
+          revision: opened.revision,
+        }),
+        searchPreviewError: null,
+        searchPreviewLoading: false,
+      })
+      return true
+    } catch {
+      if (this.currentSearchPreview(operation.id, vault, match.path)) {
+        this.update({ searchPreviewError: 'Preview could not be loaded.', searchPreviewLoading: false })
+      }
+      return false
+    }
+  }
+
+  hideSearchPreview(): void {
+    this.cancelSearchPreview()
+    this.update({ searchPreview: null, searchPreviewError: null, searchPreviewLoading: false })
+  }
+
   setSearchQuery(query: string): void {
     if (query.length > 1_000) return
     this.nextOperation()
     const trimmed = query.trim()
     this.update({
+      searchActiveIndex: null,
       searchError: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
+      searchPreview: null,
+      searchPreviewError: null,
+      searchPreviewLoading: false,
       searchQuery: query,
     })
     this.scheduleSearch()
@@ -951,7 +1063,7 @@ export class WorkbenchRouteController {
 
   closeSearch(): void {
     this.nextOperation()
-    this.update({ searchDirectory: '', searchError: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchQuery: '', searchTitleOnly: false })
+    this.update({ searchActiveIndex: null, searchDirectory: '', searchError: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false })
   }
 
   openSearch(query: string): void {
@@ -959,11 +1071,15 @@ export class WorkbenchRouteController {
     this.nextOperation()
     const trimmed = query.trim()
     this.update({
+      searchActiveIndex: null,
       searchError: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
       searchOpen: true,
+      searchPreview: null,
+      searchPreviewError: null,
+      searchPreviewLoading: false,
       searchQuery: query,
     })
     this.scheduleSearch()
@@ -973,11 +1089,15 @@ export class WorkbenchRouteController {
     this.nextOperation()
     const trimmed = this.snapshot.searchQuery.trim()
     this.update({
+      searchActiveIndex: null,
       searchError: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
       searchMode: mode,
+      searchPreview: null,
+      searchPreviewError: null,
+      searchPreviewLoading: false,
     })
     this.scheduleSearch()
   }
@@ -986,6 +1106,7 @@ export class WorkbenchRouteController {
     this.nextOperation()
     const trimmed = this.snapshot.searchQuery.trim()
     this.update({
+      searchActiveIndex: null,
       searchDirectory: filters.directory ?? '',
       searchError: null,
       searchLoading: trimmed !== '' && this.snapshot.vault !== null,
@@ -993,6 +1114,9 @@ export class WorkbenchRouteController {
       searchCursor: null,
       searchModifiedFrom: filters.modifiedFrom ?? null,
       searchModifiedTo: filters.modifiedTo ?? null,
+      searchPreview: null,
+      searchPreviewError: null,
+      searchPreviewLoading: false,
       searchTitleOnly: filters.titleOnly === true,
     })
     this.scheduleSearch()
@@ -1037,13 +1161,19 @@ export class WorkbenchRouteController {
         this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false })
         return false
       }
+      const matches = Object.freeze(result.matches.map(match => Object.freeze({ ...match })))
       this.update({
         message: result.truncated ? 'Search returned a bounded partial result.' : `${String(result.matches.length)} search results.`,
+        searchActiveIndex: matches.length > 0 ? 0 : null,
         searchError: null,
         searchLoading: false,
-        searchMatches: Object.freeze(result.matches.map(match => Object.freeze({ ...match }))),
+        searchMatches: matches,
+        searchPreview: null,
+        searchPreviewError: null,
+        searchPreviewLoading: false,
         searchCursor: result.cursor,
       })
+      if (matches.length > 0) void this.previewSearchMatch(0)
       return true
     } catch {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
@@ -1087,6 +1217,7 @@ export class WorkbenchRouteController {
       })
       this.update({
         message: result.truncated ? 'Search returned a bounded partial result.' : `${String(existing.length + additions.length)} search results.`,
+        searchActiveIndex: this.snapshot.searchActiveIndex ?? (existing.length + additions.length > 0 ? 0 : null),
         searchError: null,
         searchLoading: false,
         searchMatches: Object.freeze([...existing, ...additions].map(match => Object.freeze({ ...match }))),
@@ -1223,17 +1354,20 @@ export class WorkbenchRouteController {
     }
   }
 
-  jumpToLine(line: number): boolean {
-    if (!Number.isSafeInteger(line) || line < 1 || this.snapshot.path === null) return false
-    let offset = 0
-    for (let current = 1; current < line; current += 1) {
-      const next = this.snapshot.source.indexOf('\n', offset)
-      if (next < 0) return false
-      offset = next + 1
-    }
+  private jumpToMatch(line: number, lineEnd: number): boolean {
+    if (!Number.isSafeInteger(line) || line < 1 || !Number.isSafeInteger(lineEnd) || lineEnd < line || this.snapshot.path === null) return false
+    const lines = this.snapshot.source.split('\n')
+    if (line > lines.length) return false
+    const start = lines.slice(0, line - 1).reduce((offset, current) => offset + current.length + 1, 0)
+    const endLine = Math.min(lineEnd, lines.length)
+    const end = start + lines.slice(line - 1, endLine).reduce((offset, current, index) => offset + current.length + (index + line < endLine ? 1 : 0), 0)
     this.setMode('source')
-    this.setSelection(offset, offset)
+    this.setSelection(start, end)
     return true
+  }
+
+  jumpToLine(line: number): boolean {
+    return this.jumpToMatch(line, line)
   }
 
   private settlePendingDispatch(result: TockTutorNativeActionsDispatchResult): void {
@@ -1479,9 +1613,33 @@ export class WorkbenchRouteController {
       && this.recoveryIdentityMatches(identity)
   }
 
+  private cancelSearchPreview(): void {
+    this.searchPreviewAbort?.abort()
+    this.searchPreviewAbort = null
+    this.searchPreviewOperation += 1
+  }
+
+  private nextSearchPreviewOperation(): { id: number; signal: AbortSignal } {
+    this.cancelSearchPreview()
+    this.searchPreviewAbort = new AbortController()
+    return { id: this.searchPreviewOperation, signal: this.searchPreviewAbort.signal }
+  }
+
+  private currentSearchPreview(id: number, vault: VaultReference, path: string): boolean {
+    const active = this.snapshot.searchActiveIndex
+    return !this.disposed
+      && id === this.searchPreviewOperation
+      && this.searchPreviewAbort?.signal.aborted === false
+      && sameVault(this.snapshot.vault, vault)
+      && this.snapshot.searchOpen
+      && active !== null && active !== undefined
+      && this.snapshot.searchMatches?.[active]?.path === path
+  }
+
   private nextOperation(): { id: number; signal: AbortSignal } {
     if (this.searchTimer !== null) clearTimeout(this.searchTimer)
     this.searchTimer = null
+    this.cancelSearchPreview()
     this.cancelRecoveryOperations()
     this.operationAbort?.abort()
     this.operationAbort = new AbortController()
@@ -2331,6 +2489,7 @@ export class WorkbenchRouteController {
     navigate = true,
     dispatchRevision?: number,
     recordHistory = true,
+    newTab = false,
   ): Promise<boolean> {
     const activeVault = this.snapshot.vault
     if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== 'ready') return false
@@ -2351,6 +2510,10 @@ export class WorkbenchRouteController {
     if (this.snapshot.saveStatus !== 'saved' && !await this.save()) {
       if (this.snapshot.path !== null) this.navigate(routeForPath(this.snapshot.path), 'replace')
       return false
+    }
+    if (newTab && path !== this.snapshot.path && !pane.tabs.some(tab => tab.path === path)) {
+      this.shellSession = openNoteTab(this.shellSession, this.shellSession.focusedGroupId, path)
+      this.syncShell()
     }
     const vault = activeVault
     const operation = this.nextOperation()
@@ -2979,9 +3142,13 @@ export interface TockTutorRouteViewProps {
   onLoadMoreSearch?(): void
   onRunSearch?(): void
   onSaveWorkspace?(): void
+  onSearchActiveMove?(delta: number): void
+  onSearchActiveSet?(index: number): void
   onSearchChange?(query: string): void
   onSearchMode?(mode: 'query' | 'related'): void
   onSearchFilters?(filters: { directory?: string; modifiedFrom?: number | null; modifiedTo?: number | null; titleOnly?: boolean }): void
+  onSelectSearchMatch?(match: VaultSearchMatch, newTab: boolean): void
+  onHideSearchPreview?(): void
   onSettingsChange?(change: Partial<TockTutorSettings>): void
   onSelectionChange?(start: number, end: number): void
   onStoreAttachment?(fileName: string, dataBase64: string): void
@@ -3132,27 +3299,43 @@ function NotePathDialog(props: {
 }
 
 function NoteSearchPreview(props: {
+  error: string | null | undefined
+  loading: boolean
   match: VaultSearchMatch | undefined
+  onHide(): void
   path: string | null
+  preview: WorkbenchSearchPreview | null | undefined
 }): ReactNode {
+  const html = useMemo(() => props.preview === null || props.preview === undefined
+    ? ''
+    : renderMarkdownHtml(props.preview.content, { externalEmbedMode: 'inert' }), [props.preview])
+  const matchedHtml = useMemo(() => {
+    if (props.preview === null || props.preview === undefined || props.preview.line === null) return ''
+    const lines = props.preview.content.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n')
+    const start = Math.max(0, props.preview.line - 1)
+    const end = Math.min(lines.length, props.preview.lineEnd ?? props.preview.line)
+    return renderMarkdownHtml(lines.slice(start, Math.max(start + 1, end)).join('\n'), { externalEmbedMode: 'inert' })
+  }, [props.preview])
   return (
     <aside aria-label="Note Preview" className="min-h-0 p-3 max-sm:hidden" role="region">
       {props.path === null ? (
         <div className="flex h-full items-center justify-center rounded-lg border border-[var(--tt-border)] px-6 text-center text-sm text-[var(--tt-muted)]">Select a result to preview it.</div>
       ) : (
-        <div className="h-full overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)]">
-          <div className="h-20 border-b border-[var(--tt-border)] bg-[var(--tt-selected)]" />
-          <div className="p-5">
-            <span className="text-xs text-[var(--tt-muted)]">Note</span>
-            <strong className="mt-1 block truncate text-xl font-semibold tracking-[-0.01em]">{noteTitle(props.path)}</strong>
-            {props.match === undefined ? (
-              <p className="mt-3 mb-0 truncate text-sm leading-5 text-[var(--tt-muted)]">{props.path}</p>
-            ) : (
-              <>
-                <p className="mt-3 mb-0 text-sm leading-5 text-[var(--tt-text)]">{props.match.preview}</p>
-                <p className="mt-2 mb-0 truncate text-xs text-[var(--tt-muted)]">{props.match.path}{props.match.line === null ? '' : `:${String(props.match.line)}`}</p>
-              </>
-            )}
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)]">
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--tt-border)] px-4 py-2">
+            <span className="truncate text-xs text-[var(--tt-muted)]">{props.path}</span>
+            <Button unstyled aria-label="Hide Preview" className="shrink-0 rounded-md border-0 bg-transparent p-1 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]" onClick={props.onHide} type="button"><X aria-hidden="true" className="size-4" /></Button>
+          </div>
+          <div className="min-h-0 overflow-auto p-5">
+            <strong className="block truncate text-xl font-semibold tracking-[-0.01em]">{noteTitle(props.path)}</strong>
+            {props.loading ? <p className="mt-3 mb-0 text-sm text-[var(--tt-muted)]" role="status">Loading preview…</p>
+              : props.error !== null && props.error !== undefined ? <p className="mt-3 mb-0 text-sm text-[var(--dsw-alias-state-error-primary,#dc2626)]" role="alert">{props.error}</p>
+                : props.preview === null || props.preview === undefined ? <p className="mt-3 mb-0 text-sm text-[var(--tt-muted)]">Preview unavailable.</p>
+                  : <>
+                    {props.match !== undefined && <p className="mt-2 mb-3 text-xs text-[var(--tt-muted)]">Match at line {String(props.preview.line ?? 1)}{props.preview.lineEnd !== props.preview.line ? `–${String(props.preview.lineEnd)}` : ''}</p>}
+                    {matchedHtml !== '' && <div aria-label="Matched Lines" className="mb-4 rounded-md border border-[var(--tt-border)] bg-[var(--tt-selected)] p-2 text-sm" dangerouslySetInnerHTML={{ __html: matchedHtml }} />}
+                    <div className="tocktutor-search-preview prose text-sm" dangerouslySetInnerHTML={{ __html: html }} />
+                  </>}
           </div>
         </div>
       )}
@@ -3176,16 +3359,23 @@ function NoteSearchResultList(props: {
   onClose(): void
   onLoadMore(): void
   onPreview(choice: number): void
-  onSelect(path: string): void
+  onSelect(match: VaultSearchMatch): void
   previewMatchIndex: number
   query: string
 }): ReactNode {
+  const pathsByTitle = new Map<string, Set<string>>()
+  for (const match of props.matches) {
+    const title = noteTitle(match.path)
+    const paths = pathsByTitle.get(title) ?? new Set<string>()
+    paths.add(match.path)
+    pathsByTitle.set(title, paths)
+  }
   const groups = [...props.matches.reduce((result, match, index) => {
-    const group = result.get(match.path) ?? { index, matches: [] as VaultSearchMatch[], path: match.path }
-    group.matches.push(match)
+    const group = result.get(match.path) ?? { index, matches: [] as Array<{ index: number; match: VaultSearchMatch }>, path: match.path }
+    group.matches.push({ index, match })
     result.set(match.path, group)
     return result
-  }, new Map<string, { index: number; matches: VaultSearchMatch[]; path: string }>()).values()]
+  }, new Map<string, { index: number; matches: Array<{ index: number; match: VaultSearchMatch }>; path: string }>()).values()]
   return (
     <div className="min-h-0 overflow-auto">
       {props.loading ? <Alert unstyled className="px-2 py-3 text-sm text-[var(--tt-muted)]" role="status">Searching notes…</Alert>
@@ -3194,14 +3384,16 @@ function NoteSearchResultList(props: {
             <>
               <ul className="m-0 grid list-none gap-0.5 p-0" aria-label={props.query.trim() === '' ? 'Recent Notes' : 'Vault Search Results'}>
                 {groups.map(group => {
-                  const match = group.matches[0]!
+                  const first = group.matches[0]!
+                  const title = noteTitle(first.match.path)
+                  const active = group.matches.some(entry => entry.index === props.previewMatchIndex)
                   return <li key={group.path}>
-                    <Button unstyled aria-current={props.previewMatchIndex === group.index ? 'true' : undefined} aria-label={`Open ${match.path}`} className="grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(match.path); props.onClose() }} onFocus={() => { props.onPreview(group.index) }} onMouseEnter={() => { props.onPreview(group.index) }} type="button">
+                    <Button unstyled aria-current={active ? 'true' : undefined} aria-label={`Open ${first.match.path}`} className="grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(first.match); props.onClose() }} onFocus={() => { props.onPreview(first.index) }} onMouseEnter={() => { props.onPreview(first.index) }} type="button">
                       <FileText aria-hidden="true" className="mt-0.5 text-[var(--tt-muted)]" strokeWidth={1.6} />
                       <span className="min-w-0">
-                        <strong className="block truncate text-sm font-medium">{noteTitle(match.path)}</strong>
-                        {group.matches.map(location => <span className="block truncate text-xs text-[var(--tt-muted)]" key={location.id ?? `${location.kind}:${String(location.line)}:${location.preview}`}>
-                          {location.line !== null && <>{String(location.line)}: </>}{highlightSearchText(location.preview, props.query)}
+                        <strong className="block truncate text-sm font-medium">{pathsByTitle.get(title)?.size === 1 ? title : group.path}</strong>
+                        {group.matches.map(entry => <span className="block truncate text-xs text-[var(--tt-muted)]" key={entry.match.id ?? `${entry.match.kind}:${String(entry.match.line)}:${entry.match.preview}`}>
+                          {entry.match.line !== null && <>{String(entry.match.line)}: </>}{highlightSearchText(entry.match.preview, props.query)}
                         </span>)}
                       </span>
                     </Button>
@@ -3218,12 +3410,16 @@ function NoteSearchResultList(props: {
 function WorkbenchNoteSearchPalette(props: {
   onClose(): void
   onCommands(): void
+  onHidePreview?: () => void
   onLoadMoreSearch: (() => void) | undefined
   onRunSearch: (() => void) | undefined
   onSearchChange: ((query: string) => void) | undefined
   onSearchMode: ((mode: 'query' | 'related') => void) | undefined
   onSearchFilters: ((filters: { directory?: string; modifiedFrom?: number | null; modifiedTo?: number | null; titleOnly?: boolean }) => void) | undefined
+  onSearchActiveMove: ((delta: number) => void) | undefined
+  onSearchActiveSet: ((index: number) => void) | undefined
   onSelect(path: string): void
+  onSelectSearchMatch: ((match: VaultSearchMatch, newTab: boolean) => void) | undefined
   snapshot: WorkbenchRouteSnapshot
 }): ReactNode {
   const { snapshot } = props
@@ -3231,8 +3427,9 @@ function WorkbenchNoteSearchPalette(props: {
   const searchInputContainer = useRef<HTMLDivElement>(null)
   const searchCaret = useRef<number | null>(null)
   const [searchOptionsOpen, setSearchOptionsOpen] = useState(false)
-  const [previewChoice, setPreviewChoice] = useState<number | string | null>(null)
-  const previewMatchIndex = typeof previewChoice === 'number' && matches[previewChoice] !== undefined ? previewChoice : 0
+  const previewMatchIndex = snapshot.searchActiveIndex !== null && snapshot.searchActiveIndex !== undefined && matches[snapshot.searchActiveIndex] !== undefined
+    ? snapshot.searchActiveIndex
+    : 0
   const previewMatch = matches[previewMatchIndex]
   const previewResultPath = previewMatch?.path ?? null
   const insertSearchOption = (value: string): void => {
@@ -3267,9 +3464,19 @@ function WorkbenchNoteSearchPalette(props: {
             maxLength={1_000}
             onChange={event => { props.onSearchChange?.(event.target.value) }}
             onKeyDown={event => {
-              if (event.key !== 'Enter' || snapshot.searchQuery.trim() === '') return
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault()
+                props.onSearchActiveMove?.(event.key === 'ArrowDown' ? 1 : -1)
+                return
+              }
+              if (event.key !== 'Enter') return
               event.preventDefault()
-              props.onRunSearch?.()
+              const active = matches[previewMatchIndex]
+              if (active !== undefined && props.onSelectSearchMatch !== undefined) {
+                props.onSelectSearchMatch(active, event.metaKey)
+                return
+              }
+              if (snapshot.searchQuery.trim() !== '') props.onRunSearch?.()
             }}
             placeholder="Search notes..."
             type="search"
@@ -3360,13 +3567,16 @@ function WorkbenchNoteSearchPalette(props: {
               matches={matches}
               onClose={props.onClose}
               onLoadMore={() => { props.onLoadMoreSearch?.() }}
-              onPreview={choice => { setPreviewChoice(choice) }}
-              onSelect={props.onSelect}
+              onPreview={choice => { props.onSearchActiveSet?.(choice) }}
+              onSelect={match => {
+                if (props.onSelectSearchMatch !== undefined) props.onSelectSearchMatch(match, false)
+                else props.onSelect(match.path)
+              }}
               previewMatchIndex={previewMatchIndex}
               query={snapshot.searchQuery}
             />
           </div>
-          <NoteSearchPreview match={previewMatch} path={previewResultPath} />
+          <NoteSearchPreview error={snapshot.searchPreviewError} loading={snapshot.searchPreviewLoading === true} match={previewMatch} onHide={() => { props.onHidePreview?.() }} path={previewResultPath} preview={snapshot.searchPreview} />
         </section>
         <footer className="flex items-center gap-4 border-t border-[var(--tt-border)] px-3 text-[11px] text-[var(--tt-muted)]">
           <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]" onClick={props.onCommands} type="button">Commands</Button>
@@ -3784,12 +3994,16 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <WorkbenchNoteSearchPalette
           onClose={() => { setPaletteView(null); props.onCloseCommandPalette?.(); props.onCloseSearch?.() }}
           onCommands={() => { setPaletteView('commands'); props.onOpenCommandPalette?.(); props.onCloseSearch?.() }}
+          {...(props.onHideSearchPreview === undefined ? {} : { onHidePreview: props.onHideSearchPreview })}
           onLoadMoreSearch={props.onLoadMoreSearch}
           onRunSearch={props.onRunSearch}
+          onSearchActiveMove={props.onSearchActiveMove}
+          onSearchActiveSet={props.onSearchActiveSet}
           onSearchChange={props.onSearchChange}
           onSearchMode={props.onSearchMode}
           onSearchFilters={props.onSearchFilters}
           onSelect={props.onSelect}
+          onSelectSearchMatch={props.onSelectSearchMatch}
           snapshot={snapshot}
         />
       )}
@@ -4326,9 +4540,13 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onRunSearch={() => { void controller.runSearch() }}
         onSave={() => { void controller.save() }}
         onSaveWorkspace={() => { controller.saveCurrentWorkspace() }}
+        onSearchActiveMove={delta => { controller.moveSearchActive(delta) }}
+        onSearchActiveSet={index => { controller.setSearchActiveIndex(index) }}
         onSearchChange={query => { controller.setSearchQuery(query) }}
         onSearchMode={mode => { controller.setSearchMode(mode) }}
         onSearchFilters={filters => { controller.setSearchFilters(filters) }}
+        onSelectSearchMatch={(match, newTab) => { void controller.openSearchMatch(match, newTab) }}
+        onHideSearchPreview={() => { controller.hideSearchPreview() }}
         onSettingsChange={change => { controller.updateSettings(change) }}
         onSelect={path => { void controller.select(path) }}
         onSelectionChange={(start, end) => { controller.setSelection(start, end) }}

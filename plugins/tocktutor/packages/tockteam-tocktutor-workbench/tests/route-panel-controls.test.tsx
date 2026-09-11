@@ -58,8 +58,11 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onRunSearch?(): void
   onSaveWorkspace?(): void
   onLoadWorkspace?(id: string): void
+  onSearchActiveMove?(delta: number): void
+  onSearchActiveSet?(index: number): void
   onSearchChange?(query: string): void
   onSearchMode?(mode: 'query' | 'related'): void
+  onSelectSearchMatch?(match: { kind: 'content'; line: number; path: string; preview: string }, newTab: boolean): void
   onSettingsChange?(change: Record<string, unknown>): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
   onToggleFocusMode?(): void
@@ -1079,6 +1082,26 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Search' }))
     expect(onRunSearch).toHaveBeenCalledTimes(2)
     expect(screen.getByRole('list', { name: 'Vault Search Results' }).textContent).toContain('Lesson match')
+  })
+
+  it('keeps search input focus while roving matches and opens Command+Enter in a new tab', () => {
+    const onSearchActiveMove = vi.fn()
+    const onSearchActiveSet = vi.fn()
+    const onSelectSearchMatch = vi.fn()
+    const matches = [
+      { kind: 'content' as const, line: 2, path: 'A/Lesson.md', preview: 'First lesson match' },
+      { kind: 'content' as const, line: 8, path: 'B/Lesson.md', preview: 'Second lesson match' },
+    ]
+    renderRoute({ searchActiveIndex: 0, searchMatches: matches, searchOpen: true, searchQuery: 'lesson' }, { onSearchActiveMove, onSearchActiveSet, onSelectSearchMatch })
+    const input = screen.getByRole('searchbox', { name: 'Search Notes Query' })
+    input.focus()
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    expect(onSearchActiveMove).toHaveBeenCalledWith(1)
+    expect(document.activeElement).toBe(input)
+    fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
+    expect(onSelectSearchMatch).toHaveBeenCalledWith(matches[0], true)
+    expect(screen.getByRole('button', { name: 'Open A/Lesson.md' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Open B/Lesson.md' })).toBeTruthy()
   })
 
   it('renders local Title Only, In Folder, and modified-date filters', () => {
