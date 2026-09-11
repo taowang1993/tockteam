@@ -29,7 +29,7 @@ const proof = JSON.parse(readFileSync(resolve('.beads/reports/tocktutor-utility-
     verification: { cleanupVerified: boolean; runtimeErrorsAtCapture: number }
   }
   attachmentsEmbeds: { obsidian?: { directAttachmentPanelCapture?: boolean } }
-  affectedRecapture: { copiedVaultIdentity?: string; surfaces: { noteActions: { backgroundsMatchSidebar: boolean; cleanupVerified: boolean; menuBackground: string; menuLabels: string[]; runtimeErrorsAtCapture: number; sidebarBackground: string; visibleTooltips: number }; workspacesPanes: { comparability?: string }; newNote: { captureCommit?: string; captureRun?: string; captureState?: string; collisionIsolation?: string; copiedVaultIdentity?: string; renderedPreviewBar?: boolean; screenshotBytes?: number; screenshotSha256?: string }; search: { geometry: { css: { width: number; height: number }; pixels: { width: number; height: number } }; theme: { activeSkin: string | null; backgroundMatchesSidebar: boolean; themePreference: string } } } }
+  affectedRecapture: { copiedVaultIdentity?: string; surfaces: { noteActions: { backgroundsMatchSidebar: boolean; cleanupVerified: boolean; menuBackground: string; menuLabels: string[]; runtimeErrorsAtCapture: number; sidebarBackground: string; visibleTooltips: number }; workspacesPanes: { comparability?: string }; newNote: { captureCommit?: string; captureRun?: string; captureState?: string; collisionIsolation?: string; copiedVaultIdentity?: string; renderedPreviewBar?: boolean; screenshotBytes?: number; screenshotSha256?: string; theme?: { activeSkin: string | null; baseline: string; themePreference: string } }; search: { geometry: { css: { width: number; height: number }; pixels: { width: number; height: number } }; theme: { activeSkin: string | null; backgroundMatchesSidebar: boolean; themePreference: string } } } }
   neutralThemeRecapture: {
     geometry: { css: { width: number; height: number; deviceScaleFactor: number }; pixels: { width: number; height: number } }
     requestedSurfaces: number[]
@@ -99,9 +99,10 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
   assert.equal(proof.affectedRecapture.surfaces.newNote.captureState, 'post-create opened and focused Untitled note, phase-matched with Obsidian Untitled result')
   assert.equal(proof.affectedRecapture.surfaces.newNote.copiedVaultIdentity, 'TockTutor Parity Fixture')
   assert.equal(proof.affectedRecapture.surfaces.newNote.collisionIsolation, 'fresh temporary vault had no pre-existing Notes/Untitled.md')
-  assert.equal(proof.affectedRecapture.surfaces.newNote.captureRun, 'tocktutor-capture-mtw8y4h7-fd871879')
-  assert.equal(proof.affectedRecapture.surfaces.newNote.captureCommit, 'tutor@d7d8b821')
+  assert.equal(proof.affectedRecapture.surfaces.newNote.captureRun, 'tocktutor-capture-mtw9km8i-8a3e7d0d')
+  assert.equal(proof.affectedRecapture.surfaces.newNote.captureCommit, 'tutor@926a0a83')
   assert.equal(proof.affectedRecapture.surfaces.newNote.renderedPreviewBar, false)
+  assert.deepEqual(proof.affectedRecapture.surfaces.newNote.theme, { themePreference: 'dark', activeSkin: null, baseline: 'built-in-dark-no-skin' })
   const newNoteCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-new-note.png'))
   assert.deepEqual({ width: newNoteCapture.readUInt32BE(16), height: newNoteCapture.readUInt32BE(20) }, { width: 3024, height: 1898 })
   assert.equal(proof.affectedRecapture.surfaces.newNote.screenshotBytes, newNoteCapture.length)
