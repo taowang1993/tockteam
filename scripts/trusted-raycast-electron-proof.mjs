@@ -65,10 +65,10 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
   const trustView = async (expectedStatus, expectedButtons) => {
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
-      const section = launcher.locator('section[aria-label="Trusted Extensions"]');
+      const section = launcher.locator('section[aria-label="Extensions"]');
       await section.waitFor({ timeout: 15000 });
       await launcher.getByRole('status').filter({ hasText: ${JSON.stringify(expectedStatus)} }).waitFor({ timeout: 15000 });
-      const buttons = await section.locator('button').allTextContents();
+      const buttons = await section.locator('button:not([role=tab])').allTextContents();
       const actionable = buttons.filter(label => label !== 'Back to Results');
       if (JSON.stringify(actionable) !== ${JSON.stringify(JSON.stringify(expectedButtons))}) throw new Error('Unexpected trust actions: ' + JSON.stringify(actionable));
       return { status: await launcher.getByRole('status').innerText(), buttons: actionable };
@@ -77,14 +77,14 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
   const openTrustView = async () => {
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
-      await launcher.locator('#launcher-search').fill('Trusted Extensions');
-      const command = launcher.getByRole('option').filter({ hasText: 'Trusted Extensions' });
+      await launcher.locator('#launcher-search').fill('Extensions');
+      const command = launcher.getByRole('option').filter({ hasText: 'Extensions' });
       await command.waitFor({ timeout: 15000 });
       const marker = command.locator('.launcher-command-row-icon');
       const identity = await marker.evaluate(node => ({ src: node instanceof HTMLImageElement ? node.src : '', tag: node.tagName }));
-      if (identity.tag !== 'IMG' || !identity.src.includes('/launcher-assets/ueli-command-') || !identity.src.endsWith('.png')) throw new Error('Trusted Extensions did not use the TockTeam command icon: ' + JSON.stringify(identity));
+      if (identity.tag !== 'IMG' || !identity.src.includes('/launcher-assets/ueli-command-') || !identity.src.endsWith('.png')) throw new Error('Extensions did not use the TockTeam command icon: ' + JSON.stringify(identity));
       await launcher.locator('#launcher-search').press('Enter');
-      await launcher.locator('section[aria-label="Trusted Extensions"]').waitFor({ timeout: 15000 });
+      await launcher.locator('section[aria-label="Extensions"]').waitFor({ timeout: 15000 });
       return { opened: true };
     }`)
   }
@@ -97,12 +97,12 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await button.click();
       await launcher.getByRole('status').filter({ hasText: ${JSON.stringify(expectedStatus)} }).waitFor({ timeout: 30000 });
       await launcher.waitForFunction((expected) => {
-        const section = document.querySelector('section[aria-label="Trusted Extensions"]');
-        const buttons = [...(section?.querySelectorAll('button') ?? [])].map(button => button.textContent?.trim() ?? '').filter(value => value !== 'Back to Results');
+        const section = document.querySelector('section[aria-label="Extensions"]');
+        const buttons = [...(section?.querySelectorAll('button:not([role=tab])') ?? [])].map(button => button.textContent?.trim() ?? '').filter(value => value !== 'Back to Results');
         return JSON.stringify(buttons) === expected;
       }, ${JSON.stringify(JSON.stringify(expectedButtons))}, { timeout: 30000 });
-      const section = launcher.locator('section[aria-label="Trusted Extensions"]');
-      const buttons = (await section.locator('button').allTextContents()).filter(value => value !== 'Back to Results');
+      const section = launcher.locator('section[aria-label="Extensions"]');
+      const buttons = (await section.locator('button:not([role=tab])').allTextContents()).filter(value => value !== 'Back to Results');
       if (JSON.stringify(buttons) !== ${JSON.stringify(JSON.stringify(expectedButtons))}) throw new Error('Unexpected trust actions after ' + ${JSON.stringify(label)} + ': ' + JSON.stringify(buttons));
       return { status: await launcher.getByRole('status').innerText(), buttons };
     }`)
@@ -169,15 +169,18 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       if (JSON.stringify(facts.buttons) !== JSON.stringify(['Open Command', 'Actions']) || Math.abs(facts.rightGap - 12) > 1 || ['rgba(0, 0, 0, 0)', 'transparent'].includes(facts.background) || facts.borderStyle !== 'solid' || facts.radius < 16 || facts.removedControls !== 0) throw new Error('Root footer did not match the grouped Raycast action pill: ' + JSON.stringify(facts));
       return facts;
     }`)
-    // Fresh userData gets the exact reviewed bundle immediately; first use asks only for preferences.
-    await openTrustView()
-    await trustView('Installed · Enabled', ['Disable Translate', 'Remove Extension'])
-    await backToResults()
-    await assertTranslateCatalog(true)
+    // Cold discovery must review exact consent before any installation or preferences.
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
-      const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
-      await command.waitFor({ timeout: 15000 }); await launcher.locator('#launcher-search').press('Enter');
+      await launcher.locator('#launcher-search').fill('Translate');
+      await launcher.locator('[data-result-id="trusted-raycast:setup:google-translate"]').waitFor();
+      await launcher.locator('#launcher-search').press('Enter');
+      await launcher.getByRole('button', { name: 'Approve and Open', exact: true }).waitFor();
+      await launcher.keyboard.press('Enter');
+      return true;
+    }`)
+    await cli('run-code', `async page => {
+      const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       const setup = launcher.locator('section[data-view="preference-setup"]');
       await setup.waitFor({ timeout: 15000 });
       const labels = await setup.locator('form label').evaluateAll(nodes => nodes.map(node => node.childNodes[0]?.textContent?.trim()));
@@ -215,16 +218,16 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await workbenchConnection.evaluate(`void window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' })`)
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.documentElement.style.colorScheme === 'dark'); await launcher.keyboard.press('Meta+Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Preference completion leaked into fresh command state'); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { preferencesConfigured: true }; }`)
     await writeFile(preferencePath, JSON.stringify({ langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }), { mode: 0o600 })
-    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.locator('#launcher-search').fill('Translate'); const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' }); await command.waitFor({ timeout: 15000 }); await launcher.locator('#launcher-search').press('Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); await launcher.waitForTimeout(500); if (await input.inputValue() !== '') throw new Error('Reopened command did not start with an empty query'); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Prior action feedback survived command reopen'); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'command-empty.png'))} }); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { freshCommand: true }; }`)
+    await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.locator('#launcher-search').fill('Translate'); const command = launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"]'); await command.waitFor({ timeout: 15000 }); await launcher.locator('#launcher-search').press('Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); await launcher.waitForTimeout(500); if (await input.inputValue() !== '') throw new Error('Reopened command did not start with an empty query'); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Prior action feedback survived command reopen'); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'command-empty.png'))} }); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { freshCommand: true }; }`)
     trustEvidence.steps.push('fresh userData: exact reviewed Translate installed and enabled; first use saved required preferences in dark and light themes; reopen cleared prior feedback')
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.waitForTimeout(250); return { enabled: true }; }`)
     await openTrustView()
-    await trustAction('Disable Translate', 'Installed · Disabled', ['Enable Translate', 'Remove Extension'])
+    await trustAction('Disable Extension', 'Installed · Disabled', ['Enable Extension', 'Remove Extension'])
     if ((await childProcesses()).length !== 0 || listPrivateWorkspaces().trim() !== '') throw new Error('Disable left a Translate child running')
     await backToResults()
     await assertTranslateCatalog(false)
     await openTrustView()
-    await trustAction('Enable Translate', 'Installed · Enabled', ['Disable Translate', 'Remove Extension'])
+    await trustAction('Enable Extension', 'Installed · Enabled', ['Disable Extension', 'Remove Extension'])
     await backToResults()
     await assertTranslateCatalog(true)
     trustEvidence.steps.push('disable stopped the child and removed Translate; re-enable restored it')
@@ -233,12 +236,12 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     const preservedPreference = JSON.stringify({ langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' })
     await writeFile(preferencePath, preservedPreference, { mode: 0o600 })
     await openTrustView()
-    await trustAction('Disable Translate', 'Installed · Disabled', ['Enable Translate', 'Remove Extension'])
+    await trustAction('Disable Extension', 'Installed · Disabled', ['Enable Extension', 'Remove Extension'])
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       await launcher.getByRole('button', { name: 'Remove Extension', exact: true }).click();
-      const buttons = (await launcher.locator('section[aria-label="Trusted Extensions"] button').allTextContents()).filter(value => value !== 'Back to Results');
-      if (JSON.stringify(buttons) !== JSON.stringify(['Enable Translate', 'Confirm Remove'])) throw new Error('Remove confirmation did not appear');
+      const buttons = (await launcher.locator('section[aria-label="Extensions"] button:not([role=tab])').allTextContents()).filter(value => value !== 'Back to Results');
+      if (JSON.stringify(buttons) !== JSON.stringify(['Enable Extension', 'Confirm Remove'])) throw new Error('Remove confirmation did not appear');
       await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'trust-confirm-remove.png'))} });
       return { confirmation: true };
     }`)
@@ -252,14 +255,14 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     trustEvidence.steps.push('confirmed removal cleared install runtime state while preserving disabled preference')
     await openTrustView()
     await trustAction('Install Reviewed Extension', 'Not Installed', ['Approve & Install'])
-    await trustAction('Approve & Install', 'Installed · Disabled', ['Enable Translate', 'Remove Extension'])
-    await trustAction('Enable Translate', 'Installed · Enabled', ['Disable Translate', 'Remove Extension'])
+    await trustAction('Approve & Install', 'Installed · Disabled', ['Enable Extension', 'Remove Extension'])
+    await trustAction('Enable Extension', 'Installed · Enabled', ['Disable Extension', 'Remove Extension'])
     await backToResults()
     await assertTranslateCatalog(true)
     trustEvidence.steps.push('reinstall and re-enable succeeded after removal')
     // Fault injection is private to this fresh userData and happens only after the runtime is stopped.
     await openTrustView()
-    await trustAction('Disable Translate', 'Installed · Disabled', ['Enable Translate', 'Remove Extension'])
+    await trustAction('Disable Extension', 'Installed · Disabled', ['Enable Extension', 'Remove Extension'])
     if ((await childProcesses()).length !== 0 || listPrivateWorkspaces().trim() !== '') throw new Error('Fault injection started with a live Translate child')
     const pristineChild = await readFile(currentChildPath)
     await writeFile(currentChildPath, Buffer.concat([pristineChild, Buffer.from('\n// Slice4 private derived-file tamper\n')]))
@@ -276,8 +279,8 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await openTrustView()
     await trustAction('Recover Installation', 'Not Installed', ['Install Reviewed Extension'])
     await trustAction('Install Reviewed Extension', 'Not Installed', ['Approve & Install'])
-    await trustAction('Approve & Install', 'Installed · Disabled', ['Enable Translate', 'Remove Extension'])
-    await trustAction('Enable Translate', 'Installed · Enabled', ['Disable Translate', 'Remove Extension'])
+    await trustAction('Approve & Install', 'Installed · Disabled', ['Enable Extension', 'Remove Extension'])
+    await trustAction('Enable Extension', 'Installed · Enabled', ['Disable Extension', 'Remove Extension'])
     const recoveredIdentity = JSON.parse(await readFile(join(installRoot, 'current', 'build.json'), 'utf8'))
     if (recoveredIdentity.artifactSha256 !== candidateIdentity.artifactSha256 || await digestFile(join(installRoot, 'current', 'artifact.tar')) !== candidateIdentity.artifactSha256 || await digestFile(currentChildPath) !== recoveredIdentity.childSha256) throw new Error('Recovery/reinstall did not restore the exact reviewed digest')
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'trust-recovered-installed.png'))} }); return true; }`)
@@ -292,7 +295,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       if (!launcher) throw new Error('No real launcher');
       await launcher.bringToFront();
       await launcher.locator('#launcher-search').fill('Translate');
-      const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
+      const command = launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"]');
       await command.waitFor({ timeout: 15000 });
       await launcher.locator('#launcher-search').press('Enter');
       const input = launcher.locator('#trusted-raycast-search');
@@ -407,7 +410,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       await input.press('Escape');
       await input.waitFor({ state: 'detached' });
       await launcher.locator('#launcher-search').fill('Translate');
-      const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
+      const command = launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"]');
       await command.waitFor({ timeout: 15000 });
       await launcher.locator('#launcher-search').press('Enter');
       const fresh = launcher.locator('#trusted-raycast-search');
@@ -530,7 +533,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       await launcher.bringToFront();
       await launcher.locator('#launcher-search').fill('Translate');
-      const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
+      const command = launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"]');
       await command.waitFor({ timeout: 15000 });
       await launcher.locator('#launcher-search').press('Enter');
       const input = launcher.locator('#trusted-raycast-search');

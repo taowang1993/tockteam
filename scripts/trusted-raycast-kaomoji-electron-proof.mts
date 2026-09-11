@@ -156,11 +156,10 @@ try {
   await saveKaomojiPreferences(kaomoji.preferencesFile, KAOMOJI_PREFERENCE_DEFAULTS)
   await saveTrustedRaycastPreferences(google.preferencesFile, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS)
   writeFileSync(google.stateFile, JSON.stringify({ visualProofSentinel: true }), { mode: 0o600 })
-  await install('google-translate'); await install('kaomoji-search')
+  await install('google-translate')
   tempGoogleBefore = manifest(extensionPaths(userData, 'google-translate'))
   await writeFile(join(evidence, 'disposable-google-before.manifest'), `${tempGoogleBefore}\n`)
-  const identities = JSON.parse(await readFile(join(kaomoji.installRoot, 'current/build.json'), 'utf8')) as Record<string, unknown>
-  for (const key of ['artifactSha256', 'childSha256', 'projectionSha256', 'resolutionSha256', 'metadataSha256']) assert.match(String(identities[key]), /^[0-9a-f]{64}$/u)
+
 
   const references: Array<{ file: string; height: number; sha256: string; size: number; width: number }> = []
   for (const reference of await extractKaomojiReferenceImages(artifact)) {
@@ -207,7 +206,8 @@ try {
     await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' }));
     await launcher.waitForFunction(() => document.documentElement.dataset.launcherReady === 'true' && document.documentElement.style.colorScheme === 'dark');
     const input = launcher.locator('#launcher-search'); await input.fill('Kaomoji Search');
-    await launcher.locator('[data-result-id="trusted-raycast:kaomoji-search:index"]').waitFor(); await input.press('Enter');
+    await launcher.locator('[data-result-id="trusted-raycast:setup:kaomoji-search"]').waitFor(); await input.press('Enter');
+    await launcher.getByRole('button', { name: 'Approve and Open', exact: true }).waitFor(); await launcher.keyboard.press('Enter');
     const section = launcher.locator('section[aria-label="Kaomoji Search"]'); await section.waitFor();
     await launcher.waitForFunction(() => document.querySelectorAll('section[aria-label="Kaomoji Search"] li.launcher-command-row').length === 64);
     const facts = await launcher.evaluate(() => ({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio, screenX, screenY, availLeft: screen.availLeft, availTop: screen.availTop, colorScheme: document.documentElement.style.colorScheme, node: typeof window.process, require: typeof window.require }));
@@ -315,6 +315,8 @@ try {
     const width = Number(result.stdout.match(/pixelWidth: (\d+)/)?.[1]); const height = Number(result.stdout.match(/pixelHeight: (\d+)/)?.[1])
     assert.deepEqual({ width, height }, { width: 1500, height: 950 }); dimensions.push({ file, height, width })
   }
+  const identities = JSON.parse(await readFile(join(kaomoji.installRoot, 'current/build.json'), 'utf8')) as Record<string, unknown>
+  for (const key of ['artifactSha256', 'childSha256', 'projectionSha256', 'resolutionSha256', 'metadataSha256']) assert.match(String(identities[key]), /^[0-9a-f]{64}$/u)
   await writeFile(join(evidence, 'proof.json'), `${JSON.stringify({ accessibility: { actionPanel, firstPreferenceFocused: true, listLabel: 'Kaomoji Results', nestedEscapeReturned: true, searchLabel: 'Search Kaomoji' }, artifactSha256: expectedArtifact, captureMethod: 'CDP Page.captureScreenshot', derivedIdentities: identities, focusProof: { checkpoints: focusCheckpoints, policy: 'Any TockTeam gate-app activation or BrowserWindow focus makes this proof inconclusive; unrelated frontmost application changes are allowed.' }, geometry, manifestSnapshots: { disposableGoogle: { after: { file: 'disposable-google-after.manifest', sha256: fileDigest(join(evidence, 'disposable-google-after.manifest')) }, before: { file: 'disposable-google-before.manifest', sha256: fileDigest(join(evidence, 'disposable-google-before.manifest')) }, entries: tempGoogleBefore.split('\n').length }, liveProfiles: { after: { file: 'live-after.manifest', sha256: fileDigest(join(evidence, 'live-after.manifest')) }, before: { file: 'live-before.manifest', sha256: fileDigest(join(evidence, 'live-before.manifest')) }, completeDesktopProfileTrees: true, entries: liveBefore.split('\n').length, roots: ['TockTeam-Desktop-Dev', 'TockTeam-Desktop'] } }, mockedEffects: { copyDeniedWithoutStateMutation: true, pasteDeniedWithoutStateMutation: true }, preferenceContract, preferencesChanged, references, screenshots: dimensions, search, stateUnmutated: true, translateStateUnchanged: true, visualScope: 'Official Featured Kaomoji operational scope; not described as Recommended.' }, null, 2)}\n`)
   completed = true
 } catch (error) { failure = error }

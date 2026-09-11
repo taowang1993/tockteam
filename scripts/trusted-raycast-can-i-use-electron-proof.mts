@@ -132,15 +132,15 @@ try {
     await launcher.evaluate(() => { window.__canProofViolations = []; document.addEventListener('securitypolicyviolation', event => window.__canProofViolations.push(event.effectiveDirective)); });
     await workbench.evaluate(() => window.dshDesktop.launcher.settings.updateSetting('window.hideWindowOn', []));
     await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' }));
-    await launcher.locator('#launcher-search').fill('Trusted Extensions');
-    await launcher.locator('[data-result-id="trusted-raycast:trust"]').waitFor(); await launcher.locator('#launcher-search').press('Enter');
-    await launcher.getByRole('tab', { name: 'Can I Use · Trusted Raycast', exact: true }).click();
-    await launcher.getByRole('button', { name: 'Install Reviewed Extension', exact: true }).click();
-    await launcher.getByRole('button', { name: 'Approve & Install', exact: true }).click();
-    await launcher.getByRole('button', { name: 'Enable Extension', exact: true }).click();
-    await launcher.getByRole('status').filter({ hasText: 'Installed · Enabled' }).waitFor();
-    await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click();
-    await launcher.locator('#launcher-search').fill('Can I Use'); await launcher.locator('[data-result-id="trusted-raycast:can-i-use:index"]').waitFor(); await launcher.locator('#launcher-search').press('Enter');
+    await launcher.locator('#launcher-search').fill('Can I Use');
+    await launcher.locator('[data-result-id="trusted-raycast:setup:can-i-use"]').waitFor(); await launcher.locator('#launcher-search').press('Enter');
+    await launcher.getByRole('button', { name: 'Approve and Open', exact: true }).waitFor();
+    await launcher.keyboard.press('Escape');
+    if (await launcher.locator('#launcher-search').inputValue() !== 'Can I Use') throw new Error('Escape lost search');
+    if ((await launcher.evaluate(() => window.tockteamLauncher.getTrustedRaycastTrust('can-i-use'))).installed) throw new Error('Review mutated installation');
+    await launcher.locator('#launcher-search').press('Enter');
+    await launcher.getByRole('button', { name: 'Approve and Open', exact: true }).waitFor();
+    await launcher.keyboard.press('Enter');
     await launcher.getByRole('textbox', { name: 'Browser Targets' }).waitFor(); return true;
   `)
   await capture('setup-dark.png')
