@@ -13,6 +13,7 @@ const proof = JSON.parse(readFileSync(resolve('.beads/reports/tocktutor-utility-
     captureRun: string
     cleanupVerified: boolean
     font: { family: string; loaded: boolean; sizePx: number }
+    headingDecorations: string[]
     markerColor: string
     runtimeErrorsAtCapture: number
     screenshotBytes: number
@@ -28,7 +29,7 @@ const proof = JSON.parse(readFileSync(resolve('.beads/reports/tocktutor-utility-
     verification: { cleanupVerified: boolean; runtimeErrorsAtCapture: number }
   }
   attachmentsEmbeds: { obsidian?: { directAttachmentPanelCapture?: boolean } }
-  affectedRecapture: { copiedVaultIdentity?: string; surfaces: { noteActions: { menuLabels: string[] }; workspacesPanes: { comparability?: string }; newNote: { captureState?: string; copiedVaultIdentity?: string; collisionIsolation?: string }; search: { geometry: { css: { width: number; height: number }; pixels: { width: number; height: number } }; theme: { activeSkin: string | null; backgroundMatchesSidebar: boolean; themePreference: string } } } }
+  affectedRecapture: { copiedVaultIdentity?: string; surfaces: { noteActions: { backgroundsMatchSidebar: boolean; cleanupVerified: boolean; menuBackground: string; menuLabels: string[]; runtimeErrorsAtCapture: number; sidebarBackground: string; visibleTooltips: number }; workspacesPanes: { comparability?: string }; newNote: { captureState?: string; copiedVaultIdentity?: string; collisionIsolation?: string }; search: { geometry: { css: { width: number; height: number }; pixels: { width: number; height: number } }; theme: { activeSkin: string | null; backgroundMatchesSidebar: boolean; themePreference: string } } } }
   neutralThemeRecapture: {
     geometry: { css: { width: number; height: number; deviceScaleFactor: number }; pixels: { width: number; height: number } }
     requestedSurfaces: number[]
@@ -67,12 +68,14 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
   assert.deepEqual({
     cleanupVerified: proof.sourceCommandRecovery.source.tockTutor.cleanupVerified,
     font: proof.sourceCommandRecovery.source.tockTutor.font,
+    headingDecorations: proof.sourceCommandRecovery.source.tockTutor.headingDecorations,
     markerColor: proof.sourceCommandRecovery.source.tockTutor.markerColor,
     runtimeErrorsAtCapture: proof.sourceCommandRecovery.source.tockTutor.runtimeErrorsAtCapture,
     visibleTooltips: proof.sourceCommandRecovery.source.tockTutor.visibleTooltips,
   }, {
     cleanupVerified: true,
     font: { family: 'Fira Code VF', loaded: true, sizePx: 16 },
+    headingDecorations: ['none'],
     markerColor: '#ffffff',
     runtimeErrorsAtCapture: 0,
     visibleTooltips: 0,
@@ -97,6 +100,21 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
   assert.equal(proof.affectedRecapture.surfaces.newNote.copiedVaultIdentity, 'TockTutor Parity Fixture')
   assert.equal(proof.affectedRecapture.surfaces.newNote.collisionIsolation, 'fresh temporary vault had no pre-existing Notes/Untitled.md')
   assert.equal(proof.affectedRecapture.surfaces.noteActions.menuLabels.includes('Backlinks in Document'), true)
+  assert.deepEqual({
+    backgroundsMatchSidebar: proof.affectedRecapture.surfaces.noteActions.backgroundsMatchSidebar,
+    cleanupVerified: proof.affectedRecapture.surfaces.noteActions.cleanupVerified,
+    menuBackground: proof.affectedRecapture.surfaces.noteActions.menuBackground,
+    runtimeErrorsAtCapture: proof.affectedRecapture.surfaces.noteActions.runtimeErrorsAtCapture,
+    sidebarBackground: proof.affectedRecapture.surfaces.noteActions.sidebarBackground,
+    visibleTooltips: proof.affectedRecapture.surfaces.noteActions.visibleTooltips,
+  }, {
+    backgroundsMatchSidebar: true,
+    cleanupVerified: true,
+    menuBackground: '#151517',
+    runtimeErrorsAtCapture: 0,
+    sidebarBackground: '#151517',
+    visibleTooltips: 0,
+  })
   assert.deepEqual(proof.affectedRecapture.surfaces.search.geometry, {
     css: { width: 1512, height: 949, deviceScaleFactor: 2 },
     pixels: { width: 3024, height: 1898 },
