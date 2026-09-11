@@ -93,6 +93,20 @@ test('Can I Use sends the full browser-target draft before keyboard submission',
   view.dispose()
 })
 
+test('first-use identity and fields share one scroll region', () => {
+  const nodes: Element[] = []
+  const document = { createElement(tagName: string) { const node = new Element(); node.tagName = tagName; nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  const root = createTrustedRaycastCanIUsePreferenceForm({ defaultQuery: 'chrome 100', showReleaseDate: true, showPartialSupport: false, briefMode: false, path: '', environment: 'production' }, { defaultQuery: 'query', showReleaseDate: 'date', showPartialSupport: 'partial', briefMode: 'brief' }, 'save')
+  view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, root })
+
+  const content = nodes.find(node => node.className.includes('launcher-command-content'))!
+  const heading = nodes.find(node => node.tagName === 'h1' && node.textContent === 'Can I Use')!
+  const hero = nodes.find(node => node.children.includes(heading))!
+  assert.ok(content.children.includes(hero), 'the logo, title, description, and fields must scroll together')
+  view.dispose()
+})
+
 test('Can I Use preference dropdowns use shadcn-style listboxes with pointer and keyboard selection', async () => {
   const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
   const document = { get activeElement() { return Element.activeElement }, createElement(tagName: string) { const node = new Element(); node.tagName = tagName; nodes.push(node); return node } } as unknown as Document

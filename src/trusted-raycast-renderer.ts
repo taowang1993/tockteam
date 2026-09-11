@@ -79,12 +79,12 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const results = document.createElement('ul'); results.className = 'launcher-command-list'; results.setAttribute('role', 'list'); results.setAttribute('aria-label', zh ? '翻译结果' : 'Translations')
   const formArea = document.createElement('form'); formArea.className = 'flex flex-col items-start gap-3 py-2'; formArea.hidden = true; formArea.addEventListener('submit', event => { event.preventDefault(); invoke(submitAction) })
   const error = document.createElement('p'); error.className = 'launcher-command-error'; error.setAttribute('role', 'alert'); error.hidden = true
-  header.append(searchRow); content.append(intro, back, status, panelActions, results, formArea, error)
+  header.append(searchRow); content.append(hero, intro, back, status, panelActions, results, formArea, error)
   const commandFooter = document.createElement('footer'); commandFooter.className = 'launcher-command-footer'; commandFooter.hidden = true
   const extensionLabel = document.createElement('span'); extensionLabel.className = 'launcher-command-footer-identity'
   const footerIcon = document.createElement('img'); footerIcon.setAttribute('src', './trusted-raycast/google-translate.png'); footerIcon.setAttribute('alt', ''); footerIcon.className = 'size-5'; extensionLabel.append(footerIcon); const footerText = document.createElement('span'); footerText.textContent = zh ? '翻译' : 'Translate'; extensionLabel.append(footerText)
   const footerActions = document.createElement('div'); footerActions.className = 'flex items-center gap-2'; footerActions.setAttribute('role', 'group'); footerActions.setAttribute('aria-label', zh ? '命令操作' : 'Command Actions')
-  commandFooter.append(extensionLabel, footerActions); element.append(header, hero, content, commandFooter)
+  commandFooter.append(extensionLabel, footerActions); element.append(header, content, commandFooter)
   let actionPending: string | undefined
   let queryPending = false
   const syncBusy = (): void => element.setAttribute('aria-busy', String(actionPending !== undefined || queryPending))
