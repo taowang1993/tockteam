@@ -314,6 +314,8 @@ export interface WorkbenchRouteSnapshot {
   searchAnswer?: WorkbenchQuickAnswerState
   searchError?: string | null
   searchIntelligenceStatus?: WorkbenchSearchIntelligenceResult['status'] | null
+  searchIntelligenceProvider?: string | null
+  searchIntelligenceModel?: string | null
   searchLoading?: boolean
   searchMatches?: readonly VaultSearchMatch[]
   searchMode?: 'query' | 'related'
@@ -496,6 +498,7 @@ function validSearchResult(value: VaultSearchResult, vault: VaultReference): boo
     && value.matches.length <= 100
     && value.matches.every(match => isSafeVaultRelativePath(match.path)
       && (match.id === undefined || typeof match.id === 'string' && match.id.length > 0 && match.id.length <= 128 && !ids.has(match.id) && (ids.add(match.id), true))
+      && (match.revision === undefined || typeof match.revision === 'string' && match.revision.length > 0 && match.revision.length <= 4_096)
       && typeof match.preview === 'string'
       && match.preview.length <= 4_096
       && (match.line === null || Number.isSafeInteger(match.line) && match.line >= 1)
@@ -639,6 +642,8 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     searchAnswer: { status: 'idle' as const, answer: '', citations: [] },
     searchError: null,
     searchIntelligenceStatus: null,
+    searchIntelligenceProvider: null,
+    searchIntelligenceModel: null,
     searchLoading: false,
     searchMatches: Object.freeze([]),
     searchMode: 'query',
@@ -1021,6 +1026,7 @@ export class WorkbenchRouteController {
       if (!this.currentSearchPreview(operation.id, vault, match.path)
         || opened.generation !== vault.generation
         || opened.path !== match.path
+        || (match.revision !== undefined && opened.revision !== match.revision)
         || typeof opened.revision !== 'string'
         || !boundedSource(opened.content)) return false
       this.update({
@@ -1069,6 +1075,34 @@ export class WorkbenchRouteController {
     this.scheduleSearch()
   }
 
+  private async loadRecentSearch(vault: VaultReference): Promise<void> {
+    const operation = this.nextOperation()
+    const entriesByPath = new Map(this.snapshot.entries.map(entry => [entry.path, entry]))
+    const cursors = new Set<string>()
+    let cursor: string | null = null
+    try {
+      for (let pageIndex = 0; pageIndex < 100; pageIndex += 1) {
+        const page: VaultTreePage = remoteValue(await this.remote.tocktutorWorkbench.listTree({
+          expectedVault: vault,
+          limit: 200,
+          ...(cursor === null ? {} : { cursor }),
+        }, operation.signal))
+        if (!this.current(operation.id, vault) || page.generation !== vault.generation) return
+        for (const entry of page.entries) entriesByPath.set(entry.path, entry)
+        if (page.cursor === null) break
+        if (cursors.has(page.cursor)) return
+        cursors.add(page.cursor)
+        cursor = page.cursor
+      }
+      if (this.current(operation.id, vault) && this.snapshot.searchOpen && this.snapshot.searchQuery.trim() === '') {
+        const nextEntries = Object.freeze([...entriesByPath.values()])
+        this.update({ entries: nextEntries, searchMatches: recentSearchMatches(nextEntries) })
+      }
+    } catch {
+      // The initial bounded tree page remains a valid recent-notes fallback.
+    }
+  }
+
   closeSearch(): void {
     this.nextOperation()
     this.update({ searchActiveIndex: null, searchAnswer: { status: 'idle', answer: '', citations: [] }, searchDirectory: '', searchIntelligenceStatus: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false })
@@ -1092,7 +1126,8 @@ export class WorkbenchRouteController {
       searchPreviewLoading: false,
       searchQuery: query,
     })
-    this.scheduleSearch()
+    if (trimmed === '' && this.snapshot.vault !== null) void this.loadRecentSearch(this.snapshot.vault)
+    else this.scheduleSearch()
   }
 
   setSearchMode(mode: 'query' | 'related'): void {
@@ -1211,13 +1246,15 @@ export class WorkbenchRouteController {
     const intelligence = this.remote.tocktutorAssistant
     if (intelligence?.searchIntelligence === undefined) return
     let automatic = false
-    if (mode === 'query' && intelligence.currentSettings !== undefined) {
+    if (intelligence.currentSettings !== undefined) {
       try {
         const settings = remoteValue(await intelligence.currentSettings(operation.signal))
         automatic = settings.aiSearch === 'automatic'
+        this.update({ searchIntelligenceProvider: settings.provider, searchIntelligenceModel: settings.model })
       } catch { return }
     }
     if (mode !== 'related' && !automatic) return
+    const localMatches = this.snapshot.searchMatches ?? []
     try {
       const result = remoteValue(await intelligence.searchIntelligence({
         query,
@@ -1240,10 +1277,16 @@ export class WorkbenchRouteController {
         truncationReason: null,
         warnings: [],
       }, vault)) {
-        const matches = Object.freeze(result.matches.map(match => Object.freeze({ ...match })))
+        const merged = new Map<string, VaultSearchMatch>()
+        for (const match of [...localMatches, ...result.matches]) {
+          const identity = match.id ?? `${match.path}:${match.kind}:${String(match.line)}:${match.lineEnd ?? ''}:${match.preview}`
+          const previous = merged.get(identity)
+          if (previous === undefined || (match.score ?? 0) > (previous.score ?? 0)) merged.set(identity, match)
+        }
+        const matches = Object.freeze([...merged.values()].map(match => Object.freeze({ ...match })))
         this.update({
           message: `${String(matches.length)} related search results.`,
-          searchActiveIndex: 0,
+          searchActiveIndex: matches.length > 0 ? 0 : null,
           searchMatches: matches,
         })
       }
@@ -1978,10 +2021,22 @@ export class WorkbenchRouteController {
         limit: TREE_LIMIT,
       }, operation.signal))
       if (!this.current(operation.id, vault) || page.generation !== vault.generation) return false
+      const entries = Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path)))
+      const searchQuery = this.snapshot.searchQuery.trim()
       this.update({
-        entries: Object.freeze(page.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
+        entries,
         warnings: Object.freeze(page.warnings),
+        ...(this.snapshot.searchOpen ? {
+          searchActiveIndex: null,
+          searchCursor: null,
+          searchLoading: searchQuery !== '',
+          searchMatches: searchQuery === '' ? recentSearchMatches(entries) : Object.freeze([]),
+          searchPreview: null,
+          searchPreviewError: null,
+          searchPreviewLoading: false,
+        } : {}),
       })
+      if (this.snapshot.searchOpen && searchQuery !== '') this.scheduleSearch()
       return true
     } catch (error) {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
@@ -3266,7 +3321,7 @@ export interface TockTutorRouteViewProps {
   onSearchChange?(query: string): void
   onSearchMode?(mode: 'query' | 'related'): void
   onSearchFilters?(filters: { directory?: string; modifiedFrom?: number | null; modifiedTo?: number | null; titleOnly?: boolean }): void
-  onSelectSearchMatch?(match: VaultSearchMatch, newTab: boolean): void
+  onSelectSearchMatch?(match: VaultSearchMatch, newTab: boolean): Promise<boolean> | boolean | void
   onHideSearchPreview?(): void
   onSettingsChange?(change: Partial<TockTutorSettings>): void
   onSelectionChange?(start: number, end: number): void
@@ -3347,8 +3402,14 @@ function NativeDispatchDialog(props: {
 const SEARCH_OPTIONS = [
   { description: 'match path of the file', label: 'path:', value: 'path:' },
   { description: 'match file name', label: 'file:', value: 'file:' },
-  { description: 'search for tags', label: 'tag:', value: 'tag:' },
+  { description: 'search tags', label: 'tag:', value: 'tag:' },
   { description: 'search tasks', label: 'task:', value: 'task:' },
+  { description: 'search a content block', label: 'block:', value: 'block:' },
+  { description: 'search note content', label: 'content:', value: 'content:' },
+  { description: 'ignore letter case', label: 'ignore-case:', value: 'ignore-case:' },
+  { description: 'match letter case', label: 'match-case:', value: 'match-case:' },
+  { description: 'find completed tasks', label: 'task-done:', value: 'task-done:' },
+  { description: 'find incomplete tasks', label: 'task-todo:', value: 'task-todo:' },
   { description: 'search keywords on same line', label: 'line:', value: 'line:' },
   { description: 'search keywords under same heading', label: 'section:', value: 'section:' },
   { description: 'match property', label: '[property]', value: '[]' },
@@ -3458,7 +3519,7 @@ function NoteSearchPreview(props: {
               : props.error !== null && props.error !== undefined ? <p className="mt-3 mb-0 text-sm text-[var(--dsw-alias-state-error-primary,#dc2626)]" role="alert">{props.error}</p>
                 : props.preview === null || props.preview === undefined ? <p className="mt-3 mb-0 text-sm text-[var(--tt-muted)]">Preview unavailable.</p>
                   : <>
-                    {props.match !== undefined && <p className="mt-2 mb-3 text-xs text-[var(--tt-muted)]">Match at line {String(props.preview.line ?? 1)}{props.preview.lineEnd !== props.preview.line ? `–${String(props.preview.lineEnd)}` : ''}</p>}
+                    {props.match !== undefined && props.preview.line !== null && <p className="mt-2 mb-3 text-xs text-[var(--tt-muted)]">Match at line {String(props.preview.line)}{props.preview.lineEnd !== props.preview.line ? `–${String(props.preview.lineEnd)}` : ''}</p>}
                     {matchedHtml !== '' && <div aria-label="Matched Lines" className="mb-4 rounded-md border border-[var(--tt-border)] bg-[var(--tt-selected)] p-2 text-sm" dangerouslySetInnerHTML={{ __html: matchedHtml }} />}
                     <div className="tocktutor-search-preview prose text-sm" dangerouslySetInnerHTML={{ __html: html }} />
                   </>}
@@ -3485,7 +3546,7 @@ function NoteSearchResultList(props: {
   onClose(): void
   onLoadMore(): void
   onPreview(choice: number): void
-  onSelect(match: VaultSearchMatch): void
+  onSelect(match: VaultSearchMatch): Promise<boolean> | boolean | void
   previewMatchIndex: number
   query: string
 }): ReactNode {
@@ -3508,13 +3569,17 @@ function NoteSearchResultList(props: {
         : props.error !== null && props.error !== undefined ? <Alert unstyled className="px-2 py-3 text-sm text-[var(--dsw-alias-state-error-primary,#dc2626)]" role="alert">{props.error}</Alert>
           : groups.length > 0 ? (
             <>
-              <ul className="m-0 grid list-none gap-0.5 p-0" aria-label={props.query.trim() === '' ? 'Recent Notes' : 'Vault Search Results'}>
+              <ul className="m-0 grid list-none gap-0.5 p-0" aria-label={props.query.trim() === '' ? 'Recent Notes' : 'Vault Search Results'} id="tocktutor-search-results" role="listbox">
                 {groups.map(group => {
                   const first = group.matches[0]!
                   const title = noteTitle(first.match.path)
                   const active = group.matches.some(entry => entry.index === props.previewMatchIndex)
                   return <li key={group.path}>
-                    <Button unstyled aria-current={active ? 'true' : undefined} aria-label={`Open ${first.match.path}`} className="grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(first.match); props.onClose() }} onFocus={() => { props.onPreview(first.index) }} onMouseEnter={() => { props.onPreview(first.index) }} type="button">
+                    <Button unstyled aria-current={active ? 'true' : undefined} aria-label={`Open ${first.match.path}`} aria-selected={active} className="grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" id={`tocktutor-search-result-${String(group.index)}`} onClick={() => {
+                        const selected = props.onSelect(first.match)
+                        if (selected instanceof Promise) void selected.then(success => { if (success !== false) props.onClose() })
+                        else if (selected !== false) props.onClose()
+                      }} onFocus={() => { props.onPreview(first.index) }} onMouseEnter={() => { props.onPreview(first.index) }} role="option" type="button">
                       <FileText aria-hidden="true" className="mt-0.5 text-[var(--tt-muted)]" strokeWidth={1.6} />
                       <span className="min-w-0">
                         <strong className="block truncate text-sm font-medium">{pathsByTitle.get(title)?.size === 1 ? title : group.path}</strong>
@@ -3585,7 +3650,7 @@ function WorkbenchNoteSearchPalette(props: {
   onSearchActiveMove: ((delta: number) => void) | undefined
   onSearchActiveSet: ((index: number) => void) | undefined
   onSelect(path: string): void
-  onSelectSearchMatch: ((match: VaultSearchMatch, newTab: boolean) => void) | undefined
+  onSelectSearchMatch: ((match: VaultSearchMatch, newTab: boolean) => Promise<boolean> | boolean | void) | undefined
   snapshot: WorkbenchRouteSnapshot
 }): ReactNode {
   const { snapshot } = props
@@ -3620,7 +3685,7 @@ function WorkbenchNoteSearchPalette(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
         unstyled
-        className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[640px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[960px] -translate-1/2 grid-rows-[56px_42px_auto_minmax(0,1fr)_40px] overflow-hidden rounded-[14px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-[0_18px_48px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)] outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-text)_6%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[640px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[960px] -translate-1/2 grid-rows-[56px_42px_auto_minmax(0,1fr)_40px] overflow-hidden rounded-[14px] border border-[var(--tt-border)] bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-text)_6%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
         overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--tt-text)_28%,transparent)]"
         showCloseButton={false}
       >
@@ -3629,8 +3694,12 @@ function WorkbenchNoteSearchPalette(props: {
           <Search aria-hidden="true" />
           <Input
             unstyled
+            aria-activedescendant={matches[previewMatchIndex] === undefined ? undefined : `tocktutor-search-result-${String(matches.findIndex(match => match.path === matches[previewMatchIndex]?.path))}`}
+            aria-controls="tocktutor-search-results"
+            aria-expanded="true"
             aria-label="Search Notes Query"
             autoFocus
+            role="combobox"
             className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] font-medium text-[var(--tt-text)] outline-none placeholder:text-[var(--tt-muted)]"
             maxLength={1_000}
             onChange={event => { props.onSearchChange?.(event.target.value) }}
@@ -3644,7 +3713,9 @@ function WorkbenchNoteSearchPalette(props: {
               event.preventDefault()
               const active = matches[previewMatchIndex]
               if (active !== undefined && props.onSelectSearchMatch !== undefined) {
-                props.onSelectSearchMatch(active, event.metaKey)
+                const selected = props.onSelectSearchMatch(active, event.metaKey)
+                if (selected instanceof Promise) void selected.then(success => { if (success !== false) props.onClose() })
+                else if (selected !== false) props.onClose()
                 return
               }
               if (snapshot.searchQuery.trim() !== '') props.onRunSearch?.()
@@ -3653,8 +3724,7 @@ function WorkbenchNoteSearchPalette(props: {
             type="search"
             value={snapshot.searchQuery}
           />
-          {(snapshot.searchMode ?? 'query') === 'query' && (
-            <Popover open={searchOptionsOpen} onOpenChange={setSearchOptionsOpen}>
+          <Popover open={searchOptionsOpen} onOpenChange={setSearchOptionsOpen}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <PopoverTrigger asChild>
@@ -3700,11 +3770,12 @@ function WorkbenchNoteSearchPalette(props: {
                     <Label unstyled className="grid gap-1 text-xs font-medium">Modified To<Input unstyled aria-label="Modified To" onChange={event => { const value = event.target.value === '' ? null : Date.parse(event.target.value) + 86_399_999; props.onSearchFilters?.({ directory: snapshot.searchDirectory ?? '', modifiedFrom: snapshot.searchModifiedFrom ?? null, modifiedTo: value === null || Number.isNaN(value) ? null : value, titleOnly: snapshot.searchTitleOnly ?? false }) }} type="date" value={snapshot.searchModifiedTo == null ? '' : new Date(snapshot.searchModifiedTo).toISOString().slice(0, 10)} /></Label>
                   </div>
                 </div>
-                <PopoverHeader className="gap-0.5 px-1.5 pt-0.5">
-                  <PopoverTitle className="text-xs font-semibold">Search Syntax</PopoverTitle>
-                  <PopoverDescription className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Insert an operator at the cursor.</PopoverDescription>
-                </PopoverHeader>
-                <ul className="m-0 grid list-none gap-1 p-0">
+                {(snapshot.searchMode ?? 'query') === 'query' && <>
+                  <PopoverHeader className="gap-0.5 px-1.5 pt-0.5">
+                    <PopoverTitle className="text-xs font-semibold">Search Syntax</PopoverTitle>
+                    <PopoverDescription className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Insert an operator at the cursor.</PopoverDescription>
+                  </PopoverHeader>
+                  <ul className="m-0 grid list-none gap-1 p-0">
                   {SEARCH_OPTIONS.map(option => (
                     <li key={option.label}>
                       <Button unstyled className="grid w-full cursor-pointer grid-cols-[76px_1fr] items-start gap-2 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus-visible:outline-none" onClick={() => { insertSearchOption(option.value) }} type="button">
@@ -3713,10 +3784,10 @@ function WorkbenchNoteSearchPalette(props: {
                       </Button>
                     </li>
                   ))}
-                </ul>
+                  </ul>
+                </>}
               </PopoverContent>
             </Popover>
-          )}
         </div>
         <header className="flex items-center justify-between gap-3 border-b border-[var(--tt-border)] px-3 text-xs font-medium text-[var(--tt-muted)]">
           <div className="flex items-center gap-0.5">
@@ -3726,7 +3797,7 @@ function WorkbenchNoteSearchPalette(props: {
             </ToggleGroup>
             <Button unstyled className="rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] disabled:opacity-40" disabled={snapshot.searchLoading === true || snapshot.searchQuery.trim() === ''} onClick={props.onRunSearch} type="button">{snapshot.searchLoading === true ? 'Searching…' : 'Search'}</Button>
           </div>
-          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchIntelligenceStatus !== null && snapshot.searchIntelligenceStatus !== undefined && snapshot.searchIntelligenceStatus !== 'applied' ? `AI Search ${snapshot.searchIntelligenceStatus}; showing local results.` : snapshot.searchQuery.trim() === '' ? `${String(resultCount)} recent note${resultCount === 1 ? '' : 's'}` : `${String(resultCount)} note${resultCount === 1 ? '' : 's'} · ${String(matches.length)} match${matches.length === 1 ? '' : 'es'}`)}</Alert>
+          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchIntelligenceStatus !== null && snapshot.searchIntelligenceStatus !== undefined && snapshot.searchIntelligenceStatus !== 'applied' ? `AI Search ${snapshot.searchIntelligenceStatus}; showing local results.` : snapshot.searchQuery.trim() === '' ? `${String(resultCount)} recent note${resultCount === 1 ? '' : 's'}` : `${String(resultCount)} note${resultCount === 1 ? '' : 's'} · ${String(matches.length)} match${matches.length === 1 ? '' : 'es'}`)}{snapshot.searchIntelligenceProvider !== null && snapshot.searchIntelligenceProvider !== undefined && snapshot.searchIntelligenceModel !== null && snapshot.searchIntelligenceModel !== undefined ? ` · AI uses ${snapshot.searchIntelligenceProvider}/${snapshot.searchIntelligenceModel}` : ''}</Alert>
         </header>
         <NoteSearchAnswer answer={snapshot.searchAnswer} matches={matches} onCancel={() => { props.onCancelQuickAnswer?.() }} onRetry={() => { props.onRetryQuickAnswer?.() }} onSelect={match => { if (props.onSelectSearchMatch !== undefined) props.onSelectSearchMatch(match, false); else props.onSelect(match.path) }} onStart={() => { props.onQuickAnswer?.() }} />
         <section className="grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1" aria-label="Search Results">
@@ -4740,7 +4811,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onSearchChange={query => { controller.setSearchQuery(query) }}
         onSearchMode={mode => { controller.setSearchMode(mode) }}
         onSearchFilters={filters => { controller.setSearchFilters(filters) }}
-        onSelectSearchMatch={(match, newTab) => { void controller.openSearchMatch(match, newTab) }}
+        onSelectSearchMatch={(match, newTab) => controller.openSearchMatch(match, newTab)}
         onHideSearchPreview={() => { controller.hideSearchPreview() }}
         onSettingsChange={change => { controller.updateSettings(change) }}
         onSelect={path => { void controller.select(path) }}

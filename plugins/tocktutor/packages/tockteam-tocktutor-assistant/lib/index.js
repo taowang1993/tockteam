@@ -10,6 +10,9 @@ import { PennivoReadAdapter, REVIEWED_PENNIVO_READ_TOOLS, } from "./read-tools.j
 import { AssistantTurnBindingError, AssistantTurnBindingRegistry, } from "./turn-bindings.js";
 import { organizedCaptureContent, publicTockDriverWriteResult, registerAssistantWriteTools, registerMainTockDriverWriteTools, } from "./write-tool-registration.js";
 import { TockTutorAssistantGateway, } from "./remote.js";
+function answerCandidateKey(candidate) {
+    return `${candidate.path}:${String(candidate.line)}:${String(candidate.lineEnd ?? '')}:${candidate.preview}`;
+}
 import { PennivoChildManager, } from "./pennivo-child.js";
 import { ProductionAssistantTurnBinder, } from "./production-turns.js";
 export { buildAssistantPrompt, boundToolText, redactBoundaryText, } from "./context.js";
@@ -436,7 +439,8 @@ export class NoteAssistant extends Service {
         const previous = this.observedSettings;
         const providerChanged = next.provider !== previous.provider || next.model !== previous.model;
         const permissionChanged = next.writePermission !== previous.writePermission;
-        if (!providerChanged && !permissionChanged)
+        const aiSearchChanged = next.aiSearch !== previous.aiSearch;
+        if (!providerChanged && !permissionChanged && !aiSearchChanged)
             return;
         this.observedSettings = { ...next };
         this.settingsAbort.abort(new Error('Assistant settings changed.'));
@@ -582,7 +586,8 @@ export class NoteAssistant extends Service {
                 && currentVault.id === vault.id
                 && currentVault.generation === vault.generation
                 && currentSettings.provider === settings.provider
-                && currentSettings.model === settings.model;
+                && currentSettings.model === settings.model
+                && currentSettings.aiSearch === settings.aiSearch;
         });
     }
     async quickAnswer(request, signal) {
@@ -592,6 +597,18 @@ export class NoteAssistant extends Service {
         const vault = this.noteVault.state;
         if (!vault.active || vault.generation !== request.vaultGeneration)
             return { status: 'error', answer: '', citations: [] };
+        let exactMatches;
+        try {
+            const exact = await this.noteVault.search({ mode: 'query', query: request.query, limit: 100 }, { id: vault.id, generation: vault.generation }, signal);
+            exactMatches = exact.matches;
+        }
+        catch {
+            return { status: 'error', answer: '', citations: [] };
+        }
+        const exactKeys = new Set(exactMatches.map(answerCandidateKey));
+        if (request.candidates.some(candidate => !exactKeys.has(answerCandidateKey(candidate)))) {
+            return { status: 'no-evidence', answer: '', citations: [] };
+        }
         return await answerSearchQuery(this.llm, request, settings.provider, settings.model, async (path) => {
             const result = await this.noteVault.read({ path }, { id: vault.id, generation: vault.generation }, signal);
             if (result.generation !== vault.generation || result.path !== path)

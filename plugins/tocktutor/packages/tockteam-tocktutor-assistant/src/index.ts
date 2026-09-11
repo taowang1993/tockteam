@@ -53,6 +53,11 @@ import {
   type AssistantRemoteHost,
 } from './remote.ts'
 import type { AssistantQuickAnswerRequest, AssistantQuickAnswerResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts'
+import type { VaultSearchMatch } from 'tockbot-note-vault/inspection'
+
+function answerCandidateKey(candidate: Pick<VaultSearchMatch, 'path' | 'line' | 'lineEnd' | 'preview'>): string {
+  return `${candidate.path}:${String(candidate.line)}:${String(candidate.lineEnd ?? '')}:${candidate.preview}`
+}
 import {
   PennivoChildManager,
   type PennivoBinding,
@@ -596,7 +601,8 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     const previous = this.observedSettings
     const providerChanged = next.provider !== previous.provider || next.model !== previous.model
     const permissionChanged = next.writePermission !== previous.writePermission
-    if (!providerChanged && !permissionChanged) return
+    const aiSearchChanged = next.aiSearch !== previous.aiSearch
+    if (!providerChanged && !permissionChanged && !aiSearchChanged) return
     this.observedSettings = { ...next }
     this.settingsAbort.abort(new Error('Assistant settings changed.'))
     this.settingsAbort = new AbortController()
@@ -765,6 +771,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
           && currentVault.generation === vault.generation
           && currentSettings.provider === settings.provider
           && currentSettings.model === settings.model
+          && currentSettings.aiSearch === settings.aiSearch
       },
     )
   }
@@ -777,6 +784,17 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     if ((settings.aiSearch ?? 'on-demand') === 'off') return { status: 'disabled', answer: '', citations: [] }
     const vault = this.noteVault.state
     if (!vault.active || vault.generation !== request.vaultGeneration) return { status: 'error', answer: '', citations: [] }
+    let exactMatches: VaultSearchMatch[]
+    try {
+      const exact = await this.noteVault.search({ mode: 'query', query: request.query, limit: 100 }, { id: vault.id, generation: vault.generation }, signal)
+      exactMatches = exact.matches
+    } catch {
+      return { status: 'error', answer: '', citations: [] }
+    }
+    const exactKeys = new Set(exactMatches.map(answerCandidateKey))
+    if (request.candidates.some(candidate => !exactKeys.has(answerCandidateKey(candidate)))) {
+      return { status: 'no-evidence', answer: '', citations: [] }
+    }
     return await answerSearchQuery(
       this.llm,
       request,

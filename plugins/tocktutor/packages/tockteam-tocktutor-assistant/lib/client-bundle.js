@@ -21285,6 +21285,28 @@ ${text}`;
                         }
                       )
                     ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(Label, { unstyled: true, className: "grid gap-1 text-xs", children: [
+                      "AI Search",
+                      /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(
+                        NativeSelect,
+                        {
+                          unstyled: true,
+                          "aria-label": "AI Search",
+                          className: "w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit",
+                          disabled: settings === null || settingsSaving,
+                          onChange: (event) => {
+                            const aiSearch = event.target.value === "off" || event.target.value === "automatic" ? event.target.value : "on-demand";
+                            setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, aiSearch });
+                          },
+                          value: settings?.aiSearch ?? "on-demand",
+                          children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(NativeSelectOption, { value: "off", children: "Off" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(NativeSelectOption, { value: "on-demand", children: "On Demand" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(NativeSelectOption, { value: "automatic", children: "Automatic" })
+                          ]
+                        }
+                      )
+                    ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(Button, { unstyled: true, className: "cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50", disabled: settings === null || settingsSaving, type: "submit", children: settingsSaving ? "Saving\u2026" : "Save Settings" })
                   ] })
                 ] }),

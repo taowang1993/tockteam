@@ -563,6 +563,7 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema = z.
   'generation': z.number(),
   'matches': z.array(z.object({
   'id': z.string().optional(),
+  'revision': z.string().optional(),
   'kind': z.union([z.literal("path"), z.literal("tag"), z.literal("content"), z.literal("base"), z.literal("block"), z.literal("canvas"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("task")]),
   'line': z.union([z.literal(null), z.number()]),
   'lineEnd': z.union([z.literal(null), z.number()]).optional(),

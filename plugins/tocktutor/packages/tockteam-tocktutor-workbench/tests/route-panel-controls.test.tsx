@@ -135,7 +135,7 @@ describe('TockTutor titlebar panel controls', () => {
     })
 
     const dialog = screen.getByRole('dialog', { name: 'Search Notes' })
-    const query = screen.getByRole('searchbox', { name: 'Search Notes Query' })
+    const query = screen.getByRole('combobox', { name: 'Search Notes Query' })
     expect(dialog.contains(query)).toBe(true)
     expect(dialog.className).toContain('[--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))]')
     const overlay = document.querySelector('[data-slot="dialog-overlay"]')
@@ -1123,10 +1123,10 @@ describe('TockTutor titlebar panel controls', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'Related' }))
     expect(onSearchMode).toHaveBeenCalledWith('related')
-    fireEvent.keyDown(screen.getByRole('searchbox', { name: 'Search Notes Query' }), { key: 'Enter' })
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Search Notes Query' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('button', { name: 'Search' }))
     expect(onRunSearch).toHaveBeenCalledTimes(2)
-    expect(screen.getByRole('list', { name: 'Vault Search Results' }).textContent).toContain('Lesson match')
+    expect(screen.getByRole('listbox', { name: 'Vault Search Results' }).textContent).toContain('Lesson match')
   })
 
   it('keeps search input focus while roving matches and opens Command+Enter in a new tab', () => {
@@ -1138,15 +1138,15 @@ describe('TockTutor titlebar panel controls', () => {
       { kind: 'content' as const, line: 8, path: 'B/Lesson.md', preview: 'Second lesson match' },
     ]
     renderRoute({ searchActiveIndex: 0, searchMatches: matches, searchOpen: true, searchQuery: 'lesson' }, { onSearchActiveMove, onSearchActiveSet, onSelectSearchMatch })
-    const input = screen.getByRole('searchbox', { name: 'Search Notes Query' })
+    const input = screen.getByRole('combobox', { name: 'Search Notes Query' })
     input.focus()
     fireEvent.keyDown(input, { key: 'ArrowDown' })
     expect(onSearchActiveMove).toHaveBeenCalledWith(1)
     expect(document.activeElement).toBe(input)
     fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
     expect(onSelectSearchMatch).toHaveBeenCalledWith(matches[0], true)
-    expect(screen.getByRole('button', { name: 'Open A/Lesson.md' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Open B/Lesson.md' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: 'Open A/Lesson.md' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: 'Open B/Lesson.md' })).toBeTruthy()
   })
 
   it('renders local Title Only, In Folder, and modified-date filters', () => {
@@ -1178,7 +1178,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('radiogroup', { name: 'Search Mode' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Search Results' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Note Preview' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Open Notes/Lesson.md' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Open Notes/Lesson.md' }))
     expect(onSelect).toHaveBeenCalledWith('Notes/Lesson.md')
     expect(onCloseSearch).toHaveBeenCalledOnce()
     expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()
@@ -1189,12 +1189,12 @@ describe('TockTutor titlebar panel controls', () => {
     const onSearchChange = vi.fn()
     renderRoute({ searchMode: 'query', searchOpen: true, searchQuery: 'lesson' }, { onSearchChange })
 
-    const query = screen.getByRole('searchbox', { name: 'Search Notes Query' }) as HTMLInputElement
+    const query = screen.getByRole('combobox', { name: 'Search Notes Query' }) as HTMLInputElement
     query.setSelectionRange(query.value.length, query.value.length)
     fireEvent.click(screen.getByRole('button', { name: 'Search Options' }))
 
     const options = screen.getByRole('dialog', { name: 'Search Options' })
-    for (const operator of ['path:', 'file:', 'tag:', 'line:', 'section:', '[property]']) {
+    for (const operator of ['path:', 'file:', 'tag:', 'line:', 'section:', 'block:', 'content:', 'ignore-case:', 'match-case:', 'task-done:', 'task-todo:', '[property]']) {
       expect(options.textContent).toContain(operator)
     }
     fireEvent.click(screen.getByRole('button', { name: /^path:/u }))
@@ -1219,9 +1219,11 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()
   })
 
-  it('hides query operators in Related mode', () => {
+  it('keeps filters available but hides query operators in Related mode', () => {
     renderRoute({ searchMode: 'related', searchOpen: true, searchQuery: 'lesson' })
-    expect(screen.queryByRole('button', { name: 'Search Options' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Search Options' }))
+    expect(screen.getByRole('dialog', { name: 'Search Options' })).toBeTruthy()
+    expect(screen.queryByText('Search Syntax')).toBeNull()
   })
 
   it('renders and submits the shadcn New Note dialog', () => {

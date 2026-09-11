@@ -111,6 +111,29 @@ test('search returns deterministic identities, provenance, and relevance scores'
   assert.equal(repeated.matches[0].id, result.matches[0].id)
 })
 
+test('search ranks exact title matches globally before applying the result limit', async () => {
+  const contents = new Map([
+    ['aaa.md', '# Notes\nalpha appears in the body.\n'],
+    ['zzz.md', '# Alpha\n'],
+  ])
+  const entries = [...contents].map(([path, content]) => ({
+    path,
+    kind: 'document',
+    createdMs: 1,
+    modifiedMs: 1,
+    size: Buffer.byteLength(content),
+    revision: `revision:${path}`,
+  }))
+  const input = {
+    async list() { return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] } },
+    async read(path) { return { path, content: contents.get(path) } },
+  }
+  const inspection = createVaultInspection(input, { ...limits, maxSearchResults: 1 })
+  const result = await inspection.search({ query: 'Alpha' }, new AbortController().signal)
+
+  assert.deepEqual(result.matches.map(match => match.path), ['zzz.md'])
+})
+
 test('search applies title-only and modified-date filters before limiting results', async () => {
   const provider = memoryInput()
   const inspection = createVaultInspection(provider.input, { ...limits, maxSearchResults: 1 })

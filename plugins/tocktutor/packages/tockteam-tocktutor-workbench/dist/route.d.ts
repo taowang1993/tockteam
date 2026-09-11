@@ -124,6 +124,8 @@ export interface WorkbenchRouteSnapshot {
     searchAnswer?: WorkbenchQuickAnswerState;
     searchError?: string | null;
     searchIntelligenceStatus?: WorkbenchSearchIntelligenceResult['status'] | null;
+    searchIntelligenceProvider?: string | null;
+    searchIntelligenceModel?: string | null;
     searchLoading?: boolean;
     searchMatches?: readonly VaultSearchMatch[];
     searchMode?: 'query' | 'related';
@@ -218,6 +220,7 @@ export declare class WorkbenchRouteController {
     previewSearchMatch(matchOrIndex: VaultSearchMatch | number): Promise<boolean>;
     hideSearchPreview(): void;
     setSearchQuery(query: string): void;
+    private loadRecentSearch;
     closeSearch(): void;
     openSearch(query: string): void;
     setSearchMode(mode: 'query' | 'related'): void;
@@ -409,7 +412,7 @@ export interface TockTutorRouteViewProps {
         modifiedTo?: number | null;
         titleOnly?: boolean;
     }): void;
-    onSelectSearchMatch?(match: VaultSearchMatch, newTab: boolean): void;
+    onSelectSearchMatch?(match: VaultSearchMatch, newTab: boolean): Promise<boolean> | boolean | void;
     onHideSearchPreview?(): void;
     onSettingsChange?(change: Partial<TockTutorSettings>): void;
     onSelectionChange?(start: number, end: number): void;

@@ -563,6 +563,7 @@ const _tockteam_tocktutor_workbench_tocktutorWorkbench_search_result$schema = z.
   'generation': z.number(),
   'matches': z.array(z.object({
   'id': z.string().optional(),
+  'revision': z.string().optional(),
   'kind': z.union([z.literal("path"), z.literal("tag"), z.literal("content"), z.literal("base"), z.literal("block"), z.literal("canvas"), z.literal("line"), z.literal("property"), z.literal("section"), z.literal("task")]),
   'line': z.union([z.literal(null), z.number()]),
   'lineEnd': z.union([z.literal(null), z.number()]).optional(),
@@ -1715,7 +1716,7 @@ export const TYPERT = {
           },
           {
             "name": "VaultSearchMatch",
-            "declaration": "export interface VaultSearchMatch {\n    id?: string;\n    kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task';\n    line: number | null;\n    lineEnd?: number | null;\n    operator?: 'any' | 'block' | 'content' | 'file' | 'line' | 'path' | 'property' | 'related' | 'section' | 'tag' | 'task' | 'task-done' | 'task-todo';\n    path: string;\n    preview: string;\n    provenance?: 'body' | 'canvas' | 'frontmatter' | 'path' | 'section' | 'task';\n    score?: number;\n}"
+            "declaration": "export interface VaultSearchMatch {\n    id?: string;\n    revision?: string;\n    kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task';\n    line: number | null;\n    lineEnd?: number | null;\n    operator?: 'any' | 'block' | 'content' | 'file' | 'line' | 'path' | 'property' | 'related' | 'section' | 'tag' | 'task' | 'task-done' | 'task-todo';\n    path: string;\n    preview: string;\n    provenance?: 'body' | 'canvas' | 'frontmatter' | 'path' | 'section' | 'task';\n    score?: number;\n}"
           },
           {
             "name": "VaultSearchRequest",

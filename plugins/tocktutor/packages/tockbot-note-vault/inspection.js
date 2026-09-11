@@ -1223,8 +1223,12 @@ function cursorChecksum(payload) {
   return createHash('sha256').update(payload).digest('base64url')
 }
 
+function cursorKey(key) {
+  return cursorChecksum(key)
+}
+
 function encodeCursor(operation, key, position) {
-  const payload = JSON.stringify({ key, operation, position, version: 1 })
+  const payload = JSON.stringify({ key: cursorKey(key), operation, position, version: 1 })
   return Buffer.from(JSON.stringify({ checksum: cursorChecksum(payload), payload })).toString('base64url')
 }
 
@@ -1243,7 +1247,7 @@ function decodeCursor(cursor, operation, key) {
       || cursorChecksum(envelope.payload) !== envelope.checksum
     ) throw new Error('cursor checksum mismatch')
     const decoded = JSON.parse(envelope.payload)
-    if (decoded?.version !== 1 || decoded.operation !== operation || decoded.key !== key) {
+    if (decoded?.version !== 1 || decoded.operation !== operation || decoded.key !== cursorKey(key)) {
       throw new Error('cursor does not match this operation')
     }
     if (
@@ -1671,6 +1675,7 @@ async function scanVault(input, config, signal, visitor, options = {}) {
       createdMs: item.createdMs,
       modifiedMs: item.modifiedMs,
       path: item.path,
+      revision: item.revision,
       size: byteLength,
     }, inventoryPaths, item.path === position.path ? position.offset : 0)
     if (result) {
@@ -1701,11 +1706,13 @@ async function scanVault(input, config, signal, visitor, options = {}) {
 }
 
 async function searchVault(input, query, scope, options, limit, config, signal, cursor) {
-  const matches = []
   const needle = query.toLowerCase()
   const propertyNeedle = needle.length > 1 && needle.startsWith('#') ? needle.slice(1) : needle
-  const key = JSON.stringify({ modifiedFrom: options.modifiedFrom, modifiedTo: options.modifiedTo, query: needle, scope, titleOnly: options.titleOnly })
-  const state = await scanVault(input, config, signal, (document, _paths, resumeOffset) => {
+  const start = inspectionDirectory(options.directory)
+  const key = JSON.stringify({ directory: start.prefix, modifiedFrom: options.modifiedFrom, modifiedTo: options.modifiedTo, query: needle, scope, titleOnly: options.titleOnly })
+  const position = decodeCursor(cursor, 'search', key)
+  const allMatches = []
+  const state = await scanVault(input, config, signal, (document) => {
     const documentMatches = []
     const markdown = isMarkdown(document.path)
       ? markdownDetails(document.content, document.path)
@@ -1777,14 +1784,32 @@ async function searchVault(input, query, scope, options, limit, config, signal, 
       || (left.line ?? -1) - (right.line ?? -1)
       || left.kind.localeCompare(right.kind)
     ))
-    const available = documentMatches.slice(resumeOffset)
-    const taken = available.slice(0, limit - matches.length)
-    matches.push(...taken)
-    if (taken.length < available.length) {
-      return { position: { path: document.path, offset: resumeOffset + taken.length } }
-    }
-    return matches.length >= limit
-  }, { cursor, directory: options.directory, key, operation: 'search' })
+    allMatches.push(...documentMatches.map(match => document.revision === undefined ? match : { ...match, revision: document.revision }))
+    return false
+  }, { cursor: position.sourceCursor, directory: start.path, key, operation: 'search' })
+  allMatches.sort((left, right) => (
+    (right.score ?? 0) - (left.score ?? 0)
+    || compareVaultPaths(left.path, right.path)
+    || (left.line ?? -1) - (right.line ?? -1)
+    || left.kind.localeCompare(right.kind)
+    || left.preview.localeCompare(right.preview)
+  ))
+  const resumedSource = typeof position.sourceCursor === 'string'
+  const pageOffset = resumedSource ? 0 : position.offset
+  const matches = allMatches.slice(pageOffset, pageOffset + limit)
+  const nextOffset = resumedSource ? matches.length : position.offset + matches.length
+  const sourceCursor = state.cursor
+  if (sourceCursor !== null) {
+    state.truncated = true
+    state.truncationReason ??= 'entry-limit'
+    state.cursor = encodeCursor('search', key, { path: '', offset: 0, sourceCursor })
+  } else if (!resumedSource && nextOffset < allMatches.length) {
+    state.truncated = true
+    state.truncationReason = 'result-limit'
+    state.cursor = encodeCursor('search', key, { path: '', offset: nextOffset })
+  } else {
+    state.cursor = null
+  }
   boundSearchMatches(matches, state)
 
   return {
@@ -2143,6 +2168,7 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
     if (options.modifiedFrom !== undefined && document.modifiedMs < options.modifiedFrom) return false
     if (options.modifiedTo !== undefined && document.modifiedMs > options.modifiedTo) return false
     const documentMatches = queryDocumentMatches(document, groups, signal, options.titleOnly)
+      .map(match => document.revision === undefined ? match : { ...match, revision: document.revision })
     const available = documentMatches.slice(resumeOffset)
     const taken = available.slice(0, limit - matches.length)
     matches.push(...taken)
@@ -2248,6 +2274,7 @@ async function searchRelatedVault(input, query, options, limit, config, signal, 
         preview: best?.text.trim().slice(0, MAX_PREVIEW_CHARS) || document.path,
         provenance: best ? (isMarkdown(document.path) || isBase(document.path) ? 'body' : 'canvas') : 'path',
         score,
+        ...(document.revision === undefined ? {} : { revision: document.revision }),
       })
     }
     return false

@@ -154,6 +154,8 @@ export interface VaultSearchArgs {
 export interface VaultSearchMatch {
   /** Stable identity for one exact note location within a search query. */
   id?: string
+  /** Revision captured with the search result for stale-preview protection. */
+  revision?: string
   path: string
   kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task'
   line: number | null

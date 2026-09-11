@@ -271,6 +271,7 @@ export interface VaultSearchRequest {
 
 export interface VaultSearchMatch {
   id?: string
+  revision?: string
   kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task'
   line: number | null
   lineEnd?: number | null
