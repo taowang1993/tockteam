@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -16,6 +17,16 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 test('TockTutor tracked package outputs match their source workspace', () => {
   verifyTockTutorBuildManifest()
+})
+
+test('packaged TockTutor manifest includes the search intelligence payload', () => {
+  const manifest = JSON.parse(readFileSync(join(root, 'plugins/tocktutor/build-manifest.json'), 'utf8')) as {
+    files: Array<{ path: string }>
+  }
+  assert.equal(
+    manifest.files.some(({ path }) => path === 'packages/tockteam-tocktutor-assistant/lib/search-intelligence.js'),
+    true,
+  )
 })
 
 test('TockTutor build manifest ignores local analysis caches', () => {

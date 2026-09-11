@@ -32,7 +32,7 @@ const SNAPSHOT_METADATA_MAX_BYTES = 64 * 1024;
 const SNAPSHOT_SCAN_LIMIT = 1_000;
 const NOFOLLOW = typeof fsConstants.O_NOFOLLOW === 'number' ? fsConstants.O_NOFOLLOW : 0;
 const POST_COMMIT_SIGNAL = new AbortController().signal;
-const SEARCH_INDEX_SCHEMA = 'tocktutor-search-v1';
+const SEARCH_INDEX_SCHEMA = 'tocktutor-search-v2';
 const SEARCH_INDEX_TOKEN = /[\p{L}\p{N}_.-]+(?:\/[\p{L}\p{N}_.-]+)*/gu;
 function encodeSearchIndex(value) {
     const tokens = value.normalize('NFKC').toLowerCase().match(SEARCH_INDEX_TOKEN) ?? [];
@@ -145,7 +145,11 @@ class PersistentSearchIndex {
         const paths = [];
         for (let offset = 0; offset < ids.length; offset += 500) {
             const chunk = ids.slice(offset, offset + 500);
-            const rows = await allSearchDatabase(this.database.db, `SELECT id, path FROM documents WHERE id IN (${chunk.map(() => '?').join(',')})`, chunk);
+            const dateClauses = [
+                request.modifiedFrom === undefined ? null : 'modifiedAt >= ?',
+                request.modifiedTo === undefined ? null : 'modifiedAt <= ?',
+            ].filter((clause) => clause !== null);
+            const rows = await allSearchDatabase(this.database.db, `SELECT id, path FROM documents WHERE id IN (${chunk.map(() => '?').join(',')})${dateClauses.length === 0 ? '' : ` AND ${dateClauses.join(' AND ')}`}`, [...chunk, ...[request.modifiedFrom, request.modifiedTo].filter((value) => value !== undefined)]);
             paths.push(...rows
                 .map(row => row.path)
                 .filter(candidate => !request.directory || candidate.startsWith(`${request.directory}/`)));
@@ -212,7 +216,7 @@ class PersistentSearchIndex {
             await rm(databasePath, { force: true });
             mounted = await this.create(databasePath, dependencies);
         }
-        const existing = await allSearchDatabase(mounted.database.db, 'SELECT id, path, revision FROM documents');
+        const existing = await allSearchDatabase(mounted.database.db, 'SELECT id, modifiedAt, path, revision FROM documents');
         const current = new Map(documents.map(document => [document.path, document]));
         for (const row of existing) {
             signal.throwIfAborted();
@@ -226,11 +230,11 @@ class PersistentSearchIndex {
         for (const document of documents) {
             signal.throwIfAborted();
             const prior = byPath.get(document.path);
-            if (prior?.revision === document.revision)
+            if (prior?.revision === document.revision && prior.modifiedAt === document.modifiedAt)
                 continue;
             let id = prior?.id;
             if (id === undefined) {
-                await runSearchDatabase(mounted.database.db, 'INSERT INTO documents(path, revision) VALUES (?, ?)', [document.path, '']);
+                await runSearchDatabase(mounted.database.db, 'INSERT INTO documents(path, modifiedAt, revision) VALUES (?, ?, ?)', [document.path, document.modifiedAt, '']);
                 id = (await allSearchDatabase(mounted.database.db, 'SELECT id FROM documents WHERE path = ?', [document.path]))[0]?.id;
             }
             if (id === undefined)
@@ -243,11 +247,11 @@ class PersistentSearchIndex {
                 return;
             }
             mounted.index.update(id, { id, content: opened.content });
-            revisionUpdates.push({ id, revision: document.revision });
+            revisionUpdates.push({ id, modifiedAt: document.modifiedAt, revision: document.revision });
         }
         await mounted.index.commit();
         for (const update of revisionUpdates) {
-            await runSearchDatabase(mounted.database.db, 'UPDATE documents SET revision = ? WHERE id = ?', [update.revision, update.id]);
+            await runSearchDatabase(mounted.database.db, 'UPDATE documents SET modifiedAt = ?, revision = ? WHERE id = ?', [update.modifiedAt, update.revision, update.id]);
         }
         this.epoch = randomUUID();
         await runSearchDatabase(mounted.database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['epoch', this.epoch]);
@@ -271,7 +275,7 @@ class PersistentSearchIndex {
         const revisionUpdates = [];
         for (const changedPath of paths) {
             signal.throwIfAborted();
-            const prior = (await allSearchDatabase(database.db, 'SELECT id, revision FROM documents WHERE path = ?', [changedPath]))[0];
+            const prior = (await allSearchDatabase(database.db, 'SELECT id, modifiedAt, revision FROM documents WHERE path = ?', [changedPath]))[0];
             const opened = await this.options.read(changedPath, signal);
             signal.throwIfAborted();
             if (opened === null) {
@@ -281,21 +285,21 @@ class PersistentSearchIndex {
                 }
                 continue;
             }
-            if (prior?.revision === opened.revision)
+            if (prior?.revision === opened.revision && prior.modifiedAt === opened.modifiedAt)
                 continue;
             let id = prior?.id;
             if (id === undefined) {
-                await runSearchDatabase(database.db, 'INSERT INTO documents(path, revision) VALUES (?, ?)', [changedPath, '']);
+                await runSearchDatabase(database.db, 'INSERT INTO documents(path, modifiedAt, revision) VALUES (?, ?, ?)', [changedPath, opened.modifiedAt, '']);
                 id = (await allSearchDatabase(database.db, 'SELECT id FROM documents WHERE path = ?', [changedPath]))[0]?.id;
             }
             if (id === undefined)
                 throw new Error('search index mapping failed');
             index.update(id, { id, content: opened.content });
-            revisionUpdates.push({ id, revision: opened.revision });
+            revisionUpdates.push({ id, modifiedAt: opened.modifiedAt, revision: opened.revision });
         }
         await index.commit();
         for (const update of revisionUpdates) {
-            await runSearchDatabase(database.db, 'UPDATE documents SET revision = ? WHERE id = ?', [update.revision, update.id]);
+            await runSearchDatabase(database.db, 'UPDATE documents SET modifiedAt = ?, revision = ? WHERE id = ?', [update.modifiedAt, update.revision, update.id]);
         }
         this.epoch = randomUUID();
         await runSearchDatabase(database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['epoch', this.epoch]);
@@ -319,7 +323,7 @@ class PersistentSearchIndex {
     async create(databasePath, { Document, Sqlite, sqlite3 }) {
         const raw = new sqlite3.Database(databasePath);
         await runSearchDatabase(raw, 'CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-        await runSearchDatabase(raw, 'CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL UNIQUE, revision TEXT NOT NULL)');
+        await runSearchDatabase(raw, 'CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL UNIQUE, modifiedAt REAL NOT NULL, revision TEXT NOT NULL)');
         await runSearchDatabase(raw, 'INSERT INTO metadata(key, value) VALUES (?, ?)', ['schema', SEARCH_INDEX_SCHEMA]);
         const database = new Sqlite(this.storageName(), { db: raw, type: 'integer' });
         const index = createSearchIndex(Document);
@@ -843,6 +847,7 @@ async function readVaultDocument(root, requestedPath, maxBytes, signal) {
         return {
             content: data.toString('utf8'),
             digest: `sha256:${createHash('sha256').update(data).digest('hex')}`,
+            modifiedAt: Number(opened.mtimeMs),
             path: target.relativePath,
             revision: fileRevision(opened),
         };
@@ -3603,14 +3608,16 @@ export class NoteVaultRuntime extends Service {
                             if (scan.truncationReason !== null)
                                 return null;
                             return scan.entries.flatMap(entry => (entry.kind === 'document' && entry.size <= this.maxReadBytes
-                                ? [{ path: entry.path, revision: entry.revision }]
+                                ? [{ modifiedAt: entry.modifiedAt, path: entry.path, revision: entry.revision }]
                                 : []));
                         },
                         read: async (requestedPath, signal) => {
                             try {
-                                const document = await this.openDocument(requestedPath, vault, signal);
+                                const document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal);
+                                this.assertCapturedVault(state, root);
                                 return {
                                     content: document.content,
+                                    modifiedAt: document.modifiedAt,
                                     path: document.path,
                                     revision: document.revision,
                                 };
@@ -3840,7 +3847,8 @@ export class NoteVaultRuntime extends Service {
             throw new NoteVaultError('unsafe-target', 'Vault document could not be opened safely');
         }
         this.assertCapturedVault(state, root);
-        return { ...document, generation: state.generation };
+        const { modifiedAt: _modifiedAt, ...publicDocument } = document;
+        return { ...publicDocument, generation: state.generation };
     }
     async listTree(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
