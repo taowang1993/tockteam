@@ -7,13 +7,14 @@ import { BUNDLED_DESKTOP_HOST_PLUGINS, BUNDLED_DESKTOP_CLIENT_PLUGINS } from '..
 import { DesktopTrustedRaycastChannel } from '../src/trusted-raycast-channel.ts'
 import { scrubDesktopAuthorityEnvironment } from '../src/desktop-runtime-environment.ts'
 
-test('catalog requires live Host capability, an installed enabled candidate, and the trust surface is gated only on activation', () => {
+test('catalog separates runnable commands from safe setup and gates discovery on activation', () => {
   const approved = { digest: 'a'.repeat(64), digestApproved: true }
   for (const [active, trust] of [[false, { ...approved, installed: false, enabled: false }], [false, { ...approved, installed: true, enabled: true }]] as const) assert.deepEqual(trustedRaycastCatalog(active, trust), [])
   for (const trust of [{ ...approved, installed: false, enabled: false }, { ...approved, installed: true, enabled: false }, { ...approved, installed: false, enabled: true }, { digest: 'b'.repeat(64), digestApproved: false, installed: true, enabled: true }]) {
     const items = trustedRaycastCatalog(true, trust)
-    assert.equal(items.length, 1)
-    assert.equal(items[0]!.id, 'trusted-raycast:trust')
+    assert.equal(items.some(item => item.defaultAction.handlerKey === 'trusted-raycast-translate'), false)
+    assert.equal(items.at(-1)!.id, 'trusted-raycast:trust')
+    if (trust.installed) assert.equal(items[0]!.id, 'trusted-raycast:setup:google-translate')
   }
   const [item, trustItem] = trustedRaycastCatalog(true, { ...approved, installed: true, enabled: true })
   assert.equal(item!.defaultAction.hideWindowAfterInvocation, false)
@@ -30,11 +31,11 @@ test('catalog requires live Host capability, an installed enabled candidate, and
   assert.equal(manage!.id, 'trusted-raycast:trust')
   assert.equal(trustedRaycastCatalog(true, { ...approved, installed: false, enabled: false }, { ...approved, installed: true, enabled: true })[0]!.id, 'trusted-raycast:kaomoji-search:index')
 })
-test('Can I Use appears only with its own approved installation and fixed command image', () => {
+test('Can I Use runtime action requires its own approved installation and fixed command image', () => {
   const approved = { digest: 'c'.repeat(64), digestApproved: true, enabled: true, installed: true }
   const absent = { ...approved, enabled: false, installed: false }
   for (const trust of [absent, { ...approved, digestApproved: false }, { ...approved, digest: '' }]) {
-    assert.deepEqual(trustedRaycastCatalog(true, absent, absent, trust).map(row => row.id), ['trusted-raycast:trust'])
+    assert.deepEqual(trustedRaycastCatalog(true, absent, absent, trust).map(row => row.id), [...(trust.installed ? ['trusted-raycast:setup:can-i-use'] : []), 'trusted-raycast:trust'])
   }
   assert.deepEqual(trustedRaycastCatalog(false, approved, approved, approved), [])
   const [row] = trustedRaycastCatalog(true, absent, absent, approved)

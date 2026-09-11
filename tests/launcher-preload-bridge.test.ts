@@ -42,7 +42,7 @@ test('launcher preload exposes only the finite renderer operations still used by
       return { ok: true }
     },
   })
-  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastTrustAction'])
+  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastFirstUse', 'trustedRaycastTrustAction'])
   assert.equal(bridge.getLocalExtensionSettings.length, 0)
   assert.equal(bridge.getSurfaceSettings.length, 0)
   assert.equal(bridge.getTheme.length, 0)

@@ -52,7 +52,7 @@ async function makeView(state: TrustedRaycastTrustState, actionResult?: { ok: bo
   } as unknown as LauncherPreloadBridge
   const view = createTrustedRaycastTrustView(document, bridge, () => {}, 'en-US')
   await flush()
-  const section = nodes.find(node => node.attributes.get('aria-label') === 'Trusted Extensions')!
+  const section = nodes.find(node => node.attributes.get('aria-label') === 'Extensions')!
   const byRole = (role: string): Element => section.descendants('p').find(node => node.attributes.get('role') === role)!
   const buttons = (): Tagged[] => section.descendants('button').filter(button => button.textContent !== 'Back to Results' && button.attributes.get('role') !== 'tab')
   void states
@@ -134,8 +134,63 @@ test('zh-CN locale renders localized Title Case-free copy', async () => {
   const bridge = { getTrustedRaycastTrust: async () => trustState() } as unknown as LauncherPreloadBridge
   createTrustedRaycastTrustView(document, bridge, () => {}, 'zh-CN')
   await flush()
-  const section = nodes.find(node => node.attributes.get('aria-label') === '可信扩展')!
+  const section = nodes.find(node => node.attributes.get('aria-label') === '扩展')!
   const buttons = section.descendants('button')
   assert.ok(buttons.some(button => button.textContent === '安装已审核扩展'))
   assert.ok(buttons.some(button => button.textContent === '返回结果'))
+})
+
+test('first use reviews exact candidate without mutation; approval is explicit and duplicate/repeated Enter is fenced', async () => {
+  const { createTrustedRaycastFirstUseView } = await import('../src/trusted-raycast-trust-view.ts')
+  const nodes: Element[] = []
+  const document = { createElement(tag: string) { const node = new Element(); node.tag = tag; nodes.push(node); return node } } as unknown as Document
+  const approvals: unknown[] = []
+  let finish!: () => void
+  const view = createTrustedRaycastFirstUseView(document, { getTrustedRaycastTrust: async () => trustState() } as unknown as LauncherPreloadBridge, 'can-i-use', () => {}, async (...args) => { approvals.push(args); await new Promise<void>(resolve => { finish = resolve }) }, () => {})
+  await flush()
+  assert.deepEqual(approvals, [])
+  assert.ok(nodes.some(node => node.textContent.includes('d'.repeat(64))))
+  const button = nodes.find(node => node.textContent === 'Approve and Open')!
+  const key = new Event('keydown', { cancelable: true }); Object.defineProperties(key, { key: { value: 'Enter' }, repeat: { value: true } })
+  view.element.dispatchEvent(key)
+  assert.equal(key.defaultPrevented, true)
+  assert.deepEqual(approvals, [])
+  button.dispatchEvent(new Event('click')); button.dispatchEvent(new Event('click'))
+  assert.deepEqual(approvals, [['d'.repeat(64), 'approve']])
+  assert.ok(nodes.some(node => node.textContent === 'Preparing…'))
+  view.dispose(); finish(); await flush()
+})
+
+test('retry refreshes partial success and new candidates without automatically consenting', async () => {
+  const { createTrustedRaycastFirstUseView } = await import('../src/trusted-raycast-trust-view.ts')
+  const nodes: Element[] = []
+  const document = { createElement(tag: string) { const node = new Element(); node.tag = tag; nodes.push(node); return node } } as unknown as Document
+  let current = trustState()
+  const approved: unknown[] = []
+  createTrustedRaycastFirstUseView(document, { getTrustedRaycastTrust: async () => current } as unknown as LauncherPreloadBridge, 'can-i-use', () => {}, async (...args) => {
+    approved.push(args); current = trustState({ installed: true, digestApproved: true, digest: 'd'.repeat(64) }); throw new Error('Launch failed')
+  }, () => {})
+  await flush(); nodes.find(node => node.textContent === 'Approve and Open')!.dispatchEvent(new Event('click')); await flush()
+  assert.equal(approved.length, 1)
+  assert.ok(nodes.some(node => node.textContent === 'Enable and Open' && !node.disabled))
+  assert.ok(nodes.some(node => node.textContent === 'Launch failed' && !node.hidden))
+})
+test('recovery is reachable without a candidate and selected management rows are not disabled', async () => {
+  const { createTrustedRaycastFirstUseView } = await import('../src/trusted-raycast-trust-view.ts')
+  const nodes: Element[] = []
+  const document = { createElement(tag: string) { const node = new Element(); node.tag = tag; nodes.push(node); return node } } as unknown as Document
+  let managed = false
+  createTrustedRaycastFirstUseView(document, { getTrustedRaycastTrust: async () => trustState({ candidateAvailable: false, recovery: 'invalid-install' }) } as unknown as LauncherPreloadBridge, 'can-i-use', () => {}, async () => { assert.fail('no implicit recovery') }, () => { managed = true })
+  await flush(); const recover = nodes.find(node => node.textContent === 'Extensions')!; assert.equal(recover.disabled, false); recover.dispatchEvent(new Event('click')); assert.equal(managed, true)
+  const h = await makeView(trustState()); const tab = h.nodes.find(node => node.getAttribute('aria-selected') === 'true')!; assert.equal(tab.disabled, false)
+})
+
+test('a failed review read retries in place without approving', async () => {
+  const { createTrustedRaycastFirstUseView } = await import('../src/trusted-raycast-trust-view.ts')
+  const nodes: Element[] = []; let reads = 0
+  const document = { createElement(tag: string) { const node = new Element(); node.tag = tag; nodes.push(node); return node } } as unknown as Document
+  createTrustedRaycastFirstUseView(document, { getTrustedRaycastTrust: async () => { if (++reads === 1) throw Error('Temporarily unavailable'); return trustState() } } as unknown as LauncherPreloadBridge, 'can-i-use', () => {}, async () => { assert.fail('retry is not consent') }, () => {})
+  await flush(); const retry = nodes.find(node => node.textContent === 'Retry')!; assert.ok(retry); assert.equal(retry.disabled, false)
+  retry.dispatchEvent(new Event('click')); await flush()
+  assert.equal(reads, 2); assert.ok(nodes.some(node => node.textContent === 'Approve and Open'))
 })

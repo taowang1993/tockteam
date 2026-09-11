@@ -2,6 +2,8 @@ import {
   TRUSTED_RAYCAST_IPC_CHANNELS,
   TRUSTED_RAYCAST_TRUST_IPC_CHANNELS,
   isTrustedRaycastTrustRequest,
+  isTrustedRaycastFirstUseRequest,
+  type TrustedRaycastFirstUseRequest,
   isTrustedRaycastTrustResult,
   isTrustedRaycastTrustStateEnvelope,
   isTrustedRaycastViewEvent,
@@ -19,10 +21,18 @@ export function registerTrustedRaycastIpcHandlers(args: Readonly<{
   ipcMain: LauncherIpcMain
   getTrust: (extensionId: TrustedRaycastExtensionId) => TrustedRaycastTrustStateEnvelope
   onTrustAction: (request: TrustedRaycastTrustRequest) => Promise<TrustedRaycastTrustResult> | TrustedRaycastTrustResult
+  onFirstUse: (owner: Readonly<{ webContentsId: number }>, request: TrustedRaycastFirstUseRequest) => Promise<TrustedRaycastTrustResult>
   onClose: (owner: Readonly<{ webContentsId: number }>) => Promise<void> | void
   onEvent: (owner: Readonly<{ webContentsId: number }>, event: TrustedRaycastViewEvent) => Promise<void> | void
 }>): () => void {
   return registerLauncherOwnedIpcHandlers(args.ipcMain, [
+    [TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.firstUse, async (event: unknown, raw: unknown, ...extra: unknown[]) => {
+      const owner = args.guard.assert(event, 'launcher')
+      if (extra.length !== 0 || !isTrustedRaycastFirstUseRequest(raw)) throw new Error('Invalid extension approval')
+      const result = await args.onFirstUse(owner, raw)
+      if (!isTrustedRaycastTrustResult(result) || result.extensionId !== raw.extensionId) throw new Error('Invalid extension approval result')
+      return result
+    }],
     [TRUSTED_RAYCAST_IPC_CHANNELS.close, async (event: unknown, ...extra: unknown[]) => {
       const owner = args.guard.assert(event, 'launcher')
       if (extra.length !== 0) throw new Error('Trusted Translate close does not accept arguments')

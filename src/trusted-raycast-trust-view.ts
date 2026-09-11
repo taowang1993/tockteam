@@ -1,3 +1,4 @@
+import { trustedRaycastAssetUrl, trustedRaycastCommands } from './trusted-raycast-catalog.ts'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { TrustedRaycastTrustAction, TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
 import type { TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
@@ -6,11 +7,11 @@ const COPY = Object.freeze({
   en: Object.freeze({
     back: 'Back to Results',
     capabilityInactive: 'Capability Inactive',
-    title: 'Trusted Extensions',
+    title: 'Extensions',
     intro: 'Reviewed trusted extensions execute third-party code with account-level authority outside the launcher renderer. Installation verifies the reviewed archive digest before anything loads.',
-    name: 'Google Translate · Trusted Raycast',
-    kaomojiName: 'Kaomoji Search · Trusted Raycast',
-    canIUseName: 'Can I Use · Trusted Raycast',
+    name: 'Google Translate',
+    kaomojiName: 'Kaomoji Search',
+    canIUseName: 'Can I Use',
     notInstalled: 'Not Installed',
     installedDisabled: 'Installed · Disabled',
     installedEnabled: 'Installed · Enabled',
@@ -30,11 +31,11 @@ const COPY = Object.freeze({
   zh: Object.freeze({
     back: '返回结果',
     capabilityInactive: '能力未激活',
-    title: '可信扩展',
+    title: '扩展',
     intro: '经审核的可信扩展会在启动器渲染器之外以账户级权限执行第三方代码。安装会在任何代码加载前校验已审核归档的摘要。',
-    name: 'Google 翻译 · 可信 Raycast',
-    kaomojiName: 'Kaomoji Search · 可信 Raycast',
-    canIUseName: 'Can I Use · 可信 Raycast',
+    name: 'Google 翻译',
+    kaomojiName: 'Kaomoji Search',
+    canIUseName: 'Can I Use',
     notInstalled: '未安装',
     installedDisabled: '已安装 · 已停用',
     installedEnabled: '已安装 · 已启用',
@@ -56,12 +57,13 @@ const COPY = Object.freeze({
 const SHORT_DIGEST = 16
 
 /** First-party trust surface over the existing launcher local-tool pattern. */
-export function createTrustedRaycastTrustView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void, locale = 'en-US'): { element: HTMLElement } {
+export function createTrustedRaycastTrustView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void, locale = 'en-US'): { element: HTMLElement; dispose: () => void; focus: () => void } {
   const zh = locale.startsWith('zh')
   const copy = zh ? COPY.zh : COPY.en
   let state: TrustedRaycastTrustState | undefined
   let selected: TrustedRaycastExtensionId = 'google-translate'
   let requestSequence = 0
+  let disposed = false
   let busy = false
   let confirmStep: 'remove' | undefined
 
@@ -74,7 +76,7 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   header.append(title, close)
   const content = document.createElement('div'); content.className = 'launcher-command-content'
   const intro = document.createElement('p'); intro.className = 'launcher-command-status'; intro.textContent = copy.intro
-  const tabs = document.createElement('div'); tabs.className = 'flex flex-wrap gap-2'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', copy.title)
+  const tabs = document.createElement('div'); tabs.className = 'flex flex-col gap-1'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', copy.title); tabs.setAttribute('aria-orientation', 'vertical')
   const status = document.createElement('p'); status.className = 'launcher-command-status'; status.setAttribute('role', 'status')
   const digestLine = document.createElement('p'); digestLine.className = 'launcher-command-status [overflow-wrap:anywhere]'; digestLine.hidden = true
   const previous = document.createElement('p'); previous.className = 'launcher-command-status'; previous.hidden = true
@@ -91,22 +93,25 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   }
 
   const runAction = (action: TrustedRaycastTrustAction): void => {
-    if (busy) return
+    if (busy || disposed) return
     busy = true
     error.hidden = true
     for (const button of buttons.querySelectorAll('button')) button.disabled = true
     const extensionId = selected
+    const sequence = requestSequence
     void bridge.trustedRaycastTrustAction(extensionId, action).then(result => {
-      if (selected !== extensionId || result.extensionId !== extensionId) return
+      if (disposed || sequence !== requestSequence || selected !== extensionId || result.extensionId !== extensionId) return
       render(result.state)
       if (!result.ok) { error.textContent = `${copy.actionFailed}: ${result.error}`; error.hidden = false }
     }).catch(failure => {
+      if (disposed || sequence !== requestSequence) return
       error.textContent = `${copy.actionFailed}: ${failure instanceof Error ? failure.message : 'Unavailable'}`; error.hidden = false
       if (state) render(state)
-    }).finally(() => { busy = false; if (state) render(state) })
+    }).finally(() => { if (disposed || sequence !== requestSequence) return; busy = false; if (state) render(state); buttons.querySelectorAll<HTMLButtonElement>('button')[0]?.focus() })
   }
 
   const render = (next: TrustedRaycastTrustState): void => {
+    if (disposed) return
     state = next
     status.textContent = !next.active ? copy.capabilityInactive
       : next.recovery !== '' ? copy.recoveryRequired
@@ -133,16 +138,99 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   const load = (extensionId: TrustedRaycastExtensionId): void => {
     selected = extensionId; state = undefined; confirmStep = undefined; busy = true; error.hidden = true; status.textContent = ''
     const sequence = ++requestSequence
-    for (const tab of tabs.querySelectorAll('button')) { tab.setAttribute('aria-selected', String(tab.getAttribute('data-extension-id') === extensionId)); tab.disabled = tab.getAttribute('data-extension-id') === extensionId }
-    void bridge.getTrustedRaycastTrust(extensionId).then(next => { if (sequence === requestSequence && selected === extensionId) render(next) }).catch(failure => {
-      if (sequence !== requestSequence || selected !== extensionId) return
+    for (const tab of tabs.querySelectorAll('button')) { tab.setAttribute('aria-selected', String(tab.getAttribute('data-extension-id') === extensionId)); tab.tabIndex = tab.getAttribute('data-extension-id') === extensionId ? 0 : -1 }
+    void bridge.getTrustedRaycastTrust(extensionId).then(next => { if (!disposed && sequence === requestSequence && selected === extensionId) render(next) }).catch(failure => {
+      if (disposed || sequence !== requestSequence || selected !== extensionId) return
       status.textContent = copy.capabilityInactive
       error.textContent = `${copy.actionFailed}: ${failure instanceof Error ? failure.message : 'Unavailable'}`; error.hidden = false
-    }).finally(() => { if (sequence === requestSequence) { busy = false; if (state) render(state) } })
+    }).finally(() => { if (!disposed && sequence === requestSequence) { busy = false; if (state) render(state) } })
   }
   for (const [extensionId, label] of [['google-translate', copy.name], ['kaomoji-search', copy.kaomojiName], ['can-i-use', copy.canIUseName]] as const) {
-    const tab = document.createElement('button'); tab.type = 'button'; tab.className = buttonClass; tab.textContent = label; tab.setAttribute('role', 'tab'); tab.setAttribute('data-extension-id', extensionId); tab.addEventListener('click', () => load(extensionId)); tabs.append(tab)
+    const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'launcher-command-row'; tab.textContent = label; tab.setAttribute('role', 'tab'); tab.setAttribute('data-extension-id', extensionId); tab.addEventListener('click', () => load(extensionId))
+    const image = document.createElement('img'); image.className = 'launcher-command-row-icon'; image.alt = ''; image.src = trustedRaycastAssetUrl(trustedRaycastCommands.find(command => command.extensionId === extensionId)!.imageKey)!
+    const labelNode = document.createElement('span'); labelNode.textContent = label; tab.textContent = ''; tab.append(image, labelNode); tabs.append(tab)
   }
+  tabs.addEventListener('keydown', event => {
+    const rows = [...tabs.querySelectorAll<HTMLButtonElement>('button')]
+    const index = rows.findIndex(row => row.getAttribute('data-extension-id') === selected)
+    const next = event.key === 'ArrowDown' ? (index + 1) % rows.length : event.key === 'ArrowUp' ? (index + rows.length - 1) % rows.length : event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : undefined
+    if (next === undefined) return
+    event.preventDefault(); event.stopPropagation()
+    load(rows[next]!.getAttribute('data-extension-id') as TrustedRaycastExtensionId); rows[next]!.focus()
+  })
   load('google-translate')
-  return { element }
+  const focus = (): void => { tabs.querySelectorAll<HTMLButtonElement>('button')[0]?.focus() }
+  return { element, focus, dispose: () => { disposed = true; requestSequence++ } }
+}
+
+/** Inline review only. The callback delegates consent and all mutations to the Host. */
+export function createTrustedRaycastFirstUseView(
+  document: Document, bridge: LauncherPreloadBridge, extensionId: import('./trusted-raycast-descriptors.ts').TrustedRaycastRuntimeExtensionId,
+  onClose: () => void, onApprove: (digest: string, mode: 'approve' | 'enable') => Promise<void>, onManage: () => void,
+  locale = 'en-US',
+): { element: HTMLElement; dispose: () => void; focus: () => void } {
+  const zh = locale.startsWith('zh')
+  const command = trustedRaycastCommands.find(command => command.extensionId === extensionId)!
+  const name = command.extensionName
+  let disposed = false
+  let busy = false
+  let state: TrustedRaycastTrustState | undefined
+  const element = document.createElement('section'); element.className = 'launcher-local-tool text-sm'; element.setAttribute('aria-label', name)
+  const header = document.createElement('header'); header.className = 'launcher-command-header justify-between'
+  const title = document.createElement('h2'); title.className = 'm-0 text-sm font-semibold'; title.textContent = name
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'launcher-command-footer-action'; back.textContent = zh ? '返回结果' : 'Back to Results'; back.addEventListener('click', onClose)
+  const identity = document.createElement('div'); identity.className = 'flex min-w-0 items-center gap-2'
+  const image = document.createElement('img'); image.className = 'launcher-command-row-icon'; image.alt = ''; image.src = trustedRaycastAssetUrl(command.imageKey)!
+  identity.append(image, title); header.append(identity, back)
+  const content = document.createElement('div'); content.className = 'launcher-command-content'
+  const intro = document.createElement('p'); intro.className = 'launcher-command-status'
+  intro.textContent = zh ? `批准将安装、启用并运行 ${name}。第三方本地代码拥有您的账户级文件、网络和进程权限；独立进程不是沙箱。` : `Approve to install, enable, and run ${name}. This reviewed third-party local code can access files, network, and processes with your account's authority. Its separate process is not a sandbox.`
+  const details = document.createElement('details')
+  const summary = document.createElement('summary'); summary.className = 'launcher-command-footer-action'; summary.textContent = zh ? '验证详情' : 'Verification Details'
+  const digest = document.createElement('p'); digest.className = 'launcher-command-status [overflow-wrap:anywhere]'
+  details.append(summary, digest)
+  const status = document.createElement('p'); status.className = 'launcher-command-status'; status.setAttribute('role', 'status'); status.textContent = zh ? '正在读取…' : 'Loading…'
+  const error = document.createElement('p'); error.className = 'launcher-command-error'; error.setAttribute('role', 'alert'); error.hidden = true
+  const footer = document.createElement('footer'); footer.className = 'launcher-command-footer'
+  const approve = document.createElement('button'); approve.type = 'button'; approve.className = 'launcher-command-footer-action'; approve.disabled = true
+  const escape = document.createElement('span'); escape.className = 'launcher-command-status'; escape.textContent = zh ? 'Esc 返回' : 'Esc Back'
+  footer.append(approve, escape); content.append(intro, details, status, error); element.append(header, content, footer)
+  const render = (): void => {
+    if (disposed || !state) return
+    const unavailable = !state.active || (!state.recovery && !state.installed && !state.candidateAvailable)
+    digest.textContent = `${zh ? '已审核 SHA-256' : 'Reviewed SHA-256'}: ${state.installed ? state.digest : state.candidateDigest}`
+    approve.textContent = state.recovery ? (zh ? '扩展' : 'Extensions') : state.installed ? state.enabled ? (zh ? '打开' : 'Open') : (zh ? '启用并打开' : 'Enable and Open') : (zh ? '批准并打开' : 'Approve and Open')
+    approve.disabled = busy || unavailable
+    status.textContent = busy ? (zh ? '正在准备…' : 'Preparing…') : state.recovery ? (zh ? '需要恢复。请在扩展中明确恢复安装。' : 'Recovery required. Recover explicitly in Extensions.') : unavailable ? (zh ? '已审核候选不可用。' : 'Reviewed candidate unavailable.') : state.installed ? state.enabled ? (zh ? '已安装 · 已启用' : 'Installed · Enabled') : (zh ? '已安装 · 已停用' : 'Installed · Disabled') : (zh ? '首次使用需要批准一次。' : 'One-time approval required.')
+  }
+  approve.addEventListener('click', () => {
+    if (disposed || busy || approve.disabled) return
+    if (!state) { load(); return }
+    if (state.recovery) { onManage(); return }
+    busy = true; error.hidden = true; render()
+    void onApprove(state.installed ? state.digest : state.candidateDigest, state.installed ? 'enable' : 'approve').catch(async failure => {
+      if (disposed) return
+      error.textContent = failure instanceof Error ? failure.message : 'Unavailable'; error.hidden = false
+      // Partial commits survive errors. Refresh review, never retry consent automatically.
+      try { const next = await bridge.getTrustedRaycastTrust(extensionId); if (!disposed) state = next }
+      catch { state = undefined; approve.disabled = false; approve.textContent = zh ? '重试' : 'Retry'; status.textContent = '' }
+    }).finally(() => { busy = false; render(); if (!disposed) approve.focus() })
+  })
+  element.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && (event.repeat || event.isComposing || busy)) { event.preventDefault(); event.stopPropagation() }
+  })
+  const load = (): void => {
+    busy = true; approve.disabled = true; error.hidden = true
+    void bridge.getTrustedRaycastTrust(extensionId).then(next => {
+      if (!disposed) { busy = false; state = next; render(); approve.focus() }
+    }).catch(failure => {
+      if (!disposed) {
+        busy = false; state = undefined; status.textContent = ''
+        error.textContent = failure instanceof Error ? failure.message : 'Unavailable'; error.hidden = false
+        approve.textContent = zh ? '重试' : 'Retry'; approve.disabled = false; approve.focus()
+      }
+    })
+  }
+  load()
+  return { element, dispose: () => { disposed = true }, focus: () => { (approve.disabled ? back : approve).focus() } }
 }

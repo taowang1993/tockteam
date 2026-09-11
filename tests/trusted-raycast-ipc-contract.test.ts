@@ -15,6 +15,7 @@ test('view IPC authenticates before parsing and disposes only its finite handler
     onEvent: owner => { assert.equal(owner.webContentsId, 7); sent++ },
     onClose: owner => { assert.equal(owner.webContentsId, 7); closed++ },
     getTrust: extensionId => ({ extensionId, state: trustState }),
+    onFirstUse: async (owner, request) => { assert.equal(owner.webContentsId, 7); return { extensionId: request.extensionId, ok: true, state: trustState } },
     onTrustAction: request => ({ extensionId: request.extensionId, ok: true, state: { ...trustState, ...(request.action === 'enable' ? { enabled: true } : null) } }),
   })
   const event = handlers.get(TRUSTED_RAYCAST_IPC_CHANNELS.event)!
@@ -39,6 +40,15 @@ test('view IPC authenticates before parsing and disposes only its finite handler
   assert.equal(canIUse.extensionId, 'can-i-use'); assert.equal(canIUse.state.enabled, true)
   await assert.rejects(Promise.resolve(handlers.get(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.state)!({}, 'can-i-use')), /untrusted/)
   await assert.rejects((bridge.trustedRaycastTrustAction as (id: string, action: string) => Promise<unknown>)('can-i-use', 'launch'), /Invalid/)
+  const approval = { extensionId: 'can-i-use' as const, digest: 'd'.repeat(64), mode: 'approve' as const }
+  const firstUse = handlers.get(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.firstUse)!
+  await assert.rejects(Promise.resolve(firstUse({}, approval)), /untrusted/)
+  for (const invalid of [{ ...approval, digest: '' }, { ...approval, mode: 'install' }, { ...approval, path: '/tmp' }]) {
+    await assert.rejects(Promise.resolve(firstUse(sender, invalid)), /Invalid/)
+    await assert.rejects(bridge.trustedRaycastFirstUse(invalid as never), /Invalid/)
+  }
+  await assert.rejects(Promise.resolve(firstUse(sender, approval, 'extra')), /Invalid/)
+  assert.equal((await bridge.trustedRaycastFirstUse(approval)).extensionId, 'can-i-use')
   dispose(); dispose(); assert.equal(handlers.size, 0)
 })
 test('projection rejects unknown families, oversized text, nonfinite properties and foreign keys', () => {

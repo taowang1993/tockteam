@@ -1,6 +1,6 @@
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
-import { createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
-import { trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
+import { createTrustedRaycastFirstUseView, createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
+import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import {
   ArrowRight,
   History as HistoryIcon,
@@ -249,6 +249,19 @@ async function bootstrap(): Promise<void> {
   let cancellationPending = false
   let cancellationRequested = false
   let activeCancellation: Readonly<{ actionId: string; resultSetId: string }> | undefined
+  let trustManagement: ReturnType<typeof createTrustedRaycastTrustView> | undefined
+  let firstUseView: ReturnType<typeof createTrustedRaycastFirstUseView> | undefined
+  let trustedClosePending: Promise<unknown> = Promise.resolve()
+  let closingTrusted = false
+  const closeTrusted = (): void => {
+    if (closingTrusted) return
+    closingTrusted = true
+    trustedClosePending = bridge.trustedRaycastClose().finally(() => { closingTrusted = false })
+    void trustedClosePending.catch(() => undefined)
+  }
+  let trustedOpening = false
+  let trustedInvocation = false
+  let toolSequence = 0
   let trustedView: ReturnType<typeof createTrustedRaycastView> | undefined
   let activeLocalTool: HTMLElement | undefined
   let activeLocalToolId: LauncherLocalToolId | undefined
@@ -325,6 +338,7 @@ async function bootstrap(): Promise<void> {
   )
 
   const restoreSearchFocus = (): void => {
+    if (firstUseView !== undefined) { firstUseView.focus(); return }
     if (trustedView !== undefined) { trustedView.focus(); return }
     search.focus()
     search.select()
@@ -338,7 +352,13 @@ async function bootstrap(): Promise<void> {
   const workflowInteractionBlocked = (): boolean => invokingWorkflow || activeCancellation !== undefined || cancellationPending
 
   const closeLocalTool = (): void => {
-    if (trustedView) { trustedView.dispose(); trustedView = undefined; void bridge.trustedRaycastClose().catch(() => undefined) }
+    toolSequence++
+    if (trustedInvocation) invoking = false
+    trustManagement?.dispose(); trustManagement = undefined
+    if (firstUseView || trustedOpening || trustedInvocation || trustedView) closeTrusted()
+    firstUseView?.dispose(); firstUseView = undefined
+    trustedOpening = false; trustedInvocation = false
+    if (trustedView) { trustedView.dispose(); trustedView = undefined }
     const tool = activeLocalTool
     activeLocalTool = undefined
     activeLocalToolId = undefined
@@ -359,6 +379,8 @@ async function bootstrap(): Promise<void> {
   }
   bridge.onTrustedRaycastView(message => {
     if (message.type === 'ready') {
+      if (!trustedOpening) { closeTrusted(); return }
+      firstUseView?.dispose(); firstUseView = undefined
       trustedView?.dispose()
       activeLocalTool?.remove()
       trustedView = createTrustedRaycastView(document, bridge, closeLocalTool, surfaceSettings.locale)
@@ -402,10 +424,37 @@ async function bootstrap(): Promise<void> {
   }
   const openTrustedRaycastTrustView = (): void => {
     const tool = createTrustedRaycastTrustView(document, bridge, closeLocalTool, surfaceSettings.locale)
+    trustManagement = tool
     activeLocalTool = tool.element
     activeLocalToolId = undefined
     hideLauncherControls()
     root.append(tool.element)
+    tool.focus()
+  }
+
+  const openFirstUse = (extensionId: typeof trustedRaycastCommands[number]['extensionId']): void => {
+    const sequence = toolSequence
+    const tool = createTrustedRaycastFirstUseView(document, bridge, extensionId, closeLocalTool, async (digest, mode) => {
+      if (sequence !== toolSequence) return
+      await trustedClosePending
+      if (sequence !== toolSequence) return
+      trustedOpening = true
+      try {
+        const result = await bridge.trustedRaycastFirstUse({ extensionId, digest, mode })
+        if (sequence !== toolSequence) return
+        if (!result.ok) throw new Error(result.error)
+      } catch (error) {
+        if (sequence === toolSequence) trustedOpening = false
+        throw error
+      }
+    }, () => {
+      firstUseView?.dispose(); firstUseView = undefined
+      activeLocalTool?.remove()
+      closeTrusted()
+      openTrustedRaycastTrustView()
+    }, surfaceSettings.locale)
+    firstUseView = tool; activeLocalTool = tool.element; activeLocalToolId = undefined
+    hideLauncherControls(); root.append(tool.element)
   }
 
   const updateSelection = (): void => {
@@ -523,6 +572,13 @@ async function bootstrap(): Promise<void> {
   const invoke = async (action: LauncherPublicAction): Promise<void> => {
     if (invoking || workflowInteractionBlocked()) return
     const candidate = selectedItem()
+    const setupCommand = trustedRaycastCommands.find(command => candidate?.defaultAction.actionId === action.actionId && candidate.id === trustedRaycastSetupId(command.extensionId))
+    const runtimeCommand = trustedRaycastCommands.find(command => candidate?.defaultAction.actionId === action.actionId && candidate.id === command.id)
+    const sequence = ++toolSequence
+    trustedInvocation = !!(setupCommand || runtimeCommand)
+    trustedOpening = false
+    // Drain already-sent ready messages before a new intent may own the renderer.
+    if (trustedInvocation) closeTrusted()
     const isWorkflowAction = candidate?.sourceExtension === 'Workflow'
     const invocationResultSetId = currentResultSetId
     const candidateId = candidate?.id.slice('ueli-local:'.length)
@@ -557,7 +613,11 @@ async function bootstrap(): Promise<void> {
     let pending: Promise<LauncherInvokeResult>
     let invocationStarted = false
     try {
-      pending = Promise.resolve(bridge.invokeAction(action.actionId))
+      pending = trustedInvocation ? trustedClosePending.then(() => {
+        if (sequence !== toolSequence) throw new Error('Extension opening canceled')
+        trustedOpening = !!runtimeCommand
+        return bridge.invokeAction(action.actionId)
+      }) : Promise.resolve(bridge.invokeAction(action.actionId))
       invocationStarted = true
     } catch (error) {
       pending = Promise.reject(error)
@@ -574,6 +634,7 @@ async function bootstrap(): Promise<void> {
     try {
       await historyPending
       const result = await pending
+      if (sequence !== toolSequence) return
       if (!result.ok) {
         if (isWorkflowAction) {
           invoking = false
@@ -590,6 +651,7 @@ async function bootstrap(): Promise<void> {
         return
       }
       if (trustedView !== undefined) { trustedView.focus(); return }
+      if (setupCommand) { openFirstUse(setupCommand.extensionId); return }
       if (!surfaceSettings.preserveUserInput) search.value = ''
       if (toolId !== undefined) {
         await openLocalTool(toolId)
@@ -611,18 +673,23 @@ async function bootstrap(): Promise<void> {
       await renderSearch(search.value)
       restoreSearchFocus()
     } catch {
+      if (sequence !== toolSequence) return
+      trustedOpening = false
       search.value = invocationSearchTerm()
       await renderSearch(search.value).catch(() => undefined)
       setStatus(cancellationRequested && isWorkflowAction ? messages().canceled : messages().invokeFailed(action.description), cancellationRequested && isWorkflowAction ? 'muted' : 'error')
       restoreSearchFocus()
     } finally {
-      invoking = false
-      invokingWorkflow = false
-      activeCancellation = undefined
-      cancellationPending = false
-      cancellationRequested = false
-      setWorkflowBusy(false)
-      renderDetails()
+      if (sequence === toolSequence) {
+        trustedInvocation = false
+        invoking = false
+        invokingWorkflow = false
+        activeCancellation = undefined
+        cancellationPending = false
+        cancellationRequested = false
+        setWorkflowBusy(false)
+        renderDetails()
+      }
     }
   }
 
@@ -973,7 +1040,7 @@ async function bootstrap(): Promise<void> {
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
-      if (activeLocalTool !== undefined) closeLocalTool()
+      if (activeLocalTool !== undefined || trustedInvocation || trustedOpening) closeLocalTool()
       else if (actionMenuOpen) closeActionMenu()
       else if (historyOpen) closeHistory()
       else if (surfaceSettings.hideWindowOn.includes('escapePressed')) void bridge.dismiss().catch(() => undefined)
@@ -1012,7 +1079,7 @@ async function bootstrap(): Promise<void> {
         selectedItemId = currentItems[event.key === 'Home' ? 0 : currentItems.length - 1]?.id ?? ''
         updateSelection()
       }
-    } else if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
+    } else if (event.key === 'Enter' && !event.repeat && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
       event.preventDefault()
       const item = selectedItem()
       if (item !== undefined) void invoke(item.defaultAction)
@@ -1095,7 +1162,7 @@ async function bootstrap(): Promise<void> {
     if (event.key !== 'Escape' || event.target === search) return
     event.preventDefault()
     event.stopPropagation()
-    if (activeLocalTool !== undefined) closeLocalTool()
+    if (activeLocalTool !== undefined || trustedInvocation || trustedOpening) closeLocalTool()
     else if (actionMenuOpen) closeActionMenu()
     else if (historyOpen) closeHistory()
     else if (surfaceSettings.hideWindowOn.includes('escapePressed')) void bridge.dismiss().catch(() => undefined)

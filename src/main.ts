@@ -1,3 +1,4 @@
+import { createTrustedRaycastFirstUse } from './trusted-raycast-first-use.ts'
 import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
 import { TrustedRaycastTrustStore } from './trusted-raycast-trust.ts'
 import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
@@ -6,7 +7,7 @@ import { loadTrustedRaycastPreferenceState, loadTrustedRaycastPreferences, saveT
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
 import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
-import { trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_CAN_I_USE_HANDLER, TRUSTED_RAYCAST_CAN_I_USE_RESULT_ID, TRUSTED_RAYCAST_KAOMOJI_HANDLER, TRUSTED_RAYCAST_KAOMOJI_RESULT_ID, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER, TRUSTED_RAYCAST_RESULT_ID, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
+import { trustedRaycastCommands, trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_CAN_I_USE_HANDLER, TRUSTED_RAYCAST_KAOMOJI_HANDLER, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER } from './trusted-raycast-catalog.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, type TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
 import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
 import { loadKaomojiPreferenceState, saveKaomojiPreferences } from './trusted-raycast-kaomoji-preferences.ts'
@@ -571,6 +572,7 @@ let trustedRaycastBootstrap: Promise<void> = Promise.resolve()
 let trustedRaycastPriorApp: TrustedRaycastPriorApp | undefined
 let trustedRaycastPriorCaptureTimer: ReturnType<typeof setTimeout> | undefined
 const trustedRaycastMutex = createTrustedRaycastMutex()
+let trustedRaycastFirstUse: ReturnType<typeof createTrustedRaycastFirstUse> | undefined
 const execFilePromise = promisify(execFile)
 const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
   execFile: (file, args, options) => execFilePromise(file, args, { timeout: options?.timeout, maxBuffer: options?.maxBuffer }) as Promise<{ stdout: string }>,
@@ -582,6 +584,7 @@ const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
   ownAppNames: Object.freeze(app.isPackaged ? [app.name] : [app.name, 'Electron']),
 })
 const trustedRaycastChannel = new DesktopTrustedRaycastChannel(async active => {
+  if (!active) trustedRaycastFirstUse?.cancel()
   if (!active) await trustedRaycastMutex(async () => await trustedRaycast?.stop('activation-revoked'))
   if (!quitting) await launcherRescan?.().catch(error => appendLog('desktop', String(error).slice(0, 512)))
 })
@@ -1686,7 +1689,7 @@ function createLauncherWindow(args: Readonly<{
     throw new Error('TockLauncher window was created with an unexpected session')
   }
   const translateOwner = { webContentsId: window.webContents.id }
-  const closeTranslateOwner = (): void => { void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(translateOwner)).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
+  const closeTranslateOwner = (): void => { trustedRaycastFirstUse?.cancel(translateOwner.webContentsId); void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(translateOwner)).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
   const captureTranslatePriorApp = (): void => {
     if (trustedRaycastPriorCaptureTimer !== undefined) return
     trustedRaycastPriorCaptureTimer = setTimeout(() => {
@@ -2341,13 +2344,14 @@ function initializeLauncher(): void {
     },
     onError: (_owner, error) => appendLog('desktop', error.message.slice(0, 512)),
   })
-  trustedRaycastBootstrap = trustedRaycastMutex(async () => { await trustedRaycastTrust?.installBundledDefault() }).catch(error => {
+  // Refresh already-approved Host-derived bytes only; cold profiles require inline digest consent.
+  trustedRaycastBootstrap = trustedRaycastMutex(async () => { if (trustedRaycastTrust?.status().installed) await trustedRaycastTrust.installBundledDefault() }).catch(error => {
     appendLog('desktop', `Bundled Translate activation failed: ${error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512)}`)
   })
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
-    initialIndexedItems: repository.readIndex().filter(item => item.id !== TRUSTED_RAYCAST_RESULT_ID && item.id !== TRUSTED_RAYCAST_KAOMOJI_RESULT_ID && item.id !== TRUSTED_RAYCAST_CAN_I_USE_RESULT_ID && item.id !== TRUSTED_RAYCAST_TRUST_RESULT_ID),
+    initialIndexedItems: repository.readIndex().filter(item => !item.id.startsWith('trusted-raycast:')),
     initialRanking: repository.readRanking(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async (signal, preserveSignal) => {
@@ -2389,6 +2393,11 @@ function initializeLauncher(): void {
       await coreSearch.recordUsage(record.resultItemId)
     },
     execute: async record => {
+      const trustedCommand = trustedRaycastCommands.find(command => command.handler === record.handlerKey)
+      const checkTrustedLaunch = trustedCommand ? trustedRaycastFirstUse!.captureLaunch(record.owner.webContentsId, trustedCommand.extensionId) : undefined
+      if (!trustedCommand) trustedRaycastFirstUse?.cancel(record.owner.webContentsId)
+      const setupCommand = record.handlerKey === TRUSTED_RAYCAST_TRUST_HANDLER ? trustedRaycastCommands.find(command => command.extensionId === record.argument) : undefined
+      const checkSetup = setupCommand ? trustedRaycastFirstUse!.captureLaunch(record.owner.webContentsId, setupCommand.extensionId) : undefined
       let completion: LauncherActionExecutionResult = normalizeLauncherActionResult(await coreSearch.executeAction(record))
       if (!completion.handled) completion = normalizeLauncherActionResult(await terminal.executeAction(record))
       if (!completion.handled) completion = normalizeLauncherActionResult(await workflow.executeAction(record))
@@ -2400,29 +2409,49 @@ function initializeLauncher(): void {
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRANSLATE_HANDLER) {
         await trustedRaycastBootstrap
         await trustedRaycastMutex(async () => {
+          checkTrustedLaunch!()
           if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || trustedRaycastTrust?.status().digestApproved !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
-          await trustedRaycast.start(record.owner, { extensionId: 'google-translate', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
+          try {
+            await trustedRaycast.start(record.owner, { extensionId: 'google-translate', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
+            checkTrustedLaunch!()
+          } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
         })
         completion = launcherActionCompletion(true)
       }
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_KAOMOJI_HANDLER) {
         await trustedRaycastMutex(async () => {
+          checkTrustedLaunch!()
           const trust = trustedRaycastKaomojiTrust?.status()
           if (!trustedRaycastChannel.active || !trustedRaycast?.availableFor('kaomoji-search') || trust?.enabled !== true || trust.digestApproved !== true || record.argument !== 'index') throw new Error('Kaomoji Search capability is unavailable')
-          await trustedRaycast.start(record.owner, { extensionId: 'kaomoji-search', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).values })
+          try {
+            await trustedRaycast.start(record.owner, { extensionId: 'kaomoji-search', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).values })
+            checkTrustedLaunch!()
+          } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
         })
         completion = launcherActionCompletion(true)
       }
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_CAN_I_USE_HANDLER) {
         await trustedRaycastMutex(async () => {
+          checkTrustedLaunch!()
           const trust = trustedRaycastCanIUseTrust?.status()
           if (!trustedRaycastChannel.active || !trustedRaycast?.availableFor('can-i-use') || trust?.enabled !== true || trust.digestApproved !== true || record.argument !== 'index') throw new Error('Can I Use capability is unavailable')
-          await trustedRaycast.start(record.owner, { extensionId: 'can-i-use', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile) })
+          try {
+            await trustedRaycast.start(record.owner, { extensionId: 'can-i-use', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile) })
+            checkTrustedLaunch!()
+          } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
         })
         completion = launcherActionCompletion(true)
       }
       if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRUST_HANDLER) {
-        if (!trustedRaycastChannel.active || record.argument !== 'manage') throw new Error('Trusted Extensions capability is inactive')
+        if (!trustedRaycastChannel.active) throw new Error('Extensions capability is inactive')
+        if (record.argument !== 'manage') {
+          const command = trustedRaycastCommands.find(command => command.extensionId === record.argument)
+          const store = command && trustStoreFor(command.extensionId)
+          if (!command || !store) throw new Error('Reviewed extension is unavailable')
+          const state = store.status()
+          if (!state.installed && !state.candidateAvailable && !state.recovery) throw new Error('Reviewed candidate is unavailable')
+          checkSetup!()
+        }
         completion = launcherActionCompletion(true)
       }
       if (!completion.handled) {
@@ -2463,6 +2492,7 @@ function initializeLauncher(): void {
   launcherRescan = rescan
   const onWindowCleared = (window: { webContents: { id: number } }): void => {
     const owner = { role: 'launcher' as const, webContentsId: window.webContents.id }
+    trustedRaycastFirstUse?.cancel(owner.webContentsId)
     void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)).catch(error => appendLog('desktop', String(error).slice(0, 512)))
     // Revoke every provider before clearing this renderer's public action owner.
     invalidateAllLauncherProviders('launcher-owner-clear', owner)
@@ -2543,17 +2573,46 @@ function initializeLauncher(): void {
     roleOf: window => launcherWindowRegistry.roleOf(window),
     urlPolicy,
   })
+  trustedRaycastFirstUse = createTrustedRaycastFirstUse({
+    mutex: trustedRaycastMutex, active: () => trustedRaycastChannel.active, store: trustStoreFor,
+    rescan: () => rescan(undefined, undefined, 'trusted-raycast-first-use'),
+    launch: async (webContentsId, extensionId, check) => {
+      check()
+      const command = trustedRaycastCommands.find(command => command.extensionId === extensionId)!
+      const item = trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust!.status(), trustedRaycastKaomojiTrust?.status(), trustedRaycastCanIUseTrust?.status()).find(item => item.id === command.id)
+      if (!item) throw new Error('Extension command is no longer available')
+      const owner = { role: 'launcher' as const, webContentsId }
+      // Publish from current Host trust, never replay the consumed setup action after rescan.
+      const fresh = actions.publish({ owner, items: [item] }).items[0]!
+      check()
+      await actions.invoke({ owner, actionId: fresh.defaultAction.actionId })
+      check()
+    },
+  })
   const disposeTrustedRaycast = registerTrustedRaycastIpcHandlers({
     guard: launcherGuard, ipcMain,
     onEvent: (owner, event) => { if (!trustedRaycastChannel.active) throw new Error('Translate capability is inactive'); trustedRaycast?.send(owner, event) },
-    onClose: async owner => { await trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)) },
+    onClose: async owner => { trustedRaycastFirstUse?.cancel(owner.webContentsId); await trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)) },
     getTrust: extensionId => Object.freeze({ extensionId, state: Object.freeze({ ...(trustStoreFor(extensionId)?.status() ?? Object.freeze({ candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '', staged: false })), active: trustedRaycastChannel.active }) }),
+    onFirstUse: async (owner, request) => {
+      const store = trustStoreFor(request.extensionId)
+      if (!store) throw new Error('Reviewed extension is unavailable')
+      const state = (): TrustedRaycastTrustState => ({ ...store.status(), active: trustedRaycastChannel.active })
+      try {
+        await trustedRaycastFirstUse!.run(owner.webContentsId, request)
+        return { extensionId: request.extensionId, ok: true, state: state() }
+      } catch (error) {
+        return { extensionId: request.extensionId, ok: false, state: state(), error: error instanceof Error ? error.message.slice(0, 512) : 'Extension opening failed' }
+      }
+    },
     onTrustAction: async request => {
       const { action, extensionId } = request
+      trustedRaycastFirstUse?.invalidate(extensionId)
       const store = trustStoreFor(extensionId)
       if (store === undefined) throw new Error('Trusted Extensions are unavailable')
       try {
         return await trustedRaycastMutex(async () => {
+          if (!trustedRaycastChannel.active) throw new Error('Extensions capability is inactive')
           if (trustedRaycast?.activeExtensionId === extensionId && action === 'disable') await trustedRaycast.stop('capability-disabled')
           if (trustedRaycast?.activeExtensionId === extensionId && action === 'remove') await trustedRaycast.stop('capability-removed')
           if (trustedRaycast?.activeExtensionId === extensionId && action === 'recover') await trustedRaycast.stop('capability-recovery')

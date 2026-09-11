@@ -20,7 +20,7 @@ import {
 } from './launcher-window-contract.ts'
 import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
-import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastTrustAction, isTrustedRaycastTrustResult, isTrustedRaycastTrustStateEnvelope, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastTrustAction, type TrustedRaycastTrustResult, type TrustedRaycastTrustState, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
+import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastFirstUseRequest, type TrustedRaycastFirstUseRequest, isTrustedRaycastTrustAction, isTrustedRaycastTrustResult, isTrustedRaycastTrustStateEnvelope, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastTrustAction, type TrustedRaycastTrustResult, type TrustedRaycastTrustState, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
 import { getTrustedRaycastDescriptor, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 
 type IpcInvoker = Readonly<{
@@ -43,6 +43,7 @@ export type LauncherPreloadBridge = Readonly<{
   search: (searchTerm: string, options: LauncherSearchOptions) => Promise<LauncherSearchResponse>
   onTrustedRaycastView: (listener: (message: TrustedRaycastViewMessage) => void) => () => void
   getTrustedRaycastTrust: (extensionId: TrustedRaycastExtensionId) => Promise<TrustedRaycastTrustState>
+  trustedRaycastFirstUse: (request: TrustedRaycastFirstUseRequest) => Promise<TrustedRaycastTrustResult>
   trustedRaycastTrustAction: (extensionId: TrustedRaycastExtensionId, action: TrustedRaycastTrustAction) => Promise<TrustedRaycastTrustResult>
   trustedRaycastEvent: (event: TrustedRaycastViewEvent) => Promise<Readonly<{ ok: true }>>
   trustedRaycastClose: () => Promise<Readonly<{ ok: true }>>
@@ -147,6 +148,13 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       const envelope = await ipcRenderer.invoke(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.state, extensionId)
       if (!isTrustedRaycastTrustStateEnvelope(envelope) || envelope.extensionId !== extensionId) throw new Error('Invalid Trusted Extensions state')
       return envelope.state
+    },
+    trustedRaycastFirstUse: async (request: TrustedRaycastFirstUseRequest, ...extra: unknown[]): Promise<TrustedRaycastTrustResult> => {
+      assertArity('trustedRaycastFirstUse', [request, ...extra], 1)
+      if (!isTrustedRaycastFirstUseRequest(request)) throw new Error('Invalid extension approval')
+      const result = await ipcRenderer.invoke(TRUSTED_RAYCAST_TRUST_IPC_CHANNELS.firstUse, request)
+      if (!isTrustedRaycastTrustResult(result) || result.extensionId !== request.extensionId) throw new Error('Invalid extension approval result')
+      return result
     },
     trustedRaycastTrustAction: async (extensionId: TrustedRaycastExtensionId, action: unknown, ...extra: unknown[]): Promise<TrustedRaycastTrustResult> => {
       assertArity('trustedRaycastTrustAction', [extensionId, action, ...extra], 2)

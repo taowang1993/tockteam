@@ -37,6 +37,7 @@ export const TRUSTED_RAYCAST_IPC_CHANNELS = Object.freeze({
 })
 export const TRUSTED_RAYCAST_TRUST_IPC_CHANNELS = Object.freeze({
   action: 'trusted-raycast:trust-action',
+  firstUse: 'trusted-raycast:first-use',
   state: 'trusted-raycast:trust-state',
 })
 export type TrustedRaycastTrustAction = 'disable' | 'enable' | 'prepare' | 'apply' | 'recover' | 'remove'
@@ -55,6 +56,11 @@ export type TrustedRaycastTrustState = Readonly<{
   recovery: TrustedRaycastTrustRecovery
   staged: boolean
 }>
+export type TrustedRaycastFirstUseRequest = Readonly<{ extensionId: TrustedRaycastExtensionId; digest: string; mode: 'approve' | 'enable' }>
+export function isTrustedRaycastFirstUseRequest(value: unknown): value is TrustedRaycastFirstUseRequest {
+  return isRecord(value) && exactKeys(value, ['extensionId', 'digest', 'mode']) && getTrustedRaycastDescriptor(value.extensionId) !== undefined
+    && typeof value.digest === 'string' && /^[a-f0-9]{64}$/.test(value.digest) && (value.mode === 'approve' || value.mode === 'enable')
+}
 export type TrustedRaycastTrustRequest = Readonly<{ action: TrustedRaycastTrustAction; extensionId: TrustedRaycastExtensionId }>
 export type TrustedRaycastTrustStateEnvelope = Readonly<{ extensionId: TrustedRaycastExtensionId; state: TrustedRaycastTrustState }>
 export type TrustedRaycastTrustResult = Readonly<
