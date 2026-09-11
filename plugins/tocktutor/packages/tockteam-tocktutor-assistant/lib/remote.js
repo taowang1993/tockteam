@@ -228,10 +228,21 @@ function searchIntelligenceResult(value) {
     return { status: value.status, matches };
 }
 function quickAnswerRequest(value) {
-    assertPlainRecord(value, ['query', 'vaultGeneration', 'candidates'], 'Quick Answer request');
+    assertPlainRecord(value, ['query', 'vaultGeneration', 'mode', 'directory', 'modifiedFrom', 'modifiedTo', 'titleOnly', 'candidates'], 'Quick Answer request');
     const query = boundaryText(value.query, 1_000, 'Quick Answer request');
     const vaultGeneration = safeInteger(value.vaultGeneration, 'Quick Answer request');
-    if (vaultGeneration < 1 || !Array.isArray(value.candidates) || value.candidates.length > MAX_QUICK_ANSWER_CANDIDATES)
+    const mode = value.mode === undefined ? 'query' : value.mode;
+    const directory = value.directory;
+    const modifiedFrom = value.modifiedFrom;
+    const modifiedTo = value.modifiedTo;
+    if (vaultGeneration < 1
+        || !['query', 'related'].includes(mode)
+        || directory !== undefined && !isSafeDirectory(directory)
+        || modifiedFrom !== undefined && !Number.isSafeInteger(modifiedFrom)
+        || modifiedTo !== undefined && !Number.isSafeInteger(modifiedTo)
+        || value.titleOnly !== undefined && typeof value.titleOnly !== 'boolean'
+        || !Array.isArray(value.candidates)
+        || value.candidates.length > MAX_QUICK_ANSWER_CANDIDATES)
         throw failure('Quick Answer request');
     const ids = new Set();
     const candidates = value.candidates.map(candidate => {
@@ -250,7 +261,16 @@ function quickAnswerRequest(value) {
             preview: boundaryText(candidate.preview, 4_096, 'Quick Answer request'),
         };
     });
-    return { query, vaultGeneration, candidates };
+    return {
+        query,
+        vaultGeneration,
+        mode: mode,
+        ...(directory === undefined ? {} : { directory }),
+        ...(modifiedFrom === undefined ? {} : { modifiedFrom }),
+        ...(modifiedTo === undefined ? {} : { modifiedTo }),
+        ...(value.titleOnly === undefined ? {} : { titleOnly: value.titleOnly }),
+        candidates,
+    };
 }
 function quickAnswerResult(value) {
     assertPlainRecord(value, ['status', 'answer', 'citations'], 'Quick Answer result');

@@ -323,10 +323,23 @@ function searchIntelligenceResult(value: unknown): AssistantSearchIntelligenceRe
 }
 
 function quickAnswerRequest(value: unknown): AssistantQuickAnswerRequest {
-  assertPlainRecord(value, ['query', 'vaultGeneration', 'candidates'], 'Quick Answer request')
+  assertPlainRecord(value, ['query', 'vaultGeneration', 'mode', 'directory', 'modifiedFrom', 'modifiedTo', 'titleOnly', 'candidates'], 'Quick Answer request')
   const query = boundaryText(value.query, 1_000, 'Quick Answer request')
   const vaultGeneration = safeInteger(value.vaultGeneration, 'Quick Answer request')
-  if (vaultGeneration < 1 || !Array.isArray(value.candidates) || value.candidates.length > MAX_QUICK_ANSWER_CANDIDATES) throw failure('Quick Answer request')
+  const mode = value.mode === undefined ? 'query' : value.mode
+  const directory = value.directory as string | undefined
+  const modifiedFrom = value.modifiedFrom as number | undefined
+  const modifiedTo = value.modifiedTo as number | undefined
+  if (
+    vaultGeneration < 1
+    || !['query', 'related'].includes(mode as string)
+    || directory !== undefined && !isSafeDirectory(directory)
+    || modifiedFrom !== undefined && !Number.isSafeInteger(modifiedFrom)
+    || modifiedTo !== undefined && !Number.isSafeInteger(modifiedTo)
+    || value.titleOnly !== undefined && typeof value.titleOnly !== 'boolean'
+    || !Array.isArray(value.candidates)
+    || value.candidates.length > MAX_QUICK_ANSWER_CANDIDATES
+  ) throw failure('Quick Answer request')
   const ids = new Set<string>()
   const candidates = value.candidates.map(candidate => {
     assertPlainRecord(candidate, ['id', 'path', 'line', 'lineEnd', 'preview'], 'Quick Answer request')
@@ -343,7 +356,16 @@ function quickAnswerRequest(value: unknown): AssistantQuickAnswerRequest {
       preview: boundaryText(candidate.preview, 4_096, 'Quick Answer request'),
     }
   })
-  return { query, vaultGeneration, candidates }
+  return {
+    query,
+    vaultGeneration,
+    mode: mode as 'query' | 'related',
+    ...(directory === undefined ? {} : { directory }),
+    ...(modifiedFrom === undefined ? {} : { modifiedFrom }),
+    ...(modifiedTo === undefined ? {} : { modifiedTo }),
+    ...(value.titleOnly === undefined ? {} : { titleOnly: value.titleOnly }),
+    candidates,
+  }
 }
 
 function quickAnswerResult(value: unknown): AssistantQuickAnswerResult {

@@ -14625,6 +14625,11 @@ var _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_result$schema
 var _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_parameter_0$schema = external_exports.object({
   "query": external_exports.string(),
   "vaultGeneration": external_exports.number(),
+  "mode": external_exports.union([external_exports.literal("related"), external_exports.literal("query")]).optional(),
+  "directory": external_exports.string().optional(),
+  "modifiedFrom": external_exports.number().optional(),
+  "modifiedTo": external_exports.number().optional(),
+  "titleOnly": external_exports.boolean().optional(),
   "candidates": external_exports.array(external_exports.object({
     "id": external_exports.string(),
     "path": external_exports.string(),

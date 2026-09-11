@@ -74,6 +74,11 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_result$sche
 const _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_parameter_0$schema = z.object({
   'query': z.string(),
   'vaultGeneration': z.number(),
+  'mode': z.union([z.literal("related"), z.literal("query")]).optional(),
+  'directory': z.string().optional(),
+  'modifiedFrom': z.number().optional(),
+  'modifiedTo': z.number().optional(),
+  'titleOnly': z.boolean().optional(),
   'candidates': z.array(z.object({
   'id': z.string(),
   'path': z.string(),

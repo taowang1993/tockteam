@@ -10,8 +10,20 @@ import { PennivoReadAdapter, REVIEWED_PENNIVO_READ_TOOLS, } from "./read-tools.j
 import { AssistantTurnBindingError, AssistantTurnBindingRegistry, } from "./turn-bindings.js";
 import { organizedCaptureContent, publicTockDriverWriteResult, registerAssistantWriteTools, registerMainTockDriverWriteTools, } from "./write-tool-registration.js";
 import { TockTutorAssistantGateway, } from "./remote.js";
+const MAX_SEARCH_CANDIDATE_MAPS = 8;
 function answerCandidateKey(candidate) {
     return `${candidate.path}:${String(candidate.line)}:${String(candidate.lineEnd ?? '')}:${candidate.preview}`;
+}
+function searchCandidateMapKey(vaultId, vaultGeneration, request) {
+    return JSON.stringify({
+        directory: request.directory ?? '',
+        modifiedFrom: request.modifiedFrom,
+        modifiedTo: request.modifiedTo,
+        query: request.query.trim(),
+        titleOnly: request.titleOnly === true,
+        vaultGeneration,
+        vaultId,
+    });
 }
 import { PennivoChildManager, } from "./pennivo-child.js";
 import { ProductionAssistantTurnBinder, } from "./production-turns.js";
@@ -66,6 +78,7 @@ export class NoteAssistant extends Service {
     proposalState;
     proposalPersistence = Promise.resolve();
     decisionTasks = new Set();
+    searchCandidateMaps = new Map();
     decisionAdmissionOpen = true;
     mainTockDriverDispose;
     constructor(ctx, config) {
@@ -92,11 +105,14 @@ export class NoteAssistant extends Service {
         });
         this.syncMainTockDriverTools();
         ctx.on('settings/updated', (namespace) => {
-            if (namespace === ASSISTANT_SETTINGS_NAMESPACE)
+            if (namespace === ASSISTANT_SETTINGS_NAMESPACE) {
+                this.searchCandidateMaps.clear();
                 this.observeSettings(this.settings.get());
+            }
         });
         ctx.plugin(TockTutorAssistantGateway);
         ctx.on('note-vault/change', event => {
+            this.searchCandidateMaps.clear();
             this.turnBindings.invalidateVault(event.vault);
             this.proposalQueue.invalidateVault(event.vault);
             this.scheduleProposalPersistence();
@@ -563,6 +579,17 @@ export class NoteAssistant extends Service {
         this.observeSettings(current);
         return { ...current };
     }
+    rememberSearchCandidates(request, vaultId, matches) {
+        const key = searchCandidateMapKey(vaultId, request.vaultGeneration, request);
+        this.searchCandidateMaps.delete(key);
+        this.searchCandidateMaps.set(key, new Set(matches.map(answerCandidateKey)));
+        while (this.searchCandidateMaps.size > MAX_SEARCH_CANDIDATE_MAPS) {
+            const oldest = this.searchCandidateMaps.keys().next().value;
+            if (oldest === undefined)
+                break;
+            this.searchCandidateMaps.delete(oldest);
+        }
+    }
     async searchIntelligence(request, signal) {
         const settings = this.currentSettings();
         if ((settings.aiSearch ?? 'on-demand') === 'off')
@@ -570,7 +597,7 @@ export class NoteAssistant extends Service {
         const vault = this.noteVault.state;
         if (!vault.active || vault.generation !== request.vaultGeneration)
             return { status: 'error', matches: [] };
-        return await expandAndSearch(this.llm, request, settings.provider, settings.model, async (searchRequest, searchSignal) => {
+        const result = await expandAndSearch(this.llm, request, settings.provider, settings.model, async (searchRequest, searchSignal) => {
             const result = await this.noteVault.search(searchRequest, {
                 id: vault.id,
                 generation: vault.generation,
@@ -589,6 +616,14 @@ export class NoteAssistant extends Service {
                 && currentSettings.model === settings.model
                 && currentSettings.aiSearch === settings.aiSearch;
         });
+        const currentVault = this.noteVault.state;
+        if (result.status === 'applied'
+            && currentVault.active
+            && currentVault.id === vault.id
+            && currentVault.generation === vault.generation) {
+            this.rememberSearchCandidates(request, vault.id, result.matches);
+        }
+        return result;
     }
     async quickAnswer(request, signal) {
         const settings = this.currentSettings();
@@ -597,15 +632,27 @@ export class NoteAssistant extends Service {
         const vault = this.noteVault.state;
         if (!vault.active || vault.generation !== request.vaultGeneration)
             return { status: 'error', answer: '', citations: [] };
+        const mode = request.mode ?? 'query';
         let exactMatches;
         try {
-            const exact = await this.noteVault.search({ mode: 'query', query: request.query, limit: 100 }, { id: vault.id, generation: vault.generation }, signal);
+            const exact = await this.noteVault.search({
+                mode,
+                query: request.query,
+                limit: 100,
+                ...(request.directory === undefined ? {} : { directory: request.directory }),
+                ...(request.modifiedFrom === undefined ? {} : { modifiedFrom: request.modifiedFrom }),
+                ...(request.modifiedTo === undefined ? {} : { modifiedTo: request.modifiedTo }),
+                ...(request.titleOnly === undefined ? {} : { titleOnly: request.titleOnly }),
+            }, { id: vault.id, generation: vault.generation }, signal);
             exactMatches = exact.matches;
         }
         catch {
             return { status: 'error', answer: '', citations: [] };
         }
         const exactKeys = new Set(exactMatches.map(answerCandidateKey));
+        const relatedKeys = this.searchCandidateMaps.get(searchCandidateMapKey(vault.id, vault.generation, request));
+        for (const key of relatedKeys ?? [])
+            exactKeys.add(key);
         if (request.candidates.some(candidate => !exactKeys.has(answerCandidateKey(candidate)))) {
             return { status: 'no-evidence', answer: '', citations: [] };
         }

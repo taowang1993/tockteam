@@ -55,8 +55,26 @@ import {
 import type { AssistantQuickAnswerRequest, AssistantQuickAnswerResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts'
 import type { VaultSearchMatch } from 'tockbot-note-vault/inspection'
 
+const MAX_SEARCH_CANDIDATE_MAPS = 8
+
 function answerCandidateKey(candidate: Pick<VaultSearchMatch, 'path' | 'line' | 'lineEnd' | 'preview'>): string {
   return `${candidate.path}:${String(candidate.line)}:${String(candidate.lineEnd ?? '')}:${candidate.preview}`
+}
+
+function searchCandidateMapKey(
+  vaultId: string,
+  vaultGeneration: number,
+  request: { query: string; directory?: string; modifiedFrom?: number; modifiedTo?: number; titleOnly?: boolean },
+): string {
+  return JSON.stringify({
+    directory: request.directory ?? '',
+    modifiedFrom: request.modifiedFrom,
+    modifiedTo: request.modifiedTo,
+    query: request.query.trim(),
+    titleOnly: request.titleOnly === true,
+    vaultGeneration,
+    vaultId,
+  })
 }
 import {
   PennivoChildManager,
@@ -173,6 +191,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
   private proposalState?: AssistantProposalStateStore
   private proposalPersistence: Promise<void> = Promise.resolve()
   private readonly decisionTasks = new Set<Promise<unknown>>()
+  private readonly searchCandidateMaps = new Map<string, ReadonlySet<string>>()
   private decisionAdmissionOpen = true
   private mainTockDriverDispose: (() => void) | undefined
 
@@ -203,10 +222,14 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     })
     this.syncMainTockDriverTools()
     ctx.on('settings/updated', (namespace) => {
-      if (namespace === ASSISTANT_SETTINGS_NAMESPACE) this.observeSettings(this.settings.get())
+      if (namespace === ASSISTANT_SETTINGS_NAMESPACE) {
+        this.searchCandidateMaps.clear()
+        this.observeSettings(this.settings.get())
+      }
     })
     ctx.plugin(TockTutorAssistantGateway)
     ctx.on('note-vault/change', event => {
+      this.searchCandidateMaps.clear()
       this.turnBindings.invalidateVault(event.vault)
       this.proposalQueue.invalidateVault(event.vault)
       this.scheduleProposalPersistence()
@@ -740,6 +763,21 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     return { ...current }
   }
 
+  private rememberSearchCandidates(
+    request: AssistantSearchIntelligenceRequest,
+    vaultId: string,
+    matches: readonly VaultSearchMatch[],
+  ): void {
+    const key = searchCandidateMapKey(vaultId, request.vaultGeneration, request)
+    this.searchCandidateMaps.delete(key)
+    this.searchCandidateMaps.set(key, new Set(matches.map(answerCandidateKey)))
+    while (this.searchCandidateMaps.size > MAX_SEARCH_CANDIDATE_MAPS) {
+      const oldest = this.searchCandidateMaps.keys().next().value
+      if (oldest === undefined) break
+      this.searchCandidateMaps.delete(oldest)
+    }
+  }
+
   async searchIntelligence(
     request: AssistantSearchIntelligenceRequest,
     signal: AbortSignal,
@@ -748,7 +786,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     if ((settings.aiSearch ?? 'on-demand') === 'off') return { status: 'disabled', matches: [] }
     const vault = this.noteVault.state
     if (!vault.active || vault.generation !== request.vaultGeneration) return { status: 'error', matches: [] }
-    return await expandAndSearch(
+    const result = await expandAndSearch(
       this.llm,
       request,
       settings.provider,
@@ -774,6 +812,14 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
           && currentSettings.aiSearch === settings.aiSearch
       },
     )
+    const currentVault = this.noteVault.state
+    if (result.status === 'applied'
+      && currentVault.active
+      && currentVault.id === vault.id
+      && currentVault.generation === vault.generation) {
+      this.rememberSearchCandidates(request, vault.id, result.matches)
+    }
+    return result
   }
 
   async quickAnswer(
@@ -784,14 +830,25 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     if ((settings.aiSearch ?? 'on-demand') === 'off') return { status: 'disabled', answer: '', citations: [] }
     const vault = this.noteVault.state
     if (!vault.active || vault.generation !== request.vaultGeneration) return { status: 'error', answer: '', citations: [] }
+    const mode = request.mode ?? 'query'
     let exactMatches: VaultSearchMatch[]
     try {
-      const exact = await this.noteVault.search({ mode: 'query', query: request.query, limit: 100 }, { id: vault.id, generation: vault.generation }, signal)
+      const exact = await this.noteVault.search({
+        mode,
+        query: request.query,
+        limit: 100,
+        ...(request.directory === undefined ? {} : { directory: request.directory }),
+        ...(request.modifiedFrom === undefined ? {} : { modifiedFrom: request.modifiedFrom }),
+        ...(request.modifiedTo === undefined ? {} : { modifiedTo: request.modifiedTo }),
+        ...(request.titleOnly === undefined ? {} : { titleOnly: request.titleOnly }),
+      }, { id: vault.id, generation: vault.generation }, signal)
       exactMatches = exact.matches
     } catch {
       return { status: 'error', answer: '', citations: [] }
     }
     const exactKeys = new Set(exactMatches.map(answerCandidateKey))
+    const relatedKeys = this.searchCandidateMaps.get(searchCandidateMapKey(vault.id, vault.generation, request))
+    for (const key of relatedKeys ?? []) exactKeys.add(key)
     if (request.candidates.some(candidate => !exactKeys.has(answerCandidateKey(candidate)))) {
       return { status: 'no-evidence', answer: '', citations: [] }
     }

@@ -42,6 +42,11 @@ export interface AssistantQuickAnswerCandidate {
 export interface AssistantQuickAnswerRequest {
     query: string;
     vaultGeneration: number;
+    mode?: 'query' | 'related';
+    directory?: string;
+    modifiedFrom?: number;
+    modifiedTo?: number;
+    titleOnly?: boolean;
     candidates: AssistantQuickAnswerCandidate[];
 }
 export interface AssistantQuickAnswerCitation {

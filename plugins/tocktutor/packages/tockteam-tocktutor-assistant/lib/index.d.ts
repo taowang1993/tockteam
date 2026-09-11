@@ -82,6 +82,7 @@ export declare class NoteAssistant extends Service implements AssistantRemoteHos
     private proposalState?;
     private proposalPersistence;
     private readonly decisionTasks;
+    private readonly searchCandidateMaps;
     private decisionAdmissionOpen;
     private mainTockDriverDispose;
     constructor(ctx: Context, config: Config);
@@ -105,6 +106,7 @@ export declare class NoteAssistant extends Service implements AssistantRemoteHos
     private bindProductionTurn;
     private productionRequestConfig;
     currentSettings(): AssistantSettings;
+    private rememberSearchCandidates;
     searchIntelligence(request: AssistantSearchIntelligenceRequest, signal: AbortSignal): Promise<AssistantSearchIntelligenceResult>;
     quickAnswer(request: AssistantQuickAnswerRequest, signal: AbortSignal): Promise<AssistantQuickAnswerResult>;
     saveSettings(settings: AssistantSettings): Promise<void>;

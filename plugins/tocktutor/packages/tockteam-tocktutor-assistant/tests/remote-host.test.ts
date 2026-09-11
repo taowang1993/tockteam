@@ -189,6 +189,11 @@ test('registers only bounded settings, turn, proposal, decision, and audit Remot
       answer: '',
       citations: [],
     })
+    assert.deepEqual(await state.gateway.quickAnswer({ query: 'car', mode: 'related', vaultGeneration: 7, candidates: [] }, signal), {
+      status: 'no-evidence',
+      answer: '',
+      citations: [],
+    })
     assert.deepEqual(await state.gateway.currentSettings(signal), {
       provider: 'provider-safe',
       model: 'model-safe',
