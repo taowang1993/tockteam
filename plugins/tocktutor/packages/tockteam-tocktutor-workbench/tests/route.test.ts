@@ -149,6 +149,8 @@ class FakeRemote implements WorkbenchRouteRemote {
   linksGate: Promise<void> | null = null
   linksOverride: ((request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => Promise<{ ok: true; value: VaultLinksResult }>) | null = null
   searchContinuation: VaultSearchResult | null = null
+  searchRevision: string | undefined
+  searchOverride: ((request: unknown, signal?: AbortSignal) => Promise<{ ok: true; value: VaultSearchResult }>) | null = null
   tocktutorAssistant?: NonNullable<WorkbenchRouteRemote['tocktutorAssistant']>
 
   private readonly createdPaths: Set<string>
@@ -420,11 +422,12 @@ class FakeRemote implements WorkbenchRouteRemote {
     },
     search: (request: { cursor?: string; directory?: string; expectedVault: VaultReference; limit?: number; mode?: string; modifiedFrom?: number; modifiedTo?: number; query: string; titleOnly?: boolean }, signal?: AbortSignal) => {
       this.calls.push({ method: 'search', parameters: [request, signal] })
+      if (this.searchOverride !== null) return this.searchOverride(request, signal)
       if (request.cursor !== undefined && this.searchContinuation !== null) return success(this.searchContinuation)
       return success({
         cursor: this.searchContinuation === null ? null : 'search-next',
         generation: request.expectedVault.generation,
-        matches: [{ kind: 'content' as const, line: 2, path: 'Folder/Note.md', preview: `Match ${request.query}` }],
+        matches: [{ ...(this.searchRevision === undefined ? {} : { revision: this.searchRevision }), kind: 'content' as const, line: 2, path: 'Folder/Note.md', preview: `Match ${request.query}` }],
         query: request.query,
         scan: { bytes: 30, entries: 4, files: 2 },
         truncated: this.searchContinuation !== null,
@@ -2119,6 +2122,81 @@ test('navigates active search matches and rejects a stale local preview', async 
   })
   assert.equal(await pending, false)
   assert.equal(controller.getSnapshot().searchPreview, null)
+  controller.dispose()
+})
+
+test('reports a current preview revision mismatch and clears preview loading', async () => {
+  const remote = new FakeRemote()
+  remote.searchRevision = firstRevision
+  remote.openOverride = async path => success({
+    content: '# Changed\n',
+    digest: `sha256:${'e'.repeat(64)}`,
+    generation: firstVault.generation,
+    path,
+    revision: secondRevision,
+  })
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('lesson')
+  assert.equal(await controller.runSearch(), true)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().searchPreview, null)
+  assert.equal(controller.getSnapshot().searchPreviewLoading, false)
+  assert.equal(controller.getSnapshot().searchPreviewError, 'Preview is no longer current.')
+  controller.dispose()
+})
+
+test('drops stale Load More results before publishing invalid-result errors', async () => {
+  const remote = new FakeRemote()
+  remote.searchContinuation = {
+    cursor: null,
+    generation: firstVault.generation,
+    matches: [{ id: 'second-hit', kind: 'content', line: 8, path: 'Second.md', preview: 'Second lesson match' }],
+    query: 'lesson',
+    scan: { bytes: 60, entries: 4, files: 3 },
+    truncated: false,
+    truncationReason: null,
+    warnings: [],
+  }
+  const pending = deferred<{ ok: true; value: VaultSearchResult }>()
+  remote.searchOverride = (request) => {
+    const searchRequest = request as { cursor?: string; query: string }
+    return searchRequest.cursor === undefined
+      ? success({
+          cursor: 'search-next',
+          generation: firstVault.generation,
+          matches: [{ kind: 'content', line: 2, path: 'Folder/Note.md', preview: 'First lesson match' }],
+          query: searchRequest.query,
+          scan: { bytes: 30, entries: 4, files: 2 },
+          truncated: true,
+          truncationReason: 'result-limit',
+          warnings: [],
+        })
+      : pending.promise
+  }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('lesson')
+  assert.equal(await controller.runSearch(), true)
+  const loading = controller.loadMoreSearch()
+  await new Promise(resolve => setImmediate(resolve))
+  controller.setSearchFilters({ directory: 'Folder' })
+  pending.resolve({
+    ok: true,
+    value: {
+      cursor: null,
+      generation: firstVault.generation,
+      matches: [],
+      query: 'lesson',
+      scan: { bytes: 0, entries: 0, files: 0 },
+      truncated: false,
+      truncationReason: null,
+      warnings: [],
+    },
+  })
+  assert.equal(await loading, false)
+  assert.equal(controller.getSnapshot().searchError, null)
+  assert.equal(controller.getSnapshot().searchLoading, true)
   controller.dispose()
 })
 

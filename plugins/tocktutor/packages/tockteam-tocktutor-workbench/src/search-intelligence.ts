@@ -53,7 +53,16 @@ export interface WorkbenchSearchIntelligenceRemote {
     signal?: AbortSignal,
   ): Promise<RemoteResult<WorkbenchSearchIntelligenceResult>>
   quickAnswer?(
-    request: { query: string; vaultGeneration: number; candidates: WorkbenchQuickAnswerCandidate[] },
+    request: {
+      query: string
+      vaultGeneration: number
+      mode: 'query' | 'related'
+      directory?: string
+      modifiedFrom?: number
+      modifiedTo?: number
+      titleOnly?: boolean
+      candidates: WorkbenchQuickAnswerCandidate[]
+    },
     signal?: AbortSignal,
   ): Promise<RemoteResult<WorkbenchQuickAnswerResult>>
 }

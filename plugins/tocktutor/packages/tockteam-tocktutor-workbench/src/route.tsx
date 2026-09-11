@@ -1023,12 +1023,15 @@ export class WorkbenchRouteController {
     const operation = this.nextSearchPreviewOperation()
     try {
       const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(match.path, vault, operation.signal))
-      if (!this.currentSearchPreview(operation.id, vault, match.path)
-        || opened.generation !== vault.generation
+      if (!this.currentSearchPreview(operation.id, vault, match.path)) return false
+      if (opened.generation !== vault.generation
         || opened.path !== match.path
         || (match.revision !== undefined && opened.revision !== match.revision)
         || typeof opened.revision !== 'string'
-        || !boundedSource(opened.content)) return false
+        || !boundedSource(opened.content)) {
+        this.update({ searchPreviewError: 'Preview is no longer current.', searchPreviewLoading: false })
+        return false
+      }
       this.update({
         searchPreview: Object.freeze({
           content: opened.content,
@@ -1303,6 +1306,7 @@ export class WorkbenchRouteController {
       this.update({ searchAnswer: { status: intelligence?.quickAnswer === undefined ? 'unavailable' : 'no-evidence', answer: '', citations: [] } })
       return false
     }
+    const mode = this.snapshot.searchMode ?? 'query'
     const matches = (this.snapshot.searchMatches ?? []).slice(0, 20)
     if (matches.length === 0) {
       this.update({ searchAnswer: { status: 'no-evidence', answer: '', citations: [] } })
@@ -1318,7 +1322,16 @@ export class WorkbenchRouteController {
     }))
     this.update({ searchAnswer: { status: 'thinking', answer: '', citations: [] } })
     try {
-      const result = remoteValue(await intelligence.quickAnswer({ query, vaultGeneration: vault.generation, candidates }, operation.signal))
+      const result = remoteValue(await intelligence.quickAnswer({
+        mode,
+        query,
+        vaultGeneration: vault.generation,
+        ...(this.snapshot.searchDirectory ? { directory: this.snapshot.searchDirectory } : {}),
+        ...(this.snapshot.searchModifiedFrom == null ? {} : { modifiedFrom: this.snapshot.searchModifiedFrom }),
+        ...(this.snapshot.searchModifiedTo == null ? {} : { modifiedTo: this.snapshot.searchModifiedTo }),
+        ...(this.snapshot.searchTitleOnly ? { titleOnly: true } : {}),
+        candidates,
+      }, operation.signal))
       if (!this.current(operation.id, vault)) return false
       const status = result.status === 'provider-unavailable' || result.status === 'disabled' ? 'unavailable' : result.status
       this.update({ searchAnswer: { status, answer: result.answer, citations: result.citations } })
@@ -1359,7 +1372,8 @@ export class WorkbenchRouteController {
         mode,
         query,
       }, operation.signal))
-      if (!this.current(operation.id, vault) || !validSearchResult(result, vault) || result.query !== query || result.cursor === cursor) {
+      if (!this.current(operation.id, vault) || operation.signal.aborted) return false
+      if (!validSearchResult(result, vault) || result.query !== query || result.cursor === cursor) {
         this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false })
         return false
       }
