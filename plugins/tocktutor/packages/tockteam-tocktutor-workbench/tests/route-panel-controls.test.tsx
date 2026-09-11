@@ -138,6 +138,9 @@ describe('TockTutor titlebar panel controls', () => {
     const query = screen.getByRole('searchbox', { name: 'Search Notes Query' })
     expect(dialog.contains(query)).toBe(true)
     expect(dialog.className).toContain('[--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))]')
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]')
+    expect(overlay?.className).toContain('bg-[color-mix(in_srgb,var(--tt-text)_28%,transparent)]')
+    expect(overlay?.className).not.toContain('!bg-transparent')
     expect(query.getAttribute('placeholder')).toBe('Search notes...')
     expect(document.querySelector('aside[aria-label="Files"]')?.contains(query)).toBe(false)
     expect(screen.queryByRole('list', { name: 'Matching Note Paths' })).toBeNull()
@@ -166,6 +169,24 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByText('The answer is in the note.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Second.md:2' }))
     expect(selected).toEqual(['Second.md'])
+  })
+
+  it('keeps result shortcuts truthful and lets users restore the preview pane', () => {
+    const onSearchActiveSet = vi.fn()
+    renderRoute({
+      searchActiveIndex: 0,
+      searchMatches: [{ kind: 'content', line: 3, path: 'Notes/Lesson.md', preview: 'A matching lesson' }],
+      searchOpen: true,
+      searchQuery: 'lesson',
+    }, { onSearchActiveSet })
+
+    expect(screen.getByText('Navigate')).toBeTruthy()
+    expect(screen.getByText('Open')).toBeTruthy()
+    expect(screen.getByText('New Tab')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide Preview' }))
+    expect(screen.getByText('Preview is hidden.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show Preview' }))
+    expect(onSearchActiveSet).toHaveBeenCalledWith(0)
   })
 
   it('does not label unrelated note paths as query matches', () => {

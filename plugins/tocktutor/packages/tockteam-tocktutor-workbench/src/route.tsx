@@ -3419,9 +3419,11 @@ function NotePathDialog(props: {
 
 function NoteSearchPreview(props: {
   error: string | null | undefined
+  hidden: boolean
   loading: boolean
   match: VaultSearchMatch | undefined
   onHide(): void
+  onShow(): void
   path: string | null
   preview: WorkbenchSearchPreview | null | undefined
 }): ReactNode {
@@ -3436,8 +3438,13 @@ function NoteSearchPreview(props: {
     return renderMarkdownHtml(lines.slice(start, Math.max(start + 1, end)).join('\n'), { externalEmbedMode: 'inert' })
   }, [props.preview])
   return (
-    <aside aria-label="Note Preview" className="min-h-0 p-3 max-sm:hidden" role="region">
-      {props.path === null ? (
+    <aside aria-label="Note Preview" className="min-h-0 p-3" role="region">
+      {props.hidden ? (
+        <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-[var(--tt-border)] px-6 text-center text-sm text-[var(--tt-muted)]">
+          <span>Preview is hidden.</span>
+          <Button unstyled className="rounded-md border border-[var(--tt-border)] bg-transparent px-2.5 py-1.5 text-xs hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]" onClick={props.onShow} type="button">Show Preview</Button>
+        </div>
+      ) : props.path === null ? (
         <div className="flex h-full items-center justify-center rounded-lg border border-[var(--tt-border)] px-6 text-center text-sm text-[var(--tt-muted)]">Select a result to preview it.</div>
       ) : (
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)]">
@@ -3511,8 +3518,10 @@ function NoteSearchResultList(props: {
                       <FileText aria-hidden="true" className="mt-0.5 text-[var(--tt-muted)]" strokeWidth={1.6} />
                       <span className="min-w-0">
                         <strong className="block truncate text-sm font-medium">{pathsByTitle.get(title)?.size === 1 ? title : group.path}</strong>
-                        {group.matches.map(entry => <span className="block truncate text-xs text-[var(--tt-muted)]" key={entry.match.id ?? `${entry.match.kind}:${String(entry.match.line)}:${entry.match.preview}`}>
-                          {entry.match.line !== null && <>{String(entry.match.line)}: </>}{highlightSearchText(entry.match.preview, props.query)}
+                        {group.matches.map(entry => <span className="block truncate text-xs text-[var(--tt-muted)]" key={`${entry.match.id ?? `${entry.match.kind}:${String(entry.match.line)}:${entry.match.preview}`}:${String(entry.index)}`}>
+                          {entry.match.line !== null && <>{String(entry.match.line)}: </>}
+                          {entry.match.provenance !== undefined && <span className="mr-1 text-[10px] tracking-wide">{searchProvenanceLabel(entry.match.provenance)}</span>}
+                          {highlightSearchText(entry.match.preview, props.query)}
                         </span>)}
                       </span>
                     </Button>
@@ -3581,6 +3590,7 @@ function WorkbenchNoteSearchPalette(props: {
 }): ReactNode {
   const { snapshot } = props
   const matches = snapshot.searchMatches ?? []
+  const resultCount = new Set(matches.map(match => match.path)).size
   const searchInputContainer = useRef<HTMLDivElement>(null)
   const searchCaret = useRef<number | null>(null)
   const [searchOptionsOpen, setSearchOptionsOpen] = useState(false)
@@ -3589,6 +3599,10 @@ function WorkbenchNoteSearchPalette(props: {
     : 0
   const previewMatch = matches[previewMatchIndex]
   const previewResultPath = previewMatch?.path ?? null
+  const [previewHidden, setPreviewHidden] = useState(false)
+  useEffect(() => {
+    setPreviewHidden(false)
+  }, [previewResultPath, snapshot.searchQuery])
   const insertSearchOption = (value: string): void => {
     const input = searchInputContainer.current?.querySelector('input')
     const start = input?.selectionStart ?? snapshot.searchQuery.length
@@ -3607,7 +3621,7 @@ function WorkbenchNoteSearchPalette(props: {
       <DialogContent
         unstyled
         className="fixed top-1/2 left-1/2 z-[2147483647] grid h-[640px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[960px] -translate-1/2 grid-rows-[56px_42px_auto_minmax(0,1fr)_40px] overflow-hidden rounded-[14px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-[0_18px_48px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)] outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-text)_6%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
-        overlayClassName="z-[2147483646] !bg-transparent"
+        overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--tt-text)_28%,transparent)]"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Search Notes</DialogTitle>
@@ -3712,7 +3726,7 @@ function WorkbenchNoteSearchPalette(props: {
             </ToggleGroup>
             <Button unstyled className="rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] disabled:opacity-40" disabled={snapshot.searchLoading === true || snapshot.searchQuery.trim() === ''} onClick={props.onRunSearch} type="button">{snapshot.searchLoading === true ? 'Searching…' : 'Search'}</Button>
           </div>
-          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchIntelligenceStatus !== null && snapshot.searchIntelligenceStatus !== undefined && snapshot.searchIntelligenceStatus !== 'applied' ? `AI Search ${snapshot.searchIntelligenceStatus}; showing local results.` : snapshot.searchQuery.trim() === '' ? `${String(matches.length)} recent notes` : `${String(matches.length)} vault results`)}</Alert>
+          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchIntelligenceStatus !== null && snapshot.searchIntelligenceStatus !== undefined && snapshot.searchIntelligenceStatus !== 'applied' ? `AI Search ${snapshot.searchIntelligenceStatus}; showing local results.` : snapshot.searchQuery.trim() === '' ? `${String(resultCount)} recent note${resultCount === 1 ? '' : 's'}` : `${String(resultCount)} note${resultCount === 1 ? '' : 's'} · ${String(matches.length)} match${matches.length === 1 ? '' : 'es'}`)}</Alert>
         </header>
         <NoteSearchAnswer answer={snapshot.searchAnswer} matches={matches} onCancel={() => { props.onCancelQuickAnswer?.() }} onRetry={() => { props.onRetryQuickAnswer?.() }} onSelect={match => { if (props.onSelectSearchMatch !== undefined) props.onSelectSearchMatch(match, false); else props.onSelect(match.path) }} onStart={() => { props.onQuickAnswer?.() }} />
         <section className="grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1" aria-label="Search Results">
@@ -3734,11 +3748,24 @@ function WorkbenchNoteSearchPalette(props: {
               query={snapshot.searchQuery}
             />
           </div>
-          <NoteSearchPreview error={snapshot.searchPreviewError} loading={snapshot.searchPreviewLoading === true} match={previewMatch} onHide={() => { props.onHidePreview?.() }} path={previewResultPath} preview={snapshot.searchPreview} />
+          <NoteSearchPreview
+            error={snapshot.searchPreviewError}
+            hidden={previewHidden}
+            loading={snapshot.searchPreviewLoading === true}
+            match={previewMatch}
+            onHide={() => { setPreviewHidden(true); props.onHidePreview?.() }}
+            onShow={() => { setPreviewHidden(false); props.onSearchActiveSet?.(previewMatchIndex) }}
+            path={previewResultPath}
+            preview={snapshot.searchPreview}
+          />
         </section>
-        <footer className="flex items-center gap-4 border-t border-[var(--tt-border)] px-3 text-[11px] text-[var(--tt-muted)]">
+        <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--tt-border)] px-3 text-[11px] text-[var(--tt-muted)]">
           <Button unstyled className="rounded-md border-0 bg-transparent px-2 py-1 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)]" onClick={props.onCommands} type="button">Commands</Button>
-          <span className="ml-auto flex items-center gap-1.5"><kbd className="font-[inherit] text-[var(--tt-text)]">↵</kbd> Search</span>
+          {matches.length > 0 ? <>
+            <span className="ml-auto flex items-center gap-1.5"><kbd className="font-[inherit] text-[var(--tt-text)]">↑↓</kbd> Navigate</span>
+            <span className="flex items-center gap-1.5"><kbd className="font-[inherit] text-[var(--tt-text)]">↵</kbd> Open</span>
+            <span className="flex items-center gap-1.5"><kbd className="font-[inherit] text-[var(--tt-text)]">⌘↵</kbd> New Tab</span>
+          </> : <span className="ml-auto flex items-center gap-1.5"><kbd className="font-[inherit] text-[var(--tt-text)]">↵</kbd> {snapshot.searchQuery.trim() === '' ? 'Open' : 'Search'}</span>}
           <span className="flex items-center gap-1.5"><kbd className="font-[inherit] text-[var(--tt-text)]">Esc</kbd> Dismiss</span>
         </footer>
       </DialogContent>
@@ -3842,6 +3869,10 @@ function fileName(path: string): string {
 
 function noteTitle(path: string | null): string {
   return path === null ? 'TockTutor' : fileName(path).replace(/\.(?:base|canvas|markdown|md)$/iu, '')
+}
+
+function searchProvenanceLabel(provenance: NonNullable<VaultSearchMatch['provenance']>): string {
+  return provenance === 'frontmatter' ? 'Frontmatter' : `${provenance.slice(0, 1).toUpperCase()}${provenance.slice(1)}`
 }
 
 function TreeEntries(props: {
