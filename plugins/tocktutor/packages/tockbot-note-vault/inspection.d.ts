@@ -67,6 +67,8 @@ export interface VaultSearchCandidateRequest {
   directory: string
   groups: Array<Array<{ field: 'property' | 'tag'; value: string }>>
   limit: number
+  modifiedFrom?: number
+  modifiedTo?: number
 }
 
 export interface VaultSearchCandidateResult {
@@ -142,6 +144,9 @@ export interface VaultSearchArgs {
   wholeWord?: boolean
   regex?: boolean
   directory?: string
+  titleOnly?: boolean
+  modifiedFrom?: number
+  modifiedTo?: number
   limit?: number
   cursor?: string
 }

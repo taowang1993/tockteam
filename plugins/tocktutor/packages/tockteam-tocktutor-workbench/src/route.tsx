@@ -304,6 +304,10 @@ export interface WorkbenchRouteSnapshot {
   searchMatches?: readonly VaultSearchMatch[]
   searchMode?: 'query' | 'related'
   searchCursor?: string | null
+  searchTitleOnly?: boolean
+  searchDirectory?: string
+  searchModifiedFrom?: number | null
+  searchModifiedTo?: number | null
   searchOpen: boolean
   searchQuery: string
   selectedSnapshot?: SnapshotContentResult | null
@@ -618,6 +622,10 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     searchMatches: Object.freeze([]),
     searchMode: 'query',
     searchCursor: null,
+    searchTitleOnly: false,
+    searchDirectory: '',
+    searchModifiedFrom: null,
+    searchModifiedTo: null,
     searchOpen: false,
     searchQuery: '',
     selectedSnapshot: null,
@@ -943,7 +951,7 @@ export class WorkbenchRouteController {
 
   closeSearch(): void {
     this.nextOperation()
-    this.update({ searchError: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchOpen: false, searchQuery: '' })
+    this.update({ searchDirectory: '', searchError: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchQuery: '', searchTitleOnly: false })
   }
 
   openSearch(query: string): void {
@@ -974,6 +982,22 @@ export class WorkbenchRouteController {
     this.scheduleSearch()
   }
 
+  setSearchFilters(filters: { directory?: string; modifiedFrom?: number | null; modifiedTo?: number | null; titleOnly?: boolean }): void {
+    this.nextOperation()
+    const trimmed = this.snapshot.searchQuery.trim()
+    this.update({
+      searchDirectory: filters.directory ?? '',
+      searchError: null,
+      searchLoading: trimmed !== '' && this.snapshot.vault !== null,
+      searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
+      searchCursor: null,
+      searchModifiedFrom: filters.modifiedFrom ?? null,
+      searchModifiedTo: filters.modifiedTo ?? null,
+      searchTitleOnly: filters.titleOnly === true,
+    })
+    this.scheduleSearch()
+  }
+
   private scheduleSearch(): void {
     if (this.searchTimer !== null) clearTimeout(this.searchTimer)
     this.searchTimer = null
@@ -999,6 +1023,10 @@ export class WorkbenchRouteController {
     this.update({ searchError: null, searchLoading: true, searchMatches: Object.freeze([]) })
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
+        ...(this.snapshot.searchDirectory === undefined || this.snapshot.searchDirectory === '' ? {} : { directory: this.snapshot.searchDirectory }),
+        ...(this.snapshot.searchModifiedFrom === undefined || this.snapshot.searchModifiedFrom === null ? {} : { modifiedFrom: this.snapshot.searchModifiedFrom }),
+        ...(this.snapshot.searchModifiedTo === undefined || this.snapshot.searchModifiedTo === null ? {} : { modifiedTo: this.snapshot.searchModifiedTo }),
+        ...(this.snapshot.searchTitleOnly === true ? { titleOnly: true } : {}),
         expectedVault: vault,
         limit: 100,
         mode,
@@ -1036,6 +1064,10 @@ export class WorkbenchRouteController {
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
         ...(cursor === null ? {} : { cursor }),
+        ...(this.snapshot.searchDirectory === undefined || this.snapshot.searchDirectory === '' ? {} : { directory: this.snapshot.searchDirectory }),
+        ...(this.snapshot.searchModifiedFrom === undefined || this.snapshot.searchModifiedFrom === null ? {} : { modifiedFrom: this.snapshot.searchModifiedFrom }),
+        ...(this.snapshot.searchModifiedTo === undefined || this.snapshot.searchModifiedTo === null ? {} : { modifiedTo: this.snapshot.searchModifiedTo }),
+        ...(this.snapshot.searchTitleOnly === true ? { titleOnly: true } : {}),
         expectedVault: vault,
         limit: 100,
         mode,
@@ -2949,6 +2981,7 @@ export interface TockTutorRouteViewProps {
   onSaveWorkspace?(): void
   onSearchChange?(query: string): void
   onSearchMode?(mode: 'query' | 'related'): void
+  onSearchFilters?(filters: { directory?: string; modifiedFrom?: number | null; modifiedTo?: number | null; titleOnly?: boolean }): void
   onSettingsChange?(change: Partial<TockTutorSettings>): void
   onSelectionChange?(start: number, end: number): void
   onStoreAttachment?(fileName: string, dataBase64: string): void
@@ -3029,6 +3062,7 @@ const SEARCH_OPTIONS = [
   { description: 'match path of the file', label: 'path:', value: 'path:' },
   { description: 'match file name', label: 'file:', value: 'file:' },
   { description: 'search for tags', label: 'tag:', value: 'tag:' },
+  { description: 'search tasks', label: 'task:', value: 'task:' },
   { description: 'search keywords on same line', label: 'line:', value: 'line:' },
   { description: 'search keywords under same heading', label: 'section:', value: 'section:' },
   { description: 'match property', label: '[property]', value: '[]' },
@@ -3188,6 +3222,7 @@ function WorkbenchNoteSearchPalette(props: {
   onRunSearch: (() => void) | undefined
   onSearchChange: ((query: string) => void) | undefined
   onSearchMode: ((mode: 'query' | 'related') => void) | undefined
+  onSearchFilters: ((filters: { directory?: string; modifiedFrom?: number | null; modifiedTo?: number | null; titleOnly?: boolean }) => void) | undefined
   onSelect(path: string): void
   snapshot: WorkbenchRouteSnapshot
 }): ReactNode {
@@ -3270,7 +3305,25 @@ function WorkbenchNoteSearchPalette(props: {
                 sideOffset={8}
               >
                 <PopoverHeader className="gap-0.5 px-1.5 pt-0.5">
-                  <PopoverTitle className="text-xs font-semibold">Search syntax</PopoverTitle>
+                  <PopoverTitle className="text-xs font-semibold">Search Filters</PopoverTitle>
+                  <PopoverDescription className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Narrow local results before they are limited.</PopoverDescription>
+                </PopoverHeader>
+                <div className="grid gap-2 border-b border-[var(--dsw-alias-border-l1,#e1e3e7)] px-1.5 pb-2">
+                  <Label unstyled className="flex items-center justify-between gap-2 text-xs font-medium">
+                    Title Only
+                    <Checkbox checked={snapshot.searchTitleOnly === true} onCheckedChange={checked => { props.onSearchFilters?.({ directory: snapshot.searchDirectory ?? '', modifiedFrom: snapshot.searchModifiedFrom ?? null, modifiedTo: snapshot.searchModifiedTo ?? null, titleOnly: checked === true }) }} />
+                  </Label>
+                  <Label unstyled className="grid gap-1 text-xs font-medium">
+                    In Folder
+                    <Input unstyled aria-label="Search In Folder" maxLength={1_000} onChange={event => { props.onSearchFilters?.({ directory: event.target.value, modifiedFrom: snapshot.searchModifiedFrom ?? null, modifiedTo: snapshot.searchModifiedTo ?? null, titleOnly: snapshot.searchTitleOnly ?? false }) }} placeholder="Vault root" value={snapshot.searchDirectory ?? ''} />
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Label unstyled className="grid gap-1 text-xs font-medium">Modified From<Input unstyled aria-label="Modified From" onChange={event => { const value = event.target.value === '' ? null : Date.parse(event.target.value); props.onSearchFilters?.({ directory: snapshot.searchDirectory ?? '', modifiedFrom: value === null || Number.isNaN(value) ? null : value, modifiedTo: snapshot.searchModifiedTo ?? null, titleOnly: snapshot.searchTitleOnly ?? false }) }} type="date" value={snapshot.searchModifiedFrom == null ? '' : new Date(snapshot.searchModifiedFrom).toISOString().slice(0, 10)} /></Label>
+                    <Label unstyled className="grid gap-1 text-xs font-medium">Modified To<Input unstyled aria-label="Modified To" onChange={event => { const value = event.target.value === '' ? null : Date.parse(event.target.value) + 86_399_999; props.onSearchFilters?.({ directory: snapshot.searchDirectory ?? '', modifiedFrom: snapshot.searchModifiedFrom ?? null, modifiedTo: value === null || Number.isNaN(value) ? null : value, titleOnly: snapshot.searchTitleOnly ?? false }) }} type="date" value={snapshot.searchModifiedTo == null ? '' : new Date(snapshot.searchModifiedTo).toISOString().slice(0, 10)} /></Label>
+                  </div>
+                </div>
+                <PopoverHeader className="gap-0.5 px-1.5 pt-0.5">
+                  <PopoverTitle className="text-xs font-semibold">Search Syntax</PopoverTitle>
                   <PopoverDescription className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Insert an operator at the cursor.</PopoverDescription>
                 </PopoverHeader>
                 <ul className="m-0 grid list-none gap-1 p-0">
@@ -3735,6 +3788,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onRunSearch={props.onRunSearch}
           onSearchChange={props.onSearchChange}
           onSearchMode={props.onSearchMode}
+          onSearchFilters={props.onSearchFilters}
           onSelect={props.onSelect}
           snapshot={snapshot}
         />
@@ -4274,6 +4328,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onSaveWorkspace={() => { controller.saveCurrentWorkspace() }}
         onSearchChange={query => { controller.setSearchQuery(query) }}
         onSearchMode={mode => { controller.setSearchMode(mode) }}
+        onSearchFilters={filters => { controller.setSearchFilters(filters) }}
         onSettingsChange={change => { controller.updateSettings(change) }}
         onSelect={path => { void controller.select(path) }}
         onSelectionChange={(start, end) => { controller.setSelection(start, end) }}

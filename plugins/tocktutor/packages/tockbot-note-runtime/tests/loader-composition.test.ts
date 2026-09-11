@@ -3,6 +3,7 @@ import { mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { appendFile, lstat, mkdir, mkdtemp, open as openFile, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import sqlite3 from 'sqlite3'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
@@ -5104,6 +5105,21 @@ test('persistent FlexSearch SQLite indexes reopen outside the user vault', async
     loaded = null
     await dispose(first.context, first.root)
 
+    loaded = await load(config)
+    await verifyIndexedSearch()
+    const databaseName = (await readdir(join(stateRoot, 'search-index'), { recursive: true })).find(name => name.endsWith('.sqlite'))
+    if (databaseName === undefined) assert.fail('persistent search database must be present')
+    const databasePath = join(stateRoot, 'search-index', databaseName)
+    const second = loaded
+    loaded = null
+    await dispose(second.context, second.root)
+    await new Promise<void>((resolve, reject) => {
+      const database = new sqlite3.Database(databasePath)
+      database.run('UPDATE metadata SET value = ? WHERE key = ?', ['tocktutor-search-v1', 'schema'], error => {
+        if (error) { database.close(() => reject(error)); return }
+        database.close(closeError => closeError ? reject(closeError) : resolve())
+      })
+    })
     loaded = await load(config)
     await verifyIndexedSearch()
     assert.equal((await lstat(join(stateRoot, 'search-index'))).isDirectory(), true)

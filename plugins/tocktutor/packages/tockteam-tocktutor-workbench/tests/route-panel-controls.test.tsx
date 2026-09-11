@@ -1081,6 +1081,18 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('list', { name: 'Vault Search Results' }).textContent).toContain('Lesson match')
   })
 
+  it('renders local Title Only, In Folder, and modified-date filters', () => {
+    const onSearchFilters = vi.fn()
+    renderRoute({ searchMode: 'query', searchOpen: true, searchQuery: 'lesson' }, { onSearchFilters })
+    fireEvent.click(screen.getByRole('button', { name: 'Search Options' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Title Only' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search In Folder' }), { target: { value: 'Lessons' } })
+    fireEvent.change(screen.getByLabelText('Modified From'), { target: { value: '2026-09-10' } })
+    expect(onSearchFilters).toHaveBeenLastCalledWith(expect.objectContaining({ modifiedFrom: Date.parse('2026-09-10') }))
+    expect(onSearchFilters).toHaveBeenCalledWith(expect.objectContaining({ directory: 'Lessons' }))
+    expect(onSearchFilters).toHaveBeenCalledWith(expect.objectContaining({ titleOnly: true }))
+  })
+
   it('keeps the active editor while selecting a search result', () => {
     const onCloseSearch = vi.fn()
     const onSelect = vi.fn()

@@ -1700,21 +1700,23 @@ async function scanVault(input, config, signal, visitor, options = {}) {
   return state
 }
 
-async function searchVault(input, query, scope, limit, config, signal, cursor) {
+async function searchVault(input, query, scope, options, limit, config, signal, cursor) {
   const matches = []
   const needle = query.toLowerCase()
   const propertyNeedle = needle.length > 1 && needle.startsWith('#') ? needle.slice(1) : needle
-  const key = JSON.stringify({ query: needle, scope })
+  const key = JSON.stringify({ modifiedFrom: options.modifiedFrom, modifiedTo: options.modifiedTo, query: needle, scope, titleOnly: options.titleOnly })
   const state = await scanVault(input, config, signal, (document, _paths, resumeOffset) => {
     const documentMatches = []
     const markdown = isMarkdown(document.path)
       ? markdownDetails(document.content, document.path)
       : null
     const title = markdown?.title ?? path.basename(document.path, path.extname(document.path))
+    if (options.modifiedFrom !== undefined && document.modifiedMs < options.modifiedFrom) return false
+    if (options.modifiedTo !== undefined && document.modifiedMs > options.modifiedTo) return false
 
     if (
       (scope === 'all' || scope === 'path')
-      && `${title}\n${document.path}`.toLowerCase().includes(needle)
+      && (options.titleOnly ? title : `${title}\n${document.path}`).toLowerCase().includes(needle)
     ) {
       const titleMatch = title.toLowerCase().includes(needle)
       documentMatches.push({
@@ -1782,7 +1784,7 @@ async function searchVault(input, query, scope, limit, config, signal, cursor) {
       return { position: { path: document.path, offset: resumeOffset + taken.length } }
     }
     return matches.length >= limit
-  }, { cursor, key, operation: 'search' })
+  }, { cursor, directory: options.directory, key, operation: 'search' })
   boundSearchMatches(matches, state)
 
   return {
@@ -1940,20 +1942,24 @@ function structuredTermMatches(term, document, signal) {
   return []
 }
 
-function queryTermMatches(term, document, signal) {
+function queryTermMatches(term, document, signal, titleOnly) {
   signal.throwIfAborted()
   if (['block', 'line', 'property', 'section', 'tag', 'task'].includes(term.field)) {
     return structuredTermMatches(term, document, signal).length > 0
   }
   const basename = path.basename(document.path)
+  const title = isMarkdown(document.path)
+    ? markdownDetails(document.content, document.path).title ?? path.basename(document.path, path.extname(document.path))
+    : path.basename(document.path, path.extname(document.path))
   if (term.field === 'file') return patternIndex(term.pattern, basename, signal) !== -1
   if (term.field === 'path') return patternIndex(term.pattern, document.path, signal) !== -1
   if (term.field === 'content') return patternIndex(term.pattern, document.content, signal) !== -1
+  if (titleOnly) return patternIndex(term.pattern, title, signal) !== -1
   return patternIndex(term.pattern, document.content, signal) !== -1
     || patternIndex(term.pattern, document.path, signal) !== -1
 }
 
-function queryDocumentMatches(document, groups, signal) {
+function queryDocumentMatches(document, groups, signal, titleOnly) {
   const matches = []
   const seen = new Set()
   const add = match => {
@@ -1965,8 +1971,8 @@ function queryDocumentMatches(document, groups, signal) {
   }
   for (const group of groups) {
     signal.throwIfAborted()
-    if (group.exclude.some(term => queryTermMatches(term, document, signal))) continue
-    if (!group.include.every(term => queryTermMatches(term, document, signal))) continue
+    if (group.exclude.some(term => queryTermMatches(term, document, signal, titleOnly))) continue
+    if (!group.include.every(term => queryTermMatches(term, document, signal, titleOnly))) continue
     if (group.include.length === 0) {
       add({ path: document.path, kind: 'path', line: null, preview: document.path })
       continue
@@ -1977,15 +1983,18 @@ function queryDocumentMatches(document, groups, signal) {
         for (const match of structuredTermMatches(term, document, signal)) add(match)
         continue
       }
-      const pathValue = term.field === 'file' ? path.basename(document.path) : document.path
-      const pathColumn = term.field === 'content' ? -1 : patternIndex(term.pattern, pathValue, signal)
+      const title = isMarkdown(document.path)
+        ? markdownDetails(document.content, document.path).title ?? path.basename(document.path, path.extname(document.path))
+        : path.basename(document.path, path.extname(document.path))
+      const pathValue = term.field === 'file' ? path.basename(document.path) : titleOnly && term.field === 'any' ? title : document.path
+      const pathColumn = term.field === 'content' || titleOnly && term.field === 'any' ? -1 : patternIndex(term.pattern, pathValue, signal)
       if (pathColumn !== -1) add({
         path: document.path,
         kind: 'path',
         line: null,
         preview: document.path,
       })
-      if (term.field === 'file' || term.field === 'path') continue
+      if (term.field === 'file' || term.field === 'path' || titleOnly && term.field === 'any') continue
       const markdown = isMarkdown(document.path)
       const lines = markdown || isBase(document.path)
         ? document.content.split(/\r?\n/u).map((text, index) => ({ line: index + 1, text }))
@@ -2017,14 +2026,20 @@ function queryDocumentMatches(document, groups, signal) {
   ))
 }
 
-function candidateRequest(groups, directory, limit) {
+function candidateRequest(groups, directory, limit, options) {
   const candidateGroups = groups.map(group => group.include.flatMap(term => {
     if (term.field === 'tag') return [{ field: 'tag', value: term.tag }]
     if (term.field === 'property') return [{ field: 'property', value: term.key }]
     return []
   }))
   return candidateGroups.every(group => group.length > 0)
-    ? { directory, groups: candidateGroups, limit }
+    ? {
+        directory,
+        groups: candidateGroups,
+        limit,
+        ...(options.modifiedFrom === undefined ? {} : { modifiedFrom: options.modifiedFrom }),
+        ...(options.modifiedTo === undefined ? {} : { modifiedTo: options.modifiedTo }),
+      }
     : null
 }
 
@@ -2116,13 +2131,18 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
   const key = JSON.stringify({
     caseSensitive: options.caseSensitive,
     directory: start.prefix,
+    modifiedFrom: options.modifiedFrom,
+    modifiedTo: options.modifiedTo,
     query,
     regex: options.regex,
+    titleOnly: options.titleOnly,
     wholeWord: options.wholeWord,
   })
   const matches = []
   const visit = (document, _paths, resumeOffset) => {
-    const documentMatches = queryDocumentMatches(document, groups, signal)
+    if (options.modifiedFrom !== undefined && document.modifiedMs < options.modifiedFrom) return false
+    if (options.modifiedTo !== undefined && document.modifiedMs > options.modifiedTo) return false
+    const documentMatches = queryDocumentMatches(document, groups, signal, options.titleOnly)
     const available = documentMatches.slice(resumeOffset)
     const taken = available.slice(0, limit - matches.length)
     matches.push(...taken)
@@ -2133,7 +2153,7 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
   }
   let state = null
   const request = typeof input.searchCandidates === 'function'
-    ? candidateRequest(groups, start.path, config.maxSearchEntries)
+    ? candidateRequest(groups, start.path, config.maxSearchEntries, options)
     : null
   if (request) {
     try {
@@ -2186,15 +2206,26 @@ function relatedTokens(value) {
 async function searchRelatedVault(input, query, options, limit, config, signal, cursor) {
   const wanted = new Set(relatedTokens(query))
   const start = inspectionDirectory(options.directory)
-  const key = JSON.stringify({ directory: start.prefix, query: [...wanted].sort() })
+  const key = JSON.stringify({
+    directory: start.prefix,
+    modifiedFrom: options.modifiedFrom,
+    modifiedTo: options.modifiedTo,
+    query: [...wanted].sort(),
+    titleOnly: options.titleOnly,
+  })
   const position = decodeCursor(cursor, 'related', key)
   const candidates = []
   const sourceCursor = position.path
     ? encodeCursor('related-source', key, { path: position.path, offset: 0 })
     : undefined
   const state = await scanVault(input, config, signal, document => {
-    const pathScore = new Set(relatedTokens(document.path).filter(token => wanted.has(token))).size * 20
-    const lines = isMarkdown(document.path) || isBase(document.path)
+    if (options.modifiedFrom !== undefined && document.modifiedMs < options.modifiedFrom) return false
+    if (options.modifiedTo !== undefined && document.modifiedMs > options.modifiedTo) return false
+    const title = isMarkdown(document.path)
+      ? markdownDetails(document.content, document.path).title ?? path.basename(document.path, path.extname(document.path))
+      : path.basename(document.path, path.extname(document.path))
+    const pathScore = new Set(relatedTokens(options.titleOnly ? title : document.path).filter(token => wanted.has(token))).size * 20
+    const lines = options.titleOnly ? [] : isMarkdown(document.path) || isBase(document.path)
       ? document.content.split(/\r?\n/u).map((text, index) => ({ line: index + 1, text }))
       : canvasSearchLines(document.content).map(text => ({ line: null, text }))
     const scoredLines = lines.flatMap(line => {
@@ -4014,35 +4045,29 @@ export function createVaultInspection(input, config) {
       const operation = operationSignal(signal)
       const query = typeof args?.query === 'string' ? args.query.trim() : ''
       if (query === '') throw new Error('query must be a non-empty string')
+      for (const value of [args.modifiedFrom, args.modifiedTo]) {
+        if (value !== undefined && (!Number.isFinite(value) || value < 0)) throw new Error('modified date must be a non-negative number')
+      }
+      if (args.modifiedFrom !== undefined && args.modifiedTo !== undefined && args.modifiedFrom > args.modifiedTo) {
+        throw new Error('modified date range is invalid')
+      }
       const limit = boundedLimit(args.limit, limits.maxSearchResults)
+      const searchOptions = {
+        caseSensitive: args.caseSensitive === true,
+        directory: args.directory,
+        modifiedFrom: args.modifiedFrom,
+        modifiedTo: args.modifiedTo,
+        regex: args.regex === true,
+        titleOnly: args.titleOnly === true,
+        wholeWord: args.wholeWord === true,
+      }
       if (args.mode === 'related') {
-        return await searchRelatedVault(
-          input,
-          query,
-          { directory: args.directory },
-          limit,
-          limits,
-          operation,
-          args.cursor,
-        )
+        return await searchRelatedVault(input, query, searchOptions, limit, limits, operation, args.cursor)
       }
       if ((args.mode ?? 'literal') === 'query') {
-        return await searchQueryVault(input, query, {
-          caseSensitive: args.caseSensitive === true,
-          directory: args.directory,
-          regex: args.regex === true,
-          wholeWord: args.wholeWord === true,
-        }, limit, limits, operation, args.cursor)
+        return await searchQueryVault(input, query, searchOptions, limit, limits, operation, args.cursor)
       }
-      return await searchVault(
-        input,
-        query,
-        args.scope ?? 'all',
-        limit,
-        limits,
-        operation,
-        args.cursor,
-      )
+      return await searchVault(input, query, args.scope ?? 'all', searchOptions, limit, limits, operation, args.cursor)
     },
 
     async read(args, signal) {

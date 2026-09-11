@@ -89,10 +89,10 @@ const SNAPSHOT_METADATA_MAX_BYTES = 64 * 1024
 const SNAPSHOT_SCAN_LIMIT = 1_000
 const NOFOLLOW = typeof fsConstants.O_NOFOLLOW === 'number' ? fsConstants.O_NOFOLLOW : 0
 const POST_COMMIT_SIGNAL = new AbortController().signal
-const SEARCH_INDEX_SCHEMA = 'tocktutor-search-v1'
+const SEARCH_INDEX_SCHEMA = 'tocktutor-search-v2'
 const SEARCH_INDEX_TOKEN = /[\p{L}\p{N}_.-]+(?:\/[\p{L}\p{N}_.-]+)*/gu
 
-type IndexedSearchDocument = { path: string; revision: string }
+type IndexedSearchDocument = { modifiedAt: number; path: string; revision: string }
 type SearchDatabase = import('sqlite3').Database
 type SearchStorage = StorageInterface & { db: SearchDatabase }
 type SearchDependencies = {
@@ -228,10 +228,14 @@ class PersistentSearchIndex {
     const paths: string[] = []
     for (let offset = 0; offset < ids.length; offset += 500) {
       const chunk = ids.slice(offset, offset + 500)
+      const dateClauses = [
+        request.modifiedFrom === undefined ? null : 'modifiedAt >= ?',
+        request.modifiedTo === undefined ? null : 'modifiedAt <= ?',
+      ].filter((clause): clause is string => clause !== null)
       const rows = await allSearchDatabase<{ id: number; path: string }>(
         this.database.db,
-        `SELECT id, path FROM documents WHERE id IN (${chunk.map(() => '?').join(',')})`,
-        chunk,
+        `SELECT id, path FROM documents WHERE id IN (${chunk.map(() => '?').join(',')})${dateClauses.length === 0 ? '' : ` AND ${dateClauses.join(' AND ')}`}`,
+        [...chunk, ...[request.modifiedFrom, request.modifiedTo].filter((value): value is number => value !== undefined)],
       )
       paths.push(...rows
         .map(row => row.path)
@@ -295,9 +299,9 @@ class PersistentSearchIndex {
       await rm(databasePath, { force: true })
       mounted = await this.create(databasePath, dependencies)
     }
-    const existing = await allSearchDatabase<{ id: number; path: string; revision: string }>(
+    const existing = await allSearchDatabase<{ id: number; modifiedAt: number; path: string; revision: string }>(
       mounted.database.db,
-      'SELECT id, path, revision FROM documents',
+      'SELECT id, modifiedAt, path, revision FROM documents',
     )
     const current = new Map(documents.map(document => [document.path, document]))
     for (const row of existing) {
@@ -307,17 +311,17 @@ class PersistentSearchIndex {
       await runSearchDatabase(mounted.database.db, 'DELETE FROM documents WHERE id = ?', [row.id])
     }
     const byPath = new Map(existing.map(row => [row.path, row]))
-    const revisionUpdates: Array<{ id: number; revision: string }> = []
+    const revisionUpdates: Array<{ id: number; modifiedAt: number; revision: string }> = []
     for (const document of documents) {
       signal.throwIfAborted()
       const prior = byPath.get(document.path)
-      if (prior?.revision === document.revision) continue
+      if (prior?.revision === document.revision && prior.modifiedAt === document.modifiedAt) continue
       let id = prior?.id
       if (id === undefined) {
         await runSearchDatabase(
           mounted.database.db,
-          'INSERT INTO documents(path, revision) VALUES (?, ?)',
-          [document.path, ''],
+          'INSERT INTO documents(path, modifiedAt, revision) VALUES (?, ?, ?)',
+          [document.path, document.modifiedAt, ''],
         )
         id = (await allSearchDatabase<{ id: number }>(
           mounted.database.db,
@@ -334,14 +338,14 @@ class PersistentSearchIndex {
         return
       }
       mounted.index.update(id, { id, content: opened.content })
-      revisionUpdates.push({ id, revision: document.revision })
+      revisionUpdates.push({ id, modifiedAt: document.modifiedAt, revision: document.revision })
     }
     await mounted.index.commit()
     for (const update of revisionUpdates) {
       await runSearchDatabase(
         mounted.database.db,
-        'UPDATE documents SET revision = ? WHERE id = ?',
-        [update.revision, update.id],
+        'UPDATE documents SET modifiedAt = ?, revision = ? WHERE id = ?',
+        [update.modifiedAt, update.revision, update.id],
       )
     }
     this.epoch = randomUUID()
@@ -366,12 +370,12 @@ class PersistentSearchIndex {
     const database = this.database
     const index = this.index
     if (database === null || index === null) return
-    const revisionUpdates: Array<{ id: number; revision: string }> = []
+    const revisionUpdates: Array<{ id: number; modifiedAt: number; revision: string }> = []
     for (const changedPath of paths) {
       signal.throwIfAborted()
-      const prior = (await allSearchDatabase<{ id: number; revision: string }>(
+      const prior = (await allSearchDatabase<{ id: number; modifiedAt: number; revision: string }>(
         database.db,
-        'SELECT id, revision FROM documents WHERE path = ?',
+        'SELECT id, modifiedAt, revision FROM documents WHERE path = ?',
         [changedPath],
       ))[0]
       const opened = await this.options.read(changedPath, signal)
@@ -383,13 +387,13 @@ class PersistentSearchIndex {
         }
         continue
       }
-      if (prior?.revision === opened.revision) continue
+      if (prior?.revision === opened.revision && prior.modifiedAt === opened.modifiedAt) continue
       let id = prior?.id
       if (id === undefined) {
         await runSearchDatabase(
           database.db,
-          'INSERT INTO documents(path, revision) VALUES (?, ?)',
-          [changedPath, ''],
+          'INSERT INTO documents(path, modifiedAt, revision) VALUES (?, ?, ?)',
+          [changedPath, opened.modifiedAt, '']
         )
         id = (await allSearchDatabase<{ id: number }>(
           database.db,
@@ -399,14 +403,14 @@ class PersistentSearchIndex {
       }
       if (id === undefined) throw new Error('search index mapping failed')
       index.update(id, { id, content: opened.content })
-      revisionUpdates.push({ id, revision: opened.revision })
+      revisionUpdates.push({ id, modifiedAt: opened.modifiedAt, revision: opened.revision })
     }
     await index.commit()
     for (const update of revisionUpdates) {
       await runSearchDatabase(
         database.db,
-        'UPDATE documents SET revision = ? WHERE id = ?',
-        [update.revision, update.id],
+        'UPDATE documents SET modifiedAt = ?, revision = ? WHERE id = ?',
+        [update.modifiedAt, update.revision, update.id],
       )
     }
     this.epoch = randomUUID()
@@ -445,7 +449,7 @@ class PersistentSearchIndex {
   ): Promise<{ database: SearchStorage; index: FlexDocument }> {
     const raw = new sqlite3.Database(databasePath)
     await runSearchDatabase(raw, 'CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)')
-    await runSearchDatabase(raw, 'CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL UNIQUE, revision TEXT NOT NULL)')
+    await runSearchDatabase(raw, 'CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL UNIQUE, modifiedAt REAL NOT NULL, revision TEXT NOT NULL)' )
     await runSearchDatabase(raw, 'INSERT INTO metadata(key, value) VALUES (?, ?)', ['schema', SEARCH_INDEX_SCHEMA])
     const database = new Sqlite(this.storageName(), { db: raw, type: 'integer' }) as SearchStorage
     const index = createSearchIndex(Document)
@@ -1605,7 +1609,7 @@ async function readVaultDocument(
   requestedPath: string,
   maxBytes: number,
   signal: AbortSignal,
-): Promise<{ content: string; digest: string; path: string; revision: string }> {
+): Promise<{ content: string; digest: string; modifiedAt: number; path: string; revision: string }> {
   signal.throwIfAborted()
   const target = await resolveDocumentTarget(root, requestedPath)
   signal.throwIfAborted()
@@ -1670,6 +1674,7 @@ async function readVaultDocument(
     return {
       content: data.toString('utf8'),
       digest: `sha256:${createHash('sha256').update(data).digest('hex')}`,
+      modifiedAt: Number(opened.mtimeMs),
       path: target.relativePath,
       revision: fileRevision(opened),
     }
@@ -4711,15 +4716,17 @@ export class NoteVaultRuntime extends Service {
             if (scan.truncationReason !== null) return null
             return scan.entries.flatMap(entry => (
               entry.kind === 'document' && entry.size <= this.maxReadBytes
-                ? [{ path: entry.path, revision: entry.revision }]
+                ? [{ modifiedAt: entry.modifiedAt, path: entry.path, revision: entry.revision }]
                 : []
             ))
           },
           read: async (requestedPath, signal) => {
             try {
-              const document = await this.openDocument(requestedPath, vault, signal)
+              const document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal)
+              this.assertCapturedVault(state, root)
               return {
                 content: document.content,
+                modifiedAt: document.modifiedAt,
                 path: document.path,
                 revision: document.revision,
               }
@@ -5031,7 +5038,7 @@ export class NoteVaultRuntime extends Service {
     signal: AbortSignal,
   ): Promise<OpenDocumentResult> {
     const { root, state } = this.captureExpectedVault(expectedVault)
-    let document: { content: string; digest: string; path: string; revision: string }
+    let document: { content: string; digest: string; modifiedAt: number; path: string; revision: string }
     try {
       document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal)
     } catch (error) {
@@ -5042,7 +5049,8 @@ export class NoteVaultRuntime extends Service {
     }
 
     this.assertCapturedVault(state, root)
-    return { ...document, generation: state.generation }
+    const { modifiedAt: _modifiedAt, ...publicDocument } = document
+    return { ...publicDocument, generation: state.generation }
   }
 
   async listTree(

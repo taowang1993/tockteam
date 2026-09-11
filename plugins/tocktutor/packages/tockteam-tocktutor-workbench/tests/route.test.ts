@@ -417,7 +417,7 @@ class FakeRemote implements WorkbenchRouteRemote {
         truncated: false,
       })
     },
-    search: (request: { cursor?: string; expectedVault: VaultReference; limit?: number; mode?: string; query: string }, signal?: AbortSignal) => {
+    search: (request: { cursor?: string; directory?: string; expectedVault: VaultReference; limit?: number; mode?: string; modifiedFrom?: number; modifiedTo?: number; query: string; titleOnly?: boolean }, signal?: AbortSignal) => {
       this.calls.push({ method: 'search', parameters: [request, signal] })
       if (request.cursor !== undefined && this.searchContinuation !== null) return success(this.searchContinuation)
       return success({
@@ -2002,6 +2002,26 @@ test('runs bounded vault search and Related results against the captured generat
   })
   controller.closeSearch()
   assert.equal(controller.getSnapshot().searchMatches?.length, 0)
+  controller.dispose()
+})
+
+test('binds local search filters to every request and cursor page', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('lesson')
+  controller.setSearchFilters({ directory: 'Folder', modifiedFrom: 10, modifiedTo: 20, titleOnly: true })
+  assert.equal(await controller.runSearch(), true)
+  assert.deepEqual(remote.calls.findLast(call => call.method === 'search')?.parameters[0], {
+    directory: 'Folder',
+    expectedVault: firstVault,
+    limit: 100,
+    mode: 'query',
+    modifiedFrom: 10,
+    modifiedTo: 20,
+    query: 'lesson',
+    titleOnly: true,
+  })
   controller.dispose()
 })
 

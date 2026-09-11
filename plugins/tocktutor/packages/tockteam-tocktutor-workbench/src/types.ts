@@ -259,6 +259,9 @@ export interface VaultSearchRequest {
   directory?: string
   expectedVault: VaultReference
   limit?: number
+  modifiedFrom?: number
+  modifiedTo?: number
+  titleOnly?: boolean
   mode?: 'literal' | 'query' | 'related'
   query: string
   regex?: boolean

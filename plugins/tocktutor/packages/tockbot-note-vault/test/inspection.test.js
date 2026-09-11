@@ -111,6 +111,22 @@ test('search returns deterministic identities, provenance, and relevance scores'
   assert.equal(repeated.matches[0].id, result.matches[0].id)
 })
 
+test('search applies title-only and modified-date filters before limiting results', async () => {
+  const provider = memoryInput()
+  const inspection = createVaultInspection(provider.input, { ...limits, maxSearchResults: 1 })
+  const result = await inspection.search({
+    mode: 'query',
+    modifiedFrom: 21,
+    query: 'Alpha',
+    titleOnly: true,
+  }, new AbortController().signal)
+
+  assert.deepEqual(result.matches, [])
+  assert.equal(result.truncated, false)
+  const dateOnly = await inspection.search({ mode: 'query', modifiedFrom: 21, query: 'Alpha' }, new AbortController().signal)
+  assert.deepEqual(dateOnly.matches, [])
+})
+
 test('provider-input inspection reuses all eight read-only operations without a filesystem root', async () => {
   const provider = memoryInput()
   const inspection = createVaultInspection(provider.input, limits)

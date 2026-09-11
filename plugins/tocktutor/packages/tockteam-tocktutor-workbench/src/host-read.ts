@@ -284,6 +284,11 @@ function assertSearchRequest(value: VaultSearchRequest): void {
   if (value.scope !== undefined && value.scope !== 'all' && value.scope !== 'content' && value.scope !== 'path' && value.scope !== 'properties') throw new TypeError('Search scope is unsupported.')
   if (value.directory !== undefined) assertEntryPath(value.directory)
   if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 100)) throw new TypeError('Search limit must be from 1 through 100.')
+  for (const date of [value.modifiedFrom, value.modifiedTo]) {
+    if (date !== undefined && (!Number.isFinite(date) || date < 0)) throw new TypeError('Search modified dates must be non-negative numbers.')
+  }
+  if (value.modifiedFrom !== undefined && value.modifiedTo !== undefined && value.modifiedFrom > value.modifiedTo) throw new TypeError('Search modified date range is invalid.')
+  if (value.titleOnly !== undefined && typeof value.titleOnly !== 'boolean') throw new TypeError('Search title-only option must be Boolean.')
   if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH)) throw new TypeError('Search cursor must be bounded.')
   for (const option of [value.caseSensitive, value.regex, value.wholeWord]) {
     if (option !== undefined && typeof option !== 'boolean') throw new TypeError('Search options must be Boolean.')
