@@ -1,5 +1,7 @@
 # Can I Use Local Admission and Electron Proof
 
+**Final status: passed for local macOS/arm64 verification at `79f8c8fc`.** The serialized installed gate passed after the corrections recorded below. This is ad-hoc-signed internal evidence, not notarization or public-release approval.
+
 ## Scope
 
 After the preference/detail slice passed, the user explicitly selected **Finish the App Checks**, authorizing local development admission for final verification. Can I Use is now a reviewed, explicitly installed command under **Trusted Extensions**; it is not automatically installed or enabled. Nothing was pushed or published. Mole remains excluded.
@@ -77,3 +79,27 @@ The next serialized installed attempt reached the actual packaged Can I Use UI b
 A minimized headless browser reproduction isolated a test-driver bug: `CdpPage.pressKey` dispatched a separate `char` event after a prevented Enter keydown, submitting the newly opened form. The real browser recorded **one unintended submission before the fix and zero after**. The driver now sends text with keydown, allowing Chromium to honor cancellation. The Can I Use gate also waits for an actual setup/ready view rather than an empty section. No product behavior changed. Browser evidence is in `tocklauncher-can-i-use-electron/keyboard-{red,green}.txt`; all recorded browser PIDs stopped.
 
 Verification after the correction: **383 tests, 376 passed, 7 skipped, zero failed**, plus typecheck and diff check. Command: `node --test --test-concurrency=4 tests/trusted-raycast-*.test.ts tests/trusted-raycast-*.test.mjs tests/launcher-preload-bridge.test.ts tests/launcher-installed.test.ts tests/launcher-cdp-keyboard.test.mjs tests/ueli-package-feasibility.test.ts`. Log: `/tmp/can-i-use-final-regression-cdp.txt`.
+
+## Final Installed Result
+
+A further attempt at `07ab6304` exposed a test selector mistake: the setup Continue button has a text-derived accessible name, not an `aria-label` attribute. The gate now focuses Browser Targets and submits through native Enter. A headless browser check with the actual form shape recorded zero unintended submissions and exactly one intentional submission. Its processes stopped; 29 focused tests passed before commit `79f8c8fc`.
+
+The following exact installed check then **passed**, once at code commit `79f8c8fc0fd57ff96388ce6e6b1dcc3053716f92`:
+
+```sh
+export PATH="/opt/homebrew/opt/node@24/bin:$PWD/node_modules/.bin:$PATH"
+export TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT="$HOME/Library/Caches/tockteam-smoke.noindex"
+/opt/homebrew/opt/node@24/bin/node scripts/launcher-installed-smoke.mjs --tockteam-launcher-installed-smoke
+```
+
+This directly invokes the same script as `pnpm test:launcher:installed` without the global pnpm automatic-install prelude. No lockfile change occurred.
+
+- TockTeam Desktop `0.1.14`, Electron `42.3.0`, Node `24.20.0`, macOS arm64.
+- Package resources, notices, bounded vendor scan, renderer isolation/CSP, permissions, Base64 action, settings round trip, reinstall/settings restoration, rollback recovery, and second-instance Launch Services behavior passed.
+- The required `runRendererSmoke` path awaited Can I Use installation/approval/enablement, persisted `chrome 100`, 581-feature search with 64-row bounds, 14-row detail, Back/query preservation, and unchanged legacy preference/state/trust files. No external browser action was invoked. The stock installed-report serializer keeps generic renderer fields, not the helper's Can I Use return object; these assertions are part of the required code path at the recorded source commit.
+- Runner PID `11240` exited. The receipt confirms `processTreesGone`, `smokeRootRemoved`, and `temporaryInstallRemoved`; post-run process inspection confirmed no installed-test processes remained.
+- Post-installed TockTutor package-boundary check: **4/4 passed** with the same repo-local pnpm PATH. An earlier invocation with global pnpm failed its peer fixture; no source change was made to accommodate that environment.
+
+Unmodified receipt: [`tocklauncher-can-i-use-electron/installed-macos.json`](tocklauncher-can-i-use-electron/installed-macos.json), SHA-256 `454084100778f8edc2edf83f6eef21660c539fbd63ce2a106856f456f04e0b03`. It also passed `node scripts/check-installed-report.mjs .beads/reports/tocklauncher-can-i-use-electron/installed-macos.json`.
+
+Full log: `/tmp/can-i-use-final-installed-79f8c8fc.log`. Original receipt: `$HOME/Library/Caches/tockteam-smoke.noindex/tockteam-installed-smoke-11240.json`. Any subsequent commit for this receipt/report is evidence-only; the verified application code remains at the recorded source commit. No push or publication occurred.
