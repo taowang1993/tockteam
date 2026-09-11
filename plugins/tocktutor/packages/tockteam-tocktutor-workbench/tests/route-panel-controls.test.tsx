@@ -410,6 +410,8 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.keyDown(noteActions, { key: 'Enter' })
     const menu = screen.getByRole('menu', { name: 'More Note Actions' })
     expect(menu.getAttribute('data-slot')).toBe('dropdown-menu-content')
+    expect(menu.className).toContain('bg-[var(--tockteam-shell-chrome,var(--tt-panel))]')
+    expect(menu.className).not.toContain('bg-[var(--dsw-alias-bg-layer-2')
     expect(menu.closest('[aria-hidden="true"]')).toBeNull()
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Reading View' })))
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })

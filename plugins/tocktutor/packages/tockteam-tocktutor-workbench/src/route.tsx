@@ -3698,7 +3698,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 <DropdownMenuContent
                   align="end"
                   alignOffset={26}
-                  className="w-[260px] rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1,Canvas))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]"
+                  className="w-[260px] rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]"
                   portalled={false}
                   sideOffset={6}
                   unstyled
