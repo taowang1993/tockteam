@@ -32,8 +32,10 @@ test('real manager searches all Can I Use features and rejects foreign or stale 
   const messages: TrustedRaycastViewMessage[] = []
   const errors: string[] = []
   const pids: number[] = []
+  const opened: string[] = []
   const manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast-can-i-use'), nodePath: process.execPath,
-    onMessage: (_owner, message) => messages.push(message), onError: (_owner, error) => errors.push(error.message) })
+    onMessage: (_owner, message) => messages.push(message), onError: (_owner, error) => errors.push(error.message),
+    openCanIUse: async url => { opened.push(url); if (opened.length === 2) throw new Error('Browser opening failed') } })
   try {
     const artifact = join(work, 'candidate.tar')
     assert.equal(assembleTrustedRaycastCanIUseArtifact(artifact).sha256, '0e23b06703ad85e91f9c6793c5de689204e9fe3bdb0fed3106a1324406bf3858')
@@ -86,17 +88,38 @@ test('real manager searches all Can I Use features and rejects foreign or stale 
     assert.ok(nodes(detail.root!, 'raycast-list-item').some(row => row.props.title === 'Chrome'))
     assert.equal(nodes(detail.root!, 'raycast-action').some(action => action.props.title === 'Show Details'), false)
     assert.throws(() => manager.send(owner, { ...open, revision: detail.revision }), /stale/)
+    const browser = nodes(detail.root!, 'raycast-action')[0]!
+    assert.equal(browser.props.title, 'Open in Browser')
+    assert.equal(browser.props.unavailable, false)
+    const browse = { ...open, revision: detail.revision, eventId: String(browser.props.actionEventId) }
+    assert.throws(() => manager.send(owner, { ...browse, value: 'https://evil.test' }), /stale/)
+    assert.throws(() => manager.send({ webContentsId: owner.webContentsId + 1 }, browse), /stale/)
+    manager.send(owner, browse)
+    assert.throws(() => manager.send(owner, browse), /busy/)
+    const outcome = await waitFor(4)
+    assert.equal(outcome.type, 'outcome')
+    assert.equal(outcome.succeeded, true)
+    assert.deepEqual(opened, [`https://caniuse.com/${feature.slug}`])
     const back = { ...open, kind: 'navigation' as const, revision: detail.revision, eventId: String(detail.root!.props.navigationEventId), value: 'can-i-use:pop' }
     assert.throws(() => manager.send(owner, { ...back, eventId: 'forged' }), /stale/)
     manager.send(owner, back)
     assert.throws(() => manager.send(owner, back), /stale/)
-    const returned = await waitFor(4)
+    const returned = await waitFor(5)
     assert.equal(returned.root!.props.navigationDepth, 0)
     assert.equal(returned.root!.props.matchCount, 1, 'Back must preserve the root search')
     assert.ok(JSON.stringify(returned.root).includes(feature.title))
     assert.throws(() => manager.send(owner, open), /stale/)
+    assert.throws(() => manager.send(owner, { ...browse, revision: returned.revision }), /stale/)
+    assert.deepEqual(opened, [`https://caniuse.com/${feature.slug}`])
+    const rootBrowser = nodes(returned.root!, 'raycast-action')[1]!
+    manager.send(owner, { ...open, revision: returned.revision, eventId: String(rootBrowser.props.actionEventId) })
+    const failedOpen = await waitFor(6)
+    assert.equal(failedOpen.type, 'outcome')
+    assert.equal(failedOpen.succeeded, false)
+    assert.equal(manager.active, true, 'an unavailable browser must not destroy the searchable view')
+    assert.deepEqual(opened, Array(2).fill(`https://caniuse.com/${feature.slug}`))
     manager.send(owner, { ...search, revision: returned.revision, eventId: String(returned.root!.props.searchEventId), value: 'zzzz-no-match' })
-    const empty = await waitFor(5)
+    const empty = await waitFor(7)
     assert.equal(empty.root!.props.visibleCount, 0)
     assert.equal(empty.root!.props.matchCount, 0)
     assert.equal(inspectTrustedRaycastProjection(empty.root).itemNodes, 0)

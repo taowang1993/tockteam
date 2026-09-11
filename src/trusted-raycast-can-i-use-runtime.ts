@@ -24,7 +24,7 @@ export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId:
   let searchHandle: TrustedRaycastCanIUseActionHandle | undefined
   let popHandle: TrustedRaycastCanIUseActionHandle | undefined
   let detail: { ticket: TrustedRaycastCanIUseRevisionTicket; data: ReturnType<typeof data.sourceDetail> } | undefined
-  const actions = new Map<string, { handle: TrustedRaycastCanIUseActionHandle; row: number }>()
+  const actions = new Map<string, { handle: TrustedRaycastCanIUseActionHandle; row: number; kind: 'show-details' | 'open-browser' }>()
   const revoke = () => { searchHandle = undefined; popHandle = undefined; actions.clear() }
   const descendants = (root: TrustedRaycastViewNode, type: string): TrustedRaycastViewNode[] => [
     ...(root.type === type ? [root] : []), ...root.children.flatMap(child => typeof child === 'string' ? [] : descendants(child, type)),
@@ -52,9 +52,9 @@ export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId:
         searchHandle = handles.find(handle => handle.kind === 'search')
         popHandle = handles.find(handle => handle.kind === 'pop')
         const bindings = new Map<TrustedRaycastViewNode, string>()
-        if (!detail) for (const handle of handles) if (handle.kind === 'show-details' && handle.row !== null) {
-          actions.set(handle.id, { handle, row: handle.row })
-          bindings.set(rowActions[handle.row]![0]!, handle.id)
+        for (const handle of handles) if ((handle.kind === 'show-details' || handle.kind === 'open-browser') && handle.row !== null) {
+          actions.set(handle.id, { handle, row: handle.row, kind: handle.kind })
+          bindings.set(rowActions[handle.row]![detail || handle.kind === 'show-details' ? 0 : 1]!, handle.id)
         }
         const project = (node: TrustedRaycastViewNode): TrustedRaycastViewNode => ({ ...node,
           props: bindings.has(node) ? { ...node.props, unavailable: false, actionEventId: bindings.get(node)! } : node.props,
@@ -68,12 +68,16 @@ export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId:
         throw error
       }
     },
-    showDetails(id: string): string {
+    activate(id: string) {
       const stored = actions.get(id)
-      if (detail || !stored) return failTrustedRaycastCanIUse('SNAPSHOT_STALE')
-      const row = prepared.rows[stored.row]!
-      const authentication = { ...context, revision: prepared.ticket.revision, depth: 0 as const, row: stored.row, feature: row.slug, kind: 'show-details' as const }
+      if (!stored) return failTrustedRaycastCanIUse('SNAPSHOT_STALE')
+      const feature = detail ? detail.data.feature.slug : prepared.rows[stored.row]!.slug
+      const authentication = { ...context, revision: (detail?.ticket ?? prepared.ticket).revision, depth: detail ? 1 as const : 0 as const, row: stored.row, feature, kind: stored.kind }
       registry.authorize(stored.handle, authentication)
+      // The URL is reconstructed from the selected pinned row, never from source or renderer text.
+      if (stored.kind === 'open-browser') return { kind: 'open-browser' as const, url: `https://caniuse.com/${feature}` }
+      if (detail) return failTrustedRaycastCanIUse('ACTION_DENIED')
+      const row = prepared.rows[stored.row]!
       revoke()
       try {
         const selected = data.sourceDetail({ slug: row.slug, sourceIndex: row.sourceIndex })
@@ -81,7 +85,7 @@ export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId:
         detail = { ticket, data: selected }
         const message = JSON.stringify({ type: 'can-i-use-detail', revision: ticket.revision, context, feature: row.slug, agents: selected.agents })
         if (Buffer.byteLength(message) > 32768) failTrustedRaycastCanIUse('LIMIT_EXCEEDED')
-        return message
+        return { kind: 'detail' as const, message }
       } catch (error) { registry.startError(context); throw error }
     },
     pop(id: string): string {

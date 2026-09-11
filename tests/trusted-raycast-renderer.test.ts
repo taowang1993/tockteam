@@ -44,6 +44,39 @@ test('Can I Use discloses visible, matching and total feature counts with its ow
   view.dispose()
 })
 
+test('Can I Use details show support, clear pending navigation, preserve counts and authenticate Back', async () => {
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const sent: TrustedRaycastViewEvent[] = []
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 'can', generation: 'g', revision: 0,
+    root: { type: 'raycast-list', props: { navigationDepth: 0, searchEventId: 'search', visibleCount: 1, matchCount: 1, totalCount: 581 }, children: [
+      { type: 'raycast-list-item', props: { title: 'CSS Grid' }, children: [{ type: 'raycast-action', props: { title: 'Show Details', actionEventId: 'details' }, children: [] }] },
+    ] } })
+  nodes.find(node => node.textContent === 'Show Details' && node.className.includes('launcher-command-menu-item'))!.dispatchEvent(new Event('click'))
+  await flush()
+  assert.equal(view.element.getAttribute('aria-busy'), 'true')
+  view.update({ type: 'patch', extensionId: 'can-i-use', sessionId: 'can', generation: 'g', revision: 1,
+    root: { type: 'raycast-list', props: { navigationDepth: 1, navigationTitle: 'CSS Grid', navigationEventId: 'pop-1', visibleCount: 1, matchCount: 1, totalCount: 1 }, children: [
+      { type: 'raycast-list-item', props: { title: 'Chrome', accessories: JSON.stringify([{ text: 'Supported since version 57' }, { icon: { source: 'Checkmark', tintColor: 'Green' }, tooltip: 'Supported' }]) },
+        children: [{ type: 'raycast-action', props: { title: 'Open in Browser', actionEventId: 'browser' }, children: [] }] },
+    ] } })
+  assert.equal(view.element.getAttribute('aria-busy'), 'false')
+  assert.ok(nodes.some(node => node.textContent === 'CSS Grid' && node.className.includes('font-semibold')))
+  assert.ok(nodes.some(node => node.getAttribute('role') === 'img' && node.getAttribute('aria-label') === 'Supported'))
+  const status = nodes.find(node => node.getAttribute('role') === 'status')!
+  assert.equal(status.textContent, 'Showing 1 of 1 browsers.')
+  nodes.findLast(node => node.textContent === 'Open in Browser' && node.className.includes('launcher-command-menu-item'))!.dispatchEvent(new Event('click'))
+  await flush()
+  assert.equal(sent.at(-1)!.eventId, 'browser')
+  view.update({ type: 'outcome', extensionId: 'can-i-use', sessionId: 'can', generation: 'g', revision: 1, eventId: 'browser', succeeded: true, message: '' })
+  assert.equal(status.textContent, 'Showing 1 of 1 browsers.')
+  const escape = new Event('keydown', { cancelable: true }); Object.assign(escape, { key: 'Escape' })
+  view.element.dispatchEvent(escape); await flush()
+  assert.deepEqual(sent.at(-1), { extensionId: 'can-i-use', sessionId: 'can', generation: 'g', revision: 1, kind: 'navigation', eventId: 'pop-1', value: 'can-i-use:pop' })
+  view.dispose()
+})
+
 test('Kaomoji Grid refreshes the same bounded images across theme changes without disturbing interaction state', () => {
   Element.activeElement = undefined
   const nodes: Element[] = []

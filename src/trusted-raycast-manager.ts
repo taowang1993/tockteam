@@ -20,6 +20,7 @@ export type TrustedRaycastManagerOptions = Readonly<{
   onError?: (owner: TrustedRaycastOwner, error: Error) => void
   copyText?: (text: string) => void | Promise<void>
   openGoogleTranslate?: (url: string) => Promise<void>
+  openCanIUse?: (url: string) => Promise<void>
   readSelectedText?: () => Promise<Readonly<{ text?: string; unavailable?: string }>>
   pasteText?: (text: string) => void | Promise<void>
   preferencesConfigured?: (extensionId: TrustedRaycastExtensionId) => boolean
@@ -271,8 +272,15 @@ export class TrustedRaycastManager {
       const actionId = session.actions.get(event.eventId)
       const back = event.kind === 'navigation' && event.value === 'can-i-use:pop' && session.navigationEventId === event.eventId
       if (!back && (event.kind !== 'action' || event.value !== undefined || actionId === undefined)) throw new Error('Can I Use event is stale')
+      if (session.action) throw new Error('Can I Use action is busy')
       try {
-        const packet = back ? session.canIUse.pop(event.eventId) : session.canIUse.showDetails(actionId!)
+        const result = back ? { kind: 'detail' as const, message: session.canIUse.pop(event.eventId) } : session.canIUse.activate(actionId!)
+        if (result.kind === 'open-browser') {
+          session.action = { eventId: event.eventId, revision: event.revision, nativeUsed: true }
+          void this.openCanIUse(session, result.url)
+          return
+        }
+        const packet = result.message
         session.eventId = ''; session.navigationEventId = undefined
         session.actions.clear(); session.fields.clear(); session.action = undefined
         session.querySequence++
@@ -296,6 +304,22 @@ export class TrustedRaycastManager {
     if (session.action) throw new Error('Translate action is busy')
     session.action = { eventId: event.eventId, revision: event.revision, nativeUsed: false }
     session.child.stdin.write(`${JSON.stringify({ ...event, value: session.actions.get(event.eventId) })}\n`)
+  }
+  private async openCanIUse(session: Session, url: string): Promise<void> {
+    const action = session.action!
+    let succeeded = false
+    let message = ''
+    try {
+      if (this.session !== session || session.revoked || session.revision !== action.revision) throw new Error('Can I Use action is stale')
+      if (!this.options.openCanIUse) throw new Error('Browser opening is unavailable')
+      await this.options.openCanIUse(url)
+      succeeded = true
+    } catch (error) { message = error instanceof Error ? error.message.slice(0, 512) : 'Browser opening failed' }
+    if (this.session === session && !session.revoked && session.action === action) {
+      session.action = undefined
+      this.options.onMessage(session.owner, { type: 'outcome', extensionId: session.input.extensionId, sessionId: session.input.sessionId,
+        generation: session.input.generation, revision: session.revision, eventId: action.eventId, succeeded, message })
+    }
   }
   private async native(session: Session, request: TrustedRaycastNativeRequest): Promise<void> {
     let succeeded = false

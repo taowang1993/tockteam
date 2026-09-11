@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
+import { Check, CircleHelp, CircleX, ChevronDown, ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import { isTrustedRaycastKaomojiSvg, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
 
@@ -32,13 +32,16 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const popNavigation = (): void => {
     const depth = typeof current?.root?.props.navigationDepth === 'number' ? current.root.props.navigationDepth : 0
     if (depth <= 0) return
-    sendEvent({ kind: 'navigation', eventId: 'language-nav', value: 'language:pop' })
+    if (current?.extensionId === 'can-i-use') {
+      const eventId = current.root?.props.navigationEventId
+      if (typeof eventId === 'string') sendEvent({ kind: 'navigation', eventId, value: 'can-i-use:pop' })
+    } else sendEvent({ kind: 'navigation', eventId: 'language-nav', value: 'language:pop' })
   }
   const element = document.createElement('section'); element.className = 'launcher-local-tool !gap-0 overflow-hidden text-sm'; element.setAttribute('aria-label', 'Trusted Extension'); element.setAttribute('aria-busy', 'false'); element.setAttribute('data-view', 'translate')
   const header = document.createElement('header'); header.className = 'launcher-command-header'
   const close = document.createElement('button'); close.type = 'button'; close.className = 'launcher-command-footer-action !size-8 !min-h-8 !px-0'; close.append(icon(ChevronLeft, 'size-5')); close.setAttribute('aria-label', zh ? '返回结果' : 'Back to Results'); close.addEventListener('click', onClose)
   const titleIcon = document.createElement('img'); titleIcon.setAttribute('src', './trusted-raycast/google-translate.png'); titleIcon.setAttribute('alt', ''); titleIcon.className = 'size-6 rounded-md'
-  const title = document.createElement('h2'); title.textContent = 'Google Translate'; title.className = 'm-0 text-sm font-semibold'
+  const title = document.createElement('h2'); title.textContent = 'Google Translate'; title.className = 'm-0 min-w-0 truncate text-sm font-semibold'
   header.append(close, titleIcon, title)
   const hero = document.createElement('div'); hero.className = 'flex flex-col items-center px-6 pb-2 text-center'; hero.hidden = true
   const logoFrame = document.createElement('div'); logoFrame.className = 'launcher-preference-logo mb-5 flex size-16 items-center justify-center rounded-full'
@@ -80,6 +83,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   let preferenceAction: string | undefined
   let actionFeedback = ''
   let selected = 0
+  let rootSelected = 0
+  let countText = ''
   let composing = false
   let submitAction: TrustedRaycastViewNode | undefined
   let firstFormControl: HTMLElement | undefined
@@ -225,6 +230,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const list = descendants(root, 'raycast-list')[0]
     const grid = descendants(root, 'raycast-grid')[0]
     const collection = list ?? grid
+    if (current?.extensionId === 'can-i-use' && depth === 1 && typeof collection?.props.navigationTitle === 'string') title.textContent = collection.props.navigationTitle
     setHidden(searchRow, form !== undefined || !('searchEventId' in root.props))
     if (form !== undefined) { renderForm(form); return }
     setHidden(formArea, true)
@@ -286,6 +292,20 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         const accessories: unknown = typeof node.props.accessories === 'string' && node.props.accessories.length <= 4096 ? JSON.parse(node.props.accessories) : []
         const accessory = Array.isArray(accessories) ? accessories[0] : undefined
         if (accessory && typeof accessory === 'object' && typeof accessory.text === 'string' && accessory.text.length <= 256) { const text = document.createElement('span'); text.className = 'shrink-0 truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'; text.textContent = accessory.text; if (typeof accessory.tooltip === 'string' && accessory.tooltip.length <= 512) text.title = accessory.tooltip; titleLine.append(text) }
+        if (current?.extensionId === 'can-i-use' && Array.isArray(accessories)) {
+          const support = accessories[1]
+          const variants: Record<string, { label: string; shape: IconNode; color: string }> = {
+            Supported: { label: 'Supported', shape: Check, color: 'light-dark(#15803d, #4ade80)' },
+            'Not supported': { label: 'Not Supported', shape: CircleX, color: 'light-dark(#b91c1c, #f87171)' },
+            'Partial support': { label: 'Partial Support', shape: Check, color: 'light-dark(#a16207, #facc15)' },
+            'Support unknown': { label: 'Support Unknown', shape: CircleHelp, color: 'inherit' },
+          }
+          if (support && typeof support === 'object' && typeof support.tooltip === 'string' && Object.hasOwn(variants, support.tooltip)) {
+            const variant = variants[support.tooltip]!
+            const badge = document.createElement('span'); badge.className = 'inline-flex shrink-0'; badge.setAttribute('role', 'img'); badge.setAttribute('aria-label', variant.label); badge.title = variant.label
+            badge.setAttribute('style', `color: ${variant.color}`); badge.append(icon(variant.shape, 'size-4')); titleLine.append(badge)
+          }
+        }
       } catch { /* malformed accessories stay inert */ }
       item.append(titleLine)
       if (typeof node.props.subtitle === 'string' && node.props.subtitle.length > 0) { const subtitle = document.createElement('p'); subtitle.className = 'm-0 truncate text-xs'; subtitle.textContent = node.props.subtitle; item.append(subtitle) }
@@ -300,7 +320,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       rows.push({ ...owner, detail }); results.append(item)
     })
     if (current?.extensionId === 'can-i-use' && !waiting && Number.isSafeInteger(root.props.matchCount) && Number.isSafeInteger(root.props.totalCount)) {
-      status.textContent = `Showing ${items.length} of ${root.props.matchCount} matches. Search covers all ${root.props.totalCount} features.`
+      countText = depth === 1 ? `Showing ${items.length} of ${root.props.totalCount} browsers.` : `Showing ${items.length} of ${root.props.matchCount} matches. Search covers all ${root.props.totalCount} features.`
+      status.textContent = countText
     }
     if (current?.extensionId === 'kaomoji-search' && items.length === 64 && input.value === '') {
       status.textContent = 'Showing 64 results. Search all 1,822 kaomoji.'
@@ -417,7 +438,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   element.addEventListener('click', event => {
     for (const owner of [...rows, ...(rootActionOwner ? [rootActionOwner] : [])]) if (!owner.menu.contains(event.target as globalThis.Node)) owner.menu.open = false
   })
-  const focus = (): void => { if (firstFormControl && !formArea.hidden) firstFormControl.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus() }
+  const focus = (): void => { if (firstFormControl && !formArea.hidden) firstFormControl.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus(); else rows[selected]?.item.focus() }
   return {
     dispose() { current = undefined; themeImages = [] },
     element,
@@ -434,9 +455,18 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         if (preferenceAction === message.eventId) { preferenceAction = undefined; actionFeedback = ''; status.textContent = ''; if (message.succeeded) setHidden(error, true); else fail(userActionMessage(message.message ?? 'Translate action failed')); return }
         if (message.succeeded) { setHidden(error, true); actionFeedback = zh ? '操作已完成' : 'Action Completed'; if (toastText === '') status.textContent = actionFeedback }
         else { actionFeedback = ''; status.textContent = ''; fail(userActionMessage(message.message ?? 'Translate action failed')) }
+        if (current?.extensionId === 'can-i-use') status.textContent = countText
         return
       }
       if (current && message.revision <= current.revision) return
+      const depthChanged = message.extensionId === 'can-i-use' && (current?.root?.props.navigationDepth ?? 0) !== (message.root?.props.navigationDepth ?? 0)
+      if (message.extensionId === 'can-i-use') {
+        setActionPending(); actionFeedback = ''
+        if (depthChanged) {
+          if (message.root?.props.navigationDepth === 1) { rootSelected = selected; selected = 0 }
+          else selected = rootSelected
+        }
+      }
       const restoreRow = rows.some(row => row.item.contains?.(document.activeElement))
       const previousHadForm = current?.root ? descendants(current.root, 'raycast-form').length > 0 : false
       current = message
@@ -453,7 +483,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       status.textContent = toastText === '' ? actionFeedback : toastText
       results.replaceChildren()
       if (message.root) render(message.root)
-      if (restoreRow) rows[selected]?.item.focus()
+      if (restoreRow || depthChanged) rows[selected]?.item.focus()
       sendLatest()
       const hasForm = Boolean(message.root && descendants(message.root, 'raycast-form').length > 0)
       if (message.type === 'ready' || previousHadForm !== hasForm) { focus(); document.defaultView?.requestAnimationFrame(() => focus()) }
