@@ -172,7 +172,7 @@ try {
   const electron = ensureElectronInstalled(repository)
   focusProofNonce = randomBytes(32).toString('hex')
   residueMarkers = Object.freeze([userData, `--remote-debugging-port=${debugPort}`, `TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE=${focusProofNonce}`, electron.includes('.app/') ? electron.slice(0, electron.indexOf('.app/') + 4) : electron])
-  electronChild = spawn(electron, ['.', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userData}`], {
+  electronChild = spawn(electron, [...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []), '.', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userData}`], {
     cwd: repository, detached: true,
     env: { ...process.env, TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF: '1', TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY: '1', TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY: '1', TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE: focusProofNonce, TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF: '1' },
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],

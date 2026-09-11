@@ -38,6 +38,22 @@ test('Electron harness uses inherited IPC shutdown and read-only bounded residue
   assert.doesNotMatch(harness, /process\.kill|stopChildProcess|assertProcessTreeGone|System Events|rm\(finalEvidence|renameSync\(evidence, finalEvidence/u)
 })
 
+test('every source extension proof launch isolates macOS Keychain, including restart and toggle', async () => {
+  for (const [file, count] of [
+    ['trusted-raycast-can-i-use-electron-proof.mts', 1],
+    ['trusted-raycast-kaomoji-electron-proof.mts', 1],
+    ['launcher-electron-smoke.mjs', 3],
+  ] as const) {
+    const source = await readFile(new URL(`../scripts/${file}`, import.meta.url), 'utf8')
+    const launches = [...source.matchAll(/spawn\((?:electron|ensureElectronInstalled\(repository\)),\s*\[([\s\S]*?)\],\s*\{/gu)]
+    assert.equal(launches.length, count, `${file}: cover every Electron launch site`)
+    for (const launch of launches) {
+      assert.match(launch[1]!, /\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\)/u, `${file}: native macOS-only mock Keychain must reach actual argv`)
+    }
+    assert.doesNotMatch(source, /\b(?:HOME|USERPROFILE)\s*[:=]/u, `${file}: preserve the real home environment`)
+  }
+})
+
 test('inactive Electron proof windows cannot accept focus and avoid implicit maximize activation', async () => {
   const main = await readFile(new URL('../src/main.ts', import.meta.url), 'utf8')
   assert.equal(main.match(/focusable: !launcherInactiveVisualProofEnabled/g)?.length, 2)

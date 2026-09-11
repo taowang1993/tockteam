@@ -107,12 +107,12 @@ try {
   legacyBefore = manifest(legacyPaths(userData))
   const server = createServer(); await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); port = (server.address() as { port: number }).port; await new Promise<void>(resolve => server.close(() => resolve()))
   const nonce = randomBytes(32).toString('hex')
-  electron = spawn(ensureElectronInstalled(repository), ['.', `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], {
+  electron = spawn(ensureElectronInstalled(repository), [...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []), '.', `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], {
     cwd: repository, detached: true, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     env: { ...process.env, TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF: '1', TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE: nonce,
       TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY: '1', TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY: '1', TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF: '1' },
   })
-  await writeFile(join(evidence, 'root-pid.json'), JSON.stringify({ pid: electron.pid }))
+  await writeFile(join(evidence, 'root-pid.json'), JSON.stringify({ pid: electron.pid, argv: electron.spawnargs }))
   electron.stdout?.on('data', chunk => { log = `${log}${chunk}`.slice(-131072) }); electron.stderr?.on('data', chunk => { log = `${log}${chunk}`.slice(-131072) })
   focus = createFocusProofClient(electron, nonce)
   electron.on('message', (raw: any) => {
