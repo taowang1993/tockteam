@@ -595,39 +595,149 @@
         "postCreate": { "activePath": "/tocktutor/Notes/Untitled.md", "editorTitle": "Untitled", "editorVisible": true, "treeContainsUntitled": true, "saved": true }
       },
       "search": {
-        "comparability": "genuine",
-        "status": "reference",
-        "screenshot": ".agents/uiux/tocktutor/screenshots/tocktutor-search.png",
-        "screenshotBytes": 216586,
-        "screenshotSha256": "sha256:f947dc43f227628deadaa6445763d4e16b0aa9f895973ec6e2310f406994c993",
-        "captureRun": "tocktutor-search-capture-kC735W",
-        "captureMethod": "bounded Playwright browser session attached over app-scoped CDP",
-        "captureState": "Search Notes dialog open with Search Options expanded over the active Live Preview note",
-        "copiedVaultIdentity": "TockTutor Parity Fixture",
-        "activePath": "Notes/Welcome.md",
-        "sourceBytes": 656,
-        "sourceSha256": "sha256:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
-        "searchSurface": "dialog",
-        "filesSidebar": "independent",
-        "searchOptions": "visible",
-        "livePreview": "visible",
-        "query": "",
+        "captureMethod": "bounded Playwright Electron/CDP against the staged Desktop composition",
+        "captureRun": "tocktutor-search-packaged-53b8c463-597",
+        "captureCommit": "tutor@208261df16222feb7a446498d0fd59240e5a7666",
+        "fixture": "temporary copy of plugins/tocktutor/parity/fixtures/vault",
+        "temporaryProfile": true,
+        "temporaryVault": true,
+        "background": false,
+        "appScoped": true,
         "geometry": {
-          "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
-          "pixels": { "width": 3024, "height": 1898 }
+          "css": {
+            "width": 1512,
+            "height": 949,
+            "deviceScaleFactor": 2
+          },
+          "pixels": {
+            "width": 3024,
+            "height": 1898
+          }
         },
         "theme": {
-          "themePreference": "dark",
           "activeSkin": null,
-          "base": "#151517",
-          "sidebarBackground": "rgb(21, 21, 23)",
-          "dialogBackground": "rgb(21, 21, 23)",
-          "backgroundMatchesSidebar": true
+          "backgroundMatchesSidebar": false,
+          "baseline": "built-in-dark-no-skin",
+          "colorScheme": "dark",
+          "documentSkin": null,
+          "themePreference": "dark"
         },
-        "routeVerified": true,
-        "contentVerified": true,
-        "runtimeErrors": 0,
-        "cleanupVerified": true
+        "route": "/tocktutor/Notes/Welcome.md",
+        "mode": "live-preview",
+        "query": "Welcome",
+        "filter": {
+          "active": true,
+          "directory": "Notes",
+          "modifiedFrom": null,
+          "modifiedTo": null,
+          "name": "In Folder",
+          "titleOnly": false
+        },
+        "results": {
+          "activeIndex": 1,
+          "activePath": "Notes/Welcome.md",
+          "count": 1,
+          "matchCount": 4,
+          "paths": [
+            "Notes/Welcome.md"
+          ],
+          "ranked": true,
+          "scores": [
+            300,
+            100,
+            100,
+            100
+          ],
+          "state": "ranked",
+          "visible": true
+        },
+        "preview": {
+          "contentVerified": true,
+          "generation": 1,
+          "line": 2,
+          "local": true,
+          "path": "Notes/Welcome.md",
+          "state": "loaded",
+          "visible": true
+        },
+        "quickAnswer": {
+          "model": null,
+          "provider": null,
+          "providerConfigured": false,
+          "state": "unavailable",
+          "status": "provider-unavailable",
+          "truthful": true
+        },
+        "runtimeErrors": [],
+        "runtimeErrorsAtCapture": 0,
+        "screenshot": {
+          "bytes": 291234,
+          "path": ".agents/uiux/tocktutor/screenshots/tocktutor-search.png",
+          "sha256": "sha256:844e58c8f011df3c0f28805ff088e6623ab57fb33b46ec989602ce3e4b097835"
+        },
+        "launch": {
+          "rootPid": 70176,
+          "appDataPath": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-desktop-smoke-7puYH5/user-data",
+          "dshHome": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-desktop-smoke-7puYH5/user-data/dsh",
+          "launchArgs": [
+            "--use-mock-keychain",
+            "--force-device-scale-factor=2",
+            "/Users/taowang/projects/worktrees/tutor",
+            "--remote-debugging-address=127.0.0.1",
+            "--remote-debugging-port=58656",
+            "--user-data-dir=/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/tockteam-desktop-smoke-7puYH5/user-data"
+          ],
+          "profile": "desktop",
+          "scrubbedSecretEnvCount": 1,
+          "skins": "{\"activeId\":null,\"fallbackTheme\":\"dark\"}",
+          "temporaryHome": true
+        },
+        "mockKeychain": {
+          "argument": "--use-mock-keychain",
+          "argumentIndex": 0,
+          "beforeTemporaryHome": true,
+          "beforeUserDataDir": true,
+          "noNewSecurityAgentDuringLaunch": true,
+          "noNewSecurityAgentAfterCleanup": true
+        },
+        "cleanup": {
+          "browserSessionStopped": true,
+          "browserCloseTimedOut": false,
+          "browserCloseError": null,
+          "processStageFailures": [],
+          "electronTreeStopped": true,
+          "runtimeDescendantsStopped": true,
+          "temporaryProfilesRemoved": true,
+          "verified": true
+        },
+        "cleanupVerified": true,
+        "provenance": {
+          "visibility": "visible-user-authorized",
+          "scope": "app-scoped",
+          "note": "The single authorized visible Desktop window was captured; background operation was not verified."
+        },
+        "evidenceAmendment": {
+          "recaptured": false,
+          "previousProofSha256": "sha256:3d88b76290c66b439d2f49bb88ff3b92a2d93112b46f6311ad444c0ad00df220",
+          "changes": [
+            "Corrected background=true to false using the completed capture-lane report; no new Desktop launch.",
+            "Retained measured backgroundMatchesSidebar=false; the selector comparison is not palette parity.",
+            "Labeled existing screenshot as pre-overflow-fix; screenshot bytes unchanged."
+          ]
+        },
+        "backgroundComparison": {
+          "routeSelector": "[data-tockteam-tocktutor-route=\"true\"]",
+          "sidebarSelector": "#tockteam-sidebar-root",
+          "validPaletteParityAssertion": false,
+          "explanation": "The script compared the base-colored route wrapper with the inert generic sidebar mount (no background class), not the Files sidebar or Search Notes dialog shell-chrome surface. Equality is not their semantic contract; no UI palette was changed."
+        },
+        "layoutVerification": {
+          "captureState": "pre-overflow-fix",
+          "fixCommit": "daacef01",
+          "finalPackagedRecapture": "pending",
+          "screenshotProvesFinalLayout": false,
+          "issueAtCapture": "Expanded Search Options extended below the viewport. Source-component verification of the later fix is separate, not a replacement packaged capture."
+        }
       },
       "workspacesPanes": {
         "comparability": "approximate",
@@ -852,10 +962,20 @@
     "duplicateUtilityHeading": false
   },
   "gallery": {
-    "uniqueImageSources": 50,
-    "captureCountLabel": "Visual Design Audit · 50 Captures",
+    "uniqueImageSources": 51,
+    "captureCountLabel": "Visual Design Audit · 51 Captures",
     "linkExistenceCheck": true,
-    "checkCommand": "node --test tests/tocktutor-gallery.test.ts"
+    "checkCommand": "node --test tests/tocktutor-gallery.test.ts",
+    "screenshotDirectoryTotal": 57,
+    "supplementalCaptures": [
+      "obsidian-outline.png",
+      "obsidian-quick-switcher.png",
+      "tocktutor-bookmarks-tags.png",
+      "tocktutor-new-note-dialog.png",
+      "tocktutor-properties-links.png",
+      "tocktutor-web-viewer-reader.png"
+    ],
+    "supplementalPolicy": "These six existing supplemental captures are retained outside the current 51-image gallery; not recaptured or deleted by this amendment."
   },
   "captureEnvironment": {
     "tockTutor": { "temporaryProfile": true, "temporaryVault": true, "galleryThemePreference": "dark", "galleryActiveSkin": null, "supplementaryHistoricalSkin": "tockteam-skin-deep-current" },
