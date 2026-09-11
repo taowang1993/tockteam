@@ -299,6 +299,7 @@ export interface WorkbenchRouteSnapshot {
   recoveryOpen?: boolean
   revision: string | null
   saveStatus: EditorStatus
+  searchError?: string | null
   searchLoading?: boolean
   searchMatches?: readonly VaultSearchMatch[]
   searchMode?: 'query' | 'related'
@@ -455,6 +456,14 @@ function validActiveVault(value: ActiveVaultResult): boolean {
     && typeof value.displayPath === 'string' && value.displayPath.length > 0 && value.displayPath.length <= 32_768
 }
 
+function recentSearchMatches(entries: readonly VaultTreeEntry[]): readonly VaultSearchMatch[] {
+  return Object.freeze(entries
+    .filter((entry): entry is Extract<VaultTreeEntry, { kind: 'document' }> => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path))
+    .toSorted((left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path))
+    .slice(0, 100)
+    .map(entry => ({ kind: 'path' as const, line: null, path: entry.path, preview: 'Recently modified note.' })))
+}
+
 function validSearchResult(value: VaultSearchResult, vault: VaultReference): boolean {
   return value?.generation === vault.generation
     && typeof value.query === 'string'
@@ -597,6 +606,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     recoveryOpen: false,
     revision: null,
     saveStatus: 'saved',
+    searchError: null,
     searchLoading: false,
     searchMatches: Object.freeze([]),
     searchMode: 'query',
@@ -640,6 +650,7 @@ export class WorkbenchRouteController {
   private embedTargets: readonly string[] = Object.freeze([])
   private dispatchRevision = 0
   private operationAbort: AbortController | null = null
+  private searchTimer: ReturnType<typeof setTimeout> | null = null
   private embedAbort: AbortController | null = null
   private saveAbort: AbortController | null = null
   private saving: Promise<boolean> | null = null
@@ -909,31 +920,72 @@ export class WorkbenchRouteController {
   }
 
   setSearchQuery(query: string): void {
-    if (query.length <= 1_000) this.update({ searchQuery: query })
+    if (query.length > 1_000) return
+    this.nextOperation()
+    const trimmed = query.trim()
+    this.update({
+      searchError: null,
+      searchLoading: trimmed !== '' && this.snapshot.vault !== null,
+      searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
+      searchQuery: query,
+    })
+    this.scheduleSearch()
   }
 
   closeSearch(): void {
-    this.update({ searchLoading: false, searchMatches: Object.freeze([]), searchOpen: false, searchQuery: '' })
+    this.nextOperation()
+    this.update({ searchError: null, searchLoading: false, searchMatches: Object.freeze([]), searchOpen: false, searchQuery: '' })
   }
 
   openSearch(query: string): void {
-    this.update({ searchMatches: Object.freeze([]), searchOpen: true, searchQuery: query })
+    if (query.length > 1_000) return
+    this.nextOperation()
+    const trimmed = query.trim()
+    this.update({
+      searchError: null,
+      searchLoading: trimmed !== '' && this.snapshot.vault !== null,
+      searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
+      searchOpen: true,
+      searchQuery: query,
+    })
+    this.scheduleSearch()
   }
 
   setSearchMode(mode: 'query' | 'related'): void {
-    this.update({ searchMode: mode })
+    this.nextOperation()
+    const trimmed = this.snapshot.searchQuery.trim()
+    this.update({
+      searchError: null,
+      searchLoading: trimmed !== '' && this.snapshot.vault !== null,
+      searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
+      searchMode: mode,
+    })
+    this.scheduleSearch()
+  }
+
+  private scheduleSearch(): void {
+    if (this.searchTimer !== null) clearTimeout(this.searchTimer)
+    this.searchTimer = null
+    if (this.snapshot.searchQuery.trim() === '' || this.snapshot.vault === null || !this.snapshot.searchOpen) return
+    const query = this.snapshot.searchQuery.trim()
+    this.searchTimer = setTimeout(() => {
+      this.searchTimer = null
+      if (this.snapshot.searchOpen && this.snapshot.searchQuery.trim() === query) void this.runSearch()
+    }, 200)
   }
 
   async runSearch(): Promise<boolean> {
+    if (this.searchTimer !== null) clearTimeout(this.searchTimer)
+    this.searchTimer = null
     const vault = this.snapshot.vault
     const query = this.snapshot.searchQuery.trim()
     if (vault === null || query.length === 0 || query.length > 1_000) {
-      this.update({ searchMatches: Object.freeze([]) })
+      this.update({ searchError: null, searchLoading: false, searchMatches: query.length === 0 ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]) })
       return false
     }
     const mode = this.snapshot.searchMode ?? 'query'
     const operation = this.nextOperation()
-    this.update({ searchLoading: true })
+    this.update({ searchError: null, searchLoading: true, searchMatches: Object.freeze([]) })
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
         expectedVault: vault,
@@ -941,16 +993,21 @@ export class WorkbenchRouteController {
         mode,
         query,
       }, operation.signal))
-      if (!this.current(operation.id, vault) || !validSearchResult(result, vault)) return false
+      if (!this.current(operation.id, vault)) return false
+      if (!validSearchResult(result, vault) || result.query !== query) {
+        this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false })
+        return false
+      }
       this.update({
         message: result.truncated ? 'Search returned a bounded partial result.' : `${String(result.matches.length)} search results.`,
+        searchError: null,
         searchLoading: false,
         searchMatches: Object.freeze(result.matches.map(match => Object.freeze({ ...match }))),
       })
       return true
     } catch {
       if (this.current(operation.id, vault) && !operation.signal.aborted) {
-        this.update({ message: 'Search could not be completed.', searchLoading: false })
+        this.update({ message: 'Search could not be completed.', searchError: 'Search could not be completed.', searchLoading: false })
       }
       return false
     }
@@ -1036,12 +1093,7 @@ export class WorkbenchRouteController {
   async openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean> {
     this.openSearch('')
     if (kind === 'recent') {
-      const matches: VaultSearchMatch[] = this.snapshot.entries
-        .filter((entry): entry is Extract<VaultTreeEntry, { kind: 'document' }> => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path))
-        .toSorted((left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path))
-        .slice(0, 100)
-        .map(entry => ({ kind: 'path', line: null, path: entry.path, preview: 'Recently modified note.' }))
-      this.update({ searchMatches: Object.freeze(matches) })
+      this.update({ searchMatches: recentSearchMatches(this.snapshot.entries) })
       return true
     }
     if (kind === 'tags') return await this.loadFacets()
@@ -1340,6 +1392,8 @@ export class WorkbenchRouteController {
   }
 
   private nextOperation(): { id: number; signal: AbortSignal } {
+    if (this.searchTimer !== null) clearTimeout(this.searchTimer)
+    this.searchTimer = null
     this.cancelRecoveryOperations()
     this.operationAbort?.abort()
     this.operationAbort = new AbortController()
@@ -1430,6 +1484,7 @@ export class WorkbenchRouteController {
       recoveryOpen: false,
       revision: null,
       saveStatus: 'saved',
+      searchError: null,
       searchLoading: false,
       searchMatches: Object.freeze([]),
       searchMode: 'query',
@@ -2754,6 +2809,8 @@ export class WorkbenchRouteController {
     if (this.disposal !== null) return this.disposal
     const flush = this.flushPendingDraft()
     this.settlePendingDispatch('stale')
+    if (this.searchTimer !== null) clearTimeout(this.searchTimer)
+    this.searchTimer = null
     this.disposed = true
     this.dispatchRevision += 1
     this.operation += 1
@@ -3012,49 +3069,39 @@ function NoteSearchPreview(props: {
 }
 
 function NoteSearchResultList(props: {
+  error: string | null | undefined
+  loading: boolean
   matches: readonly VaultSearchMatch[]
   onClose(): void
-  onPreview(choice: number | string): void
+  onPreview(choice: number): void
   onSelect(path: string): void
-  pathResults: readonly string[]
   previewMatchIndex: number
-  previewResultPath: string | null
   query: string
 }): ReactNode {
   return (
     <div className="min-h-0 overflow-auto">
-      {props.matches.length > 0 ? (
-        <ul className="m-0 grid list-none gap-0.5 p-0" aria-label="Vault Search Results">
-          {props.matches.map((match, index) => (
-            <li key={`${match.kind}:${match.path}:${String(match.line ?? 0)}:${match.preview}`}>
-              <Button unstyled aria-current={props.previewMatchIndex === index ? 'true' : undefined} aria-label={`Open ${match.path}`} className="grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(match.path); props.onClose() }} onFocus={() => { props.onPreview(index) }} onMouseEnter={() => { props.onPreview(index) }} type="button">
-                <FileText aria-hidden="true" className="mt-0.5 text-[var(--tt-muted)]" strokeWidth={1.6} />
-                <span className="min-w-0">
-                  <strong className="block truncate text-sm font-medium">{noteTitle(match.path)}</strong>
-                  <span className="block truncate text-xs text-[var(--tt-muted)]">{match.preview}</span>
-                </span>
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : props.pathResults.length > 0 ? (
-        <ul className="m-0 grid list-none gap-0.5 p-0" aria-label="Matching Note Paths">
-          {props.pathResults.map(path => (
-            <li key={path}>
-              <Button unstyled aria-current={props.previewResultPath === path ? 'true' : undefined} aria-label={`Open ${path}`} className="grid min-h-9 w-full grid-cols-[18px_minmax(0,1fr)] items-center gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-sm outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(path); props.onClose() }} onFocus={() => { props.onPreview(path) }} onMouseEnter={() => { props.onPreview(path) }} type="button">
-                <FileText aria-hidden="true" className="text-[var(--tt-muted)]" strokeWidth={1.6} />
-                <span className="truncate">{path}</span>
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : <Alert unstyled className="px-2 py-3 text-sm text-[var(--tt-muted)]" role="status">{props.query.trim() === '' ? 'Type to search notes.' : 'No matching notes.'}</Alert>}
+      {props.loading ? <Alert unstyled className="px-2 py-3 text-sm text-[var(--tt-muted)]" role="status">Searching notes…</Alert>
+        : props.error !== null && props.error !== undefined ? <Alert unstyled className="px-2 py-3 text-sm text-[var(--dsw-alias-state-error-primary,#dc2626)]" role="alert">{props.error}</Alert>
+          : props.matches.length > 0 ? (
+            <ul className="m-0 grid list-none gap-0.5 p-0" aria-label={props.query.trim() === '' ? 'Recent Notes' : 'Vault Search Results'}>
+              {props.matches.map((match, index) => (
+                <li key={`${match.kind}:${match.path}:${String(match.line ?? 0)}:${match.preview}`}>
+                  <Button unstyled aria-current={props.previewMatchIndex === index ? 'true' : undefined} aria-label={`Open ${match.path}`} className="grid min-h-11 w-full grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left outline-none hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] aria-current:bg-[var(--tt-selected)]" onClick={() => { props.onSelect(match.path); props.onClose() }} onFocus={() => { props.onPreview(index) }} onMouseEnter={() => { props.onPreview(index) }} type="button">
+                    <FileText aria-hidden="true" className="mt-0.5 text-[var(--tt-muted)]" strokeWidth={1.6} />
+                    <span className="min-w-0">
+                      <strong className="block truncate text-sm font-medium">{noteTitle(match.path)}</strong>
+                      <span className="block truncate text-xs text-[var(--tt-muted)]">{match.preview}</span>
+                    </span>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : <Alert unstyled className="px-2 py-3 text-sm text-[var(--tt-muted)]" role="status">{props.query.trim() === '' ? 'No recent notes.' : 'No matching notes.'}</Alert>}
     </div>
   )
 }
 
 function WorkbenchNoteSearchPalette(props: {
-  notePaths: readonly string[]
   onClose(): void
   onCommands(): void
   onRunSearch: (() => void) | undefined
@@ -3065,14 +3112,13 @@ function WorkbenchNoteSearchPalette(props: {
 }): ReactNode {
   const { snapshot } = props
   const matches = snapshot.searchMatches ?? []
-  const pathResults = snapshot.searchQuery.trim() === '' || matches.length > 0 ? [] : props.notePaths.slice(0, 100)
   const searchInputContainer = useRef<HTMLDivElement>(null)
   const searchCaret = useRef<number | null>(null)
   const [searchOptionsOpen, setSearchOptionsOpen] = useState(false)
   const [previewChoice, setPreviewChoice] = useState<number | string | null>(null)
   const previewMatchIndex = typeof previewChoice === 'number' && matches[previewChoice] !== undefined ? previewChoice : 0
   const previewMatch = matches[previewMatchIndex]
-  const previewResultPath = previewMatch?.path ?? pathResults.find(path => path === previewChoice) ?? pathResults[0] ?? null
+  const previewResultPath = previewMatch?.path ?? null
   const insertSearchOption = (value: string): void => {
     const input = searchInputContainer.current?.querySelector('input')
     const start = input?.selectionStart ?? snapshot.searchQuery.length
@@ -3168,19 +3214,19 @@ function WorkbenchNoteSearchPalette(props: {
             </ToggleGroup>
             <Button unstyled className="rounded-md border-0 bg-transparent px-2.5 py-1.5 hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] disabled:opacity-40" disabled={snapshot.searchLoading === true || snapshot.searchQuery.trim() === ''} onClick={props.onRunSearch} type="button">{snapshot.searchLoading === true ? 'Searching…' : 'Search'}</Button>
           </div>
-          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role="status">{matches.length > 0 ? `${String(matches.length)} vault results` : `${String(pathResults.length)} matching note paths`}</Alert>
+          <Alert unstyled aria-live="polite" className="text-xs font-normal text-[var(--tt-muted)]" role={snapshot.searchError === null || snapshot.searchError === undefined ? 'status' : 'alert'}>{snapshot.searchLoading === true ? 'Searching notes…' : snapshot.searchError ?? (snapshot.searchQuery.trim() === '' ? `${String(matches.length)} recent notes` : `${String(matches.length)} vault results`)}</Alert>
         </header>
         <section className="grid min-h-0 grid-cols-[minmax(0,3fr)_minmax(260px,2fr)] max-sm:grid-cols-1" aria-label="Search Results">
           <div className="grid min-h-0 grid-rows-[36px_minmax(0,1fr)] border-r border-[var(--tt-border)] px-3 pb-3 max-sm:border-r-0">
             <div className="flex items-end px-2 pb-1 text-[11px] font-medium text-[var(--tt-muted)]">Results</div>
             <NoteSearchResultList
+              error={snapshot.searchError}
+              loading={snapshot.searchLoading === true}
               matches={matches}
               onClose={props.onClose}
-              onPreview={setPreviewChoice}
+              onPreview={choice => { setPreviewChoice(choice) }}
               onSelect={props.onSelect}
-              pathResults={pathResults}
               previewMatchIndex={previewMatchIndex}
-              previewResultPath={previewResultPath}
               query={snapshot.searchQuery}
             />
           </div>
@@ -3600,7 +3646,6 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       )}
       {visiblePalette === 'notes' && (
         <WorkbenchNoteSearchPalette
-          notePaths={documents.map(document => document.path)}
           onClose={() => { setPaletteView(null); props.onCloseCommandPalette?.(); props.onCloseSearch?.() }}
           onCommands={() => { setPaletteView('commands'); props.onOpenCommandPalette?.(); props.onCloseSearch?.() }}
           onRunSearch={props.onRunSearch}

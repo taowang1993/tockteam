@@ -134,9 +134,29 @@ describe('TockTutor titlebar panel controls', () => {
     expect(dialog.className).toContain('[--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))]')
     expect(query.getAttribute('placeholder')).toBe('Search notes...')
     expect(document.querySelector('aside[aria-label="Files"]')?.contains(query)).toBe(false)
-    expect(screen.getByRole('list', { name: 'Matching Note Paths' }).textContent).toContain('Second.md')
-    expect(screen.queryByText('Folder/Note.md')).toBeNull()
+    expect(screen.queryByRole('list', { name: 'Matching Note Paths' })).toBeNull()
+    expect(screen.getByText('No matching notes.')).toBeTruthy()
+    expect(within(dialog).queryByText('Second.md')).toBeNull()
+    expect(within(dialog).queryByText('Folder/Note.md')).toBeNull()
     expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
+  })
+
+  it('does not label unrelated note paths as query matches', () => {
+    renderRoute({
+      entries: [
+        { createdAt: 1, kind: 'document', modifiedAt: 2, path: 'Missing.md', revision: '1'.repeat(64), size: 12 },
+        { createdAt: 1, kind: 'document', modifiedAt: 2, path: 'Unrelated.md', revision: '1'.repeat(64), size: 12 },
+      ],
+      phase: 'ready',
+      searchOpen: true,
+      searchQuery: 'missing',
+    })
+
+    expect(screen.queryByRole('list', { name: 'Matching Note Paths' })).toBeNull()
+    expect(screen.getByText('No matching notes.')).toBeTruthy()
+    const dialog = screen.getByRole('dialog', { name: 'Search Notes' })
+    expect(within(dialog).queryByText('Missing.md')).toBeNull()
+    expect(within(dialog).queryByText('Unrelated.md')).toBeNull()
   })
 
   it('opens and closes the Files sidebar and Assistant panel', () => {
