@@ -38,7 +38,16 @@ export function parseSearchExpansion(value) {
     return [...new Set(queries)];
 }
 function candidateKey(match) {
-    return match.id ?? `${match.path}:${match.kind}:${String(match.line)}:${match.lineEnd ?? ''}:${match.preview}`;
+    return JSON.stringify([
+        match.path,
+        match.kind,
+        match.line,
+        match.lineEnd ?? null,
+        match.operator ?? null,
+        match.preview,
+        match.provenance ?? null,
+        match.revision ?? null,
+    ]);
 }
 function mergeCandidates(pages) {
     const byId = new Map();
@@ -51,7 +60,15 @@ function mergeCandidates(pages) {
         }
     }
     return [...byId.values()]
-        .toSorted((left, right) => (right.score ?? 0) - (left.score ?? 0) || left.path.localeCompare(right.path))
+        .toSorted((left, right) => (right.score ?? 0) - (left.score ?? 0)
+        || left.path.localeCompare(right.path)
+        || (left.line ?? -1) - (right.line ?? -1)
+        || (left.lineEnd ?? -1) - (right.lineEnd ?? -1)
+        || left.kind.localeCompare(right.kind)
+        || (left.operator ?? '').localeCompare(right.operator ?? '')
+        || (left.provenance ?? '').localeCompare(right.provenance ?? '')
+        || left.preview.localeCompare(right.preview)
+        || (left.revision ?? '').localeCompare(right.revision ?? ''))
         .slice(0, MAX_CANDIDATES);
 }
 function boundedSearchRequest(request, query, mode = 'query') {
@@ -78,9 +95,24 @@ function assertQuickAnswerCandidates(candidates) {
             throw new TypeError('Quick Answer candidate IDs must be unique and opaque.');
         ids.add(candidate.id);
         assertSafeRelativePath(candidate.path);
-        if (candidate.preview.length > 4_096 || (candidate.line !== null && (!Number.isSafeInteger(candidate.line) || candidate.line < 1)) || (candidate.lineEnd !== undefined && candidate.lineEnd !== null && (!Number.isSafeInteger(candidate.lineEnd) || candidate.lineEnd < 1)) || (candidate.line !== null && candidate.lineEnd !== undefined && candidate.lineEnd !== null && candidate.lineEnd < candidate.line)) {
+        if (candidate.revision === undefined
+            || candidate.revision.length === 0
+            || candidate.revision.length > 4_096
+            || /[\u0000-\u001f\u007f]/u.test(candidate.revision)
+            || candidate.preview.length > 4_096
+            || (candidate.line !== null && (!Number.isSafeInteger(candidate.line) || candidate.line < 1))
+            || (candidate.lineEnd !== undefined && candidate.lineEnd !== null && (!Number.isSafeInteger(candidate.lineEnd) || candidate.lineEnd < 1))
+            || (candidate.line !== null && candidate.lineEnd !== undefined && candidate.lineEnd !== null && candidate.lineEnd < candidate.line)) {
             throw new TypeError('Quick Answer candidate metadata is invalid.');
         }
+    }
+}
+function searchBindingIsCurrent(isCurrent, binding) {
+    try {
+        return isCurrent(binding);
+    }
+    catch {
+        return false;
     }
 }
 function boundedExcerpt(content, line, lineEnd) {
@@ -133,7 +165,7 @@ export async function answerSearchQuery(llm, request, provider, model, read, sig
             const pending = readByPath.get(candidate.path) ?? read(candidate.path, signal);
             readByPath.set(candidate.path, pending);
             const document = await pending;
-            if (document.path !== candidate.path || typeof document.content !== 'string')
+            if (document.path !== candidate.path || typeof document.content !== 'string' || document.revision !== candidate.revision)
                 continue;
             const excerpt = boundedExcerpt(document.content, candidate.line, candidate.lineEnd);
             if (excerpt !== '')
@@ -144,6 +176,8 @@ export async function answerSearchQuery(llm, request, provider, model, read, sig
                 return { status: 'cancelled', answer: '', citations: [] };
         }
     }
+    if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding))
+        return { status: 'cancelled', answer: '', citations: [] };
     if (excerpts.length === 0)
         return { status: 'no-evidence', answer: '', citations: [] };
     const prompt = [
@@ -158,6 +192,8 @@ export async function answerSearchQuery(llm, request, provider, model, read, sig
         return { status: completion.code === 'ABORTED' || completion.code === 'STALE_CONTEXT' ? 'cancelled' : completion.code === 'PROVIDER_UNAVAILABLE' ? 'provider-unavailable' : 'error', answer: '', citations: [] };
     try {
         const parsed = parseQuickAnswer(completion.text, new Map(excerpts.map(({ candidate }) => [candidate.id, candidate])));
+        if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding))
+            return { status: 'cancelled', answer: '', citations: [] };
         if (parsed.answer === '' || parsed.citations.length === 0)
             return { status: 'no-evidence', answer: '', citations: [] };
         return { status: 'completed', ...parsed };
@@ -197,7 +233,7 @@ export async function expandAndSearch(llm, request, provider, model, search, sig
         `User query: ${query}`,
     ].join('\n'), binding, signal, isCurrent);
     if (expansion.status === 'error') {
-        return { status: expansion.code === 'ABORTED' ? 'cancelled' : expansion.code === 'PROVIDER_UNAVAILABLE' ? 'provider-unavailable' : 'error', matches: [] };
+        return { status: expansion.code === 'ABORTED' || expansion.code === 'STALE_CONTEXT' ? 'cancelled' : expansion.code === 'PROVIDER_UNAVAILABLE' ? 'provider-unavailable' : 'error', matches: [] };
     }
     let queries;
     try {
@@ -206,17 +242,21 @@ export async function expandAndSearch(llm, request, provider, model, search, sig
     catch {
         return { status: 'invalid-output', matches: [] };
     }
+    if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding))
+        return { status: 'cancelled', matches: [] };
     try {
         const pages = [await search(boundedSearchRequest(request, query, 'related'), signal)];
         for (const alternate of queries) {
-            if (signal.aborted)
+            if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding))
                 return { status: 'cancelled', matches: [] };
             pages.push(await search(boundedSearchRequest(request, alternate), signal));
         }
+        if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding))
+            return { status: 'cancelled', matches: [] };
         return { status: 'applied', matches: mergeCandidates(pages) };
     }
     catch (error) {
-        if (signal.aborted || (error instanceof Error && error.name === 'AbortError'))
+        if (signal.aborted || (error instanceof Error && error.name === 'AbortError') || !searchBindingIsCurrent(isCurrent, binding))
             return { status: 'cancelled', matches: [] };
         return { status: 'error', matches: [] };
     }

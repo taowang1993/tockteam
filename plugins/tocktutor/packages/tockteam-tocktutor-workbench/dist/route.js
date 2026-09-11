@@ -965,7 +965,16 @@ export class WorkbenchRouteController {
             }, vault)) {
                 const merged = new Map();
                 for (const match of [...localMatches, ...result.matches]) {
-                    const identity = match.id ?? `${match.path}:${match.kind}:${String(match.line)}:${match.lineEnd ?? ''}:${match.preview}`;
+                    const identity = JSON.stringify([
+                        match.path,
+                        match.kind,
+                        match.line,
+                        match.lineEnd ?? null,
+                        match.operator ?? null,
+                        match.preview,
+                        match.provenance ?? null,
+                        match.revision ?? null,
+                    ]);
                     const previous = merged.get(identity);
                     if (previous === undefined || (match.score ?? 0) > (previous.score ?? 0))
                         merged.set(identity, match);
@@ -1000,6 +1009,7 @@ export class WorkbenchRouteController {
         const operation = this.nextOperation();
         const candidates = matches.map((match, index) => ({
             id: `qa-${String(index + 1)}`,
+            ...(match.revision === undefined ? {} : { revision: match.revision }),
             path: match.path,
             line: match.line,
             ...(match.lineEnd === undefined ? {} : { lineEnd: match.lineEnd }),

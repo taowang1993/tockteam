@@ -81,6 +81,7 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_parameter_0$s
   'titleOnly': z.boolean().optional(),
   'candidates': z.array(z.object({
   'id': z.string(),
+  'revision': z.string().optional(),
   'path': z.string(),
   'line': z.union([z.literal(null), z.number()]),
   'lineEnd': z.union([z.literal(null), z.number()]).optional(),
@@ -130,6 +131,7 @@ const _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_result
   'status': z.union([z.literal("applied"), z.literal("disabled"), z.literal("provider-unavailable"), z.literal("invalid-output"), z.literal("error"), z.literal("cancelled")]),
   'matches': z.array(z.object({
   'id': z.string().optional(),
+  'revision': z.string().optional(),
   'path': z.string(),
   'kind': z.union([z.literal("base"), z.literal("block"), z.literal("canvas"), z.literal("content"), z.literal("line"), z.literal("path"), z.literal("property"), z.literal("section"), z.literal("tag"), z.literal("task")]),
   'line': z.union([z.literal(null), z.number()]),

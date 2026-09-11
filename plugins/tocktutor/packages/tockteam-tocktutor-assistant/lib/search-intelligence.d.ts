@@ -26,6 +26,7 @@ declare function boundedSearchRequest(request: {
 export declare function answerSearchQuery(llm: LlmRuntime | undefined, request: AssistantQuickAnswerRequest, provider: string, model: string, read: (path: string, signal: AbortSignal) => Promise<{
     path: string;
     content: string;
+    revision?: string;
 }>, signal: AbortSignal, isCurrent?: (binding: AssistantTurnBinding) => boolean): Promise<QuickAnswerResult>;
 export declare function expandAndSearch(llm: LlmRuntime | undefined, request: {
     query: string;

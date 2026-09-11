@@ -357,8 +357,8 @@ test('supports structured property, tag, line, block, section, and task queries'
     assert.deepEqual(uniquePaths(await run('task-todo:"cursor canary"')), ['advanced/query.md'])
     assert.deepEqual(uniquePaths(await run('task-done:Archive')), ['advanced/query.md'])
     assert.deepEqual(uniquePaths(await run('tag:project -[status:active] OR task-done:Archive')), [
-      'advanced/query.md',
       'linked.md',
+      'advanced/query.md',
     ])
 
     const task = await run('task-todo:"cursor canary"')

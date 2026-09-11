@@ -49,6 +49,60 @@ test('expands a zero-overlap query and merges bounded local candidates', async (
   }
 })
 
+test('maps a stale turn binding to a cancelled search result', async () => {
+  const context = new Context()
+  await context.plugin(LlmRuntime)
+  context.llm.registerAdapter(['fake'], new ExpansionAdapter('{"queries":[]}'))
+  try {
+    const result = await expandAndSearch(
+      context.llm,
+      searchRequest,
+      'fake',
+      'model',
+      async () => { throw new Error('must not search') },
+      new AbortController().signal,
+      () => false,
+    )
+    assert.equal(result.status, 'cancelled')
+  } finally {
+    await context.fiber.dispose()
+  }
+})
+
+test('rechecks the search binding before publishing applied candidates', async () => {
+  const context = new Context()
+  await context.plugin(LlmRuntime)
+  context.llm.registerAdapter(['fake'], new ExpansionAdapter('{"queries":[]}'))
+  let current = true
+  try {
+    const result = await expandAndSearch(
+      context.llm,
+      searchRequest,
+      'fake',
+      'model',
+      async request => {
+        current = false
+        return {
+          cursor: null,
+          generation: 4,
+          matches: [{ kind: 'content', line: 1, path: `${request.query}.md`, preview: request.query }],
+          query: request.query,
+          scan: { bytes: 1, entries: 1, files: 1 },
+          truncated: false,
+          truncationReason: null,
+          warnings: [],
+        }
+      },
+      new AbortController().signal,
+      () => current,
+    )
+    assert.equal(result.status, 'cancelled')
+    assert.deepEqual(result.matches, [])
+  } finally {
+    await context.fiber.dispose()
+  }
+})
+
 test('answers from bounded excerpts and projects only captured citation metadata', async () => {
   const context = new Context()
   await context.plugin(LlmRuntime)
@@ -57,8 +111,8 @@ test('answers from bounded excerpts and projects only captured citation metadata
     const result = await answerSearchQuery(context.llm, {
       query: 'where',
       vaultGeneration: 4,
-      candidates: [{ id: 'qa-1', path: 'Answer.md', line: 2, lineEnd: 2, preview: 'The answer.' }],
-    }, 'fake', 'model', async path => ({ path, content: '# Answer\nThe checklist.\n' }), new AbortController().signal)
+      candidates: [{ id: 'qa-1', revision: 'revision:answer', path: 'Answer.md', line: 2, lineEnd: 2, preview: 'The answer.' }],
+    }, 'fake', 'model', async path => ({ path, content: '# Answer\nThe checklist.\n', revision: 'revision:answer' }), new AbortController().signal)
     assert.deepEqual(result, {
       status: 'completed',
       answer: 'Use the checklist.',
@@ -77,8 +131,8 @@ test('rejects unknown and duplicate Quick Answer citations from the captured can
     const result = await answerSearchQuery(context.llm, {
       query: 'where',
       vaultGeneration: 4,
-      candidates: [{ id: 'qa-1', path: 'Answer.md', line: 2, lineEnd: 2, preview: 'The answer.' }],
-    }, 'fake', 'model', async path => ({ path, content: '# Answer\nThe answer.\n' }), new AbortController().signal)
+      candidates: [{ id: 'qa-1', revision: 'revision:answer', path: 'Answer.md', line: 2, lineEnd: 2, preview: 'The answer.' }],
+    }, 'fake', 'model', async path => ({ path, content: '# Answer\nThe answer.\n', revision: 'revision:answer' }), new AbortController().signal)
     assert.equal(result.status, 'invalid-output')
     assert.deepEqual(result.citations, [])
   } finally {

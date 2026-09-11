@@ -930,6 +930,41 @@ test('indexed query candidates are globally ranked before pagination', async () 
   assert.deepEqual(second.matches.map(match => [match.path, match.kind, match.score]), [['a.md', 'tag', 200]])
 })
 
+test('query fallback globally ranks its bounded scan before applying pagination', async () => {
+  const contents = new Map([
+    ['a.md', '---\ntags: [project]\n---\n# A\nneedle in the body.\n'],
+    ['z-needle.md', '---\ntags: [project]\n---\n# Z\nother body.\n'],
+  ])
+  const reads = []
+  const entries = [...contents].map(([path, content]) => ({
+    createdMs: 1,
+    kind: 'document',
+    modifiedMs: 20,
+    path,
+    size: Buffer.byteLength(content),
+  }))
+  const input = {
+    async list() {
+      return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path, maxBytes, signal) {
+      signal.throwIfAborted()
+      reads.push(path)
+      const content = contents.get(path)
+      if (content === undefined || Buffer.byteLength(content) > maxBytes) throw new Error('missing document')
+      return { path, content, revision: `revision:${path}` }
+    },
+  }
+  const inspection = createVaultInspection(input, { ...limits, maxSearchResults: 1 })
+  const first = await inspection.search({ mode: 'query', query: 'tag:project needle', limit: 1 }, new AbortController().signal)
+
+  assert.deepEqual(first.matches.map(match => [match.path, match.kind, match.score]), [['z-needle.md', 'path', 300]])
+  assert.notEqual(first.cursor, null)
+  assert.deepEqual(reads, ['a.md', 'z-needle.md'])
+  const second = await inspection.search({ cursor: first.cursor, limit: 1, mode: 'query', query: 'tag:project needle' }, new AbortController().signal)
+  assert.deepEqual(second.matches.map(match => [match.path, match.kind, match.score]), [['a.md', 'tag', 200]])
+})
+
 test('indexed candidates carry date and revision metadata through exact verification', async () => {
   const contents = new Map([
     ['old.md', '---\ntags: [project]\n---\n# Old\n'],

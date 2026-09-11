@@ -310,10 +310,11 @@ function searchIntelligenceResult(value: unknown): AssistantSearchIntelligenceRe
   const acceptedStatuses = ['applied', 'disabled', 'provider-unavailable', 'invalid-output', 'error', 'cancelled']
   if (!acceptedStatuses.includes(value.status as string) || !Array.isArray(value.matches) || value.matches.length > 100) throw failure('Search intelligence result')
   const matches = value.matches.map(candidate => {
-    assertPlainRecord(candidate, ['id', 'path', 'kind', 'line', 'lineEnd', 'preview', 'score', 'operator', 'provenance'], 'Search intelligence result')
+    assertPlainRecord(candidate, ['id', 'revision', 'path', 'kind', 'line', 'lineEnd', 'preview', 'score', 'operator', 'provenance'], 'Search intelligence result')
     const path = safeRelativePath(candidate.path, 'Search intelligence result')
     if (typeof candidate.preview !== 'string' || candidate.preview.length > 4_096
       || (candidate.id !== undefined && (typeof candidate.id !== 'string' || candidate.id.length < 1 || candidate.id.length > 128))
+      || (candidate.revision !== undefined && (typeof candidate.revision !== 'string' || candidate.revision.length === 0 || candidate.revision.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(candidate.revision)))
       || (candidate.line !== null && !Number.isSafeInteger(candidate.line))
       || (candidate.lineEnd !== undefined && candidate.lineEnd !== null && !Number.isSafeInteger(candidate.lineEnd))
       || (candidate.score !== undefined && !Number.isFinite(candidate.score))) throw failure('Search intelligence result')
@@ -342,14 +343,16 @@ function quickAnswerRequest(value: unknown): AssistantQuickAnswerRequest {
   ) throw failure('Quick Answer request')
   const ids = new Set<string>()
   const candidates = value.candidates.map(candidate => {
-    assertPlainRecord(candidate, ['id', 'path', 'line', 'lineEnd', 'preview'], 'Quick Answer request')
+    assertPlainRecord(candidate, ['id', 'revision', 'path', 'line', 'lineEnd', 'preview'], 'Quick Answer request')
     const id = opaqueId(candidate.id, 'Quick Answer request')
+    const revision = candidate.revision as string | undefined
     const line = candidate.line as number | null | undefined
     const lineEnd = candidate.lineEnd as number | null | undefined
-    if (ids.has(id) || typeof candidate.preview !== 'string' || candidate.preview.length > 4_096 || (line !== null && (line === undefined || !Number.isSafeInteger(line) || line < 1)) || (lineEnd !== undefined && lineEnd !== null && (!Number.isSafeInteger(lineEnd) || lineEnd < 1)) || (line !== null && line !== undefined && lineEnd !== undefined && lineEnd !== null && lineEnd < line)) throw failure('Quick Answer request')
+    if (ids.has(id) || revision !== undefined && (typeof revision !== 'string' || revision.length === 0 || revision.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(revision)) || typeof candidate.preview !== 'string' || candidate.preview.length > 4_096 || (line !== null && (line === undefined || !Number.isSafeInteger(line) || line < 1)) || (lineEnd !== undefined && lineEnd !== null && (!Number.isSafeInteger(lineEnd) || lineEnd < 1)) || (line !== null && line !== undefined && lineEnd !== undefined && lineEnd !== null && lineEnd < line)) throw failure('Quick Answer request')
     ids.add(id)
     return {
       id,
+      ...(revision === undefined ? {} : { revision }),
       path: safeRelativePath(candidate.path, 'Quick Answer request'),
       line: line as number | null,
       ...(lineEnd === undefined ? {} : { lineEnd: lineEnd as number | null }),

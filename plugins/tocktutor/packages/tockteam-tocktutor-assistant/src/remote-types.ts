@@ -31,6 +31,7 @@ export interface AssistantSearchIntelligenceResult {
   status: 'applied' | 'disabled' | 'provider-unavailable' | 'invalid-output' | 'error' | 'cancelled'
   matches: Array<{
     id?: string
+    revision?: string
     path: string
     kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task'
     line: number | null
@@ -44,6 +45,8 @@ export interface AssistantSearchIntelligenceResult {
 
 export interface AssistantQuickAnswerCandidate {
   id: string
+  /** Revision captured with the exact search candidate, when available. */
+  revision?: string
   path: string
   line: number | null
   lineEnd?: number | null

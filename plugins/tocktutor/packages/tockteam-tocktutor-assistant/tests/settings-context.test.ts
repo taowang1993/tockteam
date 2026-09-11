@@ -137,11 +137,13 @@ test('Quick Answer verifies semantic Related candidates against the current gene
     assert.equal(related.status, 'applied')
     const match = related.matches[0]
     assert.ok(match)
+    const revision = match.revision
+    if (typeof revision !== 'string') throw new Error('expected a candidate revision')
     const answered = await assistant.quickAnswer({
       mode: 'related',
       query: 'car',
       vaultGeneration: state.generation,
-      candidates: [{ id: 'qa-1', line: match.line, lineEnd: match.lineEnd, path: match.path, preview: match.preview }],
+      candidates: [{ id: 'qa-1', revision, line: match.line, ...(match.lineEnd === undefined ? {} : { lineEnd: match.lineEnd }), path: match.path, preview: match.preview }],
     }, new AbortController().signal)
     assert.deepEqual(answered, {
       status: 'completed',
@@ -152,14 +154,21 @@ test('Quick Answer verifies semantic Related candidates against the current gene
       mode: 'query',
       query: 'car',
       vaultGeneration: state.generation,
-      candidates: [{ id: 'qa-1', line: match.line, lineEnd: match.lineEnd, path: match.path, preview: match.preview }],
+      candidates: [{ id: 'qa-1', revision, line: match.line, ...(match.lineEnd === undefined ? {} : { lineEnd: match.lineEnd }), path: match.path, preview: match.preview }],
     }, new AbortController().signal)
-    assert.equal(automatic.status, 'completed')
+    assert.equal(automatic.status, 'no-evidence')
+    const staleRevision = await assistant.quickAnswer({
+      mode: 'related',
+      query: 'car',
+      vaultGeneration: state.generation,
+      candidates: [{ id: 'qa-1', revision: 'stale-revision', line: match.line, ...(match.lineEnd === undefined ? {} : { lineEnd: match.lineEnd }), path: match.path, preview: match.preview }],
+    }, new AbortController().signal)
+    assert.equal(staleRevision.status, 'no-evidence')
     const unknown = await assistant.quickAnswer({
       mode: 'related',
       query: 'car',
       vaultGeneration: state.generation,
-      candidates: [{ id: 'qa-1', line: 1, path: 'Unknown.md', preview: 'not in search results' }],
+      candidates: [{ id: 'qa-1', revision: 'unknown-revision', line: 1, path: 'Unknown.md', preview: 'not in search results' }],
     }, new AbortController().signal)
     assert.equal(unknown.status, 'no-evidence')
   } finally {

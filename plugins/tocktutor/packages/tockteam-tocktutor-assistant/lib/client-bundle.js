@@ -14632,6 +14632,7 @@ var _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_parameter_0$sch
   "titleOnly": external_exports.boolean().optional(),
   "candidates": external_exports.array(external_exports.object({
     "id": external_exports.string(),
+    "revision": external_exports.string().optional(),
     "path": external_exports.string(),
     "line": external_exports.union([external_exports.literal(null), external_exports.number()]),
     "lineEnd": external_exports.union([external_exports.literal(null), external_exports.number()]).optional(),
@@ -14681,6 +14682,7 @@ var _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_result$s
   "status": external_exports.union([external_exports.literal("applied"), external_exports.literal("disabled"), external_exports.literal("provider-unavailable"), external_exports.literal("invalid-output"), external_exports.literal("error"), external_exports.literal("cancelled")]),
   "matches": external_exports.array(external_exports.object({
     "id": external_exports.string().optional(),
+    "revision": external_exports.string().optional(),
     "path": external_exports.string(),
     "kind": external_exports.union([external_exports.literal("base"), external_exports.literal("block"), external_exports.literal("canvas"), external_exports.literal("content"), external_exports.literal("line"), external_exports.literal("path"), external_exports.literal("property"), external_exports.literal("section"), external_exports.literal("tag"), external_exports.literal("task")]),
     "line": external_exports.union([external_exports.literal(null), external_exports.number()]),

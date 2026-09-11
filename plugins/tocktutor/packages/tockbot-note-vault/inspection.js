@@ -2169,6 +2169,18 @@ async function scanCandidateVault(input, candidates, config, signal, visitor, op
   return state
 }
 
+function compareSearchMatches(left, right) {
+  return (right.score ?? 0) - (left.score ?? 0)
+    || compareVaultPaths(left.path, right.path)
+    || (left.line ?? -1) - (right.line ?? -1)
+    || (left.lineEnd ?? -1) - (right.lineEnd ?? -1)
+    || left.kind.localeCompare(right.kind)
+    || (left.operator ?? '').localeCompare(right.operator ?? '')
+    || (left.provenance ?? '').localeCompare(right.provenance ?? '')
+    || left.preview.localeCompare(right.preview)
+    || (left.revision ?? '').localeCompare(right.revision ?? '')
+}
+
 async function searchQueryVault(input, query, options, limit, config, signal, cursor) {
   const groups = parseSearchQuery(query, options)
   const start = inspectionDirectory(options.directory)
@@ -2221,14 +2233,7 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
           key: candidateKey,
         })
         if (state) {
-          matches.sort((left, right) => (
-            (right.score ?? 0) - (left.score ?? 0)
-            || compareVaultPaths(left.path, right.path)
-            || (left.line ?? -1) - (right.line ?? -1)
-            || left.kind.localeCompare(right.kind)
-            || (left.operator ?? '').localeCompare(right.operator ?? '')
-            || left.preview.localeCompare(right.preview)
-          ))
+          matches.sort(compareSearchMatches)
           const pageOffset = candidatePosition.path ? 0 : candidatePosition.offset
           const totalMatches = matches.length
           const page = matches.slice(pageOffset, pageOffset + limit)
@@ -2255,12 +2260,39 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
   }
   if (!state) {
     matches.length = 0
-    state = await scanVault(input, config, signal, visit, {
-      cursor,
+    const fallbackPosition = decodeCursor(cursor, 'query-search', key)
+    const sourceCursor = typeof fallbackPosition.sourceCursor === 'string'
+      ? fallbackPosition.sourceCursor
+      : undefined
+    state = await scanVault(input, config, signal, (document, paths, resumeOffset) => (
+      visit(document, paths, resumeOffset, true)
+    ), {
+      cursor: sourceCursor,
       key,
       operation: 'query-search',
       directory: start.path,
     })
+    matches.sort(compareSearchMatches)
+    const pageOffset = sourceCursor === undefined ? fallbackPosition.offset : 0
+    const totalMatches = matches.length
+    const page = matches.slice(pageOffset, pageOffset + limit)
+    matches.length = 0
+    matches.push(...page)
+    if (state.cursor !== null) {
+      state.truncated = true
+      state.truncationReason ??= 'entry-limit'
+      state.cursor = encodeCursor('query-search', key, {
+        path: '',
+        offset: 0,
+        sourceCursor: state.cursor,
+      })
+    } else if (pageOffset + page.length < totalMatches) {
+      state.truncated = true
+      state.truncationReason = 'result-limit'
+      state.cursor = encodeCursor('query-search', key, { path: '', offset: pageOffset + page.length })
+    } else {
+      state.cursor = null
+    }
   }
   boundSearchMatches(matches, state)
   return {

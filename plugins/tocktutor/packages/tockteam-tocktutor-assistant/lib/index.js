@@ -12,15 +12,27 @@ import { organizedCaptureContent, publicTockDriverWriteResult, registerAssistant
 import { TockTutorAssistantGateway, } from "./remote.js";
 const MAX_SEARCH_CANDIDATE_MAPS = 8;
 function answerCandidateKey(candidate) {
-    return `${candidate.path}:${String(candidate.line)}:${String(candidate.lineEnd ?? '')}:${candidate.preview}`;
+    return JSON.stringify([
+        candidate.path,
+        candidate.line,
+        candidate.lineEnd ?? null,
+        candidate.preview,
+        candidate.revision ?? null,
+    ]);
 }
-function searchCandidateMapKey(vaultId, vaultGeneration, request) {
+function searchRequestKey(request) {
     return JSON.stringify({
-        directory: request.directory ?? '',
+        directory: request.directory?.trim() ?? '',
+        mode: request.mode ?? 'query',
         modifiedFrom: request.modifiedFrom,
         modifiedTo: request.modifiedTo,
         query: request.query.trim(),
         titleOnly: request.titleOnly === true,
+    });
+}
+function searchCandidateMapKey(vaultId, vaultGeneration, request) {
+    return JSON.stringify({
+        requestKey: searchRequestKey(request),
         vaultGeneration,
         vaultId,
     });
@@ -582,7 +594,13 @@ export class NoteAssistant extends Service {
     rememberSearchCandidates(request, vaultId, matches) {
         const key = searchCandidateMapKey(vaultId, request.vaultGeneration, request);
         this.searchCandidateMaps.delete(key);
-        this.searchCandidateMaps.set(key, new Set(matches.map(answerCandidateKey)));
+        this.searchCandidateMaps.set(key, Object.freeze({
+            candidates: new Set(matches.map(answerCandidateKey)),
+            mode: request.mode,
+            requestKey: searchRequestKey(request),
+            vaultGeneration: request.vaultGeneration,
+            vaultId,
+        }));
         while (this.searchCandidateMaps.size > MAX_SEARCH_CANDIDATE_MAPS) {
             const oldest = this.searchCandidateMaps.keys().next().value;
             if (oldest === undefined)
@@ -597,15 +615,7 @@ export class NoteAssistant extends Service {
         const vault = this.noteVault.state;
         if (!vault.active || vault.generation !== request.vaultGeneration)
             return { status: 'error', matches: [] };
-        const result = await expandAndSearch(this.llm, request, settings.provider, settings.model, async (searchRequest, searchSignal) => {
-            const result = await this.noteVault.search(searchRequest, {
-                id: vault.id,
-                generation: vault.generation,
-            }, searchSignal);
-            if (result.generation !== vault.generation)
-                throw new Error('Search vault changed.');
-            return result;
-        }, signal, current => {
+        const isCurrent = (current) => {
             const currentVault = this.noteVault.state;
             const currentSettings = this.settings.get();
             return current.vaultGeneration === request.vaultGeneration
@@ -615,14 +625,21 @@ export class NoteAssistant extends Service {
                 && currentSettings.provider === settings.provider
                 && currentSettings.model === settings.model
                 && currentSettings.aiSearch === settings.aiSearch;
-        });
-        const currentVault = this.noteVault.state;
-        if (result.status === 'applied'
-            && currentVault.active
-            && currentVault.id === vault.id
-            && currentVault.generation === vault.generation) {
-            this.rememberSearchCandidates(request, vault.id, result.matches);
+        };
+        const result = await expandAndSearch(this.llm, request, settings.provider, settings.model, async (searchRequest, searchSignal) => {
+            const result = await this.noteVault.search(searchRequest, {
+                id: vault.id,
+                generation: vault.generation,
+            }, searchSignal);
+            if (result.generation !== vault.generation)
+                throw new Error('Search vault changed.');
+            return result;
+        }, signal, isCurrent);
+        if (result.status === 'applied' && (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration }))) {
+            return { status: 'cancelled', matches: [] };
         }
+        if (result.status === 'applied')
+            this.rememberSearchCandidates(request, vault.id, result.matches);
         return result;
     }
     async quickAnswer(request, signal) {
@@ -633,6 +650,20 @@ export class NoteAssistant extends Service {
         if (!vault.active || vault.generation !== request.vaultGeneration)
             return { status: 'error', answer: '', citations: [] };
         const mode = request.mode ?? 'query';
+        const isCurrent = (current) => {
+            const currentVault = this.noteVault.state;
+            const currentSettings = this.settings.get();
+            return current.vaultGeneration === request.vaultGeneration
+                && currentVault.active
+                && currentVault.id === vault.id
+                && currentVault.generation === vault.generation
+                && currentSettings.provider === settings.provider
+                && currentSettings.model === settings.model
+                && currentSettings.aiSearch === settings.aiSearch;
+        };
+        if (request.candidates.some(candidate => typeof candidate.revision !== 'string' || candidate.revision.length === 0)) {
+            return { status: 'no-evidence', answer: '', citations: [] };
+        }
         let exactMatches;
         try {
             const exact = await this.noteVault.search({
@@ -647,10 +678,24 @@ export class NoteAssistant extends Service {
             exactMatches = exact.matches;
         }
         catch {
+            if (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration })) {
+                return { status: 'cancelled', answer: '', citations: [] };
+            }
             return { status: 'error', answer: '', citations: [] };
         }
+        if (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration })) {
+            return { status: 'cancelled', answer: '', citations: [] };
+        }
+        const requestKey = searchRequestKey({ ...request, mode });
+        const cached = this.searchCandidateMaps.get(searchCandidateMapKey(vault.id, vault.generation, { ...request, mode }));
+        const relatedKeys = cached !== undefined
+            && cached.vaultId === vault.id
+            && cached.vaultGeneration === vault.generation
+            && cached.mode === mode
+            && cached.requestKey === requestKey
+            ? cached.candidates
+            : undefined;
         const exactKeys = new Set(exactMatches.map(answerCandidateKey));
-        const relatedKeys = this.searchCandidateMaps.get(searchCandidateMapKey(vault.id, vault.generation, request));
         for (const key of relatedKeys ?? [])
             exactKeys.add(key);
         if (request.candidates.some(candidate => !exactKeys.has(answerCandidateKey(candidate)))) {
@@ -661,17 +706,7 @@ export class NoteAssistant extends Service {
             if (result.generation !== vault.generation || result.path !== path)
                 throw new Error('Search vault changed.');
             return result;
-        }, signal, current => {
-            const currentVault = this.noteVault.state;
-            const currentSettings = this.settings.get();
-            return current.vaultGeneration === request.vaultGeneration
-                && currentVault.active
-                && currentVault.id === vault.id
-                && currentVault.generation === vault.generation
-                && currentSettings.provider === settings.provider
-                && currentSettings.model === settings.model
-                && currentSettings.aiSearch === settings.aiSearch;
-        });
+        }, signal, isCurrent);
     }
     async saveSettings(settings) {
         await this.settings.replace(settings);

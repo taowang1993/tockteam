@@ -16,6 +16,7 @@ export interface WorkbenchSearchIntelligenceResult {
 }
 export interface WorkbenchQuickAnswerCandidate {
     id: string;
+    revision?: string;
     path: string;
     line: number | null;
     lineEnd?: number | null;

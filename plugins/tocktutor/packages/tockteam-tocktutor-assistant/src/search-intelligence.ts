@@ -47,7 +47,16 @@ export function parseSearchExpansion(value: string): string[] {
 }
 
 function candidateKey(match: VaultSearchMatch): string {
-  return match.id ?? `${match.path}:${match.kind}:${String(match.line)}:${match.lineEnd ?? ''}:${match.preview}`
+  return JSON.stringify([
+    match.path,
+    match.kind,
+    match.line,
+    match.lineEnd ?? null,
+    match.operator ?? null,
+    match.preview,
+    match.provenance ?? null,
+    match.revision ?? null,
+  ])
 }
 
 function mergeCandidates(pages: readonly VaultSearchResult[]): VaultSearchMatch[] {
@@ -60,7 +69,15 @@ function mergeCandidates(pages: readonly VaultSearchResult[]): VaultSearchMatch[
     }
   }
   return [...byId.values()]
-    .toSorted((left, right) => (right.score ?? 0) - (left.score ?? 0) || left.path.localeCompare(right.path))
+    .toSorted((left, right) => (right.score ?? 0) - (left.score ?? 0)
+      || left.path.localeCompare(right.path)
+      || (left.line ?? -1) - (right.line ?? -1)
+      || (left.lineEnd ?? -1) - (right.lineEnd ?? -1)
+      || left.kind.localeCompare(right.kind)
+      || (left.operator ?? '').localeCompare(right.operator ?? '')
+      || (left.provenance ?? '').localeCompare(right.provenance ?? '')
+      || left.preview.localeCompare(right.preview)
+      || (left.revision ?? '').localeCompare(right.revision ?? ''))
     .slice(0, MAX_CANDIDATES)
 }
 
@@ -105,10 +122,24 @@ function assertQuickAnswerCandidates(candidates: readonly AssistantQuickAnswerCa
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(candidate.id) || ids.has(candidate.id)) throw new TypeError('Quick Answer candidate IDs must be unique and opaque.')
     ids.add(candidate.id)
     assertSafeRelativePath(candidate.path)
-    if (candidate.preview.length > 4_096 || (candidate.line !== null && (!Number.isSafeInteger(candidate.line) || candidate.line < 1)) || (candidate.lineEnd !== undefined && candidate.lineEnd !== null && (!Number.isSafeInteger(candidate.lineEnd) || candidate.lineEnd < 1)) || (candidate.line !== null && candidate.lineEnd !== undefined && candidate.lineEnd !== null && candidate.lineEnd < candidate.line)) {
+    if (candidate.revision === undefined
+      || candidate.revision.length === 0
+      || candidate.revision.length > 4_096
+      || /[\u0000-\u001f\u007f]/u.test(candidate.revision)
+      || candidate.preview.length > 4_096
+      || (candidate.line !== null && (!Number.isSafeInteger(candidate.line) || candidate.line < 1))
+      || (candidate.lineEnd !== undefined && candidate.lineEnd !== null && (!Number.isSafeInteger(candidate.lineEnd) || candidate.lineEnd < 1))
+      || (candidate.line !== null && candidate.lineEnd !== undefined && candidate.lineEnd !== null && candidate.lineEnd < candidate.line)) {
       throw new TypeError('Quick Answer candidate metadata is invalid.')
     }
   }
+}
+
+function searchBindingIsCurrent(
+  isCurrent: (binding: AssistantTurnBinding) => boolean,
+  binding: AssistantTurnBinding,
+): boolean {
+  try { return isCurrent(binding) } catch { return false }
 }
 
 function boundedExcerpt(content: string, line: number | null, lineEnd: number | null | undefined): string {
@@ -142,7 +173,7 @@ export async function answerSearchQuery(
   request: AssistantQuickAnswerRequest,
   provider: string,
   model: string,
-  read: (path: string, signal: AbortSignal) => Promise<{ path: string; content: string }>,
+  read: (path: string, signal: AbortSignal) => Promise<{ path: string; content: string; revision?: string }>,
   signal: AbortSignal,
   isCurrent: (binding: AssistantTurnBinding) => boolean = current => current.vaultGeneration === request.vaultGeneration,
 ): Promise<QuickAnswerResult> {
@@ -154,20 +185,21 @@ export async function answerSearchQuery(
   if (request.candidates.length === 0) return { status: 'no-evidence', answer: '', citations: [] }
   const binding = { ...SEARCH_BINDING, vaultGeneration: request.vaultGeneration }
   const excerpts: Array<{ candidate: AssistantQuickAnswerCandidate; excerpt: string }> = []
-  const readByPath = new Map<string, Promise<{ path: string; content: string }>>()
+  const readByPath = new Map<string, Promise<{ path: string; content: string; revision?: string }>>()
   for (const candidate of request.candidates) {
     if (!isCurrent(binding)) return { status: 'cancelled', answer: '', citations: [] }
     try {
       const pending = readByPath.get(candidate.path) ?? read(candidate.path, signal)
       readByPath.set(candidate.path, pending)
       const document = await pending
-      if (document.path !== candidate.path || typeof document.content !== 'string') continue
+      if (document.path !== candidate.path || typeof document.content !== 'string' || document.revision !== candidate.revision) continue
       const excerpt = boundedExcerpt(document.content, candidate.line, candidate.lineEnd)
       if (excerpt !== '') excerpts.push({ candidate, excerpt })
     } catch (error) {
       if (signal.aborted || (error instanceof Error && error.name === 'AbortError')) return { status: 'cancelled', answer: '', citations: [] }
     }
   }
+  if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding)) return { status: 'cancelled', answer: '', citations: [] }
   if (excerpts.length === 0) return { status: 'no-evidence', answer: '', citations: [] }
   const prompt = [
     'Return strict JSON only with exactly these keys: answer and citations.',
@@ -180,6 +212,7 @@ export async function answerSearchQuery(
   if (completion.status === 'error') return { status: completion.code === 'ABORTED' || completion.code === 'STALE_CONTEXT' ? 'cancelled' : completion.code === 'PROVIDER_UNAVAILABLE' ? 'provider-unavailable' : 'error', answer: '', citations: [] }
   try {
     const parsed = parseQuickAnswer(completion.text, new Map(excerpts.map(({ candidate }) => [candidate.id, candidate])))
+    if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding)) return { status: 'cancelled', answer: '', citations: [] }
     if (parsed.answer === '' || parsed.citations.length === 0) return { status: 'no-evidence', answer: '', citations: [] }
     return { status: 'completed', ...parsed }
   } catch {
@@ -237,19 +270,21 @@ export async function expandAndSearch(
     `User query: ${query}`,
   ].join('\n'), binding, signal, isCurrent)
   if (expansion.status === 'error') {
-    return { status: expansion.code === 'ABORTED' ? 'cancelled' : expansion.code === 'PROVIDER_UNAVAILABLE' ? 'provider-unavailable' : 'error', matches: [] }
+    return { status: expansion.code === 'ABORTED' || expansion.code === 'STALE_CONTEXT' ? 'cancelled' : expansion.code === 'PROVIDER_UNAVAILABLE' ? 'provider-unavailable' : 'error', matches: [] }
   }
   let queries: string[]
   try { queries = parseSearchExpansion(expansion.text) } catch { return { status: 'invalid-output', matches: [] } }
+  if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding)) return { status: 'cancelled', matches: [] }
   try {
     const pages = [await search(boundedSearchRequest(request, query, 'related'), signal)]
     for (const alternate of queries) {
-      if (signal.aborted) return { status: 'cancelled', matches: [] }
+      if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding)) return { status: 'cancelled', matches: [] }
       pages.push(await search(boundedSearchRequest(request, alternate), signal))
     }
+    if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding)) return { status: 'cancelled', matches: [] }
     return { status: 'applied', matches: mergeCandidates(pages) }
   } catch (error) {
-    if (signal.aborted || (error instanceof Error && error.name === 'AbortError')) return { status: 'cancelled', matches: [] }
+    if (signal.aborted || (error instanceof Error && error.name === 'AbortError') || !searchBindingIsCurrent(isCurrent, binding)) return { status: 'cancelled', matches: [] }
     return { status: 'error', matches: [] }
   }
 }
