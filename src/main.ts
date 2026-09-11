@@ -2412,7 +2412,7 @@ function initializeLauncher(): void {
           checkTrustedLaunch!()
           if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || trustedRaycastTrust?.status().digestApproved !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
           try {
-            await trustedRaycast.start(record.owner, { extensionId: 'google-translate', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) })
+            await trustedRaycast.start(record.owner, { extensionId: 'google-translate', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) }, '', checkTrustedLaunch)
             checkTrustedLaunch!()
           } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
         })
@@ -2424,7 +2424,7 @@ function initializeLauncher(): void {
           const trust = trustedRaycastKaomojiTrust?.status()
           if (!trustedRaycastChannel.active || !trustedRaycast?.availableFor('kaomoji-search') || trust?.enabled !== true || trust.digestApproved !== true || record.argument !== 'index') throw new Error('Kaomoji Search capability is unavailable')
           try {
-            await trustedRaycast.start(record.owner, { extensionId: 'kaomoji-search', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).values })
+            await trustedRaycast.start(record.owner, { extensionId: 'kaomoji-search', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).values }, '', checkTrustedLaunch)
             checkTrustedLaunch!()
           } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
         })
@@ -2436,7 +2436,7 @@ function initializeLauncher(): void {
           const trust = trustedRaycastCanIUseTrust?.status()
           if (!trustedRaycastChannel.active || !trustedRaycast?.availableFor('can-i-use') || trust?.enabled !== true || trust.digestApproved !== true || record.argument !== 'index') throw new Error('Can I Use capability is unavailable')
           try {
-            await trustedRaycast.start(record.owner, { extensionId: 'can-i-use', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile) })
+            await trustedRaycast.start(record.owner, { extensionId: 'can-i-use', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile) }, '', checkTrustedLaunch)
             checkTrustedLaunch!()
           } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
         })

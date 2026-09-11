@@ -93,7 +93,7 @@ export class TrustedRaycastManager {
     }
   }
   /** First-party configuration precedes any source process or upstream preference read. */
-  private openCanIUseSetup(owner: TrustedRaycastOwner, input: TrustedRaycastViewOpen, runtimeDir: string): void {
+  private openCanIUseSetup(owner: TrustedRaycastOwner, input: TrustedRaycastViewOpen, runtimeDir: string, checkLaunch?: () => void): void {
     if (this.disposed || this.session || this.setup || this.stopping || this.preview) throw new Error('Can I Use preferences are busy')
     const { workspace, artifactRoot } = this.stageWorkspace(runtimeDir, input)
     try {
@@ -104,6 +104,7 @@ export class TrustedRaycastManager {
       const values = prepareTrustedRaycastCanIUsePreferences(initial, { canonicalTargets: data.canonicalTargets }).preferences
       const fields = { defaultQuery: randomUUID(), showReleaseDate: randomUUID(), showPartialSupport: randomUUID(), briefMode: randomUUID() }
       const submitId = randomUUID()
+      checkLaunch?.()
       this.setup = { owner, input, workspace, data, values, fields, submitId, saving: false }
       this.options.onMessage(owner, { type: 'ready', extensionId: 'can-i-use', sessionId: input.sessionId, generation: input.generation, revision: 0,
         root: createTrustedRaycastCanIUsePreferenceForm(values, fields, submitId) })
@@ -206,7 +207,7 @@ export class TrustedRaycastManager {
       return ''
     } finally { try { canIUse?.close() } finally { await this.stopPreview() } }
   }
-  async start(owner: TrustedRaycastOwner, input: TrustedRaycastViewOpen, initialQuery = ''): Promise<void> {
+  async start(owner: TrustedRaycastOwner, input: TrustedRaycastViewOpen, initialQuery = '', checkLaunch?: () => void): Promise<void> {
     const startedAt = Date.now()
     if (this.disposed || this.session || this.setup || this.stopping || this.preview) throw new Error('Translate runtime is busy or closed')
     if (!isTrustedRaycastViewOpen(input)) throw new Error('Invalid Translate session')
@@ -214,7 +215,7 @@ export class TrustedRaycastManager {
     if (!isAbsolute(this.options.nodePath) || !existsSync(this.options.nodePath)) throw new Error('Packaged Node is unavailable')
     const runtimeDir = this.resolveRuntimeDir(input.extensionId)
     if (runtimeDir === undefined) throw new Error('Trusted extension capability is not installed')
-    if (input.extensionId === 'can-i-use' && Object.keys(input.preferences).length === 0) { this.openCanIUseSetup(owner, input, runtimeDir); return }
+    if (input.extensionId === 'can-i-use' && Object.keys(input.preferences).length === 0) { this.openCanIUseSetup(owner, input, runtimeDir, checkLaunch); return }
     let current: Session | undefined
     let workspace = ''
     try {
@@ -286,6 +287,8 @@ export class TrustedRaycastManager {
               return { ...node, props, children: node.children.map(child => typeof child === 'string' ? child : wrap(child)) }
             }
             const root = wrap(sourceRoot)
+            // Readiness replaces approval before start resolves; the captured launch must still own it.
+            if (message.type === 'ready') checkLaunch?.()
             this.options.onMessage(owner, { ...message, root: { ...root, props: { ...root.props, ...(root.props.searchable === true ? { searchEventId: session.eventId = randomUUID() } : {}), ...(session.canIUse ? { preferencesEventId: session.preferencesEventId = randomUUID(), themeEventId: session.themeEventId = randomUUID() } : {}), queryCurrent: querySequence === session.querySequence } } })
             resolveReady()
           } catch (error) { fail(error instanceof Error ? error : new Error('Invalid Translate output')); return }

@@ -79,8 +79,13 @@ test('launcher shortcut matching requires exact modifiers and supports finite pr
 
 test('theme changes refresh an active trusted view without rerunning root search', () => {
   assert.match(launcherSource, /if \(trustedView !== undefined\) \{ trustedView\.refreshTheme\(\); return \}/u)
-  assert.match(launcherSource, /if \(trustedView\) \{ trustedView\.dispose\(\); trustedView = undefined;/u)
-  assert.match(launcherSource, /if \(message\.type === 'ready'\) \{\s+trustedView\?\.dispose\(\)/u)
+  const close = launcherSource.slice(launcherSource.indexOf('const closeLocalTool ='), launcherSource.indexOf('const hideLauncherControls ='))
+  assert.match(close, /trustedView\.dispose\(\);\s*trustedView = undefined\b/u)
+  const ready = launcherSource.slice(launcherSource.indexOf("if (message.type === 'ready')"), launcherSource.indexOf('trustedView?.update(message)'))
+  assert.match(ready, /if \(!trustedOpening\) \{ closeTrusted\(\); return \}/u)
+  assert.ok(ready.indexOf('if (!trustedOpening)') < ready.indexOf('firstUseView?.dispose()'), 'reject unowned readiness before disposing approval')
+  assert.ok(ready.indexOf('firstUseView?.dispose()') < ready.indexOf('trustedView?.dispose()'), 'dispose approval before replacing the command')
+  assert.ok(ready.indexOf('trustedView?.dispose()') < ready.indexOf('trustedView = createTrustedRaycastView('), 'dispose the old command before its replacement')
 })
 
 test('programmatic launcher scrolling is instant when reduced motion is active', () => {

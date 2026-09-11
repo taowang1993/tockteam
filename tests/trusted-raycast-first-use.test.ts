@@ -29,6 +29,7 @@ function orchestration() {
   let preview = async () => {}
   let apply = () => {}
   let live = true
+  let launch = async (check: () => void) => { check(); calls.push('launch') }
   const store = {
     status: () => state,
     stage: () => { calls.push('stage'); state = { ...state, staged: true }; return state },
@@ -37,10 +38,10 @@ function orchestration() {
     enable: () => { calls.push('enable'); state = { ...state, enabled: true }; return state },
   }
   const flow = createTrustedRaycastFirstUse({ mutex: createTrustedRaycastMutex(), active: () => live, store: () => store,
-    rescan: async () => { calls.push('rescan') }, launch: async (_owner, _extension, check) => { check(); calls.push('launch') } })
+    rescan: async () => { calls.push('rescan') }, launch: async (_owner, _extension, check) => { await launch(check) } })
   flow.begin(1, extensionId)
   const run = (mode: 'approve' | 'enable' = 'approve', approvedDigest = digest) => flow.run(1, { extensionId, mode, digest: approvedDigest })
-  return { flow, run, calls, state: () => state, set: (value: Partial<typeof state>) => { state = { ...state, ...value } }, preview: (fn: () => Promise<void>) => { preview = fn }, apply: (fn: () => void) => { apply = fn }, revoke: () => { live = false } }
+  return { flow, run, calls, launch: (fn: typeof launch) => { launch = fn }, state: () => state, set: (value: Partial<typeof state>) => { state = { ...state, ...value } }, preview: (fn: () => Promise<void>) => { preview = fn }, apply: (fn: () => void) => { apply = fn }, revoke: () => { live = false } }
 }
 test('Host serializes exact consent through stage/preview/apply/enable/rescan/fresh launch', async () => {
   const h = orchestration(); await h.run()
@@ -115,8 +116,10 @@ test('real pinned store and action publication reach required preferences from a
     const check = flow.captureLaunch(owner.webContentsId, extensionId)
     await mutex(async () => {
       check(); assert.equal(store.status().enabled && store.status().digestApproved, true)
-      await manager.start(owner, { extensionId, command: 'index', sessionId: 'first-use', generation: 'first-use-generation', preferences: {} })
-      check()
+      try {
+        await manager.start(owner, { extensionId, command: 'index', sessionId: 'first-use', generation: 'first-use-generation', preferences: {} }, '', check)
+        check()
+      } catch (error) { await manager.closeOwner(owner); throw error }
     })
   } })
   try {
@@ -137,5 +140,63 @@ test('real pinned store and action publication reach required preferences from a
     assert.equal(messages.at(-1)?.root?.props.preferenceSetup, true)
     assert.equal((manager as unknown as { session?: unknown }).session, undefined, 'source stays unloaded until required preferences')
     await assert.rejects(actions.invoke({ owner, actionId: setup.defaultAction.actionId }), /consumed/)
+    await manager.closeOwner(owner)
+    const count = messages.length
+    await assert.rejects(manager.start(owner, { extensionId, command: 'index', sessionId: 'revoked-setup', generation: 'revoked-setup', preferences: {} }, '', () => { throw new Error('Extension opening canceled') }), /canceled/)
+    assert.equal(messages.length, count, 'revoked preference setup cannot publish ready')
+    assert.equal(manager.active, false)
   } finally { await manager.close(); rmSync(root, { recursive: true, force: true }) }
+})
+
+import { spawn } from 'node:child_process'
+// @ts-expect-error Existing helper terminates and verifies the complete owned process group.
+import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
+
+test('revocation during pending startup suppresses ready, returns cancellation and stops the child', { skip: process.platform === 'win32', timeout: 10000 }, async t => {
+  for (const reason of ['capability', 'owner', 'superseded'] as const) {
+    const workspace = mkdtempSync(join(tmpdir(), 'first-use-delayed-start-'))
+    // Only the process boundary is injected; no fixture is admitted as a reviewed extension.
+    const child = spawn(process.execPath, ['-e', 'process.stdin.once("data", data => { process.stdout.write(data); }); setInterval(() => {}, 1000)'], { detached: true })
+    t.diagnostic(`owned delayed-start root PID/group: ${child.pid}`)
+    const h = orchestration()
+    const owner = { webContentsId: 1 }
+    const messages: import('../src/trusted-raycast-contract.ts').TrustedRaycastViewMessage[] = []
+    const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage: (_owner, message) => { messages.push(message) } })
+    Reflect.set(manager, 'createWorkspace', () => ({ child, workspace }))
+    const input = { extensionId: 'google-translate' as const, command: 'translate' as const, sessionId: 'delayed', generation: 'delayed', preferences: {} }
+    const mutex = createTrustedRaycastMutex()
+    let started!: () => void
+    const starting = new Promise<void>(resolve => { started = resolve })
+    h.launch(async check => {
+      await mutex(async () => {
+        check()
+        try {
+          const pending = manager.start(owner, input, '', check)
+          started()
+          await pending
+          check()
+        } catch (error) { await manager.closeOwner(owner); throw error }
+      })
+    })
+    const pending = h.run()
+    const rejected = assert.rejects(pending, /Extension opening canceled/)
+    try {
+      await starting
+      if (reason === 'capability') h.revoke()
+      else if (reason === 'owner') h.flow.cancel(owner.webContentsId)
+      else h.flow.begin(owner.webContentsId, 'kaomoji-search')
+      const stopping = mutex(async () => { await manager.closeOwner(owner) })
+      child.stdin.write(JSON.stringify({ ...input, command: undefined, preferences: undefined, type: 'ready', revision: 0, root: { type: 'root', props: { querySequence: 0 }, children: [] } }) + '\n')
+      await rejected
+      await stopping
+      assert.equal(messages.some(message => message.type === 'ready'), false, `${reason}: canceled startup must not dispose approval`)
+      assert.equal(manager.active, false)
+      assert.equal(existsSync(workspace), false)
+    } finally {
+      await manager.close()
+      await stopOwnedChild(child, 30, true)
+      rmSync(workspace, { recursive: true, force: true })
+      assert.throws(() => process.kill(-child.pid!, 0), { code: 'ESRCH' })
+    }
+  }
 })

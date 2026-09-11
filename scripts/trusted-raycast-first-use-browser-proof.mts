@@ -35,6 +35,7 @@ const proof = window.firstUseProof = { states, approvals:[], launches:[], deferR
   pauseClose() { this.closeBarrier = new Promise(resolve => { releaseClose = resolve }); },
   releaseClose() { releaseClose(); this.closeBarrier = undefined; },
   emitPending() { listener(this.pending); this.pending = undefined; },
+  pauseFirstUse() { this.firstUseBarrier = new Promise(resolve => { this.cancelFirstUse = () => resolve(false); }); },
   releaseInvoke() { releaseInvoke(); this.deferInvoke=false; },
   theme(mode) { themeListener({mode,skinId:null,revision:++counter}); },
 };
@@ -57,6 +58,11 @@ window.tockteamLauncher = {
   trustedRaycastFirstUse: async request => {
     proof.approvals.push(request); if(proof.failIPC) throw Error('IPC disconnected');
     const state = states[request.extensionId]; Object.assign(state, {installed:true,enabled:true,digestApproved:true,digest:request.digest});
+    if (proof.firstUseBarrier) {
+      proof.firstUsePending = true;
+      await proof.firstUseBarrier; proof.firstUseBarrier = undefined; state.active = false;
+      return {extensionId:request.extensionId,ok:false,state:{...state},error:'Extension opening canceled'};
+    }
     ready(request.extensionId); return {extensionId:request.extensionId,ok:true,state:{...state}};
   },
   trustedRaycastClose: async () => { proof.closes++; await proof.closeBarrier; return {ok:true}; },
@@ -124,6 +130,17 @@ try {
     await page.evaluate(() => { window.firstUseProof.states['kaomoji-search'].enabled=false; });
     await open('Kaomoji'); await page.getByRole('button',{name:'Enable and Open',exact:true}).waitFor();
     check(!(await page.evaluate(() => window.firstUseProof.states['kaomoji-search'].enabled)),'ordinary Enter must not enable');
+    await page.evaluate(() => window.firstUseProof.pauseFirstUse());
+    await page.keyboard.press('Enter'); await page.waitForFunction(() => window.firstUseProof.firstUsePending);
+    check(await page.evaluate(() => document.activeElement?.textContent === 'Back to Results'),'pending approval keeps keyboard focus inside the launcher');
+    await page.evaluate(() => window.firstUseProof.cancelFirstUse());
+    await page.getByRole('alert').filter({hasText:'Extension opening canceled'}).waitFor();
+    check(await page.locator('#trusted-raycast-search').count() === 0,'revoked readiness must leave cancellation visible in approval');
+    check(await page.evaluate(() => document.activeElement?.textContent === 'Back to Results'),'capability loss keeps Escape reachable');
+    await page.screenshot({path:${JSON.stringify(join(evidence, 'startup-canceled-light.png'))}});
+    await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
+    await page.evaluate(() => { Object.assign(window.firstUseProof.states['kaomoji-search'], {active:true,enabled:false}); });
+    await open('Kaomoji'); await page.getByRole('button',{name:'Enable and Open',exact:true}).waitFor();
     await page.keyboard.press('Enter'); await page.locator('#trusted-raycast-search').waitFor();
     await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
     await open('Extensions'); await page.getByRole('tab',{name:'Google Translate',exact:true}).waitFor();
@@ -133,7 +150,7 @@ try {
     await page.waitForTimeout(150);
     await page.screenshot({path:${JSON.stringify(join(evidence, 'extensions-light.png'))}});
     await page.evaluate(() => window.firstUseProof.theme('dark')); await page.screenshot({path:${JSON.stringify(join(evidence, 'extensions-dark.png'))}});
-    return {cold:true,warm:true,escape:true,lateReadyFenced:true,ipcRetry:true,sharedExtensions:true,disabledConsent:true,keyboardManagement:true};
+    return {cold:true,warm:true,escape:true,lateReadyFenced:true,startupCancellationVisible:true,ipcRetry:true,sharedExtensions:true,disabledConsent:true,keyboardManagement:true};
   }`)
   await writeFile(join(evidence, 'result.txt'), output)
   console.log(output)

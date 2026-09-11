@@ -12,7 +12,9 @@ class FakeApp extends EventEmitter {
 }
 class FakeWindow extends EventEmitter {
   destroyed = false
-  constructor(readonly id: number, private focused = false) { super() }
+  readonly id: number
+  private focused: boolean
+  constructor(id: number, focused = false) { super(); this.id = id; this.focused = focused }
   destroy(): void { this.destroyed = true }
   isFocused(): boolean { return this.focused }
   setFocused(value: boolean): void { this.focused = value }

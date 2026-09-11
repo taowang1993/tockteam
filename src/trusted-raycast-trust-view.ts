@@ -207,14 +207,14 @@ export function createTrustedRaycastFirstUseView(
     if (disposed || busy || approve.disabled) return
     if (!state) { load(); return }
     if (state.recovery) { onManage(); return }
-    busy = true; error.hidden = true; render()
+    busy = true; error.hidden = true; render(); back.focus()
     void onApprove(state.installed ? state.digest : state.candidateDigest, state.installed ? 'enable' : 'approve').catch(async failure => {
       if (disposed) return
       error.textContent = failure instanceof Error ? failure.message : 'Unavailable'; error.hidden = false
       // Partial commits survive errors. Refresh review, never retry consent automatically.
       try { const next = await bridge.getTrustedRaycastTrust(extensionId); if (!disposed) state = next }
       catch { state = undefined; approve.disabled = false; approve.textContent = zh ? '重试' : 'Retry'; status.textContent = '' }
-    }).finally(() => { busy = false; render(); if (!disposed) approve.focus() })
+    }).finally(() => { busy = false; render(); if (!disposed) (approve.disabled ? back : approve).focus() })
   })
   element.addEventListener('keydown', event => {
     if (event.key === 'Enter' && (event.repeat || event.isComposing || busy)) { event.preventDefault(); event.stopPropagation() }
@@ -222,7 +222,7 @@ export function createTrustedRaycastFirstUseView(
   const load = (): void => {
     busy = true; approve.disabled = true; error.hidden = true
     void bridge.getTrustedRaycastTrust(extensionId).then(next => {
-      if (!disposed) { busy = false; state = next; render(); approve.focus() }
+      if (!disposed) { busy = false; state = next; render(); (approve.disabled ? back : approve).focus() }
     }).catch(failure => {
       if (!disposed) {
         busy = false; state = undefined; status.textContent = ''
