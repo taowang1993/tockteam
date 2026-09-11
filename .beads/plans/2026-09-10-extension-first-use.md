@@ -90,4 +90,4 @@ No unrestricted extension store, new extensions, Raycast-wide clone, runtime/age
 
 ## Tracking
 
-Epic: **`tockteam-u67`**. Its three child issues above contain the acceptance checks and implementation status. Planning and source implementation are complete with source acceptance at `c0cf353f`; the bounded macOS installed Can I Use first-use proof passed at `156478b5`. Remaining gaps are broader installed/platform evidence, screenshots from an installed run, and parent Beads closure; no release or push is implied.
+Epic: **`tockteam-u67`**. Its three child issues above contain the acceptance checks and implementation status. Planning and source implementation are complete; source acceptance is documented in `.beads/reports/2026-09-11-extension-first-use-continuation.md` (reviewer run `c0cf353f`). The bounded macOS installed Can I Use first-use proof passed at application commit `156478b5`; independent final reviewer `d38ef909` found no issues in the evidence at `900b3a7b`. Follow-up `tockteam-dnw` is closed. Broader installed/platform coverage and installed screenshots remain outside this acceptance; no release or push is implied.
