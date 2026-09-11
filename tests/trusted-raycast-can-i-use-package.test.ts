@@ -12,6 +12,10 @@ import { TrustedRaycastTrustStore } from '../src/trusted-raycast-trust.ts'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 import { trustedRaycastDataPaths } from '../src/trusted-raycast-paths.ts'
 
+test('the installed-app gate exercises Can I Use rather than only checking package filenames', () => {
+  assert.match(readFileSync('scripts/launcher-packaged-smoke.mjs', 'utf8'), /await runCanIUseInstalledSmoke\(launcher, userData, \{ waitFor, clickExactText \}\)/)
+})
+
 test('Can I Use ships its admitted artifact and surviving legal inventory without touching other extensions', { skip: process.platform === 'win32', timeout: 30000 }, async () => {
   const descriptor = getTrustedRaycastRuntimeDescriptor('can-i-use')!
   const artifact = resolve('plugins/trusted-raycast/vendor/can-i-use.tar')

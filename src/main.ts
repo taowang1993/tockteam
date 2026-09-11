@@ -2274,7 +2274,8 @@ function initializeLauncher(): void {
     stateFile: kaomojiTrustedPaths.trustFile,
     preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Kaomoji runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir, 'kaomoji-search'),
   })
-  trustedRaycastCanIUseTrust = new TrustedRaycastTrustStore({
+  // The pinned trusted runtime currently depends on the POSIX tar executable.
+  trustedRaycastCanIUseTrust = process.platform === 'win32' ? undefined : new TrustedRaycastTrustStore({
     descriptor: trustedRaycastDescriptors['can-i-use'],
     installRoot: canIUseTrustedPaths.installRoot,
     candidateDir: join(currentDir, 'trusted-raycast-can-i-use'),

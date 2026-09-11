@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { Arch, DIR_TARGET, Platform, build } from 'electron-builder'
 import { stopChildProcess } from './process-cleanup.mjs'
+import { runCanIUseInstalledSmoke } from './trusted-raycast-can-i-use-installed-proof.mjs'
 import { LAUNCHER_CSP, LAUNCHER_SESSION_PARTITION } from '../src/launcher-security.ts'
 import { canonicalPath, pathContained } from './path-identity.mjs'
 
@@ -1180,6 +1181,8 @@ export async function runRendererSmoke(workbench, launcher, inventory, userData,
   await launcher.pressKey('Escape')
   await waitFor(() => launcher.evaluate('document.querySelector("[aria-label=\\"Base64 Conversion Tool\\"]") === null'), closed => closed === true)
 
+  const canIUse = await runCanIUseInstalledSmoke(launcher, userData, { waitFor, clickExactText })
+
   const originalFuzziness = typeof beforeSettings.values['searchEngine.fuzziness'] === 'number'
     ? beforeSettings.values['searchEngine.fuzziness']
     : 0.5
@@ -1206,6 +1209,7 @@ export async function runRendererSmoke(workbench, launcher, inventory, userData,
   assert.equal(runtimeArchitecture, process.arch)
   return Object.freeze({
     launcher: launcherFacts,
+    canIUse,
     runtimeArchitecture,
     security: canonicalSecurityEvidence,
     search: searchResult,
