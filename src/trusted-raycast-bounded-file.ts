@@ -2,7 +2,7 @@ import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs'
 
 export function readBoundedRegularFile(path: string, maxBytes: number): string {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new Error('Invalid bounded file limit')
-  const fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+  const fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0))
   try {
     const stat = fstatSync(fd)
     if (!stat.isFile() || stat.size > maxBytes) throw new Error('Bounded file is invalid')
