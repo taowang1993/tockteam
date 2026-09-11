@@ -16,6 +16,7 @@ const tuiPatch = readFileSync(new URL('../plugins/tui/cordis.patch.yml', import.
 const electronSmoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
 const packagedSmoke = readFileSync(new URL('../scripts/launcher-packaged-smoke.mjs', import.meta.url), 'utf8')
 const installedSmoke = readFileSync(new URL('../scripts/launcher-installed-smoke.mjs', import.meta.url), 'utf8')
+const smokeRuntime = readFileSync(new URL('../scripts/smoke-runtime.mjs', import.meta.url), 'utf8')
 
 test('main activates the macOS app before handling a cross-display launcher shortcut', () => {
   assert.match(main, /globalShortcut: \{[\s\S]*?const workbench = mainWindow[\s\S]*?screen\.getDisplayMatching\(workbench\.getBounds\(\)\)\.id[\s\S]*?screen\.getDisplayNearestPoint\(screen\.getCursorScreenPoint\(\)\)\.id[\s\S]*?app\.focus\(\{ steal: true \}\)\s*setImmediate\(callback\)\s*return/u)
@@ -160,6 +161,8 @@ test('temporary Electron smoke launches use Chromium mock keychain on macOS', ()
   assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.macElectronSmokeArgs,/u)
   assert.match(installedSmoke, macSmokeArgs)
   assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.macElectronSmokeArgs,/u)
+  assert.match(smokeRuntime, macSmokeArgs)
+  assert.match(smokeRuntime, /const client = spawnSync\(electronBinary, \[\s*\.\.\.macElectronSmokeArgs,/u)
 })
 
 test('workbench preload waits for route readiness before initial launcher appearance sync', () => {
