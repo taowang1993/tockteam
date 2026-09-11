@@ -53,8 +53,8 @@ const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/elect
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
 
-export function shouldRemoveInstalledSmokeRoot({ firstUse, processTreesGone, keepArtifacts }) {
-  return keepArtifacts || !firstUse || processTreesGone === true
+export function shouldRemoveInstalledSmokeRoot({ firstUse, processTreesGone }) {
+  return !firstUse || processTreesGone === true
 }
 
 /** Installed/package proof admits either an explicit update candidate or the repository-owned reviewed bundle. */
@@ -348,14 +348,14 @@ async function installedFirstUseSession(executable, userData, inventory, options
       const residue = matches(snapshot)
       if (samplingError !== undefined) throw new Error(`installed process sampling failed: ${samplingError instanceof Error ? samplingError.message : String(samplingError)}`)
       if (residue.length) throw new Error(`owned installed processes remain: ${residue.map(row => `${row.pid}:${row.command}`).join('; ')}`)
-      this.cleaned = Object.freeze({ observedPids: [...observedProcesses.keys()].sort((left, right) => left - right), residuePids: [] })
+      this.cleaned = Object.freeze({ observedPids: [...observedProcesses.keys()].sort((left, right) => left - right), residuePids: [], rootPid })
       return this.cleaned
     },
   }
   try {
     assert.ok(launched.focus !== undefined, 'installed first-use proof must authenticate inherited focus IPC')
     assert.ok(launched.child.pid !== undefined, 'installed first-use proof must expose a root PID')
-    await launched.focus.checkpoint('installed-first-use-ready')
+    const startupCheckpoint = await launched.focus.checkpoint('installed-first-use-ready')
     const canIUse = await runCanIUseInstalledSmoke(launched.launcher, userData, {
       waitFor,
       clickExactText: async (page, text) => await page.evaluate(`(() => { const button = [...document.querySelectorAll('button, summary')].find(element => element.textContent?.trim() === ${JSON.stringify(text)} && element.getClientRects().length && !element.matches(':disabled')); if (!(button instanceof HTMLElement)) return false; button.click(); return true })()`),
@@ -363,9 +363,16 @@ async function installedFirstUseSession(executable, userData, inventory, options
       clickSelector: selector => launched.launcher.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!(element instanceof HTMLElement) || element.hidden || !element.getClientRects().length || element.matches(':disabled')) return false; element.focus(); if (document.activeElement !== element) return false; element.click(); return true })()`),
       firstUseOnly: true,
     })
-    await launched.focus.checkpoint('installed-first-use-complete')
+    const finalCheckpoint = await launched.focus.checkpoint('installed-first-use-complete')
     await launched.focus.assertClean()
-    return Object.freeze({ canIUse, launched, inventory, processEvidence })
+    return Object.freeze({
+      canIUse,
+      checkpoints: Object.freeze({ final: finalCheckpoint, startup: startupCheckpoint }),
+      launch: Object.freeze({ argv: Object.freeze([...(launched.child.spawnargs ?? [])].map(value => String(value))), pid: launched.child.pid }),
+      launched,
+      inventory,
+      processEvidence,
+    })
   } catch (error) {
     let failure = error
     try {
@@ -608,7 +615,10 @@ async function runInstalledFirstUseSmoke(artifact) {
       directExecutable: identity.executable,
       firstUse: canIUse,
       installRoot: destination,
+      launch: first.launch,
       package: inventory,
+      checkpoints: first.checkpoints,
+      cleanupEvidence: cleanup.processEvidence,
       observedPids: cleanup.processEvidence.observedPids,
       processTreesGone: cleanup.processEvidence.residuePids.length === 0,
       temporaryInstallRemoved: true,
@@ -955,7 +965,7 @@ async function main() {
     throw error
   } finally {
     const keepArtifacts = process.env.TOCKTEAM_KEEP_INSTALLED_SMOKE === '1'
-      || !shouldRemoveInstalledSmokeRoot({ firstUse: process.argv.includes(LAUNCHER_INSTALLED_FIRST_USE_FLAG), processTreesGone: evidence?.installed?.processTreesGone === true, keepArtifacts: false })
+      || !shouldRemoveInstalledSmokeRoot({ firstUse: process.argv.includes(LAUNCHER_INSTALLED_FIRST_USE_FLAG), processTreesGone: evidence?.installed?.processTreesGone === true })
     if (!keepArtifacts) await rm(smokeRoot, { recursive: true, force: true })
     else console.log(`TockTeam installed launcher smoke artifacts retained at ${smokeRoot}`)
   }

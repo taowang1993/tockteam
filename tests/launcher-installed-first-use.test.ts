@@ -63,6 +63,9 @@ test('installed first-use harness is inactive, authenticated, direct, and first-
   assert.match(installed, /focusProofDescendants[\s\S]*pathMarkers/u)
   assert.doesNotMatch(installed, /tockteam-trusted-raycast-/u)
   assert.match(installed, /processEvidence[\s\S]*cleanup\(\)/u)
+  assert.match(installed, /checkpoints: Object\.freeze\(\{ final: finalCheckpoint, startup: startupCheckpoint \}\)/u)
+  assert.match(installed, /launch: Object\.freeze\(\{ argv: Object\.freeze\(\[\.\.\.\(launched\.child\.spawnargs/u)
+  assert.match(installed, /cleanupEvidence: cleanup\.processEvidence/u)
   const firstUse = installed.slice(installed.indexOf('async function runInstalledFirstUseSmoke'), installed.indexOf('async function runMacInstalledSmoke'))
   assert.doesNotMatch(firstUse, /processTreesGone: true/u)
   assert.doesNotMatch(installed, /finalCheckpoint\.focusInconclusiveCount/u)
@@ -70,10 +73,9 @@ test('installed first-use harness is inactive, authenticated, direct, and first-
 })
 
 test('first-use cleanup failure preserves the disposable root', () => {
-  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: true, processTreesGone: false, keepArtifacts: false }), false)
-  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: true, processTreesGone: true, keepArtifacts: false }), true)
-  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: false, processTreesGone: false, keepArtifacts: false }), true)
-  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: true, processTreesGone: false, keepArtifacts: true }), true)
+  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: true, processTreesGone: false }), false)
+  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: true, processTreesGone: true }), true)
+  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: false, processTreesGone: false }), true)
 })
 
 test('detached descendant identity remains residue until owned cleanup', () => {
