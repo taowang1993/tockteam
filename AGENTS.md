@@ -82,6 +82,10 @@ Folder: `.agents/uiux/`
 
 Use a bounded Playwright browser session (including Playwright’s Electron/CDP connection when Desktop is the target) for app-scoped navigation, interaction, and screenshot capture at a 1512 × 949 CSS-pixel viewport with a 2× device scale, producing 3024 × 1898-pixel screenshots; record and verify that exact CSS/device-pixel geometry, route/content/mode, visible state, and runtime-error evidence, publish only allowlisted screenshots transactionally, and stop the full browser/app/server process tree.
 
+- Canonical TockTutor-versus-Obsidian comparison screenshots must use the built-in dark theme and no active TockTeam skin: `colorScheme: 'dark'` and `skinId: null`. This is the default parity baseline and must match Obsidian’s default dark appearance.
+- Do not inherit system appearance, persisted profile settings, or a previously selected skin. For isolated Desktop captures, seed `skins.json` with `{"activeId":null,"fallbackTheme":"dark"}`; before taking or publishing the screenshot, verify `document.documentElement.style.colorScheme === 'dark'` and that `document.documentElement.dataset.tockteamSkin` is absent, and record those facts in the proof.
+- A light theme or named skin is allowed only for a separately labeled theme/skin capture, never for the canonical parity screenshot.
+
 ## Development Guidelines
 
 - Must reuse `plugins/shared/surface.ts`. Never provide a TockTeam surface as `ctx.web`; DSH owns that service name.
