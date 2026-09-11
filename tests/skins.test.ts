@@ -207,6 +207,21 @@ test('desktop skins restore a persisted choice after theme registration', () => 
   assert.equal(dom.active, 'tockteam-skin-porcelain')
 })
 
+test('desktop skins restore a non-system fallback without a selected skin', () => {
+  const storage = new MemoryStorage()
+  storage.setItem(FALLBACK_THEME_KEY, 'dark')
+  const theme = new FakeThemeService('system')
+  const dom = new FakeSkinDom()
+  const controller = new DesktopSkinsController(theme, storage, dom)
+
+  controller.start()
+
+  assert.equal(theme.getTheme().preference, 'dark')
+  assert.equal(theme.getTheme().active.id, 'dark')
+  assert.equal(controller.getSnapshot().activeId, null)
+  assert.equal(dom.active, undefined)
+})
+
 test('delayed appearance hydration preserves a skin restored from disk', () => {
   const storage = new MemoryStorage()
   storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-jade-circuit')
