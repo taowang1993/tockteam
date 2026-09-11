@@ -14,6 +14,8 @@ const tockTutorRoute = readFileSync(new URL('../plugins/tocktutor/packages/tockt
 const webPatch = readFileSync(new URL('../web/cordis.patch.yml', import.meta.url), 'utf8')
 const tuiPatch = readFileSync(new URL('../plugins/tui/cordis.patch.yml', import.meta.url), 'utf8')
 const electronSmoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
+const packagedSmoke = readFileSync(new URL('../scripts/launcher-packaged-smoke.mjs', import.meta.url), 'utf8')
+const installedSmoke = readFileSync(new URL('../scripts/launcher-installed-smoke.mjs', import.meta.url), 'utf8')
 
 test('main activates the macOS app before handling a cross-display launcher shortcut', () => {
   assert.match(main, /globalShortcut: \{[\s\S]*?const workbench = mainWindow[\s\S]*?screen\.getDisplayMatching\(workbench\.getBounds\(\)\)\.id[\s\S]*?screen\.getDisplayNearestPoint\(screen\.getCursorScreenPoint\(\)\)\.id[\s\S]*?app\.focus\(\{ steal: true \}\)\s*setImmediate\(callback\)\s*return/u)
@@ -146,6 +148,18 @@ test('fixture smoke reads host-owned effect counters instead of renderer authori
   assert.match(electronSmoke, /launcherVisible/u)
   assert.match(electronSmoke, /pressKey\('Escape'\)/u)
   assert.match(electronSmoke, /TOCKTEAM_WORKFLOW_SLOW_HISTORY/u)
+})
+
+test('temporary Electron smoke launches use Chromium mock keychain on macOS', () => {
+  const macSmokeArgs = /const macElectronSmokeArgs = process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]/u
+  assert.match(electronSmoke, macSmokeArgs)
+  assert.match(electronSmoke, /const child = spawn\(electron, \[\s*\.\.\.macElectronSmokeArgs,/u)
+  assert.match(electronSmoke, /const toggle = spawn\(electron, \[\s*\.\.\.macElectronSmokeArgs,/u)
+  assert.match(electronSmoke, /restartedChild = spawn\(electron, \[\s*\.\.\.macElectronSmokeArgs,/u)
+  assert.match(packagedSmoke, macSmokeArgs)
+  assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.macElectronSmokeArgs,/u)
+  assert.match(installedSmoke, macSmokeArgs)
+  assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.macElectronSmokeArgs,/u)
 })
 
 test('workbench preload waits for route readiness before initial launcher appearance sync', () => {
