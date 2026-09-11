@@ -71,5 +71,5 @@ export function trustedRaycastCanIUseRootCounts() {
     const count = Object.keys(detail.agents).length
     return Object.freeze({ visibleCount: count, matchCount: count, totalCount: count })
   }
-  return Object.freeze({ visibleCount: current.visibleCount, matchCount: current.matchCount, totalCount: current.totalCount })
+  return Object.freeze({ visibleCount: current.visibleCount, matchCount: current.matchCount, totalCount: current.totalCount, searchText: current.query })
 }

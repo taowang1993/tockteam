@@ -21,7 +21,7 @@ test('Host loads only the pinned Can I Use asset from its selected runtime direc
 test('an invalid source publication revokes the previously published search capability', () => {
   const runtime = createTrustedRaycastCanIUseRuntime(vendor, 'publication-test', { showReleaseDate: true, showPartialSupport: false, briefMode: false, defaultQuery: 'chrome 100', path: '', environment: '' })
   const packet = JSON.parse(runtime.initialMessage)
-  const root = { type: 'root', props: { navigationDepth: 0, visibleCount: packet.features.length, matchCount: packet.matchCount, totalCount: packet.totalCount },
+  const root = { type: 'root', props: { navigationDepth: 0, searchText: packet.query, visibleCount: packet.features.length, matchCount: packet.matchCount, totalCount: packet.totalCount },
     children: packet.features.map((row: { slug: string; title: string }) => ({ type: 'raycast-list-item', props: { title: row.title, featureName: row.slug }, children: ['Show Details', 'Open in Browser'].map(title => ({ type: 'raycast-action', props: { title, unavailable: true }, children: [] })) })) }
   assert.throws(() => runtime.search('css-grid'), /SNAPSHOT_STALE/)
   runtime.publish(root)

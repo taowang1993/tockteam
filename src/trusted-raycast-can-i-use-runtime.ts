@@ -16,12 +16,12 @@ export function loadTrustedRaycastCanIUseData(directory: string) {
 }
 
 /** One Host-owned search/detail lifecycle. No renderer-supplied snapshot, workspace or feature table. */
-export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId: string, preferences: unknown) {
+export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId: string, preferences: unknown, initialQuery: unknown = '') {
   const data = loadTrustedRaycastCanIUseData(directory)
   const context = Object.freeze({ extensionId: 'can-i-use', command: 'index', sessionId, workspaceId: 'no-workspace',
     snapshotIdentity: TRUSTED_RAYCAST_CAN_I_USE_ASSET.sha256, snapshotGeneration: 0 })
   const registry = new TrustedRaycastCanIUseActionRegistry()
-  let prepared = prepareTrustedRaycastCanIUseRoot(data, preferences, context, registry, '')
+  let prepared = prepareTrustedRaycastCanIUseRoot(data, preferences, context, registry, initialQuery)
   let searchHandle: TrustedRaycastCanIUseActionHandle | undefined
   let popHandle: TrustedRaycastCanIUseActionHandle | undefined
   let detail: { ticket: TrustedRaycastCanIUseRevisionTicket; data: ReturnType<typeof data.sourceDetail> } | undefined
@@ -32,6 +32,7 @@ export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId:
   ]
   return Object.freeze({
     context, preferences: prepared.preferences, initialMessage: prepared.message,
+    get query(): string { return JSON.parse(prepared.message).query },
     validatePreferences(value: unknown) { return prepareTrustedRaycastCanIUsePreferences(value, { canonicalTargets: data.canonicalTargets }).preferences },
     publish(root: TrustedRaycastViewNode): TrustedRaycastViewNode {
       try {
@@ -40,6 +41,7 @@ export function createTrustedRaycastCanIUseRuntime(directory: string, sessionId:
         if (metrics.itemNodes > 64 || metrics.actionNodes > 128 || metrics.actionableHandles !== 0 || metrics.rootBytes > 128 * 1024) failTrustedRaycastCanIUse('RENDER_INVALID')
         const expected = detail ? { matchCount: detail.data.agents.length, totalCount: detail.data.agents.length } : JSON.parse(prepared.message) as { matchCount: number; totalCount: number }
         const count = detail ? detail.data.agents.length : prepared.rows.length
+        if (!detail && root.props.searchText !== JSON.parse(prepared.message).query) failTrustedRaycastCanIUse('RENDER_INVALID')
         if (root.props.navigationDepth !== (detail ? 1 : 0) || root.props.visibleCount !== count || root.props.matchCount !== expected.matchCount || root.props.totalCount !== expected.totalCount) failTrustedRaycastCanIUse('RENDER_INVALID')
         const items = descendants(root, 'raycast-list-item')
         if (items.length !== count || items.some((item, index) => detail

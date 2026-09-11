@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { createTrustedRaycastCanIUsePreferenceForm } from '../src/trusted-raycast-can-i-use-preference-form.ts'
 import { createTrustedRaycastView } from '../src/trusted-raycast-renderer.ts'
 import type { LauncherPreloadBridge } from '../src/launcher-preload-bridge.ts'
 import type { TrustedRaycastViewEvent, TrustedRaycastViewMessage } from '../src/trusted-raycast-contract.ts'
@@ -41,6 +42,53 @@ test('Can I Use discloses visible, matching and total feature counts with its ow
     assert.equal(status.textContent, `Showing ${visible} of ${matches} matches. Search covers all 581 features.`)
     assert.ok(nodes.some(node => node.textContent === 'Search Web Features'))
   }
+  view.dispose()
+})
+
+test('Can I Use changes theme once per actual change and retires the old interaction state', async () => {
+  const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
+  const document = { documentElement: { style: { colorScheme: 'dark' } }, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0,
+    root: { type: 'raycast-list', props: { themeEventId: 'theme', searchEventId: 'search', searchText: 'css-grid' }, children: [] } })
+  assert.equal(inputOf(nodes).value, 'css-grid')
+  view.refreshTheme(); assert.deepEqual(sent, [])
+  document.documentElement.style.colorScheme = 'light'; view.refreshTheme(); await flush()
+  assert.deepEqual(sent, [{ extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, kind: 'themeChanged', eventId: 'theme' }])
+  assert.equal(inputOf(nodes).disabled, true)
+  assert.equal(view.element.getAttribute('aria-busy'), 'true')
+  view.refreshTheme(); await flush(); assert.equal(sent.length, 1)
+  view.dispose()
+})
+
+test('Can I Use opens preferences with the current Host-owned action handle', async () => {
+  const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0,
+    root: { type: 'raycast-list', props: { preferencesEventId: 'settings' }, children: [] } })
+  const button = nodes.find(node => node.textContent === 'Preferences')
+  assert.ok(button)
+  button.dispatchEvent(new Event('click')); await flush()
+  assert.deepEqual(sent[0], { extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, kind: 'action', eventId: 'settings' })
+  view.dispose()
+})
+
+test('Can I Use sends the full browser-target draft before keyboard submission', async () => {
+  const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  const root = createTrustedRaycastCanIUsePreferenceForm({ defaultQuery: 'chrome 100', showReleaseDate: true, showPartialSupport: false, briefMode: false, path: '', environment: 'production' }, { defaultQuery: 'query', showReleaseDate: 'date', showPartialSupport: 'partial', briefMode: 'brief' }, 'save')
+  view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, root })
+  const query = nodes.find(node => node.getAttribute('aria-label') === 'Browser Targets')!
+  query.value = Array.from({ length: 15 }, (_, index) => `chrome ${100 + index}`).join(',')
+  query.dispatchEvent(new Event('input')); await flush()
+  assert.equal(sent.at(-1)?.value, query.value, 'do not silently truncate to the legacy 128-character field limit')
+  assert.equal(sent.at(-1)?.eventId, 'query')
+  const submit = new Event('keydown', { cancelable: true }); Object.assign(submit, { key: 'Enter', metaKey: true })
+  view.element.dispatchEvent(submit); await flush()
+  assert.equal(sent.at(-1)?.eventId, 'save')
+  assert.equal(sent.at(-1)?.kind, 'action')
   view.dispose()
 })
 

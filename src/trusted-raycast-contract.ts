@@ -118,7 +118,7 @@ export type TrustedRaycastViewEvent = Readonly<{
   generation: string
   revision: number
   eventId: string
-  kind: 'searchChanged' | 'action' | 'navigation' | 'fieldChanged' | 'submit'
+  kind: 'searchChanged' | 'action' | 'navigation' | 'fieldChanged' | 'submit' | 'themeChanged'
   value?: string
 }>
 
@@ -228,10 +228,11 @@ export function isTrustedRaycastViewEvent(value: unknown): value is TrustedRayca
   if (!isRecord(value)) return false
   const keys = ['extensionId', 'sessionId', 'generation', 'revision', 'eventId', 'kind', ...(Object.hasOwn(value, 'value') ? ['value'] : [])]
   if (!exactKeys(value, keys) || getTrustedRaycastRuntimeDescriptor(value.extensionId) === undefined || !boundedString(value.sessionId, 128) || !boundedString(value.generation, 128) || !boundedString(value.eventId, 128)) return false
-  if (!Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || !['searchChanged', 'action', 'navigation', 'fieldChanged', 'submit'].includes(value.kind as string)) return false
+  if (!Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || !['searchChanged', 'action', 'navigation', 'fieldChanged', 'submit', 'themeChanged'].includes(value.kind as string)) return false
+  if (value.kind === 'themeChanged') return value.extensionId === 'can-i-use' && !Object.hasOwn(value, 'value')
   if (!Object.hasOwn(value, 'value')) return value.kind === 'navigation' || value.kind === 'action'
   if (!boundedString(value.value)) return false
-  const max = value.kind === 'searchChanged' ? MAX_TEXT : value.kind === 'submit' ? 4096 : 128
+  const max = value.kind === 'searchChanged' ? MAX_TEXT : value.kind === 'submit' || (value.extensionId === 'can-i-use' && value.kind === 'fieldChanged') ? 4096 : 128
   return value.value.length <= max && (value.kind !== 'navigation' || (value.extensionId === 'can-i-use' ? value.value === 'can-i-use:pop' : value.value.startsWith('language:')))
 }
 

@@ -26,6 +26,75 @@ test('the internal Can I Use candidate does not admit public trust or native req
   assert.equal(isTrustedRaycastNativeRequest({ type: 'nativeRequest', extensionId: 'can-i-use', sessionId: 's', generation: 'g', requestId: 'request', kind: 'openBrowser', payload: 'https://caniuse.com/css-grid' }), false)
 })
 
+test('Can I Use configures before source import and rejects invalid or replayed preference submissions', { timeout: 30000, skip: process.platform !== 'darwin' }, async () => {
+  const work = mkdtempSync(join(tmpdir(), 'can-i-use-setup-'))
+  const messages: TrustedRaycastViewMessage[] = []
+  const saved: Readonly<Record<string, boolean | string>>[] = []
+  let pid: number | undefined
+  const manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast-can-i-use'), nodePath: process.execPath,
+    onMessage: (_owner, message) => messages.push(message), saveCanIUsePreferences: async values => { saved.push(values); await new Promise(resolve => setTimeout(resolve, 10)) } })
+  try {
+    const artifact = join(work, 'candidate.tar'); assembleTrustedRaycastCanIUseArtifact(artifact)
+    await buildTrustedRaycast(work, artifact, 'can-i-use')
+    await manager.start(owner, { extensionId: 'can-i-use', command: 'index', sessionId: 'setup', generation: 'setup-generation', preferences: {} })
+    assert.equal(manager.active, true)
+    assert.equal((manager as unknown as { session?: unknown }).session, undefined, 'no source process during setup')
+    const form = messages.at(-1)!
+    assert.equal(form.root!.props.preferenceSetup, true)
+    const query = nodes(form.root!, 'raycast-text-field')[0]!
+    const action = nodes(form.root!, 'raycast-action')[0]!
+    const event = { extensionId: 'can-i-use' as const, sessionId: form.sessionId, generation: form.generation, revision: form.revision,
+      kind: 'fieldChanged' as const, eventId: String(query.props.fieldEventId), value: 'defaults' }
+    assert.throws(() => manager.send({ webContentsId: owner.webContentsId + 1 }, event), /stale/)
+    manager.send(owner, event)
+    const submit = { extensionId: event.extensionId, sessionId: event.sessionId, generation: event.generation, revision: event.revision, kind: 'action' as const, eventId: String(action.props.actionEventId) }
+    manager.send(owner, submit)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(messages.at(-1)!.succeeded, false)
+    assert.equal(saved.length, 0)
+    assert.equal((manager as unknown as { session?: unknown }).session, undefined)
+    const longQuery = Array.from({ length: 15 }, (_, index) => `chrome ${100 + index}`).join(',')
+    assert.ok(longQuery.length > 128)
+    manager.send(owner, { ...event, value: longQuery })
+    const brief = nodes(form.root!, 'raycast-form-dropdown').find(field => field.props.title === 'Brief Mode')!
+    manager.send(owner, { ...event, eventId: String(brief.props.fieldEventId), value: 'true' })
+    manager.send(owner, submit)
+    assert.throws(() => manager.send(owner, submit), /busy/)
+    const until = Date.now() + 5000
+    while (!(messages.at(-1)?.type === 'ready' && messages.at(-1)?.sessionId !== 'setup') && Date.now() < until) await new Promise(resolve => setTimeout(resolve, 10))
+    const ready = messages.at(-1)!
+    assert.equal(ready.type, 'ready')
+    assert.notEqual(ready.sessionId, form.sessionId)
+    assert.equal(ready.root!.props.preferenceSetup, false)
+    assert.equal(saved.length, 1)
+    assert.equal(saved[0]!.defaultQuery, longQuery)
+    assert.equal(saved[0]!.briefMode, true)
+    assert.equal(saved[0]!.path, '')
+    assert.throws(() => manager.send(owner, submit), /stale/)
+    pid = (manager as unknown as { session: { child: { pid: number } } }).session.child.pid
+    const preferencesEvent = { ...submit, sessionId: ready.sessionId, generation: ready.generation, revision: ready.revision, eventId: String(ready.root!.props.preferencesEventId) }
+    manager.send(owner, preferencesEvent)
+    const setupUntil = Date.now() + 5000
+    while (messages.at(-1)?.root?.props.preferenceSetup !== true && Date.now() < setupUntil) await new Promise(resolve => setTimeout(resolve, 10))
+    const editing = messages.at(-1)!
+    assert.equal(editing.root!.props.preferenceSetup, true)
+    assert.throws(() => process.kill(pid!, 0), { code: 'ESRCH' })
+    assert.equal(nodes(editing.root!, 'raycast-text-field')[0]!.props.value, longQuery)
+    assert.throws(() => manager.send(owner, preferencesEvent), /stale/)
+    const saveAgain = { ...submit, sessionId: editing.sessionId, generation: editing.generation, revision: editing.revision,
+      eventId: String(nodes(editing.root!, 'raycast-action')[0]!.props.actionEventId) }
+    manager.send(owner, saveAgain)
+    await manager.closeOwner(owner)
+    await new Promise(resolve => setTimeout(resolve, 30))
+    assert.equal(manager.active, false, 'closing during persistence must not reopen the source')
+    assert.equal((manager as unknown as { session?: unknown }).session, undefined)
+  } finally {
+    await manager.close()
+    if (pid) for (const processId of [pid, -pid]) assert.throws(() => process.kill(processId, 0), { code: 'ESRCH' })
+    rmSync(work, { recursive: true, force: true })
+  }
+})
+
 // Candidate creation currently uses macOS BSD tar; this is not a cross-platform packaging gate.
 test('real manager searches all Can I Use features and rejects foreign or stale requests', { timeout: 30000, skip: process.platform !== 'darwin' }, async t => {
   const work = mkdtempSync(join(tmpdir(), 'can-i-use-manager-'))
@@ -123,6 +192,17 @@ test('real manager searches all Can I Use features and rejects foreign or stale 
     assert.equal(empty.root!.props.visibleCount, 0)
     assert.equal(empty.root!.props.matchCount, 0)
     assert.equal(inspectTrustedRaycastProjection(empty.root).itemNodes, 0)
+    const themeChange = { ...search, sessionId: empty.sessionId, generation: empty.generation, revision: empty.revision,
+      kind: 'themeChanged' as const, eventId: String(empty.root!.props.themeEventId) }
+    const { value: _queryValue, ...themeEvent } = themeChange
+    manager.send(owner, themeEvent)
+    assert.throws(() => manager.send(owner, themeEvent), /stale/)
+    const themeReady = await waitFor(8)
+    assert.equal(themeReady.type, 'ready')
+    assert.equal(themeReady.root!.props.matchCount, 0)
+    assert.equal(themeReady.root!.props.searchText, 'zzzz-no-match')
+    assert.notEqual(themeReady.generation, empty.generation)
+    pids.push((manager as unknown as { session: { child: { pid: number } } }).session.child.pid)
     const changedPreferences = { ...preferences, briefMode: true, showReleaseDate: false }
     await assert.rejects(manager.restartCanIUse({ webContentsId: owner.webContentsId + 1 }, changedPreferences), /stale/)
     await manager.restartCanIUse(owner, changedPreferences)

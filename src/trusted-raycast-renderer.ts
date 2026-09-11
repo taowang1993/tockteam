@@ -20,9 +20,18 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   }
   let current: TrustedRaycastViewMessage | undefined
   let themeImages: Array<{ dark: string; image: HTMLImageElement; light: string }> = []
+  let lightTheme = document.documentElement?.style?.colorScheme === 'light'
   const refreshTheme = (): void => {
     const light = document.documentElement?.style?.colorScheme === 'light'
     for (const entry of themeImages) entry.image.setAttribute('src', light ? entry.light : entry.dark)
+    const changed = light !== lightTheme
+    lightTheme = light
+    const eventId = current?.root?.props.themeEventId
+    if (changed && current?.extensionId === 'can-i-use' && typeof eventId === 'string') {
+      setActionPending(); input.disabled = true; queryPending = true; syncBusy()
+      status.textContent = 'Refreshing…'
+      sendEvent({ kind: 'themeChanged', eventId })
+    }
   }
   const sendEvent = (event: { kind: TrustedRaycastViewEvent['kind']; eventId: string; value?: string }): void => {
     if (!current?.root || current.type === 'error') return
@@ -106,6 +115,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     searchLabel.textContent = current?.extensionId === 'can-i-use' ? 'Search Web Features' : current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '要翻译的文本' : 'Text to Translate')
     results.setAttribute('aria-label', current?.extensionId === 'can-i-use' ? 'Web Features' : current?.extensionId === 'kaomoji-search' ? 'Kaomoji Results' : (zh ? '翻译结果' : 'Translations'))
     heroTitle.textContent = value.title; logo.setAttribute('src', value.image); logo.setAttribute('alt', value.title)
+    if (current?.extensionId === 'can-i-use') intro.textContent = 'Use exact browser versions from the reviewed snapshot. Project configuration and automatic browser queries are unavailable.'
     footerIcon.setAttribute('src', value.image); footerText.textContent = current?.extensionId === 'can-i-use' ? 'Can I Use' : current?.extensionId === 'kaomoji-search' ? 'Search Kaomoji' : (zh ? '翻译' : 'Translate')
     aboutText.textContent = current?.extensionId === 'can-i-use' ? 'Can I Use is bundled from the exact extension archive reviewed by TockTeam.' : current?.extensionId === 'kaomoji-search'
       ? 'Kaomoji Search is bundled from the exact extension archive reviewed by TockTeam.'
@@ -190,7 +200,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     } catch { return undefined }
   }
   const syncSourceSearch = (root: TrustedRaycastViewNode): void => {
-    const list = descendants(root, 'raycast-list')[0]
+    const list = current?.extensionId === 'can-i-use' ? root : descendants(root, 'raycast-list')[0]
     if (list === undefined || typeof list.props.searchText !== 'string' || composing || pending !== undefined || sending) return
     if (list.props.searchText !== input.value && (document.activeElement !== input || input.value === '')) input.value = list.props.searchText
   }
@@ -221,7 +231,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     setHidden(title, preferenceSetup || commandSearch)
     setHidden(titleIcon, preferenceSetup || commandSearch)
     setHidden(status, preferenceSetup)
-    content.classList?.toggle('!overflow-hidden', preferenceSetup)
+    content.classList?.toggle('!overflow-hidden', preferenceSetup && current?.extensionId !== 'can-i-use')
     syncSourceSearch(root)
     renderDropdown(root)
     const depth = typeof root.props.navigationDepth === 'number' ? root.props.navigationDepth : 0
@@ -340,11 +350,18 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (rootActionOwner) rootActionOwner.item = commandActions
     commandActions.addEventListener('click', event => { event.stopPropagation(); const owner = rows[selected] ?? rootActionOwner; if (!owner) return; owner.menu.open = !owner.menu.open; if (owner.menu.open) owner.buttons.find(button => !button.disabled)?.focus(); else commandActions.focus() })
     footerActions.append(primaryFooter, commandActions)
+    const preferencesEventId = root.props.preferencesEventId
+    if (current?.extensionId === 'can-i-use' && typeof preferencesEventId === 'string') {
+      const preferences = document.createElement('button'); preferences.type = 'button'; preferences.className = 'launcher-command-footer-action'; preferences.textContent = 'Preferences'
+      preferences.addEventListener('click', () => invoke({ type: 'raycast-action', props: { title: 'Open Extension Preferences', actionEventId: preferencesEventId }, children: [] }))
+      footerActions.append(preferences)
+    }
   }
   const renderForm = (form: TrustedRaycastViewNode): void => {
     formArea.replaceChildren(); footerActions.replaceChildren()
     firstFormControl = undefined
-    formArea.className = preferenceSetup ? 'ml-[1.6875rem] flex w-[33.0625rem] max-w-[calc(100%-2.6875rem)] flex-col gap-[1.375rem] px-0 pb-3 pt-5' : 'flex w-full flex-col items-start gap-3 px-4 py-3'
+    const spacing = current?.extensionId === 'can-i-use' ? 'gap-3 pt-3' : 'gap-[1.375rem] pt-5'
+    formArea.className = preferenceSetup ? `ml-[1.6875rem] flex w-[33.0625rem] max-w-[calc(100%-2.6875rem)] flex-col ${spacing} px-0 pb-3` : 'flex w-full flex-col items-start gap-3 px-4 py-3'
     results.replaceChildren(); setHidden(results, true)
     setHidden(panelActions, true)
     setHidden(formArea, false)
@@ -377,9 +394,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         const fieldInput = document.createElement('input'); fieldInput.type = 'text'; firstFormControl ??= fieldInput; fieldInput.className = 'launcher-command-control'
         fieldInput.setAttribute('aria-label', fieldTitle)
         fieldInput.value = String(child.props.value ?? '')
-        fieldInput.addEventListener('change', () => {
+        const canIUse = current?.extensionId === 'can-i-use'
+        if (canIUse) fieldInput.maxLength = 4096
+        fieldInput.addEventListener(canIUse ? 'input' : 'change', () => {
           const eventId = child.props.fieldEventId
-          if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: fieldInput.value.slice(0, 128) })
+          if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: canIUse ? fieldInput.value : fieldInput.value.slice(0, 128) })
         })
         field.append(fieldLabel, fieldInput); formArea.append(field)
       }
