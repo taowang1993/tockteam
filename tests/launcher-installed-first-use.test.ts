@@ -66,6 +66,8 @@ test('installed first-use harness is inactive, authenticated, direct, and first-
   assert.match(installed, /checkpoints: Object\.freeze\(\{ final: finalCheckpoint, startup: startupCheckpoint \}\)/u)
   assert.match(installed, /launch: Object\.freeze\(\{ argv: Object\.freeze\(\[\.\.\.\(launched\.child\.spawnargs/u)
   assert.match(installed, /cleanupEvidence: cleanup\.processEvidence/u)
+  assert.doesNotMatch(canIUseFlow, /Approve and Open/u)
+  assert.match(canIUse, /bundled Can I Use was not installed on first launch/u)
   const firstUse = installed.slice(installed.indexOf('async function runInstalledFirstUseSmoke'), installed.indexOf('async function runMacInstalledSmoke'))
   assert.doesNotMatch(firstUse, /processTreesGone: true/u)
   assert.doesNotMatch(installed, /finalCheckpoint\.focusInconclusiveCount/u)

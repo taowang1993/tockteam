@@ -1,8 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { trustedRaycastCatalog, TRUSTED_RAYCAST_TRUST_HANDLER, TRUSTED_RAYCAST_CAN_I_USE_HANDLER } from '../src/trusted-raycast-catalog.ts'
 
 const cold = { digest: '', digestApproved: false, enabled: false, installed: false, candidateAvailable: true }
+test('bundled extensions bootstrap before launcher discovery', async () => {
+  const main = await readFile(new URL('../src/main.ts', import.meta.url), 'utf8')
+  assert.match(main, /\[\['Translate', trustedRaycastTrust\], \['Kaomoji', trustedRaycastKaomojiTrust\], \['Can I Use', trustedRaycastCanIUseTrust\]\]/u)
+  assert.match(main, /store\?\.installBundledDefault\(\)/u)
+})
 test('cold Can I Use is discoverable through setup, never through the runtime handler', () => {
   const command = trustedRaycastCatalog(true, cold, undefined, cold).find(item => item.name === 'Can I Use')
   assert.ok(command)

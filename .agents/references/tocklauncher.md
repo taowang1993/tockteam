@@ -102,7 +102,7 @@ TockTeam Electron Main
 7. `LauncherActionStore` publishes a new result-set ID and opaque action IDs for the current launcher `webContents` owner.
 8. Invocation validates and consumes one action ID before dispatching the finite provider effect. Only successful default completions update the main-owned usage ranking; Electron main alone applies `hideWindowAfterInvocation`.
 9. Provider invalidation, window clearing, navigation, settings changes, and teardown revoke stale actions and abort owned work.
-10. On a fresh profile, main admits the bundled Translate archive, runs one isolated preview, and installs/enables it. A later explicit disablement remains authoritative.
+10. On a fresh profile, main admits each bundled compatibility archive, runs one isolated preview, and installs/enables Translate, Kaomoji Search, and Can I Use before discovery. A later explicit disablement remains authoritative.
 11. Translate runs unchanged command `translate` in a private child workspace. The sandboxed launcher renders only bounded inert projections; main executes the finite selected-text, Clipboard, Paste, browser, preference, lifecycle, and trust effects.
 12. TockCoder or TockTutor actions focus/reuse the canonical workbench and deliver a validated route after its main-frame readiness handshake.
 
@@ -144,9 +144,9 @@ The settings shortcut opens the canonical workbench settings page. There is no s
 
 ### Trusted Google Translate Pilot
 
-The distribution contains one reviewed Raycast compatibility artifact: `plugins/trusted-raycast/vendor/google-translate.tar`, SHA-256 `7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac`. It preserves all 35 source files at pin `1063bfaa34be81528c4e397c91b57c42ec370d79`, runs unchanged command `translate`, and pins its reviewed React, reconciler, scheduler, Axios, lock, provenance, and license closure.
+The distribution contains three reviewed Raycast compatibility artifacts. Google Translate is `plugins/trusted-raycast/vendor/google-translate.tar`, SHA-256 `7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac`; Kaomoji Search and Can I Use have their exact pins in `src/trusted-raycast-descriptors.ts`. Each preserves its reviewed source and dependency closure, and each is admitted before it can run.
 
-This trusted child is not an OS sandbox. It has the launching account's filesystem, network, and process authority. The security boundary is instead finite admission and ownership: exact archive and derived-file hashes, isolated preview, journaled current/previous rotation, recovery, authenticated owner/session/generation/revision IPC, bounded messages, main-owned native effects, private process-group cleanup, and a renderer that receives no extension functions, HTML, React, Node, or generic RPC. New bytes require a new reviewed TockTeam build. User disablement remains persistent, and selected text never falls back to Clipboard.
+These trusted children are not OS sandboxes. They have the launching account's filesystem, network, and process authority. The security boundary is instead finite admission and ownership: exact archive and derived-file hashes, isolated preview, journaled current/previous rotation, recovery, authenticated owner/session/generation/revision IPC, bounded messages, main-owned native effects, private process-group cleanup, and renderers that receive no extension functions, HTML, React, Node, or generic RPC. New bytes require a new reviewed TockTeam build. Bundled features install and enable automatically after that release-time review; user disablement remains persistent, and selected text never falls back to Clipboard.
 
 No compatibility claim extends beyond this exact Google Translate artifact. There is no extension store, runtime package installation, generic manifest loader, per-extension Cordis plugin, or Web/TUI mounting.
 

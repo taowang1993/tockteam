@@ -169,14 +169,13 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
       if (JSON.stringify(facts.buttons) !== JSON.stringify(['Open Command', 'Actions']) || Math.abs(facts.rightGap - 12) > 1 || ['rgba(0, 0, 0, 0)', 'transparent'].includes(facts.background) || facts.borderStyle !== 'solid' || facts.radius < 16 || facts.removedControls !== 0) throw new Error('Root footer did not match the grouped Raycast action pill: ' + JSON.stringify(facts));
       return facts;
     }`)
-    // Cold discovery must review exact consent before any installation or preferences.
+    // Bundled discovery opens the exact built-in directly; installation and digest
+    // admission already completed before launcher discovery.
     await cli('run-code', `async page => {
       const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
       await launcher.locator('#launcher-search').fill('Translate');
-      await launcher.locator('[data-result-id="trusted-raycast:setup:google-translate"]').waitFor();
+      await launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"]').waitFor();
       await launcher.locator('#launcher-search').press('Enter');
-      await launcher.getByRole('button', { name: 'Approve and Open', exact: true }).waitFor();
-      await launcher.keyboard.press('Enter');
       return true;
     }`)
     await cli('run-code', `async page => {
@@ -219,7 +218,7 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.waitForFunction(() => document.documentElement.style.colorScheme === 'dark'); await launcher.keyboard.press('Meta+Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Preference completion leaked into fresh command state'); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { preferencesConfigured: true }; }`)
     await writeFile(preferencePath, JSON.stringify({ langFrom: 'auto', lang1: 'zh-CN', lang2: 'en', autoInput: false, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }), { mode: 0o600 })
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.locator('#launcher-search').fill('Translate'); const command = launcher.locator('[data-result-id="trusted-raycast:google-translate:translate"]'); await command.waitFor({ timeout: 15000 }); await launcher.locator('#launcher-search').press('Enter'); const input = launcher.locator('section[data-view="translate"] #trusted-raycast-search'); await input.waitFor({ timeout: 15000 }); await launcher.waitForTimeout(500); if (await input.inputValue() !== '') throw new Error('Reopened command did not start with an empty query'); const status = await launcher.locator('section[data-view="translate"] [role=status]').innerText(); if (status.includes('Action Completed')) throw new Error('Prior action feedback survived command reopen'); await launcher.screenshot({ path: ${JSON.stringify(join(evidence, 'command-empty.png'))} }); await launcher.getByRole('button', { name: 'Back to Results', exact: true }).click(); return { freshCommand: true }; }`)
-    trustEvidence.steps.push('fresh userData: exact reviewed Translate installed and enabled; first use saved required preferences in dark and light themes; reopen cleared prior feedback')
+    trustEvidence.steps.push('fresh userData: exact reviewed Translate installed and enabled automatically; first use saved required preferences in dark and light themes; reopen cleared prior feedback')
     await cli('run-code', `async page => { const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html')); await launcher.locator('#launcher-search').fill(''); await launcher.waitForTimeout(250); return { enabled: true }; }`)
     await openTrustView()
     await trustAction('Disable Extension', 'Installed · Disabled', ['Enable Extension', 'Remove Extension'])

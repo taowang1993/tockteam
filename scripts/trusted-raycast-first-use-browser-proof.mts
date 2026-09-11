@@ -10,8 +10,8 @@ import { focusProofDescendants, readFocusProofProcessSnapshot, type ProofProcess
 
 // Renderer-only fault injection over the real launcher bundle. Host/store/runtime proof is separate.
 const repo = resolve('.')
-const evidence = await mkdtemp(join(tmpdir(), 'extension-first-use-browser-'))
-const session = `extension-first-use-${process.pid}`
+const evidence = await mkdtemp(join(tmpdir(), 'extension-built-in-browser-'))
+const session = `extension-built-in-${process.pid}`
 const execFile = promisify(execFileCallback)
 const observed = new Map<number, ProofProcessRow>()
 const observe = async () => {
@@ -29,7 +29,7 @@ const cli = async (...args: string[]) => {
 const fixture = `
 import { trustedRaycastCatalog, trustedRaycastCommands } from '${repo}/src/trusted-raycast-catalog.ts';
 import { trustedRaycastDescriptors } from '${repo}/src/trusted-raycast-descriptors.ts';
-const states = Object.fromEntries(trustedRaycastCommands.map(command => [command.extensionId, { active:true, candidateAvailable:true, candidateDigest:trustedRaycastDescriptors[command.extensionId].artifactSha256, digest:'', digestApproved:false, installed:false, enabled:false, hasPrevious:false, previewed:false, recovery:'', staged:false }]));
+const states = Object.fromEntries(trustedRaycastCommands.map(command => { const digest = trustedRaycastDescriptors[command.extensionId].artifactSha256; return [command.extensionId, { active:true, candidateAvailable:true, candidateDigest:digest, digest, digestApproved:true, installed:true, enabled:true, hasPrevious:false, previewed:false, recovery:'', staged:false }]; }));
 let listener, themeListener, actions = new Map(), counter = 0, releaseClose, releaseInvoke;
 const proof = window.firstUseProof = { states, approvals:[], launches:[], deferReady:false, deferInvoke:false, pending:undefined, failIPC:false, closes:0,
   pauseClose() { this.closeBarrier = new Promise(resolve => { releaseClose = resolve }); },
@@ -96,14 +96,13 @@ try {
     await page.waitForFunction(() => document.documentElement.dataset.launcherReady === 'true');
     const search = page.locator('#launcher-search');
     const open = async query => { await search.fill(query); await page.getByRole('option').first().waitFor(); await search.press('Enter'); };
-    await open('Can I Use'); await page.getByRole('button',{name:'Approve and Open',exact:true}).waitFor();
-    await page.keyboard.down('Enter'); await page.keyboard.up('Enter');
-    await page.locator('#trusted-raycast-search').waitFor();
-    check((await page.evaluate(() => window.firstUseProof.approvals.length)) === 1,'explicit single approval');
+    await open('Can I Use'); await page.locator('#trusted-raycast-search').waitFor();
+    check((await page.evaluate(() => window.firstUseProof.approvals.length)) === 0,'bundled extension opens without approval');
+    check(await page.getByRole('button',{name:'Approve and Open',exact:true}).count() === 0,'bundled extension has no approval action');
     await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
     check(await search.inputValue() === 'Can I Use','search restoration');
     await search.press('Enter'); await page.locator('#trusted-raycast-search').waitFor();
-    check((await page.evaluate(() => window.firstUseProof.approvals.length)) === 1,'warm use bypasses consent');
+    check((await page.evaluate(() => window.firstUseProof.approvals.length)) === 0,'warm use remains direct');
     await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
     await page.evaluate(() => { window.firstUseProof.deferReady=true; window.firstUseProof.deferInvoke=true; });
     await search.press('Enter'); await page.waitForFunction(() => !!window.firstUseProof.pending);
@@ -113,36 +112,14 @@ try {
     await page.evaluate(() => window.firstUseProof.emitPending());
     check(await page.locator('#trusted-raycast-search').count() === 0,'late old ready must not replace new intent');
     await page.evaluate(() => { window.firstUseProof.releaseInvoke(); window.firstUseProof.releaseClose(); window.firstUseProof.deferReady=false; });
-    await page.getByRole('button',{name:'Approve and Open',exact:true}).waitFor();
-    await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
-    check(await search.inputValue() === 'Translate','review Escape preserved search');
-    await search.press('Enter'); await page.getByRole('button',{name:'Approve and Open',exact:true}).waitFor();
-    await page.evaluate(() => { window.firstUseProof.failIPC=true; });
-    await page.keyboard.press('Enter'); await page.getByRole('alert').filter({hasText:'IPC disconnected'}).waitFor();
-    await page.screenshot({path:${JSON.stringify(join(evidence, 'approval-error-dark.png'))}});
+    await page.locator('#trusted-raycast-search').waitFor();
+    check((await page.evaluate(() => window.firstUseProof.approvals.length)) === 0,'built-in Translate opens without approval');
+    await page.screenshot({path:${JSON.stringify(join(evidence, 'built-in-dark.png'))}});
     await page.evaluate(() => window.firstUseProof.theme('light'));
-    await page.screenshot({path:${JSON.stringify(join(evidence, 'approval-error-light.png'))}});
-    await page.evaluate(() => { window.firstUseProof.failIPC=false; });
-    await page.keyboard.press('Enter'); await page.locator('#trusted-raycast-search').waitFor();
+    await page.screenshot({path:${JSON.stringify(join(evidence, 'built-in-light.png'))}});
     await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
-    await open('Kaomoji'); await page.getByRole('button',{name:'Approve and Open',exact:true}).waitFor(); await page.keyboard.press('Enter'); await page.locator('#trusted-raycast-search').waitFor();
-    await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
+    check(await search.inputValue() === 'Translate','direct command Escape preserved search');
     await page.evaluate(() => { window.firstUseProof.states['kaomoji-search'].enabled=false; });
-    await open('Kaomoji'); await page.getByRole('button',{name:'Enable and Open',exact:true}).waitFor();
-    check(!(await page.evaluate(() => window.firstUseProof.states['kaomoji-search'].enabled)),'ordinary Enter must not enable');
-    await page.evaluate(() => window.firstUseProof.pauseFirstUse());
-    await page.keyboard.press('Enter'); await page.waitForFunction(() => window.firstUseProof.firstUsePending);
-    check(await page.evaluate(() => document.activeElement?.textContent === 'Back to Results'),'pending approval keeps keyboard focus inside the launcher');
-    await page.evaluate(() => window.firstUseProof.cancelFirstUse());
-    await page.getByRole('alert').filter({hasText:'Extension opening canceled'}).waitFor();
-    check(await page.locator('#trusted-raycast-search').count() === 0,'revoked readiness must leave cancellation visible in approval');
-    check(await page.evaluate(() => document.activeElement?.textContent === 'Back to Results'),'capability loss keeps Escape reachable');
-    await page.screenshot({path:${JSON.stringify(join(evidence, 'startup-canceled-light.png'))}});
-    await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
-    await page.evaluate(() => { Object.assign(window.firstUseProof.states['kaomoji-search'], {active:true,enabled:false}); });
-    await open('Kaomoji'); await page.getByRole('button',{name:'Enable and Open',exact:true}).waitFor();
-    await page.keyboard.press('Enter'); await page.locator('#trusted-raycast-search').waitFor();
-    await page.keyboard.press('Escape'); await search.waitFor({state:'visible'});
     await open('Extensions'); await page.getByRole('tab',{name:'Google Translate',exact:true}).waitFor();
     await page.keyboard.press('ArrowDown');
     check(await page.getByRole('tab',{name:'Kaomoji Search',exact:true}).getAttribute('aria-selected') === 'true','keyboard management row');
@@ -150,7 +127,7 @@ try {
     await page.waitForTimeout(150);
     await page.screenshot({path:${JSON.stringify(join(evidence, 'extensions-light.png'))}});
     await page.evaluate(() => window.firstUseProof.theme('dark')); await page.screenshot({path:${JSON.stringify(join(evidence, 'extensions-dark.png'))}});
-    return {cold:true,warm:true,escape:true,lateReadyFenced:true,startupCancellationVisible:true,ipcRetry:true,sharedExtensions:true,disabledConsent:true,keyboardManagement:true};
+    return {builtInOn:true,warm:true,escape:true,lateReadyFenced:true,approvalCount:0,sharedExtensions:true,disabledManagement:true,keyboardManagement:true};
   }`)
   await writeFile(join(evidence, 'result.txt'), output)
   console.log(output)

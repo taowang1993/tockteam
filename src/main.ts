@@ -2354,9 +2354,13 @@ function initializeLauncher(): void {
     },
     onError: (_owner, error) => appendLog('desktop', error.message.slice(0, 512)),
   })
-  // Refresh already-approved Host-derived bytes only; cold profiles require inline digest consent.
-  trustedRaycastBootstrap = trustedRaycastMutex(async () => { if (trustedRaycastTrust?.status().installed) await trustedRaycastTrust.installBundledDefault() }).catch(error => {
-    appendLog('desktop', `Bundled Translate activation failed: ${error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512)}`)
+  // Bundled extensions are product features: admit, preview, install, and enable them before discovery.
+  // Existing trust files still preserve explicit user disablement and recovery state.
+  trustedRaycastBootstrap = trustedRaycastMutex(async () => {
+    for (const [name, store] of [['Translate', trustedRaycastTrust], ['Kaomoji', trustedRaycastKaomojiTrust], ['Can I Use', trustedRaycastCanIUseTrust]] as const) {
+      try { await store?.installBundledDefault() }
+      catch (error) { appendLog('desktop', `Bundled ${name} activation failed: ${error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512)}`) }
+    }
   })
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
