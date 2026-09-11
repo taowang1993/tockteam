@@ -1,0 +1,70 @@
+{
+  "issue": "tockteam-1s5.8.1",
+  "sourceCommit": "9e316f4f61e0a7963ec9b099c5a37c91940f1070",
+  "supersedes": "The unknown-cause status in tocktutor-search-bounds-diagnosis.json; that headless report remains historical evidence",
+  "authorizedRun": "tocktutor-search-packaged-42654762-2bb",
+  "captureExit": 1,
+  "captured": {
+    "cssViewport": [1512, 949], "deviceScaleFactor": 2,
+    "panelLTRB": [920, 204.5, 1220, 959.5],
+    "bottomOvershootCssPixels": 10.5,
+    "clientHeight": 753, "scrollHeight": 753,
+    "maxHeight": "none", "overflowY": "visible",
+    "radixAvailableHeight": "744.5px",
+    "wheelDispatched": false,
+    "theme": {"colorScheme": "dark", "skinId": null},
+    "screenshotTaken": false, "publicationAttempted": false
+  },
+  "finding": "Observed panel classes exactly match the recorded stale staged Workbench client/route and omit the max-height and overflow-y-auto classes present in the current source/build. Staged skins also lacked the max-height utility. No CSS scanner or tolerance change is justified.",
+  "provenanceLimitationAndReviewCorrection": "The child report incorrectly stated resource overrides were scrubbed. Its helper does not remove TOCKTEAM_RESOURCES_ROOT or TOCKTEAM_WEB_ROOT, and their absence was not recorded at launch. No loaded network-response bytes were recorded either. Disk drift and the exact observed-class match support the stale-artifact explanation, not a response-byte or launch-environment attestation. This correction supersedes those child-report claims; the original capture/logs remain unchanged.",
+  "reconciliation": {
+    "command": "node scripts/stage-dsh.mjs --quick",
+    "exit": 0,
+    "preconditions": "Exclusive Launcher staging slot; matching pinned source marker, staged runtime entries and verified cached archive; quick-refresh branch confirmed in log",
+    "result": "All three relevant staged assets are now byte-identical to current compiled assets",
+    "productionCodeChanged": false,
+    "desktopLaunchedAfterRefresh": false
+  },
+  "assetHashes": [
+    {
+      "asset": "Workbench dist/client.js",
+      "stagedBefore": "70f7063212aaa382bfa4f5c25f35ec20f8bc2cf262a282bf90f3e00d9652ca50",
+      "currentAndStagedAfter": "922687a2a161dad4049bad69f39412c681c65530f2738d99ff2e59dcb060197b"
+    },
+    {
+      "asset": "Workbench dist/route.js",
+      "stagedBefore": "a13a75e8315e3a99f09970c8bc35d87bd787f92677605ae9e972b5e12362e8b1",
+      "currentAndStagedAfter": "a416e9b4fffe6c6f3613c071f5d2cbc61c6c2194cec05bb4dd9af505fe26b7ce"
+    },
+    {
+      "asset": "Skins dist/client.js",
+      "stagedBefore": "d1741911908df667e9d77482ecc0ac51e73fab5a8d9f1bdd268d95ce09af64b4",
+      "currentAndStagedAfter": "a1e79ab50a1cf665b5a84d6dec92dbc6a7a29950090b190aa8bbda748f1be373"
+    }
+  ],
+  "preflightGuard": {
+    "script": "/tmp/tocktutor-bounds-diagnosis/capture-stage-checked.mjs",
+    "scriptSha256": "8fc599b76268fc66a22e010d7c215b554a11a59442877576dff77426ae4a6489",
+    "helper": "/tmp/tocktutor-bounds-diagnosis/stage-parity.mjs",
+    "helperSha256": "7785abcfe6c5b6133fad8c86f97dd0aaeb29c3cabf28d3c26e4855e9a49a544c",
+    "commandWithoutLaunching": "node /tmp/tocktutor-bounds-diagnosis/capture-stage-checked.mjs --check-stage",
+    "behavior": "Before app imports or profile creation, reject either resource-root override and require the three compiled/staged assets to match. A new disposable copy preserves all original capture safety, containment and publication guards.",
+    "red": "Exit 1 before refresh: three mismatches; stage-parity-red.log",
+    "green": "Exit 0 after refresh; stage-parity-final.log",
+    "overrideTests": "Both TOCKTEAM_RESOURCES_ROOT and TOCKTEAM_WEB_ROOT synthetic overrides rejected before app imports",
+    "limitation": "Narrow asset-parity check, not an all-package or source-to-build freshness attestation. Default capture path has not been executed and needs fresh user authority. Files under /tmp are disposable."
+  },
+  "checksAfterRefresh": "Schema 2 valid/6 rejected, safety 6 SecurityAgent/10 cleanup/2 bounded-process cases, publication 15 cases, gallery 2/2 and generated manifest all pass; no broad gates needed for source-unchanged staging/report work",
+  "cleanup": "Owned Electron group92459, observed92462/92463/92465 and wrapper92447 absent; CDP61052 closed; profile/staging removed; SecurityAgent0/0; unrelated processes preserved. Staging-only reservation explicitly released after refresh.",
+  "preserved": "All57 existing PNGs and utility proof unchanged; no final runtime-error or PNG-geometry certification from the failed capture; historical gallery remains Pre-Fix",
+  "measurementsSha256": "17122944b32088de2b9feddf7a48d8a9067056ee44486f2f8c58c52fa5eb03cd",
+  "artifacts": "/tmp/tocktutor-bounds-diagnosis: desktop-check-* and tocktutor-search-packaged-42654762-2bb-measurements.json are pre-refresh evidence; stage-refresh.log and stage-parity-* record parent reconciliation",
+  "independentReview": {
+    "run": "21e76b81-1489-441d-b49a-0d14ab6dd68b",
+    "scope": "Failed capture evidence, before parent staging reconciliation",
+    "verdict": "OK with notes, subject to resource-provenance wording correction supplied above; no screenshot acceptance",
+    "outputDirectory": "/Users/taowang/.pi/agent/sessions/--Users-taowang-projects-worktrees-tutor--/subagent-artifacts/outputs/e9cbf83b-5f80-4791-a57f-dd95e0e93942"
+  },
+  "parentReview": "Applied simplification, security/hardening and performance references; personally ran failing/passing stage checks, override rejection checks and preserved safety/publication tests",
+  "remaining": "Task8 remains open: refreshed Desktop composition not launched or captured; provider verification, opener-focus defect and Go preflight remain separate. One-launch authorization consumed; no automatic retry."
+}
