@@ -77,6 +77,7 @@ import {
   stripWebClipResponseHeaders,
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
+import { pruneRuntimeBrowserCookies } from './runtime-browser-cookies.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { isTockTutorProtocol, parseSingleInstanceProtocolUrls, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
 import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
@@ -3268,6 +3269,17 @@ function flushQueuedOpenRequests(): void {
 }
 
 let runtimeStopPromise: Promise<void> | undefined
+let runtimeCookieCleanup = Promise.resolve()
+
+async function prepareRuntimeBrowserCookies(): Promise<void> {
+  // Main and preview share this cookie jar. Serialize cleanup before either exchanges its launch token.
+  const cleanup = runtimeCookieCleanup.then(async () => {
+    const removed = await pruneRuntimeBrowserCookies(session.defaultSession.cookies, [runtimeUrl, previewUrl].filter(url => url !== undefined))
+    if (removed > 0) appendLog('desktop', `Retired ${String(removed)} stale runtime cookies`)
+  })
+  runtimeCookieCleanup = cleanup.catch(() => {})
+  await cleanup
+}
 
 async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolean }> = {}): Promise<void> {
   invalidateAllLauncherProviders('launcher-runtime-relaunch')
@@ -3359,6 +3371,8 @@ async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>):
     ensureCurrent()
     runtimeUrl = url
     runtimeOrigin = url.origin
+    await prepareRuntimeBrowserCookies()
+    ensureCurrent()
     if (mainWindow === undefined || mainWindow.isDestroyed()) assignMainWindow(createWindow())
     const window = mainWindow
     if (window === undefined || window.isDestroyed()) throw new Error('TockTeam workbench is unavailable')
@@ -3416,6 +3430,8 @@ async function startPreviewSurface(input: {
     if (previewRuntime !== supervisor) throw new Error('plugin preview was stopped before it became ready')
     previewUrl = url
     previewOrigin = url.origin
+    await prepareRuntimeBrowserCookies()
+    if (previewRuntime !== supervisor) throw new Error('plugin preview was stopped before cookie preparation completed')
     const window = createWindow({
       preview: true,
       title: `Preview ${input.pluginId} — ${PRODUCT_NAME}`,
@@ -3423,7 +3439,7 @@ async function startPreviewSurface(input: {
     previewWindow = window
     await window.loadURL(url.href)
   } catch (error) {
-    await stopPreviewSurface().catch(() => {})
+    if (previewRuntime === supervisor) await stopPreviewSurface().catch(() => {})
     throw error
   }
 }

@@ -1023,6 +1023,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
     const workbench = await step('connect to TockCoder', () => CdpPage.connect(workbenchDescriptor.webSocketDebuggerUrl))
     await step('clear startup dialogs', () => clearStartupDialogs(workbench))
     await step('wait for runtime ready', () => waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.getRuntimeSnapshot())?.status)()'), status => status === 'ready', 120_000))
+    await step('wait for Desktop browser client', () => waitFor(() => workbench.evaluate('document.documentElement.dataset.tockteamDesktop'), ready => ready === 'true', 60_000))
     await step('mark and show launcher', () => workbench.evaluate(`(async () => { window.__tockteamPackagedSmoke = { href: location.href, marker: 'workbench-alive' }; return await window.dshDesktop?.launcher?.show() })()`))
     const launcherPages = await step('wait for TockLauncher', () => waitFor(() => listPages(port), pages => selectCdpDescriptor(pages, 'TockLauncher', port) !== undefined))
     const launcherDescriptor = selectCdpDescriptor(launcherPages, 'TockLauncher', port)

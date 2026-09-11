@@ -92,6 +92,7 @@ test('packaged smoke is actual TockTeam ASAR execution, not a source fixture', (
   assert.match(packagedSmoke, /app\.asar/u)
   assert.match(packagedSmoke, /app\.isPackaged/u)
   assert.match(packagedSmoke, /TOCKTEAM_PACKAGED_SMOKE/u)
+  assert.match(packagedSmoke, /step\('wait for Desktop browser client',.*dataset\.tockteamDesktop/u)
   assert.match(packagedSmoke, /tockteam-launcher-packaged-smoke/u)
   assert.match(packagedSmoke, /contextIsolation/u)
   assert.match(packagedSmoke, /nodeIntegration/u)
