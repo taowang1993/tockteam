@@ -54,6 +54,12 @@ Only the approved inactive Can I Use app proof was launched in this continuation
 
 Applied all three review references: simplification, security/hardening, performance. No additional blockers found in the scoped edits. The readiness guard stays at the publication boundary without a new coordinator; test-only native Keychain switches do not alter production authority. No dependencies or unbounded work introduced.
 
-Installed proof remains explicitly pending: its foreground-capable harness is outside this pass and was not expanded or run. Cross-platform argv isolation is statically checked; only macOS inactive source proof was executed. Configured optional integration tests account for the reported skips. Parent owns independent final review and epic/slice closure; Beads remains in progress for that handoff. No push.
+Installed proof remains explicitly pending in follow-up `tockteam-dnw`: its foreground-capable harness is outside this pass and was not expanded or run. Cross-platform argv isolation is statically checked; only macOS inactive source proof was executed. Configured optional integration tests account for the reported skips. No push.
+
+## Final Source Acceptance
+
+Fresh-context reviewer `c0cf353f-ae3a-46de-9278-1e0d4e4d29d2` reviewed cumulative changes through `a8234dbd` and returned `ok`, with no findings. It applied all three review references and inspected readiness ownership, cancellation/focus, preference/theme restarts, all five mock-Keychain launch sites, and verification/process evidence. Its verdict is scoped source acceptance, not installed release readiness.
+
+The parent independently reran `pnpm run typecheck && pnpm test` at `a8234dbd`: typecheck passed; 1,151 tests, 1,137 passed, 14 skipped, zero failures. Log: `/tmp/launcher-first-use-parent-final-tests.log`. The parent also inspected the actual isolation diff, recorded Electron argv, cleanup manifest, and cancellation-focus screenshot. No source changes followed those checks; this final addition records acceptance only.
 
 Cumulative code diff saved for attribution: `/tmp/launcher-first-use-4d5190e9-to-108b7fb5.patch`. The final handoff additionally names a cumulative patch including this documentation/evidence commit.
