@@ -12,7 +12,7 @@ class Element extends EventTarget {
   value = ''; textContent = ''; placeholder = ''; hidden = false; disabled = false; isConnected = true; tabIndex = 0; open = false
   className = ''
   style = { color: '' }
-  id = ''
+  id = ''; tagName = ''
   focused = false
   focusOptions: FocusOptions | undefined
   get options(): Element[] { return this.children }
@@ -91,6 +91,46 @@ test('Can I Use sends the full browser-target draft before keyboard submission',
   assert.equal(sent.at(-1)?.eventId, 'save')
   assert.equal(sent.at(-1)?.kind, 'action')
   view.dispose()
+})
+
+test('Can I Use preference dropdowns use shadcn-style listboxes with pointer and keyboard selection', async () => {
+  const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
+  const document = { get activeElement() { return Element.activeElement }, createElement(tagName: string) { const node = new Element(); node.tagName = tagName; nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  const root = createTrustedRaycastCanIUsePreferenceForm({ defaultQuery: 'chrome 100', showReleaseDate: true, showPartialSupport: false, briefMode: false, path: '', environment: 'production' }, { defaultQuery: 'query', showReleaseDate: 'date', showPartialSupport: 'partial', briefMode: 'brief' }, 'save')
+  view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, root })
+
+  assert.equal(nodes.filter(node => node.tagName === 'select' && ['Show Release Dates', 'Show Partial Support', 'Brief Mode'].includes(node.getAttribute('aria-label') ?? '')).length, 0)
+  const triggers = nodes.filter(node => node.getAttribute('data-slot') === 'select-trigger')
+  assert.equal(triggers.length, 3)
+  const releaseDate = triggers.find(node => node.getAttribute('aria-label') === 'Show Release Dates')!
+  const content = nodes.find(node => node.getAttribute('data-slot') === 'select-content' && node.getAttribute('aria-label') === 'Show Release Dates')!
+  assert.equal(releaseDate.getAttribute('aria-haspopup'), 'listbox')
+  assert.equal(releaseDate.getAttribute('aria-expanded'), 'false')
+  assert.equal(content.hidden, true)
+  const submitShortcut = Object.assign(new Event('keydown', { cancelable: true }), { key: 'Enter', metaKey: true, ctrlKey: false, altKey: false })
+  releaseDate.dispatchEvent(submitShortcut)
+  assert.equal(submitShortcut.defaultPrevented, false, 'the select trigger leaves the form submit shortcut to its owner')
+  releaseDate.dispatchEvent(new Event('click'))
+  assert.equal(content.hidden, false)
+  assert.equal(releaseDate.getAttribute('aria-expanded'), 'true')
+  const no = nodes.find(node => node.getAttribute('data-slot') === 'select-item' && node.textContent === 'No' && node.getAttribute('aria-selected') === 'false')!
+  no.dispatchEvent(new Event('click'))
+  await flush()
+  assert.deepEqual(sent.at(-1), { extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, kind: 'fieldChanged', eventId: 'date', value: 'false' })
+  assert.equal(content.hidden, true)
+  assert.equal(releaseDate.getAttribute('aria-expanded'), 'false')
+  assert.equal(releaseDate.children.find(node => node.getAttribute('data-slot') === 'select-value')?.textContent, 'No')
+  assert.equal(Element.activeElement, releaseDate)
+
+  releaseDate.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'ArrowUp' }))
+  assert.equal(Element.activeElement, no)
+  const yes = nodes.find(node => node.getAttribute('data-slot') === 'select-item' && node.textContent === 'Yes')!
+  no.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'ArrowUp' }))
+  assert.equal(Element.activeElement, yes)
+  yes.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'Enter' }))
+  await flush()
+  assert.equal(sent.at(-1)?.value, 'true')
 })
 
 test('Can I Use details show support, clear pending navigation, preserve counts and authenticate Back', async () => {

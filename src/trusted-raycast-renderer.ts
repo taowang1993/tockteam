@@ -97,6 +97,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   let composing = false
   let submitAction: TrustedRaycastViewNode | undefined
   let firstFormControl: HTMLElement | undefined
+  type FormSelect = { close(focus?: boolean): void; trigger: HTMLButtonElement; wrapper: HTMLElement }
+  let formSelects: FormSelect[] = []
   let primaryFooter: HTMLButtonElement | undefined
   let primaryFooterLabel: HTMLElement | undefined
   let preferenceSetup = false
@@ -357,9 +359,61 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       footerActions.append(preferences)
     }
   }
+  const renderFormSelect = (child: TrustedRaycastViewNode, fieldTitle: string): HTMLElement => {
+    const wrapper = document.createElement('span'); wrapper.className = 'relative block min-w-0'
+    const trigger = document.createElement('button'); trigger.type = 'button'; trigger.className = 'launcher-command-control flex items-center justify-between gap-1.5 text-left'; trigger.setAttribute('data-slot', 'select-trigger'); trigger.setAttribute('aria-label', fieldTitle); trigger.setAttribute('aria-haspopup', 'listbox'); trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('data-state', 'closed')
+    const valueLabel = document.createElement('span'); valueLabel.className = 'min-w-0 flex-1 truncate'; valueLabel.setAttribute('data-slot', 'select-value')
+    trigger.append(valueLabel, icon(ChevronDown, 'pointer-events-none size-4 shrink-0 text-[var(--dsw-alias-label-secondary,CanvasText)]'))
+    const content = document.createElement('div'); content.className = 'launcher-command-select-content'; content.setAttribute('data-slot', 'select-content'); content.setAttribute('role', 'listbox'); content.setAttribute('aria-label', fieldTitle); content.hidden = true
+    const items = child.children.flatMap(option => {
+      if (typeof option === 'string') return []
+      const value = String(option.props.value ?? '')
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'launcher-command-select-item'; button.tabIndex = -1; button.textContent = String(option.props.title ?? ''); button.setAttribute('data-slot', 'select-item'); button.setAttribute('role', 'option')
+      const indicator = document.createElement('span'); indicator.className = 'pointer-events-none absolute right-2 flex size-4 items-center justify-center'; indicator.setAttribute('aria-hidden', 'true'); indicator.append(icon(Check, 'size-4')); button.append(indicator); content.append(button)
+      return [{ button, indicator, title: String(option.props.title ?? ''), value }]
+    })
+    let value = typeof child.props.value === 'string' && items.some(item => item.value === child.props.value) ? child.props.value : (items[0]?.value ?? '')
+    const sync = (): void => {
+      valueLabel.textContent = items.find(item => item.value === value)?.title ?? ''
+      for (const item of items) { const selected = item.value === value; item.button.setAttribute('aria-selected', String(selected)); setHidden(item.indicator, !selected) }
+    }
+    const close = (focus = false): void => { setHidden(content, true); trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('data-state', 'closed'); if (focus) trigger.focus() }
+    const open = (): void => {
+      for (const select of formSelects) if (select.trigger !== trigger) select.close()
+      setHidden(content, false); trigger.setAttribute('aria-expanded', 'true'); trigger.setAttribute('data-state', 'open')
+      ;(items.find(item => item.value === value)?.button ?? items[0]?.button)?.focus()
+    }
+    const choose = (item: typeof items[number]): void => {
+      value = item.value; sync(); close(true)
+      const eventId = child.props.fieldEventId
+      if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: value.slice(0, 128) })
+    }
+    const move = (button: HTMLButtonElement, offset: number): void => {
+      const index = items.findIndex(item => item.button === button)
+      items[(index + offset + items.length) % items.length]?.button.focus()
+    }
+    for (const item of items) {
+      item.button.addEventListener('click', () => choose(item))
+      item.button.addEventListener('keydown', event => {
+        const plain = !event.metaKey && !event.ctrlKey && !event.altKey
+        if (plain && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) { event.preventDefault(); event.stopPropagation(); move(item.button, event.key === 'ArrowDown' ? 1 : -1) }
+        else if (plain && (event.key === 'Home' || event.key === 'End')) { event.preventDefault(); event.stopPropagation(); items[event.key === 'Home' ? 0 : items.length - 1]?.button.focus() }
+        else if (plain && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); event.stopPropagation(); choose(item) }
+        else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true) }
+        else if (event.key === 'Tab') close()
+      })
+    }
+    trigger.addEventListener('click', () => content.hidden ? open() : close(true))
+    trigger.addEventListener('keydown', event => {
+      if (!event.metaKey && !event.ctrlKey && !event.altKey && ['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); event.stopPropagation(); open() }
+      else if (event.key === 'Escape' && !content.hidden) { event.preventDefault(); event.stopPropagation(); close(true) }
+      else if (event.key === 'Tab') close()
+    })
+    sync(); wrapper.append(trigger, content); formSelects.push({ close, trigger, wrapper }); return wrapper
+  }
   const renderForm = (form: TrustedRaycastViewNode): void => {
     formArea.replaceChildren(); footerActions.replaceChildren()
-    firstFormControl = undefined
+    firstFormControl = undefined; formSelects = []
     const spacing = current?.extensionId === 'can-i-use' ? 'gap-3 pt-3' : 'gap-[1.375rem] pt-5'
     formArea.className = preferenceSetup ? `ml-[1.6875rem] flex w-[33.0625rem] max-w-[calc(100%-2.6875rem)] flex-col ${spacing} px-0 pb-3` : 'flex w-full flex-col items-start gap-3 px-4 py-3'
     results.replaceChildren(); setHidden(results, true)
@@ -368,25 +422,31 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     for (const child of form.children) {
       if (typeof child === 'string') continue
       if (child.type === 'raycast-form-dropdown') {
-        const field = document.createElement('label'); field.className = 'launcher-command-field'
+        const custom = current?.extensionId === 'can-i-use'
+        const field = document.createElement(custom ? 'div' : 'label'); field.className = 'launcher-command-field'
         const fieldTitle = String(child.props.title ?? '')
         const fieldLabel = document.createElement('span'); fieldLabel.className = 'text-right'; fieldLabel.textContent = fieldTitle
-        const selectFrame = document.createElement('span'); selectFrame.className = 'relative block min-w-0'
-        const select = document.createElement('select'); select.className = 'launcher-command-control appearance-none pr-8'
-        select.setAttribute('aria-label', fieldTitle)
-        firstFormControl ??= select
-        for (const option of child.children) {
-          if (typeof option === 'string') continue
-          const node = document.createElement('option'); node.value = String(option.props.value ?? ''); node.textContent = String(option.props.title ?? ''); select.append(node)
+        if (custom) {
+          const select = renderFormSelect(child, fieldTitle); firstFormControl ??= select.children[0] as HTMLElement; field.append(fieldLabel, select)
+        } else {
+          const selectFrame = document.createElement('span'); selectFrame.className = 'relative block min-w-0'
+          const select = document.createElement('select'); select.className = 'launcher-command-control appearance-none pr-8'
+          select.setAttribute('aria-label', fieldTitle)
+          firstFormControl ??= select
+          for (const option of child.children) {
+            if (typeof option === 'string') continue
+            const node = document.createElement('option'); node.value = String(option.props.value ?? ''); node.textContent = String(option.props.title ?? ''); select.append(node)
+          }
+          const value = typeof child.props.value === 'string' ? child.props.value : ''
+          if ([...select.options].some(option => option.value === value)) select.value = value
+          select.addEventListener('change', () => {
+            const eventId = child.props.fieldEventId
+            if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: select.value.slice(0, 128) })
+          })
+          const selectArrow = icon(ChevronDown, 'pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]')
+          selectFrame.append(select, selectArrow); field.append(fieldLabel, selectFrame)
         }
-        const value = typeof child.props.value === 'string' ? child.props.value : ''
-        if ([...select.options].some(option => option.value === value)) select.value = value
-        select.addEventListener('change', () => {
-          const eventId = child.props.fieldEventId
-          if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: select.value.slice(0, 128) })
-        })
-        const selectArrow = icon(ChevronDown, 'pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--dsw-alias-label-secondary,CanvasText)]')
-        selectFrame.append(select, selectArrow); field.append(fieldLabel, selectFrame); formArea.append(field)
+        formArea.append(field)
       } else if (child.type === 'raycast-text-field') {
         const field = document.createElement('label'); field.className = 'launcher-command-field'
         const fieldTitle = String(child.props.title ?? '')
@@ -456,6 +516,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   })
   element.addEventListener('click', event => {
     for (const owner of [...rows, ...(rootActionOwner ? [rootActionOwner] : [])]) if (!owner.menu.contains(event.target as globalThis.Node)) owner.menu.open = false
+    for (const select of formSelects) if (!select.wrapper.contains(event.target as globalThis.Node)) select.close()
   })
   const focus = (): void => { if (firstFormControl && !formArea.hidden) firstFormControl.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus(); else rows[selected]?.item.focus() }
   return {

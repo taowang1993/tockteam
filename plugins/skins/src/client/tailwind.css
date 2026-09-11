@@ -172,6 +172,45 @@
   }
 }
 
+@utility launcher-command-select-content {
+  box-sizing: border-box;
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  width: 100%;
+  max-height: 12rem;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 82%, transparent);
+  border-radius: 0.625rem;
+  background: var(--dsw-alias-bg-overlay, Canvas);
+  padding: 0.25rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, CanvasText 14%, transparent);
+}
+
+@utility launcher-command-select-item {
+  position: relative;
+  display: flex;
+  width: 100%;
+  cursor: default;
+  align-items: center;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  padding: 0.375rem 2rem 0.375rem 0.5rem;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--dsw-alias-bg-hover, color-mix(in srgb, CanvasText 10%, transparent));
+    outline: none;
+  }
+}
+
 @utility launcher-command-status {
   min-height: 1.125rem;
   margin: 0;

@@ -73,6 +73,12 @@ test('owned browser components use Tailwind utilities in markup', () => {
   const preferenceFocus = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-control:focus-visible \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceFocus, /outline: none/u, 'preference controls replace the prominent ring with a tokenized border')
   assert.match(preferenceFocus, /--dsw-alias-border-l3/u, 'keyboard focus remains visibly indicated')
+  const selectContent = tailwind.match(/@utility launcher-command-select-content \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(selectContent, /box-sizing: border-box/u, 'select menu edges align with their trigger without relying on a global reset')
+  assert.match(selectContent, /var\(--dsw-alias-bg-overlay/u, 'shadcn-style select menus derive their surface from DSH')
+  assert.match(selectContent, /max-height: 12rem/u, 'select menus stay bounded')
+  const selectItem = tailwind.match(/@utility launcher-command-select-item \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
+  assert.match(selectItem, /var\(--dsw-alias-bg-hover/u, 'select options use the shared hover material')
   const preferenceFooterMaterial = tailwind.match(/#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-identity,\n#launcher-root \[data-view='preference-setup'\] \.launcher-command-footer-action \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(preferenceFooterMaterial, /border-color: color-mix\(/u, 'setup identity and actions share one outlined footer treatment')
   assert.match(preferenceFooterMaterial, /var\(--tockteam-preference-control-light\)/u, 'light setup identity and actions match the selector material')
@@ -90,7 +96,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
     [
       'launcher-command-surface', 'launcher-command-header', 'launcher-command-search', 'launcher-command-content', 'launcher-command-list',
-      'launcher-command-field', 'launcher-command-control', 'launcher-command-status', 'launcher-command-empty', 'launcher-command-error', 'launcher-command-group-title',
+      'launcher-command-field', 'launcher-command-control', 'launcher-command-select-content', 'launcher-command-select-item', 'launcher-command-status', 'launcher-command-empty', 'launcher-command-error', 'launcher-command-group-title',
       'launcher-command-row', 'launcher-command-row-icon', 'launcher-command-footer', 'launcher-command-footer-identity', 'launcher-command-footer-actions', 'launcher-command-footer-action',
       'launcher-command-menu', 'launcher-command-menu-item',
       'launcher-local-tool', 'launcher-local-tool-header', 'launcher-local-tool-identity', 'launcher-local-tool-content',
