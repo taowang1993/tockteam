@@ -180,14 +180,6 @@ export function LivePreviewView(props: {
         onToggleTask={props.onToggleTask}
         title={props.title}
       />
-      <details className="mx-auto mb-6 mt-4 w-[calc(100%-32px)] max-w-3xl rounded border border-[var(--tt-border)] p-2">
-        <summary className="cursor-pointer text-xs font-medium">Rendered Preview</summary>
-        <div aria-label="Live Preview Rendered Content" className="mt-2" dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer', ...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds }) }) }} onClick={event => { handleRenderedClick(event, props.onOpenExternalUrl) }} />
-        <details className="mt-3 rounded border border-[var(--tt-border)] p-2">
-          <summary className="cursor-pointer text-xs font-medium">Slides Preview</summary>
-          <MarkdownSlidesView embeds={props.embeds} onOpenExternalUrl={props.onOpenExternalUrl} source={props.source} />
-        </details>
-      </details>
     </section>
   )
 }

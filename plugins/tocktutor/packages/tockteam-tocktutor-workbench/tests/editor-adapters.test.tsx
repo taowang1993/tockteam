@@ -7,7 +7,7 @@ import {
   shouldStartEditorRectangularSelection,
 } from '../src/source-editor.tsx'
 import { LivePreviewEditor, splitLivePreviewSource } from '../src/live-preview-editor.tsx'
-import { LivePreviewView, MarkdownSlidesView, RichReadingView } from '../src/editor-surface.tsx'
+import { MarkdownSlidesView, RichReadingView } from '../src/editor-surface.tsx'
 import { projectEditorStaticWidgets, projectEditorWidgets } from '../src/editor-widgets.ts'
 
 afterEach(() => {
@@ -330,40 +330,6 @@ describe('Milkdown Live Preview editor', () => {
     expect(reading.querySelector('.tocktutor-reading [data-embed-kind="note"]')).toBeTruthy()
     expect(reading.querySelector('[aria-label="Resolved Embeds"]')).toBeNull()
     expect(reading.textContent).toContain('Rendered from the Host.')
-  })
-
-  it('renders resolved local media in Live Preview and Slides while routing external media through the viewer', async () => {
-    const mediaSource = '![[../Attachments/pixel.png|16x16]]'
-    const onOpenExternalUrl = vi.fn()
-    const embeds = [{
-      content: 'iVBORw0KGgo=',
-      mimeType: 'image/png',
-      target: { display: '16x16', fragment: null, kind: 'media' as const, path: 'Attachments/pixel.png', source: mediaSource },
-    }]
-    const { container, unmount } = render(
-      <LivePreviewView
-        documentKey="welcome"
-        embeds={embeds}
-        onEdit={() => {}}
-        onOpenExternalUrl={onOpenExternalUrl}
-        onToggleTask={() => {}}
-        source={`Before ${mediaSource} after\n\n![Remote](https://example.com/image.png)\n`}
-        title="Embeds"
-      />,
-    )
-    const rendered = screen.getByLabelText('Live Preview Rendered Content')
-    expect(rendered.querySelector('.tocktutor-local-embed img[alt="16x16"][height="16"][width="16"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
-    expect(rendered.textContent).not.toContain(mediaSource)
-    expect(rendered.querySelector('img[src^="https://"]')).toBeNull()
-    fireEvent.click(rendered.querySelector('button[data-external-url="https://example.com/image.png"]')!)
-    expect(onOpenExternalUrl).toHaveBeenCalledWith('https://example.com/image.png')
-    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
-    unmount()
-
-    render(<MarkdownSlidesView embeds={embeds} source={`Slide ${mediaSource}\n`} />)
-    const slides = screen.getByLabelText('Slides Preview')
-    expect(slides.querySelector('.tocktutor-local-embed img[height="16"][width="16"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
-    expect(slides.textContent).not.toContain(mediaSource)
   })
 
   it('presents wikilinks without source brackets and shares Reading View link styling', async () => {

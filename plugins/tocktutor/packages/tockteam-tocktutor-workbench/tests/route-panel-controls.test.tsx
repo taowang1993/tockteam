@@ -406,6 +406,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(editorActions?.querySelector('.lucide-music')).toBeNull()
     expect(editorActions?.querySelector('.lucide-folder')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Source' })).toBeNull()
+    expect(screen.queryByText('Rendered Preview', { exact: true })).toBeNull()
     expect(noteActions.getAttribute('aria-expanded')).toBe('false')
     fireEvent.keyDown(noteActions, { key: 'Enter' })
     const menu = screen.getByRole('menu', { name: 'More Note Actions' })
