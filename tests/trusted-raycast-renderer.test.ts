@@ -11,6 +11,7 @@ class Element extends EventTarget {
   attributes = new Map<string, string>()
   value = ''; textContent = ''; placeholder = ''; hidden = false; disabled = false; isConnected = true; tabIndex = 0; open = false
   className = ''
+  style = { color: '' }
   id = ''
   focused = false
   focusOptions: FocusOptions | undefined
@@ -111,7 +112,10 @@ test('Can I Use details show support, clear pending navigation, preserve counts 
     ] } })
   assert.equal(view.element.getAttribute('aria-busy'), 'false')
   assert.ok(nodes.some(node => node.textContent === 'CSS Grid' && node.className.includes('font-semibold')))
-  assert.ok(nodes.some(node => node.getAttribute('role') === 'img' && node.getAttribute('aria-label') === 'Supported'))
+  const support = nodes.find(node => node.getAttribute('role') === 'img' && node.getAttribute('aria-label') === 'Supported')!
+  assert.ok(support)
+  assert.equal(support.getAttribute('style'), null, 'CSP forbids inline style attributes')
+  assert.equal(support.style.color, 'light-dark(#15803d, #4ade80)')
   const status = nodes.find(node => node.getAttribute('role') === 'status')!
   assert.equal(status.textContent, 'Showing 1 of 1 browsers.')
   nodes.findLast(node => node.textContent === 'Open in Browser' && node.className.includes('launcher-command-menu-item'))!.dispatchEvent(new Event('click'))

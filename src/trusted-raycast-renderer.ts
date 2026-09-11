@@ -313,7 +313,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
           if (support && typeof support === 'object' && typeof support.tooltip === 'string' && Object.hasOwn(variants, support.tooltip)) {
             const variant = variants[support.tooltip]!
             const badge = document.createElement('span'); badge.className = 'inline-flex shrink-0'; badge.setAttribute('role', 'img'); badge.setAttribute('aria-label', variant.label); badge.title = variant.label
-            badge.setAttribute('style', `color: ${variant.color}`); badge.append(icon(variant.shape, 'size-4')); titleLine.append(badge)
+            badge.style.color = variant.color; badge.append(icon(variant.shape, 'size-4')); titleLine.append(badge)
           }
         }
       } catch { /* malformed accessories stay inert */ }
