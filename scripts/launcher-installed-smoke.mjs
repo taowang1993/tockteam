@@ -40,6 +40,7 @@ export {
   writeWindowsPortableArchiveMetadata,
 } from './windows-portable-archive.mjs'
 import { assertOwnedProcessGone } from './process-cleanup.mjs'
+import { findFocusProofResidue, focusProofDescendants, readFocusProofProcessSnapshot } from './trusted-raycast-focus-proof-client.ts'
 import { LAUNCHER_INSTALLED_FIRST_USE_FLAG } from '../src/launcher-proof-mode.ts'
 import { admitTrustedRaycastArtifact } from '../src/trusted-raycast-artifact-admission.ts'
 import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
@@ -285,6 +286,7 @@ async function installedSession(executable, userData, inventory, target, options
 
 async function installedFirstUseSession(executable, userData, inventory, options = {}) {
   const port = await freePort()
+  const processBaseline = await readFocusProofProcessSnapshot()
   const launched = await launchPackaged(
     executable,
     userData,
@@ -292,19 +294,73 @@ async function installedFirstUseSession(executable, userData, inventory, options
     options.args ?? [],
     { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' }, inactiveVisualProof: true },
   )
+  const observedProcesses = new Map()
+  let samplingError
+  let sampling = Promise.resolve()
+  const captureProcesses = async () => {
+    try {
+      const snapshot = await readFocusProofProcessSnapshot()
+      for (const row of [...focusProofDescendants(snapshot, launched.child.pid), ...snapshot.filter(row => row.command.includes(userData) || row.command.includes('tockteam-trusted-raycast-'))]) observedProcesses.set(row.pid, row)
+    } catch (error) {
+      samplingError ??= error
+    }
+  }
+  const sampler = setInterval(() => { sampling = sampling.then(captureProcesses) }, 100)
+  sampler.unref()
+  await captureProcesses()
+  const processEvidence = {
+    cleaned: undefined,
+    async cleanup() {
+      if (this.cleaned !== undefined) return this.cleaned
+      clearInterval(sampler)
+      await sampling
+      await captureProcesses()
+      const rootPid = launched.child.pid
+      if (!Number.isSafeInteger(rootPid) || rootPid <= 0) throw new Error('installed first-use proof has no root PID')
+      const markers = [userData, 'tockteam-trusted-raycast-']
+      const matches = snapshot => findFocusProofResidue(processBaseline, snapshot, { gatePgid: rootPid, markers, observedDescendants: [...observedProcesses.values()] })
+      const killOwned = async (signal, snapshot) => {
+        const residue = matches(snapshot)
+        const groups = new Set()
+        for (const row of residue) {
+          const observed = observedProcesses.get(row.pid)
+          if (observed?.command !== row.command || !markers.some(marker => row.command.includes(marker))) continue
+          if (row.pgid === row.pid) groups.add(row.pid)
+          else {
+            try { process.kill(row.pid, signal) } catch {}
+          }
+        }
+        for (const pgid of groups) { try { process.kill(-pgid, signal) } catch {} }
+      }
+      let snapshot = await readFocusProofProcessSnapshot()
+      for (const signal of ['SIGTERM', 'SIGKILL']) {
+        const residue = matches(snapshot)
+        if (residue.length === 0) break
+        await killOwned(signal, snapshot)
+        await new Promise(resolve => setTimeout(resolve, 300))
+        snapshot = await readFocusProofProcessSnapshot()
+      }
+      const residue = matches(snapshot)
+      if (samplingError !== undefined) throw new Error(`installed process sampling failed: ${samplingError instanceof Error ? samplingError.message : String(samplingError)}`)
+      if (residue.length) throw new Error(`owned installed processes remain: ${residue.map(row => `${row.pid}:${row.command}`).join('; ')}`)
+      this.cleaned = Object.freeze({ observedPids: [...observedProcesses.keys()].sort((left, right) => left - right), residuePids: [] })
+      return this.cleaned
+    },
+  }
   try {
     assert.ok(launched.focus !== undefined, 'installed first-use proof must authenticate inherited focus IPC')
+    assert.ok(launched.child.pid !== undefined, 'installed first-use proof must expose a root PID')
     await launched.focus.checkpoint('installed-first-use-ready')
     const canIUse = await runCanIUseInstalledSmoke(launched.launcher, userData, {
       waitFor,
       clickExactText: async (page, text) => await page.evaluate(`(() => { const button = [...document.querySelectorAll('button, summary')].find(element => element.textContent?.trim() === ${JSON.stringify(text)} && element.getClientRects().length && !element.matches(':disabled')); if (!(button instanceof HTMLElement)) return false; button.click(); return true })()`),
     }, {
-      clickSelector: selector => launched.launcher.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!(element instanceof HTMLElement) || element.hidden || !element.getClientRects().length || element.matches(':disabled')) return false; element.click(); return true })()`),
+      clickSelector: selector => launched.launcher.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!(element instanceof HTMLElement) || element.hidden || !element.getClientRects().length || element.matches(':disabled')) return false; element.focus(); if (document.activeElement !== element) return false; element.click(); return true })()`),
       firstUseOnly: true,
     })
-    const finalCheckpoint = await launched.focus.checkpoint('installed-first-use-complete')
-    assert.equal(finalCheckpoint.focusInconclusiveCount, 0, 'installed first-use proof observed a focus event')
-    return Object.freeze({ canIUse, launched, inventory })
+    await launched.focus.checkpoint('installed-first-use-complete')
+    await launched.focus.assertClean()
+    return Object.freeze({ canIUse, launched, inventory, processEvidence })
   } catch (error) {
     let failure = error
     try {
@@ -314,7 +370,7 @@ async function installedFirstUseSession(executable, userData, inventory, options
       failure = new AggregateError([error, diagnosticsError], 'installed first-use assertion and diagnostics both failed')
     }
     try {
-      await closeInstalledSession({ launched }, executable, options.installRoot)
+      await closeInstalledSession({ launched, processEvidence }, executable, options.installRoot)
     } catch (cleanupError) {
       throw new AggregateError([failure, cleanupError], 'installed first-use assertion and cleanup both failed')
     }
@@ -328,12 +384,14 @@ async function closeInstalledSession(session, executable = undefined, installRoo
   try { session.launched.launcher.close() } catch (error) { errors.push(error) }
   try { session.launched.workbench.close() } catch (error) { errors.push(error) }
   try { await stopPackagedChild(session.launched.child) } catch (error) { errors.push(error) }
+  let processEvidence
+  try { if (session.processEvidence !== undefined) processEvidence = await session.processEvidence.cleanup() } catch (error) { errors.push(error) }
   if (executable !== undefined) {
     try { await assertOwnedProcessGone(executable, 20, installRoot) } catch (error) { errors.push(error) }
   }
   if (errors.length === 1) throw errors[0]
   if (errors.length > 1) throw new AggregateError(errors, 'installed session cleanup failed')
-  return true
+  return Object.freeze({ processEvidence })
 }
 
 export async function withInstalledSession(session, operation, cleanup) {
@@ -533,7 +591,9 @@ async function runInstalledFirstUseSmoke(artifact) {
   const inventory = await inspectPackage(destination, artifact.target, { executable: identity.executable })
   assertPackageParity(artifact.inventory, inventory)
   const first = await installedFirstUseSession(identity.executable, artifact.userData, inventory, { installRoot: destination })
-  const canIUse = await withInstalledSession(first, async session => session.canIUse, session => closeInstalledSession(session, identity.executable, destination))
+  let cleanup
+  const canIUse = await withInstalledSession(first, async session => session.canIUse, async session => { cleanup = await closeInstalledSession(session, identity.executable, destination); return cleanup })
+  assert.ok(cleanup?.processEvidence !== undefined, 'installed first-use proof is missing process evidence')
   await rm(destination, { recursive: true, force: true })
   await rm(backupDirectory, { recursive: true, force: true })
   assert.equal(existsSync(destination), false)
@@ -544,7 +604,8 @@ async function runInstalledFirstUseSmoke(artifact) {
       firstUse: canIUse,
       installRoot: destination,
       package: inventory,
-      processTreesGone: true,
+      observedPids: cleanup.processEvidence.observedPids,
+      processTreesGone: cleanup.processEvidence.residuePids.length === 0,
       temporaryInstallRemoved: true,
     },
   })

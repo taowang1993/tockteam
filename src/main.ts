@@ -4155,7 +4155,7 @@ async function bootstrap(): Promise<void> {
       throw new Error('legacy Desktop state migration is incomplete; refusing to start')
     }
   }
-  if (app.isPackaged) app.setAsDefaultProtocolClient('tocktutor')
+  if (app.isPackaged && !launcherProofMode.installedFirstUse) app.setAsDefaultProtocolClient('tocktutor')
   initializeDesktopPicker()
   app.setAboutPanelOptions({
     applicationName: PRODUCT_NAME,
