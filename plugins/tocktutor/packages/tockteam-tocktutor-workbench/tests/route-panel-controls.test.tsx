@@ -1194,6 +1194,11 @@ describe('TockTutor titlebar panel controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Search Options' }))
 
     const options = screen.getByRole('dialog', { name: 'Search Options' })
+    // JSDOM has no layout; keep the viewport scroll contract alongside operator coverage.
+    expect(options.classList.contains('max-h-[var(--radix-popover-content-available-height)]')).toBe(true)
+    expect(options.classList.contains('overflow-y-auto')).toBe(true)
+    // The portaled options own modal focus/scroll while the parent dialog is suspended.
+    expect(screen.queryByRole('combobox', { name: 'Search Notes Query' })).toBeNull()
     for (const operator of ['path:', 'file:', 'tag:', 'line:', 'section:', 'block:', 'content:', 'ignore-case:', 'match-case:', 'task-done:', 'task-todo:', '[property]']) {
       expect(options.textContent).toContain(operator)
     }
@@ -1201,6 +1206,13 @@ describe('TockTutor titlebar panel controls', () => {
 
     expect(onSearchChange).toHaveBeenCalledWith('lesson path:')
     await waitFor(() => { expect(document.activeElement).toBe(query) })
+    const trigger = screen.getByRole('button', { name: 'Search Options' })
+    fireEvent.click(trigger)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => { expect(document.activeElement).toBe(trigger) })
+    expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Search Options' })).toBeNull()
+    expect(screen.queryByRole('tooltip')).toBeNull()
   })
 
   it('hides Search Notes when the Files sidebar is collapsed', () => {

@@ -1495,11 +1495,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "70f7063212aaa382bfa4f5c25f35ec20f8bc2cf262a282bf90f3e00d9652ca50"
+      "sha256": "922687a2a161dad4049bad69f39412c681c65530f2738d99ff2e59dcb060197b"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "5729d6a3f316d275b3bbe6f9eb7981a1dcaa64652a44f31381f23725031be357"
+      "sha256": "379ca03b054487b9559762b677fc26bc4391d3381ff32a211bdb21caf0a6b53a"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -2123,15 +2123,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.d.ts.map",
-      "sha256": "589fe027da316caf40d41ce1f689d2aebd13b2e2f065169f9e9e9f1b3e393377"
+      "sha256": "eee269d869ffeedff8c49e1c28c82d20dd82c9c55e96d3be809c06c60009036e"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js",
-      "sha256": "a13a75e8315e3a99f09970c8bc35d87bd787f92677605ae9e972b5e12362e8b1"
+      "sha256": "a416e9b4fffe6c6f3613c071f5d2cbc61c6c2194cec05bb4dd9af505fe26b7ce"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js.map",
-      "sha256": "8bdec5960961d32fb2a98dbf41b6b719a2737712ce837d2b918bb4c277a1eade"
+      "sha256": "deab9c247e6a6457fbed2be6b14f0bc0fe4d0e9150806e95cc34fa5e874b01be"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/search-intelligence.d.ts",
@@ -2639,7 +2639,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/route.tsx",
-      "sha256": "14908d8eeb1dd9e8153616efe32897a025aab69134eedf41d542d322465f1e38"
+      "sha256": "4def90c46530316a0eee8faf26fdddc15ff02187db538813624b3810b2701190"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/search-intelligence.ts",
@@ -2703,7 +2703,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/vitest.config.ts",
-      "sha256": "5273e4b22b85aa22bc95bd076433162be61aad43a3e5f3049e49819d9ee65533"
+      "sha256": "6c76e39879b565d283c60d4ab6e599688a2da4e6266d05b31d7f67a22ce1556e"
     },
     {
       "path": "packages/tockteam-tocktutor/cordis.patch.yml",

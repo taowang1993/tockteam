@@ -3748,20 +3748,16 @@ function WorkbenchNoteSearchPalette(props: {
             type="search"
             value={snapshot.searchQuery}
           />
-          <Popover open={searchOptionsOpen} onOpenChange={setSearchOptionsOpen}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <Button unstyled aria-label="Search Options" className="flex size-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] data-[state=open]:bg-[var(--tt-selected)] data-[state=open]:text-[var(--tt-text)] [&_svg]:size-[15px]" type="button"><SlidersHorizontal aria-hidden="true" strokeWidth={1.75} /></Button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Search Options</TooltipContent>
-              </Tooltip>
+          {/* The portaled options need their own scroll lock inside the search modal. */}
+          <Popover modal open={searchOptionsOpen} onOpenChange={setSearchOptionsOpen}>
+              <PopoverTrigger asChild>
+                <Button unstyled aria-label="Search Options" className="flex size-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)] hover:text-[var(--tt-text)] data-[state=open]:bg-[var(--tt-selected)] data-[state=open]:text-[var(--tt-text)] [&_svg]:size-[15px]" type="button"><SlidersHorizontal aria-hidden="true" strokeWidth={1.75} /></Button>
+              </PopoverTrigger>
               <PopoverContent
                 unstyled
                 align="end"
                 aria-label="Search Options"
-                className="z-[2147483647] box-border flex w-[300px] flex-col gap-2 rounded-xl border border-[var(--dsw-alias-border-l1,#e1e3e7)] bg-[var(--dsw-alias-bg-layer-1,#fff)] p-2.5 text-sm text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl outline-none"
+                className="z-[2147483647] box-border flex max-h-[var(--radix-popover-content-available-height)] w-[300px] flex-col gap-2 overflow-y-auto rounded-xl border border-[var(--dsw-alias-border-l1,#e1e3e7)] bg-[var(--dsw-alias-bg-layer-1,#fff)] p-2.5 text-sm text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl outline-none"
                 onCloseAutoFocus={event => {
                   if (searchCaret.current === null) return
                   event.preventDefault()
