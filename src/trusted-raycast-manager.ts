@@ -22,7 +22,7 @@ export type TrustedRaycastManagerOptions = Readonly<{
   copyText?: (text: string) => void | Promise<void>
   openGoogleTranslate?: (url: string) => Promise<void>
   openCanIUse?: (url: string) => Promise<void>
-  saveCanIUsePreferences?: (preferences: TrustedRaycastCanIUsePreferences) => void | Promise<void>
+  saveCanIUsePreferences?: (preferences: TrustedRaycastCanIUsePreferences, canonicalTargets: readonly string[]) => void | Promise<void>
   readSelectedText?: () => Promise<Readonly<{ text?: string; unavailable?: string }>>
   pasteText?: (text: string) => void | Promise<void>
   preferencesConfigured?: (extensionId: TrustedRaycastExtensionId) => boolean
@@ -140,7 +140,7 @@ export class TrustedRaycastManager {
     catch { fail('Use supported exact browser targets, such as chrome 100, firefox 100.'); return }
     try {
       if (!this.options.saveCanIUsePreferences) throw new Error('Preference storage is unavailable')
-      await this.options.saveCanIUsePreferences(preferences)
+      await this.options.saveCanIUsePreferences(preferences, setup.data.canonicalTargets)
     } catch { fail('Preferences could not be saved. Please try again.'); return }
     if (this.setup !== setup || this.disposed) return
     this.setup = undefined

@@ -17,7 +17,8 @@ export const TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS: TrustedRaycastCanIUs
   defaultQuery: 'defaults', path: '', environment: '',
 })
 
-function readPreferences(value: unknown): TrustedRaycastCanIUsePreferences {
+/** Decode shape only; preparation must still check the held snapshot before source import. */
+export function readTrustedRaycastCanIUsePreferences(value: unknown): TrustedRaycastCanIUsePreferences {
   try {
     if (value === null || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) throw new Error()
     const names = Object.keys(TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS)
@@ -37,7 +38,7 @@ function readPreferences(value: unknown): TrustedRaycastCanIUsePreferences {
 
 /** Validate before initializing the unchanged command's module-level query. Never probes files. */
 export function prepareTrustedRaycastCanIUsePreferences(value: unknown, options: TrustedRaycastCanIUseQueryOptions) {
-  const preferences = readPreferences(value)
+  const preferences = readTrustedRaycastCanIUsePreferences(value)
   const workspace = prepareTrustedRaycastCanIUseWorkspace(preferences.path)
   const environment = preferences.environment || 'production'
   if (!isTrustedRaycastCanIUseEnvironment(environment)) return failTrustedRaycastCanIUse('CONFIG_INVALID')

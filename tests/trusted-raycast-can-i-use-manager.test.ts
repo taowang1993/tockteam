@@ -8,6 +8,7 @@ import { assembleTrustedRaycastCanIUseArtifact } from '../scripts/trusted-raycas
 // @ts-expect-error First-party build helper.
 import { buildTrustedRaycast } from '../scripts/trusted-raycast-build.mjs'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
+import { loadTrustedRaycastCanIUsePreferences, saveTrustedRaycastCanIUsePreferences } from '../src/trusted-raycast-can-i-use-preference-store.ts'
 import { loadTrustedRaycastCanIUseData } from '../src/trusted-raycast-can-i-use-runtime.ts'
 import { TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS } from '../src/trusted-raycast-can-i-use-preferences.ts'
 import { getTrustedRaycastDescriptor, getTrustedRaycastRuntimeDescriptor } from '../src/trusted-raycast-descriptors.ts'
@@ -32,7 +33,10 @@ test('Can I Use configures before source import and rejects invalid or replayed 
   const saved: Readonly<Record<string, boolean | string>>[] = []
   let pid: number | undefined
   const manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast-can-i-use'), nodePath: process.execPath,
-    onMessage: (_owner, message) => messages.push(message), saveCanIUsePreferences: async values => { saved.push(values); await new Promise(resolve => setTimeout(resolve, 10)) } })
+    onMessage: (_owner, message) => messages.push(message), saveCanIUsePreferences: async (values, canonicalTargets) => {
+      await saveTrustedRaycastCanIUsePreferences(join(work, 'preferences.json'), values, { canonicalTargets })
+      saved.push(values); await new Promise(resolve => setTimeout(resolve, 10))
+    } })
   try {
     const artifact = join(work, 'candidate.tar'); assembleTrustedRaycastCanIUseArtifact(artifact)
     await buildTrustedRaycast(work, artifact, 'can-i-use')
@@ -70,6 +74,7 @@ test('Can I Use configures before source import and rejects invalid or replayed 
     assert.equal(saved[0]!.defaultQuery, longQuery)
     assert.equal(saved[0]!.briefMode, true)
     assert.equal(saved[0]!.path, '')
+    assert.deepEqual(loadTrustedRaycastCanIUsePreferences(join(work, 'preferences.json')), saved[0])
     assert.throws(() => manager.send(owner, submit), /stale/)
     pid = (manager as unknown as { session: { child: { pid: number } } }).session.child.pid
     const preferencesEvent = { ...submit, sessionId: ready.sessionId, generation: ready.generation, revision: ready.revision, eventId: String(ready.root!.props.preferencesEventId) }
@@ -88,6 +93,11 @@ test('Can I Use configures before source import and rejects invalid or replayed 
     await new Promise(resolve => setTimeout(resolve, 30))
     assert.equal(manager.active, false, 'closing during persistence must not reopen the source')
     assert.equal((manager as unknown as { session?: unknown }).session, undefined)
+    await manager.start(owner, { extensionId: 'can-i-use', command: 'index', sessionId: 'persisted', generation: 'persisted-generation',
+      preferences: loadTrustedRaycastCanIUsePreferences(join(work, 'preferences.json')) })
+    pid = (manager as unknown as { session: { child: { pid: number } } }).session.child.pid
+    assert.equal(messages.at(-1)!.root!.props.preferenceSetup, false)
+    assert.equal(messages.at(-1)!.root!.props.totalCount, 581)
   } finally {
     await manager.close()
     if (pid) for (const processId of [pid, -pid]) assert.throws(() => process.kill(processId, 0), { code: 'ESRCH' })
