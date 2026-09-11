@@ -115,8 +115,13 @@ export async function assertProcessTreeGone(child, attempts = 20, treePids = und
     throw new Error(`process tree for ${String(pid)} did not stop`)
   }
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const result = await execFileAsync('/usr/bin/pgrep', ['-g', String(pid)]).catch(() => ({ stdout: '' }))
-    if (result.stdout.trim() === '') return
+    try {
+      await execFileAsync('/usr/bin/pgrep', ['-g', String(pid)], { timeout: 2_000, killSignal: 'SIGKILL' })
+    } catch (error) {
+      // Only pgrep's normal no-match exit proves absence; failed inspection does not.
+      if (error.code === 1 && error.killed === false && error.signal === null) return
+      throw error
+    }
     await new Promise(resolve => setTimeout(resolve, 100))
   }
   throw new Error(`process tree for ${String(pid)} did not stop`)
