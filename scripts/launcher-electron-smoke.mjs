@@ -413,7 +413,7 @@ try {
     require: 'undefined',
     dshDesktop: 'undefined',
     electronAPI: 'undefined',
-    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastTrustAction'],
+    launcherApiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastFirstUse', 'trustedRaycastTrustAction'],
     launcherApiFrozen: true,
     csp: launcherCsp,
     fitsViewport: true,
