@@ -75,6 +75,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.match(preferenceFocus, /--dsw-alias-border-l3/u, 'keyboard focus remains visibly indicated')
   const selectContent = tailwind.match(/@utility launcher-command-select-content \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''
   assert.match(selectContent, /box-sizing: border-box/u, 'select menu edges align with their trigger without relying on a global reset')
+  assert.match(selectContent, /position: fixed/u, 'select menus must not enlarge or scroll their owning form when opened')
   assert.match(selectContent, /var\(--dsw-alias-bg-overlay/u, 'shadcn-style select menus derive their surface from DSH')
   assert.match(selectContent, /max-height: 12rem/u, 'select menus stay bounded')
   const selectItem = tailwind.match(/@utility launcher-command-select-item \{(?<recipe>[\s\S]*?)\n\}/u)?.groups?.recipe ?? ''

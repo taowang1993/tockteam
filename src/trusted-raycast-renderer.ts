@@ -378,9 +378,16 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       for (const item of items) { const selected = item.value === value; item.button.setAttribute('aria-selected', String(selected)); setHidden(item.indicator, !selected) }
     }
     const close = (focus = false): void => { setHidden(content, true); trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('data-state', 'closed'); if (focus) trigger.focus() }
+    const place = (): void => {
+      const scrollArea = formArea.parentElement
+      if (!scrollArea || typeof trigger.getBoundingClientRect !== 'function' || typeof content.getBoundingClientRect !== 'function') return
+      const triggerBounds = trigger.getBoundingClientRect(); const menuBounds = content.getBoundingClientRect(); const scrollBounds = scrollArea.getBoundingClientRect(); const gap = 4
+      const below = triggerBounds.bottom + gap
+      content.style.left = `${triggerBounds.left}px`; content.style.top = `${below + menuBounds.height <= scrollBounds.bottom ? below : triggerBounds.top - menuBounds.height - gap}px`; content.style.width = `${triggerBounds.width}px`
+    }
     const open = (): void => {
       for (const select of formSelects) if (select.trigger !== trigger) select.close()
-      setHidden(content, false); trigger.setAttribute('aria-expanded', 'true'); trigger.setAttribute('data-state', 'open')
+      setHidden(content, false); place(); trigger.setAttribute('aria-expanded', 'true'); trigger.setAttribute('data-state', 'open')
       ;(items.find(item => item.value === value)?.button ?? items[0]?.button)?.focus()
     }
     const choose = (item: typeof items[number]): void => {
