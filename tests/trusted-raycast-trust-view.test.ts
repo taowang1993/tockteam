@@ -152,10 +152,10 @@ test('first use reviews exact candidate without mutation; approval is explicit a
   const section = nodes.find(node => node.attributes.get('aria-label') === 'Can I Use')!
   assert.equal(section.attributes.get('data-view'), 'extension-first-use')
   assert.ok(nodes.some(node => node.attributes.get('data-part') === 'approval-card'))
-  assert.equal(nodes.find(node => node.tag === 'details')?.open, true)
-  assert.equal(nodes.find(node => node.tag === 'details')?.hidden, false)
-  assert.ok(nodes.some(node => node.textContent === 'Reviewed Archive'))
-  assert.ok(nodes.some(node => node.textContent.includes('d'.repeat(64))))
+  assert.equal(nodes.some(node => node.tag === 'details'), false)
+  assert.equal(nodes.some(node => node.textContent === 'Reviewed Archive'), false)
+  assert.equal(nodes.some(node => node.textContent === 'One-time approval required.'), false)
+  assert.equal(nodes.find(node => node.attributes.get('role') === 'status')?.hidden, true)
   const button = nodes.find(node => node.textContent === 'Approve and Open')!
   const key = new Event('keydown', { cancelable: true }); Object.defineProperties(key, { key: { value: 'Enter' }, repeat: { value: true } })
   view.element.dispatchEvent(key)
