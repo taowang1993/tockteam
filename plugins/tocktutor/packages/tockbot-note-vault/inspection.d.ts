@@ -147,6 +147,8 @@ export interface VaultSearchArgs {
 }
 
 export interface VaultSearchMatch {
+  /** Stable identity for one exact note location within a search query. */
+  id?: string
   path: string
   kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task'
   line: number | null

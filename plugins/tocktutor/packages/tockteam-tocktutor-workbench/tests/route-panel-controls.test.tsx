@@ -1098,7 +1098,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('radiogroup', { name: 'Search Mode' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Search Results' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Note Preview' })).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open Notes/Lesson.md' })[1]!)
+    fireEvent.click(screen.getByRole('button', { name: 'Open Notes/Lesson.md' }))
     expect(onSelect).toHaveBeenCalledWith('Notes/Lesson.md')
     expect(onCloseSearch).toHaveBeenCalledOnce()
     expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()

@@ -96,6 +96,21 @@ const limits = {
   maxSearchResults: 20,
 }
 
+test('search returns deterministic identities, provenance, and relevance scores', async () => {
+  const provider = memoryInput()
+  const inspection = createVaultInspection(provider.input, limits)
+  const result = await inspection.search({ query: 'Alpha' }, new AbortController().signal)
+
+  assert.equal(result.matches[0].path, 'notes/alpha.md')
+  assert.equal(result.matches[0].provenance, 'path')
+  assert.equal(result.matches[0].line, null)
+  assert.equal(typeof result.matches[0].id, 'string')
+  assert.equal(typeof result.matches[0].score, 'number')
+  assert.ok(result.matches[0].score > (result.matches[1]?.score ?? 0))
+  const repeated = await inspection.search({ query: 'Alpha' }, new AbortController().signal)
+  assert.equal(repeated.matches[0].id, result.matches[0].id)
+})
+
 test('provider-input inspection reuses all eight read-only operations without a filesystem root', async () => {
   const provider = memoryInput()
   const inspection = createVaultInspection(provider.input, limits)

@@ -147,7 +147,12 @@ async function loadTools(vault, overrides = {}) {
 }
 
 function withoutScanMetadata({ cursor: _cursor, scan: _scan, truncationReason: _reason, warnings: _warnings, ...value }) {
-  return value
+  return {
+    ...value,
+    ...(Array.isArray(value.matches) ? {
+      matches: value.matches.map(({ id: _id, lineEnd: _lineEnd, provenance: _provenance, score: _score, ...match }) => match),
+    } : {}),
+  }
 }
 
 function withoutLinkDetails({ outgoingDetails: _outgoing, backlinkDetails: _backlinks, tagRelations: _tags, ...value }) {

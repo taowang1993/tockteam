@@ -1330,6 +1330,15 @@ function boundSearchMatches(matches, state) {
       state,
       `${match.path}: truncated search preview`,
     )
+    const identity = JSON.stringify([
+      match.path,
+      match.kind,
+      match.line ?? null,
+      match.lineEnd ?? null,
+      match.operator ?? null,
+      match.provenance ?? null,
+    ])
+    match.id = createHash('sha256').update(identity).digest('hex')
   }
 }
 
@@ -1706,12 +1715,17 @@ async function searchVault(input, query, scope, limit, config, signal, cursor) {
     if (
       (scope === 'all' || scope === 'path')
       && `${title}\n${document.path}`.toLowerCase().includes(needle)
-    ) documentMatches.push({
-      path: document.path,
-      kind: 'path',
-      line: null,
-      preview: `${title} — ${document.path}`,
-    })
+    ) {
+      const titleMatch = title.toLowerCase().includes(needle)
+      documentMatches.push({
+        path: document.path,
+        kind: 'path',
+        line: null,
+        preview: `${title} — ${document.path}`,
+        score: titleMatch ? (title.toLowerCase() === needle ? 500 : 400) : 300,
+        provenance: 'path',
+      })
+    }
 
     if (markdown && (scope === 'all' || scope === 'properties')) {
       for (const property of markdown.propertyLines) {
@@ -1721,7 +1735,10 @@ async function searchVault(input, query, scope, limit, config, signal, cursor) {
           path: document.path,
           kind: 'property',
           line: property.line,
+          lineEnd: property.line,
           preview: previewLine(property.text, column),
+          score: 250,
+          provenance: 'frontmatter',
         })
       }
     }
@@ -1738,17 +1755,24 @@ async function searchVault(input, query, scope, limit, config, signal, cursor) {
       for (const line of lines) {
         signal.throwIfAborted()
         const column = line.text.toLowerCase().indexOf(needle)
-        if (column !== -1) documentMatches.push({
-          path: document.path,
-          kind: markdown ? 'content' : isBase(document.path) ? 'base' : 'canvas',
-          line: line.line,
-          preview: previewLine(line.text, column),
-        })
+        if (column !== -1) {
+          const heading = /^#{1,6}\s+/u.test(line.text)
+          documentMatches.push({
+            path: document.path,
+            kind: markdown ? (heading ? 'section' : 'content') : isBase(document.path) ? 'base' : 'canvas',
+            line: line.line,
+            lineEnd: line.line,
+            preview: previewLine(line.text, column),
+            score: heading ? 350 : markdown ? 100 : 80,
+            provenance: markdown ? (heading ? 'section' : 'body') : isBase(document.path) ? 'body' : 'canvas',
+          })
+        }
       }
     }
 
     documentMatches.sort((left, right) => (
-      (left.line ?? -1) - (right.line ?? -1)
+      (right.score ?? 0) - (left.score ?? 0)
+      || (left.line ?? -1) - (right.line ?? -1)
       || left.kind.localeCompare(right.kind)
     ))
     const available = documentMatches.slice(resumeOffset)
@@ -1978,6 +2002,14 @@ function queryDocumentMatches(document, groups, signal) {
         })
       }
     }
+  }
+  for (const match of matches) {
+    match.score ??= match.kind === 'path' ? 300
+      : match.kind === 'section' ? 250
+        : match.kind === 'property' || match.kind === 'tag' ? 200
+          : match.kind === 'task' ? 150
+            : 100
+    match.provenance ??= match.kind === 'path' ? 'path' : match.kind === 'property' || match.kind === 'tag' ? 'frontmatter' : 'body'
   }
   return matches.sort((left, right) => (
     (left.line ?? -1) - (right.line ?? -1)

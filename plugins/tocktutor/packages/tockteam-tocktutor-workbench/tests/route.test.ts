@@ -21,6 +21,7 @@ import type {
   TrashMutationResult,
   VaultLinksResult,
   VaultReference,
+  VaultSearchResult,
   VaultTreePage,
   WriteDocumentResult,
 } from '../dist/types.js'
@@ -147,6 +148,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   saveOverride: (() => Promise<{ ok: true; value: WriteDocumentResult }>) | null = null
   linksGate: Promise<void> | null = null
   linksOverride: ((request: { expectedVault: VaultReference; includeUnlinked?: boolean; path: string }, signal?: AbortSignal) => Promise<{ ok: true; value: VaultLinksResult }>) | null = null
+  searchContinuation: VaultSearchResult | null = null
 
   private readonly createdPaths: Set<string>
 
@@ -415,16 +417,17 @@ class FakeRemote implements WorkbenchRouteRemote {
         truncated: false,
       })
     },
-    search: (request: { expectedVault: VaultReference; limit?: number; mode?: string; query: string }, signal?: AbortSignal) => {
+    search: (request: { cursor?: string; expectedVault: VaultReference; limit?: number; mode?: string; query: string }, signal?: AbortSignal) => {
       this.calls.push({ method: 'search', parameters: [request, signal] })
+      if (request.cursor !== undefined && this.searchContinuation !== null) return success(this.searchContinuation)
       return success({
-        cursor: null,
+        cursor: this.searchContinuation === null ? null : 'search-next',
         generation: request.expectedVault.generation,
         matches: [{ kind: 'content' as const, line: 2, path: 'Folder/Note.md', preview: `Match ${request.query}` }],
         query: request.query,
         scan: { bytes: 30, entries: 4, files: 2 },
-        truncated: false,
-        truncationReason: null,
+        truncated: this.searchContinuation !== null,
+        truncationReason: this.searchContinuation === null ? null : 'result-limit' as const,
         warnings: [],
       })
     },
@@ -1999,6 +2002,36 @@ test('runs bounded vault search and Related results against the captured generat
   })
   controller.closeSearch()
   assert.equal(controller.getSnapshot().searchMatches?.length, 0)
+  controller.dispose()
+})
+
+test('loads one cursor page, merges stable matches, and keeps the cursor bound to the query', async () => {
+  const remote = new FakeRemote()
+  remote.searchContinuation = {
+    cursor: null,
+    generation: firstVault.generation,
+    matches: [{ id: 'second-hit', kind: 'content', line: 8, path: 'Folder/Note.md', preview: 'Second lesson match' }],
+    query: 'lesson',
+    scan: { bytes: 60, entries: 4, files: 3 },
+    truncated: false,
+    truncationReason: null,
+    warnings: [],
+  }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('lesson')
+  assert.equal(await controller.runSearch(), true)
+  assert.equal(controller.getSnapshot().searchCursor, 'search-next')
+  assert.equal(await controller.loadMoreSearch(), true)
+  assert.deepEqual(controller.getSnapshot().searchMatches?.map(match => match.line), [2, 8])
+  assert.equal(controller.getSnapshot().searchCursor, null)
+  assert.deepEqual(remote.calls.findLast(call => call.method === 'search')?.parameters[0], {
+    cursor: 'search-next',
+    expectedVault: firstVault,
+    limit: 100,
+    mode: 'query',
+    query: 'lesson',
+  })
   controller.dispose()
 })
 
