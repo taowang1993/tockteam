@@ -4,7 +4,7 @@
 
 Users find Translate, Search Kaomoji, and Can I Use directly in launcher search. First use offers inline approval, installs in the background, collects required preferences, and opens the command. Later uses open directly. No separate install/enable screens or mandatory “Trusted Extensions” detour.
 
-This is a moderate, cross-cutting change, not a new extension runtime. The user approved this interaction and requested a plan first if implementation is complex. This document records the implementation approach; no application code has changed.
+This is a moderate, cross-cutting change, not a new extension runtime. The user approved this interaction and requested a plan first if implementation is complex. This document records the implementation approach. Source implementation and browser acceptance are complete; the bounded macOS installed Can I Use first-use evidence passed at `156478b5` and is recorded in `.beads/reports/2026-09-11-extension-first-use-installed-verification.json`. Broader installed/platform evidence remains explicitly pending.
 
 ## User Flow
 
@@ -90,4 +90,4 @@ No unrestricted extension store, new extensions, Raycast-wide clone, runtime/age
 
 ## Tracking
 
-Epic: **`tockteam-u67`**. Its three child issues above contain the acceptance checks and implementation status. Planning is complete; implementation has not started.
+Epic: **`tockteam-u67`**. Its three child issues above contain the acceptance checks and implementation status. Planning and source implementation are complete with source acceptance at `c0cf353f`; the bounded macOS installed Can I Use first-use proof passed at `156478b5`. Remaining gaps are broader installed/platform evidence, screenshots from an installed run, and parent Beads closure; no release or push is implied.
