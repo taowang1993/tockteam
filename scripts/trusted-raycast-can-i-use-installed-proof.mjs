@@ -39,7 +39,8 @@ export async function runCanIUseInstalledSmoke(launcher, userData, { waitFor, cl
   await wait(`document.querySelector('input[aria-label="Browser Targets"]') !== null || document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 64 of 581 matches.') === true`)
   if (await launcher.evaluate(`document.querySelector('input[aria-label="Browser Targets"]') !== null`)) {
     await input('input[aria-label="Browser Targets"]', 'chrome 100')
-    assert.equal(await launcher.clickSelector('button[aria-label="Continue"]'), true, 'Can I Use Continue is not actionable')
+    assert.equal(await launcher.clickSelector('input[aria-label="Browser Targets"]'), true, 'Can I Use preference field is not actionable')
+    await launcher.pressKey('Enter')
   }
   await wait(`document.querySelector('section[aria-label="Can I Use"] [role="status"]')?.textContent?.includes('Showing 64 of 581 matches.') === true`)
   await input('#trusted-raycast-search', 'textcontent')
