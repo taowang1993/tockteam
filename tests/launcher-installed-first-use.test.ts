@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { resolveLauncherProofMode } from '../src/launcher-proof-mode.ts'
 import { findFocusProofResidue } from '../scripts/trusted-raycast-focus-proof-client.ts'
+// @ts-expect-error JavaScript harness helper is directly exercised here.
+import { shouldRemoveInstalledSmokeRoot } from '../scripts/launcher-installed-smoke.mjs'
 
 const base = {
   isPackaged: true,
@@ -58,11 +60,20 @@ test('installed first-use harness is inactive, authenticated, direct, and first-
   assert.match(installed, /evidence = process\.argv\.includes\(LAUNCHER_INSTALLED_FIRST_USE_FLAG\)\s*\n\s*\? await runInstalledFirstUseSmoke\(artifact\)\s*\n\s*: process\.platform/u)
   assert.match(installed, /directExecutable: identity\.executable/u)
   assert.match(installed, /findFocusProofResidue[\s\S]*observedProcesses/u)
+  assert.match(installed, /focusProofDescendants[\s\S]*pathMarkers/u)
+  assert.doesNotMatch(installed, /tockteam-trusted-raycast-/u)
   assert.match(installed, /processEvidence[\s\S]*cleanup\(\)/u)
   const firstUse = installed.slice(installed.indexOf('async function runInstalledFirstUseSmoke'), installed.indexOf('async function runMacInstalledSmoke'))
   assert.doesNotMatch(firstUse, /processTreesGone: true/u)
   assert.doesNotMatch(installed, /finalCheckpoint\.focusInconclusiveCount/u)
   assert.doesNotMatch(installed, /runSecondInstanceSmoke\([^)]*firstUse/iu)
+})
+
+test('first-use cleanup failure preserves the disposable root', () => {
+  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: true, processTreesGone: false, keepArtifacts: false }), false)
+  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: true, processTreesGone: true, keepArtifacts: false }), true)
+  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: false, processTreesGone: false, keepArtifacts: false }), true)
+  assert.equal(shouldRemoveInstalledSmokeRoot({ firstUse: true, processTreesGone: false, keepArtifacts: true }), true)
 })
 
 test('detached descendant identity remains residue until owned cleanup', () => {

@@ -53,6 +53,10 @@ const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/elect
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
 
+export function shouldRemoveInstalledSmokeRoot({ firstUse, processTreesGone, keepArtifacts }) {
+  return keepArtifacts || !firstUse || processTreesGone === true
+}
+
 /** Installed/package proof admits either an explicit update candidate or the repository-owned reviewed bundle. */
 export function assertTrustedRaycastInstalledSmokeArtifact(path) {
   const candidate = typeof path === 'string' && path.trim() !== '' ? path.trim() : join(root, 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
@@ -295,12 +299,13 @@ async function installedFirstUseSession(executable, userData, inventory, options
     { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' }, inactiveVisualProof: true },
   )
   const observedProcesses = new Map()
+  const pathMarkers = [userData, options.installRoot].filter(marker => typeof marker === 'string' && marker !== '')
   let samplingError
   let sampling = Promise.resolve()
   const captureProcesses = async () => {
     try {
       const snapshot = await readFocusProofProcessSnapshot()
-      for (const row of [...focusProofDescendants(snapshot, launched.child.pid), ...snapshot.filter(row => row.command.includes(userData) || row.command.includes('tockteam-trusted-raycast-'))]) observedProcesses.set(row.pid, row)
+      for (const row of [...focusProofDescendants(snapshot, launched.child.pid), ...snapshot.filter(row => pathMarkers.some(marker => row.command.includes(marker)))]) observedProcesses.set(row.pid, row)
     } catch (error) {
       samplingError ??= error
     }
@@ -317,14 +322,14 @@ async function installedFirstUseSession(executable, userData, inventory, options
       await captureProcesses()
       const rootPid = launched.child.pid
       if (!Number.isSafeInteger(rootPid) || rootPid <= 0) throw new Error('installed first-use proof has no root PID')
-      const markers = [userData, 'tockteam-trusted-raycast-']
+      const markers = pathMarkers
       const matches = snapshot => findFocusProofResidue(processBaseline, snapshot, { gatePgid: rootPid, markers, observedDescendants: [...observedProcesses.values()] })
       const killOwned = async (signal, snapshot) => {
         const residue = matches(snapshot)
         const groups = new Set()
         for (const row of residue) {
           const observed = observedProcesses.get(row.pid)
-          if (observed?.command !== row.command || !markers.some(marker => row.command.includes(marker))) continue
+          if (observed?.command !== row.command) continue
           if (row.pgid === row.pid) groups.add(row.pid)
           else {
             try { process.kill(row.pid, signal) } catch {}
@@ -950,6 +955,7 @@ async function main() {
     throw error
   } finally {
     const keepArtifacts = process.env.TOCKTEAM_KEEP_INSTALLED_SMOKE === '1'
+      || !shouldRemoveInstalledSmokeRoot({ firstUse: process.argv.includes(LAUNCHER_INSTALLED_FIRST_USE_FLAG), processTreesGone: evidence?.installed?.processTreesGone === true, keepArtifacts: false })
     if (!keepArtifacts) await rm(smokeRoot, { recursive: true, force: true })
     else console.log(`TockTeam installed launcher smoke artifacts retained at ${smokeRoot}`)
   }

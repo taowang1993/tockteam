@@ -2529,19 +2529,22 @@ function initializeLauncher(): void {
       return Array.isArray(configured) ? configured.filter((value): value is string => value === 'blur' || value === 'afterInvocation' || value === 'escapePressed') : LAUNCHER_HIDE_WINDOW_ON_DEFAULT
     },
     globalShortcut: {
-      register: (accelerator, callback) => globalShortcut.register(accelerator, () => {
-        const workbench = mainWindow
-        if (process.platform === 'darwin'
-          && workbench !== undefined
-          && !workbench.isDestroyed()
-          && screen.getDisplayMatching(workbench.getBounds()).id
-            !== screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id) {
-          app.focus({ steal: true })
-          setImmediate(callback)
-          return
-        }
-        callback()
-      }),
+      register: (accelerator, callback) => {
+        if (launcherProofMode.installedFirstUse) return false
+        return globalShortcut.register(accelerator, () => {
+          const workbench = mainWindow
+          if (process.platform === 'darwin'
+            && workbench !== undefined
+            && !workbench.isDestroyed()
+            && screen.getDisplayMatching(workbench.getBounds()).id
+              !== screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id) {
+            app.focus({ steal: true })
+            setImmediate(callback)
+            return
+          }
+          callback()
+        })
+      },
       unregister: accelerator => { globalShortcut.unregister(accelerator) },
     },
     loadWindow: window => window.loadURL(urlPolicy.entryUrl).then(() => undefined),
