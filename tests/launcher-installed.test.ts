@@ -787,7 +787,7 @@ test('installed report validation requires complete platform lifecycle evidence'
   const roots = ['dsh-runtime', 'node-runtime', 'tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd']
   const packageInventory = { version: '0.1.14', appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', assetCount: 65, assetsVerified: true, noticesVerified: true, appPathUsesAsar: true, appPath, extraResources: { roots }, vendorScan: { scope: 'bounded-no-follow', maxDepth: 2, maxEntries: 4096, checkedEntries: 114, forbiddenSourceFound: false, launcherSourceAbsent: true } }
   const rendererFor = (rendererAppPath: string) => ({
-    launcher: { apiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastTrustAction'], csp: "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'", hasNodeProcess: false, hasRequire: false, notificationPermission: 'denied', ready: 'true', title: 'TockLauncher' },
+    launcher: { apiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastFirstUse', 'trustedRaycastTrustAction'], csp: "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'", hasNodeProcess: false, hasRequire: false, notificationPermission: 'denied', ready: 'true', title: 'TockLauncher' },
     runtimeArchitecture: 'x64',
     search: { sourceExtension: 'Base64Conversion' },
     security: { appPath: rendererAppPath, appPathUsesAsar: true, launcherSessionPartition: 'persist:tockteam-launcher', sessionMatches: true },
@@ -806,6 +806,10 @@ test('installed report validation requires complete platform lifecycle evidence'
   }
   const expected = { appId: 'ai.deepseek.tockteam-desktop', platform: 'win32', productName: 'TockTeam Desktop', version: '0.1.14' }
   assert.equal(inspectInstalledReport(report, expected).failures.length, 0)
+  for (const apiKeys of [renderer.launcher.apiKeys.filter(key => key !== 'trustedRaycastFirstUse'), [...renderer.launcher.apiKeys, 'unreviewedHostAccess'].sort()]) {
+    const drifted = { ...report, installed: { ...report.installed, renderer: { ...renderer, launcher: { ...renderer.launcher, apiKeys } } } }
+    assert.ok(inspectInstalledReport(drifted, expected).failures.includes('installed renderer bridge differs from the exact contract'))
+  }
   const windowsRoots = roots.map(root => root.replaceAll('/', '\\'))
   const windowsAppPath = 'D:\\a\\_temp\\installed\\TockTeam Desktop\\resources\\app.asar'
   const windowsPackage = { ...packageInventory, appPath: windowsAppPath, extraResources: { roots: windowsRoots } }

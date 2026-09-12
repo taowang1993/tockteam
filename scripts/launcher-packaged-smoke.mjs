@@ -109,6 +109,7 @@ const launcherApiKeys = Object.freeze([
   'search',
   'trustedRaycastClose',
   'trustedRaycastEvent',
+  'trustedRaycastFirstUse',
   'trustedRaycastTrustAction',
 ])
 
