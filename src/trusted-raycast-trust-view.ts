@@ -113,7 +113,7 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
   }
 
   const runAction = (action: TrustedRaycastTrustAction): void => {
-    if (busy || disposed) return
+    if (busy || disposed || state === undefined) return
     busy = true
     error.hidden = true
     for (const button of buttons.querySelectorAll('button')) button.disabled = true
@@ -157,6 +157,7 @@ export function createTrustedRaycastTrustView(document: Document, bridge: Launch
 
   const load = (extensionId: TrustedRaycastExtensionId): void => {
     selected = extensionId; state = undefined; confirmStep = undefined; busy = true; error.hidden = true; status.textContent = ''
+    digestLine.hidden = true; previous.hidden = true; buttons.replaceChildren()
     const sequence = ++requestSequence
     for (const tab of tabs.querySelectorAll('button')) { tab.setAttribute('aria-selected', String(tab.getAttribute('data-extension-id') === extensionId)); tab.tabIndex = tab.getAttribute('data-extension-id') === extensionId ? 0 : -1 }
     void bridge.getTrustedRaycastTrust(extensionId).then(next => { if (!disposed && sequence === requestSequence && selected === extensionId) render(next) }).catch(failure => {

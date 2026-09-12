@@ -90,6 +90,35 @@ test('trust actions stay bound to the selected reviewed extension', async () => 
   assert.deepEqual(harness.actions, ['kaomoji-search:prepare'])
 })
 
+test('a failed trust-tab read clears old controls and rejects stale mutations', async () => {
+  const nodes: Element[] = []; const actions: string[] = []
+  const document = { createElement(tag: string) { const node = new Element() as Tagged; node.tag = tag; nodes.push(node); return node } } as unknown as Document
+  const bridge = {
+    getTrustedRaycastTrust: async (extensionId: string) => {
+      if (extensionId === 'google-translate') return trustState({ installed: true, enabled: true, digest: 'a'.repeat(64), digestApproved: true })
+      throw new Error('second tab unavailable')
+    },
+    trustedRaycastTrustAction: async (extensionId: string, action: string) => {
+      actions.push(`${extensionId}:${action}`)
+      return { extensionId, ok: true, state: trustState({ installed: true, enabled: true, digest: 'a'.repeat(64), digestApproved: true }) }
+    },
+  } as unknown as LauncherPreloadBridge
+  createTrustedRaycastTrustView(document, bridge, () => {}, 'en-US')
+  await flush()
+  const section = nodes.find(node => node.attributes.get('aria-label') === 'Extensions')!
+  const buttons = (): Tagged[] => section.descendants('button').filter(button => button.textContent !== 'Back to Results' && button.attributes.get('role') !== 'tab')
+  const remove = buttons().find(button => button.textContent === 'Remove Extension')!
+  remove.dispatchEvent(new Event('click')); await flush()
+  const confirm = buttons().find(button => button.textContent === 'Confirm Remove')!
+  const kaomoji = nodes.find(node => node.attributes.get('role') === 'tab' && node.attributes.get('data-extension-id') === 'kaomoji-search')!
+  kaomoji.dispatchEvent(new Event('click'))
+  assert.deepEqual(buttons(), [], 'identity-dependent actions disappear before the second read finishes')
+  await flush()
+  assert.deepEqual(buttons(), [], 'a failed second read does not restore the first tab controls')
+  confirm.dispatchEvent(new Event('click')); await flush()
+  assert.deepEqual(actions, [], 'a stale control cannot mutate the newly selected extension')
+})
+
 test('installed capability exposes enable, disable and confirmed remove; recovery surfaces its action', async () => {
   const installed = await makeView(trustState({ installed: true, digest: 'abc123', digestApproved: true }))
   assert.equal(installed.status().textContent, 'Installed · Disabled')
