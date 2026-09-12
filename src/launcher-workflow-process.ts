@@ -359,6 +359,7 @@ export async function runBoundedWorkflowCommand(
   return await new Promise<LauncherWorkflowCommandResult>((resolve, reject) => {
     let settled = false
     let stopping = false
+    let stopError: Error | undefined
     let stdoutBytes = 0
     let stderrBytes = 0
     let timeout: ReturnType<typeof setTimeout> | undefined
@@ -371,6 +372,7 @@ export async function runBoundedWorkflowCommand(
       else reject(error)
     }
     const stop = (error?: Error): void => {
+      if (error !== undefined) stopError ??= error
       if (settled || stopping) return
       stopping = true
       void terminateChild(
@@ -380,7 +382,7 @@ export async function runBoundedWorkflowCommand(
         options.spawnTerminationProcess ?? spawnWorkflowTerminationProcess,
         options.killProcess ?? ((pid, signal) => process.kill(pid, signal)),
         captureWindowsExecutable,
-      ).then(() => finish(error), () => finish(error))
+      ).then(() => finish(stopError), () => finish(stopError ?? new Error('Workflow command cleanup failed')))
     }
     const cancel = (): void => stop(new Error('Workflow command cancelled'))
     const count = (stream: 'stdout' | 'stderr', chunk: Uint8Array | string): void => {

@@ -81,6 +81,21 @@ test('POSIX shell exit drains its process group before publishing success or fai
   }
 })
 
+test('cancellation or late output overflow during normal-exit draining cannot become success', async () => {
+  for (const cancel of [true, false]) {
+    const child = childProcess()
+    const controller = new AbortController()
+    const pending = runBoundedWorkflowCommand({ command: 'echo ok', platform: 'Linux', signal: controller.signal, workingDirectory: '/tmp' }, {
+      spawnProcess: () => child, killProcess: () => {}, maxOutputBytes: 1,
+    })
+    child.emit('exit', 0, null)
+    if (cancel) controller.abort()
+    else child.stdout.write('too much')
+    child.emit('close', 0, null)
+    await assert.rejects(pending, cancel ? /cancelled/u : /output limit/u)
+  }
+})
+
 test('Workflow process terminates on cancellation, timeout, and output overflow', async () => {
   for (const kind of ['cancel', 'timeout', 'overflow'] as const) {
     const child = childProcess()
