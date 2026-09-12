@@ -1,13 +1,21 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import { admitTrustedRaycastArtifact, attestTrustedRaycastBuildIdentity } from '../src/trusted-raycast-artifact-admission.ts'
 import { getTrustedRaycastRuntimeDescriptor } from '../src/trusted-raycast-descriptors.ts'
 import { trustedRaycastCanIUseAliases } from './trusted-raycast-can-i-use-aliases.mjs'
+
+/** Select the pinned Unix tar or the validated Windows system tar; never fall back to PATH. */
+export function trustedRaycastTarPath(platform = process.platform, environment = process.env) {
+  if (platform !== 'win32') return '/usr/bin/tar'
+  const systemRoot = environment.SystemRoot?.trim()
+  if (systemRoot === undefined || !win32.isAbsolute(systemRoot)) throw new Error('Windows SystemRoot must be an absolute path')
+  return win32.join(systemRoot, 'System32', 'tar.exe')
+}
 
 /** Build upstream source from the same admitted bytes we ship; never install packages. */
 export async function buildTrustedRaycast(dist, artifact, extensionId = 'google-translate') {
@@ -20,7 +28,9 @@ export async function buildTrustedRaycast(dist, artifact, extensionId = 'google-
   rmSync(work, { recursive: true, force: true })
   mkdirSync(work, { recursive: true })
   try {
-    execFileSync('/usr/bin/tar', ['xf', '-', '-C', work], { input: bytes, timeout: 15000 })
+    const tar = trustedRaycastTarPath()
+    if (process.platform === 'win32' && !existsSync(tar)) throw new Error(`Windows bsdtar is missing: ${tar}`)
+    execFileSync(tar, ['xf', '-', '-C', work], { input: bytes, timeout: 15000 })
     const source = join(work, descriptor.artifactRoot, 'source')
     const output = join(dist, descriptor.extensionId === 'google-translate' ? 'trusted-raycast' : descriptor.extensionId === 'can-i-use' ? 'trusted-raycast-can-i-use' : 'trusted-raycast-kaomoji')
     const repository = fileURLToPath(new URL('../', import.meta.url))

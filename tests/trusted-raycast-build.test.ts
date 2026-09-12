@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path'
 import { TRUSTED_RAYCAST_ARTIFACT_SHA256 } from '../src/trusted-raycast-artifact-admission.ts'
 // @ts-expect-error Build helper is JavaScript.
 
-import { buildTrustedRaycast } from '../scripts/trusted-raycast-build.mjs'
+import { buildTrustedRaycast, trustedRaycastTarPath } from '../scripts/trusted-raycast-build.mjs'
 
 test('trusted Translate child runtime pins Node 24: the unchanged playTTS download stalls on Node 26', () => {
   const stagingSource = readFileSync(join(resolve('.'), 'scripts', 'stage-dsh.mjs'), 'utf8')
@@ -29,6 +29,16 @@ test('ordinary builds use only the two repository-owned reviewed archives', () =
   assert.doesNotMatch(build, /TRUSTED_RAYCAST_ARTIFACT_TAR/)
   assert.match(build, /google-translate\.tar'\), 'google-translate'/)
   assert.match(build, /kaomoji-search\.tar'\), 'kaomoji-search'/)
+})
+
+test('trusted Raycast build selects the pinned Unix tar or validated Windows System32 tar', () => {
+  assert.equal(trustedRaycastTarPath('darwin', {}), '/usr/bin/tar')
+  assert.equal(trustedRaycastTarPath('linux', {}), '/usr/bin/tar')
+  assert.equal(trustedRaycastTarPath('win32', { SystemRoot: 'C:\\Windows' }), 'C:\\Windows\\System32\\tar.exe')
+  assert.throws(() => trustedRaycastTarPath('win32', { SystemRoot: 'relative' }), /SystemRoot.*absolute/)
+  const source = readFileSync(join(resolve('.'), 'scripts', 'trusted-raycast-build.mjs'), 'utf8')
+  assert.match(source, /execFileSync\(tar, \['xf', '-', '-C', work\]/)
+  assert.match(source, /win32\.isAbsolute\(systemRoot\)[\s\S]+win32\.join\(systemRoot, 'System32', 'tar\.exe'\)/)
 })
 
 test('build omits absent candidate and rejects unapproved bytes before compilation', async () => {
