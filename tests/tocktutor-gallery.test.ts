@@ -40,9 +40,12 @@ const proof = JSON.parse(readFileSync(resolve('.beads/reports/tocktutor-utility-
         background: boolean
         appScoped: boolean
         provenance: { visibility: string; scope: string }
-        evidenceAmendment: { recaptured: boolean; previousProofSha256: string }
         backgroundComparison: { validPaletteParityAssertion: boolean; routeSelector: string; sidebarSelector: string }
-        layoutVerification: { captureState: string; fixCommit: string; finalPackagedRecapture: string; screenshotProvesFinalLayout: boolean }
+        layoutVerification: {
+          captureState: string; fixCommit: string; finalPackagedRecapture: string; screenshotProvesFinalLayout: boolean
+          bounds: { left: number; top: number; right: number; bottom: number; width: number; height: number; overflowY: string; maxHeight: string }
+          wheel: { targetInsideOptions: boolean; overflowing: boolean; beforeScrollTop: number; afterScrollTop: number; restoredScrollTop: number }
+        }
         mockKeychain: { argumentIndex: number; beforeTemporaryHome: boolean; beforeUserDataDir: boolean; noNewSecurityAgentDuringLaunch: boolean; noNewSecurityAgentAfterCleanup: boolean }
         geometry: { css: { width: number; height: number; deviceScaleFactor: number }; pixels: { width: number; height: number } }
         theme: { activeSkin: string | null; backgroundMatchesSidebar: boolean; baseline: string; colorScheme: string; documentSkin: string | null; themePreference: string }
@@ -152,7 +155,7 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
     sidebarBackground: '#151517',
     visibleTooltips: 0,
   })
-  assert.match(gallery, /id="search"[\s\S]*?Pre-Fix Capture[\s\S]*?Final packaged recapture is pending/u)
+  assert.match(gallery, /id="search"[\s\S]*?Verified Capture[\s\S]*?Search Options fits the viewport and scrolls natively/u)
   const search = proof.affectedRecapture.surfaces.search
   assert.equal(search.captureMethod, 'bounded Playwright Electron/CDP against the staged Desktop composition')
   assert.match(search.captureRun, /^tocktutor-search-packaged-[A-Za-z0-9-]+$/u)
@@ -212,16 +215,25 @@ test('keeps the TockTutor gallery capture count and screenshot links honest', ()
   }
   assert.equal(search.provenance.visibility, 'visible-user-authorized')
   assert.equal(search.provenance.scope, 'app-scoped')
-  assert.equal(search.evidenceAmendment.recaptured, false)
-  assert.match(search.evidenceAmendment.previousProofSha256, /^sha256:[0-9a-f]{64}$/u)
+  assert.ok(gallery.includes(`Captured at <code>${search.captureCommit.slice('tutor@'.length, 'tutor@'.length + 8)}</code>`))
   // The capture compared different semantic owners, not dialog/Files-sidebar colors.
   assert.equal(search.backgroundComparison.validPaletteParityAssertion, false)
   assert.equal(search.backgroundComparison.routeSelector, '[data-tockteam-tocktutor-route="true"]')
   assert.equal(search.backgroundComparison.sidebarSelector, '#tockteam-sidebar-root')
-  assert.equal(search.layoutVerification.captureState, 'pre-overflow-fix')
-  assert.equal(search.layoutVerification.finalPackagedRecapture, 'pending')
-  assert.equal(search.layoutVerification.screenshotProvesFinalLayout, false)
+  assert.equal(search.layoutVerification.captureState, 'post-overflow-fix')
+  assert.equal(search.layoutVerification.finalPackagedRecapture, 'verified')
+  assert.equal(search.layoutVerification.screenshotProvesFinalLayout, true)
   assert.match(search.layoutVerification.fixCommit, /^[0-9a-f]{8,40}$/u)
+  const { bounds, wheel } = search.layoutVerification
+  assert.ok(bounds.left >= 0 && bounds.top >= 0 && bounds.right <= search.geometry.css.width && bounds.bottom <= search.geometry.css.height)
+  assert.ok(bounds.width > 0 && bounds.height > 0)
+  assert.equal(bounds.overflowY, 'auto')
+  assert.notEqual(bounds.maxHeight, 'none')
+  assert.equal(wheel.targetInsideOptions, true)
+  assert.equal(wheel.overflowing, true)
+  assert.equal(wheel.beforeScrollTop, 0)
+  assert.ok(wheel.afterScrollTop > wheel.beforeScrollTop)
+  assert.equal(wheel.restoredScrollTop, 0)
   assert.equal(search.cleanupVerified, true)
   const searchCapture = readFileSync(resolve(galleryRoot, 'screenshots/tocktutor-search.png'))
   assert.deepEqual({ width: searchCapture.readUInt32BE(16), height: searchCapture.readUInt32BE(20) }, { width: 3024, height: 1898 })
