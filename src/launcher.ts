@@ -527,7 +527,8 @@ async function bootstrap(): Promise<void> {
   }
 
   focusSearchHandler = (): void => {
-    if (trustedView !== undefined) { trustedView.focus(); return }
+    // Hiding revoked the main-owned child; its old view cannot be resumed.
+    if (trustedView || trustedOpening || trustedInvocation || firstUseView) { closeLocalTool(); return }
     actionMenuOpen = false
     historyOpen = false
     historyPanel.hidden = true
@@ -1039,6 +1040,10 @@ async function bootstrap(): Promise<void> {
     if (invokingWorkflow) return
     void renderSearch(search.value)
   })
+  // Preserve native composition before any root, menu, or nested tool shortcut.
+  root.addEventListener('keydown', event => {
+    if (event.isComposing || event.keyCode === 229) event.stopImmediatePropagation()
+  }, { capture: true })
   search.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
       event.preventDefault()

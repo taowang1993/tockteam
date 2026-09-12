@@ -77,6 +77,16 @@ test('launcher shortcut matching requires exact modifiers and supports finite pr
   assert.equal(launcherShortcutAriaLabel('Shift+Enter'), 'Shift+Enter')
 })
 
+test('the launcher capture boundary preserves IME defaults before root and nested tool handlers', () => {
+  assert.match(launcherSource, /root\.addEventListener\('keydown', event => \{\s*if \(event\.isComposing \|\| event\.keyCode === 229\) event\.stopImmediatePropagation\(\)\s*\}, \{ capture: true \}\)/u)
+})
+
+test('reopening clears a revoked trusted command instead of focusing its stale view', () => {
+  const focus = launcherSource.slice(launcherSource.indexOf('focusSearchHandler = ():', launcherSource.indexOf('async function bootstrap')), launcherSource.indexOf('const rememberSearch ='))
+  assert.match(focus, /if \(trustedView \|\| trustedOpening \|\| trustedInvocation \|\| firstUseView\) \{ closeLocalTool\(\); return \}/u)
+  assert.doesNotMatch(focus, /trustedView\.focus/u)
+})
+
 test('theme changes refresh an active trusted view without rerunning root search', () => {
   assert.match(launcherSource, /if \(trustedView !== undefined\) \{ trustedView\.refreshTheme\(\); return \}/u)
   const close = launcherSource.slice(launcherSource.indexOf('const closeLocalTool ='), launcherSource.indexOf('const hideLauncherControls ='))
