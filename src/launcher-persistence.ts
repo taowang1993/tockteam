@@ -1,8 +1,16 @@
 import { constants } from 'node:fs'
-import { randomUUID } from 'node:crypto'
-import { chmod, mkdir, open, realpath, rename, rm, lstat } from 'node:fs/promises'
+import { createHash, randomUUID } from 'node:crypto'
+import { chmod, link, mkdir, mkdtemp, open, realpath, rename, rm, lstat } from 'node:fs/promises'
 import path from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 import type { LauncherInternalResultItem } from './launcher-actions.ts'
+import {
+  LAUNCHER_RANKING_MAX_BYTES,
+  parseLauncherRanking,
+  pruneLauncherRanking,
+  recordLauncherUsage,
+  type LauncherRankingEntry,
+} from './launcher-ranking.ts'
 import {
   isLauncherRendererSettingValue,
   LAUNCHER_MAIN_OWNED_SETTING_KEYS,
@@ -25,6 +33,7 @@ const MAX_INDEX_ITEMS = 50_000
 const MAX_LOG_MESSAGE_LENGTH = 512
 const MAX_LOG_ENTRIES = MAX_LAUNCHER_LOG_ENTRIES
 const MAX_GRANT_BYTES = 16 * 1024
+const MAX_EXTERNAL_TRANSACTION_BYTES = 40 * 1024
 const ENVELOPE_VERSION = 1 as const
 const ENVELOPE_KEY = '$tockteamEncrypted'
 
@@ -39,6 +48,14 @@ type ExternalGrant = Readonly<{
   version: 1
 }>
 
+type ExternalReplacementJournal = Readonly<{
+  next: ExternalGrant
+  previous: ExternalGrant
+  directory?: string
+  previousSha256?: string
+  version: 1 | 2
+}>
+
 export type LauncherSecretCodec = Readonly<{
   decrypt: (ciphertext: string) => string
   encrypt: (plaintext: string) => string
@@ -47,6 +64,7 @@ export type LauncherSecretCodec = Readonly<{
 
 export type LauncherPersistenceOptions = Readonly<{
   externalWriteAvailable?: boolean
+  now?: () => number
   secretCodec?: LauncherSecretCodec
   secureStorageAvailable?: boolean
   userDataPath: string
@@ -135,6 +153,21 @@ function parseGrant(value: unknown): ExternalGrant {
   })
 }
 
+function parseExternalReplacementJournal(value: unknown): ExternalReplacementJournal {
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2) || Object.keys(value).length !== (value.version === 1 ? 3 : 5)) throw new Error('TockLauncher external settings transaction is invalid')
+  const next = parseGrant(value.next)
+  const previous = parseGrant(value.previous)
+  if (next.path !== previous.path || next.parentRealPath !== previous.parentRealPath) throw new Error('TockLauncher external settings transaction changed destination')
+  if (value.version === 1) return Object.freeze({ next, previous, version: 1 })
+  const directory = value.directory
+  const previousSha256 = value.previousSha256
+  if (typeof previousSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(previousSha256)) throw new Error('TockLauncher external settings transaction digest is invalid')
+  const prefix = `.${path.basename(previous.path)}.tockteam-`
+  if (typeof directory !== 'string' || !path.isAbsolute(directory) || path.dirname(directory) !== path.dirname(previous.path)
+    || !path.basename(directory).startsWith(prefix) || !/^[A-Za-z0-9]{6}$/u.test(path.basename(directory).slice(prefix.length))) throw new Error('TockLauncher external settings transaction directory is invalid')
+  return Object.freeze({ next, previous, directory, previousSha256, version: 2 })
+}
+
 function sameIdentity(stats: { dev: unknown; ino: unknown }, grant: ExternalGrant): boolean {
   return identityPart(stats.dev) === grant.dev && identityPart(stats.ino) === grant.ino
 }
@@ -185,15 +218,31 @@ async function syncDirectory(directory: string): Promise<void> {
   finally { await handle.close() }
 }
 
+export async function ensurePrivateDirectory(directory: string): Promise<void> {
+  await mkdir(path.dirname(directory), { recursive: true, mode: 0o700 })
+  try { await mkdir(directory, { mode: 0o700 }) }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
+  const selected = await lstat(directory, { bigint: true })
+  if (selected.isSymbolicLink() || !selected.isDirectory()) throw new Error('TockLauncher managed directory must not be a symlink')
+  const handle = await open(directory, constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0))
+  try {
+    const opened = await handle.stat({ bigint: true })
+    if (!opened.isDirectory() || identityPart(opened.dev) !== identityPart(selected.dev) || identityPart(opened.ino) !== identityPart(selected.ino)) {
+      throw new Error('TockLauncher managed directory changed')
+    }
+    // Windows inherits the app-data ACL; directory fchmod neither establishes ACL privacy nor works there.
+    if (process.platform !== 'win32') await handle.chmod(0o700)
+  } finally { await handle.close() }
+}
+
 /** Managed app-owned atomic file writer. It never follows a temporary symlink. */
-async function atomicWrite(filePath: string, contents: string, options: Readonly<{
+export async function atomicWrite(filePath: string, contents: string, options: Readonly<{
   backup?: boolean
   backupMaxBytes?: number
   validateBackup?: (contents: string) => void
 }> = {}): Promise<void> {
   const directory = path.dirname(filePath)
-  await mkdir(directory, { recursive: true, mode: 0o700 })
-  await chmod(directory, 0o700)
+  await ensurePrivateDirectory(directory)
   if (options.backup !== false && await exists(filePath)) {
     try {
       const previous = await readBoundedRegularFile(filePath, options.backupMaxBytes ?? MAX_LAUNCHER_INDEX_BYTES)
@@ -269,18 +318,23 @@ export class LauncherPersistenceRepository {
   readonly #managedSettingsPath: string
   readonly #indexPath: string
   readonly #logsPath: string
+  readonly #rankingPath: string
   readonly #grantPath: string
+  readonly #externalTransactionPath: string
   readonly #externalBackupRoot: string
   readonly #secretCodec: LauncherSecretCodec | undefined
   readonly #secureStorageAvailable: boolean | undefined
   readonly #externalWriteAvailable: boolean
+  readonly #now: () => number
   #settings: StoredSettings = {}
   #settingsSource: LauncherSettingsSnapshot['settingsSource'] = 'managed'
   #externalGrant: ExternalGrant | undefined
   #externalGrantStatus: LauncherSettingsSnapshot['externalGrantStatus'] = 'none'
   #index: LauncherInternalResultItem[] = []
-  #indexAvailable = false
   #logs: string[] = []
+  #ranking: readonly LauncherRankingEntry[] = Object.freeze([])
+  #rankingGeneration = 0
+  #rankingResetInProgress = false
   #recoveredArtifacts = new Set<'external' | 'index' | 'logs' | 'settings'>()
   #recoveredSettings = false
   #mutationTail: Promise<void> = Promise.resolve()
@@ -291,10 +345,13 @@ export class LauncherPersistenceRepository {
     this.#managedSettingsPath = path.join(this.#rootPath, 'settings.json')
     this.#indexPath = path.join(this.#rootPath, 'search-index.json')
     this.#logsPath = path.join(this.#rootPath, 'logs.json')
+    this.#rankingPath = path.join(this.#rootPath, 'usage-ranking.json')
     this.#grantPath = path.join(this.#rootPath, 'external-settings-grant.json')
+    this.#externalTransactionPath = path.join(this.#rootPath, 'external-settings-transaction.json')
     this.#externalBackupRoot = path.join(this.#rootPath, 'external-backups')
     this.#secretCodec = options.secretCodec
     this.#secureStorageAvailable = options.secureStorageAvailable
+    this.#now = options.now ?? Date.now
     this.#externalWriteAvailable = options.externalWriteAvailable ?? (HAS_NOFOLLOW && process.platform !== 'win32')
   }
 
@@ -305,17 +362,32 @@ export class LauncherPersistenceRepository {
   }
 
   async #initialize(): Promise<void> {
-    await mkdir(this.#rootPath, { recursive: true, mode: 0o700 }); await chmod(this.#rootPath, 0o700)
+    await ensurePrivateDirectory(this.#rootPath)
     this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {}, recovered => {
       if (recovered) { this.#recoveredSettings = true; this.#recoveredArtifacts.add('settings') }
     })
     const index = await this.#recoverJson(this.#indexPath, MAX_LAUNCHER_INDEX_BYTES, parseIndex, undefined, recovered => {
       if (recovered) this.#recoveredArtifacts.add('index')
     })
-    this.#index = index ?? []; this.#indexAvailable = index !== undefined
+    this.#index = index ?? []
     this.#logs = await this.#recoverJson(this.#logsPath, MAX_LAUNCHER_LOG_BYTES, parseLogs, [], recovered => {
       if (recovered) this.#recoveredArtifacts.add('logs')
     })
+    const ranking = await this.#recoverJson(this.#rankingPath, LAUNCHER_RANKING_MAX_BYTES, parseLauncherRanking, [])
+    const prunedRanking = pruneLauncherRanking(ranking, this.#now())
+    this.#ranking = Object.freeze([...prunedRanking])
+    if (!isDeepStrictEqual(ranking, prunedRanking) && await exists(this.#rankingPath)) {
+      try {
+        await atomicWrite(this.#rankingPath, JSON.stringify(prunedRanking, null, 2), {
+          backupMaxBytes: LAUNCHER_RANKING_MAX_BYTES,
+          validateBackup: contents => { parseLauncherRanking(JSON.parse(contents) as unknown) },
+        })
+      } catch { /* stale ranking is already removed from the in-memory source of truth */ }
+    }
+    if (await this.#recoverExternalReplacement()) {
+      this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
+      return
+    }
     if (!await exists(this.#grantPath)) return
     try {
       const grant = await readJson(this.#grantPath, MAX_GRANT_BYTES, parseGrant)
@@ -323,6 +395,65 @@ export class LauncherPersistenceRepository {
     } catch {
       this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
     }
+  }
+
+  async #recoverExternalReplacement(): Promise<boolean> {
+    if (!await exists(this.#externalTransactionPath)) return false
+    let journal: ExternalReplacementJournal
+    try { journal = await readJson(this.#externalTransactionPath, MAX_EXTERNAL_TRANSACTION_BYTES, parseExternalReplacementJournal) }
+    catch {
+      await rm(this.#externalTransactionPath, { force: true }).catch(() => undefined)
+      await syncDirectory(this.#rootPath).catch(() => undefined)
+      return false
+    }
+    // Recovery cannot recreate authority that was revoked or replaced after the write.
+    const authorized = await readJson(this.#grantPath, MAX_GRANT_BYTES, parseGrant).catch(() => undefined)
+    if (authorized === undefined || (!this.#sameGrant(authorized, journal.previous) && !this.#sameGrant(authorized, journal.next))) {
+      await rm(this.#externalTransactionPath, { force: true })
+      await syncDirectory(this.#rootPath)
+      return false
+    }
+    try {
+      if (journal.directory !== undefined && await exists(journal.directory)) {
+        await this.#validateExternalTransactionDirectory(journal)
+        if (!await exists(journal.previous.path)) {
+          await link(path.join(journal.directory, 'previous.json'), journal.previous.path)
+          await syncDirectory(journal.previous.parentRealPath)
+        }
+        const preserved = path.join(journal.directory, 'previous.json')
+        if (await exists(preserved)) {
+          const contents = await readBoundedRegularFile(preserved, MAX_LAUNCHER_SETTINGS_BYTES, journal.previous)
+          if (createHash('sha256').update(contents).digest('hex') !== journal.previousSha256) return true
+        }
+      }
+      const current = await this.#createGrant(journal.next.path)
+      if (this.#sameGrant(current, journal.next)) {
+        const settings = await readJson(current.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), current)
+        const serialized = JSON.stringify(settings, null, 2)
+        await atomicWrite(this.#externalBackupPath(current), serialized, { backup: false })
+        await atomicWrite(this.#grantPath, JSON.stringify(current, null, 2), { backup: false })
+        if (!sameIdentity(current, journal.previous)) await rm(this.#externalBackupPath(journal.previous), { force: true })
+      } else if (this.#sameGrant(current, journal.previous)) {
+        await readJson(current.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), current)
+      } else return true
+      if (journal.directory !== undefined && await exists(journal.directory)) {
+        const preserved = path.join(journal.directory, 'previous.json')
+        // Never delete an unexpected version displaced by a concurrent writer.
+        if (await exists(preserved) && !sameIdentity(await lstat(preserved, { bigint: true }), journal.previous)) return true
+        await rm(journal.directory, { recursive: true })
+        await syncDirectory(journal.previous.parentRealPath)
+      }
+      await rm(this.#externalTransactionPath, { force: true })
+      await syncDirectory(this.#rootPath)
+      return false
+    } catch { return true }
+  }
+
+  async #validateExternalTransactionDirectory(journal: ExternalReplacementJournal): Promise<void> {
+    const directory = journal.directory!
+    const stat = await lstat(directory)
+    if (!stat.isDirectory() || stat.isSymbolicLink() || await realpath(directory) !== directory
+      || await realpath(path.dirname(journal.previous.path)) !== journal.previous.parentRealPath) throw new Error('TockLauncher external settings transaction directory changed')
   }
 
   async #recoverJson<T>(filePath: string, maxBytes: number, parser: (value: unknown) => T, fallback: T, setRecovered?: (recovered: boolean) => void): Promise<T> {
@@ -346,14 +477,16 @@ export class LauncherPersistenceRepository {
   async #loadExternal(grant: ExternalGrant): Promise<void> {
     const backupPath = this.#externalBackupPath(grant)
     try {
+      const currentGrant = await this.#createGrant(grant.path)
+      if (!this.#sameGrant(currentGrant, grant)) throw new Error('TockLauncher external settings grant changed')
       const settings = await readJson(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), grant)
       this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = settings
       return
     } catch {
       if (!await exists(backupPath)) throw new Error('External settings source is invalid')
       const backup = await readJson(backupPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value))
-      await this.#writeExternalDescriptor(grant, JSON.stringify(backup, null, 2), undefined)
-      this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = backup; this.#recoveredSettings = true; this.#recoveredArtifacts.add('external')
+      const refreshedGrant = await this.#writeExternalDescriptor(grant, JSON.stringify(backup, null, 2))
+      this.#externalGrant = refreshedGrant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = backup; this.#recoveredSettings = true; this.#recoveredArtifacts.add('external')
     }
   }
 
@@ -361,7 +494,6 @@ export class LauncherPersistenceRepository {
 
   get externalWriteAvailable(): boolean { return this.#externalWriteAvailable }
   get secureStorageAvailable(): boolean { return this.#secureStorageUsable() }
-  get isClosed(): boolean { return this.#closed }
 
   getSetting<T>(key: string, defaultValue: T): T {
     if (!isLauncherRuntimeSettingKey(key)) throw new Error('TockLauncher setting key is not allowlisted')
@@ -380,7 +512,25 @@ export class LauncherPersistenceRepository {
   }
 
   readIndex(): readonly LauncherInternalResultItem[] { return Object.freeze(cloneJson(this.#index, MAX_LAUNCHER_INDEX_BYTES)) }
-  hasPersistedIndex(): boolean { return this.#indexAvailable }
+
+  readRanking(): readonly LauncherRankingEntry[] { return Object.freeze(cloneJson(this.#ranking, LAUNCHER_RANKING_MAX_BYTES)) }
+
+  async recordUsage(itemId: string, now = this.#now()): Promise<void> {
+    if (this.#closed) throw new Error('TockLauncher persistence repository is closed')
+    if (this.#rankingResetInProgress) return
+    const generation = this.#rankingGeneration
+    const next = recordLauncherUsage(this.#ranking, itemId, now)
+    this.#ranking = Object.freeze([...next])
+    try {
+      await this.#enqueue(async () => {
+        if (generation !== this.#rankingGeneration) return
+        await atomicWrite(this.#rankingPath, JSON.stringify(next, null, 2), {
+          backupMaxBytes: LAUNCHER_RANKING_MAX_BYTES,
+          validateBackup: contents => { parseLauncherRanking(JSON.parse(contents) as unknown) },
+        })
+      })
+    } catch { /* usage remains available in memory when ranking persistence fails */ }
+  }
 
   #secureStorageUsable(): boolean {
     try {
@@ -441,7 +591,22 @@ export class LauncherPersistenceRepository {
 
   async resetSettings(signal?: AbortSignal): Promise<void> {
     throwIfAborted(signal)
-    await this.#enqueue(async () => { throwIfAborted(signal); await this.#writeSettings({}) })
+    if (this.#closed) throw new Error('TockLauncher persistence repository is closed')
+    const generation = ++this.#rankingGeneration
+    this.#rankingResetInProgress = true
+    this.#ranking = Object.freeze([])
+    try {
+      await this.#enqueue(async () => {
+        throwIfAborted(signal)
+        await rm(this.#rankingPath, { force: true })
+        await rm(`${this.#rankingPath}.bak`, { force: true })
+        await syncDirectory(this.#rootPath)
+        await this.#writeSettings({})
+        this.#ranking = Object.freeze([])
+      })
+    } finally {
+      if (this.#rankingGeneration === generation) this.#rankingResetInProgress = false
+    }
   }
 
   async recordSearch(query: string, defaults: Readonly<{ historyEnabled: boolean; historyLimit: number }>): Promise<void> {
@@ -471,7 +636,7 @@ export class LauncherPersistenceRepository {
         backupMaxBytes: MAX_LAUNCHER_INDEX_BYTES,
         validateBackup: contents => { parseIndex(JSON.parse(contents) as unknown) },
       })
-      this.#index = parsed; this.#indexAvailable = true
+      this.#index = parsed
     })
   }
 
@@ -503,12 +668,14 @@ export class LauncherPersistenceRepository {
 
   async exportSettingsToPath(filePath: string): Promise<void> {
     const absolute = path.resolve(filePath)
-    const existing = await exists(absolute)
-    if (existing) {
-      const stats = await lstat(absolute)
-      if (stats.isSymbolicLink() || !stats.isFile()) throw new Error('TockLauncher export target is invalid')
-    }
     await this.#enqueue(async () => {
+      if (await exists(absolute)) {
+        const target = await this.#createGrant(absolute)
+        const active = this.#externalGrant
+        if (active !== undefined && (target.path === active.path || sameIdentity(target, active))) {
+          throw new Error('TockLauncher export target is the active external settings file')
+        }
+      }
       const exported = parseLauncherSettingsRecord(this.#settings, { omitMainOwned: true, omitSensitive: true })
       await atomicWrite(absolute, JSON.stringify(exported, null, 2), { backup: false })
     })
@@ -525,10 +692,11 @@ export class LauncherPersistenceRepository {
       const current = await this.#createGrant(grant.path)
       if (!this.#sameGrant(current, grant)) throw new Error('TockLauncher external settings file changed')
       throwIfAborted(signal)
+      await this.#retireExternalGrant()
       await atomicWrite(this.#grantPath, JSON.stringify(grant, null, 2), { backup: false })
       try { throwIfAborted(signal) }
       catch (error) {
-        await rm(this.#grantPath, { force: true }).catch(() => undefined)
+        await this.#retireExternalGrant()
         throw error
       }
       this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = settings
@@ -539,10 +707,18 @@ export class LauncherPersistenceRepository {
     throwIfAborted(signal)
     await this.#enqueue(async () => {
       throwIfAborted(signal)
-      await rm(this.#grantPath, { force: true })
-      this.#externalGrant = undefined; this.#externalGrantStatus = 'none'; this.#settingsSource = 'managed'
-      this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
+      await this.#retireExternalGrant()
     })
+  }
+
+  async #retireExternalGrant(): Promise<void> {
+    await rm(this.#grantPath, { force: true })
+    this.#externalGrant = undefined; this.#externalGrantStatus = 'none'; this.#settingsSource = 'managed'
+    this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
+    // Persist revocation before retiring the journal, including crashes between these operations.
+    await syncDirectory(this.#rootPath)
+    await rm(this.#externalTransactionPath, { force: true })
+    await syncDirectory(this.#rootPath)
   }
 
   async flush(): Promise<void> { await this.#mutationTail }
@@ -570,15 +746,15 @@ export class LauncherPersistenceRepository {
       if (!this.#externalWriteAvailable) throw new Error('TockLauncher external settings writes are unavailable on this platform')
       try {
         const previous = await readBoundedRegularFile(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, grant)
-        parseStoredSettings(JSON.parse(previous) as unknown)
+        const currentSettings = parseStoredSettings(JSON.parse(previous) as unknown)
+        if (!isDeepStrictEqual(currentSettings, this.#settings)) throw new Error('TockLauncher external settings file contents changed')
         const backupPath = this.#externalBackupPath(grant)
         await atomicWrite(backupPath, previous, { backup: false })
-        await this.#writeExternalDescriptor(grant, serialized, previous)
-        await atomicWrite(backupPath, serialized, { backup: false })
+        this.#externalGrant = await this.#writeExternalDescriptor(grant, serialized, previous)
       } catch (error) {
         this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
         this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
-        throw new Error('TockLauncher external settings grant changed or was revoked', { cause: error })
+        throw new Error('TockLauncher external settings grant changed or was revoked. Any recovery copies remain beside the selected file.', { cause: error })
       }
     } else await atomicWrite(this.#managedSettingsPath, serialized, {
       backupMaxBytes: MAX_LAUNCHER_SETTINGS_BYTES,
@@ -587,34 +763,77 @@ export class LauncherPersistenceRepository {
     this.#settings = cloneJson(normalized, MAX_LAUNCHER_SETTINGS_BYTES)
   }
 
-  async #writeExternalDescriptor(grant: ExternalGrant, contents: string, _previous: string | undefined): Promise<void> {
+  async #writeExternalDescriptor(grant: ExternalGrant, contents: string, expected?: string): Promise<ExternalGrant> {
     if (!this.#externalWriteAvailable || !HAS_NOFOLLOW) throw new Error('TockLauncher external settings writes are unavailable on this platform')
-    const parent = await realpath(path.dirname(grant.path))
-    if (parent !== grant.parentRealPath) throw new Error('TockLauncher external settings directory changed')
-    const handle = await open(grant.path, constants.O_RDWR | NOFOLLOW)
+    const parent = path.dirname(grant.path)
+    if (await realpath(parent) !== grant.parentRealPath) throw new Error('TockLauncher external settings directory changed')
+    const previous = expected ?? await readBoundedRegularFile(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, grant)
+    const directory = await mkdtemp(path.join(parent, `.${path.basename(grant.path)}.tockteam-`))
+    const temporary = path.join(directory, 'next.json')
+    const preserved = path.join(directory, 'previous.json')
+    let staged
+    let displaced = false
     try {
-      const stats = await handle.stat({ bigint: true })
-      if (!stats.isFile() || !sameIdentity(stats, grant)) throw new Error('TockLauncher external settings file changed')
-      await handle.truncate(0)
-      await handle.writeFile(contents, 'utf8')
-      await handle.sync()
-      const after = await handle.stat({ bigint: true })
-      const current = await lstat(grant.path, { bigint: true })
-      const parentAfter = await realpath(path.dirname(grant.path))
-      if (!sameIdentity(after, grant) || !sameIdentity(current, grant) || parentAfter !== grant.parentRealPath) throw new Error('TockLauncher external settings file changed')
-    } finally { await handle.close() }
+      staged = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | NOFOLLOW, 0o600)
+      await staged.writeFile(contents, 'utf8')
+      await staged.sync()
+      const stagedIdentity = await staged.stat({ bigint: true })
+      const nextGrant = Object.freeze({ ...grant, dev: String(stagedIdentity.dev), ino: String(stagedIdentity.ino) })
+      await staged.close(); staged = undefined
+      await syncDirectory(directory)
+      await syncDirectory(parent)
+      const journal: ExternalReplacementJournal = { next: nextGrant, previous: grant, directory, previousSha256: createHash('sha256').update(previous).digest('hex'), version: 2 }
+      await atomicWrite(this.#externalTransactionPath, JSON.stringify(journal, null, 2), { backup: false })
+      await this.#validateExternalTransactionDirectory(journal)
+      if (await readBoundedRegularFile(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, grant) !== previous) throw new Error('TockLauncher external settings file changed')
+      // Preserve the displaced inode, then publish without overwriting any intervening editor save.
+      // The brief missing-path interval is deliberate: Node has no conditional replacement primitive.
+      await rename(grant.path, preserved)
+      displaced = true
+      await syncDirectory(directory)
+      await syncDirectory(parent)
+      if (await readBoundedRegularFile(preserved, MAX_LAUNCHER_SETTINGS_BYTES, grant) !== previous) throw new Error('TockLauncher external settings file changed')
+      await link(temporary, grant.path)
+      await syncDirectory(parent)
+      const refreshed = await this.#createGrant(grant.path)
+      if (!sameIdentity(stagedIdentity, refreshed)) throw new Error('TockLauncher external settings file changed')
+      await atomicWrite(this.#externalBackupPath(refreshed), contents, { backup: false })
+      await atomicWrite(this.#grantPath, JSON.stringify(refreshed, null, 2), { backup: false })
+      if (await readBoundedRegularFile(preserved, MAX_LAUNCHER_SETTINGS_BYTES, grant) !== previous) throw new Error('TockLauncher displaced settings were edited during commit')
+      if (!sameIdentity(refreshed, grant)) await rm(this.#externalBackupPath(grant), { force: true })
+      await rm(directory, { recursive: true })
+      await syncDirectory(parent)
+      await rm(this.#externalTransactionPath, { force: true })
+      await syncDirectory(this.#rootPath)
+      return refreshed
+    } catch (error) {
+      if (displaced) {
+        // EEXIST preserves a concurrent writer. Keep both recovery versions beside the shared file.
+        await link(preserved, grant.path).then(() => syncDirectory(parent)).catch(() => undefined)
+      }
+      throw error
+    } finally {
+      await staged?.close().catch(() => undefined)
+      if (!displaced) await rm(directory, { recursive: true, force: true })
+    }
   }
 
   async #createGrant(filePath: string): Promise<ExternalGrant> {
     const absolute = path.resolve(filePath)
     const selected = await lstat(absolute, { bigint: true })
-    if (selected.isSymbolicLink() || !selected.isFile()) throw new Error('TockLauncher external settings path must be a regular file')
-    const canonical = await realpath(absolute)
-    const parent = await realpath(path.dirname(canonical))
-    const stats = await lstat(canonical, { bigint: true })
-    const dev = identityPart(stats.dev); const ino = identityPart(stats.ino)
-    if (dev === undefined || ino === undefined) throw new Error('TockLauncher external settings identity is unavailable')
-    return Object.freeze({ dev, ino, parentRealPath: parent, path: canonical, version: 1 })
+    const selectedDev = identityPart(selected.dev); const selectedIno = identityPart(selected.ino)
+    if (selected.isSymbolicLink() || !selected.isFile() || selectedDev === undefined || selectedIno === undefined) throw new Error('TockLauncher external settings path must be a regular file')
+    const handle = await open(absolute, constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0))
+    try {
+      const opened = await handle.stat({ bigint: true })
+      const dev = identityPart(opened.dev); const ino = identityPart(opened.ino)
+      if (!opened.isFile() || dev === undefined || ino === undefined || dev !== selectedDev || ino !== selectedIno) throw new Error('TockLauncher external settings file changed')
+      const canonical = await realpath(absolute)
+      const parent = await realpath(path.dirname(canonical))
+      const current = await lstat(canonical, { bigint: true })
+      if (current.isSymbolicLink() || identityPart(current.dev) !== dev || identityPart(current.ino) !== ino) throw new Error('TockLauncher external settings file changed')
+      return Object.freeze({ dev, ino, parentRealPath: parent, path: canonical, version: 1 })
+    } finally { await handle.close() }
   }
 
   #sameGrant(left: ExternalGrant, right: ExternalGrant): boolean { return left.path === right.path && left.parentRealPath === right.parentRealPath && left.dev === right.dev && left.ino === right.ino }

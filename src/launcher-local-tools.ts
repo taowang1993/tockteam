@@ -22,10 +22,10 @@ function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag:
   return created
 }
 function labeled(document: Document, labelText: string, control: HTMLElement): HTMLLabelElement {
-  const label = element(document, 'label', 'launcher-local-tool-field')
+  const label = element(document, 'label', 'launcher-command-field')
   const text = element(document, 'span')
   text.textContent = labelText
-  control.classList.add('min-w-0', 'max-w-full', 'w-full')
+  control.classList.add('launcher-command-control')
   label.append(text, control)
   return label
 }
@@ -169,28 +169,28 @@ export function createLauncherLocalTool(options: Readonly<{
   const toolName = extensionId === 'Base64Conversion' ? text('base64Name', TOOL_NAMES[extensionId]) : extensionId === 'RowlandTextEditor' ? text('rowlandName', TOOL_NAMES[extensionId]) : text('uuidName', TOOL_NAMES[extensionId])
   const tool = element(document, 'section', 'launcher-local-tool')
   tool.setAttribute('aria-label', `${toolName} ${text('tool', 'Tool')}`)
-  const header = element(document, 'header', 'launcher-local-tool-header')
-  const title = element(document, 'h2')
+  const header = element(document, 'header', 'launcher-command-header justify-between')
+  const title = element(document, 'h2', 'm-0 text-sm font-semibold')
   title.textContent = toolName
-  const close = element(document, 'button', 'launcher-secondary-button')
+  const close = element(document, 'button', 'launcher-command-footer-action')
   close.type = 'button'; close.textContent = text('back', 'Back to Results'); close.setAttribute('aria-label', `${text('closeTool', 'Close')} ${toolName} ${text('tool', 'Tool')}`); close.addEventListener('click', options.onClose)
   header.append(title, close); tool.append(header)
-  const content = element(document, 'div', 'launcher-local-tool-content min-w-0 overflow-auto'); tool.append(content)
-  const error = element(document, 'p', 'launcher-local-tool-error'); error.setAttribute('role', 'alert'); error.hidden = true
-  const outputStatus = element(document, 'p', 'launcher-local-tool-status'); outputStatus.setAttribute('role', 'status'); outputStatus.setAttribute('aria-live', 'polite'); outputStatus.textContent = text('outputReady', 'Output is ready.')
+  const content = element(document, 'div', 'launcher-command-content'); tool.append(content)
+  const error = element(document, 'p', 'launcher-command-error'); error.setAttribute('role', 'alert'); error.hidden = true
+  const outputStatus = element(document, 'p', 'launcher-command-status'); outputStatus.setAttribute('role', 'status'); outputStatus.setAttribute('aria-live', 'polite'); outputStatus.textContent = text('outputReady', 'Output is ready.')
   content.append(error, outputStatus)
 
   if (extensionId === 'Base64Conversion') {
     const operation = element(document, 'select'); operation.setAttribute('aria-label', text('base64Operation', 'Base64 Operation')); for (const [value, label] of [['encode', text('encode', 'Encode')], ['decode', text('decode', 'Decode')]] as const) { const option = element(document, 'option'); option.value = value; option.textContent = label; operation.append(option) }
-    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('base64Input', 'Base64 Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 8
-    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('base64Output', 'Base64 Output')); output.readOnly = true; output.rows = 8
+    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('base64Input', 'Base64 Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 5
+    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('base64Output', 'Base64 Output')); output.readOnly = true; output.rows = 5
     const update = () => { try { setOutput(output, error, operation.value === 'decode' ? base64Decode(input.value) : base64Encode(input.value), outputStatus, options.locale) } catch (caught) { setError(output, error, caught instanceof LocalToolLimitError ? caught.message : text('base64DecodeError', 'Base64 input could not be decoded.'), outputStatus, options.locale) } }
     operation.addEventListener('change', update); input.addEventListener('input', update); content.append(labeled(document, text('base64Operation', 'Operation'), operation), labeled(document, text('base64Input', 'Input'), input), labeled(document, text('base64Output', 'Output'), output)); queueMicrotask(() => input.focus()); return tool
   }
   if (extensionId === 'RowlandTextEditor') {
-    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('rowlandInput', 'Rowland Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 7
+    const input = element(document, 'textarea'); input.setAttribute('aria-label', text('rowlandInput', 'Rowland Input')); input.maxLength = MAX_LOCAL_TOOL_INPUT_LENGTH; input.rows = 4
     const pattern = element(document, 'input'); pattern.type = 'text'; pattern.setAttribute('aria-label', text('rowlandPattern', 'Rowland Pattern')); pattern.maxLength = MAX_ROWLAND_PATTERN_LENGTH
-    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('rowlandOutput', 'Rowland Output')); output.readOnly = true; output.rows = 7
+    const output = element(document, 'textarea'); output.setAttribute('aria-label', text('rowlandOutput', 'Rowland Output')); output.readOnly = true; output.rows = 4
     const update = () => { try { setOutput(output, error, rowland(input.value, pattern.value, settings.RowlandTextEditor.rowSeparator, settings.RowlandTextEditor.columnSeparator), outputStatus, options.locale) } catch (caught) { setError(output, error, text('rowlandError', 'Rowland output could not be generated.'), outputStatus, options.locale) } }
     input.addEventListener('input', update); pattern.addEventListener('input', update); content.append(labeled(document, text('rowlandInput', 'Input'), input), labeled(document, text('rowlandPattern', 'Pattern'), pattern), labeled(document, text('rowlandOutput', 'Output'), output)); queueMicrotask(() => input.focus()); return tool
   }

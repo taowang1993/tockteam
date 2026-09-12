@@ -1,0 +1,74 @@
+{
+  "status": "retrieval-complete-awaiting-independent-attribution-review",
+  "requests": 3,
+  "responseBodyBytes": 23760,
+  "redirects": 0,
+  "additionalRequestsPlanned": false,
+  "artifacts": [
+    {
+      "path": "THIRD_PARTY_NOTICES.proposed.md",
+      "bytes": 910,
+      "sha256": "791f9758d274b29ee450352421702dd1b855790f2b2fe3416d7b90e6a9f95bc1"
+    },
+    {
+      "path": "findings.md",
+      "bytes": 7614,
+      "sha256": "5cd5408110f647452a638c390fb0ce97fc27bd2db8e72cd3f356183210a55708"
+    },
+    {
+      "path": "metadata-identity.json",
+      "bytes": 490,
+      "sha256": "3e5d6ffeece0109992cc6acb0cc4090e5aad9bf81689a5fb380df006b2384111"
+    },
+    {
+      "path": "request-1.body",
+      "bytes": 1977,
+      "sha256": "951884e9734e31a0f9e951444f95b0cd61329e653168c8ee9ab12024f0dd41c7"
+    },
+    {
+      "path": "request-1.json",
+      "bytes": 618,
+      "sha256": "bfa47a587ff77732cdf118fcc61e0d99034c91d9460cd38e6f52cb822b5e1cbe"
+    },
+    {
+      "path": "request-2.body",
+      "bytes": 3132,
+      "sha256": "d668423e1ae99542c8974c99275b2455c349b496f8195f77ffe020e5b15e4fd3"
+    },
+    {
+      "path": "request-2.json",
+      "bytes": 769,
+      "sha256": "ba680604b3cb69f19411b1f7ad491da1314c8956eb1aec3a0de525dfda8bf1a3"
+    },
+    {
+      "path": "request-3.body",
+      "bytes": 18651,
+      "sha256": "fd3a263fe19ed8faa9068b43abaebafc02c77897b0c6fc09abc04bb592e5f16e"
+    },
+    {
+      "path": "request-3.json",
+      "bytes": 770,
+      "sha256": "701aea66e05c2ece05cb79bbcf75dc7113d7ae9d7064e8a33ce72b4d7a3e235f"
+    },
+    {
+      "path": "retrieve.mjs",
+      "bytes": 2869,
+      "sha256": "9588fd1ea02383d9815b4587b7685c8743ee623bcd8fcf5fe55036f6661dca80"
+    }
+  ],
+  "preservedOutputs": [
+    {
+      "path": "/private/tmp/tockteam-can-i-use-fixture-gate-r1.noindex",
+      "bytes": 248,
+      "sha256": "3236c3f254ab2aec74aa09103eba653511422c6d6db9e71f75ef8480e845500a"
+    },
+    {
+      "path": "/private/tmp/tockteam-can-i-use-fixture-gate-r2.noindex",
+      "bytes": 27679242,
+      "sha256": "3e2e16d1b9764f9df605f666c590e5ac86997259a5b480a75e7a59dc680e2d55"
+    }
+  ],
+  "fixtureAdmitted": false,
+  "runtimeAdmitted": false,
+  "distributionApproved": false
+}

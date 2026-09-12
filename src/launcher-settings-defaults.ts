@@ -3,6 +3,7 @@ import { LAUNCHER_NETWORK_EXTENSION_DEFAULTS } from './launcher-network-extensio
 import { LAUNCHER_DISCOVERY_DEFAULTS, type LauncherDiscoveryPlatform } from './launcher-discovery-extensions.ts'
 import { launcherTerminalDefaults, type LauncherTerminalId } from './launcher-terminal-config.ts'
 import { LAUNCHER_SETTINGS_CATALOG, launcherSettingCatalogEntry } from './launcher-setting-catalog.ts'
+import { LAUNCHER_HIDE_WINDOW_ON_DEFAULT } from './launcher-contract.ts'
 
 export type LauncherDefaultContext = Readonly<{
   appDataPath?: string
@@ -24,8 +25,6 @@ function placeholder(locale: string): string {
   return 'Type here...'
 }
 
-const HIDE_WINDOW_ON = Object.freeze(['blur', 'afterInvocation', 'escapePressed'])
-
 /** Resolve effective settings without writing defaults into the override map. */
 export function resolveLauncherSettingDefault(key: string, context: LauncherDefaultContext): unknown {
   const discovery = LAUNCHER_DISCOVERY_DEFAULTS(context.platform, context.homePath, context.appDataPath ?? '', context.environment)
@@ -45,7 +44,7 @@ export function resolveLauncherSettingDefault(key: string, context: LauncherDefa
     case 'appearance.searchBarPlaceholderText': return placeholder(context.locale ?? 'en-US')
     case 'appearance.showSearchIcon': return false
     case 'searchEngine.rescanIntervalInSeconds': return 300
-    case 'window.hideWindowOn': return clone(HIDE_WINDOW_ON)
+    case 'window.hideWindowOn': return clone(LAUNCHER_HIDE_WINDOW_ON_DEFAULT)
     // Approved TockTeam safety divergences from the Ueli rows.
     case 'window.alwaysOnTop': return true
     case 'window.showOnStartup': return false

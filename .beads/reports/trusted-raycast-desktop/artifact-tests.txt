@@ -1,0 +1,32 @@
+✔ only authenticated live Host activation exposes capability and disconnect revokes it (49.767542ms)
+✔ artifact admission fails closed on unapproved or oversized files without external configuration (2.675167ms)
+✔ admit exact prepared artifact (9.692334ms)
+✔ trusted Raycast child pins a React 19-compatible reconciler (0.595917ms)
+✔ build omits absent candidate and rejects unapproved bytes before compilation (20.455125ms)
+✔ configured build records exact original archive identity (317.827458ms)
+✔ catalog requires both live Host capability and admitted artifact and never hides on invoke (0.949708ms)
+✔ Desktop Host effect alone owns activation and disposal (31.440875ms)
+✔ view IPC authenticates before parsing and disposes only its finite handlers (0.7525ms)
+✔ projection rejects unknown families, oversized text, nonfinite properties and foreign keys (0.923209ms)
+✔ preload filters malformed projections and rejects extra event arguments (0.454334ms)
+✔ Translate group cleanup kills descendants even when their leader has exited (67.353667ms)
+✔ manager child admission fails closed before accepting wrong identity, stale or malformed output (1.6365ms)
+✔ manager has no default artifact fallback and rejects events without a live owner (0.653208ms)
+✔ configured unchanged component translates interactive input and revokes owner (1935.472375ms)
+✔ owning package, build, staging and notices admit Desktop capability without browser injection (1.28625ms)
+✔ configured archive preserves all 35 source files and notice/dependency inventory (217.473292ms)
+✔ owned child stop escalates and waits for a non-cooperative process (56.734834ms)
+✔ only real workspaces are workspace destinations (2.242875ms)
+✔ replacement translator is not shipped as unchanged extension execution (0.261042ms)
+✔ private child resolution permits Node builtins but forbids ambient module fallback (109.380833ms)
+✔ translation result admission requires a changed target-script result (0.960708ms)
+✔ configured tracer rejects a child that emits no result (907.155417ms)
+✔ trusted translate view accepts only bounded finite messages (0.885625ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2037.4565

@@ -82,7 +82,7 @@ test('OS provider confirms privileged effects and rejects stale/tampered actions
   const control = items.find(item => item.name === 'System')!
   let confirmed = 0
   effects.confirmPrivilegedAction = async () => { confirmed += 1; return false }
-  await provider.executeAction(record(shutdown))
+  assert.deepEqual(await provider.executeAction(record(shutdown)), { handled: true, succeeded: false })
   assert.equal(confirmed, 1)
   await assert.rejects(provider.executeAction({ ...record(control), argument: JSON.stringify({ canonicalName: 'evil', kind: 'control-panel', version: 1 }) }), /current|stale/i)
   provider.invalidate()
@@ -249,7 +249,7 @@ test('OS provider keeps a mocked Control Panel action inert on non-Windows hosts
   })
   const item = (await provider.loadIndexedItems()).find(candidate => candidate.name === 'Fixture Control Panel')
   assert.ok(item)
-  assert.equal(await provider.executeAction(record(item)), true)
+  assert.deepEqual(await provider.executeAction(record(item)), { handled: true, succeeded: false })
   assert.equal(opened, 0)
 })
 

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { DatabaseSync } from 'node:sqlite'
 import { test } from 'node:test'
 import {
   createLauncherDiscoveryScanners,
@@ -13,6 +16,8 @@ import {
   windowsApplicationScanInvocation,
 } from '../src/launcher-discovery-scanners.ts'
 import type { LauncherDiscoveryScanContext } from '../src/launcher-discovery-extensions.ts'
+
+const scannerSource = readFileSync(new URL('../src/launcher-discovery-scanners.ts', import.meta.url), 'utf8')
 
 function context(overrides: Partial<LauncherDiscoveryScanContext> = {}): LauncherDiscoveryScanContext {
   return {
@@ -37,6 +42,15 @@ function context(overrides: Partial<LauncherDiscoveryScanContext> = {}): Launche
     ...overrides,
   }
 }
+
+test('bounded discovery reads reject links and do not block on special files', () => {
+  assert.match(scannerSource, /constants\.O_NOFOLLOW/u)
+  assert.match(scannerSource, /constants\.O_NONBLOCK/u)
+})
+
+test('SQLite discovery runs outside the main thread', () => {
+  assert.match(scannerSource, /new Worker\(/u)
+})
 
 test('built-in node sqlite is available before provider implementation', () => {
   assert.equal(launcherNodeSqliteAvailable(), true)
@@ -80,10 +94,29 @@ test('merges VS Code storage values by first URI and classifies remote workspace
   assert.deepEqual(parseVSCodeRecentEntries([JSON.stringify({ entries: [{ fileUri: 'file://server/share/project' }] })]), [])
 })
 
+test('reads VS Code SQLite state through the discovery worker', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-vscode-'))
+  const databasePath = join(root, '.config', 'Code', 'User', 'globalStorage', 'state.vscdb')
+  try {
+    await mkdir(join(databasePath, '..'), { recursive: true })
+    const workspaceUri = pathToFileURL(join(root, 'workspace')).href
+    const database = new DatabaseSync(databasePath)
+    try {
+      database.exec('CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)')
+      database.prepare('INSERT INTO ItemTable (key, value) VALUES (?, ?)').run(
+        'history.recentlyOpenedPathsList',
+        JSON.stringify({ entries: [{ folderUri: workspaceUri }] }),
+      )
+    } finally { database.close() }
+    const entries = await createLauncherDiscoveryScanners().VSCode(context({ homePath: root }))
+    assert.deepEqual(entries.map(entry => 'uri' in entry ? entry.uri : ''), [workspaceUri])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('uses one fixed PowerShell script and data-only settings arguments', () => {
   const safe = windowsApplicationScanInvocation({ fileExtensions: ['lnk'], folders: ['C:\\ProgramData\\Start Menu'], includeStoreApps: true })
   const hostile = windowsApplicationScanInvocation({ fileExtensions: ['lnk; Write-Host pwned'], folders: ["C:\\safe'; Write-Host pwned; '"], includeStoreApps: false })
-  assert.equal(safe.executable, 'powershell.exe')
+  assert.equal(safe.executable, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
   assert.equal(safe.args[3], hostile.args[3])
   assert.ok(!String(hostile.args[3]).includes('pwned'))
   assert.ok(String(hostile.args.at(-2)).includes('pwned'))

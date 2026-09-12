@@ -22,11 +22,15 @@ test('core search matches both engines, instant ordering, empty ordering, limits
       loadIndexedItems: async () => [item('coder', 'TockCoder'), item('contacts', 'Contacts'), item('chat', 'Chat')],
       searchInstant: async () => ({ before: [item('instant-before', 'Instant Before')], after: [item('instant-after', 'Instant After')] }),
     })
-    const empty = await core.search('', { ...options, maxSearchResultItems: 1, searchEngineId })
+    const empty = await core.search('', { ...options, maxSearchResultItems: 2, searchEngineId })
     assert.deepEqual(empty.before.map(result => result.id), ['contacts'])
     assert.deepEqual(empty.after.map(result => result.id), ['chat'])
+    const whitespace = await core.search('   ', { ...options, maxSearchResultItems: 2, searchEngineId })
+    assert.deepEqual(whitespace.before.map(result => result.id), ['contacts'])
+    assert.deepEqual(whitespace.after.map(result => result.id), ['chat'])
     const result = await core.search('code', { ...options, searchEngineId })
     assert.deepEqual(result.after.map(result => result.id), ['instant-before', 'coder', 'instant-after'])
+    assert.deepEqual(result.sections.map(section => section.id), ['results'])
     assert.equal(result.after[1]?.additionalActions?.some(action => action.handlerKey === 'launcher-add-favorite'), true)
     await core.search('', { ...options, maxSearchResultItems: 50, searchEngineId })
     await core.executeAction({
@@ -40,8 +44,102 @@ test('core search matches both engines, instant ordering, empty ordering, limits
       resultSetId: 'launcher-results:1',
       sourceExtension: 'TockTeam',
     })
-    assert.deepEqual((await core.search('', { ...options, searchEngineId })).after.map(result => result.id), ['coder'])
+    assert.deepEqual((await core.search('', { ...options, maxSearchResultItems: 2, searchEngineId })).after.map(result => result.id), ['coder'])
   }
+})
+
+test('empty search publishes decayed recent items before deduplicated command and application sections', async () => {
+  const now = 1_000_000
+  const persisted: Array<Readonly<{ itemId: string; now: number }>> = []
+  const core = createLauncherCoreSearch({
+    initialFavoriteItemIds: ['pinned'],
+    initialIndexedItems: [item('pinned', 'Pinned'), item('recent-command', 'Recent Command'), item('recent-app', 'Recent App')],
+    initialRanking: [
+      { id: 'recent-command', lastUsedAt: now - 30 * 24 * 60 * 60 * 1000, score: 3, useCount: 3 },
+      { id: 'recent-app', lastUsedAt: now, score: 1, useCount: 1 },
+      { id: 'stale', lastUsedAt: 1, score: 0.01, useCount: 1 },
+    ],
+    loadIndexedItems: async () => [
+      { ...item('pinned', 'Pinned'), sourceExtension: 'BrowserBookmarks' },
+      { ...item('recent-command', 'Recent Command'), sourceExtension: 'SystemCommands' },
+      { ...item('recent-app', 'Recent App'), sourceExtension: 'ApplicationSearch' },
+      { ...item('later-command', 'Later Command'), sourceExtension: 'SystemCommands' },
+      { ...item('later-app', 'Later App'), sourceExtension: 'ApplicationSearch' },
+    ],
+    now: () => now,
+    persistUsage: async (itemId, timestamp) => { persisted.push({ itemId, now: timestamp }) },
+  })
+
+  const empty = await core.search('', { ...options, maxSearchResultItems: 5 })
+  assert.deepEqual(empty.sections.map(section => section.id), ['pinned', 'recent', 'commands', 'applications'])
+  assert.deepEqual(empty.sections.map(section => section.items.map(result => result.id)), [
+    ['pinned'],
+    ['recent-command', 'recent-app'],
+    ['later-command'],
+    ['later-app'],
+  ])
+  assert.equal(new Set([...empty.before, ...empty.after].map(result => result.id)).size, 5)
+
+  await core.recordUsage('later-app')
+  assert.deepEqual(persisted, [{ itemId: 'later-app', now }])
+  const updated = await core.search('', { ...options, maxSearchResultItems: 5 })
+  assert.deepEqual(updated.sections[1]?.items.map(result => result.id), ['recent-command', 'later-app', 'recent-app'])
+  core.replaceRanking([])
+  const reset = await core.search('', { ...options, maxSearchResultItems: 5 })
+  assert.equal(reset.sections.some(section => section.id === 'recent'), false)
+})
+
+test('empty search publishes ordered pinned, command, and application sections without content flood', async () => {
+  const core = createLauncherCoreSearch({
+    initialFavoriteItemIds: ['bookmark', 'app'],
+    loadIndexedItems: async () => [
+      { ...item('bookmark', 'Saved Docs'), sourceExtension: 'BrowserBookmarks' },
+      { ...item('app', 'Calendar'), sourceExtension: 'ApplicationSearch' },
+      { ...item('tutor', 'TockTutor'), sourceExtension: 'TockTeam' },
+      { ...item('z-command', 'Z Command'), sourceExtension: 'SystemCommands' },
+      { ...item('notes', 'Notes'), sourceExtension: 'ApplicationSearch' },
+      { ...item('bookmark-2', 'Alpha Bookmark'), sourceExtension: 'BrowserBookmarks' },
+      { ...item('file', 'Project File'), sourceExtension: 'SimpleFileSearch' },
+    ],
+  })
+
+  const empty = await core.search('', { ...options, maxSearchResultItems: 5 })
+  assert.deepEqual(empty.sections.map(section => section.id), ['pinned', 'commands', 'applications'])
+  assert.deepEqual(empty.sections.map(section => section.items.map(result => result.id)), [
+    ['bookmark', 'app'],
+    ['tutor', 'z-command'],
+    ['notes'],
+  ])
+  assert.deepEqual(empty.before.map(result => result.id), ['bookmark', 'app'])
+  assert.deepEqual(empty.after.map(result => result.id), ['tutor', 'z-command', 'notes'])
+
+  const capped = await core.search('', { ...options, maxSearchResultItems: 1 })
+  assert.deepEqual(capped.sections.map(section => section.items.map(result => result.id)), [['bookmark']])
+
+  const typed = await core.search('Alpha', { ...options, maxSearchResultItems: 5 })
+  assert.deepEqual(typed.after.map(result => result.id), ['bookmark-2'])
+})
+
+test('successful usage updates the opening screen before persistence settles', async () => {
+  let release!: () => void
+  let persistenceStarted = false
+  const persisted = new Promise<void>(resolve => { release = resolve })
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [item('first', 'First'), item('second', 'Second')],
+    loadIndexedItems: async () => [item('first', 'First'), item('second', 'Second')],
+    persistUsage: async () => {
+      persistenceStarted = true
+      await persisted
+    },
+  })
+  await core.search('', { ...options, maxSearchResultItems: 2 })
+  const usage = core.recordUsage('second')
+  while (!persistenceStarted) await new Promise<void>(resolve => { setImmediate(resolve) })
+  const immediate = await core.search('', { ...options, maxSearchResultItems: 2 })
+  assert.deepEqual(immediate.sections.map(section => section.id), ['recent', 'commands'])
+  assert.deepEqual(immediate.sections[0]?.items.map(result => result.id), ['second'])
+  release()
+  await usage
 })
 
 test('core search serializes a stale in-flight index write before publishing the newest write', async () => {
@@ -171,6 +269,31 @@ test('core search persists a queued snapshot after its successor fails', async (
   releaseSeedWrite?.()
   await Promise.all([seedRescan, aRescan])
   assert.deepEqual(persisted, [['seed'], ['a']])
+})
+
+test('favorite persistence remains unique when settings are synchronized during the write', async () => {
+  let synchronizeFavorites: ((favoriteItemIds: readonly string[]) => void) | undefined
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [item('a', 'A')],
+    loadIndexedItems: async () => [item('a', 'A')],
+    persistSettings: async values => {
+      synchronizeFavorites?.(Array.isArray(values.favorites) ? values.favorites.filter((id): id is string => typeof id === 'string') : [])
+    },
+  })
+  synchronizeFavorites = favoriteItemIds => core.replacePersistentSettings({ excludedItemIds: [], favoriteItemIds })
+  await core.search('', { ...options, maxSearchResultItems: 50 })
+  await core.executeAction({
+    actionId: 'launcher-action:add',
+    argument: 'a',
+    expiresAt: 2_000,
+    handlerKey: LAUNCHER_CORE_ACTION_HANDLERS.addFavorite,
+    hideWindowAfterInvocation: false,
+    owner: { role: 'launcher', webContentsId: 1 },
+    requiresConfirmation: false,
+    resultSetId: 'launcher-results:1',
+    sourceExtension: 'TockTeam',
+  })
+  assert.deepEqual((await core.search('', { ...options, maxSearchResultItems: 50 })).before.map(value => value.id), ['a'])
 })
 
 test('core search serializes concurrent favorite and exclusion persistence', async () => {

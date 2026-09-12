@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { TrustedRaycastOrigin } from '../src/trusted-raycast-native.ts'
 import type { Rectangle } from 'electron'
 import { LAUNCHER_WINDOW_IPC_CHANNELS } from '../src/launcher-window-contract.ts'
 import { createLauncherOsExtensions, type LauncherOsEffects } from '../src/launcher-os-extensions.ts'
@@ -7,6 +8,7 @@ import type { LauncherActionRecord, LauncherInternalResultItem } from '../src/la
 import {
   LauncherOverlayController,
   resolveLauncherBounds,
+  resolveLauncherDisplayWorkArea,
   resolveLauncherShortcut,
 } from '../src/launcher-window-controller.ts'
 
@@ -36,6 +38,7 @@ class FakeWindow {
   hideCount = 0
   loadCount = 0
   showCount = 0
+  showInactiveCount = 0
   alwaysOnTop = false
   allWorkspaces = false
   private readonly listeners = new Map<string, Listener[]>()
@@ -73,6 +76,7 @@ class FakeWindow {
   setBounds(value: Rectangle): void { this.bounds = value }
   setVisibleOnAllWorkspaces(value: boolean): void { this.allWorkspaces = value }
   show(): void { this.showCount += 1; this.visible = true }
+  showInactive(): void { this.showInactiveCount += 1; this.visible = true }
 }
 
 function actionRecord(item: LauncherInternalResultItem): LauncherActionRecord {
@@ -93,6 +97,8 @@ function setup(
   platform: NodeJS.Platform = 'linux',
   configure?: (window: FakeWindow) => void,
   onWindowCleared?: (window: { webContents: { id: number } }) => void,
+  showInactive = false,
+  beforeShow?: () => Promise<void>,
 ) {
   const windows: FakeWindow[] = []
   const callbacks: (() => void)[] = []
@@ -119,7 +125,9 @@ function setup(
     },
     loadWindow: window => window.loadURL('file:///launcher.html'),
     ...(onWindowCleared === undefined ? {} : { onWindowCleared }),
+    ...(beforeShow === undefined ? {} : { beforeShow }),
     platform,
+    showInactive,
     registerWindow: () => () => {},
   })
   return {
@@ -131,6 +139,44 @@ function setup(
     windows,
   }
 }
+
+test('every opening captures its current originating app before focus changes', async () => {
+  const origin = new TrustedRaycastOrigin()
+  let frontmost = 'B'
+  let captures = 0
+  const result = setup('darwin', window => {
+    window.focus = () => { FakeWindow.prototype.focus.call(window); frontmost = 'TockTeam' }
+  }, undefined, false, async () => {
+    captures++
+    await origin.capture(async () => ({ name: frontmost, capturedAt: Date.now() }))
+  })
+  try {
+    await result.controller.show()
+    assert.equal(origin.current?.name, 'B')
+    await result.controller.show()
+    assert.equal(captures, 1, 'showing an already-focused window preserves the current opening')
+    result.controller.hide(); origin.clear()
+    frontmost = 'C'
+    await result.controller.toggle()
+    assert.equal(origin.current?.name, 'C', 'switching applications while hidden changes the next native target')
+    assert.equal(frontmost, 'TockTeam')
+  } finally { result.controller.dispose() }
+})
+
+test('hiding during a pending before-show capture cannot reopen the launcher', async () => {
+  const gate = Promise.withResolvers<void>()
+  let entered = false
+  const result = setup('darwin', undefined, undefined, false, async () => { entered = true; await gate.promise })
+  const showing = result.controller.show()
+  try {
+    await new Promise<void>(resolve => setImmediate(resolve))
+    assert.equal(entered, true)
+    result.controller.hide()
+    gate.resolve(); await showing
+    assert.equal(result.controller.getState().visible, false)
+    assert.equal(result.focusAppCount(), 0)
+  } finally { gate.resolve(); await showing; result.controller.dispose() }
+})
 
 test('launcher shortcut and geometry use the platform contract', () => {
   assert.equal(resolveLauncherShortcut('darwin'), 'Option+Space')
@@ -150,6 +196,16 @@ test('launcher shortcut and geometry use the platform contract', () => {
   })
 })
 
+test('smoke placement prefers a connected non-primary display with a safe cursor-display fallback', () => {
+  const primary = { x: 0, y: 0, width: 1440, height: 900 }
+  const extended = { x: 1440, y: 0, width: 1920, height: 1080 }
+  const displays = [{ id: 1, workArea: primary }, { id: 2, workArea: extended }]
+  assert.deepEqual(resolveLauncherDisplayWorkArea(displays, 1, primary, true), extended)
+  assert.deepEqual(resolveLauncherDisplayWorkArea(displays.slice(0, 1), 1, primary, true), primary)
+  assert.throws(() => resolveLauncherDisplayWorkArea(displays.slice(0, 1), 1, primary, true, true), /requires a connected extended display/)
+  assert.deepEqual(resolveLauncherDisplayWorkArea(displays, 1, primary, false), primary)
+})
+
 test('macOS activates the app before showing the launcher', async () => {
   const mac = setup('darwin')
   await mac.controller.show()
@@ -157,6 +213,23 @@ test('macOS activates the app before showing the launcher', async () => {
   const linux = setup('linux')
   await linux.controller.show()
   assert.equal(linux.focusAppCount(), 0)
+})
+
+test('bounded visual proof can show without activating or focusing the app', async () => {
+  const result = setup('darwin', undefined, undefined, true)
+  await result.controller.show()
+  assert.equal(result.focusAppCount(), 0)
+  assert.equal(result.windows[0]?.showCount, 0)
+  assert.equal(result.windows[0]?.focusCount, 0)
+  assert.equal(result.windows[0]?.showInactiveCount, 1)
+})
+
+test('bounded visual proof fails closed without inactive window support', async () => {
+  const result = setup('darwin', window => { window.showInactive = undefined as never }, undefined, true)
+  await assert.rejects(() => result.controller.show(), /requires showInactive support/u)
+  assert.equal(result.focusAppCount(), 0)
+  assert.equal(result.windows[0]?.showCount, 0)
+  assert.equal(result.windows[0]?.focusCount, 0)
 })
 
 test('launcher lazily creates and reuses one focused, rebound window', async () => {

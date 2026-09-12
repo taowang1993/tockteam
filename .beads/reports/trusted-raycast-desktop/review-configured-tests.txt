@@ -1,0 +1,36 @@
+✔ only authenticated live Host activation exposes capability and disconnect revokes it (38.409375ms)
+﹣ Host activation remains live beyond fetch body timeout and disposal revokes it (0.170875ms) # SKIP
+✔ activation uses lifetime-owned HTTP rather than global fetch and awaits disposal (2.722542ms)
+✔ artifact admission fails closed on unapproved or oversized files without external configuration (1.526917ms)
+✔ admit exact prepared artifact (10.556459ms)
+✔ trusted Raycast child pins a React 19-compatible reconciler (0.73325ms)
+✔ build omits absent candidate and rejects unapproved bytes before compilation (1.530792ms)
+✔ configured build records exact original archive identity (260.672417ms)
+✔ catalog requires both live Host capability and admitted artifact and never hides on invoke (0.637ms)
+✔ Desktop Host effect alone owns activation and disposal (18.408583ms)
+✔ view IPC authenticates before parsing and disposes only its finite handlers (1.367333ms)
+✔ projection rejects unknown families, oversized text, nonfinite properties and foreign keys (0.795209ms)
+✔ preload filters malformed projections and rejects extra event arguments (0.378833ms)
+✔ Translate group cleanup kills descendants even when their leader has exited (61.477625ms)
+✔ failed termination retains workspace and child ownership, revokes input, and permits close retry (10.757959ms)
+✔ manager child admission fails closed before accepting wrong identity, stale or malformed output (1.524542ms)
+✔ manager has no default artifact fallback and rejects events without a live owner (0.500125ms)
+✔ configured unchanged component translates interactive input and revokes owner (2176.347541ms)
+✔ owning package, build, staging and notices admit Desktop capability without browser injection (1.739667ms)
+✔ configured archive preserves all 35 source files and notice/dependency inventory (216.402167ms)
+✔ owned child stop escalates and waits for a non-cooperative process (56.702167ms)
+✔ only real workspaces are workspace destinations (0.730959ms)
+✔ replacement translator is not shipped as unchanged extension execution (0.179458ms)
+✔ latest typed input is coalesced and retried when a newer projection overtakes delivery (6.078125ms)
+✔ private child resolution permits Node builtins but forbids ambient module fallback (107.118792ms)
+✔ translation result admission requires a changed target-script result (0.992041ms)
+✔ configured tracer rejects a child that emits no result (835.531666ms)
+✔ trusted translate view accepts only bounded finite messages (0.675917ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 2268.797958

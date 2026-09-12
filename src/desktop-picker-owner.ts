@@ -11,6 +11,7 @@ import {
   openSync,
   readSync,
   realpathSync,
+  type BigIntStats,
 } from 'node:fs'
 import {
   mkdir,
@@ -640,7 +641,7 @@ export class DesktopPickerOwner {
       this.assertAvailable()
       const grant = this.consumeGrant(request.authorization, request.identity, 'activate')
       const canonicalPath = await this.safeRealpath(grant.path)
-      const stat = canonicalPath === undefined ? undefined : await this.safeLstat(canonicalPath)
+      const stat = canonicalPath === undefined ? undefined : await this.safeVaultLstat(canonicalPath)
       if (signal.aborted) return { operationId, status: 'cancelled' }
       if (canonicalPath === undefined || stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()) {
         return { operationId, status: 'denied' }
@@ -683,7 +684,7 @@ export class DesktopPickerOwner {
     try {
       this.assertAvailable()
       const canonicalPath = await this.safeRealpath(request.canonicalPath)
-      const stat = canonicalPath === undefined ? undefined : await this.safeLstat(canonicalPath)
+      const stat = canonicalPath === undefined ? undefined : await this.safeVaultLstat(canonicalPath)
       if (signal.aborted) return { operationId, status: 'cancelled' }
       if (canonicalPath !== request.canonicalPath || stat === undefined || !stat.isDirectory() || stat.isSymbolicLink()) {
         return { operationId, status: 'stale' }
@@ -737,7 +738,7 @@ export class DesktopPickerOwner {
     try {
       this.assertAvailable()
       const canonicalPath = await this.safeRealpath(claim.path)
-      const stat = canonicalPath === undefined ? undefined : await this.safeLstat(canonicalPath)
+      const stat = canonicalPath === undefined ? undefined : await this.safeVaultLstat(canonicalPath)
       if (signal.aborted) return { operationId, status: 'cancelled' }
       if (canonicalPath !== claim.path || stat === undefined || !stat.isDirectory()
         || String(stat.dev) !== claim.dev || String(stat.ino) !== claim.ino) return { operationId, status: 'stale' }
@@ -1515,7 +1516,7 @@ export class DesktopPickerOwner {
     if (boundary === undefined || !sameVaultBoundary(identity, boundary)) return error('stale')
     try {
       if (realpathSync(boundary.path) !== boundary.path) return error('stale')
-      const stat = lstatSync(boundary.path)
+      const stat = lstatSync(boundary.path, { bigint: true })
       if (!stat.isDirectory() || stat.isSymbolicLink()
         || String(stat.dev) !== boundary.dev || String(stat.ino) !== boundary.ino) return error('stale')
     } catch (cause) {
@@ -1660,6 +1661,10 @@ export class DesktopPickerOwner {
 
   private async safeLstat(path: string): Promise<Stat | undefined> {
     try { return await lstat(path) } catch { return undefined }
+  }
+
+  private async safeVaultLstat(path: string): Promise<BigIntStats | undefined> {
+    try { return await lstat(path, { bigint: true }) } catch { return undefined }
   }
 
   private async safeRealpath(path: string): Promise<string | undefined> {

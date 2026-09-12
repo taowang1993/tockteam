@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FocusEvent, ReactNode } from 'react'
 import { Globe2, Laptop, Route, Search } from 'lucide-react'
+import { FieldError } from '@tockteam/ui/field'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
@@ -37,18 +38,34 @@ function sameStringArray(left: readonly string[], right: readonly string[]): boo
   return left.length === right.length && left.every((value, index) => value === right[index])
 }
 
-function saveArray(event: FocusEvent<HTMLTextAreaElement>, key: string, save: DiscoverySettingsProps['save']): void {
+function parseStringArray(value: string): readonly string[] | undefined {
   try {
-    const parsed: unknown = JSON.parse(event.currentTarget.value)
-    if (!Array.isArray(parsed) || parsed.some(item => typeof item !== 'string')) throw new Error('invalid')
-    event.currentTarget.removeAttribute('aria-invalid')
-    void save(key, parsed)
-  } catch { event.currentTarget.setAttribute('aria-invalid', 'true') }
+    const parsed: unknown = JSON.parse(value)
+    return Array.isArray(parsed) && parsed.every(item => typeof item === 'string') ? parsed : undefined
+  } catch { return undefined }
 }
 
 export function LauncherDiscoverySettings({ busy, save, snapshot }: DiscoverySettingsProps): ReactNode {
   const defaults = DISCOVERY_RENDERER_DEFAULTS
   const application = defaults.ApplicationSearch
+  const fixed = launcherFixedText
+  const [arrayErrors, setArrayErrors] = useState<Readonly<Record<string, string | undefined>>>({})
+  const saveArray = (event: FocusEvent<HTMLTextAreaElement>, key: string): void => {
+    const parsed = parseStringArray(event.currentTarget.value)
+    if (parsed === undefined) {
+      setArrayErrors(current => ({ ...current, [key]: fixed('Enter a JSON array of strings.') }))
+      return
+    }
+    setArrayErrors(current => ({ ...current, [key]: undefined }))
+    void save(key, parsed).then(saved => {
+      if (!saved) setArrayErrors(current => ({ ...current, [key]: fixed('This discovery setting could not be saved.') }))
+    }, () => setArrayErrors(current => ({ ...current, [key]: fixed('This discovery setting could not be saved.') })))
+  }
+  const arrayField = (label: string, key: string, rows: number, value: readonly string[]): ReactNode => {
+    const error = arrayErrors[key]
+    const errorId = `tockteam-discovery-error-${label.toLocaleLowerCase('en-US').replace(/[^a-z]+/gu, '-')}`
+    return <Field label={label}><div className="flex flex-col items-end gap-1"><LauncherSyncedTextarea aria-label={fixed(label)} aria-describedby={error === undefined ? undefined : errorId} aria-invalid={error !== undefined} rows={rows} maxLength={rows > 2 ? 65536 : 4096} disabled={busy} defaultValue={JSON.stringify(value, null, 2)} onBlur={event => saveArray(event, key)} /><FieldError id={errorId} className="max-w-80 text-right text-xs">{error}</FieldError></div></Field>
+  }
   const snapshotBrowserSelection = stored<readonly string[]>(snapshot, 'extension[BrowserBookmarks].browsers', defaults.BrowserBookmarks.browsers)
   const [browserSelection, setBrowserSelection] = useState<readonly string[]>(snapshotBrowserSelection)
   const browserSelectionRef = useRef<readonly string[]>(snapshotBrowserSelection)
@@ -78,15 +95,14 @@ export function LauncherDiscoverySettings({ busy, save, snapshot }: DiscoverySet
       setBrowserSelection(snapshotBrowserSelection)
     })
   }
-  const fixed = launcherFixedText
   return <section className="space-y-3" data-testid="tocklauncher-discovery-settings">
     <div><h2 className="text-base font-semibold text-foreground">{fixed('Application, Bookmark, and IDE Discovery')}</h2><p className="mt-1 text-xs text-muted-foreground">{fixed('Discover bounded local applications and recent projects in Electron main. The renderer receives display data and opaque actions only.')}</p></div>
     <details open><summary className="flex cursor-pointer items-center gap-2 text-sm font-medium"><Search aria-hidden="true" className="size-4" />{fixed('Application Search')}</summary><div className="pl-3">
       <Field label="Include Windows Store Apps"><Switch aria-label={fixed('Include Windows Store Apps')} disabled={busy} checked={stored(snapshot, 'extension[ApplicationSearch].includeWindowsStoreApps', true)} onCheckedChange={checked => { void save('extension[ApplicationSearch].includeWindowsStoreApps', checked) }} /></Field>
-      <Field label="macOS Application Folders"><LauncherSyncedTextarea aria-label={fixed('macOS Application Folders')} rows={3} maxLength={65536} disabled={busy} defaultValue={JSON.stringify(stored(snapshot, 'extension[ApplicationSearch].macOsFolders', application.macOsFolders), null, 2)} onBlur={event => saveArray(event, 'extension[ApplicationSearch].macOsFolders', save)} /></Field>
-      <Field label="Linux Application Folders"><LauncherSyncedTextarea aria-label={fixed('Linux Application Folders')} rows={3} maxLength={65536} disabled={busy} defaultValue={JSON.stringify(stored(snapshot, 'extension[ApplicationSearch].linuxFolders', application.linuxFolders), null, 2)} onBlur={event => saveArray(event, 'extension[ApplicationSearch].linuxFolders', save)} /></Field>
-      <Field label="Windows Application Folders"><LauncherSyncedTextarea aria-label={fixed('Windows Application Folders')} rows={3} maxLength={65536} disabled={busy} defaultValue={JSON.stringify(stored(snapshot, 'extension[ApplicationSearch].windowsFolders', application.windowsFolders), null, 2)} onBlur={event => saveArray(event, 'extension[ApplicationSearch].windowsFolders', save)} /></Field>
-      <Field label="Windows File Extensions"><LauncherSyncedTextarea aria-label={fixed('Windows File Extensions')} rows={2} maxLength={4096} disabled={busy} defaultValue={JSON.stringify(stored(snapshot, 'extension[ApplicationSearch].windowsFileExtensions', application.windowsFileExtensions), null, 2)} onBlur={event => saveArray(event, 'extension[ApplicationSearch].windowsFileExtensions', save)} /></Field>
+      {arrayField('macOS Application Folders', 'extension[ApplicationSearch].macOsFolders', 3, stored(snapshot, 'extension[ApplicationSearch].macOsFolders', application.macOsFolders))}
+      {arrayField('Linux Application Folders', 'extension[ApplicationSearch].linuxFolders', 3, stored(snapshot, 'extension[ApplicationSearch].linuxFolders', application.linuxFolders))}
+      {arrayField('Windows Application Folders', 'extension[ApplicationSearch].windowsFolders', 3, stored(snapshot, 'extension[ApplicationSearch].windowsFolders', application.windowsFolders))}
+      {arrayField('Windows File Extensions', 'extension[ApplicationSearch].windowsFileExtensions', 2, stored(snapshot, 'extension[ApplicationSearch].windowsFileExtensions', application.windowsFileExtensions))}
       <Field label="macOS Search Filter"><LauncherSyncedNativeSelect aria-label={fixed('macOS Search Filter')} size="sm" disabled={busy} defaultValue={stored(snapshot, 'extension[ApplicationSearch].mdfindFilterOption', application.mdfindFilterOption)} onChange={event => { void save('extension[ApplicationSearch].mdfindFilterOption', event.target.value) }}><NativeSelectOption value="kind:application">kind:application</NativeSelectOption><NativeSelectOption value="kMDItemKind=='Application'">{fixed('Application kind')}</NativeSelectOption><NativeSelectOption value="kMDItemContentType=='com.apple.application-bundle'">{fixed('Application bundle')}</NativeSelectOption></LauncherSyncedNativeSelect></Field>
     </div></details>
     <details><summary className="flex cursor-pointer items-center gap-2 text-sm font-medium"><Globe2 aria-hidden="true" className="size-4" />{fixed('Browser Bookmarks')}</summary><div className="pl-3">

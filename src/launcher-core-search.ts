@@ -6,6 +6,13 @@ import {
   type LauncherInternalAction,
   type LauncherInternalResultItem,
 } from './launcher-actions.ts'
+import {
+  LAUNCHER_RECENT_RESULT_LIMIT,
+  pruneLauncherRanking,
+  rankLauncherItems,
+  recordLauncherUsage,
+  type LauncherRankingEntry,
+} from './launcher-ranking.ts'
 
 export const LAUNCHER_CORE_ACTION_HANDLERS = Object.freeze({
   addFavorite: 'launcher-add-favorite',
@@ -28,21 +35,56 @@ export type LauncherCoreStatus = Readonly<{
   rescanStatus: 'error' | 'idle' | 'scanning'
 }>
 
+export type LauncherSearchSectionId = 'pinned' | 'recent' | 'commands' | 'applications' | 'results'
+
+export type LauncherCoreSearchSection = Readonly<{
+  id: LauncherSearchSectionId
+  items: readonly LauncherInternalResultItem[]
+}>
+
 type LauncherCoreSearchResult = Readonly<{
   after: readonly LauncherInternalResultItem[]
   before: readonly LauncherInternalResultItem[]
+  sections: readonly LauncherCoreSearchSection[]
   status: LauncherCoreStatus
 }>
+
+/** Only these existing providers may fill the unpinned opening screen. */
+export const LAUNCHER_OPENING_SCREEN_SOURCE_SECTIONS = Object.freeze({
+  AppearanceSwitcher: 'commands',
+  ApplicationSearch: 'applications',
+  Base64Conversion: 'commands',
+  Calculator: 'commands',
+  ColorConverter: 'commands',
+  CurrencyConversion: 'commands',
+  CustomWebSearch: 'commands',
+  DeeplTranslator: 'commands',
+  PasswordGenerator: 'commands',
+  QuickFormatter: 'commands',
+  RowlandTextEditor: 'commands',
+  SystemCommands: 'commands',
+  SystemSettings: 'commands',
+  TerminalLauncher: 'commands',
+  TockTeam: 'commands',
+  UeliCommand: 'commands',
+  UuidGenerator: 'commands',
+  WebSearch: 'commands',
+  WindowsControlPanel: 'commands',
+  Workflow: 'commands',
+} as const satisfies Readonly<Record<string, 'commands' | 'applications'>>)
 
 export type LauncherCoreSearchOptions = Readonly<{
   appendLog?: (level: 'ERROR', message: string) => Promise<void>
   initialExcludedItemIds?: readonly string[]
   initialFavoriteItemIds?: readonly string[]
   initialIndexedItems?: readonly LauncherInternalResultItem[]
+  initialRanking?: readonly LauncherRankingEntry[]
   getIndexedError?: () => string | undefined
   loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
+  now?: () => number
   persistIndex?: (items: readonly LauncherInternalResultItem[]) => Promise<void>
   persistSettings?: (values: Readonly<Record<string, unknown>>) => Promise<void>
+  persistUsage?: (itemId: string, now: number) => Promise<void>
   platform?: LauncherCorePlatform
   searchInstant?: (searchTerm: string) => Promise<Readonly<{
     after: readonly LauncherInternalResultItem[]
@@ -57,7 +99,12 @@ function errorMessage(_error: unknown): string {
 }
 
 function alphabetically(left: LauncherInternalResultItem, right: LauncherInternalResultItem): number {
-  return left.name.localeCompare(right.name)
+  return left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+}
+
+function openingSectionFor(item: LauncherInternalResultItem): 'commands' | 'applications' | undefined {
+  if (!Object.hasOwn(LAUNCHER_OPENING_SCREEN_SOURCE_SECTIONS, item.sourceExtension)) return undefined
+  return LAUNCHER_OPENING_SCREEN_SOURCE_SECTIONS[item.sourceExtension as keyof typeof LAUNCHER_OPENING_SCREEN_SOURCE_SECTIONS]
 }
 
 function searchIndexedItems(
@@ -104,6 +151,8 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   close: () => Promise<void>
   executeAction: (record: LauncherActionRecord) => Promise<boolean>
   flush: () => Promise<void>
+  recordUsage: (itemId: string) => Promise<void>
+  replaceRanking: (ranking: readonly LauncherRankingEntry[]) => void
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   replacePersistentSettings: (settings: Readonly<{
     excludedItemIds: readonly string[]
@@ -113,7 +162,9 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   search: (searchTerm: string, searchOptions: LauncherSearchOptions) => Promise<LauncherCoreSearchResult>
 }> {
   const commandModifier = options.platform === 'macOS' ? 'Cmd' : 'Ctrl'
+  const now = options.now ?? Date.now
   let indexedItems: readonly LauncherInternalResultItem[] = Object.freeze([...(options.initialIndexedItems ?? [])])
+  let ranking: readonly LauncherRankingEntry[] = pruneLauncherRanking(options.initialRanking ?? [], now())
   let indexLoaded = false
   let hasValidatedIndex = false
   let lastError: string | undefined
@@ -121,7 +172,13 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   let activeRescan: Readonly<{ controller: AbortController; token: object }> | undefined
   let rescanStatus: LauncherCoreStatus['rescanStatus'] = 'idle'
   const excluded = new Set<string>(options.initialExcludedItemIds ?? [])
-  const favorites = new Set<string>(options.initialFavoriteItemIds ?? [])
+  const favorites = new Set<string>()
+  const favoriteOrder: string[] = []
+  for (const id of options.initialFavoriteItemIds ?? []) {
+    if (favorites.has(id)) continue
+    favorites.add(id)
+    favoriteOrder.push(id)
+  }
   const knownItemIds = new Set<string>()
   let indexGeneration = 0
   let indexWriteTail: Promise<void> = Promise.resolve()
@@ -231,19 +288,27 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
 
     const searchGeneration = indexGeneration
     const available = indexedItems.filter(({ id }) => !excluded.has(id))
+    const availableById = new Map<string, LauncherInternalResultItem>()
+    for (const item of available) if (!availableById.has(item.id)) availableById.set(item.id, item)
     const trimmedSearchTerm = searchTerm.trim()
-    const filtered = searchTerm.length > 0
+    const filtered = trimmedSearchTerm.length > 0
       ? searchIndexedItems(available, trimmedSearchTerm, searchOptions)
       : available.toSorted(alphabetically)
-    const favoriteItems = filtered.filter(({ id }) => favorites.has(id))
-    const ordinaryItems = filtered
-      .filter(({ id }) => !favorites.has(id))
-      .slice(0, searchOptions.maxSearchResultItems)
+    const favoriteItems = trimmedSearchTerm.length > 0
+      ? filtered.filter(({ id }) => favorites.has(id))
+      : favoriteOrder
+        .map(id => availableById.get(id))
+        .filter((item): item is LauncherInternalResultItem => item !== undefined)
+    const ordinaryItems = trimmedSearchTerm.length > 0
+      ? filtered
+        .filter(({ id }) => !favorites.has(id))
+        .slice(0, searchOptions.maxSearchResultItems)
+      : []
     let instantBefore: readonly LauncherInternalResultItem[] = []
     let instantAfter: readonly LauncherInternalResultItem[] = []
-    if (searchTerm.length > 0 && options.searchInstant !== undefined) {
+    if (trimmedSearchTerm.length > 0 && options.searchInstant !== undefined) {
       try {
-        const instant = await options.searchInstant(searchTerm)
+        const instant = await options.searchInstant(trimmedSearchTerm)
         if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
         if (latestSearchToken === searchToken) {
           instantBefore = instant.before
@@ -258,17 +323,60 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     }
     if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
 
-    const before = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS).map(decorate)
-    const after = [...instantBefore, ...ordinaryItems, ...instantAfter]
-      .slice(0, LAUNCHER_MAX_RESULT_ITEMS - before.length)
-      .map(decorate)
+    let beforeItems = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS)
+    let afterItems: readonly LauncherInternalResultItem[] = [...instantBefore, ...ordinaryItems, ...instantAfter]
+      .slice(0, Math.max(0, LAUNCHER_MAX_RESULT_ITEMS - beforeItems.length))
+    let sections: readonly LauncherCoreSearchSection[]
+    if (trimmedSearchTerm.length === 0) {
+      beforeItems = beforeItems.slice(0, Math.min(searchOptions.maxSearchResultItems, LAUNCHER_MAX_RESULT_ITEMS))
+      const pinnedIds = new Set(beforeItems.map(item => item.id))
+      const uniqueAvailable = [...availableById.values()]
+      const remaining = Math.max(0, Math.min(searchOptions.maxSearchResultItems, LAUNCHER_MAX_RESULT_ITEMS) - beforeItems.length)
+      const recentItems = rankLauncherItems(
+        uniqueAvailable.filter(item => !pinnedIds.has(item.id)),
+        ranking,
+        now(),
+      ).slice(0, Math.min(LAUNCHER_RECENT_RESULT_LIMIT, remaining))
+      const recentIds = new Set(recentItems.map(item => item.id))
+      const commands = uniqueAvailable
+        .filter(item => !pinnedIds.has(item.id) && !recentIds.has(item.id) && openingSectionFor(item) === 'commands')
+        .toSorted(alphabetically)
+      const applications = uniqueAvailable
+        .filter(item => !pinnedIds.has(item.id) && !recentIds.has(item.id) && openingSectionFor(item) === 'applications')
+        .toSorted(alphabetically)
+      const commandItems = commands.slice(0, Math.max(0, remaining - recentItems.length))
+      const applicationItems = applications.slice(0, Math.max(0, remaining - recentItems.length - commandItems.length))
+      afterItems = [...recentItems, ...commandItems, ...applicationItems]
+      sections = [
+        { id: 'pinned' as const, items: beforeItems },
+        { id: 'recent' as const, items: recentItems },
+        { id: 'commands' as const, items: commandItems },
+        { id: 'applications' as const, items: applicationItems },
+      ]
+        .filter(section => section.items.length > 0)
+        .map(section => Object.freeze({ id: section.id, items: Object.freeze([...section.items]) }))
+    } else {
+      sections = [
+        { id: 'pinned' as const, items: beforeItems },
+        { id: 'results' as const, items: afterItems },
+      ]
+        .filter(section => section.items.length > 0)
+        .map(section => Object.freeze({ id: section.id, items: Object.freeze([...section.items]) }))
+    }
+    const before = Object.freeze(beforeItems.map(decorate))
+    const after = Object.freeze(afterItems.map(decorate))
+    sections = Object.freeze(sections.map(section => Object.freeze({
+      id: section.id,
+      items: Object.freeze(section.items.map(decorate)),
+    })))
     if (latestSearchToken === searchToken) {
       knownItemIds.clear()
       for (const item of [...before, ...after]) knownItemIds.add(item.id)
     }
     return Object.freeze({
-      after: Object.freeze(after),
-      before: Object.freeze(before),
+      after,
+      before,
+      sections,
       status: status(),
     })
   }
@@ -281,15 +389,18 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
 
       if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.addFavorite) {
         if (favorites.has(record.argument)) throw new Error('TockLauncher item is already a favorite')
-        await options.persistSettings?.({ favorites: [...favorites, record.argument] })
+        const nextFavorites = [...favoriteOrder, record.argument]
+        await options.persistSettings?.({ favorites: nextFavorites })
         favorites.add(record.argument)
+        if (!favoriteOrder.includes(record.argument)) favoriteOrder.push(record.argument)
         return
       }
       if (record.handlerKey === LAUNCHER_CORE_ACTION_HANDLERS.removeFavorite) {
         if (!favorites.has(record.argument)) throw new Error('TockLauncher favorite was not found')
-        const nextFavorites = [...favorites].filter(id => id !== record.argument)
+        const nextFavorites = favoriteOrder.filter(id => id !== record.argument)
         await options.persistSettings?.({ favorites: nextFavorites })
         favorites.delete(record.argument)
+        favoriteOrder.splice(0, favoriteOrder.length, ...nextFavorites)
         return
       }
       if (excluded.has(record.argument)) throw new Error('TockLauncher item is already excluded')
@@ -302,6 +413,18 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       favorites.delete(record.argument)
     })
     return true
+  }
+
+  const recordUsage = async (itemId: string): Promise<void> => {
+    const timestamp = now()
+    ranking = recordLauncherUsage(ranking, itemId, timestamp)
+    try {
+      await options.persistUsage?.(itemId, timestamp)
+    } catch { /* ranking remains available in memory when persistence is unavailable */ }
+  }
+
+  const replaceRanking = (next: readonly LauncherRankingEntry[]): void => {
+    ranking = pruneLauncherRanking(next, now())
   }
 
   const invalidate = (reason = 'TockLauncher core search was invalidated', _preserveSignal?: AbortSignal): void => {
@@ -317,8 +440,13 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   }>): void => {
     excluded.clear()
     favorites.clear()
+    favoriteOrder.splice(0, favoriteOrder.length)
     settings.excludedItemIds.forEach(id => excluded.add(id))
-    settings.favoriteItemIds.forEach(id => favorites.add(id))
+    settings.favoriteItemIds.forEach(id => {
+      if (favorites.has(id)) return
+      favorites.add(id)
+      favoriteOrder.push(id)
+    })
   }
 
   const track = <T>(operation: () => Promise<T>): Promise<T> => {
@@ -348,6 +476,8 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     close,
     executeAction: (record: LauncherActionRecord) => track(async () => await executeAction(record)),
     flush,
+    recordUsage: (itemId: string) => track(async () => await recordUsage(itemId)),
+    replaceRanking,
     invalidate,
     replacePersistentSettings,
     rescan: (signal?: AbortSignal, preserveSignal?: AbortSignal) => track(async () => await rescan(signal, preserveSignal)),

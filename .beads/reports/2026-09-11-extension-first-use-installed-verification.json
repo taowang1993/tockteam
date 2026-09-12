@@ -1,0 +1,227 @@
+{
+  "classification": "unsigned/internal macOS first-use evidence (ad-hoc signed for local execution); not notarized or public distribution",
+  "installed": {
+    "directExecutable": "/Users/taowang/projects/worktrees/launcher/.noindex/tockteam-installed-first-use/tockteam-installed-launcher-smoke-U3UXul/first-use-installed/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+    "firstUse": {
+      "verified": true,
+      "artifactSha256": "0e23b06703ad85e91f9c6793c5de689204e9fe3bdb0fed3106a1324406bf3858",
+      "childSha256": "22445e6e5310d8bb12359b4d4967e111bb49ea71c2c757381862bcfc3e6d85f6",
+      "detailRows": 14,
+      "preferencesPersisted": true,
+      "backPreservedQuery": true,
+      "legacyPreferencesUnchanged": true,
+      "externalEffectsInvoked": false,
+      "warmReopen": true
+    },
+    "installRoot": "/Users/taowang/projects/worktrees/launcher/.noindex/tockteam-installed-first-use/tockteam-installed-launcher-smoke-U3UXul/first-use-installed/TockTeam Desktop.app",
+    "launch": {
+      "argv": [
+        "/Users/taowang/projects/worktrees/launcher/.noindex/tockteam-installed-first-use/tockteam-installed-launcher-smoke-U3UXul/first-use-installed/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+        "--use-mock-keychain",
+        "--tockteam-launcher-installed-first-use-smoke",
+        "--remote-debugging-address=127.0.0.1",
+        "--remote-debugging-port=56437",
+        "--user-data-dir=/Users/taowang/projects/worktrees/launcher/.noindex/tockteam-installed-first-use/tockteam-installed-launcher-smoke-U3UXul/user-data",
+        "--tockteam-launcher-installed-smoke",
+        "--toggle"
+      ],
+      "pid": 43150
+    },
+    "package": {
+      "appId": "ai.deepseek.tockteam-desktop",
+      "appPath": "/Users/taowang/projects/worktrees/launcher/.noindex/tockteam-installed-first-use/tockteam-installed-launcher-smoke-U3UXul/first-use-installed/TockTeam Desktop.app/Contents/Resources/app.asar",
+      "version": "0.1.14",
+      "appPathUsesAsar": true,
+      "assetCount": 65,
+      "executable": "/Users/taowang/projects/worktrees/launcher/.noindex/tockteam-installed-first-use/tockteam-installed-launcher-smoke-U3UXul/first-use-installed/TockTeam Desktop.app/Contents/MacOS/TockTeam Desktop",
+      "electron": {
+        "architecture": "arm64",
+        "version": "42.3.0"
+      },
+      "node": {
+        "architecture": "arm64",
+        "version": "v24.20.0"
+      },
+      "productName": "TockTeam Desktop",
+      "assetsVerified": true,
+      "noticesVerified": true,
+      "vendorScan": {
+        "scope": "bounded-no-follow",
+        "maxDepth": 2,
+        "maxEntries": 4096,
+        "checkedEntries": 301,
+        "forbiddenSourceFound": false,
+        "launcherSourceAbsent": true
+      },
+      "extraResources": {
+        "checkedEntries": 301,
+        "roots": [
+          "dsh-runtime",
+          "node-runtime",
+          "tockteam-desktop.png",
+          "lib/tockteam/cli.js",
+          "lib/tockteam/package.json",
+          "bin/tockteam",
+          "bin/tockteam.cmd"
+        ],
+        "vendorScan": {
+          "scope": "bounded-no-follow",
+          "maxDepth": 2,
+          "maxEntries": 4096,
+          "checkedEntries": 301,
+          "forbiddenSourceFound": false
+        }
+      }
+    },
+    "checkpoints": {
+      "final": {
+        "checkpoint": "installed-first-use-complete",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      },
+      "startup": {
+        "checkpoint": "installed-first-use-ready",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      }
+    },
+    "cleanupEvidence": {
+      "observedPids": [
+        43150,
+        43151,
+        43152,
+        43160,
+        43164,
+        43165,
+        43220,
+        43546,
+        43549,
+        43577,
+        43578,
+        43579,
+        43580,
+        43581,
+        43582,
+        43583,
+        43618,
+        43619,
+        43620,
+        43621,
+        43622,
+        43623,
+        43624,
+        43626,
+        43659,
+        43660,
+        43661,
+        43662,
+        43663,
+        43664,
+        43665,
+        43666,
+        43700,
+        43701,
+        43702,
+        43703,
+        43734,
+        43735,
+        43737,
+        43738,
+        43739,
+        43740,
+        43774,
+        43775,
+        43776,
+        43777,
+        43830,
+        43833,
+        43850
+      ],
+      "residuePids": [],
+      "rootPid": 43150
+    },
+    "observedPids": [
+      43150,
+      43151,
+      43152,
+      43160,
+      43164,
+      43165,
+      43220,
+      43546,
+      43549,
+      43577,
+      43578,
+      43579,
+      43580,
+      43581,
+      43582,
+      43583,
+      43618,
+      43619,
+      43620,
+      43621,
+      43622,
+      43623,
+      43624,
+      43626,
+      43659,
+      43660,
+      43661,
+      43662,
+      43663,
+      43664,
+      43665,
+      43666,
+      43700,
+      43701,
+      43702,
+      43703,
+      43734,
+      43735,
+      43737,
+      43738,
+      43739,
+      43740,
+      43774,
+      43775,
+      43776,
+      43777,
+      43830,
+      43833,
+      43850
+    ],
+    "processTreesGone": true,
+    "temporaryInstallRemoved": true
+  },
+  "appId": "ai.deepseek.tockteam-desktop",
+  "architecture": "arm64",
+  "version": "0.1.14",
+  "platform": "darwin",
+  "productName": "TockTeam Desktop",
+  "result": "passed",
+  "sourceCommit": "156478b55fc55ad28440e36c653c3f33b52718c3",
+  "cleanup": {
+    "processTreesGone": true,
+    "smokeRootRemoved": true,
+    "temporaryInstallRemoved": true
+  }
+}

@@ -1,21 +1,23 @@
+import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
+import { createTrustedRaycastFirstUseView, createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
+import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import {
   ArrowRight,
   History as HistoryIcon,
-  RefreshCw,
   Search,
-  Settings,
   Star,
   StarOff,
   Trash2,
-  X,
   createElement,
 } from 'lucide'
 import type { IconNode } from 'lucide'
 import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-actions.ts'
 import {
+  LAUNCHER_HIDE_WINDOW_ON_DEFAULT,
   launcherEffectiveScrollBehavior,
   launcherShortcutAriaLabel,
   launcherShortcutMatches,
+  type LauncherSearchSection,
   type LauncherInvokeResult,
   type LauncherSurfacePlatform,
   type LauncherSurfaceSettings,
@@ -49,89 +51,86 @@ const FOCUS_SEARCH_EVENT = 'tockteam-launcher-focus-search'
 
 type LauncherMessages = Readonly<{
   actions: string
+  actionsFor: string
+  applications: string
   cancel: string
+  commands: string
   cancelFailed: string
   canceling: string
   canceled: string
-  close: string
+  cancelWorkflow: string
   fileSearchUnavailable: string
   indexed: (count: number) => string
-  initialStatus: string
   invokeFailed: (action: string) => string
   invoking: (action: string) => string
   history: string
   noHistory: string
   noResults: string
+  openCommand: string
   pinned: string
   providerState: (state: string) => string
   recent: string
   refreshed: string
-  rescan: string
-  rescanFailed: string
-  rescanning: string
   results: string
   search: string
   searching: string
-  settings: string
   unavailable: string
 }>
 
 const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Object.freeze({
   en: Object.freeze({
     actions: 'Actions',
+    actionsFor: 'Actions for',
+    applications: 'Applications',
     cancel: 'Cancel',
+    commands: 'Commands',
     cancelFailed: 'Workflow could not be canceled.',
     canceling: 'Canceling workflow…',
     canceled: 'Workflow canceled.',
-    close: 'Close TockLauncher',
+    cancelWorkflow: 'Cancel workflow',
     fileSearchUnavailable: 'Local extension settings are unavailable.',
     history: 'History',
     indexed: (count: number) => `${count} indexed destinations`,
-    initialStatus: 'Destinations will appear here.',
     invokeFailed: (action: string) => `${action} could not be completed.`,
     invoking: (action: string) => `${action}…`,
     noHistory: 'No Recent Searches',
     noResults: 'No TockTeam destinations found.',
+    openCommand: 'Open Command',
     refreshed: 'Results Refreshed. Try Again.',
     pinned: 'Pinned',
     providerState: (state: string) => state,
     recent: 'Recent',
-    rescan: 'Rescan',
-    rescanFailed: 'TockLauncher rescan failed.',
-    rescanning: 'Rescanning TockLauncher…',
     results: 'Results',
     search: 'Search TockTeam',
     unavailable: 'TockLauncher destinations are unavailable.',
     searching: 'Searching…',
-    settings: 'Open TockLauncher Settings',
   }),
   zh: Object.freeze({
     actions: '操作',
+    actionsFor: '操作：',
+    applications: '应用程序',
     cancel: '取消',
+    commands: '命令',
     cancelFailed: '无法取消工作流。',
     canceling: '正在取消工作流…',
     canceled: '工作流已取消。',
-    close: '关闭 TockLauncher',
+    cancelWorkflow: '取消工作流',
     fileSearchUnavailable: '本地扩展设置不可用。',
     history: '历史',
     indexed: (count: number) => `${count} 个已索引目标`,
-    initialStatus: '目标将在此处显示。',
     invokeFailed: (action: string) => `${action} 无法完成。`,
     invoking: (action: string) => `${action}…`,
     noHistory: '没有最近搜索',
     noResults: '未找到 TockTeam 目标。',
+    openCommand: '打开命令',
     refreshed: '结果已刷新，请重试。',
     pinned: '置顶',
     providerState: (state: string) => ({ disabled: '已禁用', unavailable: '不可用', unsupported: '不支持', ready: '就绪' } as Record<string, string>)[state] ?? state,
     recent: '最近',
-    rescan: '重新扫描',
-    rescanFailed: 'TockLauncher 重新扫描失败。',
-    rescanning: '正在重新扫描 TockLauncher…',
     results: '结果',
     search: '搜索 TockTeam',
     unavailable: 'TockLauncher 目标不可用。',
     searching: '正在搜索…',
-    settings: '打开 TockLauncher 设置',
   }),
 })
 
@@ -202,14 +201,11 @@ async function bootstrap(): Promise<void> {
   const search = document.getElementById('launcher-search') as HTMLInputElement
   const searchForm = document.getElementById('launcher-search-form') as HTMLElement
   const searchIcon = document.getElementById('launcher-search-icon') as HTMLElement
-  const close = document.getElementById('launcher-close') as HTMLButtonElement
-  const settings = document.getElementById('launcher-settings') as HTMLButtonElement
   const results = document.getElementById('launcher-results') as HTMLUListElement
   const status = document.getElementById('launcher-status') as HTMLElement
   const providerStatuses = document.getElementById('launcher-provider-statuses') as HTMLElement
   const historyToggle = document.getElementById('launcher-history-toggle') as HTMLButtonElement
   const historyPanel = document.getElementById('launcher-history') as HTMLElement
-  const rescan = document.getElementById('launcher-rescan') as HTMLButtonElement
   const details = document.getElementById('launcher-details') as HTMLElement
   const footer = document.getElementById('launcher-footer') as HTMLElement
   const footerSelection = document.getElementById('launcher-footer-selection') as HTMLElement
@@ -218,14 +214,11 @@ async function bootstrap(): Promise<void> {
     || !(search instanceof HTMLInputElement)
     || !(searchForm instanceof HTMLElement)
     || !(searchIcon instanceof HTMLElement)
-    || !(close instanceof HTMLButtonElement)
-    || !(settings instanceof HTMLButtonElement)
     || !(results instanceof HTMLUListElement)
     || !(status instanceof HTMLElement)
     || !(providerStatuses instanceof HTMLElement)
     || !(historyToggle instanceof HTMLButtonElement)
     || !(historyPanel instanceof HTMLElement)
-    || !(rescan instanceof HTMLButtonElement)
     || !(details instanceof HTMLElement)
     || !(footer instanceof HTMLElement)
     || !(footerSelection instanceof HTMLElement)
@@ -235,9 +228,6 @@ async function bootstrap(): Promise<void> {
 
   searchIcon.append(icon(Search))
   historyToggle.prepend(icon(HistoryIcon))
-  rescan.prepend(icon(RefreshCw))
-  close.prepend(icon(X))
-  settings.prepend(icon(Settings))
   bridge.onTheme(applyLauncherTheme)
   void bridge.getTheme().then(applyLauncherTheme).catch(() => {})
 
@@ -250,8 +240,8 @@ async function bootstrap(): Promise<void> {
   let revision = 0
   let selectedItemId = ''
   let currentItems: LauncherPublicResultItem[] = []
+  let currentSections: LauncherSearchSection[] = []
   let currentResultSetId = ''
-  let pinnedCount = 0
   let actionMenuOpen = false
   let historyOpen = false
   let invoking = false
@@ -259,6 +249,20 @@ async function bootstrap(): Promise<void> {
   let cancellationPending = false
   let cancellationRequested = false
   let activeCancellation: Readonly<{ actionId: string; resultSetId: string }> | undefined
+  let trustManagement: ReturnType<typeof createTrustedRaycastTrustView> | undefined
+  let firstUseView: ReturnType<typeof createTrustedRaycastFirstUseView> | undefined
+  let trustedClosePending: Promise<unknown> = Promise.resolve()
+  let closingTrusted = false
+  const closeTrusted = (): void => {
+    if (closingTrusted) return
+    closingTrusted = true
+    trustedClosePending = bridge.trustedRaycastClose().finally(() => { closingTrusted = false })
+    void trustedClosePending.catch(() => undefined)
+  }
+  let trustedOpening = false
+  let trustedInvocation = false
+  let toolSequence = 0
+  let trustedView: ReturnType<typeof createTrustedRaycastView> | undefined
   let activeLocalTool: HTMLElement | undefined
   let activeLocalToolId: LauncherLocalToolId | undefined
   let surfaceSettings: LauncherSurfaceSettings = Object.freeze({
@@ -268,7 +272,7 @@ async function bootstrap(): Promise<void> {
     history: Object.freeze([]),
     historyEnabled: false,
     historyLimit: 10,
-    hideWindowOn: Object.freeze(['blur', 'afterInvocation'] as const),
+    hideWindowOn: LAUNCHER_HIDE_WINDOW_ON_DEFAULT,
     locale: 'en-US',
     maxSearchResultItems: 50,
     placeholder: 'Type here...',
@@ -316,10 +320,6 @@ async function bootstrap(): Promise<void> {
       else button.append(document.createTextNode(label))
     }
     setButtonLabel(historyToggle, copy.history)
-    setButtonLabel(rescan, copy.rescan)
-    setButtonLabel(close, copy.close)
-    setButtonLabel(settings, copy.settings)
-    if (!invoking && !invokingWorkflow) status.textContent = copy.initialStatus
     providerStatuses.hidden = surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
     providerStatuses.textContent = surfaceSettings.providerStatuses
       .filter(provider => provider.state !== 'ready' && provider.state !== 'disabled')
@@ -338,24 +338,32 @@ async function bootstrap(): Promise<void> {
   )
 
   const restoreSearchFocus = (): void => {
+    if (firstUseView !== undefined) { firstUseView.focus(); return }
+    if (trustedView !== undefined) { trustedView.focus(); return }
     search.focus()
     search.select()
   }
 
   const setWorkflowBusy = (busy: boolean): void => {
     search.disabled = busy
-    rescan.disabled = busy
     historyToggle.disabled = busy || !surfaceSettings.historyEnabled
   }
 
   const workflowInteractionBlocked = (): boolean => invokingWorkflow || activeCancellation !== undefined || cancellationPending
 
   const closeLocalTool = (): void => {
+    toolSequence++
+    if (trustedInvocation) invoking = false
+    trustManagement?.dispose(); trustManagement = undefined
+    if (firstUseView || trustedOpening || trustedInvocation || trustedView) closeTrusted()
+    firstUseView?.dispose(); firstUseView = undefined
+    trustedOpening = false; trustedInvocation = false
+    if (trustedView) { trustedView.dispose(); trustedView = undefined }
     const tool = activeLocalTool
     activeLocalTool = undefined
     activeLocalToolId = undefined
     tool?.remove()
-    for (const element of [searchForm, providerStatuses, results, footer]) element.hidden = false
+    for (const element of [searchForm, providerStatuses, results, footer]) { element.hidden = false; element.classList.remove('hidden') }
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
@@ -367,8 +375,22 @@ async function bootstrap(): Promise<void> {
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
-    for (const element of [searchForm, providerStatuses, results, footer]) element.hidden = true
+    for (const element of [searchForm, providerStatuses, results, footer]) { element.hidden = true; element.classList.add('hidden') }
   }
+  bridge.onTrustedRaycastView(message => {
+    if (message.type === 'ready') {
+      if (!trustedOpening) { closeTrusted(); return }
+      firstUseView?.dispose(); firstUseView = undefined
+      trustedView?.dispose()
+      activeLocalTool?.remove()
+      trustedView = createTrustedRaycastView(document, bridge, closeLocalTool, surfaceSettings.locale)
+      activeLocalTool = trustedView.element
+      activeLocalToolId = undefined
+      hideLauncherControls()
+      root.append(trustedView.element)
+    }
+    trustedView?.update(message)
+  })
   const openLocalTool = async (extensionId: LauncherLocalToolId): Promise<void> => {
     let localSettings: LauncherLocalExtensionSettings
     try { localSettings = await bridge.getLocalExtensionSettings() } catch { setStatus(messages().fileSearchUnavailable, 'error'); restoreSearchFocus(); return }
@@ -399,6 +421,40 @@ async function bootstrap(): Promise<void> {
     activeLocalToolId = undefined
     hideLauncherControls()
     root.append(tool)
+  }
+  const openTrustedRaycastTrustView = (): void => {
+    const tool = createTrustedRaycastTrustView(document, bridge, closeLocalTool, surfaceSettings.locale)
+    trustManagement = tool
+    activeLocalTool = tool.element
+    activeLocalToolId = undefined
+    hideLauncherControls()
+    root.append(tool.element)
+    tool.focus()
+  }
+
+  const openFirstUse = (extensionId: typeof trustedRaycastCommands[number]['extensionId']): void => {
+    const sequence = toolSequence
+    const tool = createTrustedRaycastFirstUseView(document, bridge, extensionId, closeLocalTool, async (digest, mode) => {
+      if (sequence !== toolSequence) return
+      await trustedClosePending
+      if (sequence !== toolSequence) return
+      trustedOpening = true
+      try {
+        const result = await bridge.trustedRaycastFirstUse({ extensionId, digest, mode })
+        if (sequence !== toolSequence) return
+        if (!result.ok) throw new Error(result.error)
+      } catch (error) {
+        if (sequence === toolSequence) trustedOpening = false
+        throw error
+      }
+    }, () => {
+      firstUseView?.dispose(); firstUseView = undefined
+      activeLocalTool?.remove()
+      closeTrusted()
+      openTrustedRaycastTrustView()
+    }, surfaceSettings.locale)
+    firstUseView = tool; activeLocalTool = tool.element; activeLocalToolId = undefined
+    hideLauncherControls(); root.append(tool.element)
   }
 
   const updateSelection = (): void => {
@@ -471,6 +527,7 @@ async function bootstrap(): Promise<void> {
   }
 
   focusSearchHandler = (): void => {
+    if (trustedView !== undefined) { trustedView.focus(); return }
     actionMenuOpen = false
     historyOpen = false
     historyPanel.hidden = true
@@ -515,6 +572,13 @@ async function bootstrap(): Promise<void> {
   const invoke = async (action: LauncherPublicAction): Promise<void> => {
     if (invoking || workflowInteractionBlocked()) return
     const candidate = selectedItem()
+    const setupCommand = trustedRaycastCommands.find(command => candidate?.defaultAction.actionId === action.actionId && candidate.id === trustedRaycastSetupId(command.extensionId))
+    const runtimeCommand = trustedRaycastCommands.find(command => candidate?.defaultAction.actionId === action.actionId && candidate.id === command.id)
+    const sequence = ++toolSequence
+    trustedInvocation = !!(setupCommand || runtimeCommand)
+    trustedOpening = false
+    // Drain already-sent ready messages before a new intent may own the renderer.
+    if (trustedInvocation) closeTrusted()
     const isWorkflowAction = candidate?.sourceExtension === 'Workflow'
     const invocationResultSetId = currentResultSetId
     const candidateId = candidate?.id.slice('ueli-local:'.length)
@@ -532,6 +596,9 @@ async function bootstrap(): Promise<void> {
       && (candidate.id === 'ueli-network:DeeplTranslator' || candidate.id === 'ueli-network:WebSearch')
       && candidate.sourceExtension === (candidate.id.endsWith('DeeplTranslator') ? 'DeeplTranslator' : 'WebSearch')
       && action.actionId === candidate.defaultAction.actionId
+    const trustTool = candidate !== undefined
+      && candidate.id === TRUSTED_RAYCAST_TRUST_RESULT_ID
+      && action.actionId === candidate.defaultAction.actionId
     invoking = true
     invokingWorkflow = isWorkflowAction
     if (invokingWorkflow) {
@@ -546,7 +613,11 @@ async function bootstrap(): Promise<void> {
     let pending: Promise<LauncherInvokeResult>
     let invocationStarted = false
     try {
-      pending = Promise.resolve(bridge.invokeAction(action.actionId))
+      pending = trustedInvocation ? trustedClosePending.then(() => {
+        if (sequence !== toolSequence) throw new Error('Extension opening canceled')
+        trustedOpening = !!runtimeCommand
+        return bridge.invokeAction(action.actionId)
+      }) : Promise.resolve(bridge.invokeAction(action.actionId))
       invocationStarted = true
     } catch (error) {
       pending = Promise.reject(error)
@@ -563,6 +634,7 @@ async function bootstrap(): Promise<void> {
     try {
       await historyPending
       const result = await pending
+      if (sequence !== toolSequence) return
       if (!result.ok) {
         if (isWorkflowAction) {
           invoking = false
@@ -578,6 +650,8 @@ async function bootstrap(): Promise<void> {
         restoreSearchFocus()
         return
       }
+      if (trustedView !== undefined) { trustedView.focus(); return }
+      if (setupCommand) { openFirstUse(setupCommand.extensionId); return }
       if (!surfaceSettings.preserveUserInput) search.value = ''
       if (toolId !== undefined) {
         await openLocalTool(toolId)
@@ -591,26 +665,31 @@ async function bootstrap(): Promise<void> {
         await openNetworkTool(candidate!.sourceExtension as 'DeeplTranslator' | 'WebSearch')
         return
       }
-      if (action.hideWindowAfterInvocation === true) {
-        await bridge.dismiss().catch(() => undefined)
+      if (trustTool) {
+        openTrustedRaycastTrustView()
         return
       }
       search.value = invocationSearchTerm()
       await renderSearch(search.value)
       restoreSearchFocus()
     } catch {
+      if (sequence !== toolSequence) return
+      trustedOpening = false
       search.value = invocationSearchTerm()
       await renderSearch(search.value).catch(() => undefined)
       setStatus(cancellationRequested && isWorkflowAction ? messages().canceled : messages().invokeFailed(action.description), cancellationRequested && isWorkflowAction ? 'muted' : 'error')
       restoreSearchFocus()
     } finally {
-      invoking = false
-      invokingWorkflow = false
-      activeCancellation = undefined
-      cancellationPending = false
-      cancellationRequested = false
-      setWorkflowBusy(false)
-      renderDetails()
+      if (sequence === toolSequence) {
+        trustedInvocation = false
+        invoking = false
+        invokingWorkflow = false
+        activeCancellation = undefined
+        cancellationPending = false
+        cancellationRequested = false
+        setWorkflowBusy(false)
+        renderDetails()
+      }
     }
   }
 
@@ -639,10 +718,10 @@ async function bootstrap(): Promise<void> {
       : undefined
     const packagedAsset = item.imageKey === undefined
       ? undefined
-      : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey)
+      : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey) ?? trustedRaycastAssetUrl(item.imageKey)
     const imageUrl = isLauncherImageUrl(item.imageUrl) ? item.imageUrl : localAsset ?? packagedAsset
     const marker = imageUrl === undefined ? document.createElement('span') : document.createElement('img')
-    marker.className = 'flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-[var(--dsw-alias-bg-layer-2,Canvas)] text-[10px] font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)] object-contain'
+    marker.className = 'launcher-command-row-icon text-[10px] font-semibold'
     marker.setAttribute('aria-hidden', 'true')
     if (marker instanceof HTMLImageElement) {
       marker.alt = ''
@@ -670,14 +749,14 @@ async function bootstrap(): Promise<void> {
     footerSelection.append(createResultMarker(item), selectionName)
 
     const open = document.createElement('button')
-    open.className = 'inline-flex min-h-[22px] shrink-0 items-center gap-2 border-0 bg-transparent p-0 text-xs font-semibold text-[var(--dsw-alias-label-primary,CanvasText)] hover:text-[var(--dsw-alias-brand-text,var(--dsw-alias-label-primary,CanvasText))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+    open.className = 'launcher-command-footer-action'
     open.type = 'button'
     open.disabled = workflowInteractionBlocked()
     open.setAttribute('aria-label', actionLabel(item.defaultAction))
     const openShortcut = actionAriaShortcut(item.defaultAction, true)
     if (openShortcut !== undefined) open.setAttribute('aria-keyshortcuts', openShortcut)
     const openText = document.createElement('span')
-    openText.textContent = item.defaultAction.description
+    openText.textContent = messages().openCommand
     open.append(openText, createLauncherShortcut('Enter'))
     open.addEventListener('click', () => {
       if (workflowInteractionBlocked()) return
@@ -685,10 +764,10 @@ async function bootstrap(): Promise<void> {
     })
 
     const toggle = document.createElement('button')
-    toggle.className = 'inline-flex min-h-[22px] shrink-0 items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)]'
+    toggle.className = 'launcher-command-footer-action text-[var(--dsw-alias-label-secondary,CanvasText)]'
     toggle.type = 'button'
     toggle.disabled = workflowInteractionBlocked()
-    toggle.setAttribute('aria-label', `Actions for ${item.name}`)
+    toggle.setAttribute('aria-label', `${messages().actionsFor} ${item.name}`)
     toggle.setAttribute('aria-haspopup', 'menu')
     toggle.setAttribute('aria-expanded', String(actionMenuOpen))
     toggle.setAttribute('aria-controls', 'launcher-actions-menu')
@@ -710,15 +789,15 @@ async function bootstrap(): Promise<void> {
     })
 
     const row = document.createElement('div')
-    row.className = 'flex min-w-0 items-center gap-3'
+    row.className = 'launcher-command-footer-actions'
     row.append(open)
     if (activeCancellation !== undefined && item.sourceExtension === 'Workflow') {
       const cancel = document.createElement('button')
-      cancel.className = 'inline-flex min-h-[22px] shrink-0 items-center border-0 bg-transparent p-0 text-xs text-[var(--dsw-alias-label-secondary,CanvasText)] hover:text-[var(--dsw-alias-label-primary,CanvasText)] focus-visible:outline-2'
+      cancel.className = 'launcher-command-footer-action text-[var(--dsw-alias-label-secondary,CanvasText)]'
       cancel.type = 'button'
       cancel.disabled = cancellationPending
       cancel.dataset.testid = 'tocklauncher-cancel-workflow'
-      cancel.setAttribute('aria-label', 'Cancel workflow')
+      cancel.setAttribute('aria-label', messages().cancelWorkflow)
       cancel.textContent = messages().cancel
       cancel.addEventListener('click', () => { void cancelActiveWorkflow() })
       row.append(cancel)
@@ -728,14 +807,14 @@ async function bootstrap(): Promise<void> {
     if (!actionMenuOpen) return
 
     const menu = document.createElement('div')
-    menu.className = 'absolute bottom-[calc(100%+12px)] right-0 z-10 max-h-[240px] w-[min(320px,calc(100vw-2rem))] min-w-0 max-w-full overflow-y-auto rounded-lg border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,Canvas))] p-1 shadow-lg'
+    menu.className = 'launcher-command-menu bottom-[calc(100%+10px)] right-0'
     menu.id = 'launcher-actions-menu'
     menu.setAttribute('role', 'menu')
-    menu.setAttribute('aria-label', `Actions for ${item.name}`)
+    menu.setAttribute('aria-label', `${messages().actionsFor} ${item.name}`)
     const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
     for (const action of actions) {
       const actionButton = document.createElement('button')
-      actionButton.className = 'grid min-h-8 w-full grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1 text-left hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-1 focus-visible:outline-offset-[-1px]'
+      actionButton.className = 'launcher-command-menu-item grid-cols-[18px_minmax(0,1fr)_auto]'
       actionButton.type = 'button'
       actionButton.disabled = workflowInteractionBlocked()
       actionButton.setAttribute('role', 'menuitem')
@@ -779,14 +858,14 @@ async function bootstrap(): Promise<void> {
     details.append(menu)
   }
 
-  const renderGroup = (name: string, items: readonly LauncherPublicResultItem[], start: number): void => {
+  const renderGroup = (id: string, name: string, items: readonly LauncherPublicResultItem[], start: number): void => {
     if (items.length === 0) return
     const group = document.createElement('li')
     group.className = 'mb-0.5'
     group.setAttribute('role', 'group')
     const heading = document.createElement('h2')
-    heading.id = `launcher-group-${name.toLocaleLowerCase('en-US')}`
-    heading.className = 'm-0 px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--dsw-alias-label-secondary,CanvasText)]'
+    heading.id = `launcher-group-${id}`
+    heading.className = 'launcher-command-group-title'
     heading.textContent = name
     group.setAttribute('aria-labelledby', heading.id)
     const list = document.createElement('ul')
@@ -796,7 +875,7 @@ async function bootstrap(): Promise<void> {
       const listItem = document.createElement('li')
       listItem.setAttribute('role', 'presentation')
       const button = document.createElement('button')
-      button.className = 'flex min-h-9 w-full min-w-0 items-center gap-2.5 rounded-md border border-transparent bg-transparent px-3 py-[7px] text-left text-[var(--dsw-alias-label-primary,CanvasText)] transition-[background-color,border-color] duration-150 hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--dsw-alias-brand-primary,CanvasText)] aria-selected:border-[var(--dsw-alias-border-l2,CanvasText)] aria-selected:bg-[var(--dsw-alias-interactive-bg-active,rgb(0_0_0_/_10%))]'
+      button.className = 'launcher-command-row'
       button.type = 'button'
       button.disabled = workflowInteractionBlocked()
       button.id = `launcher-result-${encodeURIComponent(item.id)}`
@@ -853,8 +932,20 @@ async function bootstrap(): Promise<void> {
   function renderResults(): void {
     results.replaceChildren()
     const copy = messages()
-    renderGroup(copy.pinned, currentItems.slice(0, pinnedCount), 0)
-    renderGroup(search.value.trim().length === 0 ? copy.recent : copy.results, currentItems.slice(pinnedCount), pinnedCount)
+    let start = 0
+    for (const section of currentSections) {
+      const name = section.id === 'pinned'
+        ? copy.pinned
+        : section.id === 'recent'
+          ? copy.recent
+          : section.id === 'commands'
+            ? copy.commands
+            : section.id === 'applications'
+              ? copy.applications
+              : copy.results
+      renderGroup(section.id, name, section.items, start)
+      start += section.items.length
+    }
     updateSelection()
   }
 
@@ -870,8 +961,8 @@ async function bootstrap(): Promise<void> {
       })
       if (currentRevision !== revision || workflowInteractionBlocked()) return false
       const previous = selectedItemId
-      pinnedCount = response.before.length
-      currentItems = [...response.before, ...response.after]
+      currentSections = [...response.sections]
+      currentItems = currentSections.flatMap(section => section.items)
       currentResultSetId = response.resultSetId
       selectedItemId = currentItems.some(item => item.id === previous) ? previous : currentItems[0]?.id ?? ''
       search.setAttribute('aria-expanded', String(currentItems.length > 0))
@@ -885,7 +976,7 @@ async function bootstrap(): Promise<void> {
     } catch {
       if (currentRevision !== revision || workflowInteractionBlocked()) return false
       currentItems = []
-      pinnedCount = 0
+      currentSections = []
       selectedItemId = ''
       search.setAttribute('aria-expanded', 'false')
       renderResults()
@@ -895,10 +986,9 @@ async function bootstrap(): Promise<void> {
   }
 
   launcherThemeRerender = () => {
+    if (trustedView !== undefined) { trustedView.refreshTheme(); return }
     if (activeLocalTool === undefined && !invokingWorkflow) void renderSearch(search.value)
   }
-  close.addEventListener('click', () => { void bridge.dismiss().catch(() => undefined) })
-  settings.addEventListener('click', () => { void bridge.openSettings().catch(() => undefined) })
   historyToggle.addEventListener('click', () => {
     if (invokingWorkflow || !surfaceSettings.historyEnabled) return
     actionMenuOpen = false
@@ -934,29 +1024,17 @@ async function bootstrap(): Promise<void> {
       buttons[next]?.focus()
     }
   })
-  rescan.addEventListener('click', async () => {
-    if (invokingWorkflow) return
-    rescan.disabled = true
-    rescan.setAttribute('aria-busy', 'true')
-    setStatus(messages().rescanning, 'muted')
-    try {
-      await bridge.rescan()
-      await renderSearch(search.value)
-    } catch {
-      setStatus(messages().rescanFailed, 'error')
-    } finally {
-      rescan.disabled = false
-      rescan.removeAttribute('aria-busy')
-    }
-  })
-  let scrollbarHideTimer = 0
-  results.addEventListener('scroll', () => {
-    results.dataset.scrolling = 'true'
-    window.clearTimeout(scrollbarHideTimer)
-    scrollbarHideTimer = window.setTimeout(() => {
-      delete results.dataset.scrolling
-    }, 300)
-  }, { passive: true })
+  const scrollbarHideTimers = new WeakMap<HTMLElement, number>()
+  root.addEventListener('scroll', event => {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return
+    target.dataset.scrolling = 'true'
+    window.clearTimeout(scrollbarHideTimers.get(target))
+    scrollbarHideTimers.set(target, window.setTimeout(() => {
+      delete target.dataset.scrolling
+      scrollbarHideTimers.delete(target)
+    }, 300))
+  }, { capture: true, passive: true })
   search.addEventListener('input', () => {
     if (invokingWorkflow) return
     void renderSearch(search.value)
@@ -965,7 +1043,7 @@ async function bootstrap(): Promise<void> {
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
-      if (activeLocalTool !== undefined) closeLocalTool()
+      if (activeLocalTool !== undefined || trustedInvocation || trustedOpening) closeLocalTool()
       else if (actionMenuOpen) closeActionMenu()
       else if (historyOpen) closeHistory()
       else if (surfaceSettings.hideWindowOn.includes('escapePressed')) void bridge.dismiss().catch(() => undefined)
@@ -998,13 +1076,16 @@ async function bootstrap(): Promise<void> {
         selectedItemId = currentItems[(Math.max(index, 0) - 1 + currentItems.length) % currentItems.length]?.id ?? ''
         updateSelection()
       }
-    } else if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault()
+      if (currentItems.length > 0) {
+        selectedItemId = currentItems[event.key === 'Home' ? 0 : currentItems.length - 1]?.id ?? ''
+        updateSelection()
+      }
+    } else if (event.key === 'Enter' && !event.repeat && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
       event.preventDefault()
       const item = selectedItem()
       if (item !== undefined) void invoke(item.defaultAction)
-    } else if (event.key === 'F5' && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
-      event.preventDefault()
-      rescan.click()
     } else if (hasPrimaryModifier(event) && event.key.toLowerCase() === 'k') {
       event.preventDefault()
       if (selectedItem() === undefined) return
@@ -1084,7 +1165,7 @@ async function bootstrap(): Promise<void> {
     if (event.key !== 'Escape' || event.target === search) return
     event.preventDefault()
     event.stopPropagation()
-    if (activeLocalTool !== undefined) closeLocalTool()
+    if (activeLocalTool !== undefined || trustedInvocation || trustedOpening) closeLocalTool()
     else if (actionMenuOpen) closeActionMenu()
     else if (historyOpen) closeHistory()
     else if (surfaceSettings.hideWindowOn.includes('escapePressed')) void bridge.dismiss().catch(() => undefined)

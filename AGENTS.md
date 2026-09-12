@@ -79,8 +79,9 @@ Folder: `.agents/references/`
 - Must keep Host and browser-client halves separate when adding a bundled plugin. Update every owning layer: package exports and metadata, `scripts/build.mjs`, the relevant patch file, `src/profile.ts`, browser-client injections, and focused composition tests. Do not mount it on a surface that cannot provide its dependencies.
 - Must use the TDD skill for non-trivial implementation or bug fixes: run the failing check first, then report the exact verification command.
 - Must use the design skill for UI/UX work and the playwright-cli skill to verify browser-visible UI or user-flow changes.
-- Must stop any Electron app, web server, and child process started for verification unless the user asks to keep it running.
-- On macOS, use `pnpm test:launcher:electron` while iterating. Run `pnpm test:launcher:installed` only after focused checks pass and only once per final commit; never run installed smokes concurrently.
+- Must stop every Electron app, browser session, web server, and descendant process started for verification unless the user asks to keep it running. Record the launched root PID or process group, clean it up in `finally` or a shell trap, and verify the full process tree stopped; terminating only a wrapper or parent process is insufficient.
+- Never use the long-lived `pnpm start` or `pnpm start:fresh` commands for temporary verification. Use a bounded smoke command or focused browser/component harness instead.
+- Prefer focused tests and browser or component verification while iterating. On macOS, run `pnpm test:launcher:electron` only when a change affects Electron, the launcher, preload or IPC behavior, packaging, or explicitly requires a final Desktop smoke; never run it for an isolated browser UI styling change. Run `pnpm test:launcher:installed` only after focused checks pass and only once per final commit; never run installed smokes concurrently.
 - Run local installed smokes with `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT` inside a `.noindex` cache directory to reduce Spotlight churn.
 - Write new reports in `.beads/reports`.
 - Never push without explicit authority from the user, orchestrator, or active repository profile. Never squash-merge pull requests; use merge commits.

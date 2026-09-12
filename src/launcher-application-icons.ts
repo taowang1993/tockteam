@@ -1,8 +1,34 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { access, lstat, mkdir, rename, rm, stat } from 'node:fs/promises'
+import { access, lstat, mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
 import path from 'node:path'
 
 type RunCommand = (executable: string, args: readonly string[]) => Promise<Readonly<{ stdout: string }>>
+
+const MAX_CACHE_FILES = 128
+const RETAINED_CACHE_FILES = 96
+const CACHE_FILE_NAME = /^[a-f0-9]{64}\.png$/u
+
+async function pruneIconCache(cacheDirectory: string, currentPath: string): Promise<void> {
+  const names = await readdir(cacheDirectory)
+  const cacheNames = names.filter(name => CACHE_FILE_NAME.test(name))
+  if (cacheNames.length <= MAX_CACHE_FILES) return
+  const entries = (await Promise.all(cacheNames.map(async name => {
+    const target = path.join(cacheDirectory, name)
+    try {
+      const metadata = await lstat(target)
+      return metadata.isFile() ? { modifiedAt: metadata.mtimeMs, target } : undefined
+    } catch { return undefined }
+  }))).filter(entry => entry !== undefined)
+  entries.sort((left, right) => Number(right.target === currentPath) - Number(left.target === currentPath) || right.modifiedAt - left.modifiedAt)
+  let retainedFiles = 0
+  await Promise.all(entries.map(async entry => {
+    if (retainedFiles < RETAINED_CACHE_FILES) {
+      retainedFiles += 1
+      return
+    }
+    await rm(entry.target, { force: true })
+  }))
+}
 
 export async function resolveMacOSApplicationIconPath(
   applicationPath: string,
@@ -36,6 +62,7 @@ export async function resolveMacOSApplicationIconPath(
       throw new Error('Application icon conversion returned an invalid PNG')
     }
     await rename(temporaryPath, cachedPath)
+    await pruneIconCache(cacheDirectory, cachedPath).catch(() => undefined)
     return cachedPath
   } finally {
     await rm(temporaryPath, { force: true })

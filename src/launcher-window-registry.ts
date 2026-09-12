@@ -52,10 +52,6 @@ export class LauncherWindowRegistry {
     return this.windows.get('launcher') === window ? 'launcher' : undefined
   }
 
-  unregister(role: LauncherRendererRole, window: LauncherRegistryWindow): void {
-    if (this.windows.get(role) === window) this.windows.delete(role)
-  }
-
   get size(): number {
     return this.windows.size
   }
