@@ -150,7 +150,7 @@ test('Can I Use preference dropdowns use shadcn-style listboxes with pointer and
   assert.equal(sent.at(-1)?.value, 'true')
 })
 
-test('Can I Use details show support, clear pending navigation, preserve counts and authenticate Back', async () => {
+test('Can I Use details show support, preserve counts, and go back with Backspace', async () => {
   const nodes: Element[] = []
   const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
   const sent: TrustedRaycastViewEvent[] = []
@@ -180,8 +180,9 @@ test('Can I Use details show support, clear pending navigation, preserve counts 
   assert.equal(sent.at(-1)!.eventId, 'browser')
   view.update({ type: 'outcome', extensionId: 'can-i-use', sessionId: 'can', generation: 'g', revision: 1, eventId: 'browser', succeeded: true, message: '' })
   assert.equal(status.textContent, 'Showing 1 of 1 browsers.')
-  const escape = new Event('keydown', { cancelable: true }); Object.assign(escape, { key: 'Escape' })
-  view.element.dispatchEvent(escape); await flush()
+  const backspace = new Event('keydown', { cancelable: true }); Object.assign(backspace, { key: 'Backspace', metaKey: false, ctrlKey: false, altKey: false, shiftKey: false })
+  view.element.dispatchEvent(backspace); await flush()
+  assert.equal(backspace.defaultPrevented, true)
   assert.deepEqual(sent.at(-1), { extensionId: 'can-i-use', sessionId: 'can', generation: 'g', revision: 1, kind: 'navigation', eventId: 'pop-1', value: 'can-i-use:pop' })
   view.dispose()
 })
@@ -652,6 +653,62 @@ test('Escape pops a nested view instead of closing the command', async () => {
   assert.equal(sent[0]?.kind, 'navigation')
   assert.equal(sent[0]?.value, 'language:pop')
   assert.equal(closed, false, 'nested Escape must not close the command')
+})
+
+test('Backspace pops one generic navigation level per distinct keypress', async () => {
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const sent: TrustedRaycastViewEvent[] = []
+  const bridge = { async trustedRaycastEvent(event: TrustedRaycastViewEvent) { sent.push(event) } } as unknown as LauncherPreloadBridge
+  const view = createTrustedRaycastView(document, bridge, () => {})
+  const root = (navigationDepth: number): NonNullable<TrustedRaycastViewMessage['root']> => ({ type: 'raycast-list', props: { navigationDepth }, children: [] })
+  const key = (repeat: boolean) => Object.assign(new Event('keydown', { cancelable: true }), { key: 'Backspace', repeat, isComposing: false, keyCode: 8, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false })
+  view.update({ ...projection(0), root: root(2) })
+
+  view.element.dispatchEvent(key(false))
+  view.element.dispatchEvent(key(false))
+  view.element.dispatchEvent(key(true))
+  await flush()
+  assert.equal(sent.length, 1, 'one projection can request only one pop')
+
+  view.update({ ...projection(1), root: root(1) })
+  view.element.dispatchEvent(key(true))
+  assert.equal(sent.length, 1, 'a held key cannot pop the next level after projection')
+  view.element.dispatchEvent(key(false))
+  await flush()
+  assert.deepEqual(sent.map(event => [event.revision, event.value]), [[0, 'language:pop'], [1, 'language:pop']])
+})
+
+test('rejected navigation releases its own fence without releasing a newer pop', async () => {
+  const document = { createElement() { return new Element() } } as unknown as Document
+  const sent: TrustedRaycastViewEvent[] = []
+  const reject: Array<(error: Error) => void> = []
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent(event: TrustedRaycastViewEvent) {
+    sent.push(event)
+    return new Promise<void>((_resolve, rejectEvent) => reject.push(rejectEvent))
+  } } as unknown as LauncherPreloadBridge, () => {})
+  const update = (revision: number, navigationDepth: number) => view.update({ type: revision ? 'patch' : 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision,
+    root: { type: 'raycast-list', props: { navigationDepth, navigationEventId: `pop-${revision}` }, children: [] } })
+  const back = () => view.element.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'Backspace' }))
+  update(0, 2)
+  back()
+  reject[0]!(new Error('action pending'))
+  await flush()
+  back()
+  assert.equal(sent.length, 2, 'a rejected pop must be retryable')
+
+  update(1, 1)
+  back()
+  assert.equal(sent.length, 3)
+  reject[1]!(new Error('late rejection'))
+  await flush()
+  back()
+  assert.equal(sent.length, 3, 'an older rejection cannot unlock the new pop')
+  reject[2]!(new Error('stale view event'))
+  await flush()
+  back()
+  assert.equal(sent.length, 4, 'a rejected current pop unlocks even without a depth change')
+  view.dispose()
 })
 
 test('source-initiated search text (autoInput or pop restore) syncs into the input', async () => {

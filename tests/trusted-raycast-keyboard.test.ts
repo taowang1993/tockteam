@@ -36,7 +36,7 @@ function setup() {
 const row = (props: Record<string, string | boolean> = { actionEventId: 'toggle' }): TrustedRaycastViewNode => ({ type: 'raycast-list-item', props: { title: 'translation' }, children: [{ type: 'raycast-action', props: { title: 'Toggle Full Text', ...props }, children: [] }] })
 
 test('composing keys preserve native defaults/focus and never reach owner close or source actions', async () => {
-  for (const fallback of [false, true]) for (const key of ['Enter', 'ArrowDown', 'ArrowUp', 'Escape']) {
+  for (const fallback of [false, true]) for (const key of ['Enter', 'ArrowDown', 'ArrowUp', 'Escape', 'Backspace']) {
     const harness = setup(); harness.update([row()]); await tick()
     const result = harness.key(key, !fallback, fallback ? 229 : 0)
     assert.equal(harness.sent.length, 0, `${key}: no action`)

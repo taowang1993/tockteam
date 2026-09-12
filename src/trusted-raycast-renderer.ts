@@ -24,6 +24,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     return wrapper
   }
   let current: TrustedRaycastViewMessage | undefined
+  let navigationPending: { depth: number } | undefined
   let themeImages: Array<{ dark: string; image: HTMLImageElement; light: string }> = []
   let lightTheme = document.documentElement?.style?.colorScheme === 'light'
   const refreshTheme = (): void => {
@@ -38,18 +39,25 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       sendEvent({ kind: 'themeChanged', eventId })
     }
   }
-  const sendEvent = (event: { kind: TrustedRaycastViewEvent['kind']; eventId: string; value?: string }): void => {
-    if (!current?.root || current.type === 'error') return
-    // Field and navigation events are superseded by the next projection; stale rejections stay silent.
-    void bridge.trustedRaycastEvent({ extensionId: current.extensionId, sessionId: current.sessionId, generation: current.generation, revision: current.revision, ...event } as TrustedRaycastViewEvent).catch(() => undefined)
+  const sendEvent = async (event: { kind: TrustedRaycastViewEvent['kind']; eventId: string; value?: string }): Promise<boolean> => {
+    if (!current?.root || current.type === 'error') return false
+    // Stale rejections stay silent, but callers can release rejected interaction state.
+    try {
+      await bridge.trustedRaycastEvent({ extensionId: current.extensionId, sessionId: current.sessionId, generation: current.generation, revision: current.revision, ...event } as TrustedRaycastViewEvent)
+      return true
+    } catch { return false }
   }
   const popNavigation = (): void => {
     const depth = typeof current?.root?.props.navigationDepth === 'number' ? current.root.props.navigationDepth : 0
-    if (depth <= 0) return
-    if (current?.extensionId === 'can-i-use') {
-      const eventId = current.root?.props.navigationEventId
-      if (typeof eventId === 'string') sendEvent({ kind: 'navigation', eventId, value: 'can-i-use:pop' })
-    } else sendEvent({ kind: 'navigation', eventId: 'language-nav', value: 'language:pop' })
+    if (depth <= 0 || navigationPending !== undefined) return
+    const canIUse = current?.extensionId === 'can-i-use'
+    const eventId = canIUse ? current?.root?.props.navigationEventId : 'language-nav'
+    if (typeof eventId !== 'string') return
+    const pending = { depth }
+    navigationPending = pending
+    void sendEvent({ kind: 'navigation', eventId, value: canIUse ? 'can-i-use:pop' : 'language:pop' }).then(delivered => {
+      if (!delivered && navigationPending === pending) navigationPending = undefined
+    })
   }
   const element = document.createElement('section'); element.className = 'launcher-local-tool !gap-0 overflow-hidden text-sm'; element.setAttribute('aria-label', 'Trusted Extension'); element.setAttribute('aria-busy', 'false'); element.setAttribute('data-view', 'translate')
   const header = document.createElement('header'); header.className = 'launcher-command-header'
@@ -503,7 +511,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       event.preventDefault(); const enabled = actionOwner.buttons.filter(button => !button.disabled); if (enabled.length === 0) return
       const currentButton = enabled.indexOf(document.activeElement as HTMLButtonElement); const offset = event.key === 'ArrowDown' ? 1 : enabled.length - 1; enabled[(Math.max(0, currentButton) + offset) % enabled.length]?.focus(); return
     }
-    if (event.key === 'Escape' && depth > 0) { event.preventDefault(); event.stopPropagation(); popNavigation(); return }
+    if (event.key === 'Escape' && depth > 0) { event.preventDefault(); event.stopPropagation(); if (!event.repeat) popNavigation(); return }
+    const target = event.target as HTMLElement | null
+    const tag = target?.tagName?.toLowerCase()
+    const editing = target === input ? input.value !== '' : target?.isContentEditable === true || tag === 'input' || tag === 'textarea'
+    if (event.key === 'Backspace' && depth > 0 && !editing && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) { event.preventDefault(); event.stopPropagation(); if (!event.repeat) popNavigation(); return }
     if (event.key === 'Escape' && current?.root && descendants(current.root, 'raycast-list').some(list => list.props.isShowingDetail === true)) {
       if (invoke(row?.actions.find(action => action.props.title === 'Toggle Full Text'))) { event.preventDefault(); event.stopPropagation() }
       return
@@ -534,7 +546,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   })
   const focus = (): void => { if (firstFormControl && !formArea.hidden) firstFormControl.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus(); else rows[selected]?.item.focus() }
   return {
-    dispose() { current = undefined; themeImages = [] },
+    dispose() { current = undefined; navigationPending = undefined; themeImages = [] },
     element,
     focus,
     refreshTheme,
@@ -553,7 +565,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
         return
       }
       if (current && message.revision <= current.revision) return
-      const depthChanged = message.extensionId === 'can-i-use' && (current?.root?.props.navigationDepth ?? 0) !== (message.root?.props.navigationDepth ?? 0)
+      const nextDepth = typeof message.root?.props.navigationDepth === 'number' ? message.root.props.navigationDepth : 0
+      if (navigationPending && message.root && nextDepth < navigationPending.depth) navigationPending = undefined
+      const depthChanged = message.extensionId === 'can-i-use' && (current?.root?.props.navigationDepth ?? 0) !== nextDepth
       if (message.extensionId === 'can-i-use') {
         setActionPending(); actionFeedback = ''
         if (depthChanged) {
