@@ -283,6 +283,7 @@ export async function replaceWindowsPortableArchive(options) {
   let promoted = false
 
   await access(archive, constants.R_OK)
+  await mkdir(dirname(destination), { recursive: true })
   await acquireInstallLock(lock, 'another TockTeam portable install is already in progress')
   try {
     await mkdir(pending)

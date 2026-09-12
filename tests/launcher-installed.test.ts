@@ -360,11 +360,11 @@ test('packaged smoke resolves Windows git safely and prepares fresh workspaces i
   }), undefined)
 })
 
-test('Windows portable replacement recreates absolute runtime links after promotion', async () => {
+test('Windows first install creates its parent and recreates absolute runtime links after promotion', async () => {
   const rootPath = await mkdtemp(join(tmpdir(), 'tockteam-portable-relocation-'))
   try {
     const archive = join(rootPath, 'portable.tar.gz')
-    const destination = join(rootPath, 'installed')
+    const destination = join(rootPath, 'LocalAppData', 'TockTeam', 'Desktop')
     const backupDirectory = join(rootPath, 'backups')
     await writeFile(archive, 'portable archive')
     const expected = { appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', version: '0.1.14' }
