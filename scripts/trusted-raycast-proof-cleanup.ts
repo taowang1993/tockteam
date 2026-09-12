@@ -7,6 +7,12 @@ const execFile = promisify(execFileCallback)
 const PREFIX = 'tockteam-trusted-raycast-'
 const OWNED_NAME = /^tockteam-trusted-raycast-[A-Za-z0-9]{6}$/u
 
+export function trustedRaycastLsofPath(platform = process.platform): string {
+  if (platform === 'darwin') return '/usr/sbin/lsof'
+  if (platform === 'linux') return '/usr/bin/lsof'
+  throw new Error(`Unsupported platform for trusted workspace cleanup: ${platform}`)
+}
+
 export async function snapshotTrustedRaycastWorkspaces(tempRoot: string): Promise<string[]> {
   return (await readdir(tempRoot)).filter(name => name.startsWith(PREFIX)).sort()
 }
@@ -23,7 +29,7 @@ async function assertNoSymlinks(path: string): Promise<void> {
 async function assertNoProcessReferences(path: string): Promise<void> {
   let openOutput = ''
   try {
-    openOutput = (await execFile('/usr/sbin/lsof', ['-nP', '-F', 'pn', '+D', path], { maxBuffer: 2 * 1024 * 1024, timeout: 15_000 })).stdout
+    openOutput = (await execFile(trustedRaycastLsofPath(), ['-nP', '-F', 'pn', '+D', path], { maxBuffer: 2 * 1024 * 1024, timeout: 15_000 })).stdout
   } catch (error) {
     const result = error as { code?: number; stdout?: string }
     if (result.code !== 1) throw new Error('Could not prove the trusted workspace has no open files or listeners')

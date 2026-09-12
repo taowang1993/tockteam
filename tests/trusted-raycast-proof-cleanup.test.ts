@@ -5,11 +5,19 @@ import { once } from 'node:events'
 import { mkdir, mkdtemp, open, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { cleanupPostBaselineTrustedRaycastWorkspaces, snapshotTrustedRaycastWorkspaces } from '../scripts/trusted-raycast-proof-cleanup.ts'
+import { cleanupPostBaselineTrustedRaycastWorkspaces, snapshotTrustedRaycastWorkspaces, trustedRaycastLsofPath } from '../scripts/trusted-raycast-proof-cleanup.ts'
 
 async function fixture(): Promise<string> { return await mkdtemp(join(tmpdir(), 'tockteam-proof-cleanup-test-')) }
 
-test('an injected mid-gate failure removes only a verified post-baseline workspace', async () => {
+const posixOnly = process.platform === 'win32' ? 'POSIX-only lsof cleanup helper is not implemented on Windows' : false
+
+test('trusted Raycast cleanup selects the platform lsof path and rejects unsupported platforms', () => {
+  assert.equal(trustedRaycastLsofPath('darwin'), '/usr/sbin/lsof')
+  assert.equal(trustedRaycastLsofPath('linux'), '/usr/bin/lsof')
+  assert.throws(() => trustedRaycastLsofPath('win32'), /unsupported platform/iu)
+})
+
+test('an injected mid-gate failure removes only a verified post-baseline workspace', { skip: posixOnly }, async () => {
   const root = await fixture()
   try {
     const existing = join(root, 'tockteam-trusted-raycast-existing'); await mkdir(existing, { mode: 0o700 })
@@ -39,7 +47,7 @@ test('refuses pre-existing, symlinked, and unowned workspace candidates', async 
   } finally { await rm(root, { recursive: true, force: true }); await rm(outside, { recursive: true, force: true }) }
 })
 
-test('refuses symlink entries and open files before removing a workspace', async () => {
+test('refuses symlink entries and open files before removing a workspace', { skip: posixOnly }, async () => {
   const root = await fixture(); const outside = await fixture()
   try {
     const baseline = await snapshotTrustedRaycastWorkspaces(root)
