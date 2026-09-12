@@ -14,6 +14,7 @@ import {
 } from 'react'
 import { X } from 'lucide-react'
 import {
+  defaultClipDestination,
   requestClipApply,
   requestClipCancel,
   requestClipPreview,
@@ -108,7 +109,7 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
   const [loading, setLoading] = useState(false)
   const [reader, setReader] = useState<ReaderViewResult | null>(null)
   const [readerLoading, setReaderLoading] = useState(false)
-  const [clipDestination, setClipDestination] = useState(() => props.webClipFolder ?? 'Clips')
+  const [clipDestination, setClipDestination] = useState(() => defaultClipDestination(props.webClipFolder))
   const [clipPreview, setClipPreview] = useState<ClipPreview | null>(null)
   const [clipLoading, setClipLoading] = useState(false)
   const [clipApplying, setClipApplying] = useState(false)
@@ -354,7 +355,7 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
     })
   }
   useEffect(() => {
-    if (clipPreviewRef.current === null) setClipDestination(props.webClipFolder ?? 'Clips')
+    if (clipPreviewRef.current === null) setClipDestination(defaultClipDestination(props.webClipFolder))
   }, [props.webClipFolder])
 
   const setReaderPreference = <K extends keyof ReaderPreferences>(key: K, value: ReaderPreferences[K]): void => {

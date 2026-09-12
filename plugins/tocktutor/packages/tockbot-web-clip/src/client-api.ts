@@ -211,6 +211,10 @@ export async function requestReaderView(url: string, signal: AbortSignal): Promi
   return parseReaderViewResult(await requestApi(WEB_CLIP_READER_API_PATH, { url: viewerInputUrl(url) }, signal))
 }
 
+export function defaultClipDestination(folder = 'Clips', now = new Date()): string {
+  return `${folder}/Clip ${now.toISOString().replaceAll(':', '-')}.md`
+}
+
 export async function requestClipPreview(
   url: string,
   destination: string | undefined,

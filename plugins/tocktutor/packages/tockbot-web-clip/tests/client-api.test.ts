@@ -2,12 +2,23 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFile } from 'node:fs/promises'
 import {
+  defaultClipDestination,
   parseClipApplyResult,
   parseClipPreview,
   parseReaderViewResult,
   parseViewerPageResult,
   viewerInputUrl,
 } from '../src/client-api.ts'
+
+test('default clip destinations are complete Markdown paths under the configured folder', async () => {
+  const { normalizeClipDestination } = await import('../src/review.ts')
+  const now = new Date('2026-09-12T12:34:56.789Z')
+  for (const folder of ['Clips', 'Research/Web Clips']) {
+    const destination = defaultClipDestination(folder, now)
+    assert.equal(destination, `${folder}/Clip 2026-09-12T12-34-56.789Z.md`)
+    assert.equal(normalizeClipDestination(destination), destination)
+  }
+})
 
 test('normalizes viewer input without accepting credentials or local schemes', () => {
   assert.equal(viewerInputUrl('example.com/article'), 'https://example.com/article')
