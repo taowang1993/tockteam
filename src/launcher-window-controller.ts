@@ -348,6 +348,9 @@ export class LauncherOverlayController {
     window.on('blur', () => {
       if (!this.disposed && this.shouldHideOn('blur')) this.hide()
     })
+    window.webContents.on('did-start-navigation', (_event: unknown, _url: string, isInPlace: boolean, isMainFrame: boolean) => {
+      if (this.window === window && isMainFrame && !isInPlace) this.args.onWindowCleared?.(window)
+    })
     window.webContents.on('destroyed', () => { this.clearWindow(window) })
     window.webContents.on('render-process-gone', () => {
       if (this.window !== window) return

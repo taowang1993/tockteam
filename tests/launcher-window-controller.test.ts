@@ -140,6 +140,23 @@ function setup(
   }
 }
 
+test('main-frame navigation revokes document ownership without discarding the reusable window', async () => {
+  const revoked: number[] = []
+  const result = setup('linux', undefined, window => { revoked.push(window.webContents.id) })
+  try {
+    await result.controller.show()
+    const window = result.windows[0]!
+    window.webContents.emit('did-start-navigation', {}, 'file:///launcher.html', false, false)
+    window.webContents.emit('did-start-navigation', {}, 'file:///launcher.html#same', true, true)
+    assert.deepEqual(revoked, [])
+    window.webContents.emit('did-start-navigation', {}, 'file:///launcher.html', false, true)
+    assert.deepEqual(revoked, [window.webContents.id])
+    await result.controller.show()
+    assert.equal(result.windows.length, 1)
+    assert.equal(window.destroyed, false)
+  } finally { result.controller.dispose() }
+})
+
 test('every opening captures its current originating app before focus changes', async () => {
   const origin = new TrustedRaycastOrigin()
   let frontmost = 'B'
