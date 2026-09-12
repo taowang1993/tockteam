@@ -9,6 +9,8 @@ import { test } from 'node:test'
 import { build, stop } from 'esbuild'
 // @ts-expect-error First-party JavaScript build plugin.
 import { trustedRaycastCanIUseAliases } from '../scripts/trusted-raycast-can-i-use-aliases.mjs'
+// @ts-expect-error First-party JavaScript build helper.
+import { trustedRaycastTarPath } from '../scripts/trusted-raycast-build.mjs'
 // @ts-expect-error First-party process-group cleanup.
 import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from '../src/trusted-raycast-artifact-admission.ts'
@@ -28,6 +30,7 @@ for (const rejection of ['component', 'environment', 'replay', 'context', 'overs
   const reconciled = rejection !== 'component'
   const sourcePath = join(repository, 'plugins/trusted-raycast/vendor/can-i-use-source.tar')
   const archive = readTrustedRaycastFile(sourcePath, 3246080)
+  const tar = trustedRaycastTarPath()
   assert.equal(archive.length, 3246080)
   assert.equal(sha(archive), sourcePin)
   const reactArchive = admitTrustedRaycastArtifact(trustedRaycastDescriptors['google-translate'], join(repository, 'plugins/trusted-raycast/vendor/google-translate.tar'))
@@ -36,7 +39,7 @@ for (const rejection of ['component', 'environment', 'replay', 'context', 'overs
   let child: ReturnType<typeof spawn> | undefined
   try {
     const env = { PATH: '/usr/bin:/bin', HOME: work, TMPDIR: work, TZ: 'UTC', LANG: 'C' }
-    for (const input of [archive, reactArchive]) execFileSync('/usr/bin/tar', ['xf', '-', '-C', work], { input, timeout: 5000, env })
+    for (const input of [archive, reactArchive]) execFileSync(tar, ['xf', '-', '-C', work], { input, timeout: 5000, env })
     symlinkSync(join(work, trustedRaycastDescriptors['google-translate'].artifactRoot, 'runtime/node_modules'), join(work, 'node_modules'))
     const entry = join(work, 'probe.ts')
     writeFileSync(entry, reconciled ? readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8')
@@ -163,8 +166,8 @@ process.stdin.on('end', () => process.exit(0));
     assert.equal(sha(readTrustedRaycastFile(sourcePath, 3246080)), sourcePin)
   } finally {
     if (child) {
-      await stopOwnedChild(child, 250, true)
-      t.diagnostic(JSON.stringify({ scope: reconciled ? 'root-reconciler-only' : 'root-source-only', pid: child.pid, processGroupGone: true }))
+      await stopOwnedChild(child, 250, process.platform !== 'win32')
+      t.diagnostic(JSON.stringify({ scope: reconciled ? 'root-reconciler-only' : 'root-source-only', pid: child.pid, processGroupGone: process.platform !== 'win32' }))
     }
     stop()
     rmSync(work, { recursive: true, force: true })

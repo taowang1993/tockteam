@@ -55,6 +55,7 @@ test('install-store runtime resolution fails closed before any child can load', 
   await missing.close()
 })
 test('configured unchanged component translates interactive input and revokes owner', { timeout: 30000 }, async t => {
+  if (process.platform === 'win32') return t.skip('POSIX trusted-child integration is unsupported on Windows')
   const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
   if (!artifact) return t.skip('set TRUSTED_RAYCAST_ARTIFACT_TAR for real Google integration')
   const work = mkdtempSync(join(tmpdir(), 'raycast-manager-test-'))
@@ -103,6 +104,7 @@ test('configured unchanged component translates interactive input and revokes ow
 })
 
 test('configured isolated preview boots the staged runtime to first readiness and tears down cleanly', { timeout: 40000 }, async t => {
+  if (process.platform === 'win32') return t.skip('POSIX trusted-child integration is unsupported on Windows')
   const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
   if (!artifact) return t.skip('set TRUSTED_RAYCAST_ARTIFACT_TAR for the real preview boot')
   const work = mkdtempSync(join(tmpdir(), 'raycast-preview-test-'))

@@ -2,6 +2,8 @@ import { execFile as execFileCallback } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
+// @ts-expect-error First-party JavaScript build helper.
+import { trustedRaycastTarPath } from './trusted-raycast-build.mjs'
 
 const execFile = promisify(execFileCallback)
 const ARTIFACT_SHA256 = '9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f'
@@ -41,11 +43,12 @@ export function validateKaomojiReferenceImage(name: KaomojiReferenceName, bytes:
 export async function extractKaomojiReferenceImages(artifact: string): Promise<readonly KaomojiReferenceImage[]> {
   const artifactBytes = await readFile(artifact)
   if (sha256(artifactBytes) !== ARTIFACT_SHA256) throw new Error('Kaomoji artifact digest does not match the approved bytes')
-  const checksumsResult = await execFile('/usr/bin/tar', ['xOf', artifact, `${ARCHIVE_ROOT}/SOURCE-CHECKS.sha256`], { encoding: 'utf8', maxBuffer: 64 * 1024, timeout: 15_000 })
+  const tar = trustedRaycastTarPath()
+  const checksumsResult = await execFile(tar, ['xOf', artifact, `${ARCHIVE_ROOT}/SOURCE-CHECKS.sha256`], { encoding: 'utf8', maxBuffer: 64 * 1024, timeout: 15_000 })
   const checksums = checksumsResult.stdout
   const references: KaomojiReferenceImage[] = []
   for (const name of Object.keys(contracts) as KaomojiReferenceName[]) {
-    const result = await execFile('/usr/bin/tar', ['xOf', artifact, `${ARCHIVE_ROOT}/source/metadata/${name}`], { encoding: null, maxBuffer: KAOMOJI_REFERENCE_MAX_BYTES, timeout: 15_000 }) as unknown as { stdout: Buffer }
+    const result = await execFile(tar, ['xOf', artifact, `${ARCHIVE_ROOT}/source/metadata/${name}`], { encoding: null, maxBuffer: KAOMOJI_REFERENCE_MAX_BYTES, timeout: 15_000 }) as unknown as { stdout: Buffer }
     references.push(validateKaomojiReferenceImage(name, result.stdout, checksums))
   }
   return Object.freeze(references)

@@ -12,6 +12,6 @@ test('owned child stop escalates and waits for a non-cooperative process', async
   })
   const closed = new Promise<number | null>(resolve => child.once('close', (_code, signal) => resolve(signal === 'SIGKILL' ? 9 : null)))
   await stopOwnedChild(child, 20)
-  assert.equal(await closed, 9)
-  assert.equal(child.signalCode, 'SIGKILL')
+  assert.equal(await closed, process.platform === 'win32' ? null : 9)
+  assert.equal(child.signalCode, process.platform === 'win32' ? null : 'SIGKILL')
 })

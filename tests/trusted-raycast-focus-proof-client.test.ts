@@ -120,7 +120,7 @@ test('child-close timeout disconnects after ACK and still observes exact close',
   assert.equal(client.closed, true)
 })
 
-test('strict read-only process snapshots include the current test owner', async () => {
+test('strict read-only process snapshots include the current test owner', { skip: process.platform === 'win32' ? 'POSIX /bin/ps process snapshot is unsupported on Windows' : false }, async () => {
   const rows = await readFocusProofProcessSnapshot()
   assert.ok(rows.some(row => row.pid === process.pid && row.command.length > 0))
 })

@@ -107,7 +107,8 @@ test('paste requires a correlated action and surfaces honest policy denial', asy
   stdin.destroy()
 })
 
-test('cached state persists across child restarts and admits legacy stored shapes', async () => {
+test('cached state persists across child restarts and admits legacy stored shapes', async t => {
+  if (process.platform === 'win32') return t.skip('POSIX trusted-child integration is unsupported on Windows')
   const dir = mkdtempSync(join(tmpdir(), 'raycast-cached-state-'))
   const stateFile = join(dir, 'state.json')
   const previousEnv = process.env.TRUSTED_RAYCAST_STATE_FILE

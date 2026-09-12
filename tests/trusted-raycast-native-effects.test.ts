@@ -155,7 +155,7 @@ test('paste policy denials: no captured target, clipboard refusal, and oversized
 test('the child TMPDIR governs os.tmpdir(), keeping translation.mp3 inside the private workspace', async () => {
   const privateTemp = mkdtempSync(join(tmpdir(), 'raycast-tts-tmp-'))
   try {
-    const child = spawn(process.execPath, ['-e', `const {tmpdir}=require('node:os'); console.log(tmpdir())`], { env: { ...process.env, TMPDIR: privateTemp } })
+    const child = spawn(process.execPath, ['-e', `const {tmpdir}=require('node:os'); console.log(tmpdir())`], { env: { ...process.env, TMPDIR: privateTemp, TMP: privateTemp, TEMP: privateTemp } })
     const output = await new Promise<string>((resolve, reject) => { let text = ''; child.stdout.on('data', chunk => { text += chunk }); child.once('error', reject); child.once('close', code => code === 0 ? resolve(text) : reject(new Error(`exit ${code}`))) })
     assert.equal(output.trim(), privateTemp)
   } finally { rmSync(privateTemp, { recursive: true, force: true }) }
@@ -196,7 +196,7 @@ const projections = (messages: any[]) => {
   return { rootMessages, latestRoot, waitRoot, settle, dropdown, action, fields }
 }
 
-test('bundled artifact: first command shows required preferences, saves them in main, then mounts unchanged Translate', { timeout: 30000 }, async () => {
+test('bundled artifact: first command shows required preferences, saves them in main, then mounts unchanged Translate', { skip: process.platform === 'win32' ? 'POSIX trusted-child integration is unsupported on Windows' : false, timeout: 30000 }, async () => {
   // @ts-expect-error JavaScript helper owns the reviewed artifact build.
   const { buildTrustedRaycast } = await import('../scripts/trusted-raycast-build.mjs')
   const work = mkdtempSync(join(tmpdir(), 'raycast-preferences-setup-'))
@@ -230,7 +230,7 @@ test('bundled artifact: first command shows required preferences, saves them in 
   } finally { await manager.close(); rmSync(work, { recursive: true, force: true }) }
 })
 
-test('reviewed artifact: language sets, nested AddLanguageForm, and restart persistence', async () => {
+test('reviewed artifact: language sets, nested AddLanguageForm, and restart persistence', { skip: process.platform === 'win32' ? 'POSIX trusted-child integration is unsupported on Windows' : false }, async () => {
   // @ts-expect-error JavaScript helper owns the configured artifact build.
   const { buildTrustedRaycast } = await import('../scripts/trusted-raycast-build.mjs')
   const work = mkdtempSync(join(tmpdir(), 'raycast-slice3-language-'))
@@ -370,7 +370,7 @@ test('configured artifact: TTS runs the upstream https.get + afplay flow in priv
   }
 })
 
-test('reviewed artifact: debounce coalesces keystrokes into one final translation', { timeout: 60000 }, async () => {
+test('reviewed artifact: debounce coalesces keystrokes into one final translation', { skip: process.platform === 'win32' ? 'POSIX trusted-child integration is unsupported on Windows' : false, timeout: 60000 }, async () => {
   // @ts-expect-error JavaScript helper owns the configured artifact build.
   const { buildTrustedRaycast } = await import('../scripts/trusted-raycast-build.mjs')
   const work = mkdtempSync(join(tmpdir(), 'raycast-slice3-debounce-'))

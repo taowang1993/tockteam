@@ -18,7 +18,7 @@ test('Translate group cleanup kills descendants even when their leader has exite
   }
 })
 
-test('intentional owner close tears down silently instead of rendering an internal lifecycle error', { timeout: 5000 }, async () => {
+test('intentional owner close tears down silently instead of rendering an internal lifecycle error', { skip: process.platform === 'win32' ? 'POSIX trusted-child integration is unsupported on Windows' : false, timeout: 5000 }, async () => {
   const { TrustedRaycastManager } = await import('../src/trusted-raycast-manager.ts')
   const { mkdtempSync, rmSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
@@ -35,7 +35,7 @@ test('intentional owner close tears down silently instead of rendering an intern
   } finally { await stopOwnedChild(child, 30, true); rmSync(workspace, { recursive: true, force: true }) }
 })
 
-test('failed termination retains workspace and child ownership, revokes input, and permits close retry', { timeout: 5000 }, async t => {
+test('failed termination retains workspace and child ownership, revokes input, and permits close retry', { skip: process.platform === 'win32' ? 'POSIX trusted-child integration is unsupported on Windows' : false, timeout: 5000 }, async t => {
   const { TrustedRaycastManager } = await import('../src/trusted-raycast-manager.ts')
   const { mkdtempSync, existsSync, rmSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
