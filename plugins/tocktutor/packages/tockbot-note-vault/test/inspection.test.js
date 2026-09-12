@@ -197,6 +197,40 @@ test('provider-input inspection reuses all eight read-only operations without a 
   assert.equal(provider.readPaths.includes('unsupported.txt'), false)
 })
 
+test('keeps runtime icon and WebM audio attachments in inspection lists and graphs', async () => {
+  const entries = [
+    { path: 'Icon.ICO', mediaKind: 'image' },
+    { path: 'Recording.WEBA', mediaKind: 'audio' },
+  ].map(entry => ({ ...entry, kind: 'attachment', createdMs: 1, modifiedMs: 1, size: 3 }))
+  const content = '![[Icon.ICO]]\n![[Recording.WEBA]]\n'
+  entries.splice(1, 0, { path: 'Linked.md', kind: 'document', createdMs: 1, modifiedMs: 1, size: Buffer.byteLength(content) })
+  const inspection = createVaultInspection({
+    async list() { return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] } },
+    async read(path) {
+      assert.equal(path, 'Linked.md', 'inspection must not read attachment bytes')
+      return { path, content }
+    },
+  }, limits)
+  const signal = new AbortController().signal
+  const listed = await inspection.list({ kind: 'attachments' }, signal)
+  assert.deepEqual(listed.entries.map(({ path, mediaKind }) => ({ path, mediaKind })), [
+    { path: 'Icon.ICO', mediaKind: 'image' },
+    { path: 'Recording.WEBA', mediaKind: 'audio' },
+  ])
+  const graph = await inspection.graph({ scope: 'global', includeAttachments: true }, signal)
+  assert.deepEqual(graph.nodes.map(node => node.path), ['Icon.ICO', 'Linked.md', 'Recording.WEBA'])
+  assert.deepEqual(graph.edges.map(edge => edge.targetPath), ['Icon.ICO', 'Recording.WEBA'])
+  for (const invalid of [
+    { path: 'wrong.ico', mediaKind: 'audio' },
+    { path: 'script.js', mediaKind: 'image' },
+    { path: '.hidden.ico', mediaKind: 'image' },
+    { path: '../outside.weba', mediaKind: 'audio' },
+  ]) {
+    entries.splice(0, entries.length, { ...invalid, kind: 'attachment', createdMs: 1, modifiedMs: 1, size: 3 })
+    await assert.rejects(inspection.list({ kind: 'attachments' }, signal), /invalid entry/u)
+  }
+})
+
 test('plans pure span-aware file rewrites with post-move paths and pre-move revisions', async () => {
   const contents = new Map([
     ['Plan.md', [

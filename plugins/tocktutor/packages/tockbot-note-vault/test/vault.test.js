@@ -1044,6 +1044,28 @@ async function withAttachmentVault(run, overrides = {}) {
   })
 }
 
+test('lists and graphs icon and WebM audio attachments through standalone tools', async () => {
+  await withVault(async vault => {
+    await writeFile(join(vault, 'Icon.ICO'), Buffer.from([0, 1, 2]))
+    await writeFile(join(vault, 'Recording.WEBA'), Buffer.from([3, 4, 5]))
+    await writeFile(join(vault, 'Linked.md'), '![[Icon.ICO]]\n![[Recording.WEBA]]\n')
+    await symlink(join(vault, 'Icon.ICO'), join(vault, 'alias.ico'))
+    const tools = await loadTools(vault)
+    const context = { signal: new AbortController().signal }
+    const listed = await tools.get('vault_list').execute({ kind: 'attachments' }, context)
+    assert.deepEqual(listed.entries.map(({ path, mediaKind }) => ({ path, mediaKind })), [
+      { path: 'Icon.ICO', mediaKind: 'image' },
+      { path: 'Recording.WEBA', mediaKind: 'audio' },
+    ])
+    const graph = await tools.get('vault_graph').execute({ scope: 'global', includeAttachments: true }, context)
+    assert.deepEqual(graph.edges.filter(edge => edge.sourcePath === 'Linked.md').map(edge => edge.targetPath), [
+      'Icon.ICO', 'Recording.WEBA',
+    ])
+    await assert.rejects(tools.get('vault_read').execute({ path: 'Icon.ICO' }, context), /Markdown, Canvas, or Base/u)
+    await assert.rejects(tools.get('vault_read').execute({ path: 'Recording.WEBA' }, context), /Markdown, Canvas, or Base/u)
+  })
+})
+
 test('lists accepted attachment metadata without opening binaries', async () => {
   await withAttachmentVault(async (tools, vault) => {
     const signal = new AbortController().signal

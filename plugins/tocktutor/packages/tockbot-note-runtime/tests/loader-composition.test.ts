@@ -2429,6 +2429,8 @@ test('shared vault inspection runs all eight contracts through generation-bound 
       '# Alpha',
       'canary body',
       '![[image.png]]',
+      '![[Icon.ICO]]',
+      '![[Recording.WEBA]]',
       '[[Beta]]',
       '',
     ].join('\n'))
@@ -2439,6 +2441,8 @@ test('shared vault inspection runs all eight contracts through generation-bound 
     }))
     await writeFile(join(fixture, 'View.base'), 'filters:\n  and:\n    - status == "active"\n')
     await writeFile(join(fixture, 'image.png'), Buffer.from([1, 2, 3]))
+    await writeFile(join(fixture, 'Icon.ICO'), Buffer.from([0, 1, 2]))
+    await writeFile(join(fixture, 'Recording.WEBA'), Buffer.from([3, 4, 5]))
 
     const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
     try {
@@ -2463,6 +2467,8 @@ test('shared vault inspection runs all eight contracts through generation-bound 
       )
       assert.equal(listed.generation, 1)
       assert.equal(listed.entries.some(entry => entry.path === 'image.png' && entry.type === 'attachment'), true)
+      assert.equal(listed.entries.some(entry => entry.path === 'Icon.ICO' && entry.type === 'attachment' && entry.mediaKind === 'image'), true)
+      assert.equal(listed.entries.some(entry => entry.path === 'Recording.WEBA' && entry.type === 'attachment' && entry.mediaKind === 'audio'), true)
 
       const links = await loaded.context.noteVault.links(
         { path: 'notes/Alpha.md' }, expectedVault, signal,
@@ -2481,6 +2487,8 @@ test('shared vault inspection runs all eight contracts through generation-bound 
       )
       assert.equal(graph.generation, 1)
       assert.equal(graph.nodes.some(node => node.path === 'image.png'), true)
+      assert.equal(graph.nodes.some(node => node.path === 'Icon.ICO'), true)
+      assert.equal(graph.nodes.some(node => node.path === 'Recording.WEBA'), true)
 
       const canvas = await loaded.context.noteVault.canvas(
         { path: 'Board.canvas' }, expectedVault, signal,
