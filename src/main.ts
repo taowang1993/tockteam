@@ -2,7 +2,7 @@ import { createTrustedRaycastFirstUse } from './trusted-raycast-first-use.ts'
 import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
 import { TrustedRaycastTrustStore } from './trusted-raycast-trust.ts'
 import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
-import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastPriorApp, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
+import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, TrustedRaycastOrigin, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
 import { loadTrustedRaycastPreferenceState, loadTrustedRaycastPreferences, saveTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
@@ -579,8 +579,7 @@ let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastKaomojiTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastCanIUseTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastBootstrap: Promise<void> = Promise.resolve()
-let trustedRaycastPriorApp: TrustedRaycastPriorApp | undefined
-let trustedRaycastPriorCaptureTimer: ReturnType<typeof setTimeout> | undefined
+const trustedRaycastOrigin = new TrustedRaycastOrigin()
 const trustedRaycastMutex = createTrustedRaycastMutex()
 let trustedRaycastFirstUse: ReturnType<typeof createTrustedRaycastFirstUse> | undefined
 const execFilePromise = promisify(execFile)
@@ -1699,16 +1698,9 @@ function createLauncherWindow(args: Readonly<{
     throw new Error('TockLauncher window was created with an unexpected session')
   }
   const translateOwner = { webContentsId: window.webContents.id }
-  const closeTranslateOwner = (): void => { trustedRaycastFirstUse?.cancel(translateOwner.webContentsId); void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(translateOwner)).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
-  const captureTranslatePriorApp = (): void => {
-    if (trustedRaycastPriorCaptureTimer !== undefined) return
-    trustedRaycastPriorCaptureTimer = setTimeout(() => {
-      trustedRaycastPriorCaptureTimer = undefined
-      void captureTrustedRaycastPriorApp(trustedRaycastNativeDeps).then(prior => { if (prior !== undefined) trustedRaycastPriorApp = prior }).catch(() => undefined)
-    }, 400)
-  }
-  window.on('blur', captureTranslatePriorApp)
-  window.on('hide', () => { closeTranslateOwner(); captureTranslatePriorApp() })
+  const closeTranslateOwner = (): void => { trustedRaycastOrigin.clear(); trustedRaycastFirstUse?.cancel(translateOwner.webContentsId); void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(translateOwner)).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
+  window.on('blur', () => trustedRaycastOrigin.clear())
+  window.on('hide', closeTranslateOwner)
   window.webContents.on('render-process-gone', closeTranslateOwner)
   window.webContents.on('did-start-navigation', closeTranslateOwner)
   window.on('closed', closeTranslateOwner)
@@ -2313,13 +2305,14 @@ function initializeLauncher(): void {
       await shell.openExternal(url)
     },
     readSelectedText: async () => {
-      const result = await readTrustedRaycastSelectedText(trustedRaycastPriorApp, { ...trustedRaycastNativeDeps, ...(selectionFixture ? { fixture: 'selection' as const } : {}) })
+      if (trustedRaycastDenyEffectsProofEnabled) return { unavailable: 'Selected text is disabled in the bounded visual proof. Manual input is available.' }
+      const result = await readTrustedRaycastSelectedText(trustedRaycastOrigin.current, { ...trustedRaycastNativeDeps, ...(selectionFixture ? { fixture: 'selection' as const } : {}) })
       if (selectionFixture && 'text' in result) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-selection-proof.json'), JSON.stringify({ fixture: true }), { mode: 0o600 })
       return result
     },
     pasteText: async text => {
       if (trustedRaycastDenyEffectsProofEnabled) throw new Error('Paste is disabled in the bounded visual proof')
-      const result = await pasteTrustedRaycastText(text, trustedRaycastPriorApp, { ...trustedRaycastNativeDeps, ...(pasteFixture ? { fixture: 'paste' as const } : {}) })
+      const result = await pasteTrustedRaycastText(text, trustedRaycastOrigin.current, { ...trustedRaycastNativeDeps, ...(pasteFixture ? { fixture: 'paste' as const } : {}) })
       if (!app.isPackaged) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-paste-proof.json'), JSON.stringify({ target: result.target, fixture: result.fixture, restoration: result.restoration }), { mode: 0o600 })
     },
     copyText: async text => {
@@ -2505,6 +2498,7 @@ function initializeLauncher(): void {
   }
   launcherRescan = rescan
   const onWindowCleared = (window: { webContents: { id: number } }): void => {
+    trustedRaycastOrigin.clear()
     const owner = { role: 'launcher' as const, webContentsId: window.webContents.id }
     trustedRaycastFirstUse?.cancel(owner.webContentsId)
     void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)).catch(error => appendLog('desktop', String(error).slice(0, 512)))
@@ -2518,8 +2512,21 @@ function initializeLauncher(): void {
     })()
   }
   const nextController = new LauncherOverlayController({
+    beforeShow: async () => {
+      if (process.platform !== 'darwin' || trustedRaycastDenyEffectsProofEnabled) { trustedRaycastOrigin.clear(); return }
+      await trustedRaycastOrigin.capture(() => selectionFixture || pasteFixture
+        ? Promise.resolve({ name: 'TockTeam Fixture Target', capturedAt: Date.now() })
+        : captureTrustedRaycastPriorApp(trustedRaycastNativeDeps))
+    },
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
-    focusApp: () => app.focus({ steal: true }),
+    focusApp: async () => {
+      app.focus({ steal: true })
+      const workbench = mainWindow
+      if (workbench !== undefined && !workbench.isDestroyed()
+        && screen.getDisplayMatching(workbench.getBounds()).id !== screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id) {
+        await new Promise<void>(resolve => setImmediate(resolve))
+      }
+    },
     getDisplayWorkArea: () => resolveLauncherDisplayWorkArea(
       screen.getAllDisplays(),
       screen.getPrimaryDisplay().id,
@@ -2535,19 +2542,7 @@ function initializeLauncher(): void {
     globalShortcut: {
       register: (accelerator, callback) => {
         if (launcherProofMode.installedFirstUse) return false
-        return globalShortcut.register(accelerator, () => {
-          const workbench = mainWindow
-          if (process.platform === 'darwin'
-            && workbench !== undefined
-            && !workbench.isDestroyed()
-            && screen.getDisplayMatching(workbench.getBounds()).id
-              !== screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id) {
-            app.focus({ steal: true })
-            setImmediate(callback)
-            return
-          }
-          callback()
-        })
+        return globalShortcut.register(accelerator, callback)
       },
       unregister: accelerator => { globalShortcut.unregister(accelerator) },
     },

@@ -22,8 +22,11 @@ test('main does not spawn Windows system helpers by a bare search-path name', ()
   assert.doesNotMatch(main, /execFileAsync\('(powershell|explorer)\.exe'/u)
 })
 
-test('main activates the macOS app before handling a cross-display launcher shortcut', () => {
-  assert.match(main, /globalShortcut: \{[\s\S]*?const workbench = mainWindow[\s\S]*?screen\.getDisplayMatching\(workbench\.getBounds\(\)\)\.id[\s\S]*?screen\.getDisplayNearestPoint\(screen\.getCursorScreenPoint\(\)\)\.id[\s\S]*?app\.focus\(\{ steal: true \}\)\s*setImmediate\(callback\)\s*return/u)
+test('main captures native origin before centralized cross-display activation', () => {
+  assert.match(main, /beforeShow: async \(\) => \{[\s\S]*?trustedRaycastOrigin\.capture/u)
+  assert.match(main, /focusApp: async \(\) => \{[\s\S]*?app\.focus\(\{ steal: true \}\)[\s\S]*?screen\.getDisplayMatching\(workbench\.getBounds\(\)\)\.id[\s\S]*?screen\.getDisplayNearestPoint\(screen\.getCursorScreenPoint\(\)\)\.id[\s\S]*?setImmediate\(resolve\)/u)
+  assert.match(main, /return globalShortcut\.register\(accelerator, callback\)/u)
+  assert.doesNotMatch(main, /trustedRaycastPriorCaptureTimer|captureTranslatePriorApp/u)
 })
 
 test('main assembles one launcher owner without branching the DSH workbench factory', () => {

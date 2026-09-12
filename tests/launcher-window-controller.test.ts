@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { TrustedRaycastOrigin } from '../src/trusted-raycast-native.ts'
 import type { Rectangle } from 'electron'
 import { LAUNCHER_WINDOW_IPC_CHANNELS } from '../src/launcher-window-contract.ts'
 import { createLauncherOsExtensions, type LauncherOsEffects } from '../src/launcher-os-extensions.ts'
@@ -97,6 +98,7 @@ function setup(
   configure?: (window: FakeWindow) => void,
   onWindowCleared?: (window: { webContents: { id: number } }) => void,
   showInactive = false,
+  beforeShow?: () => Promise<void>,
 ) {
   const windows: FakeWindow[] = []
   const callbacks: (() => void)[] = []
@@ -123,6 +125,7 @@ function setup(
     },
     loadWindow: window => window.loadURL('file:///launcher.html'),
     ...(onWindowCleared === undefined ? {} : { onWindowCleared }),
+    ...(beforeShow === undefined ? {} : { beforeShow }),
     platform,
     showInactive,
     registerWindow: () => () => {},
@@ -136,6 +139,44 @@ function setup(
     windows,
   }
 }
+
+test('every opening captures its current originating app before focus changes', async () => {
+  const origin = new TrustedRaycastOrigin()
+  let frontmost = 'B'
+  let captures = 0
+  const result = setup('darwin', window => {
+    window.focus = () => { FakeWindow.prototype.focus.call(window); frontmost = 'TockTeam' }
+  }, undefined, false, async () => {
+    captures++
+    await origin.capture(async () => ({ name: frontmost, capturedAt: Date.now() }))
+  })
+  try {
+    await result.controller.show()
+    assert.equal(origin.current?.name, 'B')
+    await result.controller.show()
+    assert.equal(captures, 1, 'showing an already-focused window preserves the current opening')
+    result.controller.hide(); origin.clear()
+    frontmost = 'C'
+    await result.controller.toggle()
+    assert.equal(origin.current?.name, 'C', 'switching applications while hidden changes the next native target')
+    assert.equal(frontmost, 'TockTeam')
+  } finally { result.controller.dispose() }
+})
+
+test('hiding during a pending before-show capture cannot reopen the launcher', async () => {
+  const gate = Promise.withResolvers<void>()
+  let entered = false
+  const result = setup('darwin', undefined, undefined, false, async () => { entered = true; await gate.promise })
+  const showing = result.controller.show()
+  try {
+    await new Promise<void>(resolve => setImmediate(resolve))
+    assert.equal(entered, true)
+    result.controller.hide()
+    gate.resolve(); await showing
+    assert.equal(result.controller.getState().visible, false)
+    assert.equal(result.focusAppCount(), 0)
+  } finally { gate.resolve(); await showing; result.controller.dispose() }
+})
 
 test('launcher shortcut and geometry use the platform contract', () => {
   assert.equal(resolveLauncherShortcut('darwin'), 'Option+Space')

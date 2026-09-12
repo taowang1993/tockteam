@@ -3,6 +3,21 @@ import { Buffer } from 'node:buffer'
 const byteLength = (value: string): number => Buffer.byteLength(value)
 
 export type TrustedRaycastPriorApp = Readonly<{ name: string; capturedAt: number }>
+
+/** One opening owns its target; late asynchronous captures cannot restore an older target. */
+export class TrustedRaycastOrigin {
+  private epoch = 0
+  private prior: TrustedRaycastPriorApp | undefined
+  get current(): TrustedRaycastPriorApp | undefined { return this.prior }
+  clear(): void { this.epoch++; this.prior = undefined }
+  async capture(read: () => Promise<TrustedRaycastPriorApp | undefined>): Promise<void> {
+    this.clear()
+    const epoch = this.epoch
+    const prior = await read()
+    if (epoch === this.epoch) this.prior = prior
+  }
+}
+
 export type TrustedRaycastNativeDeps = Readonly<{
   execFile: (file: string, args: string[], options?: { timeout?: number; maxBuffer?: number }) => Promise<Readonly<{ stdout: string }>>
   readClipboard: () => string
@@ -19,7 +34,7 @@ const MAX_SELECTED_TEXT = 16 * 1024
 const MAX_PASTE_TEXT = 128 * 1024
 const applescriptString = (value: string): string => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
-/** The frontmost app outside this launcher, captured while the launcher is hidden or blurred. */
+/** Capture the originating app before the launcher changes foreground focus. */
 export async function captureTrustedRaycastPriorApp(deps: TrustedRaycastNativeDeps): Promise<TrustedRaycastPriorApp | undefined> {
   try {
     const { stdout } = await deps.execFile('/usr/bin/osascript', ['-e', 'tell application "System Events" to get name of first application process whose frontmost is true'], { timeout: 4000, maxBuffer: 4096 })

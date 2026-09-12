@@ -92,8 +92,9 @@ export function resolveLauncherBounds(workArea: Rectangle): Rectangle {
 
 export class LauncherOverlayController {
   private readonly args: Readonly<{
+    beforeShow?: () => Promise<void>
     createWindow: () => LauncherOverlayWindow
-    focusApp?: () => void
+    focusApp?: () => void | Promise<void>
     getDisplayWorkArea: () => Rectangle
     getHideWindowOn?: () => readonly string[]
     globalShortcut: LauncherGlobalShortcut
@@ -117,14 +118,16 @@ export class LauncherOverlayController {
   private shortcutEnabled = true
   private shortcutState: LauncherShortcutState
   private disposed = false
+  private visibilityEpoch = 0
   private readonly windowPreferences = {
     alwaysOnTop: true,
     visibleOnAllWorkspaces: true,
   }
 
   constructor(args: Readonly<{
+    beforeShow?: () => Promise<void>
     createWindow: () => LauncherOverlayWindow
-    focusApp?: () => void
+    focusApp?: () => void | Promise<void>
     getDisplayWorkArea: () => Rectangle
     getHideWindowOn?: () => readonly string[]
     globalShortcut: LauncherGlobalShortcut
@@ -197,8 +200,13 @@ export class LauncherOverlayController {
 
   async show(): Promise<void> {
     this.assertUsable()
+    const epoch = this.visibilityEpoch
     const window = await this.getOrCreateWindow()
     this.assertUsable()
+    if (epoch !== this.visibilityEpoch) return
+    if ((!window.isVisible() || !window.isFocused()) && this.args.beforeShow !== undefined) await this.args.beforeShow()
+    this.assertUsable()
+    if (epoch !== this.visibilityEpoch) return
     if (this.window !== window || window.isDestroyed()) {
       throw new Error('Launcher window is unavailable')
     }
@@ -207,7 +215,9 @@ export class LauncherOverlayController {
       if (window.showInactive === undefined) throw new Error('Inactive visual proof requires showInactive support')
       window.showInactive()
     } else {
-      if (this.args.platform === 'darwin') this.args.focusApp?.()
+      if (this.args.platform === 'darwin') await this.args.focusApp?.()
+      this.assertUsable()
+      if (epoch !== this.visibilityEpoch || this.window !== window || window.isDestroyed()) return
       window.show()
       window.focus()
     }
@@ -253,7 +263,7 @@ export class LauncherOverlayController {
   hideAfterInvocation(ownerWebContentsId: number): void {
     const window = this.liveWindow()
     if (window === null || window.webContents.id !== ownerWebContentsId) return
-    if (this.shouldHideOn('afterInvocation')) window.hide()
+    if (this.shouldHideOn('afterInvocation')) this.hide()
   }
 
   sendTheme(projection?: LauncherThemeProjection): void {
@@ -287,6 +297,7 @@ export class LauncherOverlayController {
   }
 
   hide(): void {
+    this.visibilityEpoch++
     this.liveWindow()?.hide()
   }
 
@@ -347,6 +358,7 @@ export class LauncherOverlayController {
 
   private clearWindow(window: LauncherOverlayWindow): void {
     if (this.window !== window) return
+    this.visibilityEpoch++
     this.window = null
     const dispose = this.windowDisposer
     this.windowDisposer = undefined
