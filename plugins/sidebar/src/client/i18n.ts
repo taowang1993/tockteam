@@ -14,6 +14,10 @@ export type WorkspaceMessage =
   | 'launcher.button'
   | 'launcher.open'
   | 'launcher.shortcut-unavailable'
+  | 'update.download'
+  | 'update.downloading'
+  | 'update.downloading-progress'
+  | 'update.install'
   | 'review'
   | 'terminal'
   | 'browser'
@@ -128,6 +132,10 @@ export const WORKSPACE_MESSAGES: LocaleMessages<WorkspaceMessage> = {
     'launcher.button': 'TockLauncher',
     'launcher.open': 'Open TockLauncher ({accelerator})',
     'launcher.shortcut-unavailable': 'Shortcut Unavailable',
+    'update.download': 'Download Update',
+    'update.downloading': 'Downloading Update',
+    'update.downloading-progress': 'Downloading Update ({percent}%)',
+    'update.install': 'Restart to Install Update',
     review: 'Review',
     terminal: 'Terminal',
     browser: 'Browser',
@@ -241,6 +249,10 @@ export const WORKSPACE_MESSAGES: LocaleMessages<WorkspaceMessage> = {
     'launcher.button': 'TockLauncher',
     'launcher.open': '打开 TockLauncher（{accelerator}）',
     'launcher.shortcut-unavailable': '快捷键不可用',
+    'update.download': '下载更新',
+    'update.downloading': '正在下载更新',
+    'update.downloading-progress': '正在下载更新（{percent}%）',
+    'update.install': '重启并安装更新',
     review: '审查',
     terminal: '终端',
     browser: '浏览器',

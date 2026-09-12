@@ -22,11 +22,13 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronUp,
+  Download,
   FileDiff,
   GitBranch,
   GitCommitHorizontal,
   History,
   ListFilter,
+  LoaderCircle,
   Maximize2,
   Monitor,
   Notebook,
@@ -67,6 +69,11 @@ import {
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import { useTranslate } from '../../../shared/use-i18n.ts'
 import { WORKSPACE_MESSAGES, type WorkspaceMessage } from './i18n.ts'
+import {
+  desktopUpdateIndicatorState,
+  observeDesktopAppUpdate,
+  runDesktopUpdateAction,
+} from './update-indicator.ts'
 import {
   TOCKTEAM_SURFACE_VIEW_SERVICE,
   type TockTeamSurfaceView,
@@ -887,6 +894,58 @@ function DesktopPanelToolbar({
   )
 }
 
+type DesktopUpdateState = Awaited<ReturnType<DesktopBridge['appUpdate']['getState']>>
+
+function DesktopUpdateIndicator({ t }: { t: Translate<WorkspaceMessage> }): ReactNode {
+  const appUpdate = typeof window === 'undefined' ? undefined : window.dshDesktop?.appUpdate
+  const [state, setState] = useState<DesktopUpdateState | null>(null)
+  const [pending, setPending] = useState(false)
+
+  useEffect(() => {
+    setState(null)
+    setPending(false)
+    return observeDesktopAppUpdate(appUpdate, setState)
+  }, [appUpdate])
+
+  const indicator = desktopUpdateIndicatorState(state)
+  if (indicator === null) return null
+  const action = indicator.action
+  const label = indicator.status === 'available'
+    ? t('update.download')
+    : indicator.status === 'downloading'
+      ? indicator.progress === null
+        ? t('update.downloading')
+        : t('update.downloading-progress', { percent: Math.round(indicator.progress) })
+      : t('update.install')
+  const icon = indicator.status === 'available'
+    ? <Download aria-hidden="true" />
+    : indicator.status === 'downloading'
+      ? <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
+      : <RefreshCw aria-hidden="true" />
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          unstyled
+          type="button"
+          className="outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          data-tockteam-update-indicator={indicator.status}
+          aria-label={label}
+          aria-busy={indicator.status === 'downloading' || pending}
+          disabled={indicator.disabled || pending}
+          onClick={() => {
+            if (action === null || pending) return
+            setPending(true)
+            void runDesktopUpdateAction(appUpdate, action).finally(() => { setPending(false) })
+          }}
+        >{icon}</Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 function DesktopWindowTitlebar({
   panels,
   t,
@@ -897,7 +956,8 @@ function DesktopWindowTitlebar({
   return (
     <header className="tockteam-window-titlebar fixed top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[minmax(120px,1fr)_minmax(0,auto)_minmax(120px,1fr)] items-center border-b border-[var(--tockteam-shell-divider)] bg-[var(--tockteam-shell-chrome)] shadow-[0_1px_0_rgb(0_0_0_/_2%)] select-none [-webkit-app-region:drag]">
       <TooltipProvider>
-        <div className="tockteam-titlebar-leading ml-[var(--tockteam-rail-width)] flex h-full w-[var(--tockteam-primary-sidebar-width)] box-border items-center justify-end border-r border-[var(--tockteam-shell-divider)] pr-1 [body:has([data-sidebar-collapsed])_&]:w-[84px] [body:has([data-sidebar-collapsed])_&]:border-r-0 [html[data-tockteam-tocktutor-active='true']_&]:invisible [&_button]:grid [&_button]:size-9 [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]">
+        <div className="tockteam-titlebar-leading ml-[var(--tockteam-rail-width)] flex h-full w-[var(--tockteam-primary-sidebar-width)] box-border items-center justify-end border-r border-[var(--tockteam-shell-divider)] pr-1 [body:has([data-sidebar-collapsed])_&]:w-[84px] [body:has([data-sidebar-collapsed])_&]:border-r-0 [html[data-tockteam-tocktutor-active='true']_&]:invisible [&_button]:grid [&_button]:size-9 [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-lg [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[var(--dsw-alias-label-secondary,#57606a)] [&_button]:[-webkit-app-region:no-drag] [&_button:hover]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button:disabled]:cursor-default [&_button:disabled]:opacity-60 [&_svg]:size-[18px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.7] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]">
+          <DesktopUpdateIndicator t={t} />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button unstyled
