@@ -107,6 +107,31 @@ test('renders nested Host-resolved embeds while keeping external media behind th
   assert.doesNotMatch(html, /<img[^>]+src="https:\/\//u)
 })
 
+test('unresolved Markdown images never bypass the Host embed or isolated viewer boundary', () => {
+  for (const target of ['http://127.0.0.1:4567/private', 'http://localhost/private', '/private.png', './image.png', 'image.png', '//example.com/a.png']) {
+    const html = renderMarkdownHtml(`![Untrusted](${target})`, { externalEmbedMode: 'viewer' })
+    assert.doesNotMatch(html, /<(?:img|iframe|audio|video)\b/u, target)
+    assert.doesNotMatch(html, /href=/u, target)
+    assert.match(html, /Untrusted/u)
+  }
+})
+
+test('renders overlapping cyclic embed branches without recreating resolver-pruned cycles', async () => {
+  const { resolveEmbedGraph } = await import('../dist/embeds.js')
+  const source = '![[A.md]]\n\n![[B.md]]'
+  const resolved = await resolveEmbedGraph({
+    source,
+    entries: [{ path: 'A.md', kind: 'document' }, { path: 'B.md', kind: 'document' }],
+    readDocument: async path => ({ path, content: `# ${path}\n\n![[${path === 'A.md' ? 'B.md' : 'A.md'}]]` }),
+    readAttachment: async () => { throw new Error('Unexpected attachment') },
+  })
+  assert.equal(resolved.status, 'ready')
+  assert.ok(resolved.warnings.some(warning => warning.includes('cycle')))
+  const html = renderMarkdownHtml(source, { resolvedEmbeds: resolved.embeds })
+  assert.equal(html.match(/data-embed-kind="note"/gu)?.length, 4)
+  assert.ok(html.length < 2_000)
+})
+
 test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {
   const html = renderMarkdownHtml('> First line\n>\n> second line\n\nOpen [[Welcome]] and [[Study Guide|start here]].\n')
   assert.match(html, /<blockquote><p>First line<\/p><p>second line<\/p><\/blockquote>/u)

@@ -4,6 +4,7 @@ import {
   externalEmbedInertHtml,
 } from './external-embeds.ts'
 import { isSafeVaultRelativePath } from './session.ts'
+import { MAX_EMBED_DEPTH } from './embeds.ts'
 
 // Bounded TockTeam renderer informed by Tockbot's source-detached NotesExportHtml contract.
 export const MAX_RICH_MARKDOWN_BYTES = 2000_000
@@ -33,6 +34,8 @@ export interface RenderMarkdownOptions {
   resolvedEmbeds?: readonly StaticMarkdownEmbed[]
   /** Internal parent path used while recursively rendering nested resolved embeds. */
   resolvedEmbedParentPath?: string
+  /** Internal traversal guard; flattened resolver branches can share parent paths. */
+  resolvedEmbedAncestors?: readonly string[]
   strictLineBreaks?: boolean
 }
 
@@ -138,11 +141,12 @@ function resolvedEmbedMime(mimeType: string | undefined): string | null {
   return mime
 }
 
-function renderResolvedEmbed(embed: StaticMarkdownEmbed, externalEmbedMode: 'inert' | 'viewer', resolvedEmbeds: readonly StaticMarkdownEmbed[]): string {
+function renderResolvedEmbed(embed: StaticMarkdownEmbed, externalEmbedMode: 'inert' | 'viewer', resolvedEmbeds: readonly StaticMarkdownEmbed[], ancestors: readonly string[]): string {
+  if (ancestors.length > MAX_EMBED_DEPTH || ancestors.includes(embed.target.path)) return escapeMarkdownHtml(embed.target.source)
   const path = escapeMarkdownHtml(embed.target.path)
   const label = escapeMarkdownHtml(embed.target.display ?? embed.target.path)
   if (embed.target.kind === 'note') {
-    return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbeds, resolvedEmbedParentPath: embed.target.path })}</span>`
+    return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbeds, resolvedEmbedParentPath: embed.target.path, resolvedEmbedAncestors: [...ancestors, embed.target.path] })}</span>`
   }
   if (embed.target.kind === 'canvas' || embed.target.kind === 'base') {
     return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="${embed.target.kind}" data-embed-path="${path}"><pre>${escapeMarkdownHtml(embed.content)}</pre></span>`
@@ -290,10 +294,8 @@ function renderInline(source: string, footnoteNumbers: ReadonlyMap<string, numbe
       const image = external.kind === 'youtube' || external.kind === 'twitter' ? external : { ...external, kind: 'image' as const }
       return externalEmbedMode === 'viewer' ? externalEmbedButtonHtml(alt, image) : externalEmbedInertHtml(alt, image)
     }
-    const url = safeUrl(target)
-    return url === null || !/^(?:data:image\/|(?:https?:)?\/|\.\.?\/|[^:]+$)/iu.test(url)
-      ? escapeMarkdownHtml(match)
-      : `<img alt="${escapeMarkdownHtml(alt)}" loading="lazy" referrerpolicy="no-referrer" src="${escapeMarkdownHtml(url)}">`
+    // Only Host-resolved data may become a resource; rejected URLs stay inert.
+    return hold(match)
   })
   text = text.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label: string, target: string) => {
     const url = safeUrl(target)
@@ -511,7 +513,7 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
     : resolvedEmbeds.filter(embed => embed.parentPath === options.resolvedEmbedParentPath)
   const resolvedEmbedReplacements = new Map<string, string>([
     ...(options.resolvedEmbedSources ?? []).map(source => [source, ''] as const),
-    ...rootResolvedEmbeds.map(embed => [embed.target.source, renderResolvedEmbed(embed, options.externalEmbedMode ?? 'inert', resolvedEmbeds)] as const),
+    ...rootResolvedEmbeds.map(embed => [embed.target.source, renderResolvedEmbed(embed, options.externalEmbedMode ?? 'inert', resolvedEmbeds, options.resolvedEmbedAncestors ?? [])] as const),
   ])
   const replacedEmbeds = replaceResolvedEmbedSources(normalized, resolvedEmbedReplacements)
   const source = stripActiveHtml(replacedEmbeds.markdown)
