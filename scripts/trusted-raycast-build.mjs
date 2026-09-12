@@ -36,8 +36,8 @@ export async function buildTrustedRaycast(dist, artifact, extensionId = 'google-
     const repository = fileURLToPath(new URL('../', import.meta.url))
     const projectionSource = join(repository, 'src/trusted-raycast-projection.ts')
     const child = readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8')
-      .replaceAll('/tmp/trusted-raycast-source/src/translate', join(source, descriptor.sourceEntry))
-      .replaceAll('/tmp/trusted-raycast-source', source)
+      .replaceAll("'/tmp/trusted-raycast-source/src/translate'", () => JSON.stringify(join(source, descriptor.sourceEntry)))
+      .replaceAll("'/tmp/trusted-raycast-source/package.json'", () => JSON.stringify(join(source, 'package.json')))
     writeFileSync(join(work, 'child.ts'), child)
     // Only compatibility aliases are bundled; all third-party bare imports resolve in the private artifact.
     await build({ entryPoints: [join(work, 'child.ts')], outfile: join(output, 'child.mjs'), bundle: true, packages: 'external', format: 'esm', platform: 'node', target: 'node24', alias: {

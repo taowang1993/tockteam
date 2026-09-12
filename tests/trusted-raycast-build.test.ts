@@ -51,6 +51,19 @@ test('build omits absent candidate and rejects unapproved bytes before compilati
     assert.equal(existsSync(join(root, 'trusted-raycast')), false)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+test('reviewed build preserves quoted paths and replacement tokens in the temporary directory', () => {
+  const root = mkdtempSync(join(tmpdir(), "raycast-'$&-"))
+  try {
+    const artifact = join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
+    const script = `import { buildTrustedRaycast } from ${JSON.stringify(new URL('../scripts/trusted-raycast-build.mjs', import.meta.url).href)}; await buildTrustedRaycast(${JSON.stringify(root)}, ${JSON.stringify(artifact)});`
+    execFileSync(process.execPath, ['--input-type=module', '--eval', script], {
+      env: { ...process.env, TMPDIR: root, TEMP: root, TMP: root }, timeout: 45_000, stdio: 'pipe',
+    })
+    assert.deepEqual(readFileSync(join(root, 'trusted-raycast', 'artifact.tar')), readFileSync(artifact))
+    assert.equal(existsSync(join(root, 'trusted-raycast', 'child.mjs')), true)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
 test('reviewed build records exact original archive identity', async () => {
   const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR ?? join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
   const root = mkdtempSync(join(tmpdir(), 'raycast-build-test-'))
