@@ -3,6 +3,9 @@ dolt/
 embeddeddolt/
 proxieddb/
 
+# Generated local interaction audit log
+/interactions.jsonl
+
 # Runtime files
 bd.sock
 bd.sock.startlock
