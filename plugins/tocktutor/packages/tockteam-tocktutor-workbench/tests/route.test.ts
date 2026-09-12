@@ -527,6 +527,42 @@ test('saves an edited note before renaming every open pane reference and refresh
   controller.dispose()
 })
 
+test('rename preserves edits made while the filesystem move is pending', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const rename = remote.tocktutorWorkbench.renameDocument
+  const gate = deferred<void>()
+  ;(remote as WorkbenchRouteRemote).tocktutorWorkbench.renameDocument = async (...args) => { await gate.promise; return rename(...args) }
+  const pending = controller.renameActiveTitle('Renamed')
+  controller.edit('Newer unsaved content')
+  gate.resolve()
+  assert.equal(await pending, true)
+  assert.equal(controller.getSnapshot().source, 'Newer unsaved content')
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+  assert.equal(controller.getSnapshot().path, 'Folder/Renamed.md')
+  await controller.dispose()
+  assert.ok(remote.calls.some(call => call.method === 'saveDraft'
+    && (call.parameters[0] as { path: string }).path === 'Folder/Renamed.md'))
+  controller.dispose()
+})
+
+test('clean external changes reload the active document without replacing later local edits', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  remote.openOverride = path => success({ content: '# External', digest: `sha256:${'d'.repeat(64)}`, generation: firstVault.generation, path, revision: secondRevision })
+  remote.emit({ action: 'updated', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().source, '# External')
+  assert.equal(controller.getSnapshot().revision, secondRevision)
+  controller.edit('Local draft')
+  remote.emit({ action: 'updated', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().source, 'Local draft')
+  controller.dispose()
+})
+
 test('does not rename an edited note when saving its source fails', async () => {
   const remote = new FakeRemote()
   remote.saveFailure = { code: 'conflict', message: 'source changed' }
@@ -922,6 +958,7 @@ test('creates built-in template notes and inserts current date/time at the activ
   const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(2026, 7, 26, 15, 4))
   await controller.syncLocation('/tocktutor')
   assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.setMode('source')
   controller.setSelection(2, 2)
   assert.equal(controller.insertCurrentDateTime('date'), true)
   assert.match(controller.getSnapshot().source, /^# 2026-08-26Before/u)
@@ -1907,6 +1944,7 @@ test('runs editor commands against the captured Source selection', async () => {
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
   assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.setMode('source')
   controller.setSelection(2, 8)
   controller.runEditorCommand('bold')
   assert.match(controller.getSnapshot().source, /^# \*\*Before\*\*/u)
@@ -2423,6 +2461,7 @@ test('extracts the active selection and converts active-note formats through rev
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
   assert.equal(await controller.select('Folder/Note.md'), true)
+  controller.setMode('source')
   controller.setSelection(2, 8)
   assert.equal(await controller.extractActiveSelection(), true)
   assert.match(controller.getSnapshot().source, /\[\[Extracted\/Note Extract\.md\|Before\]\]/u)
@@ -2432,6 +2471,41 @@ test('extracts the active selection and converts active-note formats through rev
   controller.edit('- TODO Review\n^^mark^^\n')
   assert.equal(controller.convertActiveNote(), true)
   assert.equal(controller.getSnapshot().source, '- [ ] Review\n==mark==\n')
+  controller.dispose()
+})
+
+for (const change of ['navigate', 'edit'] as const) {
+  test(`delayed extraction cannot overwrite a changed source (${change})`, async () => {
+    const remote = new FakeRemote()
+    const controller = new WorkbenchRouteController(remote, () => {})
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    controller.setMode('source')
+    controller.setSelection(2, 8)
+    const gate = deferred<void>()
+    const create = remote.tocktutorWorkbench.createDocument
+    ;(remote as WorkbenchRouteRemote).tocktutorWorkbench.createDocument = async (...args) => { await gate.promise; return create(...args) }
+    const pending = controller.extractActiveSelection()
+    if (change === 'navigate') await controller.select('Second.md')
+    else controller.edit('Newer source')
+    const source = controller.getSnapshot().source
+    gate.resolve()
+    assert.equal(await pending, false)
+    assert.equal(controller.getSnapshot().source, source)
+    controller.dispose()
+  })
+}
+
+test('Live Preview positions cannot drive authored-source mutations', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Second.md')
+  controller.setMode('live-preview')
+  controller.setSelection(1, 6)
+  const source = controller.getSnapshot().source
+  assert.equal(await controller.extractActiveSelection(), false)
+  assert.equal(controller.insertCurrentDateTime('date'), false)
+  controller.runEditorCommand('bold')
+  assert.equal(controller.getSnapshot().source, source)
   controller.dispose()
 })
 

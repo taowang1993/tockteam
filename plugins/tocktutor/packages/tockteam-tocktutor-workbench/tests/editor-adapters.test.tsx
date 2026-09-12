@@ -139,7 +139,7 @@ describe('CodeMirror Source editor', () => {
   })
 
   it('keeps headings inside multiline comments safe and unstyled', async () => {
-    const source = '%%\n  # Comment heading\n%%\n# Heading\n'
+    const source = '%%\n\n  # Comment heading\n%%\n# Heading\n%%\n'
     const { container } = render(<SourceEditor content={source} onContentChange={() => {}} />)
     await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
     const lines = [...container.querySelectorAll('.cm-line')]
