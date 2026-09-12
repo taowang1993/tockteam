@@ -36,7 +36,7 @@ export type LauncherWorkflowExecutableCapture = (target: string) => Promise<Read
 type WorkflowChildProcess = Readonly<{
   kill: (signal?: NodeJS.Signals) => boolean
   once: {
-    (event: 'close', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown
+    (event: 'close' | 'exit', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown
     (event: 'error', listener: (error: Error) => void): unknown
   }
   pid?: number
@@ -370,7 +370,7 @@ export async function runBoundedWorkflowCommand(
       if (error === undefined) resolve(Object.freeze({ stderrBytes, stdoutBytes }))
       else reject(error)
     }
-    const stop = (error: Error): void => {
+    const stop = (error?: Error): void => {
       if (settled || stopping) return
       stopping = true
       void terminateChild(
@@ -393,6 +393,8 @@ export async function runBoundedWorkflowCommand(
     child.stdout.on('data', chunk => count('stdout', chunk))
     child.stderr.on('data', chunk => count('stderr', chunk))
     child.once('error', () => { stop(new Error('Workflow command could not start')) })
+    // A shell may exit while background children still own its pipes/process group.
+    if (request.platform !== 'Windows') child.once('exit', code => { stop(code === 0 ? undefined : new Error('Workflow command failed')) })
     child.once('close', code => { if (!stopping) finish(code === 0 ? undefined : new Error('Workflow command failed')) })
     timeout = setTimeout(() => stop(new Error('Workflow command timed out')), timeoutMs)
     request.signal.addEventListener('abort', cancel, { once: true })

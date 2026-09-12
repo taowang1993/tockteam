@@ -61,6 +61,26 @@ test('Workflow process uses shell:false, scrubbed environment, fixed cwd, and co
   assert.doesNotMatch(JSON.stringify(await pending), /secret-token/u)
 })
 
+test('POSIX shell exit drains its process group before publishing success or failure', async () => {
+  for (const code of [0, 1]) {
+    const child = childProcess()
+    const kills: unknown[] = []
+    let finished = false
+    const pending = runBoundedWorkflowCommand({ command: 'sleep 30 &', platform: 'Linux', signal: new AbortController().signal, workingDirectory: '/tmp' }, {
+      spawnProcess: () => child,
+      killProcess: (pid, signal) => { kills.push([pid, signal]) },
+    })
+    void pending.then(() => { finished = true }, () => { finished = true })
+    child.emit('exit', code, null)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(kills, [[-child.pid, 'SIGKILL']])
+    assert.equal(finished, false)
+    child.emit('close', code, null)
+    if (code === 0) await assert.doesNotReject(pending)
+    else await assert.rejects(pending, /failed/u)
+  }
+})
+
 test('Workflow process terminates on cancellation, timeout, and output overflow', async () => {
   for (const kind of ['cancel', 'timeout', 'overflow'] as const) {
     const child = childProcess()
