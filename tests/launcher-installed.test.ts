@@ -235,8 +235,8 @@ test('Windows source-build installer parses safe destinations and bounded extrac
 })
 
 test('temporary macOS smoke launches put mock keychain before every app argument set', () => {
-  assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.macElectronSmokeArgs,\s*\.\.\.\(inactiveVisualProof \? \[LAUNCHER_INSTALLED_FIRST_USE_FLAG\]/u)
-  assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.macElectronSmokeArgs,\s*\.\.\.extraArgs,/u)
+  assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\),\s*\.\.\.\(inactiveVisualProof \? \[LAUNCHER_INSTALLED_FIRST_USE_FLAG\]/u)
+  assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\),\s*\.\.\.extraArgs,/u)
   assert.doesNotMatch(packagedSmoke, /inactiveVisualProof && process\.platform === 'darwin' \? \['--use-mock-keychain'\]/u)
 })
 

@@ -231,7 +231,6 @@ class CdpPage {
 
 const CDP_MODIFIERS = Object.freeze({ alt: 1, ctrl: 2, meta: 4, shift: 8 })
 const PRIMARY_MODIFIER = process.platform === 'darwin' ? CDP_MODIFIERS.meta : CDP_MODIFIERS.ctrl
-const macElectronSmokeArgs = process.platform === 'darwin' ? ['--use-mock-keychain'] : []
 
 async function electronPages(port) {
   return await listPages(port)
@@ -308,7 +307,7 @@ assert.match(mainSource, /Unexpected fixture effect/u)
 assert.match(mainSource, /if \(launcherOsFixtureEnabled\)/u)
 const fixtureEnvironment = { ...process.env, TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY: '1', ...(process.env.CI ? {} : { TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY: '1' }), ...(process.argv.includes('--trusted-raycast') ? { TOCKTEAM_TRUSTED_RAYCAST_BROWSER_FIXTURE: '1', TOCKTEAM_TRUSTED_RAYCAST_CLIPBOARD_FIXTURE: '1', TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE: '1', TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE: '1' } : {}), TOCKTEAM_BROWSER_FIXTURE: '1', TOCKTEAM_DISCOVERY_FIXTURE_ROOT: discoveryFixture, TOCKTEAM_FILE_SEARCH_FIXTURE_PATH: simpleSearchFile, TOCKTEAM_NETWORK_FIXTURE: '1', TOCKTEAM_OS_FIXTURE: '1', TOCKTEAM_TERMINAL_FIXTURE: '1', TOCKTEAM_WORKFLOW_ACTION_TTL_MS: '5000', TOCKTEAM_WORKFLOW_FIXTURE: '1', TOCKTEAM_WORKFLOW_SLOW_HISTORY: '1' }
 const child = spawn(electron, [
-  ...macElectronSmokeArgs,
+  ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
   '.',
   `--remote-debugging-port=${String(port)}`,
   `--user-data-dir=${userData}`,
@@ -2449,7 +2448,7 @@ try {
     visible => visible === false,
   )
   const invokeSecondInstanceToggle = async (visible, extraArguments = []) => {
-    const toggle = spawn(electron, [...macElectronSmokeArgs, '.', '--toggle', ...extraArguments, `--user-data-dir=${userData}`], {
+    const toggle = spawn(electron, [...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []), '.', '--toggle', ...extraArguments, `--user-data-dir=${userData}`], {
       cwd: root,
       stdio: 'ignore',
     })
@@ -2497,7 +2496,7 @@ try {
 
   await writeFile(join(userData, 'launcher', 'settings.json'), '{corrupt-primary', 'utf8')
   const restartPort = await freePort()
-  restartedChild = spawn(electron, [...macElectronSmokeArgs, '.', `--remote-debugging-port=${String(restartPort)}`, `--user-data-dir=${userData}`], {
+  restartedChild = spawn(electron, [...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []), '.', `--remote-debugging-port=${String(restartPort)}`, `--user-data-dir=${userData}`], {
     cwd: root,
     detached: true,
     env: fixtureEnvironment,

@@ -52,7 +52,6 @@ const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'
 const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/electron/package.json'), 'utf8'))
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
-const macElectronSmokeArgs = process.platform === 'darwin' ? ['--use-mock-keychain'] : []
 
 export function shouldRemoveInstalledSmokeRoot({ firstUse, processTreesGone }) {
   return !firstUse || processTreesGone === true
@@ -459,7 +458,7 @@ export async function recoverDebTransition({ candidate, prior, install, validate
 
 async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = [], temporaryRoot = undefined, applicationPath = undefined) {
   const secondArgs = [
-    ...macElectronSmokeArgs,
+    ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
     ...extraArgs,
     `--user-data-dir=${userData}`,
     '--toggle',

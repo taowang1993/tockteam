@@ -36,7 +36,6 @@ const electronPackage = require(join(root, 'node_modules/electron/package.json')
 const smokeFlag = '--tockteam-launcher-packaged-smoke'
 const smokeMarker = 'TOCKTEAM_PACKAGED_SMOKE '
 const smokeTimeoutMs = 120_000
-const macElectronSmokeArgs = process.platform === 'darwin' ? ['--use-mock-keychain'] : []
 
 /** Parse only absolute Windows paths emitted by `where.exe`; this is pure so it can be regression-tested off-host. */
 export function parseWindowsGitPaths(output) {
@@ -977,7 +976,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
   const temporaryRoot = process.platform === 'linux' ? await mkdtemp(join(tmpdir(), 'tt-')) : undefined
   await prepareSmokeEnvironmentRoots(userData, temporaryRoot)
   const childArgs = [
-    ...macElectronSmokeArgs,
+    ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
     ...(inactiveVisualProof ? [LAUNCHER_INSTALLED_FIRST_USE_FLAG] : []),
     ...extraArgs,
     `--remote-debugging-address=127.0.0.1`,

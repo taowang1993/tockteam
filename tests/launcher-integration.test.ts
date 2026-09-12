@@ -171,16 +171,11 @@ test('fixture smoke reads host-owned effect counters instead of renderer authori
 })
 
 test('temporary Electron smoke launches use Chromium mock keychain on macOS', () => {
-  const macSmokeArgs = /const macElectronSmokeArgs = process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]/u
-  assert.match(electronSmoke, macSmokeArgs)
-  assert.match(electronSmoke, /const child = spawn\(electron, \[\s*\.\.\.macElectronSmokeArgs,/u)
-  assert.match(electronSmoke, /const toggle = spawn\(electron, \[\s*\.\.\.macElectronSmokeArgs,/u)
-  assert.match(electronSmoke, /restartedChild = spawn\(electron, \[\s*\.\.\.macElectronSmokeArgs,/u)
-  assert.match(packagedSmoke, macSmokeArgs)
-  assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.macElectronSmokeArgs,/u)
-  assert.match(installedSmoke, macSmokeArgs)
-  assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.macElectronSmokeArgs,/u)
-  assert.match(smokeRuntime, macSmokeArgs)
+  const inlineMacSmokeArgs = /\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\)/gu
+  assert.equal(electronSmoke.match(inlineMacSmokeArgs)?.length, 3)
+  assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\),/u)
+  assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\),/u)
+  assert.match(smokeRuntime, /const macElectronSmokeArgs = process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]/u)
   assert.match(smokeRuntime, /const client = spawnSync\(electronBinary, \[\s*\.\.\.macElectronSmokeArgs,/u)
 })
 
