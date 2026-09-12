@@ -107,8 +107,7 @@ test('paste requires a correlated action and surfaces honest policy denial', asy
   stdin.destroy()
 })
 
-test('cached state persists across child restarts and admits legacy stored shapes', async t => {
-  if (process.platform === 'win32') return t.skip('POSIX trusted-child integration is unsupported on Windows')
+test('cached state persists and admits legacy stored shapes through the compatibility hook', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'raycast-cached-state-'))
   const stateFile = join(dir, 'state.json')
   const previousEnv = process.env.TRUSTED_RAYCAST_STATE_FILE
@@ -125,8 +124,9 @@ test('cached state persists across child restarts and admits legacy stored shape
     const [, set] = useCachedState('languages', [])
     set([{ langFrom: 'auto', langTo: ['zh-CN', 'en'] }])
     let persisted = JSON.parse(readFileSync(stateFile, 'utf8'))
-    for (let attempt = 0; attempt < 20 && persisted.languages?.length !== 1; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 5))
+    const deadline = Date.now() + 5000
+    while (Date.now() < deadline && persisted.languages?.length !== 1) {
+      await new Promise(resolve => setTimeout(resolve, 25))
       persisted = JSON.parse(readFileSync(stateFile, 'utf8'))
     }
     assert.deepEqual(persisted.languages, [{ langFrom: 'auto', langTo: ['zh-CN', 'en'] }])

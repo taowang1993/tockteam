@@ -38,13 +38,13 @@ for (const rejection of ['component', 'environment', 'replay', 'context', 'overs
   const work = mkdtempSync(join(tmpdir(), 'tockteam-can-i-use-source-proof-'))
   let child: ReturnType<typeof spawn> | undefined
   try {
-    const env = { PATH: '/usr/bin:/bin', HOME: work, TMPDIR: work, TZ: 'UTC', LANG: 'C' }
+    const env = { PATH: '/usr/bin:/bin', HOME: work, TMPDIR: work, TMP: work, TEMP: work, TZ: 'UTC', LANG: 'C' }
     for (const input of [archive, reactArchive]) execFileSync(tar, ['xf', '-', '-C', work], { input, timeout: 5000, env })
     symlinkSync(join(work, trustedRaycastDescriptors['google-translate'].artifactRoot, 'runtime/node_modules'), join(work, 'node_modules'))
     const entry = join(work, 'probe.ts')
     writeFileSync(entry, reconciled ? readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8')
-      .replaceAll('/tmp/trusted-raycast-source/src/translate', join(work, 'can-i-use/src/index.tsx'))
-      .replaceAll('/tmp/trusted-raycast-source', join(work, 'can-i-use')) : `import Command from ${JSON.stringify(join(work, 'can-i-use/src/index.tsx'))};
+      .replaceAll("'/tmp/trusted-raycast-source/src/translate'", () => JSON.stringify(join(work, 'can-i-use/src/index.tsx')))
+      .replaceAll("'/tmp/trusted-raycast-source/package.json'", () => JSON.stringify(join(work, 'can-i-use/package.json'))) : `import Command from ${JSON.stringify(join(work, 'can-i-use/src/index.tsx'))};
 import { replaceTrustedRaycastCanIUseRoot, trustedRaycastCanIUseRootCounts } from ${JSON.stringify(join(repository, 'src/trusted-raycast-can-i-use-source.ts'))};
 function emit() {
   const view = Command();
