@@ -45,6 +45,14 @@ Run `34681147258` at `db5763b1` passed Linux, both macOS architectures, the nati
 
 The exact four-file follow-up received an independent **OK with notes** review before publication. Local gates at `36b1271b` then passed: **22 focused tests**, build, typecheck, and **1,193 passed / 14 skipped / zero failures** in the 1,207-test full suite. The redacted history scan found no leaks across 245 commits. The verification process group and matching child/probe/compiler processes were absent at slot release. Native CI must confirm this subsequent source separately; the preceding run's successes are not substituted for it.
 
+## Shared Vault Identity Follow-Up
+
+All six native checks passed at `e649a7b4` in run `34682041604`, and GitHub reported `OPEN / MERGEABLE / CLEAN`. A subsequent Tutor Windows failure nevertheless exposed a shared precision defect: the Desktop picker serialized ordinary-number filesystem IDs while the runtime compared exact bigint IDs. A different filesystem allocation can therefore fail even when an earlier Windows run passed.
+
+Launcher independently reproduced the defect through public picker APIs: device `9007199254740995` became `9007199254740996`, and inode `9007199254740993` became `9007199254740992`. Source `4d8129ae` selectively ports the bounded identity repair from Tutor `5f0fb08c`: bigint metadata for consume, adopt, bind, and active-vault authority validation. Other numeric-stat contracts, runtime comparisons, path guards, and Launcher API behavior are unchanged. Tutor-only move/adopt-claim/release behavior was not imported.
+
+The new regression preserves exact decimal IDs and rejects distinct inodes that collide as ordinary numbers, both before binding and after activation. Filesystem IDs and dialog callbacks are controlled; real path checks and public grant transitions run without launching native UI. `node --test tests/desktop-picker-vault-identity.test.ts` failed before the repair. The final focused command added `tests/desktop-picker-runtime.test.ts`, `tests/desktop-picker-owner.test.ts`, and `tests/desktop-picker-channel.test.ts`: **19 passed**. `pnpm run typecheck`, `pnpm run build`, and `pnpm test` passed, with **1,194 passed / 14 skipped / zero failures** across 1,208 tests. Gitleaks found no leaks across 247 commits through `4d8129ae`. The gate process group and child/probe/compiler markers were absent after verification. Independent review of the exact `4d8129ae` source returned **OK with notes**, with no issues found. Current-source CI remains a separate publication gate; earlier green checks and historical installed reports are not substituted for it.
+
 ## Evidence and Safety Limits
 
 - No app, browser, provider, live clipboard, or foreground automation was launched for these repairs. Local verification process groups and matching trusted-child/source-proof/Swift processes were checked for residue before releasing the shared execution slot.
