@@ -16,7 +16,7 @@ const signal = () => new AbortController().signal
 
 test('file-search adapters preserve hostile terms as direct argv data', () => {
   const term = 'report" & | > < ^ ; ` spaces'
-  assert.deepEqual(macFileSearchInvocation(term), { executable: 'mdfind', args: ['-name', term] })
+  assert.deepEqual(macFileSearchInvocation(term), { executable: '/usr/bin/mdfind', args: ['-name', term] })
   assert.deepEqual(windowsFileSearchInvocation('C:\\Program Files\\Everything\\es.exe', 'C:\\Users\\max', term, 20), {
     executable: 'C:\\Program Files\\Everything\\es.exe',
     args: ['-max-results', '20', 'path:"C:\\Users\\max\\" "report & | > < ^ ; ` spaces"'],

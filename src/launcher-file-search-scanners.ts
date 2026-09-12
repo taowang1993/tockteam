@@ -200,8 +200,8 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Number.isSafeInteger(value) ? Math.max(minimum, Math.min(maximum, value)) : minimum
 }
 
-export function macFileSearchInvocation(searchTerm: string): Readonly<{ args: readonly string[]; executable: 'mdfind' }> {
-  return Object.freeze({ args: Object.freeze(['-name', searchTerm]), executable: 'mdfind' })
+export function macFileSearchInvocation(searchTerm: string): Readonly<{ args: readonly string[]; executable: '/usr/bin/mdfind' }> {
+  return Object.freeze({ args: Object.freeze(['-name', searchTerm]), executable: '/usr/bin/mdfind' })
 }
 
 export function windowsFileSearchInvocation(
