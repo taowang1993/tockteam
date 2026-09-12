@@ -4838,12 +4838,16 @@ export class NoteVaultRuntime extends Service {
       read: async (requestedPath, maxBytes, signal) => {
         let document: OpenDocumentResult
         try {
-          document = await this.openDocument(requestedPath, expectedVault, signal)
+          const { root, state } = this.captureExpectedVault(expectedVault)
+          const opened = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal, true)
+          this.assertCapturedVault(state, root)
+          document = { ...opened, generation: state.generation }
         } catch (error) {
           if (error instanceof NoteVaultError && error.code === 'stale-vault') {
             throw new Error('Vault generation changed during inspection.')
           }
-          throw error
+          if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) throw error
+          throw new NoteVaultError('unsafe-target', 'Vault document could not be opened safely')
         }
         if (Buffer.byteLength(document.content, 'utf8') > maxBytes) {
           throw new Error(`Vault file exceeds the configured ${String(maxBytes)}-byte limit.`)

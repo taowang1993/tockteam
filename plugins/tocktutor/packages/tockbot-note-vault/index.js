@@ -21,8 +21,8 @@ const VAULT_DOCUMENT_EXTENSIONS = new Set([...MARKDOWN_EXTENSIONS, '.base', '.ca
 // Accepted attachment policy ported from Tockbot a1f11e92236df639c3f5b004feee62bb9c2e0a57
 // apps/web/src/components/notes/NotesMediaEmbeds.ts.
 const ATTACHMENT_EXTENSIONS = new Map(Object.entries({
-  image: ['.avif', '.bmp', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp'],
-  audio: ['.3gp', '.flac', '.m4a', '.mp3', '.ogg', '.wav'],
+  image: ['.avif', '.bmp', '.gif', '.ico', '.jpeg', '.jpg', '.png', '.svg', '.webp'],
+  audio: ['.3gp', '.flac', '.m4a', '.mp3', '.ogg', '.wav', '.weba'],
   video: ['.mkv', '.mov', '.mp4', '.ogv', '.webm'],
   pdf: ['.pdf'],
 }).flatMap(([mediaKind, extensions]) => extensions.map(extension => [extension, mediaKind])))
