@@ -1024,14 +1024,17 @@ async function bootstrap(): Promise<void> {
       buttons[next]?.focus()
     }
   })
-  let scrollbarHideTimer = 0
-  results.addEventListener('scroll', () => {
-    results.dataset.scrolling = 'true'
-    window.clearTimeout(scrollbarHideTimer)
-    scrollbarHideTimer = window.setTimeout(() => {
-      delete results.dataset.scrolling
-    }, 300)
-  }, { passive: true })
+  const scrollbarHideTimers = new WeakMap<HTMLElement, number>()
+  root.addEventListener('scroll', event => {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return
+    target.dataset.scrolling = 'true'
+    window.clearTimeout(scrollbarHideTimers.get(target))
+    scrollbarHideTimers.set(target, window.setTimeout(() => {
+      delete target.dataset.scrolling
+      scrollbarHideTimers.delete(target)
+    }, 300))
+  }, { capture: true, passive: true })
   search.addEventListener('input', () => {
     if (invokingWorkflow) return
     void renderSearch(search.value)

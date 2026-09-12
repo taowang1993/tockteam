@@ -188,11 +188,12 @@ test('launcher renderer uses the compact Tockbot composition', () => {
   assert.match(launcher, /shadow-\[0_1px_0_0_var\(--dsw-alias-border-l1/u)
   assert.match(launcher, /launcher-result-shortcut/u)
   assert.match(launcher, /launcher-footer-selection/u)
-  assert.match(tailwind, /#launcher-results\s*\{[^}]*scrollbar-color: transparent transparent/u)
-  assert.match(tailwind, /#launcher-results::-webkit-scrollbar-track\s*\{[^}]*background: transparent/u)
-  assert.match(tailwind, /#launcher-results::-webkit-scrollbar-thumb\s*\{[^}]*background-color: transparent/u)
-  assert.match(tailwind, /#launcher-results\[data-scrolling='true'\]::-webkit-scrollbar-thumb\s*\{[^}]*color-mix/u)
-  assert.match(launcher, /results\.addEventListener\('scroll',[\s\S]+results\.dataset\.scrolling = 'true'[\s\S]+delete results\.dataset\.scrolling/u)
+  const scrollSurface = String.raw`#launcher-root :where\(\.launcher-command-content, \.launcher-command-list\)`
+  assert.match(tailwind, new RegExp(`${scrollSurface}\\s*\\{[^}]*scrollbar-color: transparent transparent`, 'u'))
+  assert.match(tailwind, new RegExp(`${scrollSurface}::-webkit-scrollbar-track\\s*\\{[^}]*background: transparent`, 'u'))
+  assert.match(tailwind, new RegExp(`${scrollSurface}::-webkit-scrollbar-thumb\\s*\\{[^}]*background-color: transparent`, 'u'))
+  assert.match(tailwind, new RegExp(`${scrollSurface}\\[data-scrolling='true'\\]::-webkit-scrollbar-thumb\\s*\\{[^}]*color-mix`, 'u'))
+  assert.match(launcher, /root\.addEventListener\('scroll',[\s\S]+target\.dataset\.scrolling = 'true'[\s\S]+delete target\.dataset\.scrolling/u)
 })
 
 test('TockTutor titlebar and all shared skins use valid TockTeam token contracts', () => {

@@ -779,32 +779,32 @@
   background: color-mix(in srgb, var(--dsw-alias-bg-base, Canvas) 92%, var(--dsw-alias-label-primary, CanvasText));
 }
 
-#launcher-results {
+#launcher-root :where(.launcher-command-content, .launcher-command-list) {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
 
-#launcher-results::-webkit-scrollbar {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-#launcher-results::-webkit-scrollbar-track {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)::-webkit-scrollbar-track {
   background: transparent;
 }
 
-#launcher-results::-webkit-scrollbar-thumb {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 9999px;
   background-clip: padding-box;
   background-color: transparent;
 }
 
-#launcher-results[data-scrolling='true'] {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)[data-scrolling='true'] {
   scrollbar-color: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 24%, transparent) transparent;
 }
 
-#launcher-results[data-scrolling='true']::-webkit-scrollbar-thumb {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)[data-scrolling='true']::-webkit-scrollbar-thumb {
   background-color: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 24%, transparent);
 }
 

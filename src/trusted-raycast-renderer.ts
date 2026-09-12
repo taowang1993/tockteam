@@ -257,7 +257,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const emptyTitle = waiting ? (current?.extensionId === 'can-i-use' || current?.extensionId === 'kaomoji-search' ? 'Searching…' : (zh ? '正在翻译…' : 'Translating…')) : String(emptyProjection?.props.title ?? '')
     const showingDetail = descendants(root, 'raycast-list').some(list => list.props.isShowingDetail === true)
     const gridMode = grid !== undefined
-    results.className = gridMode ? 'grid grid-cols-5 content-start gap-3 overflow-y-auto p-3' : 'launcher-command-list'
+    results.className = gridMode ? 'launcher-command-list grid grid-cols-5 content-start gap-3 !p-3' : 'launcher-command-list'
     const items = waiting ? [] : descendants(root, gridMode ? 'raycast-grid-item' : 'raycast-list-item')
     const itemSections = new Map<TrustedRaycastViewNode, string>()
     for (const section of descendants(root, 'raycast-section')) for (const child of section.children) if (typeof child !== 'string') itemSections.set(child, String(section.props.title ?? ''))
