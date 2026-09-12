@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import { test } from 'node:test'
 import {
@@ -98,16 +99,17 @@ test('reads VS Code SQLite state through the discovery worker', async () => {
   const databasePath = join(root, '.config', 'Code', 'User', 'globalStorage', 'state.vscdb')
   try {
     await mkdir(join(databasePath, '..'), { recursive: true })
+    const workspaceUri = pathToFileURL(join(root, 'workspace')).href
     const database = new DatabaseSync(databasePath)
     try {
       database.exec('CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)')
       database.prepare('INSERT INTO ItemTable (key, value) VALUES (?, ?)').run(
         'history.recentlyOpenedPathsList',
-        JSON.stringify({ entries: [{ folderUri: 'file:///work/tockteam' }] }),
+        JSON.stringify({ entries: [{ folderUri: workspaceUri }] }),
       )
     } finally { database.close() }
     const entries = await createLauncherDiscoveryScanners().VSCode(context({ homePath: root }))
-    assert.deepEqual(entries.map(entry => 'uri' in entry ? entry.uri : ''), ['file:///work/tockteam'])
+    assert.deepEqual(entries.map(entry => 'uri' in entry ? entry.uri : ''), [workspaceUri])
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
