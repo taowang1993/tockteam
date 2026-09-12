@@ -1,5 +1,5 @@
 import { constants } from 'node:fs'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { chmod, link, mkdir, mkdtemp, open, realpath, rename, rm, lstat } from 'node:fs/promises'
 import path from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
@@ -52,6 +52,7 @@ type ExternalReplacementJournal = Readonly<{
   next: ExternalGrant
   previous: ExternalGrant
   directory?: string
+  previousSha256?: string
   version: 1 | 2
 }>
 
@@ -153,16 +154,18 @@ function parseGrant(value: unknown): ExternalGrant {
 }
 
 function parseExternalReplacementJournal(value: unknown): ExternalReplacementJournal {
-  if (!isRecord(value) || (value.version !== 1 && value.version !== 2) || Object.keys(value).length !== (value.version === 1 ? 3 : 4)) throw new Error('TockLauncher external settings transaction is invalid')
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2) || Object.keys(value).length !== (value.version === 1 ? 3 : 5)) throw new Error('TockLauncher external settings transaction is invalid')
   const next = parseGrant(value.next)
   const previous = parseGrant(value.previous)
   if (next.path !== previous.path || next.parentRealPath !== previous.parentRealPath) throw new Error('TockLauncher external settings transaction changed destination')
   if (value.version === 1) return Object.freeze({ next, previous, version: 1 })
   const directory = value.directory
+  const previousSha256 = value.previousSha256
+  if (typeof previousSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(previousSha256)) throw new Error('TockLauncher external settings transaction digest is invalid')
   const prefix = `.${path.basename(previous.path)}.tockteam-`
   if (typeof directory !== 'string' || !path.isAbsolute(directory) || path.dirname(directory) !== path.dirname(previous.path)
     || !path.basename(directory).startsWith(prefix) || !/^[A-Za-z0-9]{6}$/u.test(path.basename(directory).slice(prefix.length))) throw new Error('TockLauncher external settings transaction directory is invalid')
-  return Object.freeze({ next, previous, directory, version: 2 })
+  return Object.freeze({ next, previous, directory, previousSha256, version: 2 })
 }
 
 function sameIdentity(stats: { dev: unknown; ino: unknown }, grant: ExternalGrant): boolean {
@@ -415,6 +418,11 @@ export class LauncherPersistenceRepository {
         if (!await exists(journal.previous.path)) {
           await link(path.join(journal.directory, 'previous.json'), journal.previous.path)
           await syncDirectory(journal.previous.parentRealPath)
+        }
+        const preserved = path.join(journal.directory, 'previous.json')
+        if (await exists(preserved)) {
+          const contents = await readBoundedRegularFile(preserved, MAX_LAUNCHER_SETTINGS_BYTES, journal.previous)
+          if (createHash('sha256').update(contents).digest('hex') !== journal.previousSha256) return true
         }
       }
       const current = await this.#createGrant(journal.next.path)
@@ -745,7 +753,7 @@ export class LauncherPersistenceRepository {
       } catch (error) {
         this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
         this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
-        throw new Error('TockLauncher external settings grant changed or was revoked', { cause: error })
+        throw new Error('TockLauncher external settings grant changed or was revoked. Any recovery copies remain beside the selected file.', { cause: error })
       }
     } else await atomicWrite(this.#managedSettingsPath, serialized, {
       backupMaxBytes: MAX_LAUNCHER_SETTINGS_BYTES,
@@ -773,7 +781,7 @@ export class LauncherPersistenceRepository {
       await staged.close(); staged = undefined
       await syncDirectory(directory)
       await syncDirectory(parent)
-      const journal: ExternalReplacementJournal = { next: nextGrant, previous: grant, directory, version: 2 }
+      const journal: ExternalReplacementJournal = { next: nextGrant, previous: grant, directory, previousSha256: createHash('sha256').update(previous).digest('hex'), version: 2 }
       await atomicWrite(this.#externalTransactionPath, JSON.stringify(journal, null, 2), { backup: false })
       await this.#validateExternalTransactionDirectory(journal)
       if (await readBoundedRegularFile(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, grant) !== previous) throw new Error('TockLauncher external settings file changed')
@@ -790,6 +798,7 @@ export class LauncherPersistenceRepository {
       if (!sameIdentity(stagedIdentity, refreshed)) throw new Error('TockLauncher external settings file changed')
       await atomicWrite(this.#externalBackupPath(refreshed), contents, { backup: false })
       await atomicWrite(this.#grantPath, JSON.stringify(refreshed, null, 2), { backup: false })
+      if (await readBoundedRegularFile(preserved, MAX_LAUNCHER_SETTINGS_BYTES, grant) !== previous) throw new Error('TockLauncher displaced settings were edited during commit')
       if (!sameIdentity(refreshed, grant)) await rm(this.#externalBackupPath(grant), { force: true })
       await rm(directory, { recursive: true })
       await syncDirectory(parent)

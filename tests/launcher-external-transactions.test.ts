@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -61,6 +62,38 @@ for (const timing of ['journal', 'displacement', 'publication'] as const) test(`
   }
 })
 
+test('an editor writing through the displaced file during commit keeps its recovery copy', { skip: process.platform === 'win32' }, async t => {
+  const f = await fixture()
+  const handle = await fs.open(f.external, 'r+')
+  const rename = fs.rename
+  let edited = false
+  let reopened: LauncherPersistenceRepository | undefined
+  try {
+    t.mock.method(fs, 'rename', async (from: Parameters<typeof rename>[0], to: Parameters<typeof rename>[1]) => {
+      await rename(from, to)
+      if (String(to) === f.grantPath && !edited) {
+        edited = true
+        await handle.truncate(0)
+        await handle.writeFile(JSON.stringify({ 'general.language': 'de-CH' }))
+      }
+    })
+    syncBuiltinESMExports()
+    await assert.rejects(f.repository.updateSetting('general.language', 'fr-FR'), /changed|revoked/)
+    t.mock.restoreAll(); syncBuiltinESMExports()
+    await handle.close(); await f.repository.close()
+    reopened = await LauncherPersistenceRepository.open({ userDataPath: f.root, externalWriteAvailable: true })
+    assert.equal(reopened.snapshot().settingsSource, 'managed', 'recovery must not silently discard the changed displaced file')
+    const directory = (await fs.readdir(f.root)).find(name => name.startsWith('.external.json.tockteam-'))
+    assert.ok(directory)
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(f.root, directory, 'previous.json'), 'utf8')), { 'general.language': 'de-CH' })
+    assert.deepEqual(JSON.parse(await fs.readFile(f.external, 'utf8')), { 'general.language': 'fr-FR' })
+  } finally {
+    t.mock.restoreAll(); syncBuiltinESMExports()
+    await handle.close(); await f.repository.close(); await reopened?.close()
+    await fs.rm(f.root, { recursive: true, force: true })
+  }
+})
+
 for (const published of [false, true]) test(`startup recovers an external save ${published ? 'after publication' : 'during the missing-path interval'}`, { skip: process.platform === 'win32' }, async () => {
   const f = await fixture()
   let reopened: LauncherPersistenceRepository | undefined
@@ -71,7 +104,8 @@ for (const published of [false, true]) test(`startup recovers an external save $
     await fs.writeFile(nextFile, JSON.stringify({ 'general.language': 'fr-FR' }))
     const identity = await fs.lstat(nextFile, { bigint: true })
     const next = { ...previous, dev: String(identity.dev), ino: String(identity.ino) }
-    await fs.writeFile(f.journalPath, JSON.stringify({ next, previous, directory, version: 2 }))
+    const previousSha256 = createHash('sha256').update(await fs.readFile(f.external)).digest('hex')
+    await fs.writeFile(f.journalPath, JSON.stringify({ next, previous, directory, previousSha256, version: 2 }))
     await fs.rename(f.external, path.join(directory, 'previous.json'))
     if (published) await fs.link(nextFile, f.external)
     await f.repository.close()
@@ -107,7 +141,8 @@ test('recovery rejects a journal pointing outside the external file directory', 
     await fs.mkdir(protectedDirectory)
     const sentinel = path.join(protectedDirectory, 'previous.json')
     await fs.writeFile(sentinel, 'preserve')
-    await fs.writeFile(f.journalPath, JSON.stringify({ next: previous, previous, directory: protectedDirectory, version: 2 }))
+    const previousSha256 = createHash('sha256').update(await fs.readFile(f.external)).digest('hex')
+    await fs.writeFile(f.journalPath, JSON.stringify({ next: previous, previous, directory: protectedDirectory, previousSha256, version: 2 }))
     await f.repository.close()
     reopened = await LauncherPersistenceRepository.open({ userDataPath: f.root, externalWriteAvailable: true })
     assert.equal(await fs.readFile(sentinel, 'utf8'), 'preserve')
