@@ -230,7 +230,8 @@ export async function ensurePrivateDirectory(directory: string): Promise<void> {
     if (!opened.isDirectory() || identityPart(opened.dev) !== identityPart(selected.dev) || identityPart(opened.ino) !== identityPart(selected.ino)) {
       throw new Error('TockLauncher managed directory changed')
     }
-    await handle.chmod(0o700)
+    // Windows inherits the app-data ACL; directory fchmod neither establishes ACL privacy nor works there.
+    if (process.platform !== 'win32') await handle.chmod(0o700)
   } finally { await handle.close() }
 }
 
