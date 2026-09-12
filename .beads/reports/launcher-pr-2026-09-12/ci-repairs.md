@@ -35,6 +35,16 @@ The file-custody tests exercise missing native no-follow protection, static syml
 
 The parent independently reviewed and corrected an overly broad worker skip: the cached-state hook test does not use a POSIX child and must continue to run on Windows. The parent also reproduced and fixed the remaining source-proof import-quoting issue before publication.
 
+## Second Hosted Pass and Follow-Up
+
+Run `34681147258` at `db5763b1` passed Linux, both macOS architectures, the native Nix package smoke, and the runtime smoke. Windows completed in 3 minutes 7 seconds rather than hanging, with three remaining failures:
+
+- A preference test incorrectly expected POSIX `0600` mode bits on Windows; only that inapplicable assertion is now conditional, while persistence and link rejection remain tested.
+- The binary artifact reader is separate from the text preference reader. Its missing-no-follow case now has the same bigint pathname/descriptor custody checks, plus consistent final size, without changing binary buffers or digest admission. Five new regression cases failed before the repair and then passed.
+- The process test's old `9`/`null` mapping had been mistaken for the native close signal. It now verifies the actual signal: POSIX must escalate to `SIGKILL`, while Windows force-terminates on `SIGTERM` or `SIGKILL`. Readiness follows handler installation and cleanup runs in `finally`.
+
+The exact four-file follow-up received an independent **OK with notes** review before publication. Local gates at `36b1271b` then passed: **22 focused tests**, build, typecheck, and **1,193 passed / 14 skipped / zero failures** in the 1,207-test full suite. The redacted history scan found no leaks across 245 commits. The verification process group and matching child/probe/compiler processes were absent at slot release. Native CI must confirm this subsequent source separately; the preceding run's successes are not substituted for it.
+
 ## Evidence and Safety Limits
 
 - No app, browser, provider, live clipboard, or foreground automation was launched for these repairs. Local verification process groups and matching trusted-child/source-proof/Swift processes were checked for residue before releasing the shared execution slot.
