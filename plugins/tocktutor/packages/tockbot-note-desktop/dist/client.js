@@ -33,12 +33,18 @@ var client_exports = {};
 __export(client_exports, {
   TOCKTEAM_SURFACE_SERVICE: () => TOCKTEAM_SURFACE_SERVICE,
   TockTutorNativeActions: () => TockTutorNativeActions,
+  TockTutorVaultActions: () => TockTutorVaultActions,
   apply: () => apply,
   assertDesktopSurface: () => assertDesktopSurface,
   inject: () => inject,
+  moveVault: () => moveVault,
   name: () => name,
+  openFolderAsVault: () => openFolderAsVault,
+  removeVault: () => removeVault,
+  renameVault: () => renameVault,
   replaceActionController: () => replaceActionController,
   requestMicrophoneAccess: () => requestMicrophoneAccess,
+  revealVault: () => revealVault,
   runDesktopDispatchLoop: () => runDesktopDispatchLoop,
   startAudioRecording: () => startAudioRecording
 });
@@ -14561,14 +14567,14 @@ config(en_default());
 // dist/typert.remote-client.js
 var tockbot_note_desktop_tocktutorDesktop_activateVault_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_1$schema = external_exports.object({
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_1$schema = external_exports.object({
@@ -14576,7 +14582,7 @@ var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_1$schema = e
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_1$schema = external_exports.string();
@@ -14585,7 +14591,7 @@ var tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_2$schema = exter
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_1$schema = external_exports.union([external_exports.literal("html"), external_exports.literal("pdf")]);
@@ -14595,7 +14601,15 @@ var tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_3$schema = extern
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+});
+var tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_0$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_1$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "id": external_exports.string()
+});
+var tockbot_note_desktop_tocktutorDesktop_moveVault_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_1$schema = external_exports.string();
@@ -14604,7 +14618,7 @@ var tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_2$schema = extern
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_printNote_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_printNote_parameter_1$schema = external_exports.string();
@@ -14613,7 +14627,24 @@ var tockbot_note_desktop_tocktutorDesktop_printNote_parameter_2$schema = externa
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_printNote_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+});
+var tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_0$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_1$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "id": external_exports.string()
+});
+var tockbot_note_desktop_tocktutorDesktop_removeVault_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+});
+var tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_0$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_1$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_2$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "id": external_exports.string()
+});
+var tockbot_note_desktop_tocktutorDesktop_renameVault_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_1$schema = external_exports.object({
@@ -14621,7 +14652,7 @@ var tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_1$schema =
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_1$schema = external_exports.string();
@@ -14630,7 +14661,15 @@ var tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_2$schema = exter
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+});
+var tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_0$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_1$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "id": external_exports.string()
+});
+var tockbot_note_desktop_tocktutorDesktop_revealVault_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var TYPERT_REMOTE = {
   package: "tockbot-note-desktop",
@@ -14659,7 +14698,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 289, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 306, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/activateVaultTarget",
@@ -14695,7 +14734,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 336, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 353, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closeAllPopOuts",
@@ -14731,7 +14770,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 456, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 473, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closePopOut",
@@ -14777,7 +14816,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 411, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 428, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/exportNote",
@@ -14833,7 +14872,43 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 526, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 543, "column": 9 }
+    },
+    {
+      id: "tockbot-note-desktop#tocktutorDesktop/moveVault",
+      service: "tocktutorDesktop",
+      namespace: "tocktutorDesktop",
+      method: "moveVault",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "authorization",
+          wire: "authorization",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/moveVault:authorization",
+            schema: tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_0$schema
+          }
+        },
+        {
+          name: "expectedVault",
+          wire: "expectedVault",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop/types#DesktopVaultReference",
+            schema: tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_1$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
+        schema: tockbot_note_desktop_tocktutorDesktop_moveVault_result$schema
+      },
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 697, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/openPopOut",
@@ -14879,7 +14954,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 379, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 396, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/printNote",
@@ -14925,7 +15000,89 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_printNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 493, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 510, "column": 9 }
+    },
+    {
+      id: "tockbot-note-desktop#tocktutorDesktop/removeVault",
+      service: "tocktutorDesktop",
+      namespace: "tocktutorDesktop",
+      method: "removeVault",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "authorization",
+          wire: "authorization",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/removeVault:authorization",
+            schema: tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_0$schema
+          }
+        },
+        {
+          name: "expectedVault",
+          wire: "expectedVault",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop/types#DesktopVaultReference",
+            schema: tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_1$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
+        schema: tockbot_note_desktop_tocktutorDesktop_removeVault_result$schema
+      },
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 730, "column": 9 }
+    },
+    {
+      id: "tockbot-note-desktop#tocktutorDesktop/renameVault",
+      service: "tocktutorDesktop",
+      namespace: "tocktutorDesktop",
+      method: "renameVault",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "authorization",
+          wire: "authorization",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/renameVault:authorization",
+            schema: tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_0$schema
+          }
+        },
+        {
+          name: "name",
+          wire: "name",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/renameVault:name",
+            schema: tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_1$schema
+          }
+        },
+        {
+          name: "expectedVault",
+          wire: "expectedVault",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop/types#DesktopVaultReference",
+            schema: tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_2$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
+        schema: tockbot_note_desktop_tocktutorDesktop_renameVault_result$schema
+      },
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 671, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/requestMicrophone",
@@ -14961,7 +15118,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 582, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 599, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/revealEntry",
@@ -15007,7 +15164,43 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 605, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 622, "column": 9 }
+    },
+    {
+      id: "tockbot-note-desktop#tocktutorDesktop/revealVault",
+      service: "tocktutorDesktop",
+      namespace: "tocktutorDesktop",
+      method: "revealVault",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "authorization",
+          wire: "authorization",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/revealVault:authorization",
+            schema: tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_0$schema
+          }
+        },
+        {
+          name: "expectedVault",
+          wire: "expectedVault",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop/types#DesktopVaultReference",
+            schema: tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_1$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
+        schema: tockbot_note_desktop_tocktutorDesktop_revealVault_result$schema
+      },
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 651, "column": 9 }
     }
   ]
 };
@@ -15016,7 +15209,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15031,7 +15224,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15452,10 +15645,14 @@ function resultMessage(result) {
       return "Pop-out focused.";
     case "granted":
       return "Microphone ready.";
+    case "moved":
+      return "Vault moved.";
     case "opened":
       return "Pop-out opened.";
     case "printed":
       return "Print request opened.";
+    case "renamed":
+      return "Vault renamed.";
     case "revealed":
       return "Entry revealed.";
     case "cancelled":
@@ -15467,6 +15664,136 @@ function resultMessage(result) {
     case "unavailable":
       return "This native action is unavailable.";
   }
+}
+async function openFolderAsVault(owner, bridge, remote, signal) {
+  if (!await saveCurrent(owner)) return void 0;
+  return await nativeCall(bridge, "activate-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.activateVault(authorization, ownerSignal));
+}
+async function revealVault(owner, bridge, remote, signal) {
+  if (owner.vault === null) return void 0;
+  return await nativeCall(bridge, "reveal-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.revealVault(authorization, owner.vault, ownerSignal), owner.vault);
+}
+async function renameVault(owner, name2, bridge, remote, signal) {
+  if (owner.vault === null || !await saveCurrent(owner)) return void 0;
+  return await nativeCall(bridge, "rename-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.renameVault(authorization, name2, owner.vault, ownerSignal), owner.vault);
+}
+async function moveVault(owner, bridge, remote, signal) {
+  if (owner.vault === null || !await saveCurrent(owner)) return void 0;
+  return await nativeCall(bridge, "move-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.moveVault(authorization, owner.vault, ownerSignal), owner.vault);
+}
+async function removeVault(owner, bridge, remote, signal) {
+  if (owner.vault === null || !await saveCurrent(owner)) return void 0;
+  const result = await nativeCall(bridge, "remove-vault", signal, (authorization, ownerSignal) => remote.tocktutorDesktop.removeVault(authorization, owner.vault, ownerSignal), owner.vault);
+  if (result.status === "closed") owner.close();
+  return result;
+}
+function TockTutorVaultActions(props) {
+  const operation = (0, import_react.useRef)();
+  const [busy, setBusy] = (0, import_react.useState)(false);
+  const [message, setMessage] = (0, import_react.useState)("");
+  (0, import_react.useEffect)(() => () => {
+    operation.current?.abort();
+  }, []);
+  const runMenu = async (pending, failure, action) => {
+    const controller = replaceActionController(operation.current);
+    operation.current = controller;
+    setBusy(true);
+    setMessage(pending);
+    let closeMenu = false;
+    try {
+      const result = await action(controller.signal);
+      if (!controller.signal.aborted) {
+        if (result === void 0) setMessage(failure);
+        else {
+          setMessage(resultMessage(result));
+          closeMenu = ["cancelled", "closed", "moved", "revealed"].includes(result.status);
+        }
+      }
+    } catch {
+      if (!controller.signal.aborted) setMessage(failure);
+    } finally {
+      if (!controller.signal.aborted) {
+        setBusy(false);
+        if (closeMenu) props.closeMenu();
+      }
+    }
+  };
+  const open = async () => {
+    const controller = replaceActionController(operation.current);
+    operation.current = controller;
+    setBusy(true);
+    setMessage("Opening folder picker\u2026");
+    try {
+      const result = await openFolderAsVault(props, props.bridge, props.remote, controller.signal);
+      if (!controller.signal.aborted && result !== void 0) {
+        setMessage(resultMessage(result));
+        if (result.status === "activated") props.close();
+      }
+    } catch {
+      if (!controller.signal.aborted) setMessage("The folder picker could not be opened.");
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  };
+  if (props.placement === "menu") {
+    const disabled = busy || props.vault === null;
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
+      props.renderMenuItem({
+        disabled,
+        icon: "rename",
+        label: "Rename vault...",
+        select() {
+          props.beginRename(async (name2, signal) => {
+            try {
+              return (await renameVault(props, name2, props.bridge, props.remote, signal))?.status === "renamed";
+            } catch {
+              return false;
+            }
+          });
+          props.closeMenu();
+        }
+      }),
+      props.renderMenuItem({
+        disabled,
+        icon: "move",
+        label: "Move vault...",
+        select() {
+          void runMenu("Moving vault\u2026", "The vault could not be moved.", (signal) => moveVault(props, props.bridge, props.remote, signal));
+        }
+      }),
+      props.renderMenuItem({
+        disabled,
+        icon: "reveal",
+        label: "Reveal vault in Finder",
+        select() {
+          void runMenu("Revealing vault\u2026", "The vault could not be revealed.", (signal) => revealVault(props, props.bridge, props.remote, signal));
+        },
+        separatorBefore: true
+      }),
+      props.renderMenuItem({
+        destructive: true,
+        disabled,
+        icon: "remove",
+        label: "Remove from list",
+        select() {
+          void runMenu("Removing vault\u2026", "The vault could not be removed.", (signal) => removeVault(props, props.bridge, props.remote, signal));
+        },
+        separatorBefore: true
+      }),
+      message !== "" && props.renderMenuItem({ disabled: true, label: message, live: true, select() {
+      } })
+    ] });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-4 p-4", "data-vault-action-row": true, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "min-w-0 flex-1", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { className: "m-0 font-medium", children: "Open Folder as Vault" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "mt-1 text-xs text-[var(--tt-muted)]", children: "Choose an existing folder of Markdown files." })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Button, { "aria-label": "Open Folder as Vault", disabled: busy, onClick: () => {
+      void open();
+    }, variant: "outline", children: busy ? "Opening\u2026" : "Open" }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { "aria-live": "polite", className: "sr-only", children: message })
+  ] });
 }
 function TockTutorNativeActions(props) {
   const owner = (0, import_react.useRef)(props);
@@ -15585,7 +15912,7 @@ function TockTutorNativeActions(props) {
     Button,
     {
       unstyled: true,
-      className: "min-h-9 cursor-pointer rounded-lg border border-[var(--tt-border,#d9dde5)] bg-[var(--tt-bg,#f7f8fa)] px-2.5 py-[7px] text-left text-inherit enabled:hover:border-[var(--tt-accent,#2457d6)] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--tt-accent,#2457d6)_28%,transparent)] disabled:cursor-not-allowed disabled:opacity-50",
+      className: "min-h-9 cursor-pointer rounded-md border border-transparent bg-transparent px-2.5 py-[7px] text-left text-inherit enabled:hover:bg-[var(--tt-selected,color-mix(in_srgb,var(--tt-accent,#2457d6)_12%,transparent))] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:bg-[var(--tt-selected,color-mix(in_srgb,var(--tt-accent,#2457d6)_12%,transparent))] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       disabled: !enabled || busy !== null,
       onClick: () => {
         void action();
@@ -15597,10 +15924,6 @@ function TockTutorNativeActions(props) {
   );
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [
-      button("Choose Vault", async () => {
-        if (!await saveCurrent(props)) return;
-        await run("Choosing Vault", "activate-vault", (authorization, signal) => props.remote.tocktutorDesktop.activateVault(authorization, signal));
-      }),
       button("Reveal Entry", withNote("Revealing Entry", "reveal-entry", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal)), hasNote),
       button("Open Pop-Out", withNote("Opening Pop-Out", "popout-open", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal), true), hasNote),
       button("Close Pop-Out", withNote("Closing Pop-Out", "popout-close", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal)), hasNote),
@@ -15633,13 +15956,14 @@ function TockTutorNativeActions(props) {
 var TOCKTEAM_SURFACE_SERVICE = "tockTeamSurface";
 function assertDesktopSurface(value) {
   if (typeof value !== "object" || value === null || value.kind !== "desktop") {
-    throw new Error("tockbot-note-desktop: TockTeam Desktop surface is required");
+    throw new Error("tockbot-note-desktop: a Desktop surface is required by TockTeam");
   }
 }
 
 // src/client-api.ts
 var name = "tockbot-note-desktop";
 var TOCKTUTOR_NATIVE_ACTIONS_SLOT = "tockteam.tocktutor.workbench.native-actions";
+var TOCKTUTOR_VAULT_ACTIONS_SLOT = "tockteam.tocktutor.workbench.vault-actions";
 var inject = [TOCKTEAM_SURFACE_SERVICE, "remote", "slots"];
 async function disposeClient(bridge, disposeRemote) {
   try {
@@ -15685,7 +16009,7 @@ async function apply(ctx) {
           tocktutorDesktop: child.remote.tocktutorDesktop
         };
         const slots = child.slots;
-        return slots.inject(
+        const disposeNativeActions = slots.inject(
           TOCKTUTOR_NATIVE_ACTIONS_SLOT,
           () => slots.register({
             id: name,
@@ -15694,6 +16018,28 @@ async function apply(ctx) {
             registrant: name
           }, TockTutorNativeActions)
         );
+        let disposeVaultActions;
+        try {
+          disposeVaultActions = slots.inject(
+            TOCKTUTOR_VAULT_ACTIONS_SLOT,
+            () => slots.register({
+              id: name,
+              inject: () => ({ bridge, remote }),
+              name: TOCKTUTOR_VAULT_ACTIONS_SLOT,
+              registrant: name
+            }, TockTutorVaultActions)
+          );
+        } catch (error51) {
+          disposeNativeActions();
+          throw error51;
+        }
+        return () => {
+          try {
+            disposeVaultActions();
+          } finally {
+            disposeNativeActions();
+          }
+        };
       }
     );
     await slotFiber;

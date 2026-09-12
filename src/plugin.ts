@@ -84,12 +84,12 @@ function environmentCapability(): DesktopHostCapability {
 }
 
 function desktopPrompt(capability: DesktopHostCapability): string {
-  return `You are interacting with the user through TockTeam Desktop ${capability.version} on ${capability.platform}. `
-    + "TockTeam Desktop is an Electron distribution backed by TockTeam's DSH runtime. "
+  return `You are interacting with the user through TockTeam ${capability.version} on ${capability.platform}. `
+    + "TockTeam is an Electron app backed by TockTeam's DSH runtime. "
     + 'Native window actions, workspaces, panels, files, tools, skills, subagents, and other agent capabilities are composed through DSH plugins. '
     + 'Manage desktop plugins only with desktop_plugin_* tools: prepare every change, inspect risk, use the isolated preview, and apply only after approval. '
-    + 'When the user says “this app” without naming another target, they mean TockTeam Desktop. '
-    + "Identify this surface as TockTeam Desktop backed by TockTeam's DSH runtime."
+    + 'When the user says “this app” without naming another target, they mean TockTeam. '
+    + "Identify this surface as TockTeam backed by TockTeam's DSH runtime."
 }
 
 /** Mount the native desktop capability in the DSH graph. */
@@ -152,10 +152,10 @@ export function apply(ctx: HostContext): void {
     runtimeCtx.bashEnv.register({
       name: 'tockteam-desktop-runtime',
       variables: {
-        DSH_DESKTOP: { description: 'Set to 1 inside the TockTeam Desktop distribution.' },
-        DSH_DESKTOP_APP_DATA: { description: 'Writable application-data root owned by TockTeam Desktop.' },
-        DSH_DESKTOP_PROFILE: { description: 'DSH profile mounted by TockTeam Desktop.' },
-        DSH_DESKTOP_VERSION: { description: 'Installed TockTeam Desktop version.' },
+        DSH_DESKTOP: { description: 'Set to 1 inside the TockTeam desktop distribution.' },
+        DSH_DESKTOP_APP_DATA: { description: 'Writable application-data root owned by TockTeam.' },
+        DSH_DESKTOP_PROFILE: { description: 'DSH profile mounted by TockTeam.' },
+        DSH_DESKTOP_VERSION: { description: 'Installed TockTeam version.' },
       },
       resolve: () => ({
         DSH_DESKTOP: '1',

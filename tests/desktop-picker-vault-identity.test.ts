@@ -7,8 +7,8 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { DesktopPickerOwner } from '../src/desktop-picker-owner.ts'
 
-// Substitute filesystem IDs, not the real path checks or public grant transitions.
-// Dialog callbacks select only the disposable fixture, without opening native UI.
+// Substitute filesystem IDs only; real path checks and public grant transitions
+// still run through the owner. Dialog callbacks avoid opening native UI.
 test('Desktop vault claims preserve large file IDs and reject rounded-identity collisions', async t => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-vault-identity-')))
   const vault = join(root, 'vault')
@@ -55,6 +55,8 @@ test('Desktop vault claims preserve large file IDs and reject rounded-identity c
 
     const adopted = await owner.adoptVaultSelection({ canonicalPath: vault, operationId: 'adopt', vaultGeneration: 1, vaultId }, signal)
     assert.equal(adopted.status, 'bound')
+    if (adopted.status !== 'bound') return
+    assert.equal(adopted.claim, consumed.claim, 'adoption preserves the exact existing mapping')
     const activeIdentity = { ...identity, vaultGeneration: 1, vaultId }
     assert.equal(owner.matchesActiveIdentity(activeIdentity), true)
     ino -= 1n

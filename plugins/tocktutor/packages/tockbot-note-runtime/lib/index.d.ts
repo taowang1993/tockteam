@@ -80,6 +80,7 @@ export type TockTeamDesktopVaultSelectionFailureStatus = 'cancelled' | 'denied' 
 export interface TockTeamDesktopVaultSelectionConsumeInput {
     authorization: string;
     identity: TockTeamDesktopVaultSelectionIdentity;
+    purpose?: 'activate' | 'move';
 }
 export type TockTeamDesktopVaultSelectionConsumeResult = {
     operationId: string;
@@ -114,6 +115,7 @@ export type TockTeamDesktopVaultSelectionAdoptResult = {
     operationId: string;
     status: TockTeamDesktopVaultSelectionFailureStatus;
 } | {
+    claim: TockTeamDesktopVaultSelectionClaim;
     operationId: string;
     status: 'bound';
 };
@@ -138,6 +140,15 @@ export interface ActivateDesktopSelectionResult {
     vaultGeneration: number;
     vaultId: string;
 }
+export interface MoveDesktopSelectionRequest extends ActivateDesktopSelectionRequest {
+    expectedVault: VaultReference;
+}
+export interface MoveDesktopSelectionResult {
+    operationId: string;
+    status: 'moved';
+    vaultGeneration: number;
+    vaultId: string;
+}
 export interface RevealEntryRequest {
     expectedVault: VaultReference;
     path: string;
@@ -145,6 +156,10 @@ export interface RevealEntryRequest {
 export interface RevealEntryResult {
     generation: number;
     path: string;
+    status: 'revealed';
+}
+export interface RevealVaultResult {
+    generation: number;
     status: 'revealed';
 }
 export interface OpenDocumentResult {
@@ -248,7 +263,7 @@ export interface PassiveBackupMutationResult extends PassiveBackupEntry {
     status: 'restored';
 }
 export type NoteVaultChangeEvent = Readonly<{
-    action: 'activated';
+    action: 'activated' | 'deactivated';
     kind: 'vault';
     vault: VaultReference;
 } | {
@@ -451,10 +466,12 @@ export declare class NoteVaultRuntime extends Service {
     private readonly searchIndexCleanup;
     private vaultIdentity;
     private vaultRoot;
+    private vaultTransitionPending;
     private watcher;
     private watcherActive;
     private watcherToken;
     constructor(ctx: Context, config: Config);
+    private emitVaultDeactivation;
     private emitVaultActivation;
     private queueDesktopSelectionClaimRelease;
     private openWatcher;
@@ -462,6 +479,8 @@ export declare class NoteVaultRuntime extends Service {
     private emitEntryChange;
     private emitFileMutation;
     get state(): NoteVaultState;
+    activeVaultDisplayPath(): string | null;
+    activeVaultName(): string | null;
     private invalidateActiveVault;
     private assertActiveVaultBound;
     private captureExpectedVault;
@@ -471,13 +490,20 @@ export declare class NoteVaultRuntime extends Service {
         active: true;
     }>>;
     activateDesktopSelection(request: ActivateDesktopSelectionRequest, signal: AbortSignal): Promise<ActivateDesktopSelectionResult>;
+    moveDesktopSelection(request: MoveDesktopSelectionRequest, signal: AbortSignal): Promise<MoveDesktopSelectionResult>;
     activate(vaultRoot: string, expectedGeneration: number): NoteVaultState;
     private activateVault;
     listRecentVaults(): RecentVaultInfo[];
     removeRecentVault(id: string, expectedGeneration: number): RecentVaultInfo[];
     openSandboxVault(expectedGeneration: number): NoteVaultState;
     createManagedVault(name: string, expectedGeneration: number): NoteVaultState;
+    private relocateVaultRoot;
+    renameVault(name: string, expectedVault: VaultReference): NoteVaultState;
+    moveVault(destinationParent: string, expectedVault: VaultReference): NoteVaultState;
+    removeVault(expectedVault: VaultReference): Promise<NoteVaultState>;
+    private revealTarget;
     revealEntry(request: RevealEntryRequest, signal: AbortSignal): Promise<RevealEntryResult>;
+    revealVault(expectedVault: VaultReference, signal: AbortSignal): Promise<RevealVaultResult>;
     activateRecentVault(id: string, expectedGeneration: number): NoteVaultState;
     private invalidateSearchIndex;
     private replaceSearchIndex;

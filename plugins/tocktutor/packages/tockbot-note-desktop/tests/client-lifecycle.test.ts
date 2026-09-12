@@ -6,7 +6,8 @@ import {
   name,
 } from '../dist/client-api.js'
 
-const slotName = 'tockteam.tocktutor.workbench.native-actions'
+const nativeActionsSlot = 'tockteam.tocktutor.workbench.native-actions'
+const vaultActionsSlot = 'tockteam.tocktutor.workbench.vault-actions'
 
 test('still cancels dispatch and disposes Remote when slot disposal fails', async () => {
   const cleanup: string[] = []
@@ -49,7 +50,7 @@ test('still cancels dispatch and disposes Remote when slot disposal fails', asyn
     }
     const dispose = await apply(context as never)
     await assert.rejects(dispose(), /slot failed/u)
-    assert.deepEqual(cleanup, ['slot', 'registration', 'dispatch', 'remote'])
+    assert.deepEqual(cleanup, ['slot', 'registration', 'slot', 'registration', 'dispatch', 'remote'])
   } finally {
     if (previousWindow === undefined) delete (globalThis as { window?: unknown }).window
     else Object.defineProperty(globalThis, 'window', previousWindow)
@@ -94,14 +95,14 @@ test('still disposes the Remote when dispatch cancellation fails', async () => {
     }
     const dispose = await apply(context as never)
     await assert.rejects(dispose(), /cancel failed/u)
-    assert.deepEqual(cleanup, ['slot', 'registration', 'dispatch', 'remote'])
+    assert.deepEqual(cleanup, ['slot', 'registration', 'slot', 'registration', 'dispatch', 'remote'])
   } finally {
     if (previousWindow === undefined) delete (globalThis as { window?: unknown }).window
     else Object.defineProperty(globalThis, 'window', previousWindow)
   }
 })
 
-test('mounts one lifecycle-owned Remote and Native Actions slot contribution', async () => {
+test('mounts one lifecycle-owned Remote and both Desktop action contributions', async () => {
   const calls: Array<{ method: string; value?: unknown }> = []
   const bridge = {
     authorize: async () => ({ authorization: 'authorization' }),
@@ -151,10 +152,12 @@ test('mounts one lifecycle-owned Remote and Native Actions slot contribution', a
     assert.equal(name, 'tockbot-note-desktop')
     assert.deepEqual(inject, ['tockTeamSurface', 'remote', 'slots'])
     const dispose = await apply(context as never)
-    const registration = calls.find(call => call.method === 'registerSlot')!.value as {
+    const registrations = calls.filter(call => call.method === 'registerSlot').map(call => call.value) as Array<{
       component: { name: string }
       options: { id: string; inject: () => unknown; name: string; registrant: string }
-    }
+    }>
+    const registration = registrations[0]!
+    const vaultRegistration = registrations[1]!
     assert.deepEqual(calls.find(call => call.method === 'injectRemote')?.value, [
       'remote',
       'remote.tocktutorDesktop',
@@ -162,16 +165,21 @@ test('mounts one lifecycle-owned Remote and Native Actions slot contribution', a
     ])
     assert.equal(registration.component.name, 'TockTutorNativeActions')
     assert.equal(registration.options.id, name)
-    assert.equal(registration.options.name, slotName)
+    assert.equal(registration.options.name, nativeActionsSlot)
     assert.equal(registration.options.registrant, name)
     assert.equal(typeof registration.options.inject, 'function')
     assert.deepEqual(registration.options.inject(), {
       bridge,
       remote: { tocktutorDesktop: nativeRemote },
     })
+    assert.equal(vaultRegistration.component.name, 'TockTutorVaultActions')
+    assert.equal(vaultRegistration.options.name, vaultActionsSlot)
+    assert.deepEqual(vaultRegistration.options.inject(), registration.options.inject())
 
     await dispose()
-    assert.deepEqual(calls.slice(-4).map(call => call.method), [
+    assert.deepEqual(calls.slice(-6).map(call => call.method), [
+      'disposeSlot',
+      'disposeRegistration',
       'disposeSlot',
       'disposeRegistration',
       'cancelDispatch',

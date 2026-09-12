@@ -876,8 +876,7 @@
     display: none !important;
   }
 
-  & [data-slot='sidebar'] button:has([data-slot='settings.trigger']),
-  & [data-slot='sidebar'] [data-tockteam-marketplace-nav] {
+  & [data-slot='sidebar'] button:has([data-slot='settings.trigger']) {
     display: none !important;
   }
 
@@ -912,18 +911,51 @@
   &:has(#root [role='presentation'] > [role='dialog']) #tockteam-chrome-layer {
     z-index: 999 !important;
   }
-}
 
-/* The marketplace navigation is contributed inside the inherited DSH sidebar. */
-@utility tockteam-marketplace-shell {
-  & [data-tockteam-marketplace-footer-stack='true']:has([data-tockteam-marketplace-nav][data-collapsed='true']) {
-    display: flex !important;
-    align-items: center !important;
-    flex-direction: column !important;
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-shell] {
+    position: fixed !important;
+    z-index: 1000 !important;
+    inset: var(--tockteam-titlebar-height) 0 0 var(--tockteam-rail-width) !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    background: var(--dsw-alias-bg-base) !important;
+    backdrop-filter: none !important;
   }
 
-  &[data-tockteam-marketplace-open='true'] [data-tockteam-pinned-summary],
-  &[data-tockteam-marketplace-open='true'] #tockteam-sidebar-root {
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    background: var(--dsw-alias-bg-layer-1) !important;
+    box-shadow: none !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] > nav {
+    width: var(--tockteam-primary-sidebar-width) !important;
+    border-right: 1px solid var(--dsw-alias-border-l1) !important;
+    background: var(--dsw-specific-sidebar-fill) !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-resize] {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    bottom: 0;
+    left: var(--tockteam-primary-sidebar-width);
+    width: 8px;
+    margin-left: -4px;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] div:has(> [role='tabpanel'] [data-tockteam-plugin-marketplace-settings]) {
+    width: 100%;
+    max-width: none !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-mask],
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-close] {
     display: none !important;
   }
 }
@@ -937,6 +969,10 @@
   }
 
   & body {
+    /* Pinned Obsidian-compatible document roles; shell actions keep the active DSH brand. */
+    --dsw-specific-markdown-accent: light-dark(#705dcf, #a68af9);
+    --dsw-specific-markdown-highlight: rgb(255 208 0 / 40%);
+    --dsw-specific-markdown-inline-code: color-mix(in srgb, var(--dsw-alias-label-primary, currentColor) 9%, transparent);
     --tockteam-main-pane: var(--dsw-alias-bg-layer-1, var(--dsw-alias-bg-base, #fff));
     --tockteam-shell-chrome: color-mix(in srgb, var(--dsw-alias-bg-base, #fff) 96%, var(--dsw-alias-label-primary, #1f2328));
     --tockteam-shell-divider: color-mix(in srgb, var(--dsw-alias-label-primary, #1f2328) 9%, transparent);

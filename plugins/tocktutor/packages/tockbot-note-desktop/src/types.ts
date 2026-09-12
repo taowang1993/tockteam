@@ -6,5 +6,5 @@ export interface DesktopVaultReference {
 }
 
 export interface NativeActionResult {
-  status: NativeFailureStatus | 'activated' | 'closed' | 'exported' | 'focused' | 'granted' | 'opened' | 'printed' | 'revealed'
+  status: NativeFailureStatus | 'activated' | 'closed' | 'exported' | 'focused' | 'granted' | 'moved' | 'opened' | 'printed' | 'renamed' | 'revealed'
 }

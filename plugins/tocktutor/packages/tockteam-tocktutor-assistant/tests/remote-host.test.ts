@@ -126,6 +126,10 @@ class FakeAssistant extends Service implements AssistantRemoteHost {
   async proposalAuditStatus() {
     return { entries: this.audits.length, dropped: 2 }
   }
+
+  async quickAnswer() {
+    return { status: 'no-evidence' as const, answer: '', citations: [] }
+  }
 }
 
 async function loaded(): Promise<{
@@ -171,9 +175,25 @@ test('registers only bounded settings, turn, proposal, decision, and audit Remot
       { invocation: { kind: 'direct' }, method: 'approveProposal' },
       { invocation: { kind: 'direct' }, method: 'rejectProposal' },
       { invocation: { kind: 'direct' }, method: 'audit' },
+      { invocation: { kind: 'direct' }, method: 'searchIntelligence' },
+      { invocation: { kind: 'direct' }, method: 'quickAnswer' },
     ])
 
     const signal = new AbortController().signal
+    assert.deepEqual(await state.gateway.searchIntelligence({ query: 'car', mode: 'related', vaultGeneration: 7 }, signal), {
+      status: 'provider-unavailable',
+      matches: [],
+    })
+    assert.deepEqual(await state.gateway.quickAnswer({ query: 'car', vaultGeneration: 7, candidates: [] }, signal), {
+      status: 'no-evidence',
+      answer: '',
+      citations: [],
+    })
+    assert.deepEqual(await state.gateway.quickAnswer({ query: 'car', mode: 'related', vaultGeneration: 7, candidates: [] }, signal), {
+      status: 'no-evidence',
+      answer: '',
+      citations: [],
+    })
     assert.deepEqual(await state.gateway.currentSettings(signal), {
       provider: 'provider-safe',
       model: 'model-safe',
@@ -245,6 +265,10 @@ test('rejects malformed, unknown, oversized, unsafe, and cancelled browser paylo
     } as never, signal), /settings request/i)
     await assert.rejects(state.scopedGateway.continueTurn({ mode: 'followup', text: 'x'.repeat(32_001) }, signal), /turn request/i)
     await assert.rejects(state.scopedGateway.continueTurn({ mode: 'followup', text: 'ok', unknown: true } as never, signal), /turn request/i)
+    await assert.rejects(state.gateway.searchIntelligence({ query: 'ok', mode: 'query', vaultGeneration: 7 } as never, signal), /search intelligence request/i)
+    await assert.rejects(state.gateway.quickAnswer({ query: 'ok', vaultGeneration: 7, candidates: [{ id: 'qa-1', path: '../private', line: 1, preview: 'unsafe' }] }, signal), /quick answer request/i)
+    await assert.rejects(state.gateway.quickAnswer({ query: 'ok', vaultGeneration: 7, candidates: [{ id: 'qa-1', path: 'Safe.md', line: 1, preview: 'ok' }, { id: 'qa-1', path: 'Other.md', line: 1, preview: 'duplicate' }] }, signal), /quick answer request/i)
+    await assert.rejects(state.gateway.searchIntelligence({ query: 'ok', mode: 'related', vaultGeneration: 7, directory: '../private' }, signal), /search intelligence request/i)
     await assert.rejects(state.gateway.listProposals({ limit: 21 }, signal), /page request/i)
     await assert.rejects(state.gateway.audit({ offset: -1 }, signal), /page request/i)
     await assert.rejects(state.gateway.approveProposal({ proposalId: '../unsafe' }, signal), /approval request/i)

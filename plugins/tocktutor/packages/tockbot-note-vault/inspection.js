@@ -1223,8 +1223,12 @@ function cursorChecksum(payload) {
   return createHash('sha256').update(payload).digest('base64url')
 }
 
+function cursorKey(key) {
+  return cursorChecksum(key)
+}
+
 function encodeCursor(operation, key, position) {
-  const payload = JSON.stringify({ key, operation, position, version: 1 })
+  const payload = JSON.stringify({ key: cursorKey(key), operation, position, version: 1 })
   return Buffer.from(JSON.stringify({ checksum: cursorChecksum(payload), payload })).toString('base64url')
 }
 
@@ -1243,7 +1247,7 @@ function decodeCursor(cursor, operation, key) {
       || cursorChecksum(envelope.payload) !== envelope.checksum
     ) throw new Error('cursor checksum mismatch')
     const decoded = JSON.parse(envelope.payload)
-    if (decoded?.version !== 1 || decoded.operation !== operation || decoded.key !== key) {
+    if (decoded?.version !== 1 || decoded.operation !== operation || decoded.key !== cursorKey(key)) {
       throw new Error('cursor does not match this operation')
     }
     if (
@@ -1330,6 +1334,15 @@ function boundSearchMatches(matches, state) {
       state,
       `${match.path}: truncated search preview`,
     )
+    const identity = JSON.stringify([
+      match.path,
+      match.kind,
+      match.line ?? null,
+      match.lineEnd ?? null,
+      match.operator ?? null,
+      match.provenance ?? null,
+    ])
+    match.id = createHash('sha256').update(identity).digest('hex')
   }
 }
 
@@ -1545,6 +1558,7 @@ async function readInspectionDocument(input, requestedPath, limit, signal) {
     !document
     || document.path !== normalized
     || typeof document.content !== 'string'
+    || document.revision !== undefined && typeof document.revision !== 'string'
     || Buffer.byteLength(document.content) > limit
   ) {
     if (typeof document?.content === 'string' && Buffer.byteLength(document.content) > limit) {
@@ -1552,7 +1566,11 @@ async function readInspectionDocument(input, requestedPath, limit, signal) {
     }
     throw new Error('Vault inspection provider returned an invalid document.')
   }
-  return { path: normalized, content: document.content }
+  return {
+    path: normalized,
+    content: document.content,
+    ...(document.revision === undefined ? {} : { revision: document.revision }),
+  }
 }
 
 async function scanVault(input, config, signal, visitor, options = {}) {
@@ -1662,6 +1680,7 @@ async function scanVault(input, config, signal, visitor, options = {}) {
       createdMs: item.createdMs,
       modifiedMs: item.modifiedMs,
       path: item.path,
+      revision: item.revision,
       size: byteLength,
     }, inventoryPaths, item.path === position.path ? position.offset : 0)
     if (result) {
@@ -1691,27 +1710,36 @@ async function scanVault(input, config, signal, visitor, options = {}) {
   return state
 }
 
-async function searchVault(input, query, scope, limit, config, signal, cursor) {
-  const matches = []
+async function searchVault(input, query, scope, options, limit, config, signal, cursor) {
   const needle = query.toLowerCase()
   const propertyNeedle = needle.length > 1 && needle.startsWith('#') ? needle.slice(1) : needle
-  const key = JSON.stringify({ query: needle, scope })
-  const state = await scanVault(input, config, signal, (document, _paths, resumeOffset) => {
+  const start = inspectionDirectory(options.directory)
+  const key = JSON.stringify({ directory: start.prefix, modifiedFrom: options.modifiedFrom, modifiedTo: options.modifiedTo, query: needle, scope, titleOnly: options.titleOnly })
+  const position = decodeCursor(cursor, 'search', key)
+  const allMatches = []
+  const state = await scanVault(input, config, signal, (document) => {
     const documentMatches = []
     const markdown = isMarkdown(document.path)
       ? markdownDetails(document.content, document.path)
       : null
     const title = markdown?.title ?? path.basename(document.path, path.extname(document.path))
+    if (options.modifiedFrom !== undefined && document.modifiedMs < options.modifiedFrom) return false
+    if (options.modifiedTo !== undefined && document.modifiedMs > options.modifiedTo) return false
 
     if (
       (scope === 'all' || scope === 'path')
-      && `${title}\n${document.path}`.toLowerCase().includes(needle)
-    ) documentMatches.push({
-      path: document.path,
-      kind: 'path',
-      line: null,
-      preview: `${title} — ${document.path}`,
-    })
+      && (options.titleOnly ? title : `${title}\n${document.path}`).toLowerCase().includes(needle)
+    ) {
+      const titleMatch = title.toLowerCase().includes(needle)
+      documentMatches.push({
+        path: document.path,
+        kind: 'path',
+        line: null,
+        preview: `${title} — ${document.path}`,
+        score: titleMatch ? (title.toLowerCase() === needle ? 500 : 400) : 300,
+        provenance: 'path',
+      })
+    }
 
     if (markdown && (scope === 'all' || scope === 'properties')) {
       for (const property of markdown.propertyLines) {
@@ -1721,7 +1749,10 @@ async function searchVault(input, query, scope, limit, config, signal, cursor) {
           path: document.path,
           kind: 'property',
           line: property.line,
+          lineEnd: property.line,
           preview: previewLine(property.text, column),
+          score: 250,
+          provenance: 'frontmatter',
         })
       }
     }
@@ -1738,27 +1769,52 @@ async function searchVault(input, query, scope, limit, config, signal, cursor) {
       for (const line of lines) {
         signal.throwIfAborted()
         const column = line.text.toLowerCase().indexOf(needle)
-        if (column !== -1) documentMatches.push({
-          path: document.path,
-          kind: markdown ? 'content' : isBase(document.path) ? 'base' : 'canvas',
-          line: line.line,
-          preview: previewLine(line.text, column),
-        })
+        if (column !== -1) {
+          const heading = /^#{1,6}\s+/u.test(line.text)
+          documentMatches.push({
+            path: document.path,
+            kind: markdown ? (heading ? 'section' : 'content') : isBase(document.path) ? 'base' : 'canvas',
+            line: line.line,
+            lineEnd: line.line,
+            preview: previewLine(line.text, column),
+            score: heading ? 350 : markdown ? 100 : 80,
+            provenance: markdown ? (heading ? 'section' : 'body') : isBase(document.path) ? 'body' : 'canvas',
+          })
+        }
       }
     }
 
     documentMatches.sort((left, right) => (
-      (left.line ?? -1) - (right.line ?? -1)
+      (right.score ?? 0) - (left.score ?? 0)
+      || (left.line ?? -1) - (right.line ?? -1)
       || left.kind.localeCompare(right.kind)
     ))
-    const available = documentMatches.slice(resumeOffset)
-    const taken = available.slice(0, limit - matches.length)
-    matches.push(...taken)
-    if (taken.length < available.length) {
-      return { position: { path: document.path, offset: resumeOffset + taken.length } }
-    }
-    return matches.length >= limit
-  }, { cursor, key, operation: 'search' })
+    allMatches.push(...documentMatches.map(match => document.revision === undefined ? match : { ...match, revision: document.revision }))
+    return false
+  }, { cursor: position.sourceCursor, directory: start.path, key, operation: 'search' })
+  allMatches.sort((left, right) => (
+    (right.score ?? 0) - (left.score ?? 0)
+    || compareVaultPaths(left.path, right.path)
+    || (left.line ?? -1) - (right.line ?? -1)
+    || left.kind.localeCompare(right.kind)
+    || left.preview.localeCompare(right.preview)
+  ))
+  const resumedSource = typeof position.sourceCursor === 'string'
+  const pageOffset = resumedSource ? 0 : position.offset
+  const matches = allMatches.slice(pageOffset, pageOffset + limit)
+  const nextOffset = resumedSource ? matches.length : position.offset + matches.length
+  const sourceCursor = state.cursor
+  if (sourceCursor !== null) {
+    state.truncated = true
+    state.truncationReason ??= 'entry-limit'
+    state.cursor = encodeCursor('search', key, { path: '', offset: 0, sourceCursor })
+  } else if (!resumedSource && nextOffset < allMatches.length) {
+    state.truncated = true
+    state.truncationReason = 'result-limit'
+    state.cursor = encodeCursor('search', key, { path: '', offset: nextOffset })
+  } else {
+    state.cursor = null
+  }
   boundSearchMatches(matches, state)
 
   return {
@@ -1916,20 +1972,24 @@ function structuredTermMatches(term, document, signal) {
   return []
 }
 
-function queryTermMatches(term, document, signal) {
+function queryTermMatches(term, document, signal, titleOnly) {
   signal.throwIfAborted()
   if (['block', 'line', 'property', 'section', 'tag', 'task'].includes(term.field)) {
     return structuredTermMatches(term, document, signal).length > 0
   }
   const basename = path.basename(document.path)
+  const title = isMarkdown(document.path)
+    ? markdownDetails(document.content, document.path).title ?? path.basename(document.path, path.extname(document.path))
+    : path.basename(document.path, path.extname(document.path))
   if (term.field === 'file') return patternIndex(term.pattern, basename, signal) !== -1
   if (term.field === 'path') return patternIndex(term.pattern, document.path, signal) !== -1
   if (term.field === 'content') return patternIndex(term.pattern, document.content, signal) !== -1
+  if (titleOnly) return patternIndex(term.pattern, title, signal) !== -1
   return patternIndex(term.pattern, document.content, signal) !== -1
     || patternIndex(term.pattern, document.path, signal) !== -1
 }
 
-function queryDocumentMatches(document, groups, signal) {
+function queryDocumentMatches(document, groups, signal, titleOnly) {
   const matches = []
   const seen = new Set()
   const add = match => {
@@ -1941,8 +2001,8 @@ function queryDocumentMatches(document, groups, signal) {
   }
   for (const group of groups) {
     signal.throwIfAborted()
-    if (group.exclude.some(term => queryTermMatches(term, document, signal))) continue
-    if (!group.include.every(term => queryTermMatches(term, document, signal))) continue
+    if (group.exclude.some(term => queryTermMatches(term, document, signal, titleOnly))) continue
+    if (!group.include.every(term => queryTermMatches(term, document, signal, titleOnly))) continue
     if (group.include.length === 0) {
       add({ path: document.path, kind: 'path', line: null, preview: document.path })
       continue
@@ -1953,15 +2013,18 @@ function queryDocumentMatches(document, groups, signal) {
         for (const match of structuredTermMatches(term, document, signal)) add(match)
         continue
       }
-      const pathValue = term.field === 'file' ? path.basename(document.path) : document.path
-      const pathColumn = term.field === 'content' ? -1 : patternIndex(term.pattern, pathValue, signal)
+      const title = isMarkdown(document.path)
+        ? markdownDetails(document.content, document.path).title ?? path.basename(document.path, path.extname(document.path))
+        : path.basename(document.path, path.extname(document.path))
+      const pathValue = term.field === 'file' ? path.basename(document.path) : titleOnly && term.field === 'any' ? title : document.path
+      const pathColumn = term.field === 'content' || titleOnly && term.field === 'any' ? -1 : patternIndex(term.pattern, pathValue, signal)
       if (pathColumn !== -1) add({
         path: document.path,
         kind: 'path',
         line: null,
         preview: document.path,
       })
-      if (term.field === 'file' || term.field === 'path') continue
+      if (term.field === 'file' || term.field === 'path' || titleOnly && term.field === 'any') continue
       const markdown = isMarkdown(document.path)
       const lines = markdown || isBase(document.path)
         ? document.content.split(/\r?\n/u).map((text, index) => ({ line: index + 1, text }))
@@ -1979,20 +2042,34 @@ function queryDocumentMatches(document, groups, signal) {
       }
     }
   }
+  for (const match of matches) {
+    match.score ??= match.kind === 'path' ? 300
+      : match.kind === 'section' ? 250
+        : match.kind === 'property' || match.kind === 'tag' ? 200
+          : match.kind === 'task' ? 150
+            : 100
+    match.provenance ??= match.kind === 'path' ? 'path' : match.kind === 'property' || match.kind === 'tag' ? 'frontmatter' : 'body'
+  }
   return matches.sort((left, right) => (
     (left.line ?? -1) - (right.line ?? -1)
     || left.kind.localeCompare(right.kind)
   ))
 }
 
-function candidateRequest(groups, directory, limit) {
+function candidateRequest(groups, directory, limit, options) {
   const candidateGroups = groups.map(group => group.include.flatMap(term => {
     if (term.field === 'tag') return [{ field: 'tag', value: term.tag }]
     if (term.field === 'property') return [{ field: 'property', value: term.key }]
     return []
   }))
   return candidateGroups.every(group => group.length > 0)
-    ? { directory, groups: candidateGroups, limit }
+    ? {
+        directory,
+        groups: candidateGroups,
+        limit,
+        ...(options.modifiedFrom === undefined ? {} : { modifiedFrom: options.modifiedFrom }),
+        ...(options.modifiedTo === undefined ? {} : { modifiedTo: options.modifiedTo }),
+      }
     : null
 }
 
@@ -2002,20 +2079,29 @@ function validCandidateResult(result, limit) {
     || typeof result.epoch !== 'string'
     || result.epoch.length === 0
     || result.epoch.length > 128
-    || !Array.isArray(result.paths)
-    || result.paths.length > limit
+    || !Array.isArray(result.entries)
+    || result.entries.length > limit
   ) return null
-  const paths = []
+  const entries = []
   const seen = new Set()
-  for (const value of result.paths) {
-    const candidate = safeInspectionPath(value)
-    if (!candidate || !isVaultDocument(candidate)) return null
+  for (const value of result.entries) {
+    if (!value || typeof value !== 'object') return null
+    const candidate = safeInspectionPath(value.path)
+    if (
+      !candidate
+      || !isVaultDocument(candidate)
+      || typeof value.revision !== 'string'
+      || value.revision.length === 0
+      || value.revision.length > 4_096
+      || !Number.isFinite(value.modifiedMs)
+    ) return null
     if (!seen.has(candidate)) {
       seen.add(candidate)
-      paths.push(candidate)
+      entries.push({ path: candidate, modifiedMs: value.modifiedMs, revision: value.revision })
     }
   }
-  return { epoch: result.epoch, paths: paths.sort(compareVaultPaths) }
+  entries.sort((left, right) => compareVaultPaths(left.path, right.path))
+  return { epoch: result.epoch, entries }
 }
 
 async function scanCandidateVault(input, candidates, config, signal, visitor, options) {
@@ -2029,11 +2115,12 @@ async function scanCandidateVault(input, candidates, config, signal, visitor, op
     truncationReason: null,
     warnings: [],
   }
+  const paths = Object.freeze(candidates.map(candidate => candidate.path))
   let lastPath = position.path
   for (const candidate of candidates) {
     signal.throwIfAborted()
-    if (position.path && compareVaultPaths(candidate, position.path) < 0) continue
-    if (position.path === candidate && position.offset === 0) continue
+    if (position.path && compareVaultPaths(candidate.path, position.path) < 0) continue
+    if (position.path === candidate.path && position.offset === 0) continue
     const remaining = config.maxSearchBytes - state.bytes
     if (remaining <= 0) {
       state.truncated = true
@@ -2045,7 +2132,7 @@ async function scanCandidateVault(input, candidates, config, signal, visitor, op
     try {
       document = await readInspectionDocument(
         input,
-        candidate,
+        candidate.path,
         Math.min(config.maxSearchFileBytes, remaining),
         signal,
       )
@@ -2053,20 +2140,24 @@ async function scanCandidateVault(input, candidates, config, signal, visitor, op
       if (error?.name === 'AbortError') throw error
       return null
     }
+    if (document.revision !== candidate.revision) return null
     state.files += 1
     state.bytes += Buffer.byteLength(document.content)
-    lastPath = candidate
-    const resumeOffset = position.path === candidate ? position.offset : 0
+    lastPath = candidate.path
+    const resumeOffset = position.path === candidate.path ? position.offset : 0
     const result = await visitor({
       content: document.content,
+      createdMs: undefined,
+      modifiedMs: candidate.modifiedMs,
       path: document.path,
+      revision: document.revision,
       size: Buffer.byteLength(document.content),
-    }, Object.freeze(candidates), resumeOffset)
+    }, paths, resumeOffset)
     if (result) {
       const nextPosition = typeof result === 'object' && result.position
         ? result.position
-        : { path: candidate, offset: 0 }
-      const hasMore = nextPosition.offset > 0 || candidate !== candidates.at(-1)
+        : { path: candidate.path, offset: 0 }
+      const hasMore = nextPosition.offset > 0 || candidate.path !== candidates.at(-1)?.path
       if (hasMore) {
         state.truncated = true
         state.truncationReason = 'result-limit'
@@ -2078,19 +2169,41 @@ async function scanCandidateVault(input, candidates, config, signal, visitor, op
   return state
 }
 
+function compareSearchMatches(left, right) {
+  return (right.score ?? 0) - (left.score ?? 0)
+    || compareVaultPaths(left.path, right.path)
+    || (left.line ?? -1) - (right.line ?? -1)
+    || (left.lineEnd ?? -1) - (right.lineEnd ?? -1)
+    || left.kind.localeCompare(right.kind)
+    || (left.operator ?? '').localeCompare(right.operator ?? '')
+    || (left.provenance ?? '').localeCompare(right.provenance ?? '')
+    || left.preview.localeCompare(right.preview)
+    || (left.revision ?? '').localeCompare(right.revision ?? '')
+}
+
 async function searchQueryVault(input, query, options, limit, config, signal, cursor) {
   const groups = parseSearchQuery(query, options)
   const start = inspectionDirectory(options.directory)
   const key = JSON.stringify({
     caseSensitive: options.caseSensitive,
     directory: start.prefix,
+    modifiedFrom: options.modifiedFrom,
+    modifiedTo: options.modifiedTo,
     query,
     regex: options.regex,
+    titleOnly: options.titleOnly,
     wholeWord: options.wholeWord,
   })
   const matches = []
-  const visit = (document, _paths, resumeOffset) => {
-    const documentMatches = queryDocumentMatches(document, groups, signal)
+  const visit = (document, _paths, resumeOffset, collectAll = false) => {
+    if (options.modifiedFrom !== undefined && document.modifiedMs < options.modifiedFrom) return false
+    if (options.modifiedTo !== undefined && document.modifiedMs > options.modifiedTo) return false
+    const documentMatches = queryDocumentMatches(document, groups, signal, options.titleOnly)
+      .map(match => document.revision === undefined ? match : { ...match, revision: document.revision })
+    if (collectAll) {
+      matches.push(...documentMatches)
+      return false
+    }
     const available = documentMatches.slice(resumeOffset)
     const taken = available.slice(0, limit - matches.length)
     matches.push(...taken)
@@ -2100,8 +2213,9 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
     return matches.length >= limit
   }
   let state = null
+  let candidatePosition = null
   const request = typeof input.searchCandidates === 'function'
-    ? candidateRequest(groups, start.path, config.maxSearchEntries)
+    ? candidateRequest(groups, start.path, config.maxSearchEntries, options)
     : null
   if (request) {
     try {
@@ -2110,10 +2224,35 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
         config.maxSearchEntries,
       )
       if (candidates) {
-        state = await scanCandidateVault(input, candidates.paths, config, signal, visit, {
+        const candidateKey = `${key}:${candidates.epoch}`
+        candidatePosition = decodeCursor(cursor, 'query-candidates', candidateKey)
+        state = await scanCandidateVault(input, candidates.entries, config, signal, (document, paths, resumeOffset) => (
+          visit(document, paths, resumeOffset, true)
+        ), {
           cursor,
-          key: `${key}:${candidates.epoch}`,
+          key: candidateKey,
         })
+        if (state) {
+          matches.sort(compareSearchMatches)
+          const pageOffset = candidatePosition.path ? 0 : candidatePosition.offset
+          const totalMatches = matches.length
+          const page = matches.slice(pageOffset, pageOffset + limit)
+          matches.length = 0
+          matches.push(...page)
+          if (state.cursor !== null) {
+            state.truncated = true
+            state.truncationReason ??= 'entry-limit'
+          } else if (pageOffset + page.length < totalMatches) {
+            state.truncated = true
+            state.truncationReason = 'result-limit'
+            state.cursor = encodeCursor('query-candidates', candidateKey, {
+              path: '',
+              offset: pageOffset + page.length,
+            })
+          } else {
+            state.cursor = null
+          }
+        }
       }
     } catch (error) {
       if (error?.name === 'AbortError' || cursor != null) throw error
@@ -2121,12 +2260,39 @@ async function searchQueryVault(input, query, options, limit, config, signal, cu
   }
   if (!state) {
     matches.length = 0
-    state = await scanVault(input, config, signal, visit, {
-      cursor,
+    const fallbackPosition = decodeCursor(cursor, 'query-search', key)
+    const sourceCursor = typeof fallbackPosition.sourceCursor === 'string'
+      ? fallbackPosition.sourceCursor
+      : undefined
+    state = await scanVault(input, config, signal, (document, paths, resumeOffset) => (
+      visit(document, paths, resumeOffset, true)
+    ), {
+      cursor: sourceCursor,
       key,
       operation: 'query-search',
       directory: start.path,
     })
+    matches.sort(compareSearchMatches)
+    const pageOffset = sourceCursor === undefined ? fallbackPosition.offset : 0
+    const totalMatches = matches.length
+    const page = matches.slice(pageOffset, pageOffset + limit)
+    matches.length = 0
+    matches.push(...page)
+    if (state.cursor !== null) {
+      state.truncated = true
+      state.truncationReason ??= 'entry-limit'
+      state.cursor = encodeCursor('query-search', key, {
+        path: '',
+        offset: 0,
+        sourceCursor: state.cursor,
+      })
+    } else if (pageOffset + page.length < totalMatches) {
+      state.truncated = true
+      state.truncationReason = 'result-limit'
+      state.cursor = encodeCursor('query-search', key, { path: '', offset: pageOffset + page.length })
+    } else {
+      state.cursor = null
+    }
   }
   boundSearchMatches(matches, state)
   return {
@@ -2154,15 +2320,26 @@ function relatedTokens(value) {
 async function searchRelatedVault(input, query, options, limit, config, signal, cursor) {
   const wanted = new Set(relatedTokens(query))
   const start = inspectionDirectory(options.directory)
-  const key = JSON.stringify({ directory: start.prefix, query: [...wanted].sort() })
+  const key = JSON.stringify({
+    directory: start.prefix,
+    modifiedFrom: options.modifiedFrom,
+    modifiedTo: options.modifiedTo,
+    query: [...wanted].sort(),
+    titleOnly: options.titleOnly,
+  })
   const position = decodeCursor(cursor, 'related', key)
   const candidates = []
   const sourceCursor = position.path
     ? encodeCursor('related-source', key, { path: position.path, offset: 0 })
     : undefined
   const state = await scanVault(input, config, signal, document => {
-    const pathScore = new Set(relatedTokens(document.path).filter(token => wanted.has(token))).size * 20
-    const lines = isMarkdown(document.path) || isBase(document.path)
+    if (options.modifiedFrom !== undefined && document.modifiedMs < options.modifiedFrom) return false
+    if (options.modifiedTo !== undefined && document.modifiedMs > options.modifiedTo) return false
+    const title = isMarkdown(document.path)
+      ? markdownDetails(document.content, document.path).title ?? path.basename(document.path, path.extname(document.path))
+      : path.basename(document.path, path.extname(document.path))
+    const pathScore = new Set(relatedTokens(options.titleOnly ? title : document.path).filter(token => wanted.has(token))).size * 20
+    const lines = options.titleOnly ? [] : isMarkdown(document.path) || isBase(document.path)
       ? document.content.split(/\r?\n/u).map((text, index) => ({ line: index + 1, text }))
       : canvasSearchLines(document.content).map(text => ({ line: null, text }))
     const scoredLines = lines.flatMap(line => {
@@ -2185,6 +2362,7 @@ async function searchRelatedVault(input, query, options, limit, config, signal, 
         preview: best?.text.trim().slice(0, MAX_PREVIEW_CHARS) || document.path,
         provenance: best ? (isMarkdown(document.path) || isBase(document.path) ? 'body' : 'canvas') : 'path',
         score,
+        ...(document.revision === undefined ? {} : { revision: document.revision }),
       })
     }
     return false
@@ -3982,35 +4160,29 @@ export function createVaultInspection(input, config) {
       const operation = operationSignal(signal)
       const query = typeof args?.query === 'string' ? args.query.trim() : ''
       if (query === '') throw new Error('query must be a non-empty string')
+      for (const value of [args.modifiedFrom, args.modifiedTo]) {
+        if (value !== undefined && (!Number.isFinite(value) || value < 0)) throw new Error('modified date must be a non-negative number')
+      }
+      if (args.modifiedFrom !== undefined && args.modifiedTo !== undefined && args.modifiedFrom > args.modifiedTo) {
+        throw new Error('modified date range is invalid')
+      }
       const limit = boundedLimit(args.limit, limits.maxSearchResults)
+      const searchOptions = {
+        caseSensitive: args.caseSensitive === true,
+        directory: args.directory,
+        modifiedFrom: args.modifiedFrom,
+        modifiedTo: args.modifiedTo,
+        regex: args.regex === true,
+        titleOnly: args.titleOnly === true,
+        wholeWord: args.wholeWord === true,
+      }
       if (args.mode === 'related') {
-        return await searchRelatedVault(
-          input,
-          query,
-          { directory: args.directory },
-          limit,
-          limits,
-          operation,
-          args.cursor,
-        )
+        return await searchRelatedVault(input, query, searchOptions, limit, limits, operation, args.cursor)
       }
       if ((args.mode ?? 'literal') === 'query') {
-        return await searchQueryVault(input, query, {
-          caseSensitive: args.caseSensitive === true,
-          directory: args.directory,
-          regex: args.regex === true,
-          wholeWord: args.wholeWord === true,
-        }, limit, limits, operation, args.cursor)
+        return await searchQueryVault(input, query, searchOptions, limit, limits, operation, args.cursor)
       }
-      return await searchVault(
-        input,
-        query,
-        args.scope ?? 'all',
-        limit,
-        limits,
-        operation,
-        args.cursor,
-      )
+      return await searchVault(input, query, args.scope ?? 'all', searchOptions, limit, limits, operation, args.cursor)
     },
 
     async read(args, signal) {

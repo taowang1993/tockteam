@@ -7,6 +7,7 @@ import { MAX_TRACKED_POPOUTS, TockTutorDesktopGateway } from '../dist/host-actio
 
 const vault = Object.freeze({ generation: 7, id: `vault:${'a'.repeat(64)}` })
 const nextVault = Object.freeze({ generation: 8, id: `vault:${'b'.repeat(64)}` })
+const managedVault = Object.freeze({ generation: 8, id: vault.id })
 const identity = Object.freeze({
   operationId: 'operation-1',
   requestId: 'request-1',
@@ -20,15 +21,21 @@ type Call = { method: string; parameters: unknown[] }
 type VaultState = { active: false; generation: number } | { active: true; generation: number; id: string }
 
 async function loaded(): Promise<{
+  abortAfterClaim(controller: AbortController): void
   calls: Call[]
   context: Context
   gateway: TockTutorDesktopGateway
+  driftAfterMove(value: VaultState): void
   driftAfterReveal(value: VaultState): void
+  failSynchronizationOn(call: number): void
   setState(value: VaultState): void
   syncCalls(): number
 }> {
   const calls: Call[] = []
+  let abortingController: AbortController | undefined
   let desktopSyncCalls = 0
+  let failSynchronizationAt = 0
+  let stateAfterMove: VaultState | undefined
   let stateAfterReveal: VaultState | undefined
   let state: VaultState = {
     active: true,
@@ -41,6 +48,7 @@ async function loaded(): Promise<{
       ctx.provide('tockTeamDesktopCaller', {
         async claim(...parameters: unknown[]) {
           calls.push({ method: 'claim', parameters })
+          abortingController?.abort()
           return identity
         },
       })
@@ -48,6 +56,7 @@ async function loaded(): Promise<{
         get state() { return state },
         async synchronizeDesktopSelection() {
           desktopSyncCalls += 1
+          if (desktopSyncCalls === failSynchronizationAt) throw new Error('synchronization unavailable')
           return state
         },
         async activateDesktopSelection(...parameters: unknown[]) {
@@ -70,6 +79,25 @@ async function loaded(): Promise<{
           calls.push({ method: 'revealEntry', parameters })
           if (stateAfterReveal !== undefined) state = stateAfterReveal
           return { generation: vault.generation, path: 'Folder/Note.md', status: 'revealed' }
+        },
+        async revealVault(...parameters: unknown[]) {
+          calls.push({ method: 'revealVault', parameters })
+          return { generation: vault.generation, status: 'revealed' }
+        },
+        renameVault(...parameters: unknown[]) {
+          calls.push({ method: 'renameVault', parameters })
+          state = { active: true, ...managedVault }
+          return state
+        },
+        async moveDesktopSelection(...parameters: unknown[]) {
+          calls.push({ method: 'moveDesktopSelection', parameters })
+          state = stateAfterMove ?? { active: true, ...managedVault }
+          return { operationId: identity.operationId, status: 'moved', vaultGeneration: managedVault.generation, vaultId: managedVault.id }
+        },
+        removeVault(...parameters: unknown[]) {
+          calls.push({ method: 'removeVault', parameters })
+          state = { active: false, generation: managedVault.generation }
+          return state
         },
         async openDocument(...parameters: unknown[]) {
           calls.push({ method: 'openDocument', parameters })
@@ -165,10 +193,13 @@ async function loaded(): Promise<{
   const gateway = context.get('tocktutorDesktop') as TockTutorDesktopGateway
   assert.ok(gateway instanceof TockTutorDesktopGateway)
   return {
+    abortAfterClaim(controller) { abortingController = controller },
     calls,
     context,
     gateway,
+    driftAfterMove(value) { stateAfterMove = value },
     driftAfterReveal(value) { stateAfterReveal = value },
+    failSynchronizationOn(call) { failSynchronizationAt = call },
     setState(value) { state = value },
     syncCalls() { return desktopSyncCalls },
   }
@@ -197,6 +228,10 @@ test('publishes only the bounded native action Remote methods', async () => {
       { invocation: { kind: 'direct' }, method: 'exportNote' },
       { invocation: { kind: 'direct' }, method: 'requestMicrophone' },
       { invocation: { kind: 'direct' }, method: 'revealEntry' },
+      { invocation: { kind: 'direct' }, method: 'revealVault' },
+      { invocation: { kind: 'direct' }, method: 'renameVault' },
+      { invocation: { kind: 'direct' }, method: 'moveVault' },
+      { invocation: { kind: 'direct' }, method: 'removeVault' },
     ])
   } finally {
     await state.context.fiber.dispose()
@@ -222,6 +257,82 @@ test('reveals an active vault entry only after caller authorization', async () =
       },
     ])
     assertSharedSignal(state.calls)
+  } finally {
+    await state.context.fiber.dispose()
+  }
+})
+
+test('manages the active vault only after exact caller and picker authorization', async () => {
+  const state = await loaded()
+  try {
+    const signal = new AbortController().signal
+    assert.deepEqual(await state.gateway.revealVault('reveal-authorization', vault, signal), { status: 'revealed' })
+    assert.deepEqual(await state.gateway.renameVault('rename-authorization', 'Research', vault, signal), { status: 'renamed' })
+    assert.deepEqual(await state.gateway.renameVault('rename-authorization', 'Research', vault, signal), { status: 'renamed' })
+    state.setState({ active: true, ...vault })
+    assert.deepEqual(await state.gateway.moveVault('move-authorization', vault, signal), { status: 'moved' })
+    assert.deepEqual(await state.gateway.moveVault('move-authorization', vault, signal), { status: 'moved' })
+    state.setState({ active: true, ...vault })
+    assert.deepEqual(await state.gateway.removeVault('remove-authorization', vault, signal), { status: 'closed' })
+    assert.deepEqual(await state.gateway.removeVault('remove-authorization', vault, signal), { status: 'closed' })
+    assert.deepEqual(publicCalls(state.calls), [
+      { method: 'claim', value: { authorization: 'reveal-authorization', operation: 'reveal-vault' } },
+      { method: 'revealVault', value: vault },
+      { method: 'claim', value: { authorization: 'rename-authorization', operation: 'rename-vault' } },
+      { method: 'renameVault', value: 'Research' },
+      { method: 'claim', value: { authorization: 'move-authorization', operation: 'move-vault' } },
+      { method: 'pick', value: { identity, kind: 'vault', purpose: 'move' } },
+      {
+        method: 'moveDesktopSelection',
+        value: { authorization: 'selection-authorization', expectedVault: vault, identity },
+      },
+      { method: 'claim', value: { authorization: 'remove-authorization', operation: 'remove-vault' } },
+      { method: 'removeVault', value: vault },
+    ])
+    assert.equal(state.syncCalls(), 6)
+  } finally {
+    await state.context.fiber.dispose()
+  }
+})
+
+test('cancellation after authorization prevents irreversible vault mutations', async () => {
+  for (const operation of ['rename', 'remove'] as const) {
+    const state = await loaded()
+    try {
+      const controller = new AbortController()
+      state.abortAfterClaim(controller)
+      const action = operation === 'rename'
+        ? state.gateway.renameVault(`${operation}-abort`, 'Research', vault, controller.signal)
+        : state.gateway.removeVault(`${operation}-abort`, vault, controller.signal)
+      await assert.rejects(action, { name: 'AbortError' })
+      assert.equal(state.calls.some(call => call.method === `${operation}Vault`), false)
+    } finally {
+      await state.context.fiber.dispose()
+    }
+  }
+})
+
+test('reports a committed vault mutation when Desktop rebinding is briefly unavailable', async () => {
+  const state = await loaded()
+  try {
+    state.failSynchronizationOn(2)
+    const signal = new AbortController().signal
+    assert.deepEqual(await state.gateway.renameVault('rename-rebind-authorization', 'Research', vault, signal), { status: 'renamed' })
+    assert.deepEqual(await state.gateway.renameVault('rename-rebind-authorization', 'Research', vault, signal), { status: 'renamed' })
+    assert.equal(state.calls.filter(call => call.method === 'renameVault').length, 1)
+  } finally {
+    await state.context.fiber.dispose()
+  }
+})
+
+test('remembers a committed move when an activation observer switches the current vault', async () => {
+  const state = await loaded()
+  try {
+    state.driftAfterMove({ active: true, ...nextVault })
+    const signal = new AbortController().signal
+    assert.deepEqual(await state.gateway.moveVault('reentrant-move', vault, signal), { status: 'moved' })
+    assert.deepEqual(await state.gateway.moveVault('reentrant-move', vault, signal), { status: 'moved' })
+    assert.equal(state.calls.filter(call => call.method === 'moveDesktopSelection').length, 1)
   } finally {
     await state.context.fiber.dispose()
   }
@@ -497,7 +608,7 @@ test('resolves bounded note, image, and Canvas embeds into static HTML and PDF i
     assert.equal(request.format, 'pdf')
     assert.match(request.html, /aria-label="Resolved Embeds"/u)
     assert.match(request.html, /data:image\/png;base64,AQID/u)
-    assert.match(request.html, /Safe &lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
+    assert.match(request.html, /<p>Safe<\/p>/u)
     assert.match(request.html, /<pre>\{&quot;nodes&quot;:\[\]\}<\/pre>/u)
     assert.doesNotMatch(request.html, /<script|href=/u)
     assert.deepEqual(state.calls.map(call => call.method), [

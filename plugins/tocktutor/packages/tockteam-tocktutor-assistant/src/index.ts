@@ -1,12 +1,13 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type { Agent, AgentRegistry, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
+import type { LlmCallConfig, LlmRuntime } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-tools'
 import Schema from '@deepseek-ai/schemastery'
 import type { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
 import type NoteVaultRuntime from 'tockbot-note-runtime'
 import type { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 import type { SettingsScope } from '@deepseek-ai/dsh-settings'
+import { answerSearchQuery, expandAndSearch } from './search-intelligence.ts'
 import {
   ProposalApprovalExecutor,
   type ApprovalResult,
@@ -51,6 +52,53 @@ import {
   TockTutorAssistantGateway,
   type AssistantRemoteHost,
 } from './remote.ts'
+import type { AssistantQuickAnswerRequest, AssistantQuickAnswerResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts'
+import type { VaultSearchMatch } from 'tockbot-note-vault/inspection'
+
+const MAX_SEARCH_CANDIDATE_MAPS = 8
+
+type SearchCandidateMapEntry = Readonly<{
+  candidates: ReadonlySet<string>
+  mode: 'query' | 'related'
+  requestKey: string
+  vaultGeneration: number
+  vaultId: string
+}>
+
+function answerCandidateKey(candidate: Pick<VaultSearchMatch, 'path' | 'line' | 'lineEnd' | 'preview' | 'revision'>): string {
+  return JSON.stringify([
+    candidate.path,
+    candidate.line,
+    candidate.lineEnd ?? null,
+    candidate.preview,
+    candidate.revision ?? null,
+  ])
+}
+
+function searchRequestKey(
+  request: { query: string; mode?: 'query' | 'related'; directory?: string; modifiedFrom?: number; modifiedTo?: number; titleOnly?: boolean },
+): string {
+  return JSON.stringify({
+    directory: request.directory?.trim() ?? '',
+    mode: request.mode ?? 'query',
+    modifiedFrom: request.modifiedFrom,
+    modifiedTo: request.modifiedTo,
+    query: request.query.trim(),
+    titleOnly: request.titleOnly === true,
+  })
+}
+
+function searchCandidateMapKey(
+  vaultId: string,
+  vaultGeneration: number,
+  request: { query: string; mode?: 'query' | 'related'; directory?: string; modifiedFrom?: number; modifiedTo?: number; titleOnly?: boolean },
+): string {
+  return JSON.stringify({
+    requestKey: searchRequestKey(request),
+    vaultGeneration,
+    vaultId,
+  })
+}
 import {
   PennivoChildManager,
   type PennivoBinding,
@@ -78,6 +126,7 @@ export * from './read-tool-registration.ts'
 export * from './read-tools.ts'
 export * from './remote.ts'
 export * from './remote-types.ts'
+export * from './search-intelligence.ts'
 export * from './text-turn.ts'
 export * from './turn-bindings.ts'
 export * from './write-tool-registration.ts'
@@ -89,6 +138,7 @@ declare module '@deepseek-ai/cordis' {
     settings: import('@deepseek-ai/dsh-settings').SettingsProvider
     storageDomain: DomainFacility
     subprocess: SubprocessRuntime
+    llm: LlmRuntime
   }
 }
 
@@ -114,10 +164,13 @@ export interface BindAssistantTurnInput {
   requestModelOverride?: true
 }
 
+export type AssistantAiSearchPolicy = 'off' | 'on-demand' | 'automatic'
+
 export interface AssistantSettings {
   provider: string
   model: string
   writePermission: AssistantWritePermission
+  aiSearch?: AssistantAiSearchPolicy
 }
 
 export type Config = AssistantSettings
@@ -129,6 +182,11 @@ export const Config: Schema<Config> = Schema.object({
     Schema.const('read-only'),
     Schema.const('propose'),
   ]).default('read-only'),
+  aiSearch: Schema.union([
+    Schema.const('off'),
+    Schema.const('on-demand'),
+    Schema.const('automatic'),
+  ]).default('on-demand'),
 })
 
 export const ASSISTANT_SETTINGS_NAMESPACE = 'tocktutor-assistant'
@@ -139,6 +197,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
 
   private readonly agents: AgentRegistry
   private readonly noteVault: NoteVaultRuntime
+  private readonly llm: LlmRuntime | undefined
   private readonly settings: SettingsScope<AssistantSettings>
   private observedSettings: AssistantSettings
   private settingsAbort = new AbortController()
@@ -155,6 +214,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
   private proposalState?: AssistantProposalStateStore
   private proposalPersistence: Promise<void> = Promise.resolve()
   private readonly decisionTasks = new Set<Promise<unknown>>()
+  private readonly searchCandidateMaps = new Map<string, SearchCandidateMapEntry>()
   private decisionAdmissionOpen = true
   private mainTockDriverDispose: (() => void) | undefined
 
@@ -162,6 +222,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     super(ctx, 'noteAssistant')
     this.agents = ctx.agents
     this.noteVault = ctx.noteVault
+    this.llm = ctx.get('llm') as LlmRuntime | undefined
     this.settings = ctx.settings.register(ASSISTANT_SETTINGS_NAMESPACE, Config, { base: config })
     this.observedSettings = { ...this.settings.get() }
     this.continuation = new AgentContinuationRouter(
@@ -184,10 +245,14 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     })
     this.syncMainTockDriverTools()
     ctx.on('settings/updated', (namespace) => {
-      if (namespace === ASSISTANT_SETTINGS_NAMESPACE) this.observeSettings(this.settings.get())
+      if (namespace === ASSISTANT_SETTINGS_NAMESPACE) {
+        this.searchCandidateMaps.clear()
+        this.observeSettings(this.settings.get())
+      }
     })
     ctx.plugin(TockTutorAssistantGateway)
     ctx.on('note-vault/change', event => {
+      this.searchCandidateMaps.clear()
       this.turnBindings.invalidateVault(event.vault)
       this.proposalQueue.invalidateVault(event.vault)
       this.scheduleProposalPersistence()
@@ -582,7 +647,8 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     const previous = this.observedSettings
     const providerChanged = next.provider !== previous.provider || next.model !== previous.model
     const permissionChanged = next.writePermission !== previous.writePermission
-    if (!providerChanged && !permissionChanged) return
+    const aiSearchChanged = next.aiSearch !== previous.aiSearch
+    if (!providerChanged && !permissionChanged && !aiSearchChanged) return
     this.observedSettings = { ...next }
     this.settingsAbort.abort(new Error('Assistant settings changed.'))
     this.settingsAbort = new AbortController()
@@ -718,6 +784,142 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     const current = this.settings.get()
     this.observeSettings(current)
     return { ...current }
+  }
+
+  private rememberSearchCandidates(
+    request: AssistantSearchIntelligenceRequest,
+    vaultId: string,
+    matches: readonly VaultSearchMatch[],
+  ): void {
+    const key = searchCandidateMapKey(vaultId, request.vaultGeneration, request)
+    this.searchCandidateMaps.delete(key)
+    this.searchCandidateMaps.set(key, Object.freeze({
+      candidates: new Set(matches.map(answerCandidateKey)),
+      mode: request.mode,
+      requestKey: searchRequestKey(request),
+      vaultGeneration: request.vaultGeneration,
+      vaultId,
+    }))
+    while (this.searchCandidateMaps.size > MAX_SEARCH_CANDIDATE_MAPS) {
+      const oldest = this.searchCandidateMaps.keys().next().value
+      if (oldest === undefined) break
+      this.searchCandidateMaps.delete(oldest)
+    }
+  }
+
+  async searchIntelligence(
+    request: AssistantSearchIntelligenceRequest,
+    signal: AbortSignal,
+  ): Promise<AssistantSearchIntelligenceResult> {
+    const settings = this.currentSettings()
+    if ((settings.aiSearch ?? 'on-demand') === 'off') return { status: 'disabled', matches: [] }
+    const vault = this.noteVault.state
+    if (!vault.active || vault.generation !== request.vaultGeneration) return { status: 'error', matches: [] }
+    const isCurrent = (current: { vaultGeneration: number }): boolean => {
+      const currentVault = this.noteVault.state
+      const currentSettings = this.settings.get()
+      return current.vaultGeneration === request.vaultGeneration
+        && currentVault.active
+        && currentVault.id === vault.id
+        && currentVault.generation === vault.generation
+        && currentSettings.provider === settings.provider
+        && currentSettings.model === settings.model
+        && currentSettings.aiSearch === settings.aiSearch
+    }
+    const result = await expandAndSearch(
+      this.llm,
+      request,
+      settings.provider,
+      settings.model,
+      async (searchRequest, searchSignal) => {
+        const result = await this.noteVault.search(searchRequest, {
+          id: vault.id,
+          generation: vault.generation,
+        }, searchSignal)
+        if (result.generation !== vault.generation) throw new Error('Search vault changed.')
+        return result
+      },
+      signal,
+      isCurrent,
+    )
+    if (result.status === 'applied' && (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration }))) {
+      return { status: 'cancelled', matches: [] }
+    }
+    if (result.status === 'applied') this.rememberSearchCandidates(request, vault.id, result.matches)
+    return result
+  }
+
+  async quickAnswer(
+    request: AssistantQuickAnswerRequest,
+    signal: AbortSignal,
+  ): Promise<AssistantQuickAnswerResult> {
+    const settings = this.currentSettings()
+    if ((settings.aiSearch ?? 'on-demand') === 'off') return { status: 'disabled', answer: '', citations: [] }
+    const vault = this.noteVault.state
+    if (!vault.active || vault.generation !== request.vaultGeneration) return { status: 'error', answer: '', citations: [] }
+    const mode = request.mode ?? 'query'
+    const isCurrent = (current: { vaultGeneration: number }): boolean => {
+      const currentVault = this.noteVault.state
+      const currentSettings = this.settings.get()
+      return current.vaultGeneration === request.vaultGeneration
+        && currentVault.active
+        && currentVault.id === vault.id
+        && currentVault.generation === vault.generation
+        && currentSettings.provider === settings.provider
+        && currentSettings.model === settings.model
+        && currentSettings.aiSearch === settings.aiSearch
+    }
+    if (request.candidates.some(candidate => typeof candidate.revision !== 'string' || candidate.revision.length === 0)) {
+      return { status: 'no-evidence', answer: '', citations: [] }
+    }
+    let exactMatches: VaultSearchMatch[]
+    try {
+      const exact = await this.noteVault.search({
+        mode,
+        query: request.query,
+        limit: 100,
+        ...(request.directory === undefined ? {} : { directory: request.directory }),
+        ...(request.modifiedFrom === undefined ? {} : { modifiedFrom: request.modifiedFrom }),
+        ...(request.modifiedTo === undefined ? {} : { modifiedTo: request.modifiedTo }),
+        ...(request.titleOnly === undefined ? {} : { titleOnly: request.titleOnly }),
+      }, { id: vault.id, generation: vault.generation }, signal)
+      exactMatches = exact.matches
+    } catch {
+      if (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration })) {
+        return { status: 'cancelled', answer: '', citations: [] }
+      }
+      return { status: 'error', answer: '', citations: [] }
+    }
+    if (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration })) {
+      return { status: 'cancelled', answer: '', citations: [] }
+    }
+    const requestKey = searchRequestKey({ ...request, mode })
+    const cached = this.searchCandidateMaps.get(searchCandidateMapKey(vault.id, vault.generation, { ...request, mode }))
+    const relatedKeys = cached !== undefined
+      && cached.vaultId === vault.id
+      && cached.vaultGeneration === vault.generation
+      && cached.mode === mode
+      && cached.requestKey === requestKey
+      ? cached.candidates
+      : undefined
+    const exactKeys = new Set(exactMatches.map(answerCandidateKey))
+    for (const key of relatedKeys ?? []) exactKeys.add(key)
+    if (request.candidates.some(candidate => !exactKeys.has(answerCandidateKey(candidate)))) {
+      return { status: 'no-evidence', answer: '', citations: [] }
+    }
+    return await answerSearchQuery(
+      this.llm,
+      request,
+      settings.provider,
+      settings.model,
+      async path => {
+        const result = await this.noteVault.read({ path }, { id: vault.id, generation: vault.generation }, signal)
+        if (result.generation !== vault.generation || result.path !== path) throw new Error('Search vault changed.')
+        return result
+      },
+      signal,
+      isCurrent,
+    )
   }
 
   async saveSettings(settings: AssistantSettings): Promise<void> {

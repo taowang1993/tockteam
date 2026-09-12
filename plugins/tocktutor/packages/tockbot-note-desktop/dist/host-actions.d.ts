@@ -28,6 +28,7 @@ export declare class TockTutorDesktopGateway extends TypertRemoteService {
     constructor(ctx: Context);
     private claimForVault;
     private recoverResult;
+    private recoverMutationResult;
     private rememberResult;
     activateVault(authorization: string, signal: AbortSignal): Promise<NativeActionResult>;
     activateVaultTarget(authorization: string, target: {
@@ -40,5 +41,9 @@ export declare class TockTutorDesktopGateway extends TypertRemoteService {
     exportNote(authorization: string, format: 'html' | 'pdf', path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     requestMicrophone(authorization: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     revealEntry(authorization: string, path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
+    revealVault(authorization: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
+    renameVault(authorization: string, name: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
+    moveVault(authorization: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
+    removeVault(authorization: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
 }
 //# sourceMappingURL=host-actions.d.ts.map

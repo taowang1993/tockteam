@@ -16,9 +16,9 @@ import type {
   ListTrashRequest,
   ListTreeRequest,
   OpenDocumentResult,
+  RenameDocumentRequest,
+  RenameDocumentResult,
   ReadSnapshotRequest,
-  RecentVaultListResult,
-  RecentVaultRequest,
   RestoreSnapshotOverwriteRequest,
   RestoreSnapshotRequest,
   RestoreTrashRequest,
@@ -57,7 +57,8 @@ export const MAX_TREE_PAGE_SIZE = 200
 
 export type NoteVaultCapability = Pick<
   NoteVaultRuntime,
-  | 'activateRecentVault'
+  | 'activeVaultDisplayPath'
+  | 'activeVaultName'
   | 'captureSnapshot'
   | 'clearDraft'
   | 'clearSnapshots'
@@ -66,18 +67,17 @@ export type NoteVaultCapability = Pick<
   | 'facets'
   | 'graph'
   | 'inspectAttachment'
-  | 'listRecentVaults'
   | 'listSnapshots'
   | 'listTrash'
   | 'links'
   | 'listTree'
   | 'openDocument'
+  | 'moveFileWithLinkRewrite'
   | 'outline'
   | 'openSandboxVault'
   | 'previewAttachment'
   | 'readDraft'
   | 'readSnapshot'
-  | 'removeRecentVault'
   | 'restoreSnapshot'
   | 'restoreSnapshotAsNew'
   | 'restoreTrash'
@@ -186,13 +186,6 @@ function assertCreateManagedVaultRequest(value: CreateManagedVaultRequest): void
   }
 }
 
-function assertRecentVaultRequest(value: RecentVaultRequest): void {
-  assertExpectedGeneration(value)
-  if (typeof value.id !== 'string' || !/^vault:[0-9a-f]{64}$/u.test(value.id)) {
-    throw new TypeError('Recent vault request must identify one opaque vault.')
-  }
-}
-
 function activeReference(state: NoteVaultRuntime['state']): VaultReference {
   if (!state.active) throw new TypeError('Vault activation returned no active vault.')
   const vault = { generation: state.generation, id: state.id }
@@ -229,6 +222,14 @@ function assertCreateRequest(value: CreateDocumentRequest): void {
 
 function assertSaveRequest(value: SaveDocumentRequest): void {
   assertCreateRequest(value)
+  assertRevision(value.expectedRevision)
+}
+
+function assertRenameRequest(value: RenameDocumentRequest): void {
+  assertRecord(value, 'Rename request')
+  assertVaultReference(value.expectedVault)
+  assertDocumentPath(value.fromPath)
+  assertDocumentPath(value.toPath)
   assertRevision(value.expectedRevision)
 }
 
@@ -283,6 +284,11 @@ function assertSearchRequest(value: VaultSearchRequest): void {
   if (value.scope !== undefined && value.scope !== 'all' && value.scope !== 'content' && value.scope !== 'path' && value.scope !== 'properties') throw new TypeError('Search scope is unsupported.')
   if (value.directory !== undefined) assertEntryPath(value.directory)
   if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || value.limit < 1 || value.limit > 100)) throw new TypeError('Search limit must be from 1 through 100.')
+  for (const date of [value.modifiedFrom, value.modifiedTo]) {
+    if (date !== undefined && (!Number.isFinite(date) || date < 0)) throw new TypeError('Search modified dates must be non-negative numbers.')
+  }
+  if (value.modifiedFrom !== undefined && value.modifiedTo !== undefined && value.modifiedFrom > value.modifiedTo) throw new TypeError('Search modified date range is invalid.')
+  if (value.titleOnly !== undefined && typeof value.titleOnly !== 'boolean') throw new TypeError('Search title-only option must be Boolean.')
   if (value.cursor !== undefined && (typeof value.cursor !== 'string' || value.cursor.length === 0 || value.cursor.length > MAX_TREE_CURSOR_LENGTH)) throw new TypeError('Search cursor must be bounded.')
   for (const option of [value.caseSensitive, value.regex, value.wholeWord]) {
     if (option !== undefined && typeof option !== 'boolean') throw new TypeError('Search options must be Boolean.')
@@ -367,10 +373,12 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
   async currentVault(signal: AbortSignal): Promise<ActiveVaultResult> {
     signal.throwIfAborted()
     const state = this.ctx.noteVault.state
-    if (!state.active) return null
+    if (!state.active) return { displayPath: null, generation: state.generation, name: null, vault: null }
     const vault = activeReference(state)
+    const name = this.ctx.noteVault.activeVaultName()
+    const displayPath = this.ctx.noteVault.activeVaultDisplayPath()
     await synchronizeDesktopVault(this.ctx.noteVault, signal)
-    return vault
+    return { displayPath, generation: vault.generation, name, vault }
   }
 
   @Remote
@@ -380,34 +388,6 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     const vault = activeReference(this.ctx.noteVault.createManagedVault(request.name, request.expectedGeneration))
     await synchronizeDesktopVault(this.ctx.noteVault, signal)
     return vault
-  }
-
-  @Remote
-  async listRecentVaults(signal: AbortSignal): Promise<RecentVaultListResult> {
-    signal.throwIfAborted()
-    return {
-      generation: this.ctx.noteVault.state.generation,
-      vaults: this.ctx.noteVault.listRecentVaults(),
-    }
-  }
-
-  @Remote
-  async activateRecentVault(request: RecentVaultRequest, signal: AbortSignal): Promise<VaultReference> {
-    assertRecentVaultRequest(request)
-    signal.throwIfAborted()
-    const vault = activeReference(this.ctx.noteVault.activateRecentVault(request.id, request.expectedGeneration))
-    await synchronizeDesktopVault(this.ctx.noteVault, signal)
-    return vault
-  }
-
-  @Remote
-  async removeRecentVault(request: RecentVaultRequest, signal: AbortSignal): Promise<RecentVaultListResult> {
-    assertRecentVaultRequest(request)
-    signal.throwIfAborted()
-    return {
-      generation: this.ctx.noteVault.state.generation,
-      vaults: this.ctx.noteVault.removeRecentVault(request.id, request.expectedGeneration),
-    }
   }
 
   @Remote
@@ -483,6 +463,18 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     assertSaveRequest(request)
     signal.throwIfAborted()
     return this.ctx.noteVault.saveDocument(request, signal)
+  }
+
+  @Remote
+  async renameDocument(
+    request: RenameDocumentRequest,
+    signal: AbortSignal,
+  ): Promise<RenameDocumentResult> {
+    assertRenameRequest(request)
+    signal.throwIfAborted()
+    const result = await this.ctx.noteVault.moveFileWithLinkRewrite(request, signal)
+    if (result.status !== 'moved') throw new Error('The vault move returned an invalid status.')
+    return { ...result, status: 'moved' }
   }
 
   @Remote

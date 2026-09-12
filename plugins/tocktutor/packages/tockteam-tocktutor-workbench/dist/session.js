@@ -177,6 +177,21 @@ export function addPaneGroup(source, requestedId) {
     session.focusedGroupId = groupId;
     return { session, groupId };
 }
+export function closePaneGroup(source, groupId) {
+    const session = cloneSession(source);
+    if (session.groups.length <= 1)
+        return { closed: null, nextGroupId: session.focusedGroupId, session };
+    const index = session.groups.findIndex(group => group.id === groupId);
+    if (index < 0)
+        return { closed: null, nextGroupId: session.focusedGroupId, session };
+    const [closed] = session.groups.splice(index, 1);
+    if (closed === undefined)
+        return { closed: null, nextGroupId: session.focusedGroupId, session };
+    if (session.focusedGroupId === groupId) {
+        session.focusedGroupId = session.groups[index]?.id ?? session.groups[index - 1]?.id ?? session.groups[0].id;
+    }
+    return { closed, nextGroupId: session.focusedGroupId, session };
+}
 function groupOf(session, groupId) {
     return session.groups.find(group => group.id === groupId);
 }
@@ -219,6 +234,20 @@ export function openNoteTab(source, groupId, path, options = {}) {
         group.tabs[activeIndex] = tab;
     }
     group.activeTabId = tab.id;
+    return session;
+}
+export function renameNoteTabPath(source, fromPath, toPath) {
+    if (!isSafeVaultRelativePath(fromPath) || !isSafeVaultRelativePath(toPath) || fromPath === toPath)
+        return cloneSession(source);
+    if (source.groups.some(group => group.tabs.some(tab => tab.path === toPath && tab.path !== fromPath)))
+        return cloneSession(source);
+    const session = cloneSession(source);
+    for (const group of session.groups) {
+        for (const tab of group.tabs) {
+            if (tab.path === fromPath)
+                tab.path = toPath;
+        }
+    }
     return session;
 }
 export function markTabDirty(source, groupId, path, dirty) {

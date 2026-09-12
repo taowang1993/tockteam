@@ -63,7 +63,11 @@ type ExpectedSourcePurpose =
 type ExpectedExportPurpose = 'export-html' | 'export-pdf' | 'vault-backup'
 type ExpectedCallerOperation =
   | 'activate-vault'
+  | 'move-vault'
+  | 'remove-vault'
+  | 'rename-vault'
   | 'reveal-entry'
+  | 'reveal-vault'
   | 'popout-open'
   | 'popout-close'
   | 'popout-close-all'

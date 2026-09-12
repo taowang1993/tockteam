@@ -81,7 +81,7 @@ import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type Runti
 import { pruneRuntimeBrowserCookies } from './runtime-browser-cookies.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { isTockTutorProtocol, parseSingleInstanceProtocolUrls, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
-import { scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
+import { applyWebClipFixtureEnvironment, scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
 import { DesktopMicrophoneChannel } from './desktop-microphone-channel.ts'
 import { DesktopPopOutChannel } from './desktop-popout-channel.ts'
 import { DesktopPrintExportChannel } from './desktop-print-export-channel.ts'
@@ -220,7 +220,7 @@ import {
   stopLiveRuntimeForMarketplace,
 } from './runtime-lifecycle.ts'
 
-const PRODUCT_NAME = 'TockTeam Desktop'
+const PRODUCT_NAME = 'TockTeam'
 const DATA_DIRECTORY = 'TockTeam-Desktop'
 const DEFAULT_UI_ZOOM_FACTOR = 1.12
 const currentDir = dirname(fileURLToPath(import.meta.url))
@@ -240,6 +240,7 @@ const launcherPackagedSmokeEnabled = app.isPackaged
   )
 if (process.platform === 'darwin' && launcherPackagedSmokeEnabled) app.commandLine.appendSwitch('use-mock-keychain')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
+const webClipFixtureUrl = !app.isPackaged ? process.env.TOCKTEAM_WEB_CLIP_FIXTURE_URL : undefined
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
 const launcherProofMode = resolveLauncherProofMode({
   argv: process.argv,
@@ -1178,6 +1179,11 @@ function runtimeEnvironment(
     PATH: runtimeSearchPath(paths),
   }
   scrubDesktopAuthorityEnvironment(environment, [MARKETPLACE_AGENT_URL_ENV, MARKETPLACE_AGENT_TOKEN_ENV])
+  applyWebClipFixtureEnvironment(environment, {
+    appIsPackaged: app.isPackaged,
+    fixtureUrl: webClipFixtureUrl,
+    preview: overrides.preview !== undefined,
+  })
   const trusted = overrides.preview === undefined ? trustedRaycastChannel.environment : undefined
   if (trusted !== undefined) {
     environment.DSH_DESKTOP_TRUSTED_RAYCAST_ENDPOINT = trusted.endpoint
@@ -3545,7 +3551,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
       appendLog('desktop', error instanceof Error ? error.stack ?? error.message : String(error))
       await showSplash({
         error: true,
-        message: 'TockTeam Desktop 启动失败。',
+        message: 'TockTeam 启动失败。',
         detail: error instanceof Error ? error.message : String(error),
       })
     }
@@ -4325,9 +4331,9 @@ void bootstrap().catch(async (error: unknown) => {
   const detail = error instanceof Error ? error.stack ?? error.message : String(error)
   try { process.stderr.write(`[desktop] ${detail}\n`) } catch { /* stderr may be unavailable during shutdown */ }
   appendLog('desktop', detail)
-  if (app.isReady()) await showSplash({ error: true, message: 'TockTeam Desktop 启动失败。', detail })
+  if (app.isReady()) await showSplash({ error: true, message: 'TockTeam 启动失败。', detail })
   else {
     await app.whenReady()
-    await showSplash({ error: true, message: 'TockTeam Desktop 启动失败。', detail })
+    await showSplash({ error: true, message: 'TockTeam 启动失败。', detail })
   }
 })

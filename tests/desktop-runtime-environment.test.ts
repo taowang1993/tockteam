@@ -5,7 +5,9 @@ import { test } from 'node:test'
 import { previewRuntimeBaseEnvironment } from '../plugins/plugin-marketplace/src/host/platform.ts'
 import {
   DESKTOP_AUTHORITY_ENVIRONMENT_KEYS,
+  applyWebClipFixtureEnvironment,
   scrubDesktopAuthorityEnvironment,
+  WEB_CLIP_FIXTURE_ENVIRONMENT_KEY,
 } from '../src/desktop-runtime-environment.ts'
 
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
@@ -54,6 +56,29 @@ test('preview and live Runtime environments never inherit native or marketplace 
   for (const key of DESKTOP_AUTHORITY_ENVIRONMENT_KEYS) assert.equal(environment[key], undefined)
   assert.equal(environment.DSH_MARKETPLACE_AGENT_URL, undefined)
   assert.equal(environment.DSH_MARKETPLACE_AGENT_TOKEN, undefined)
+})
+
+test('forwards the Web Clip fixture only to the ordinary unpackaged Desktop runtime', () => {
+  const resolve = (appIsPackaged: boolean, preview: boolean, fixtureUrl: string | undefined) => {
+    const environment: NodeJS.ProcessEnv = {
+      SAFE_VALUE: 'kept',
+      [WEB_CLIP_FIXTURE_ENVIRONMENT_KEY]: 'inherited-fixture',
+    }
+    applyWebClipFixtureEnvironment(environment, { appIsPackaged, fixtureUrl, preview })
+    return environment
+  }
+
+  assert.equal(resolve(false, false, 'http://127.0.0.1.nip.io:1234/tockteam-web-clip-fixture')[WEB_CLIP_FIXTURE_ENVIRONMENT_KEY], 'http://127.0.0.1.nip.io:1234/tockteam-web-clip-fixture')
+  assert.equal(resolve(false, true, 'http://127.0.0.1.nip.io:1234/tockteam-web-clip-fixture')[WEB_CLIP_FIXTURE_ENVIRONMENT_KEY], undefined)
+  assert.equal(resolve(true, false, 'http://127.0.0.1.nip.io:1234/tockteam-web-clip-fixture')[WEB_CLIP_FIXTURE_ENVIRONMENT_KEY], undefined)
+  assert.equal(resolve(false, false, undefined)[WEB_CLIP_FIXTURE_ENVIRONMENT_KEY], undefined)
+})
+
+test('main gates the Web Clip fixture variable out of packaged and preview runtime environments', () => {
+  assert.match(main, /const webClipFixtureUrl = !app\.isPackaged \? process\.env\.TOCKTEAM_WEB_CLIP_FIXTURE_URL : undefined/u)
+  assert.match(main, /applyWebClipFixtureEnvironment\(environment, \{[\s\S]*?appIsPackaged: app\.isPackaged[\s\S]*?preview: overrides\.preview !== undefined/u)
+  assert.match(main, /env: runtimeEnvironment\(paths\)/u)
+  assert.match(main, /runtimeEnvironment\(paths, \{[\s\S]*?preview,[\s\S]*?\}\)/u)
 })
 
 test('packaged Desktop preserves the standard user-data override for disposable profile proof', () => {

@@ -1,0 +1,179 @@
+{
+  "scope": "Source-component verification only; not a Desktop launch, packaged capture, live-provider check, or complete search-plan acceptance.",
+  "implementationCommit": "daacef01",
+  "designRead": "Keep the existing Search Notes hierarchy and theme; repair unreachable Search Options at the route composition, not global primitives or palette.",
+  "changeReason": "Radix available-height bounds plus native overflow-y-auto; modal Popover gives the portaled panel its own scroll-lock/focus owner because parent Dialog only permits wheel events inside its content DOM shard. Remove the redundant Search Options tooltip to avoid consuming a second Escape after trigger focus restoration.",
+  "componentRun": {
+    "scope": "Synthetic source-component only; not Desktop or a packaged recapture",
+    "rootPid": 73281,
+    "home": "/Users/taowang",
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "colorScheme": "dark",
+      "skin": null
+    },
+    "checks": [
+      "Filters and syntax coexist within viewport; overflow scrolls",
+      "Options wheel scrolling works; last syntax command keyboard-reachable, inserts operator, restores query focus",
+      "Outside pointer dismisses only options; trigger focus restores without hidden ancestry",
+      "Escape first closes options and restores trigger focus, then closes Search Notes"
+    ],
+    "runtimeErrors": [],
+    "cleanup": {
+      "browserTreeStopped": true,
+      "serverStopped": true,
+      "noNewSecurityAgent": true,
+      "homePreserved": true,
+      "verified": true
+    },
+    "serverPort": 59002,
+    "browserPid": 73297,
+    "bounds": {
+      "top": 204.5,
+      "bottom": 949,
+      "height": 744.5,
+      "scrollHeight": 751,
+      "clientHeight": 743,
+      "overflowY": "auto",
+      "maxHeight": "744.5px"
+    },
+    "beforeScroll": {
+      "height": 524,
+      "scrollHeight": 751,
+      "scrollTop": 0,
+      "text": "Search FiltersNarrow local results before they are limited.Title OnlyIn FolderModified FromModified ToSearch SyntaxInsert an operator at the cursor.path:match path of the filefile:match file nametag:search tagstask:search tasksblock:search a content blockcontent:search note contentignore-case:ignore letter casematch-case:match letter casetask-done:find completed taskstask-todo:find incomplete tasksline:search keywords on same linesection:search keywords under same heading[property]match property"
+    },
+    "wheelTarget": {
+      "insideOptions": true,
+      "bottom": 600,
+      "viewportHeight": 600
+    },
+    "lastCommand": {
+      "label": "[property]\nmatch property",
+      "box": {
+        "x": 931,
+        "y": 557.328125,
+        "width": 278,
+        "height": 32
+      },
+      "scrollTop": 227
+    },
+    "beforeSecondEscape": [],
+    "parentOpenerFocusRestored": false,
+    "parentFocusAfterClose": "BODY",
+    "limitation": "Parent Search Notes opener focus is not restored; separately verified on pre-change source; not an options regression.",
+    "pageScroll": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "preChangeParentFocusReproduction": {
+    "scope": "Synthetic source-component only; not Desktop or a packaged recapture",
+    "rootPid": 73240,
+    "home": "/Users/taowang",
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "colorScheme": "dark",
+      "skin": null
+    },
+    "checks": [],
+    "runtimeErrors": [],
+    "cleanup": {
+      "browserTreeStopped": true,
+      "serverStopped": true,
+      "noNewSecurityAgent": true,
+      "homePreserved": true,
+      "verified": true
+    },
+    "serverPort": 58997,
+    "browserPid": 73257,
+    "baselineCommit": "208261df16222feb7a446498d0fd59240e5a7666",
+    "parentOpenerFocusRestored": false,
+    "parentFocusAfterClose": "BODY"
+  },
+  "headlessConfiguration": {
+    "headless": true,
+    "args": [
+      "--use-mock-keychain"
+    ],
+    "homePreserved": true,
+    "surface": "Synthetic TockTutorRouteView with production Tailwind and fixture state; reading mode, Keyword search, filters and syntax open. Not DSH/Electron."
+  },
+  "temporaryScreenshot": {
+    "path": "/tmp/tocktutor-overflow-harness/green.png",
+    "sha256": "sha256:e6011603685a94a7067c06e46c1a445aeb39fe7493e05467733fc34cbed8dfb1",
+    "width": 3024,
+    "height": 1898,
+    "publishedToGallery": false
+  },
+  "commands": [
+    {
+      "command": "pnpm -C plugins/tocktutor/packages/tockteam-tocktutor-workbench exec vitest run tests/route-panel-controls.test.tsx --environment jsdom -t 'shows Obsidian search operators'",
+      "result": "RED missing viewport classes; RED parent still accessible before modal; GREEN after fix and coherent browser exports."
+    },
+    {
+      "command": "node /tmp/tocktutor-overflow-harness/check.mjs",
+      "result": "RED pointer-targeted wheel stayed at scrollTop0 with non-modal options (600px CSS height); GREEN scrollTop227 with modal; tooltip removal made nested Escape pass. All runs cleaned their own trees/server. Harness setup/import and focus-timing failures were corrected without Desktop retries."
+    },
+    {
+      "command": "BASELINE_OPENER=1 node /tmp/tocktutor-overflow-harness/build.mjs && node /tmp/tocktutor-overflow-harness/baseline-check.mjs",
+      "result": "Pre-change208261df source injected via disposable esbuild onLoad, shared cwd not reverted; parent opener-focus failure reproduced (BODY)."
+    },
+    {
+      "command": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "result": "Final212 node tests +388 component tests across8 files pass. Initial full component run timed out after JSDOM focus recursion; no owned test process remained after timeout. Minimized to repeated modal option open/Escape."
+    },
+    {
+      "command": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench typecheck",
+      "result": "pass"
+    },
+    {
+      "command": "node scripts/tocktutor-build-manifest.mjs --write; node scripts/tocktutor-build-manifest.mjs --check",
+      "result": "pass; generated Workbench outputs rebuilt normally"
+    },
+    {
+      "command": "npx -y react-doctor@latest . --verbose --diff",
+      "result": "Root scan58; warnings in unrelated sidebar source, not swept."
+    },
+    {
+      "command": "npx -y react-doctor@latest plugins/tocktutor/packages/tockteam-tocktutor-workbench --verbose --diff HEAD",
+      "result": "Before implementation commit:77/100, one existing Search palette complexity warning."
+    },
+    {
+      "command": "(cd /tmp/tocktutor-doctor-baseline && npx -y react-doctor@latest . --verbose)",
+      "result": "Same disposable package/file scope, first baseline208261df route then current route:51→51,19 issues unchanged; no score regression. Not a clean whole-project health claim."
+    },
+    {
+      "command": "node --test tests/tocktutor-gallery.test.ts",
+      "result": "RED invalid background equality; GREEN2/2 with measured false, actual cleanup guards and exact57-image inventory (51 gallery +6 documented existing supplements)."
+    },
+    {
+      "command": "PATH=\"$PWD/node_modules/.bin:$PATH\" node --test /tmp/tocktutor-peer-diagnostics.test.ts",
+      "result": "Repo pnpm11.21.0:5/5; genuine ERR_PNPM_PEER_DEP_ISSUES for Desktop0.2.0, Wanted>=0.1.6<0.2.0 in stdout, stderr empty. System pnpm12.3.4 uninstrumented fixture also5/5. No committed fixture edits."
+    },
+    {
+      "command": "PATH=\"$PWD/node_modules/.bin:$PATH\" pnpm run typecheck; pnpm test; pnpm run build (same PATH, sequential)",
+      "result": "Repo pnpm11.21.0:pass; root863 tests,856 passed,7 skipped; build passed. No Electron/installed smoke."
+    },
+    {
+      "command": "git diff --check; bd lint",
+      "result": "pass"
+    },
+    {
+      "command": "bd preflight --check",
+      "result": "Known unrelated Go-tooling check failure:go test, missing golangci-lint and gofmt;3/6 pass,1 skipped. Did not install/fix Go."
+    }
+  ],
+  "testComposition": "Removed ad-hoc Dialog source/dependency aliases; Vite/jsdom resolves public browser export conditions consistently, including SSR, with React dedupe. Both @tockteam/ui/dialog and /popover resolve normal plugins/ui/src exports and identical root @radix-ui/react-focus-scope1.1.16 path. No added aliases or primitive changes.",
+  "cleanupPostflight": "Final component root73281/browser73297 and baseline root73240/browser73257 absent after exit; owned server sockets closed, full browser groups stopped. Existing user/Launcher apps not owned, attached, launched, or signaled. PGID63703 was absent at final postflight; no claim about unrelated app lifecycle.",
+  "remaining": [
+    "Final authorized packaged recapture of daacef01-or-later layout remains pending; retained Desktop image is PRE overflow fix at208261df.",
+    "Real configured-provider semantic/Quick Answer consumer evidence remains pending; current capture truthfully shows provider unavailable.",
+    "Parent Search Notes opener focus restoration is pre-existing and still fails; options focus handling passes, not a full keyboard acceptance claim.",
+    "bd preflight Go-tooling failures remain. Task8 stays open."
+  ]
+}

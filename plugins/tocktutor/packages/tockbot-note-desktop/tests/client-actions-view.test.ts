@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@tockteam/ui/dropdown-menu'
 import {
   TockTutorNativeActions,
+  TockTutorVaultActions,
   type DesktopActionRemote,
   type DesktopCallerBridge,
 } from '../dist/client-actions.js'
@@ -26,7 +28,6 @@ test('renders keyboard-native actions with bounded availability and polite statu
   assert.match(active, /role="group"/u)
   assert.match(active, /data-slot="alert"[^>]*role="status"[^>]*aria-live="polite">Ready\.<\/div>/u)
   for (const label of [
-    'Choose Vault',
     'Reveal Entry',
     'Open Pop-Out',
     'Close Pop-Out',
@@ -46,6 +47,50 @@ test('renders keyboard-native actions with bounded availability and polite statu
     remote,
     vault: null,
   }))
-  assert.match(inactive, /<button[^>]*type="button">Choose Vault<\/button>/u)
+  assert.doesNotMatch(inactive, /Choose Vault/u)
   assert.equal([...inactive.matchAll(/<button[^>]*disabled=""/gu)].length, 9)
+})
+
+test('renders the vault folder picker as a dedicated action', () => {
+  const html = renderToStaticMarkup(createElement(TockTutorVaultActions, {
+    beginRename() {},
+    bridge,
+    close() {},
+    closeMenu() {},
+    placement: 'actions',
+    remote,
+    renderMenuItem() { return null },
+    vault,
+    vaultName: 'Research Vault',
+  }))
+  assert.match(html, /<button[^>]*aria-label="Open Folder as Vault"/u)
+  assert.match(html, />Open<\/button>/u)
+})
+
+test('renders the Obsidian-compatible native vault menu actions', () => {
+  const html = renderToStaticMarkup(createElement(
+    DropdownMenu,
+    null,
+    createElement(DropdownMenuContent, { forceMount: true, portalled: false }, createElement(TockTutorVaultActions, {
+      beginRename() {},
+      bridge,
+      close() {},
+      closeMenu() {},
+      placement: 'menu',
+      remote,
+      renderMenuItem(item) {
+        return createElement(DropdownMenuItem, {
+          disabled: item.disabled === true,
+          onSelect: item.select,
+        }, item.label)
+      },
+      vault,
+      vaultName: 'Research Vault',
+    })),
+  ))
+  assert.match(html, /Rename vault\.\.\./u)
+  assert.match(html, /Move vault\.\.\./u)
+  assert.match(html, /Reveal vault in Finder/u)
+  assert.match(html, /Remove from list/u)
+  assert.doesNotMatch(html, /Open Folder as Vault/u)
 })

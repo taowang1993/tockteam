@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { packagingEnvironment } from './desktop-pack-environment.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
@@ -11,5 +12,6 @@ mkdirSync(dirname(output), { recursive: true })
 rmSync(output, { force: true })
 execFileSync(process.execPath, [join(root, 'scripts', 'pack-desktop.mjs'), output], {
   cwd: root,
+  env: packagingEnvironment(),
   stdio: 'inherit',
 })

@@ -53,7 +53,7 @@ export function createDesktopRevealProvider(
       }
       if (signal.aborted) return cancelledReveal(input.operationId)
       if (disposed || endpoint === undefined || token === undefined) {
-        throw new Error('TockTeam Desktop reveal owner is unavailable')
+        throw new Error('TockTeam reveal owner is unavailable')
       }
       const combined = AbortSignal.any([signal, lifetime.signal])
       combined.throwIfAborted()
@@ -79,7 +79,7 @@ export function createDesktopRevealProvider(
         return result
       } catch (error) {
         if (isAbort(error) || signal.aborted) return cancelledReveal(input.operationId)
-        throw new Error(`TockTeam Desktop reveal owner failed: ${errorText(error)}`, { cause: error })
+        throw new Error(`TockTeam reveal owner failed: ${errorText(error)}`, { cause: error })
       }
     },
     dispose(): void {

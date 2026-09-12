@@ -40,7 +40,7 @@ module.exports = __toCommonJS(client_exports);
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -55,7 +55,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config) => (props) => {
@@ -214,19 +214,19 @@ function Label({ className, unstyled = false, ...props }) {
   );
 }
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var import_react2 = require("react");
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/shared/src/utils.js
 var toKebabCase = (string) => string.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 var mergeClasses = (...classes) => classes.filter((className, index, array) => {
   return Boolean(className) && className.trim() !== "" && array.indexOf(className) === index;
 }).join(" ").trim();
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/Icon.js
 var import_react = require("react");
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/defaultAttributes.js
 var defaultAttributes = {
   xmlns: "http://www.w3.org/2000/svg",
   width: 24,
@@ -239,7 +239,7 @@ var defaultAttributes = {
   strokeLinejoin: "round"
 };
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/Icon.js
 var Icon = (0, import_react.forwardRef)(
   ({
     color = "currentColor",
@@ -271,7 +271,7 @@ var Icon = (0, import_react.forwardRef)(
   }
 );
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var createLucideIcon = (iconName, iconNode) => {
   const Component = (0, import_react2.forwardRef)(
     ({ className, ...props }, ref) => (0, import_react2.createElement)(Icon, {
@@ -285,9 +285,16 @@ var createLucideIcon = (iconName, iconNode) => {
   return Component;
 };
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/chevron-down.js
 var __iconNode = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
 var ChevronDown = createLucideIcon("ChevronDown", __iconNode);
+
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/x.js
+var __iconNode2 = [
+  ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
+  ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
+];
+var X = createLucideIcon("X", __iconNode2);
 
 // ../../../ui/src/native-select.tsx
 var import_jsx_runtime6 = require("react/jsx-runtime");
@@ -321,99 +328,7 @@ function NativeSelectOption({ className, ...props }) {
 }
 
 // src/client.tsx
-var import_react5 = require("react");
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/createLucideIcon.js
-var import_react4 = require("react");
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/shared/src/utils.js
-var toKebabCase2 = (string) => string.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-var mergeClasses2 = (...classes) => classes.filter((className, index, array) => {
-  return Boolean(className) && className.trim() !== "" && array.indexOf(className) === index;
-}).join(" ").trim();
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/Icon.js
 var import_react3 = require("react");
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/defaultAttributes.js
-var defaultAttributes2 = {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: 24,
-  height: 24,
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 2,
-  strokeLinecap: "round",
-  strokeLinejoin: "round"
-};
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/Icon.js
-var Icon2 = (0, import_react3.forwardRef)(
-  ({
-    color = "currentColor",
-    size = 24,
-    strokeWidth = 2,
-    absoluteStrokeWidth,
-    className = "",
-    children,
-    iconNode,
-    ...rest
-  }, ref) => {
-    return (0, import_react3.createElement)(
-      "svg",
-      {
-        ref,
-        ...defaultAttributes2,
-        width: size,
-        height: size,
-        stroke: color,
-        strokeWidth: absoluteStrokeWidth ? Number(strokeWidth) * 24 / Number(size) : strokeWidth,
-        className: mergeClasses2("lucide", className),
-        ...rest
-      },
-      [
-        ...iconNode.map(([tag, attrs]) => (0, import_react3.createElement)(tag, attrs)),
-        ...Array.isArray(children) ? children : [children]
-      ]
-    );
-  }
-);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/createLucideIcon.js
-var createLucideIcon2 = (iconName, iconNode) => {
-  const Component = (0, import_react4.forwardRef)(
-    ({ className, ...props }, ref) => (0, import_react4.createElement)(Icon2, {
-      ref,
-      iconNode,
-      className: mergeClasses2(`lucide-${toKebabCase2(iconName)}`, className),
-      ...props
-    })
-  );
-  Component.displayName = `${iconName}`;
-  return Component;
-};
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/arrow-left.js
-var __iconNode2 = [
-  ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
-  ["path", { d: "M19 12H5", key: "x3x0zl" }]
-];
-var ArrowLeft = createLucideIcon2("ArrowLeft", __iconNode2);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/arrow-right.js
-var __iconNode3 = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
-];
-var ArrowRight = createLucideIcon2("ArrowRight", __iconNode3);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/x.js
-var __iconNode4 = [
-  ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
-  ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
-];
-var X = createLucideIcon2("X", __iconNode4);
 
 // src/viewer.ts
 var WEB_CLIP_APPLY_API_PATH = "/web-clip/api/clip/apply";
@@ -809,40 +724,40 @@ function cancelClipPreview(preview) {
 }
 function WebViewer(props = {}) {
   const bridge = window.dshDesktop?.webClip;
-  const host = (0, import_react5.useRef)(null);
-  const webview = (0, import_react5.useRef)(null);
-  const frameId = (0, import_react5.useRef)(null);
-  const request = (0, import_react5.useRef)(null);
-  const readerRequest = (0, import_react5.useRef)(null);
-  const clipRequest = (0, import_react5.useRef)(null);
-  const clipPreviewRef = (0, import_react5.useRef)(null);
-  const clipApplyingRef = (0, import_react5.useRef)(false);
-  const navigateRef = (0, import_react5.useRef)(() => {
+  const host = (0, import_react3.useRef)(null);
+  const webview = (0, import_react3.useRef)(null);
+  const frameId = (0, import_react3.useRef)(null);
+  const request = (0, import_react3.useRef)(null);
+  const readerRequest = (0, import_react3.useRef)(null);
+  const clipRequest = (0, import_react3.useRef)(null);
+  const clipPreviewRef = (0, import_react3.useRef)(null);
+  const clipApplyingRef = (0, import_react3.useRef)(false);
+  const navigateRef = (0, import_react3.useRef)(() => {
   });
-  const [viewer, setViewer] = (0, import_react5.useState)(storedViewerState);
-  const viewerRef = (0, import_react5.useRef)(viewer);
-  const activeId = (0, import_react5.useRef)(viewer.activeId);
-  const [readerGuard] = (0, import_react5.useState)(() => new ViewerResultGuard(crypto.randomUUID()));
-  const [draft, setDraft] = (0, import_react5.useState)(() => viewer.tabs.find((tab2) => tab2.id === viewer.activeId)?.url ?? "");
-  const [error, setError] = (0, import_react5.useState)("");
-  const [loading, setLoading] = (0, import_react5.useState)(false);
-  const [reader, setReader] = (0, import_react5.useState)(null);
-  const [readerLoading, setReaderLoading] = (0, import_react5.useState)(false);
-  const [clipDestination, setClipDestination] = (0, import_react5.useState)(() => props.webClipFolder ?? "Clips");
-  const [clipPreview, setClipPreview] = (0, import_react5.useState)(null);
-  const [clipLoading, setClipLoading] = (0, import_react5.useState)(false);
-  const [clipApplying, setClipApplying] = (0, import_react5.useState)(false);
-  const [clipSavedPath, setClipSavedPath] = (0, import_react5.useState)("");
+  const [viewer, setViewer] = (0, import_react3.useState)(storedViewerState);
+  const viewerRef = (0, import_react3.useRef)(viewer);
+  const activeId = (0, import_react3.useRef)(viewer.activeId);
+  const [readerGuard] = (0, import_react3.useState)(() => new ViewerResultGuard(crypto.randomUUID()));
+  const [draft, setDraft] = (0, import_react3.useState)(() => viewer.tabs.find((tab2) => tab2.id === viewer.activeId)?.url ?? "");
+  const [error, setError] = (0, import_react3.useState)("");
+  const [loading, setLoading] = (0, import_react3.useState)(false);
+  const [reader, setReader] = (0, import_react3.useState)(null);
+  const [readerLoading, setReaderLoading] = (0, import_react3.useState)(false);
+  const [clipDestination, setClipDestination] = (0, import_react3.useState)(() => props.webClipFolder ?? "Clips");
+  const [clipPreview, setClipPreview] = (0, import_react3.useState)(null);
+  const [clipLoading, setClipLoading] = (0, import_react3.useState)(false);
+  const [clipApplying, setClipApplying] = (0, import_react3.useState)(false);
+  const [clipSavedPath, setClipSavedPath] = (0, import_react3.useState)("");
   const active = viewer.tabs.find((tab2) => tab2.id === viewer.activeId);
-  const applyViewer = (0, import_react5.useCallback)((next) => {
+  const applyViewer = (0, import_react3.useCallback)((next) => {
     viewerRef.current = next;
     activeId.current = next.activeId;
     setViewer(next);
   }, []);
-  const navigate = (0, import_react5.useCallback)((raw, tabId = activeId.current) => {
+  const navigate = (0, import_react3.useCallback)((raw, tabId = activeId.current) => {
     if (clipApplyingRef.current) return;
     if (!bridge) {
-      setError("Web Viewer is available only in TockTeam Desktop.");
+      setError("Web Viewer is available only in the TockTeam desktop app.");
       return;
     }
     let url;
@@ -889,13 +804,13 @@ function WebViewer(props = {}) {
       }
     });
   }, [applyViewer, bridge, readerGuard]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react3.useEffect)(() => {
     navigateRef.current = navigate;
   }, [navigate]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react3.useEffect)(() => {
     if (props.externalUrl) navigate(props.externalUrl);
   }, [navigate, props.externalUrl]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react3.useEffect)(() => {
     const container = host.current;
     if (!container || !bridge) return;
     const element = document.createElement("webview");
@@ -931,7 +846,7 @@ function WebViewer(props = {}) {
       element.remove();
     };
   }, [bridge, readerGuard]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react3.useEffect)(() => {
     try {
       window.localStorage.setItem(VIEWER_STORAGE_KEY, serializeViewerState(viewer));
     } catch {
@@ -1066,7 +981,7 @@ function WebViewer(props = {}) {
       }
     });
   };
-  (0, import_react5.useEffect)(() => {
+  (0, import_react3.useEffect)(() => {
     if (clipPreviewRef.current === null) setClipDestination(props.webClipFolder ?? "Clips");
   }, [props.webClipFolder]);
   const setReaderPreference = (key, value) => {
@@ -1076,12 +991,12 @@ function WebViewer(props = {}) {
       readerPreferences: { ...current.readerPreferences, [key]: value }
     });
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { "aria-label": "Web Viewer", className: "flex min-h-0 flex-1 flex-col", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Viewer Tabs", className: "flex gap-1 overflow-x-auto", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { "aria-label": "Web Viewer", className: "flex min-h-0 flex-1 flex-col gap-2 text-xs", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Viewer Tabs", className: "flex min-h-8 items-end gap-0.5 overflow-x-auto border-b border-[var(--tt-border)]", children: [
       viewer.tabs.map((tab2, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
         "span",
         {
-          className: "inline-flex",
+          className: "group inline-flex min-w-0 items-center rounded-t-md border border-b-0 border-transparent has-[button[aria-pressed=true]]:border-[var(--tt-border)] has-[button[aria-pressed=true]]:bg-[var(--tt-bg)]",
           draggable: !clipApplying,
           onDragOver: (event) => {
             if (!clipApplying) event.preventDefault();
@@ -1105,6 +1020,7 @@ function WebViewer(props = {}) {
                 onClick: () => {
                   activate(tab2);
                 },
+                className: "min-w-0 max-w-28 truncate border-0 bg-transparent px-2 py-1.5 text-left",
                 onKeyDown: (event) => {
                   if (!event.altKey || event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
                   event.preventDefault();
@@ -1120,38 +1036,13 @@ function WebViewer(props = {}) {
               {
                 unstyled: true,
                 "aria-label": `Close ${tab2.title}`,
+                className: "grid size-6 shrink-0 place-items-center rounded border-0 bg-transparent text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]",
                 disabled: clipApplying,
                 onClick: () => {
                   close(tab2.id);
                 },
                 type: "button",
                 children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(X, { "aria-hidden": "true", size: 16 })
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-              Button,
-              {
-                unstyled: true,
-                "aria-label": `Move ${tab2.title} Left`,
-                disabled: index === 0,
-                onClick: () => {
-                  applyViewer(moveViewerTab(viewerRef.current, tab2.id, index - 1));
-                },
-                type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowLeft, { "aria-hidden": "true", size: 16 })
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-              Button,
-              {
-                unstyled: true,
-                "aria-label": `Move ${tab2.title} Right`,
-                disabled: index === viewer.tabs.length - 1,
-                onClick: () => {
-                  applyViewer(moveViewerTab(viewerRef.current, tab2.id, index + 1));
-                },
-                type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowRight, { "aria-hidden": "true", size: 16 })
               }
             )
           ]
@@ -1162,6 +1053,7 @@ function WebViewer(props = {}) {
         Button,
         {
           unstyled: true,
+          className: "shrink-0 rounded px-2 py-1.5 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]",
           disabled: clipApplying,
           onClick: () => {
             if (clipApplyingRef.current) return;
@@ -1183,13 +1075,14 @@ function WebViewer(props = {}) {
           event.preventDefault();
           navigate(draft);
         },
-        className: "flex gap-1",
+        className: "grid grid-cols-[minmax(0,1fr)_auto] gap-1",
         children: [
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
             Input,
             {
               unstyled: true,
               "aria-label": "URL",
+              className: "min-w-0 rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 outline-none focus-visible:border-[var(--tt-accent)]",
               disabled: clipApplying,
               onChange: (event) => {
                 setDraft(event.currentTarget.value);
@@ -1198,11 +1091,12 @@ function WebViewer(props = {}) {
               value: draft
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, disabled: loading || clipApplying, type: "submit", children: loading ? "Loading\u2026" : "Go" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, className: "rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]", disabled: loading || clipApplying, type: "submit", children: loading ? "Loading\u2026" : "Go" }),
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
             Button,
             {
               unstyled: true,
+              className: "rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]",
               disabled: !active?.url,
               onClick: () => {
                 applyViewer(addViewerBookmark(viewerRef.current));
@@ -1216,6 +1110,7 @@ function WebViewer(props = {}) {
             Button,
             {
               unstyled: true,
+              className: "rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]",
               disabled: !active?.url || readerLoading || clipApplying,
               onClick: () => {
                 reader ? invalidateReader() : loadReader();
@@ -1227,10 +1122,10 @@ function WebViewer(props = {}) {
         ]
       }
     ),
-    viewer.bookmarks.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("details", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("summary", { children: "Bookmarks" }),
-      viewer.bookmarks.map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, disabled: clipApplying, onClick: () => {
+    viewer.bookmarks.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("details", { className: "rounded-md border border-[var(--tt-border)] p-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("summary", { className: "cursor-pointer font-medium", children: "Bookmarks" }),
+      viewer.bookmarks.map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "mt-1 flex items-center", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, className: "min-w-0 flex-1 truncate rounded px-2 py-1 text-left hover:bg-[var(--tt-selected)]", disabled: clipApplying, onClick: () => {
           navigate(bookmark.url);
         }, type: "button", children: bookmark.title }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
@@ -1238,6 +1133,7 @@ function WebViewer(props = {}) {
           {
             unstyled: true,
             "aria-label": `Remove ${bookmark.title}`,
+            className: "grid size-6 place-items-center rounded border-0 bg-transparent text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]",
             onClick: () => {
               applyViewer(removeViewerBookmark(viewerRef.current, bookmark.id));
             },
@@ -1247,7 +1143,7 @@ function WebViewer(props = {}) {
         )
       ] }, bookmark.id))
     ] }),
-    error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Alert, { unstyled: true, children: error }),
+    error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Alert, { unstyled: true, className: "rounded-md bg-[color-mix(in_srgb,var(--dsw-alias-state-error-primary)_10%,transparent)] p-2 text-[var(--dsw-alias-state-error-primary)]", role: "alert", children: error }),
     reader && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
       "article",
       {
@@ -1261,7 +1157,7 @@ function WebViewer(props = {}) {
           maxWidth: viewer.readerPreferences.width === "narrow" ? 640 : viewer.readerPreferences.width === "wide" ? 1e3 : 800
         },
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Reader Settings", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Reader Settings", className: "grid grid-cols-2 gap-2 border-b border-[var(--tt-border)] pb-3 [&_label]:grid [&_label]:gap-1 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-transparent [&_select]:p-1.5", children: [
             /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Label, { unstyled: true, children: [
               "Text Size ",
               /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
@@ -1434,13 +1330,6 @@ lucide-react/dist/esm/defaultAttributes.js:
 lucide-react/dist/esm/Icon.js:
 lucide-react/dist/esm/createLucideIcon.js:
 lucide-react/dist/esm/icons/chevron-down.js:
-lucide-react/dist/esm/lucide-react.js:
-lucide-react/dist/esm/shared/src/utils.js:
-lucide-react/dist/esm/defaultAttributes.js:
-lucide-react/dist/esm/Icon.js:
-lucide-react/dist/esm/createLucideIcon.js:
-lucide-react/dist/esm/icons/arrow-left.js:
-lucide-react/dist/esm/icons/arrow-right.js:
 lucide-react/dist/esm/icons/x.js:
 lucide-react/dist/esm/lucide-react.js:
   (**

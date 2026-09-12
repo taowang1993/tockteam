@@ -65,6 +65,7 @@ export interface EmbedResolverOptions {
   readDocument(path: string, signal: AbortSignal): Promise<EmbedDocumentResult>
   signal?: AbortSignal
   source: string
+  sourcePath?: string
 }
 
 function kind(path: string): EmbedKind | null {
@@ -89,7 +90,26 @@ function escapedAt(line: string, index: number): boolean {
   return slashes % 2 === 1
 }
 
-export function collectEmbedTargets(source: string): EmbedTarget[] {
+function resolveRelativeEmbedPath(sourcePath: string | undefined, targetPath: string): string | null {
+  const normalized = targetPath.replaceAll('\\', '/')
+  if (!normalized.startsWith('./') && !normalized.startsWith('../')) return normalized
+  if (sourcePath === undefined || !isSafeVaultRelativePath(sourcePath)) return null
+  const parts = sourcePath.split('/').slice(0, -1)
+  for (const segment of normalized.split('/')) {
+    if (segment === '.') continue
+    if (segment === '..') {
+      if (parts.length === 0) return null
+      parts.pop()
+      continue
+    }
+    if (segment === '' || /[\u0000-\u001f\u007f]/u.test(segment)) return null
+    parts.push(segment)
+  }
+  const resolved = parts.join('/')
+  return isSafeVaultRelativePath(resolved) ? resolved : null
+}
+
+export function collectEmbedTargets(source: string, sourcePath?: string): EmbedTarget[] {
   if (new TextEncoder().encode(source).byteLength > MAX_EMBED_CONTENT_BYTES) throw new Error('Embed source exceeds the content limit.')
   const targets: EmbedTarget[] = []
   const lines = source.split(/\r?\n/u)
@@ -111,8 +131,11 @@ export function collectEmbedTargets(source: string): EmbedTarget[] {
       const path = (hash < 0 ? targetPart : targetPart.slice(0, hash)).trim()
       const fragment = hash < 0 ? null : targetPart.slice(hash + 1).trim() || null
       const targetKind = kind(path)
-      const normalizedPath = targetKind === 'note' && !/\.(?:markdown|md)$/iu.test(path) ? `${path}.md` : path
-      if (targetKind === null || !isSafeVaultRelativePath(normalizedPath)) continue
+      const resolvedPath = resolveRelativeEmbedPath(sourcePath, path)
+      const normalizedPath = targetKind === 'note' && resolvedPath !== null && !/\.(?:markdown|md)$/iu.test(resolvedPath)
+        ? `${resolvedPath}.md`
+        : resolvedPath
+      if (targetKind === null || normalizedPath === null || !isSafeVaultRelativePath(normalizedPath)) continue
       targets.push({
         display: displayPart?.trim() || null,
         fragment,
@@ -147,15 +170,16 @@ function entryIdentifiers(entry: EmbedIndexEntry): Set<string> {
 export function resolveEmbedTargetPath(entries: readonly EmbedIndexEntry[], targetPath: string): string | null {
   const wanted = normalizeIdentifier(targetPath)
   if (!wanted) return null
-  const exact = entries.find(entry => normalizeIdentifier(entry.path) === wanted)
+  const safeEntries = entries.filter(entry => isSafeVaultRelativePath(entry.path))
+  const exact = safeEntries.find(entry => normalizeIdentifier(entry.path) === wanted)
   if (exact !== undefined) return exact.path
   const extensionless = normalizeIdentifier(withoutExtension(targetPath))
-  const exactStem = entries.filter(entry => normalizeIdentifier(withoutExtension(entry.path)) === extensionless)
+  const exactStem = safeEntries.filter(entry => normalizeIdentifier(withoutExtension(entry.path)) === extensionless)
   if (exactStem.length === 1) return exactStem[0]!.path
   const basename = wanted.split('/').at(-1)
   if (basename === undefined) return null
   const basenameStem = normalizeIdentifier(withoutExtension(basename))
-  const matches = entries.filter(entry => {
+  const matches = safeEntries.filter(entry => {
     const identifiers = entryIdentifiers(entry)
     const entryBasename = normalizeIdentifier(entry.path.split('/').at(-1) ?? entry.path)
     const entryBasenameStem = normalizeIdentifier(withoutExtension(entryBasename))
@@ -287,13 +311,20 @@ function withoutFrontmatter(source: string): string {
   return end < 0 ? source : lines.slice(end + 1).join('\n')
 }
 
-function allowedMime(mimeType: string, target: EmbedTarget): boolean {
+function allowedMime(mimeType: string, target: EmbedTarget): string | null {
   const mime = mimeType.toLocaleLowerCase().split(';', 1)[0]!.trim()
-  if (target.kind !== 'media') return false
+  if (target.kind !== 'media') return null
   return /^image\/(?:avif|bmp|gif|jpeg|png|svg\+xml|webp)$/u.test(mime)
     || /^audio\/(?:3gpp|flac|mp4|mpeg|ogg|wav|webm)$/u.test(mime)
     || /^video\/(?:3gpp|mp4|mpeg|ogg|quicktime|webm)$/u.test(mime)
     || mime === 'application/pdf'
+    ? mime
+    : null
+}
+
+function validBase64(value: unknown): value is string {
+  return typeof value === 'string'
+    && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value)
 }
 
 function freezeTarget(target: EmbedTarget): EmbedTarget {
@@ -368,8 +399,13 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
           warn(`Embed path mismatch: ${path}`)
           return
         }
-        if (!allowedMime(value.mimeType, target)) {
+        const mimeType = allowedMime(value.mimeType, target)
+        if (mimeType === null) {
           warn(`Unsupported media type: ${path}`)
+          return
+        }
+        if (!validBase64(value.dataBase64)) {
+          warn(`Invalid media encoding: ${path}`)
           return
         }
         const encodedBytes = new TextEncoder().encode(value.dataBase64).byteLength
@@ -382,7 +418,7 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
         embeds.push({
           content: value.dataBase64,
           depth,
-          mimeType: value.mimeType,
+          mimeType,
           ...(parentPath === undefined ? {} : { parentPath }),
           target: freezeTarget({ ...target, path }),
         })
@@ -417,10 +453,10 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
         target: freezeTarget({ ...target, path }),
       })
       if (depth >= maxDepth) {
-        if (collectEmbedTargets(content).length > 0) warn(`Embed depth limit reached: ${path}`)
+        if (collectEmbedTargets(content, path).length > 0) warn(`Embed depth limit reached: ${path}`)
         return
       }
-      for (const child of collectEmbedTargets(content)) await visit(child, depth + 1, [...stack, path], path)
+      for (const child of collectEmbedTargets(content, path)) await visit(child, depth + 1, [...stack, path], path)
     } catch (error) {
       if (error instanceof StaleEmbedError) throw error
       if (signal.aborted) throw error
@@ -428,7 +464,7 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
     }
   }
   try {
-    for (const target of collectEmbedTargets(options.source)) await visit(target, 0, [])
+    for (const target of collectEmbedTargets(options.source, options.sourcePath)) await visit(target, 0, [])
     check()
     return { embeds: Object.freeze(embeds.map(embed => Object.freeze(embed))), status: 'ready', truncated, warnings: Object.freeze([...warnings]) }
   } catch (error) {

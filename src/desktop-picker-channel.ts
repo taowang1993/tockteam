@@ -253,6 +253,9 @@ export class DesktopPickerChannel {
     } else if (method === 'bindVaultSelection' && result.status === 'bound' && typeof request.claim === 'string'
       && typeof request.operationId === 'string') {
       await this.owner.releaseVaultSelection({ claim: request.claim as never, operationId: request.operationId })
+    } else if (method === 'adoptVaultSelection' && result.status === 'bound' && typeof result.claim === 'string'
+      && typeof result.operationId === 'string') {
+      await this.owner.releaseVaultSelection({ claim: result.claim as never, operationId: result.operationId })
     }
   }
 

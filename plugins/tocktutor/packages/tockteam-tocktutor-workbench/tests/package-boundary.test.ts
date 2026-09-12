@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
@@ -18,6 +20,13 @@ const packageJson = JSON.parse(await readFile(new URL('../package.json', import.
   peerDependencies?: Record<string, string>
   devDependencies?: Record<string, string>
 }
+const desktopPackageJson = JSON.parse(await readFile(new URL('../../../../../package.json', import.meta.url), 'utf8')) as {
+  version?: string
+}
+const desktopArchive = fileURLToPath(new URL(
+  `../../../../../.cache/tocktutor-tests/tockteam-desktop-${desktopPackageJson.version}.tgz`,
+  import.meta.url,
+))
 
 test('publishes one independently installable Host and browser-client bundle', async () => {
   assert.equal(packageJson.version, '0.1.7')
@@ -40,6 +49,18 @@ test('publishes one independently installable Host and browser-client bundle', a
     "      name: '@tockteam/tocktutor-workbench'",
     '',
   ].join('\n'))
+})
+
+test('generated Desktop test archive contains no macOS AppleDouble entries', async t => {
+  if (!existsSync(desktopArchive)) {
+    t.skip('TockTutor pretest did not generate the retained Desktop archive')
+    return
+  }
+  const { stdout } = await execFileAsync('tar', ['-tzf', desktopArchive])
+  const appleDoubleEntries = stdout
+    .split(/\r?\n/u)
+    .filter(entry => entry.split('/').some(part => part.startsWith('._')))
+  assert.deepEqual(appleDoubleEntries, [])
 })
 
 test('binds the shared Desktop and runtime workspace identities without local artifact paths', async () => {
@@ -84,22 +105,30 @@ async function installPeerFixture(desktopVersion: string): Promise<boolean> {
         name: 'tocktutor-peer-consumer',
         private: true,
         dependencies: {
-          '@tockteam/desktop': `file:${desktopRoot}`,
-          '@tockteam/tocktutor-workbench': `file:${workbenchRoot}`,
+          '@tockteam/desktop': 'workspace:*',
+          '@tockteam/tocktutor-workbench': 'file:../tockteam-tocktutor-workbench-0.1.7.tgz',
         },
       }) + '\n'),
-      writeFile(join(consumerRoot, 'pnpm-workspace.yaml'), [
+      writeFile(join(root, 'pnpm-workspace.yaml'), [
         'packages:',
-        '  - .',
-        '',
-        'autoInstallPeers: false',
+        '  - desktop',
+        '  - consumer',
         '',
       ].join('\n')),
     ])
     try {
+      await Promise.all([
+        execFileAsync('pnpm', ['pack', '--pack-destination', root], {
+          cwd: desktopRoot,
+          env: process.env,
+        }),
+        execFileAsync('pnpm', ['pack', '--pack-destination', root], {
+          cwd: workbenchRoot,
+          env: process.env,
+        }),
+      ])
       await execFileAsync('pnpm', [
         'install',
-        '--lockfile-only',
         '--prefer-offline',
         '--ignore-scripts',
         '--strict-peer-dependencies',

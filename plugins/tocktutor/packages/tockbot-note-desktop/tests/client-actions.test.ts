@@ -3,7 +3,12 @@ import test from 'node:test'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { TockTutorNativeActionsOwnerProps } from '@tockteam/tocktutor-workbench/client'
 import {
+  moveVault,
+  openFolderAsVault,
+  removeVault,
+  renameVault,
   replaceActionController,
+  revealVault,
   requestMicrophoneAccess,
   startAudioRecording,
   runDesktopDispatchLoop,
@@ -12,6 +17,104 @@ import {
 } from '../dist/client-actions.js'
 
 const vault = Object.freeze({ generation: 7, id: `vault:${'a'.repeat(64)}` })
+
+test('opens a folder as a vault through the caller-bound Desktop picker', async () => {
+  const calls: unknown[] = []
+  const result = await openFolderAsVault({
+    beginRename() {},
+    close() {},
+    closeMenu() {},
+    placement: 'actions',
+    renderMenuItem() { return null },
+    async saveCurrent() { calls.push('save'); return true },
+    vault,
+    vaultName: 'Research Vault',
+  }, {
+    async authorize(operation) { calls.push(operation); return { authorization: 'folder-authorization' } },
+  } as DesktopCallerBridge, {
+    tocktutorDesktop: {
+      async activateVault(authorization) {
+        calls.push(authorization)
+        return { ok: true, value: { status: 'activated' } }
+      },
+    },
+  } as DesktopActionRemote)
+  assert.deepEqual(calls, ['save', 'activate-vault', 'folder-authorization'])
+  assert.deepEqual(result, { status: 'activated' })
+})
+
+test('runs vault management through caller-bound Desktop authority', async () => {
+  const calls: unknown[] = []
+  let closed = false
+  const owner = {
+    beginRename() {},
+    close() { closed = true },
+    closeMenu() {},
+    placement: 'menu' as const,
+    renderMenuItem() { return null },
+    async saveCurrent() { calls.push('save'); return true },
+    vault,
+    vaultName: 'Research Vault',
+  }
+  const bridge = {
+    async authorize(operation: string) {
+      calls.push(operation)
+      return { authorization: `${operation}-authorization` }
+    },
+  } as unknown as DesktopCallerBridge
+  const remote = {
+    tocktutorDesktop: {
+      async moveVault(authorization: string) { calls.push(authorization); return { ok: true, value: { status: 'moved' } } },
+      async removeVault(authorization: string) { calls.push(authorization); return { ok: true, value: { status: 'closed' } } },
+      async renameVault(authorization: string, name: string) { calls.push([authorization, name]); return { ok: true, value: { status: 'renamed' } } },
+      async revealVault(authorization: string) { calls.push(authorization); return { ok: true, value: { status: 'revealed' } } },
+    },
+  } as unknown as DesktopActionRemote
+
+  assert.deepEqual(await revealVault(owner, bridge, remote), { status: 'revealed' })
+  assert.deepEqual(await renameVault(owner, 'Renamed Vault', bridge, remote), { status: 'renamed' })
+  assert.deepEqual(await moveVault(owner, bridge, remote), { status: 'moved' })
+  assert.deepEqual(await removeVault(owner, bridge, remote), { status: 'closed' })
+  assert.deepEqual(calls, [
+    'reveal-vault',
+    'reveal-vault-authorization',
+    'save',
+    'rename-vault',
+    ['rename-vault-authorization', 'Renamed Vault'],
+    'save',
+    'move-vault',
+    'move-vault-authorization',
+    'save',
+    'remove-vault',
+    'remove-vault-authorization',
+  ])
+  assert.equal(closed, true)
+})
+
+test('vault mutations stop before Desktop authority when the current note cannot be saved', async () => {
+  const calls: string[] = []
+  const owner = {
+    beginRename() {},
+    close() {},
+    closeMenu() {},
+    placement: 'menu' as const,
+    renderMenuItem() { return null },
+    async saveCurrent() { return false },
+    vault,
+    vaultName: 'Research Vault',
+  }
+  const bridge = {
+    async authorize(operation: string) {
+      calls.push(operation)
+      return { authorization: `${operation}-authorization` }
+    },
+  } as unknown as DesktopCallerBridge
+  const remote = { tocktutorDesktop: {} } as DesktopActionRemote
+  assert.equal(await renameVault(owner, 'Renamed', bridge, remote), undefined)
+  assert.equal(await moveVault(owner, bridge, remote), undefined)
+  assert.equal(await removeVault(owner, bridge, remote), undefined)
+  assert.deepEqual(calls, [])
+})
 
 test('replaces an aborted action controller for a new dependency generation', () => {
   const first = replaceActionController()

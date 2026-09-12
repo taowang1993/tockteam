@@ -8,7 +8,6 @@ import { Plugin } from '@milkdown/prose/state'
 import type { EditorView } from '@milkdown/prose/view'
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react'
 import { $prose, getMarkdown, replaceAll } from '@milkdown/utils'
-import { Button } from '@tockteam/ui/button'
 import {
   useEffect,
   useMemo,
@@ -16,7 +15,6 @@ import {
   type ReactNode,
 } from 'react'
 import { projectEditorWidgets } from './editor-widgets.ts'
-import { runLivePreviewTableAction, type LivePreviewTableAction } from './milkdown-editor-commands.ts'
 import { isLivePreviewSourceProtected, splitLivePreviewSource, type LivePreviewEditorProps, type LivePreviewSelection } from './live-preview-editor.tsx'
 import { buildLivePreviewEmbedPlugin, livePreviewEmbedPluginKey } from './live-preview-embed-widgets.ts'
 import { buildLivePreviewChromePlugin } from './live-preview-chrome.ts'
@@ -240,24 +238,8 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
     }
   }, [editor, loading, props.content])
 
-  const tableDocument = /^(?:\s*\|.*\|\s*)$/mu.test(props.content)
-  const tableAction = (action: LivePreviewTableAction): void => {
-    const view = onEditorViewRef?.current
-    if (view && runLivePreviewTableAction(view, action)) props.onTableAction?.(action)
-  }
-  const shellClass = useMemo(() => `tocktutor-live-preview-editor relative min-h-0 min-w-0 flex-1 overflow-auto ${props.className ?? ''}`, [props.className])
-  return (
-    <div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={shellClass}>
-      {tableDocument && (
-        <div aria-label="Live Preview Table Commands" className="sticky top-0 z-1 flex flex-wrap gap-1 border-b border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 text-xs">
-          {([['add-row-before', 'Add Row Above'], ['add-row-after', 'Add Row Below'], ['move-row-up', 'Move Row Up'], ['move-row-down', 'Move Row Down'], ['delete-row', 'Delete Row'], ['add-column-before', 'Add Column Left'], ['add-column-after', 'Add Column Right'], ['move-column-left', 'Move Column Left'], ['move-column-right', 'Move Column Right'], ['delete-column', 'Delete Column'], ['align-default', 'Default Alignment'], ['align-left', 'Align Left'], ['align-center', 'Align Center'], ['align-right', 'Align Right'], ['sort-ascending', 'Sort Ascending'], ['sort-descending', 'Sort Descending']] as const).map(([action, label]) => (
-            <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-1.5 py-0.5 text-inherit" key={action} onClick={() => { tableAction(action) }} type="button">{label}</Button>
-          ))}
-        </div>
-      )}
-      <Milkdown />
-    </div>
-  )
+  const shellClass = useMemo(() => `tocktutor-live-preview-editor relative min-h-0 min-w-0 flex-1 overflow-auto text-base leading-6 [&_blockquote]:mx-0 [&_blockquote]:my-4 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--dsw-specific-markdown-accent)] [&_blockquote]:pl-3 [&_blockquote_p]:m-0 [&_a]:text-[var(--dsw-specific-markdown-accent)] [&_.tocktutor-live-internal-link]:text-[var(--dsw-specific-markdown-accent)] [&_.tocktutor-live-highlight]:bg-[var(--dsw-specific-markdown-highlight)] [&_h1]:text-[30px] [&_h1]:leading-tight [&_h2]:text-2xl [&_h2]:leading-8 [&_h3]:text-xl [&_h3]:leading-7 [&_ol]:my-2 [&_ol]:pl-[30px] [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-[30px] [&_li>p]:m-0 [&_li>ul]:!my-0 [&_li>ul]:!pl-4 [&_li>ol]:!my-0 [&_li>ol]:!pl-4 [&_li:has(>.tocktutor-live-fold)]:relative [&_.tocktutor-live-fold]:absolute [&_.tocktutor-live-fold]:top-0 [&_.tocktutor-live-fold]:-left-5 [&_.tocktutor-live-fold]:opacity-0 [&_li:hover>.tocktutor-live-fold]:opacity-100 [&_li:focus-within>.tocktutor-live-fold]:opacity-100 [&_ul:has(li[data-item-type=task])]:m-0 [&_ul:has(li[data-item-type=task])]:list-none [&_ul:has(li[data-item-type=task])]:pl-1 [&_li[data-item-type=task]]:min-h-6 [&_li[data-item-type=task]]:leading-6 [&_li[data-item-type=task]>p]:inline [&_li[data-checked=true]>p]:text-[var(--tt-muted)] [&_li[data-checked=true]>p]:line-through [&_code]:rounded-sm [&_code]:bg-[var(--dsw-specific-markdown-inline-code)] [&_code]:px-1 [&_code]:py-0.5 [&_pre_code]:rounded-none [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_table]:my-4 [&_table]:border-collapse [&_table_p]:m-0 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_.selectedCell]:bg-[var(--tt-selected)] ${props.className ?? ''}`, [props.className])
+  return <div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={shellClass}><Milkdown /></div>
 }
 
 const plainTextPasteViews = new WeakSet<EditorView>()

@@ -316,7 +316,7 @@ async function resolvePublicAddress(
   return addresses[0]?.address ?? fail('address', 'Only public HTTP(S) addresses are allowed.')
 }
 
-function responseHeaderBytes(headers: Headers): number {
+export function responseHeaderBytes(headers: Headers): number {
   let bytes = 2
   for (const [name, value] of headers) bytes += utf8.encode(`${name}: ${value}\r\n`).byteLength
   return bytes
@@ -334,7 +334,7 @@ function contentType(response: Response): PublicTextResult['contentType'] {
   return value as PublicTextResult['contentType']
 }
 
-async function readText(response: Response, limits: PublicFetchLimits, signal: AbortSignal): Promise<string> {
+export async function readBoundedText(response: Response, limits: PublicFetchLimits, signal: AbortSignal): Promise<string> {
   const declaredLength = response.headers.get('content-length')
   if (declaredLength !== null) {
     if (!/^\d+$/u.test(declaredLength) || Number(declaredLength) > limits.maxResponseBytes) {
@@ -440,7 +440,7 @@ export async function fetchPublicText(value: string, options: FetchPublicTextOpt
         await discard(response)
         throw error
       }
-      const text = await readText(response, limits, controller.signal)
+      const text = await readBoundedText(response, limits, controller.signal)
       return { contentType: type, text, url: currentUrl }
     }
   } catch (error) {

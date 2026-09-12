@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
-import type { IncomingMessage, ServerResponse } from 'node:http'
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { Context, Service } from '@deepseek-ai/cordis'
 import type {
   CreateDocumentRequest,
@@ -12,6 +12,7 @@ import WebClipHost, {
   ClipReviewError,
   ClipRuntimeError,
   defaultPublicFetchLimits,
+  WebFetchError,
   defaultReaderViewLimits,
   type ClipApproval,
   type ClipPreview,
@@ -172,6 +173,125 @@ test('rolls back partial route registration and removes successful routes on unl
   await fiber.dispose()
   assert.equal(server.routes.size, 0)
   await context.fiber.dispose()
+})
+
+async function withLoopbackFixture(
+  handler: (request: IncomingMessage, response: ServerResponse) => void,
+  run: (host: WebClipHost, fixtureUrl: string, baseUrl: string) => Promise<void>,
+  hostConfig: Config = config,
+): Promise<void> {
+  const server = createServer(handler)
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const address = server.address()
+  if (typeof address !== 'object' || address === null) throw new Error('fixture server did not bind')
+  const baseUrl = `http://127.0.0.1.nip.io:${String(address.port)}`
+  const fixtureUrl = `${baseUrl}/tockteam-web-clip-fixture`
+  const previousFixtureUrl = process.env.TOCKTEAM_WEB_CLIP_FIXTURE_URL
+  process.env.TOCKTEAM_WEB_CLIP_FIXTURE_URL = fixtureUrl
+  const context = new Context()
+  await context.plugin(WebClipHost, hostConfig)
+  try {
+    await run(context.webClip, fixtureUrl, baseUrl)
+  } finally {
+    await context.fiber.dispose()
+    if (previousFixtureUrl === undefined) delete process.env.TOCKTEAM_WEB_CLIP_FIXTURE_URL
+    else process.env.TOCKTEAM_WEB_CLIP_FIXTURE_URL = previousFixtureUrl
+    await new Promise<void>((resolve, reject) => { server.close(error => error ? reject(error) : resolve()) })
+  }
+}
+
+test('loads an explicit development loopback fixture without weakening production URL validation', async () => {
+  let requests = 0
+  await withLoopbackFixture((_request, response) => {
+    requests += 1
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    response.end('<title>Loopback Fixture</title><h1>Fixture Article</h1><p>Loaded from the local test server.</p>')
+  }, async (host, fixtureUrl, baseUrl) => {
+    const page = await host.viewerPage(fixtureUrl)
+    assert.equal(page.title, 'Loopback Fixture')
+    assert.match(page.html, /Fixture Article/u)
+    await assert.rejects(
+      host.viewerPage(`${baseUrl}/not-the-fixture`),
+      error => error instanceof WebFetchError && error.code === 'address',
+    )
+    assert.equal(requests, 1)
+  })
+})
+
+test('fails closed for loopback fixture redirects, statuses, content types, and bounded bodies', async () => {
+  let requests = 0
+  await withLoopbackFixture((_request, response) => {
+    requests += 1
+    if (requests === 1) {
+      response.writeHead(302, { location: '/tockteam-web-clip-fixture' })
+      response.end()
+      return
+    }
+    if (requests === 2) {
+      response.writeHead(503, { 'content-type': 'text/html' })
+      response.end('unavailable')
+      return
+    }
+    if (requests === 3) {
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end('{"private":true}')
+      return
+    }
+    if (requests === 4) {
+      response.writeHead(200, { 'content-length': '65', 'content-type': 'text/html' })
+      response.end('x'.repeat(65))
+      return
+    }
+    if (requests === 5) {
+      response.writeHead(200, { 'content-type': 'text/html' })
+      response.write('x'.repeat(40))
+      setImmediate(() => { response.end('y'.repeat(40)) })
+      return
+    }
+    response.writeHead(200, { 'content-type': 'text/html' })
+    response.end('x'.repeat(40))
+  }, async (host, fixtureUrl) => {
+    const expectCode = async (code: WebFetchError['code']) => {
+      await assert.rejects(
+        host.viewerPage(fixtureUrl),
+        error => error instanceof WebFetchError && error.code === code,
+      )
+    }
+    await expectCode('redirect')
+    await expectCode('status')
+    await expectCode('content-type')
+    await expectCode('body')
+    await expectCode('body')
+    await expectCode('text')
+  }, { ...config, maxResponseBytes: 64, maxTextChars: 32 })
+})
+
+test('propagates caller aborts and fixture timeouts while streaming the body', async () => {
+  await withLoopbackFixture((_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html' })
+    response.write('<title>slow</title>')
+    const timer = setTimeout(() => { response.end('<p>late</p>') }, 500)
+    response.once('close', () => { clearTimeout(timer) })
+  }, async (host, fixtureUrl) => {
+    const controller = new AbortController()
+    const pending = host.viewerPage(fixtureUrl, { signal: controller.signal })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    controller.abort()
+    await assert.rejects(pending, error => error instanceof DOMException && error.name === 'AbortError')
+  })
+
+  await withLoopbackFixture((_request, response) => {
+    const timer = setTimeout(() => { response.end('<title>too late</title>') }, 500)
+    response.once('close', () => { clearTimeout(timer) })
+  }, async (host, fixtureUrl) => {
+    await assert.rejects(
+      host.viewerPage(fixtureUrl),
+      error => error instanceof WebFetchError && error.code === 'timeout',
+    )
+  }, { ...config, timeoutMs: 20 })
 })
 
 test('keeps Reader limits independent from a valid zero-redirect fetch policy', async () => {

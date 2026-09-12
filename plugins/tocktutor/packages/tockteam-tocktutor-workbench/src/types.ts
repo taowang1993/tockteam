@@ -3,16 +3,12 @@ export interface VaultReference {
   id: string
 }
 
-export type ActiveVaultResult = VaultReference | null
-
-export interface RecentVaultInfo {
-  id: string
-  lastOpenedAt: number
-}
-
-export interface RecentVaultListResult {
+export interface ActiveVaultResult {
+  /** UI-only path; never accepted as filesystem authority. */
+  displayPath: string | null
   generation: number
-  vaults: RecentVaultInfo[]
+  name: string | null
+  vault: VaultReference | null
 }
 
 export interface CreateManagedVaultRequest extends VaultGenerationRequest {
@@ -21,10 +17,6 @@ export interface CreateManagedVaultRequest extends VaultGenerationRequest {
 
 export interface VaultGenerationRequest {
   expectedGeneration: number
-}
-
-export interface RecentVaultRequest extends VaultGenerationRequest {
-  id: string
 }
 
 export interface OpenDocumentResult {
@@ -43,6 +35,24 @@ export interface CreateDocumentRequest {
 
 export interface SaveDocumentRequest extends CreateDocumentRequest {
   expectedRevision: string
+}
+
+export interface RenameDocumentRequest {
+  expectedRevision: string
+  expectedVault: VaultReference
+  fromPath: string
+  toPath: string
+}
+
+export interface RenameDocumentResult {
+  fromPath: string
+  generation: number
+  path: string
+  revision: string
+  rewriteError?: string
+  rewriteSnapshots: Array<{ path: string; snapshotId: string }>
+  rewrittenPaths: string[]
+  status: 'moved'
 }
 
 export type WriteDocumentResult = Readonly<
@@ -104,7 +114,7 @@ export interface VaultTreePage {
 }
 
 export type NoteVaultChangeEvent = Readonly<
-  | { action: 'activated'; kind: 'vault'; vault: VaultReference }
+  | { action: 'activated' | 'deactivated'; kind: 'vault'; vault: VaultReference }
   | { action: 'changed' | 'watcher-error'; kind: 'tree'; vault: VaultReference }
   | {
       action: 'created' | 'external-change' | 'external-rename' | 'stored' | 'updated'
@@ -249,6 +259,9 @@ export interface VaultSearchRequest {
   directory?: string
   expectedVault: VaultReference
   limit?: number
+  modifiedFrom?: number
+  modifiedTo?: number
+  titleOnly?: boolean
   mode?: 'literal' | 'query' | 'related'
   query: string
   regex?: boolean
@@ -257,6 +270,8 @@ export interface VaultSearchRequest {
 }
 
 export interface VaultSearchMatch {
+  id?: string
+  revision?: string
   kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task'
   line: number | null
   lineEnd?: number | null

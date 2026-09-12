@@ -17,6 +17,9 @@ const tockTutorRoute = readFileSync(new URL('../plugins/tocktutor/packages/tockt
 const webPatch = readFileSync(new URL('../web/cordis.patch.yml', import.meta.url), 'utf8')
 const tuiPatch = readFileSync(new URL('../plugins/tui/cordis.patch.yml', import.meta.url), 'utf8')
 const electronSmoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
+const packagedSmoke = readFileSync(new URL('../scripts/launcher-packaged-smoke.mjs', import.meta.url), 'utf8')
+const installedSmoke = readFileSync(new URL('../scripts/launcher-installed-smoke.mjs', import.meta.url), 'utf8')
+const smokeRuntime = readFileSync(new URL('../scripts/smoke-runtime.mjs', import.meta.url), 'utf8')
 
 test('main does not spawn Windows system helpers by a bare search-path name', () => {
   assert.doesNotMatch(main, /execFileAsync\('(powershell|explorer)\.exe'/u)
@@ -136,6 +139,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /stopLiveRuntimeForMarketplace/u)
   assert.match(client, /unsubscribeTheme\(\)[\s\S]+unsubscribeRoute\(\)[\s\S]+unsubscribeCommand\(\)/u)
   assert.match(client, /deferSettingsOpen\([\s\S]+requestAnimationFrame[\s\S]+queueMicrotask/u)
+  assert.match(client, /#tockteam-rail-root button\[aria-label="Settings"\]/u)
   assert.doesNotMatch(main, /createWindow\([^)]*launcher/u)
 })
 
@@ -166,6 +170,15 @@ test('fixture smoke reads host-owned effect counters instead of renderer authori
   assert.match(electronSmoke, /TOCKTEAM_WORKFLOW_SLOW_HISTORY/u)
 })
 
+test('temporary Electron smoke launches use Chromium mock keychain on macOS', () => {
+  const inlineMacSmokeArgs = /\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\)/gu
+  assert.equal(electronSmoke.match(inlineMacSmokeArgs)?.length, 3)
+  assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\),/u)
+  assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\),/u)
+  assert.match(smokeRuntime, /const macElectronSmokeArgs = process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]/u)
+  assert.match(smokeRuntime, /const client = spawnSync\(electronBinary, \[\s*\.\.\.macElectronSmokeArgs,/u)
+})
+
 test('workbench preload waits for route readiness before initial launcher appearance sync', () => {
   assert.match(preload, /const workbenchReady = [\s\S]*ipcRenderer\.invoke\(LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL\)/u)
   assert.match(preload, /syncLauncherLocale:[\s\S]*?await workbenchReady[\s\S]*?LAUNCHER_WINDOW_IPC_CHANNELS\.syncLocale/u)
@@ -178,7 +191,8 @@ test('workbench bridge and Desktop navigation expose only finite launcher operat
   assert.match(contracts, /show\(\): Promise<DesktopLauncherState>/u)
   assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.getState/u)
   assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.show/u)
-  assert.match(sidebar, /<div className="mt-auto flex flex-col gap-1 pb-1">\s*<DesktopLauncherFallback t=\{t\} \/>\s*\{pluginsAvailable && \([\s\S]*aria-label="Plugins"[\s\S]*aria-label="Settings"/u)
+  assert.match(sidebar, /<div className="mt-auto flex flex-col gap-1 pb-1">\s*<DesktopLauncherFallback t=\{t\} \/>\s*<Tooltip>[\s\S]*aria-label="Settings"/u)
+  assert.doesNotMatch(sidebar, /aria-label="Plugins"/u)
   assert.match(launcherFallback, /window\.dshDesktop\?\.launcher/u)
   assert.match(launcherFallback, /bridge\.getState\(\)/u)
   assert.match(launcherFallback, /bridge\.show\(\)/u)

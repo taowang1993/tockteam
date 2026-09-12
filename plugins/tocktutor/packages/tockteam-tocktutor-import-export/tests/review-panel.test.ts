@@ -272,6 +272,8 @@ test('delegates explicit Craft, Notion, and Apple Notes choices to existing revi
     snapshot: { error: null, format: 'markdown-folder', kind: 'import', phase: 'idle', preview: null, result: null },
   }))
   for (const delegation of IMPORT_CHOOSER_DELEGATIONS) assert.match(html, new RegExp(delegation.label, 'u'))
+  assert.doesNotMatch(html, /tocktutor-import-export-review[^"]*rounded-\[10px\]/u)
+  assert.match(html, /border-transparent[^"]*hover:bg-\[var\(--tt-selected\)\]/u)
 })
 
 test('renders an accessible bounded review without tokens, paths, or unrestricted content', () => {

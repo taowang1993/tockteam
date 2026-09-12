@@ -20,8 +20,9 @@ const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
   build?: { asar?: boolean; files?: unknown; extraResources?: unknown }
 }
 const mainSource = readFileSync(join(root, 'src/main.ts'), 'utf8')
+const splashSource = readFileSync(join(root, 'src/splash.html'), 'utf8')
 const contract = JSON.parse(readFileSync(join(root, 'scripts/ueli/desktop-release-contract.json'), 'utf8')) as {
-  identity: { appId: string; executableName: string; packageName: string; productName: string }
+  identity: { appId: string; displayName: string; executableName: string; packageName: string; productName: string }
   foundation: { launcherAssets: readonly { key: string; path: string; sha256: string }[]; launcherNotices: readonly unknown[] }
   resources: { asar: boolean; builderFiles: readonly string[]; builderExtraResources: readonly unknown[] }
 }
@@ -31,6 +32,14 @@ const packagedSmoke = readFileSync(join(root, 'scripts/launcher-packaged-smoke.m
 test('package metadata exposes the canonical homepage for packaged inputs', () => {
   assert.equal(packageJson.homepage, 'https://github.com/taowang1993/tockteam')
   assert.match(packagedSmoke, /const appManifest = \{ \.\.\.packageJson \}/u)
+})
+
+test('native product surfaces identify the app as TockTeam', () => {
+  assert.match(mainSource, /const PRODUCT_NAME = 'TockTeam'/u)
+  assert.match(mainSource, /app\.setName\(PRODUCT_NAME\)/u)
+  assert.match(splashSource, /<title>TockTeam<\/title>/u)
+  assert.match(splashSource, />TockTeam<\/h1>/u)
+  assert.doesNotMatch(splashSource, /TockTeam Desktop/u)
 })
 
 test('package contract admits the complete launcher resource inventory', () => {
@@ -119,6 +128,7 @@ test('packaged smoke is actual TockTeam ASAR execution, not a source fixture', (
   assert.deepEqual(LAUNCHER_COMPOSITION.extensionIds.length, 24)
   assert.equal(contract.identity.packageName, '@tockteam/desktop')
   assert.equal(contract.identity.productName, 'TockTeam Desktop')
+  assert.equal(contract.identity.displayName, 'TockTeam')
   assert.equal(contract.identity.appId, 'ai.deepseek.tockteam-desktop')
   assert.equal(contract.identity.executableName, 'tockteam-desktop')
   assert.equal(LAUNCHER_CSP, "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'")

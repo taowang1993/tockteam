@@ -195,9 +195,10 @@ describe('TockTutorAssistantPanel', () => {
     fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'provider-b' } })
     fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'model-b' } })
     fireEvent.change(screen.getByLabelText('Write Permission'), { target: { value: 'propose' } })
+    fireEvent.change(screen.getByLabelText('AI Search'), { target: { value: 'automatic' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }))
     expect((screen.getByRole('button', { name: 'Saving…' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(saved).toEqual([{ provider: 'provider-b', model: 'model-b', writePermission: 'propose' }])
+    expect(saved).toEqual([{ provider: 'provider-b', model: 'model-b', writePermission: 'propose', aiSearch: 'automatic' }])
 
     await act(async () => {
       save.resolve(await success({ provider: 'provider-b', model: 'model-b', writePermission: 'propose' }))

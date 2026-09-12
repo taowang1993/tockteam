@@ -36,6 +36,9 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(chromeLayer, /inset:0/)
   assert.match(chromeLayer, /z-index:8900/)
   assert.match(css, /\.tockteam-desktop-shell #tockteam-chrome-layer\{[^}]*top:var\(--tockteam-titlebar-height\)/)
+  assert.match(css, /--dsw-specific-markdown-accent:light-dark\(#705dcf,#a68af9\)/)
+  assert.match(css, /--dsw-specific-markdown-highlight:#ffd00066/)
+  assert.match(css, /--dsw-specific-markdown-inline-code:color-mix\(in srgb, var\(--dsw-alias-label-primary,currentColor\) 9%, transparent\)/)
   const desktopSummary = css.match(/\.tockteam-desktop-shell #tockteam-chrome-layer>\[data-tockteam-pinned-summary\]\{([^}]*)\}/)?.[1] ?? ''
   assert.match(desktopSummary, /height:calc\(50% - 12px\)/)
   assert.match(desktopSummary, /top:12px/)
@@ -102,7 +105,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
       'launcher-command-menu', 'launcher-command-menu-item',
       'launcher-local-tool', 'launcher-local-tool-header', 'launcher-local-tool-identity', 'launcher-local-tool-content',
       'launcher-local-tool-field', 'launcher-local-tool-status', 'launcher-local-tool-error', 'launcher-secondary-button', 'launcher-primary-button',
-      'tockteam-desktop-shell', 'tockteam-marketplace-shell', 'tockteam-sidebar-styles',
+      'tockteam-desktop-shell', 'tockteam-sidebar-styles',
     ],
   )
 })

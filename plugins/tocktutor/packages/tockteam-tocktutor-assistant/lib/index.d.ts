@@ -1,5 +1,6 @@
 import { Service, type Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
+import type { LlmRuntime } from '@deepseek-ai/dsh-llm';
 import Schema from '@deepseek-ai/schemastery';
 import type { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess';
 import type NoteVaultRuntime from 'tockbot-note-runtime';
@@ -9,6 +10,7 @@ import { type ApprovalContext, type ProposalAuditEntry, type ProposalAuditStatus
 import { type AgentContinuationRequest, type AgentContinuationResult } from './agent-continuation.ts';
 import { type AssistantToolName, type AssistantTurnLease } from './turn-bindings.ts';
 import { type AssistantRemoteHost } from './remote.ts';
+import type { AssistantQuickAnswerRequest, AssistantQuickAnswerResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult } from './remote-types.ts';
 export { buildAssistantPrompt, boundToolText, redactBoundaryText, type AssistantPrompt, type AssistantPromptAttachment, type AssistantPromptHistory, type AssistantPromptInput, } from './context.ts';
 export * from './agent-continuation.ts';
 export * from './approval.ts';
@@ -18,6 +20,7 @@ export * from './read-tool-registration.ts';
 export * from './read-tools.ts';
 export * from './remote.ts';
 export * from './remote-types.ts';
+export * from './search-intelligence.ts';
 export * from './text-turn.ts';
 export * from './turn-bindings.ts';
 export * from './write-tool-registration.ts';
@@ -28,6 +31,7 @@ declare module '@deepseek-ai/cordis' {
         settings: import('@deepseek-ai/dsh-settings').SettingsProvider;
         storageDomain: DomainFacility;
         subprocess: SubprocessRuntime;
+        llm: LlmRuntime;
     }
 }
 export type AssistantWritePermission = 'read-only' | 'propose';
@@ -46,10 +50,12 @@ export interface BindAssistantTurnInput {
     signal: AbortSignal;
     requestModelOverride?: true;
 }
+export type AssistantAiSearchPolicy = 'off' | 'on-demand' | 'automatic';
 export interface AssistantSettings {
     provider: string;
     model: string;
     writePermission: AssistantWritePermission;
+    aiSearch?: AssistantAiSearchPolicy;
 }
 export type Config = AssistantSettings;
 export declare const Config: Schema<Config>;
@@ -59,6 +65,7 @@ export declare class NoteAssistant extends Service implements AssistantRemoteHos
     static inject: string[];
     private readonly agents;
     private readonly noteVault;
+    private readonly llm;
     private readonly settings;
     private observedSettings;
     private settingsAbort;
@@ -75,6 +82,7 @@ export declare class NoteAssistant extends Service implements AssistantRemoteHos
     private proposalState?;
     private proposalPersistence;
     private readonly decisionTasks;
+    private readonly searchCandidateMaps;
     private decisionAdmissionOpen;
     private mainTockDriverDispose;
     constructor(ctx: Context, config: Config);
@@ -98,6 +106,9 @@ export declare class NoteAssistant extends Service implements AssistantRemoteHos
     private bindProductionTurn;
     private productionRequestConfig;
     currentSettings(): AssistantSettings;
+    private rememberSearchCandidates;
+    searchIntelligence(request: AssistantSearchIntelligenceRequest, signal: AbortSignal): Promise<AssistantSearchIntelligenceResult>;
+    quickAnswer(request: AssistantQuickAnswerRequest, signal: AbortSignal): Promise<AssistantQuickAnswerResult>;
     saveSettings(settings: AssistantSettings): Promise<void>;
     stageProposal(input: StageProposalInput): Promise<ProposalSummary>;
     listProposals(): Promise<ProposalSummary[]>;

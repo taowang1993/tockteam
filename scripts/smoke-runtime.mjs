@@ -25,6 +25,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const resources = resolve(process.argv[2] ?? join(root, '.stage'))
 const paths = bundledRuntimePaths(resources)
 const { cliEntry, nodeBinary } = paths
+const macElectronSmokeArgs = process.platform === 'darwin' ? ['--use-mock-keychain'] : []
 const smokeRoot = mkdtempSync(join(tmpdir(), 'tockteam-desktop-smoke-'))
 const dshHome = join(smokeRoot, 'dsh-home')
 const lines = []
@@ -392,6 +393,7 @@ try {
   }
 
   const client = spawnSync(electronBinary, [
+    ...macElectronSmokeArgs,
     '--no-sandbox',
     join(root, 'scripts', 'smoke-client.cjs'),
   ], {

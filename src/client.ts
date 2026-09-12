@@ -32,8 +32,10 @@ import {
 
 export {
   canonicalTockTeamPath,
+  isSettingsPath,
   isTockCoderPath,
   isTockTutorPath,
+  SETTINGS_ROUTE_PREFIX,
   TOCKCODER_ROUTE_PREFIX,
   readTockTutorRouteLocation,
   resolveTockTutorNavigation,
@@ -200,6 +202,10 @@ function focusComposer(): void {
 }
 
 function findSettingsButton(): HTMLButtonElement | undefined {
+  const pageTrigger = document.querySelector<HTMLButtonElement>(
+    '#tockteam-rail-root button[aria-label="Settings"]',
+  )
+  if (pageTrigger !== null) return pageTrigger
   // rc.5 wraps the settings trigger content in a stable slot marker; the rail
   // trigger is the one inside the sidebar (the settings panel may render one).
   const slotted = [...document.querySelectorAll<HTMLButtonElement>('button')]
@@ -370,7 +376,7 @@ function dispatch(
 export function apply(ctx: ClientContext): void {
   const bridge = window.dshDesktop
   if (bridge === undefined) {
-    throw new Error('tockteam-desktop: preload bridge is unavailable outside TockTeam Desktop')
+    throw new Error('tockteam-desktop: preload bridge is unavailable outside TockTeam')
   }
   const workspaces = ctx.get('workspaces') as WorkspacesService
   const panels = ctx.get('desktopPanels') as DesktopPanels

@@ -330,6 +330,7 @@ function pathOverlaps(left: string, right: string): boolean {
 
 function safePurpose(value: unknown): value is DesktopPickerRequest['purpose'] {
   return value === 'activate'
+    || value === 'move'
     || value === 'markdown-folder'
     || value === 'markdown-zip'
     || value === 'html'
@@ -347,7 +348,7 @@ function safePurpose(value: unknown): value is DesktopPickerRequest['purpose'] {
 }
 
 function sourcePurpose(value: DesktopPickerRequest['purpose']): value is DesktopSourcePurpose {
-  return value !== 'activate' && value !== 'export-html' && value !== 'export-pdf' && value !== 'vault-backup'
+  return value !== 'activate' && value !== 'move' && value !== 'export-html' && value !== 'export-pdf' && value !== 'vault-backup'
 }
 
 function error(code: DesktopGrantErrorCode): never {
@@ -561,7 +562,7 @@ export class DesktopPickerOwner {
     this.sweep()
     if (!exact(request, ['identity', 'kind', 'purpose']) || !identity(request.identity) || !safePurpose(request.purpose)) return error('unsafe-source')
     const validKind = request.kind === 'vault'
-      ? request.purpose === 'activate'
+      ? request.purpose === 'activate' || request.purpose === 'move'
       : request.kind === 'source'
         ? sourcePurpose(request.purpose)
         : request.kind === 'destination'
@@ -579,11 +580,13 @@ export class DesktopPickerOwner {
     if (signal.aborted) return { operationId: request.identity.operationId, status: 'cancelled' }
     const purpose = request.purpose
     const directory = purpose === 'activate'
+      || purpose === 'move'
       || purpose === 'markdown-folder'
       || purpose === 'html'
       || purpose === 'apple-journal'
       || purpose === 'textbundle'
     const file = purpose !== 'activate'
+      && purpose !== 'move'
       && purpose !== 'markdown-folder'
     const extensions = purpose === 'export-html' ? ['html']
       : purpose === 'export-pdf' ? ['pdf']
@@ -635,11 +638,15 @@ export class DesktopPickerOwner {
     const operationId = identity(request?.identity) ? request.identity.operationId : ''
     if (signal.aborted) return { operationId, status: 'cancelled' }
     try {
-      if (!exact(request, ['authorization', 'identity']) || !identity(request.identity) || !text(request.authorization)) {
-        return { operationId, status: 'denied' }
-      }
+      const purpose = request.purpose ?? 'activate'
+      if (
+        !exact(request, request.purpose === undefined ? ['authorization', 'identity'] : ['authorization', 'identity', 'purpose'])
+        || !identity(request.identity)
+        || !text(request.authorization)
+        || (purpose !== 'activate' && purpose !== 'move')
+      ) return { operationId, status: 'denied' }
       this.assertAvailable()
-      const grant = this.consumeGrant(request.authorization, request.identity, 'activate')
+      const grant = this.consumeGrant(request.authorization, request.identity, purpose)
       const canonicalPath = await this.safeRealpath(grant.path)
       const stat = canonicalPath === undefined ? undefined : await this.safeVaultLstat(canonicalPath)
       if (signal.aborted) return { operationId, status: 'cancelled' }
@@ -694,14 +701,15 @@ export class DesktopPickerOwner {
       const active = this.activeVault
       if (active !== undefined && active.path === canonicalPath && active.dev === dev && active.ino === ino
         && active.id === request.vaultId && active.generation === request.vaultGeneration) {
-        return { operationId, status: 'bound' }
+        return { claim: active.claim as TockTeamDesktopVaultSelectionClaim, operationId, status: 'bound' }
       }
       const cleanup = await this.clearSessions()
       if (cleanup.status !== 'complete') return { operationId, status: 'unavailable' }
       if (signal.aborted || !this.options.isAvailable()) return { operationId, status: 'cancelled' }
       this.options.onVaultTransition?.()
+      const claim = `runtime:${this.options.randomId()}` as TockTeamDesktopVaultSelectionClaim
       this.activeVault = {
-        claim: `runtime:${this.options.randomId()}`,
+        claim,
         dev,
         generation: request.vaultGeneration,
         id: request.vaultId,
@@ -709,7 +717,7 @@ export class DesktopPickerOwner {
         path: canonicalPath,
       }
       this.rememberProtocolVault(this.activeVault)
-      return { operationId, status: 'bound' }
+      return { claim, operationId, status: 'bound' }
     } catch (cause) {
       const status = cause instanceof TockTeamDesktopGrantError && cause.code === 'stale'
         ? 'stale'
@@ -765,7 +773,16 @@ export class DesktopPickerOwner {
   async releaseVaultSelection(request: TockTeamDesktopVaultSelectionReleaseInput): Promise<void> {
     if (!exact(request, ['claim', 'operationId']) || !text(request.claim) || !text(request.operationId)) return
     const claim = this.vaultSelectionClaims.get(request.claim)
-    if (claim === undefined || claim.identity.operationId !== request.operationId) return
+    if (claim === undefined) {
+      if (this.activeVault?.claim !== request.claim) return
+      await this.clearSessions()
+      this.grants.clear()
+      this.destinationPlans.clear()
+      this.activeVault = undefined
+      this.options.onVaultTransition?.()
+      return
+    }
+    if (claim.identity.operationId !== request.operationId && this.activeVault?.claim !== request.claim) return
     this.vaultSelectionClaims.delete(request.claim)
     if (claim.bound !== undefined && this.activeVault?.claim === request.claim
       && this.activeVault.id === claim.bound.id
@@ -1458,7 +1475,7 @@ export class DesktopPickerOwner {
     this.vaultSelectionClaims.clear()
     this.consumedPickOperations.clear()
     this.activeVault = undefined
-    if (cleanup.status === 'residual') throw new Error('TockTeam Desktop picker cleanup was incomplete')
+    if (cleanup.status === 'residual') throw new Error('TockTeam picker cleanup was incomplete')
   }
 
   private async destinationPath(rawPath: string, purpose: 'export-html' | 'export-pdf' | 'vault-backup'): Promise<{ path: string; label: string } | undefined> {

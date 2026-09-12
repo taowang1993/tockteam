@@ -14995,7 +14995,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15010,7 +15010,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15155,19 +15155,19 @@ function Label({ className, unstyled = false, ...props }) {
   );
 }
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var import_react2 = require("react");
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/shared/src/utils.js
 var toKebabCase = (string4) => string4.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 var mergeClasses = (...classes) => classes.filter((className, index, array2) => {
   return Boolean(className) && className.trim() !== "" && array2.indexOf(className) === index;
 }).join(" ").trim();
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/Icon.js
 var import_react = require("react");
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/defaultAttributes.js
 var defaultAttributes = {
   xmlns: "http://www.w3.org/2000/svg",
   width: 24,
@@ -15180,7 +15180,7 @@ var defaultAttributes = {
   strokeLinejoin: "round"
 };
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/Icon.js
 var Icon = (0, import_react.forwardRef)(
   ({
     color = "currentColor",
@@ -15212,7 +15212,7 @@ var Icon = (0, import_react.forwardRef)(
   }
 );
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var createLucideIcon = (iconName, iconNode) => {
   const Component = (0, import_react2.forwardRef)(
     ({ className, ...props }, ref) => (0, import_react2.createElement)(Icon, {
@@ -15226,11 +15226,11 @@ var createLucideIcon = (iconName, iconNode) => {
   return Component;
 };
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/chevron-down.js
 var __iconNode = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
 var ChevronDown = createLucideIcon("ChevronDown", __iconNode);
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/loader-circle.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/loader-circle.js
 var __iconNode2 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
 var LoaderCircle = createLucideIcon("LoaderCircle", __iconNode2);
 
@@ -15283,7 +15283,7 @@ var callerBridge = {
   async authorize(operation, expectedVault) {
     const root = globalThis;
     const bridge = root.window?.dshDesktop?.tockTutor;
-    if (bridge === void 0) throw new Error("This operation is available only in the trusted TockTeam Desktop window.");
+    if (bridge === void 0) throw new Error("This operation is available only in the trusted TockTeam desktop window.");
     return await bridge.authorize(operation, expectedVault);
   }
 };
@@ -15540,16 +15540,16 @@ function ImportExportReviewPanelView(props) {
   const skipped = preview !== null && "skipped" in preview ? preview.skipped : [];
   const warnings = preview !== null && "warnings" in preview ? preview.warnings : [];
   const busy = snapshot.phase === "inspecting" || snapshot.phase === "approving" || snapshot.phase === "committing";
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Card, { unstyled: true, "aria-label": "Import, Backup, and Restore", className: "tocktutor-import-export-review grid gap-3 rounded-[10px] border border-[var(--tt-border)] p-3.5 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 [&_button]:min-h-8 [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-[9px] [&_button]:py-[5px] [&_button]:text-inherit [&_select]:min-h-8 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-[var(--tt-panel)] [&_select]:px-[9px] [&_select]:py-[5px] [&_select]:text-inherit", role: "region", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Card, { unstyled: true, "aria-label": "Import, Backup, and Restore", className: "tocktutor-import-export-review grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 [&_button]:min-h-8 [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-transparent [&_button]:px-[9px] [&_button]:py-[5px] [&_button]:text-inherit [&_button:hover]:bg-[var(--tt-selected)] [&_select]:min-h-8 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-[var(--tt-panel)] [&_select]:px-[9px] [&_select]:py-[5px] [&_select]:text-inherit", role: "region", children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("header", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "tocktutor-import-export-kicker text-[11px] font-bold tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Reviewed Operations" }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { children: "Import, Backup, and Restore" })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: "Choose the export shape you downloaded. Each source uses the existing reviewed Markdown or HTML transaction." }),
     (snapshot.phase === "idle" || snapshot.phase === "complete" || snapshot.phase === "error" && preview === null) && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("fieldset", { className: "m-0 grid gap-2 rounded-md border border-[var(--tt-border)] p-2.5", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("legend", { className: "px-1 text-xs font-medium", children: "Popular Export Sources" }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "flex flex-wrap gap-2", children: IMPORT_CHOOSER_DELEGATIONS.map((delegation) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, onClick: () => {
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("fieldset", { className: "m-0 grid gap-1 border-0 p-0", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("legend", { className: "mb-1 text-xs font-medium", children: "Popular Export Sources" }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "grid gap-1", children: IMPORT_CHOOSER_DELEGATIONS.map((delegation) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, className: "border-transparent text-left hover:bg-[var(--tt-selected)]", onClick: () => {
           props.onStart(delegation.format);
         }, type: "button", children: delegation.label }, delegation.id)) })
       ] }),

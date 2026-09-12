@@ -239,7 +239,7 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
     await controller.startImport('markdown-folder')
     assert.equal(inspected, false)
     assert.equal(controller.getSnapshot().phase, 'error')
-    assert.match(controller.getSnapshot().error ?? '', /trusted TockTeam Desktop window/u)
+    assert.match(controller.getSnapshot().error ?? '', /trusted TockTeam desktop window/u)
 
     const captured: unknown[] = []
     ;(globalThis as { dshDesktop?: unknown }).dshDesktop = {

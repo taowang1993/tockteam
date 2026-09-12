@@ -96,6 +96,60 @@ const limits = {
   maxSearchResults: 20,
 }
 
+test('search returns deterministic identities, provenance, and relevance scores', async () => {
+  const provider = memoryInput()
+  const inspection = createVaultInspection(provider.input, limits)
+  const result = await inspection.search({ query: 'Alpha' }, new AbortController().signal)
+
+  assert.equal(result.matches[0].path, 'notes/alpha.md')
+  assert.equal(result.matches[0].provenance, 'path')
+  assert.equal(result.matches[0].line, null)
+  assert.equal(typeof result.matches[0].id, 'string')
+  assert.equal(typeof result.matches[0].score, 'number')
+  assert.ok(result.matches[0].score > (result.matches[1]?.score ?? 0))
+  const repeated = await inspection.search({ query: 'Alpha' }, new AbortController().signal)
+  assert.equal(repeated.matches[0].id, result.matches[0].id)
+})
+
+test('search ranks exact title matches globally before applying the result limit', async () => {
+  const contents = new Map([
+    ['aaa.md', '# Notes\nalpha appears in the body.\n'],
+    ['zzz.md', '# Alpha\n'],
+  ])
+  const entries = [...contents].map(([path, content]) => ({
+    path,
+    kind: 'document',
+    createdMs: 1,
+    modifiedMs: 1,
+    size: Buffer.byteLength(content),
+    revision: `revision:${path}`,
+  }))
+  const input = {
+    async list() { return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] } },
+    async read(path) { return { path, content: contents.get(path) } },
+  }
+  const inspection = createVaultInspection(input, { ...limits, maxSearchResults: 1 })
+  const result = await inspection.search({ query: 'Alpha' }, new AbortController().signal)
+
+  assert.deepEqual(result.matches.map(match => match.path), ['zzz.md'])
+})
+
+test('search applies title-only and modified-date filters before limiting results', async () => {
+  const provider = memoryInput()
+  const inspection = createVaultInspection(provider.input, { ...limits, maxSearchResults: 1 })
+  const result = await inspection.search({
+    mode: 'query',
+    modifiedFrom: 21,
+    query: 'Alpha',
+    titleOnly: true,
+  }, new AbortController().signal)
+
+  assert.deepEqual(result.matches, [])
+  assert.equal(result.truncated, false)
+  const dateOnly = await inspection.search({ mode: 'query', modifiedFrom: 21, query: 'Alpha' }, new AbortController().signal)
+  assert.deepEqual(dateOnly.matches, [])
+})
+
 test('provider-input inspection reuses all eight read-only operations without a filesystem root', async () => {
   const provider = memoryInput()
   const inspection = createVaultInspection(provider.input, limits)
@@ -763,13 +817,20 @@ test('query search uses complete indexed candidates only as input to the exact v
       listCalls += 1
       return await provider.input.list(...args)
     },
+    async read(path, maxBytes, signal) {
+      return { ...(await provider.input.read(path, maxBytes, signal)), revision: `revision:${path}` }
+    },
     async searchCandidates(request, signal) {
       signal.throwIfAborted()
       candidateRequests.push(request)
       return {
         complete: true,
         epoch: 'index-v1',
-        paths: ['notes/alpha.md', 'beta.md', 'notes/alpha.md'],
+        entries: [
+          { modifiedMs: 20, path: 'notes/alpha.md', revision: 'revision:notes/alpha.md' },
+          { modifiedMs: 20, path: 'beta.md', revision: 'revision:beta.md' },
+          { modifiedMs: 20, path: 'notes/alpha.md', revision: 'revision:notes/alpha.md' },
+        ],
       }
     },
   }
@@ -787,8 +848,8 @@ test('query search uses complete indexed candidates only as input to the exact v
   assert.equal(listCalls, 0)
   assert.deepEqual(provider.readPaths, ['beta.md', 'notes/alpha.md'])
   assert.deepEqual(result.matches.map(match => [match.path, match.operator]), [
-    ['notes/alpha.md', undefined],
     ['notes/alpha.md', 'tag'],
+    ['notes/alpha.md', undefined],
   ])
   assert.deepEqual(result.scan, { bytes: 72, entries: 2, files: 2 })
 
@@ -800,8 +861,15 @@ test('indexed candidate cursors resume exact projections without duplicates', as
   const provider = memoryInput()
   const inspection = createVaultInspection({
     ...provider.input,
+    async read(path, maxBytes, signal) {
+      return { ...(await provider.input.read(path, maxBytes, signal)), revision: `revision:${path}` }
+    },
     async searchCandidates() {
-      return { complete: true, epoch: 'stable-index', paths: ['notes/alpha.md'] }
+      return {
+        complete: true,
+        epoch: 'stable-index',
+        entries: [{ modifiedMs: 20, path: 'notes/alpha.md', revision: 'revision:notes/alpha.md' }],
+      }
     },
   }, limits)
   const first = await inspection.search({
@@ -821,8 +889,137 @@ test('indexed candidate cursors resume exact projections without duplicates', as
   assert.equal(second.cursor, null)
   assert.deepEqual(
     [...first.matches, ...second.matches].map(match => [match.kind, match.operator]),
-    [['content', undefined], ['tag', 'tag']],
+    [['tag', 'tag'], ['content', undefined]],
   )
+})
+
+test('indexed query candidates are globally ranked before pagination', async () => {
+  const contents = new Map([
+    ['a.md', '---\ntags: [project]\n---\n# A\nneedle in the body.\n'],
+    ['z-needle.md', '---\ntags: [project]\n---\n# Z\nother body.\n'],
+  ])
+  const input = {
+    async list() {
+      throw new Error('indexed search must not enumerate the vault')
+    },
+    async read(path, maxBytes, signal) {
+      signal.throwIfAborted()
+      const content = contents.get(path)
+      if (content === undefined) throw new Error('missing document')
+      if (Buffer.byteLength(content) > maxBytes) throw new Error('document is too large')
+      return { path, content, revision: `revision:${path}` }
+    },
+    async searchCandidates() {
+      return {
+        complete: true,
+        epoch: 'ranked-index',
+        entries: [...contents].map(([path]) => ({
+          modifiedMs: 20,
+          path,
+          revision: `revision:${path}`,
+        })),
+      }
+    },
+  }
+  const inspection = createVaultInspection(input, { ...limits, maxSearchResults: 1 })
+  const first = await inspection.search({ mode: 'query', query: 'tag:project needle', limit: 1 }, new AbortController().signal)
+
+  assert.deepEqual(first.matches.map(match => [match.path, match.kind, match.score]), [['z-needle.md', 'path', 300]])
+  assert.notEqual(first.cursor, null)
+  const second = await inspection.search({ cursor: first.cursor, limit: 1, mode: 'query', query: 'tag:project needle' }, new AbortController().signal)
+  assert.deepEqual(second.matches.map(match => [match.path, match.kind, match.score]), [['a.md', 'tag', 200]])
+})
+
+test('query fallback globally ranks its bounded scan before applying pagination', async () => {
+  const contents = new Map([
+    ['a.md', '---\ntags: [project]\n---\n# A\nneedle in the body.\n'],
+    ['z-needle.md', '---\ntags: [project]\n---\n# Z\nother body.\n'],
+  ])
+  const reads = []
+  const entries = [...contents].map(([path, content]) => ({
+    createdMs: 1,
+    kind: 'document',
+    modifiedMs: 20,
+    path,
+    size: Buffer.byteLength(content),
+  }))
+  const input = {
+    async list() {
+      return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path, maxBytes, signal) {
+      signal.throwIfAborted()
+      reads.push(path)
+      const content = contents.get(path)
+      if (content === undefined || Buffer.byteLength(content) > maxBytes) throw new Error('missing document')
+      return { path, content, revision: `revision:${path}` }
+    },
+  }
+  const inspection = createVaultInspection(input, { ...limits, maxSearchResults: 1 })
+  const first = await inspection.search({ mode: 'query', query: 'tag:project needle', limit: 1 }, new AbortController().signal)
+
+  assert.deepEqual(first.matches.map(match => [match.path, match.kind, match.score]), [['z-needle.md', 'path', 300]])
+  assert.notEqual(first.cursor, null)
+  assert.deepEqual(reads, ['a.md', 'z-needle.md'])
+  const second = await inspection.search({ cursor: first.cursor, limit: 1, mode: 'query', query: 'tag:project needle' }, new AbortController().signal)
+  assert.deepEqual(second.matches.map(match => [match.path, match.kind, match.score]), [['a.md', 'tag', 200]])
+})
+
+test('indexed candidates carry date and revision metadata through exact verification', async () => {
+  const contents = new Map([
+    ['old.md', '---\ntags: [project]\n---\n# Old\n'],
+    ['new.md', '---\ntags: [project]\n---\n# New\n'],
+  ])
+  const revisions = new Map([...contents].map(([path]) => [path, `revision:${path}`]))
+  let listCalls = 0
+  let candidateCalls = 0
+  const inventory = [...contents].map(([path]) => ({
+    createdMs: 1,
+    kind: 'document',
+    modifiedMs: path === 'old.md' ? 1 : 20,
+    path,
+    revision: revisions.get(path),
+    size: Buffer.byteLength(contents.get(path)),
+  })).sort((left, right) => left.path.localeCompare(right.path))
+  const input = {
+    async list() {
+      listCalls += 1
+      return { entries: inventory, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path, maxBytes, signal) {
+      signal.throwIfAborted()
+      const content = contents.get(path)
+      if (content === undefined) throw new Error('missing document')
+      if (Buffer.byteLength(content) > maxBytes) throw new Error('document is too large')
+      return { path, content, revision: revisions.get(path) }
+    },
+    async searchCandidates() {
+      candidateCalls += 1
+      return {
+        complete: true,
+        epoch: `metadata-index-${String(candidateCalls)}`,
+        entries: inventory.map(({ modifiedMs, path, revision }) => ({
+          modifiedMs,
+          path,
+          revision: candidateCalls === 1 ? revision : `stale:${revision}`,
+        })),
+      }
+    },
+  }
+  const inspection = createVaultInspection(input, limits)
+  const filtered = await inspection.search({ mode: 'query', modifiedFrom: 10, query: 'tag:project' }, new AbortController().signal)
+
+  assert.equal(candidateCalls, 1)
+  assert.equal(listCalls, 0)
+  assert.deepEqual(filtered.matches.map(match => [match.path, match.revision]), [['new.md', 'revision:new.md']])
+
+  const staleCandidate = await inspection.search({ mode: 'query', query: 'tag:project' }, new AbortController().signal)
+  assert.equal(candidateCalls, 2)
+  assert.equal(listCalls, 1)
+  assert.deepEqual(staleCandidate.matches.map(match => [match.path, match.revision]), [
+    ['new.md', 'revision:new.md'],
+    ['old.md', 'revision:old.md'],
+  ])
 })
 
 test('query search falls back to the bounded scanner when candidates are unavailable, unsafe, or unsupported', async () => {

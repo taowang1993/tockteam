@@ -1,14 +1,11 @@
 export declare const MAX_RICH_MARKDOWN_BYTES = 2000000;
 export declare const MAX_RICH_MARKDOWN_BLOCKS = 20000;
 export declare const MAX_RICH_MARKDOWN_FOOTNOTES = 1000;
-export interface RenderMarkdownOptions {
-    /** External HTTP(S) media is inert by default; viewer mode emits a button for the isolated Web Viewer. */
-    externalEmbedMode?: 'inert' | 'viewer';
-    strictLineBreaks?: boolean;
-}
 export interface StaticMarkdownEmbed {
     content: string;
+    depth?: number;
     mimeType?: string;
+    parentPath?: string;
     target: {
         display: string | null;
         fragment: string | null;
@@ -16,6 +13,17 @@ export interface StaticMarkdownEmbed {
         path: string;
         source: string;
     };
+}
+export interface RenderMarkdownOptions {
+    /** External HTTP(S) media is inert by default; viewer mode emits a button for the isolated Web Viewer. */
+    externalEmbedMode?: 'inert' | 'viewer';
+    /** Hide only local embed markers that have already been resolved by the Host. */
+    resolvedEmbedSources?: readonly string[];
+    /** Render local embed markers from Host-approved content. */
+    resolvedEmbeds?: readonly StaticMarkdownEmbed[];
+    /** Internal parent path used while recursively rendering nested resolved embeds. */
+    resolvedEmbedParentPath?: string;
+    strictLineBreaks?: boolean;
 }
 export interface BuildMarkdownExportDocumentOptions extends RenderMarkdownOptions {
     embeds?: readonly StaticMarkdownEmbed[];

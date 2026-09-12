@@ -4,6 +4,7 @@ import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Textarea } from '@tockteam/ui/textarea'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { ZoomIn, ZoomOut } from 'lucide-react'
 import { createCanvasChange, type CanvasChange } from './canvas-change.ts'
 import {
   createCanvasEdge,
@@ -140,6 +141,21 @@ function sideHandleStyle(side: CanvasSide): CSSProperties {
       bottom: 'translate(-50%, 50%)',
       left: 'translate(-50%, -50%)',
     } as const)[side],
+  }
+}
+
+function canvasConnectionPoint(
+  node: CanvasDocument['nodes'][number],
+  bounds: { minX: number; minY: number },
+  side: unknown,
+  fallback: CanvasSide,
+): { x: number; y: number } {
+  const resolvedSide: CanvasSide = side === 'top' || side === 'right' || side === 'bottom' || side === 'left' ? side : fallback
+  const left = node.x - bounds.minX + BOARD_PADDING
+  const top = node.y - bounds.minY + BOARD_PADDING
+  return {
+    x: resolvedSide === 'left' ? left : resolvedSide === 'right' ? left + node.width : left + node.width / 2,
+    y: resolvedSide === 'top' ? top : resolvedSide === 'bottom' ? top + node.height : top + node.height / 2,
   }
 }
 
@@ -450,22 +466,22 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
   return (
     <section
       aria-label="Canvas Board"
-      className="relative min-h-0 overflow-auto bg-[var(--tt-bg)] text-[var(--tt-text)]"
+      className="relative h-full min-h-0 overflow-auto bg-[var(--tt-bg)] text-[var(--tt-text)]"
       data-canvas-revision={revision}
       onKeyDown={cancelConnection}
       role="region"
     >
       {armed !== null && <p className="sr-only" role="status">Choose a target side for {labels.get(armed.nodeId) ?? armed.nodeId}.</p>}
-      {error !== null && <p className="m-3 text-sm text-red-600" role="note">{error}</p>}
+      {error !== null && <p className="m-3 text-sm text-[var(--dsw-alias-state-error-primary)]" role="note">{error}</p>}
       {!disabled && (
         <div aria-label="Canvas Actions" className="sticky top-2 left-2 z-30 m-2 flex w-fit max-w-[calc(100%-16px)] flex-wrap gap-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] p-1 shadow-sm" role="toolbar">
           <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'text', mode: 'create' }) }} type="button">Add Text Card</Button>
           <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'link', mode: 'create' }) }} type="button">Add Link Card</Button>
           <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'file', mode: 'create' }) }} type="button">Add File Card</Button>
           <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ kind: 'group', mode: 'create' }) }} type="button">Add Group</Button>
-          <Button unstyled aria-label="Zoom Canvas Out" className={controlClass} disabled={zoom <= 0.5} onClick={() => { setZoom(value => Math.max(0.5, value - 0.25)) }} type="button">−</Button>
+          <Button unstyled aria-label="Zoom Canvas Out" className={controlClass} disabled={zoom <= 0.5} onClick={() => { setZoom(value => Math.max(0.5, value - 0.25)) }} type="button"><ZoomOut aria-hidden="true" className="size-3.5" /></Button>
           <Button unstyled aria-label="Reset Canvas Zoom" className={controlClass} onClick={() => { setZoom(1) }} type="button">{String(Math.round(zoom * 100))}%</Button>
-          <Button unstyled aria-label="Zoom Canvas In" className={controlClass} disabled={zoom >= 2} onClick={() => { setZoom(value => Math.min(2, value + 0.25)) }} type="button">+</Button>
+          <Button unstyled aria-label="Zoom Canvas In" className={controlClass} disabled={zoom >= 2} onClick={() => { setZoom(value => Math.min(2, value + 0.25)) }} type="button"><ZoomIn aria-hidden="true" className="size-3.5" /></Button>
           {selectedNode !== undefined && (
             <>
               <Button unstyled className={controlClass} onClick={() => { setNodeEditor({ mode: 'edit', nodeId: selectedNode.id }) }} type="button">Edit {selectedNode.type === 'group' ? 'Group' : 'Card'}</Button>
@@ -485,11 +501,36 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
       {edgeEditor !== null && <CanvasEdgeEditor document={document} edgeId={edgeEditor.edgeId} onCancel={() => { setEdgeEditor(null) }} onSubmit={submitEdgeEditor} />}
       <div
         aria-label="Canvas Board Surface"
-        className="relative"
+        className="relative min-h-full"
         onPointerDown={beginMarquee}
         style={{ height: bounds.height, width: bounds.width, zoom }}
       >
         {marquee !== null && <div aria-label="Canvas Marquee Selection" className="pointer-events-none absolute z-20 border border-[var(--tt-accent)] bg-[color-mix(in_srgb,var(--tt-accent)_12%,transparent)]" role="img" style={marquee} />}
+        {(document.edges?.length ?? 0) > 0 && (
+          <svg aria-label="Canvas Connection Lines" className="pointer-events-none absolute top-0 left-0 z-10 overflow-visible" fill="none" role="img" style={{ height: bounds.height, width: bounds.width }} viewBox={`0 0 ${String(bounds.width)} ${String(bounds.height)}`}>
+            <defs>
+              <marker id="tocktutor-canvas-arrow" markerHeight="6" markerWidth="6" orient="auto-start-reverse" refX="5" refY="3" viewBox="0 0 6 6">
+                <path d="M 0 0 L 6 3 L 0 6 z" fill="var(--tt-accent)" />
+              </marker>
+            </defs>
+            {document.edges?.map(edge => {
+              const from = document.nodes.find(node => node.id === edge.fromNode)
+              const to = document.nodes.find(node => node.id === edge.toNode)
+              if (from === undefined || to === undefined) return null
+              const start = canvasConnectionPoint(from, bounds, edge.fromSide, 'right')
+              const end = canvasConnectionPoint(to, bounds, edge.toSide, 'left')
+              const bend = Math.max(24, Math.min(72, Math.abs(end.x - start.x) * 0.35))
+              const lift = start.y === end.y ? -24 : 0
+              const path = `M ${String(start.x)} ${String(start.y)} C ${String(start.x + bend)} ${String(start.y + lift)} ${String(end.x - bend)} ${String(end.y + lift)} ${String(end.x)} ${String(end.y)}`
+              return (
+                <g key={edge.id}>
+                  <path d={path} fill="none" stroke="var(--tt-bg)" strokeLinecap="round" strokeWidth="8" />
+                  <path data-canvas-edge={edge.id} d={path} fill="none" markerEnd={edge.toEnd === 'arrow' ? 'url(#tocktutor-canvas-arrow)' : undefined} stroke="var(--tt-accent)" strokeLinecap="round" strokeWidth="3" />
+                </g>
+              )
+            })}
+          </svg>
+        )}
         {document.nodes.map(node => {
           const label = labels.get(node.id) ?? node.id
           const connectable = isConnectableCanvasNode(node)
@@ -499,6 +540,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
             left: node.x - bounds.minX + BOARD_PADDING,
             top: node.y - bounds.minY + BOARD_PADDING,
             width: node.width,
+            zIndex: node.type === 'group' ? 0 : 20,
           }
           return (
             <article

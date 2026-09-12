@@ -33,7 +33,7 @@ import type { LocaleMessages, LocaleService } from '../plugins/shared/i18n.ts'
 
 const MESSAGES = {
   en: {
-    about: 'A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.',
+    about: 'A focused launcher over the TockTeam workbench with bounded local, discovery, file, and network providers.',
     sectionAbout: 'About and Contract',
     sectionAppearance: 'Appearance and Input',
     sectionBrowser: 'Browser and Shortcuts',
@@ -51,15 +51,15 @@ const MESSAGES = {
     sectionUpdates: 'Updates',
     sectionWorkflow: 'Workflows',
     badge: 'Ueli-compatible contract',
-    description: 'A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.',
+    description: 'A focused launcher over the TockTeam workbench with bounded local, discovery, file, and network providers.',
     ready: 'TockLauncher settings are ready.',
     saving: 'Saving…',
     saved: 'Saved.',
     title: 'TockLauncher',
-    unavailable: 'TockLauncher settings are available in TockTeam Desktop only.',
+    unavailable: 'TockLauncher settings are available only in the TockTeam desktop app.',
   },
   zh: {
-    about: '基于 TockTeam Desktop 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
+    about: '基于 TockTeam 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
     sectionAbout: '关于与合约',
     sectionAppearance: '外观与输入',
     sectionBrowser: '浏览器与快捷键',
@@ -77,12 +77,12 @@ const MESSAGES = {
     sectionUpdates: '更新',
     sectionWorkflow: '工作流',
     badge: '兼容 Ueli 合约',
-    description: '基于 TockTeam Desktop 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
+    description: '基于 TockTeam 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
     ready: 'TockLauncher 设置已就绪。',
     saving: '正在保存…',
     saved: '已保存。',
     title: 'TockLauncher',
-    unavailable: 'TockLauncher 设置仅在 TockTeam Desktop 中可用。',
+    unavailable: 'TockLauncher 设置仅在 TockTeam 桌面应用中可用。',
   },
 } satisfies LocaleMessages<'about' | 'badge' | 'description' | 'ready' | 'saving' | 'saved' | 'sectionAbout' | 'sectionAppearance' | 'sectionBrowser' | 'sectionDesktop' | 'sectionDiscovery' | 'sectionExtensions' | 'sectionFile' | 'sectionKeyboard' | 'sectionLocal' | 'sectionNetwork' | 'sectionSearch' | 'sectionSecurity' | 'sectionStorage' | 'sectionTerminal' | 'sectionUpdates' | 'sectionWorkflow' | 'title' | 'unavailable'>
 

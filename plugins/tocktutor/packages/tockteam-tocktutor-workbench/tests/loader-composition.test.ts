@@ -195,12 +195,14 @@ async function verifyPackedClient(
       TOCKTUTOR_ASSISTANT_PANEL_SLOT: string
       TOCKTUTOR_NATIVE_ACTIONS_SLOT: string
       TOCKTUTOR_REVIEW_PANEL_SLOT: string
+      TOCKTUTOR_VAULT_ACTIONS_SLOT: string
       TOCKTUTOR_WEB_VIEWER_PANEL_SLOT: string
     }
     assert.equal(client.name, packageName)
     assert.equal(client.TOCKTUTOR_ASSISTANT_PANEL_SLOT, 'tockteam.tocktutor.workbench.assistant')
     assert.equal(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT, 'tockteam.tocktutor.workbench.native-actions')
     assert.equal(client.TOCKTUTOR_REVIEW_PANEL_SLOT, 'tockteam.tocktutor.workbench.review')
+    assert.equal(client.TOCKTUTOR_VAULT_ACTIONS_SLOT, 'tockteam.tocktutor.workbench.vault-actions')
     assert.equal(client.TOCKTUTOR_WEB_VIEWER_PANEL_SLOT, 'tockteam.tocktutor.workbench.web-viewer')
 
     const cleanup: string[] = []
@@ -251,11 +253,27 @@ async function verifyPackedClient(
     await clientFiber
     assert.equal(registered.length, 1)
     assert.equal(registered[0]?.active, true)
-    assert.equal(
-      (registered[0]?.options.inject as () => { remote: { tocktutorWorkbench: unknown } })()
-        .remote.tocktutorWorkbench,
-      namespace,
-    )
+    const initialRouteRemote = (registered[0]?.options.inject as () => {
+      remote: {
+        tocktutorAssistant?: { searchIntelligence(this: unknown): Promise<string> }
+        tocktutorWorkbench: unknown
+      }
+    })().remote
+    const readAssistant = (): typeof initialRouteRemote.tocktutorAssistant => initialRouteRemote.tocktutorAssistant
+    assert.equal(initialRouteRemote.tocktutorWorkbench, namespace)
+    assert.equal(readAssistant(), undefined)
+    const assistant = {
+      searchIntelligence(this: unknown) {
+        assert.equal(this, assistant)
+        return Promise.resolve('assistant-result')
+      },
+    }
+    const removeAssistant = clientContext.reflect.provide('remote.tocktutorAssistant', assistant)
+    assert.equal(readAssistant(), assistant)
+    assert.equal(await readAssistant()!.searchIntelligence(), 'assistant-result')
+    await removeAssistant()
+    assert.equal(readAssistant(), undefined)
+    assert.equal(initialRouteRemote.tocktutorWorkbench, namespace)
 
     removeNamespace?.()
     for (let index = 0; index < 12; index += 1) await Promise.resolve()
@@ -272,6 +290,7 @@ async function verifyPackedClient(
       'tockteam.tocktutor.workbench.assistant': { kind: 'single', scope: 'root' },
       'tockteam.tocktutor.workbench.native-actions': { kind: 'list', scope: 'root' },
       'tockteam.tocktutor.workbench.review': { kind: 'list', scope: 'root' },
+      'tockteam.tocktutor.workbench.vault-actions': { kind: 'list', scope: 'root' },
       'tockteam.tocktutor.workbench.web-viewer': { kind: 'single', scope: 'root' },
     })
 
@@ -336,6 +355,10 @@ async function verifyPackedClient(
       kind: 'list',
       scope: 'root',
     })
+    assert.deepEqual(core.spec(client.TOCKTUTOR_VAULT_ACTIONS_SLOT), {
+      kind: 'list',
+      scope: 'root',
+    })
     assert.equal(core.entries(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT).length, 0)
     assert.equal(core.entries(client.TOCKTUTOR_REVIEW_PANEL_SLOT).length, 0)
     const disposeRestore = registerCore({
@@ -379,6 +402,7 @@ async function verifyPackedClient(
     assert.equal(core.spec(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT), undefined)
     assert.equal(core.entries(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT).length, 0)
     assert.equal(core.spec(client.TOCKTUTOR_REVIEW_PANEL_SLOT), undefined)
+    assert.equal(core.spec(client.TOCKTUTOR_VAULT_ACTIONS_SLOT), undefined)
     assert.equal(core.entries(client.TOCKTUTOR_REVIEW_PANEL_SLOT).length, 0)
     assert.equal(core.spec(client.TOCKTUTOR_ASSISTANT_PANEL_SLOT), undefined)
     disposeRestore()
@@ -405,6 +429,7 @@ async function verifyPackedClient(
     assert.equal(core.spec(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT), undefined)
     assert.equal(core.entries(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT).length, 0)
     assert.equal(core.spec(client.TOCKTUTOR_REVIEW_PANEL_SLOT), undefined)
+    assert.equal(core.spec(client.TOCKTUTOR_VAULT_ACTIONS_SLOT), undefined)
     assert.equal(core.entries(client.TOCKTUTOR_REVIEW_PANEL_SLOT).length, 0)
     disposeReplacement()
 

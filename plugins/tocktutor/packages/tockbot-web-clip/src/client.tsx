@@ -12,7 +12,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ArrowLeft, ArrowRight, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import {
   requestClipApply,
   requestClipCancel,
@@ -123,7 +123,7 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
   const navigate = useCallback((raw: string, tabId = activeId.current): void => {
     if (clipApplyingRef.current) return
     if (!bridge) {
-      setError('Web Viewer is available only in TockTeam Desktop.')
+      setError('Web Viewer is available only in the TockTeam desktop app.')
       return
     }
     let url: string
@@ -366,11 +366,11 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
   }
 
   return (
-    <section aria-label="Web Viewer" className="flex min-h-0 flex-1 flex-col">
-      <div aria-label="Viewer Tabs" className="flex gap-1 overflow-x-auto">
+    <section aria-label="Web Viewer" className="flex min-h-0 flex-1 flex-col gap-2 text-xs">
+      <div aria-label="Viewer Tabs" className="flex min-h-8 items-end gap-0.5 overflow-x-auto border-b border-[var(--tt-border)]">
         {viewer.tabs.map((tab, index) => (
           <span
-            className="inline-flex"
+            className="group inline-flex min-w-0 items-center rounded-t-md border border-b-0 border-transparent has-[button[aria-pressed=true]]:border-[var(--tt-border)] has-[button[aria-pressed=true]]:bg-[var(--tt-bg)]"
             draggable={!clipApplying}
             key={tab.id}
             onDragOver={event => { if (!clipApplying) event.preventDefault() }}
@@ -385,6 +385,7 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
               aria-pressed={tab.id === viewer.activeId}
               disabled={clipApplying}
               onClick={() => { activate(tab) }}
+              className="min-w-0 max-w-28 truncate border-0 bg-transparent px-2 py-1.5 text-left"
               onKeyDown={event => {
                 if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
                 event.preventDefault()
@@ -395,25 +396,15 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
             >{tab.title}</Button>
             <Button unstyled
               aria-label={`Close ${tab.title}`}
+              className="grid size-6 shrink-0 place-items-center rounded border-0 bg-transparent text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]"
               disabled={clipApplying}
               onClick={() => { close(tab.id) }}
               type="button"
             ><X aria-hidden="true" size={16} /></Button>
-            <Button unstyled
-              aria-label={`Move ${tab.title} Left`}
-              disabled={index === 0}
-              onClick={() => { applyViewer(moveViewerTab(viewerRef.current, tab.id, index - 1)) }}
-              type="button"
-            ><ArrowLeft aria-hidden="true" size={16} /></Button>
-            <Button unstyled
-              aria-label={`Move ${tab.title} Right`}
-              disabled={index === viewer.tabs.length - 1}
-              onClick={() => { applyViewer(moveViewerTab(viewerRef.current, tab.id, index + 1)) }}
-              type="button"
-            ><ArrowRight aria-hidden="true" size={16} /></Button>
           </span>
         ))}
         <Button unstyled
+          className="shrink-0 rounded px-2 py-1.5 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]"
           disabled={clipApplying}
           onClick={() => {
             if (clipApplyingRef.current) return
@@ -428,17 +419,19 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
       <form
         aria-label="Web Viewer Address"
         onSubmit={event => { event.preventDefault(); navigate(draft) }}
-        className="flex gap-1"
+        className="grid grid-cols-[minmax(0,1fr)_auto] gap-1"
       >
         <Input unstyled
           aria-label="URL"
+          className="min-w-0 rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 outline-none focus-visible:border-[var(--tt-accent)]"
           disabled={clipApplying}
           onChange={event => { setDraft(event.currentTarget.value) }}
           placeholder="https://example.com"
           value={draft}
         />
-        <Button unstyled disabled={loading || clipApplying} type="submit">{loading ? 'Loading…' : 'Go'}</Button>
+        <Button unstyled className="rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]" disabled={loading || clipApplying} type="submit">{loading ? 'Loading…' : 'Go'}</Button>
         <Button unstyled
+          className="rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]"
           disabled={!active?.url}
           onClick={() => {
             applyViewer(addViewerBookmark(viewerRef.current))
@@ -447,19 +440,21 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
           type="button"
         >Bookmark</Button>
         <Button unstyled
+          className="rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]"
           disabled={!active?.url || readerLoading || clipApplying}
           onClick={() => { reader ? invalidateReader() : loadReader() }}
           type="button"
         >{reader ? 'Page View' : readerLoading ? 'Loading Reader…' : 'Reader View'}</Button>
       </form>
       {viewer.bookmarks.length > 0 && (
-        <details>
-          <summary>Bookmarks</summary>
+        <details className="rounded-md border border-[var(--tt-border)] p-2">
+          <summary className="cursor-pointer font-medium">Bookmarks</summary>
           {viewer.bookmarks.map(bookmark => (
-            <span key={bookmark.id}>
-              <Button unstyled disabled={clipApplying} onClick={() => { navigate(bookmark.url) }} type="button">{bookmark.title}</Button>
+            <span className="mt-1 flex items-center" key={bookmark.id}>
+              <Button unstyled className="min-w-0 flex-1 truncate rounded px-2 py-1 text-left hover:bg-[var(--tt-selected)]" disabled={clipApplying} onClick={() => { navigate(bookmark.url) }} type="button">{bookmark.title}</Button>
               <Button unstyled
                 aria-label={`Remove ${bookmark.title}`}
+                className="grid size-6 place-items-center rounded border-0 bg-transparent text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]"
                 onClick={() => { applyViewer(removeViewerBookmark(viewerRef.current, bookmark.id)) }}
                 type="button"
               ><X aria-hidden="true" size={16} /></Button>
@@ -467,7 +462,7 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
           ))}
         </details>
       )}
-      {error && <Alert unstyled>{error}</Alert>}
+      {error && <Alert unstyled className="rounded-md bg-[color-mix(in_srgb,var(--dsw-alias-state-error-primary)_10%,transparent)] p-2 text-[var(--dsw-alias-state-error-primary)]" role="alert">{error}</Alert>}
       {reader && (
         <article
           aria-label="Reader View"
@@ -480,7 +475,7 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
             maxWidth: viewer.readerPreferences.width === 'narrow' ? 640 : viewer.readerPreferences.width === 'wide' ? 1000 : 800,
           }}
         >
-          <div aria-label="Reader Settings">
+          <div aria-label="Reader Settings" className="grid grid-cols-2 gap-2 border-b border-[var(--tt-border)] pb-3 [&_label]:grid [&_label]:gap-1 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-transparent [&_select]:p-1.5">
             <Label unstyled>Text Size <NativeSelect unstyled
               onChange={event => { setReaderPreference('textSize', event.currentTarget.value as ReaderPreferences['textSize']) }}
               value={viewer.readerPreferences.textSize}

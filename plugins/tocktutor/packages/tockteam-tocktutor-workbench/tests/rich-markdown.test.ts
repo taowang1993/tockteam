@@ -33,12 +33,100 @@ test('renders bounded rich Markdown without executing raw HTML or unsafe URLs', 
   assert.match(html, /<mark>highlight<\/mark>/u)
   assert.match(html, /class="math-inline"/u)
   assert.match(html, /<table>/u)
+  assert.match(html, /class="footnote-ref"><a href="#fn-1">\[1\]<\/a>/u)
   assert.match(html, /class="footnotes"/u)
   assert.match(html, /href="https:\/\/example\.com\/"/u)
   assert.doesNotMatch(html, /href="javascript:/u)
-  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;<strong>Safe<\/strong>/u)
+  assert.doesNotMatch(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
+  assert.match(html, /<strong>Safe<\/strong>/u)
   assert.match(html, /aria-label="Mermaid Diagram"/u)
-  assert.match(html, />A<\/span><span aria-hidden="true"> → <\/span><span class="mermaid-node">B</u)
+  assert.match(html, /<svg[^>]+class="mermaid-svg"/u)
+  assert.match(html, /class="mermaid-edge-path"/u)
+  assert.match(html, /d="M 152 64 C 200 20, 200 20, 248 64"/u)
+  assert.match(html, /class="mermaid-node-label"[^>]*>A<\/text>/u)
+})
+
+test('suppresses active HTML outside fenced code while preserving surrounding Markdown order', () => {
+  const html = renderMarkdownHtml('Before\n\n<script>alert(1)</script><strong>Safe</strong>\n\nAfter\n\n```md\n<script>literal</script>\n```\n')
+  assert.match(html, /<p>Before<\/p>\n<p><strong>Safe<\/strong><\/p>\n<p>After<\/p>/u)
+  assert.doesNotMatch(html, /alert\(1\)/u)
+  assert.match(html, /&lt;script&gt;literal&lt;\/script&gt;/u)
+})
+
+test('hides block IDs from text while keeping them addressable', () => {
+  const html = renderMarkdownHtml('# Welcome ^welcome\n\nTarget block. ^target\n')
+  assert.match(html, /<h1 id="welcome">Welcome<\/h1>/u)
+  assert.match(html, /<p id="target">Target block\.<\/p>/u)
+  assert.match(renderMarkdownHtml('- List item ^item\n'), /<li id="item">List item<\/li>/u)
+  assert.doesNotMatch(html, /\^welcome|\^target/u)
+})
+
+test('preserves active-looking markup inside inline code spans', () => {
+  const html = renderMarkdownHtml('Literal `<script>alert(1)</script>` remains visible.\n')
+  assert.match(html, /<code>&lt;script&gt;alert\(1\)&lt;\/script&gt;<\/code>/u)
+})
+
+test('hides resolved local embed markers while preserving unresolved and code literals', () => {
+  const marker = '![[Target.md]]'
+  const html = renderMarkdownHtml(`Before \`${marker}\`\n\n${marker}\n\n![[Other.md]]\n\n\\${marker}\n\n\`\`\`md\n${marker}\n\`\`\`\n`, { resolvedEmbedSources: [marker] })
+  assert.match(html, /<p>Before <code>!\[\[Target\.md\]\]<\/code><\/p>/u)
+  assert.match(html, /<p>!<a class="internal-link" data-target="Other\.md" href="#">Other\.md<\/a><\/p>/u)
+  assert.match(html, /<pre data-language="md"><code>!\[\[Target\.md\]\]<\/code><\/pre>/u)
+  assert.match(html, /<p>\\!\[\[Target\.md\]\]<\/p>/u)
+  assert.doesNotMatch(html, /<p>!\[\[Target\.md\]\]<\/p>/u)
+})
+
+test('renders Host-resolved local media and note embeds at their authored positions', () => {
+  const mediaSource = '![[../Attachments/pixel.png|16x16]]'
+  const html = renderMarkdownHtml(`Before ${mediaSource} after\n\n![[Included.md]]\n`, {
+    externalEmbedMode: 'viewer',
+    resolvedEmbeds: [
+      { content: 'iVBORw0KGgo=', mimeType: 'image/png', target: { display: '16x16', fragment: null, kind: 'media', path: 'Attachments/pixel.png', source: mediaSource } },
+      { content: '# Included\n\nHost content\n', target: { display: null, fragment: null, kind: 'note', path: 'Notes/Included.md', source: '![[Included.md]]' } },
+    ],
+  })
+  assert.match(html, /<p>Before <span[^>]+data-embed-kind="media"[^>]*><img[^>]+height="16"[^>]+width="16"[^>]+src="data:image\/png;base64,iVBORw0KGgo="/u)
+  assert.match(html, /data-embed-kind="note"[^>]*>.*<h1>Included<\/h1>.*Host content/su)
+  assert.doesNotMatch(html, /!\[\[\.\.\/Attachments\/pixel\.png\|16x16\]\]/u)
+})
+
+test('renders nested Host-resolved embeds while keeping external media behind the viewer boundary', () => {
+  const noteSource = '![[Notes/Included.md]]'
+  const nestedSource = '![[Attachments/nested.png|8x8]]'
+  const html = renderMarkdownHtml(`Before ${noteSource} after`, {
+    externalEmbedMode: 'viewer',
+    resolvedEmbeds: [
+      { content: `# Included\n\nNested ${nestedSource}\n\n![Remote](https://example.com/image.png)\n`, depth: 0, target: { display: null, fragment: null, kind: 'note', path: 'Notes/Included.md', source: noteSource } },
+      { content: 'iVBORw0KGgo=', depth: 1, mimeType: 'image/png', parentPath: 'Notes/Included.md', target: { display: '8x8', fragment: null, kind: 'media', path: 'Attachments/nested.png', source: nestedSource } },
+    ],
+  })
+  assert.match(html, /data-embed-kind="note"[^>]*>/u)
+  assert.match(html, /data-embed-kind="media"[^>]*><img[^>]+height="8"[^>]+width="8"/u)
+  assert.doesNotMatch(html, /!\[\[Attachments\/nested\.png\|8x8\]\]/u)
+  assert.match(html, /data-external-embed-kind="image"/u)
+  assert.doesNotMatch(html, /<img[^>]+src="https:\/\//u)
+})
+
+test('renders ordinary blockquotes and wikilink aliases as semantic content', () => {
+  const html = renderMarkdownHtml('> First line\n>\n> second line\n\nOpen [[Welcome]] and [[Study Guide|start here]].\n')
+  assert.match(html, /<blockquote><p>First line<\/p><p>second line<\/p><\/blockquote>/u)
+  assert.match(html, /data-target="Welcome" href="#">Welcome<\/a>/u)
+  assert.match(html, /data-target="Study Guide" href="#">start here<\/a>/u)
+  assert.doesNotMatch(html, /&gt; First line|\[\[Study Guide/u)
+})
+
+test('groups contiguous and nested list items into semantic lists', () => {
+  const html = renderMarkdownHtml([
+    '1. First',
+    '2. Second',
+    '   - Nested one',
+    '   - Nested two',
+    '- [x] Done',
+    '- [ ] Next',
+  ].join('\n'))
+
+  assert.match(html, /<ol><li>First<\/li><li>Second<ul><li>Nested one<\/li><li>Nested two<\/li><\/ul><\/li><\/ol>/u)
+  assert.match(html, /<ul class="task-list"><li><input[^>]+checked[^>]*> Done<\/li><li><input[^>]+data-task-index="1"[^>]*> Next<\/li><\/ul>/u)
 })
 
 test('honors strict line breaks and builds fenced-aware slides', () => {
@@ -74,7 +162,7 @@ test('includes bounded resolved embeds in static HTML without rewriting authored
   })
   assert.match(document, /<section[^>]+aria-label="Resolved Embeds"/u)
   assert.match(document, /<img[^>]+src="data:image\/png;base64,AQID"/u)
-  assert.match(document, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
+  assert.doesNotMatch(document, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/u)
   assert.match(document, /<pre>\{&quot;nodes&quot;:\[\]\}<\/pre>/u)
   assert.match(document, /Audio Embed: voice\.weba/u)
   assert.match(document, /data-target="Second\.md#Part"/u)

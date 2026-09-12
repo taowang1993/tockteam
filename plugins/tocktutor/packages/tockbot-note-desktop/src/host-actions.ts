@@ -72,6 +72,13 @@ function assertAuthorization(value: string): void {
   }
 }
 
+function assertVaultName(value: string): void {
+  const normalized = value.trim()
+  if (normalized !== value || normalized.length === 0 || normalized.length > 80 || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(normalized)) {
+    throw new TypeError('Vault name must be one bounded folder name.')
+  }
+}
+
 function popOutKey(vault: VaultReference, path: string): string {
   return `${vault.id}:${String(vault.generation)}:${path}`
 }
@@ -269,6 +276,16 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     if (recovered.fingerprint !== fingerprint || !sameIdentity(recovered.identity, identity)) {
       throw new Error('Desktop action changed during response recovery.')
     }
+    return recovered.result
+  }
+
+  private recoverMutationResult(
+    authorization: string,
+    fingerprint: string,
+  ): NativeActionResult | undefined {
+    const recovered = this.recoveredResults.get(authorization)
+    if (recovered === undefined) return undefined
+    if (recovered.fingerprint !== fingerprint) throw new Error('Desktop action changed during response recovery.')
     return recovered.result
   }
 
@@ -627,6 +644,107 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
       this.revealed.set(authorization, { identity, path, vault: expectedVault })
       if (this.revealed.size > 128) this.revealed.delete(this.revealed.keys().next().value!)
       return { status: 'revealed' }
+    }, signal)
+  }
+
+  @Remote
+  async revealVault(
+    authorization: string,
+    expectedVault: VaultReference,
+    signal: AbortSignal,
+  ): Promise<NativeActionResult> {
+    assertAuthorization(authorization)
+    assertVault(expectedVault)
+    assertCurrentVault(this.ctx.noteVault, expectedVault)
+    return this.lifetime.run(async ownerSignal => {
+      const identity = await this.claimForVault(authorization, 'reveal-vault', expectedVault, ownerSignal)
+      const fingerprint = `reveal-vault:${expectedVault.id}:${String(expectedVault.generation)}`
+      const recovered = this.recoverResult(authorization, fingerprint, identity)
+      if (recovered !== undefined) return recovered
+      await this.ctx.noteVault.revealVault(expectedVault, ownerSignal)
+      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      return this.rememberResult(authorization, fingerprint, identity, { status: 'revealed' })
+    }, signal)
+  }
+
+  @Remote
+  async renameVault(
+    authorization: string,
+    name: string,
+    expectedVault: VaultReference,
+    signal: AbortSignal,
+  ): Promise<NativeActionResult> {
+    assertAuthorization(authorization)
+    assertVaultName(name)
+    assertVault(expectedVault)
+    return this.lifetime.run(async ownerSignal => {
+      const fingerprint = `rename-vault:${expectedVault.id}:${String(expectedVault.generation)}:${name}`
+      const recovered = this.recoverMutationResult(authorization, fingerprint)
+      if (recovered !== undefined) return recovered
+      const identity = await this.claimForVault(authorization, 'rename-vault', expectedVault, ownerSignal)
+      ownerSignal.throwIfAborted()
+      const renamed = this.ctx.noteVault.renameVault(name, expectedVault)
+      if (!renamed.active || renamed.id !== expectedVault.id || renamed.generation !== expectedVault.generation + 1) {
+        throw new Error('Desktop vault rename completed with stale state.')
+      }
+      const result = this.rememberResult(authorization, fingerprint, identity, { status: 'renamed' })
+      try { await this.ctx.noteVault.synchronizeDesktopSelection(ownerSignal) } catch { /* the next native action retries binding */ }
+      return result
+    }, signal)
+  }
+
+  @Remote
+  async moveVault(
+    authorization: string,
+    expectedVault: VaultReference,
+    signal: AbortSignal,
+  ): Promise<NativeActionResult> {
+    assertAuthorization(authorization)
+    assertVault(expectedVault)
+    return this.lifetime.run(async ownerSignal => {
+      const fingerprint = `move-vault:${expectedVault.id}:${String(expectedVault.generation)}`
+      const recovered = this.recoverMutationResult(authorization, fingerprint)
+      if (recovered !== undefined) return recovered
+      const identity = await this.claimForVault(authorization, 'move-vault', expectedVault, ownerSignal)
+      const selection = await this.ctx.tockTeamDesktopPicker.pick({ identity, kind: 'vault', purpose: 'move' }, ownerSignal)
+      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      if (selection.status !== 'selected') return { status: selection.status }
+      if (selection.operationId !== identity.operationId) throw new Error('Desktop picker returned a mismatched operation.')
+      const moved = await this.ctx.noteVault.moveDesktopSelection({
+        authorization: selection.authorization,
+        expectedVault,
+        identity,
+      }, ownerSignal)
+      if (
+        moved.operationId !== identity.operationId
+        || moved.vaultId !== expectedVault.id
+        || moved.vaultGeneration !== expectedVault.generation + 1
+      ) throw new Error('Desktop vault move completed with stale state.')
+      const result = this.rememberResult(authorization, fingerprint, identity, { status: 'moved' })
+      try { await this.ctx.noteVault.synchronizeDesktopSelection(ownerSignal) } catch { /* the next native action retries binding */ }
+      return result
+    }, signal)
+  }
+
+  @Remote
+  async removeVault(
+    authorization: string,
+    expectedVault: VaultReference,
+    signal: AbortSignal,
+  ): Promise<NativeActionResult> {
+    assertAuthorization(authorization)
+    assertVault(expectedVault)
+    return this.lifetime.run(async ownerSignal => {
+      const fingerprint = `remove-vault:${expectedVault.id}:${String(expectedVault.generation)}`
+      const recovered = this.recoverMutationResult(authorization, fingerprint)
+      if (recovered !== undefined) return recovered
+      const identity = await this.claimForVault(authorization, 'remove-vault', expectedVault, ownerSignal)
+      ownerSignal.throwIfAborted()
+      const removed = await this.ctx.noteVault.removeVault(expectedVault)
+      if (removed.active || removed.generation !== expectedVault.generation + 1) {
+        throw new Error('Desktop vault removal completed with stale state.')
+      }
+      return this.rememberResult(authorization, fingerprint, identity, { status: 'closed' })
     }, signal)
   }
 }
