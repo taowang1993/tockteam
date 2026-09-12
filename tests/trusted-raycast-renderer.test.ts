@@ -491,6 +491,39 @@ test('internal stale or busy child outcomes also surface as the neutral retry me
   assert.match(alert.textContent, /try again|重试/)
 })
 
+test('language-set ArrowUp and ArrowDown stay native while result rows retain navigation', () => {
+  Element.activeElement = undefined
+  const nodes: Element[] = []
+  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
+  view.update({ ...projection(0), root: {
+    type: 'raycast-list', props: { searchEventId: 'search' }, children: [
+      { type: 'raycast-dropdown', props: { value: 'first', fieldEventId: 'language-set' }, children: [
+        { type: 'raycast-dropdown-item', props: { title: 'First', value: 'first' }, children: [] },
+        { type: 'raycast-dropdown-item', props: { title: 'Second', value: 'second' }, children: [] },
+      ] },
+      { type: 'raycast-list-item', props: { title: 'First Result' }, children: [] },
+      { type: 'raycast-list-item', props: { title: 'Second Result' }, children: [] },
+    ],
+  } })
+  const select = nodes.find(node => node.getAttribute('aria-label') === 'Language Set')!
+  const rows = nodes.filter(node => node.className.includes('launcher-command-row'))
+  const keydown = (target: Element, key: string): Event => {
+    const event = Object.assign(new Event('keydown', { cancelable: true }), { key, isComposing: false, keyCode: key === 'ArrowDown' ? 40 : 38, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false })
+    Object.defineProperty(event, 'target', { configurable: true, value: target })
+    view.element.dispatchEvent(event)
+    return event
+  }
+  const activeBeforeNativeArrow = Element.activeElement
+  const nativeArrow = keydown(select, 'ArrowDown')
+  assert.equal(nativeArrow.defaultPrevented, false, 'native language selection keeps ownership of arrow keys')
+  assert.equal(Element.activeElement, activeBeforeNativeArrow, 'native language selection does not steal focus')
+  const rowArrow = keydown(rows[0]!, 'ArrowDown')
+  assert.equal(rowArrow.defaultPrevented, true)
+  assert.equal(Element.activeElement, rows[1])
+  view.dispose()
+})
+
 test('language set dropdown change sends a bounded fieldChanged event', async () => {
   const nodes: Element[] = []
   const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document

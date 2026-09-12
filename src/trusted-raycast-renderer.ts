@@ -524,7 +524,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       if (invoke(row?.actions.find(action => action.props.title === 'Toggle Full Text'))) { event.preventDefault(); event.stopPropagation() }
       return
     }
-    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && !event.metaKey && !event.ctrlKey && !event.altKey && rows.length) {
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && (target === input || target === row?.item) && !event.metaKey && !event.ctrlKey && !event.altKey && rows.length) {
       event.preventDefault(); selected = (selected + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length; syncPrimaryFooter(); rows[selected]!.item.focus(); return
     }
     if (preferenceSetup && event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) { event.preventDefault(); invoke(submitAction); return }
