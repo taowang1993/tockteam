@@ -7,8 +7,8 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { DesktopPickerOwner } from '../src/desktop-picker-owner.ts'
 
-// Only filesystem metadata is substituted: real paths, dialogs, grants, and
-// public consume/bind/adopt/authority transitions still run through the owner.
+// Substitute filesystem IDs only; real path checks and public grant transitions
+// still run through the owner. Dialog callbacks avoid opening native UI.
 test('Desktop vault claims preserve large file IDs and reject rounded-identity collisions', async t => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-vault-identity-')))
   const vault = join(root, 'vault')

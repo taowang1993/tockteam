@@ -1,0 +1,1 @@
+No live afplay was observed this run; slice-3/tts-proof.txt retains the earlier download, playback and teardown proof.

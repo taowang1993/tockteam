@@ -8,7 +8,7 @@ test('launcher preload forwards validated theme events and ignores stale revisio
   let receive: ((event: unknown, value: unknown) => void) | undefined
   const bridge = createLauncherPreloadBridge({
     invoke: async () => ({ ok: true }),
-    on: (_channel, listener) => { receive = listener as typeof receive },
+    on: (channel, listener) => { if (channel === LAUNCHER_WINDOW_IPC_CHANNELS.theme) receive = listener as typeof receive },
   })
   const received: number[] = []
   const remove = bridge.onTheme(theme => { received.push(theme.revision) })
@@ -18,7 +18,7 @@ test('launcher preload forwards validated theme events and ignores stale revisio
   remove()
 })
 
-test('launcher preload exposes only typed search, theme, settings, invoke, rescan, and dismiss methods', async () => {
+test('launcher preload exposes only the finite renderer operations still used by the launcher', async () => {
   const calls: Array<{ channel: string; input?: unknown }> = []
   const bridge = createLauncherPreloadBridge({
     invoke: async (channel, input) => {
@@ -28,10 +28,10 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
           after: [],
           before: [],
           resultSetId: 'launcher-results:1',
+          sections: [],
           status: { indexedItemCount: 1, rescanStatus: 'idle' },
         }
       }
-      if (channel === LAUNCHER_IPC_CHANNELS.rescan) return { indexedItemCount: 1, rescanStatus: 'idle' }
       if (channel === LAUNCHER_WINDOW_IPC_CHANNELS.dismiss) return { ok: true }
       if (channel === LAUNCHER_WINDOW_IPC_CHANNELS.openSettings) return { ok: true }
       if (channel === LAUNCHER_WINDOW_IPC_CHANNELS.getTheme) return { mode: 'light', skinId: null, revision: 0 }
@@ -42,7 +42,7 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
       return { ok: true }
     },
   })
-  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'])
+  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastFirstUse', 'trustedRaycastTrustAction'])
   assert.equal(bridge.getLocalExtensionSettings.length, 0)
   assert.equal(bridge.getSurfaceSettings.length, 0)
   assert.equal(bridge.getTheme.length, 0)
@@ -50,14 +50,12 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
   assert.equal(bridge.cancelAction.length, 2)
   assert.equal(bridge.invokeAction.length, 1)
   assert.equal(bridge.recordSearch.length, 1)
-  assert.equal(bridge.rescan.length, 0)
   assert.equal(bridge.search.length, 2)
   await bridge.getLocalExtensionSettings()
   await bridge.getSurfaceSettings()
   await bridge.recordSearch('coder')
   await bridge.getTheme()
   await bridge.search('coder', { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort' })
-  await bridge.rescan()
   await bridge.invokeAction('launcher-action:one')
   await bridge.cancelAction('launcher-action:one', 'launcher-results:1')
   await bridge.dismiss()
@@ -71,7 +69,6 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
       channel: LAUNCHER_IPC_CHANNELS.search,
       input: { fuzziness: 0.5, maxSearchResultItems: 50, searchEngineId: 'fuzzysort', searchTerm: 'coder' },
     },
-    { channel: LAUNCHER_IPC_CHANNELS.rescan },
     { channel: LAUNCHER_IPC_CHANNELS.invokeAction, input: { actionId: 'launcher-action:one' } },
     { channel: LAUNCHER_IPC_CHANNELS.cancelAction, input: { actionId: 'launcher-action:one', resultSetId: 'launcher-results:1' } },
     { channel: LAUNCHER_WINDOW_IPC_CHANNELS.dismiss },
@@ -90,7 +87,7 @@ test('launcher preload exposes only typed search, theme, settings, invoke, resca
   await assert.rejects(() => callRuntime('getLocalExtensionSettings', 'extra'), /arguments/u)
   await assert.rejects(() => callRuntime('cancelAction', 'launcher-action:one', 'launcher-results:1', 'extra'), /arguments/u)
   await assert.rejects(() => callRuntime('invokeAction', 'launcher-action:one', 'extra'), /arguments/u)
-  await assert.rejects(() => callRuntime('rescan', 'extra'), /arguments/u)
+  assert.equal(runtimeBridge.rescan, undefined)
   await assert.rejects(() => callRuntime('search', 'coder', {
     fuzziness: 0.5,
     maxSearchResultItems: 50,

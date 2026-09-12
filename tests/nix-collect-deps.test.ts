@@ -41,6 +41,7 @@ test('Nix surfaces use the repository npm runtime pin', () => {
   assert.doesNotMatch(runtime, /fakeHash|fetchFromGitHub/u)
   assert.match(runtime, /pinnedPnpm/u)
   assert.match(packageBuilder, /pinnedPnpm/u)
+  assert.match(packageBuilder, /postPatch\s*=\s*''[\s\S]*substituteInPlace scripts\/trusted-raycast-build\.mjs[\s\S]*--replace-fail "'\/usr\/bin\/tar'" "'\$\{lib\.getExe pkgs\.gnutar\}'"/u)
   assert.match(pinnedPnpm, /dshSourceSpec\.pnpmIntegrity/u)
   assert.match(packageBuilder, /tocktutor-build-manifest\.mjs/u)
   assert.match(packageBuilder, /tocktutor-packages/u)

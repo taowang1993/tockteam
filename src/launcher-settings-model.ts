@@ -1,6 +1,6 @@
 import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
-import { LAUNCHER_COMPOSITION, normalizeLauncherLocale } from './launcher-contract.ts'
+import { LAUNCHER_COMPOSITION, LAUNCHER_HIDE_WINDOW_ON_DEFAULT, normalizeLauncherLocale } from './launcher-contract.ts'
 import { LAUNCHER_INTERNAL_SETTING_KEYS, LAUNCHER_MAIN_OWNED_SETTING_KEYS, LAUNCHER_RUNTIME_SETTING_KEYS } from './launcher-setting-keys.ts'
 import { launcherSettingCatalogEntry } from './launcher-setting-catalog.ts'
 
@@ -49,6 +49,7 @@ export function mergeLauncherDirtyValues(snapshot: LauncherSettingsSnapshot, dir
 
 /** Every accepted setting is either rendered, explicitly disabled, or delegated to one owner. */
 export function launcherSettingDisposition(key: string, platform: 'Linux' | 'macOS' | 'Windows'): LauncherSettingDisposition {
+  if (platform !== 'macOS' && key.startsWith('general.browser.')) return 'platform-disabled'
   if (LAUNCHER_INTERNAL_SETTING_KEYS.includes(key as never)) return 'internal'
   if (LAUNCHER_MAIN_OWNED_SETTING_KEYS.includes(key as never)
     || key === 'general.browser.customWebBrowser.commandlineArguments'
@@ -93,16 +94,17 @@ function value<T>(snapshot: LauncherSettingsSnapshot, key: string, fallback: T, 
 }
 
 export function readPersistedLauncherState(snapshot: LauncherSettingsSnapshot, availableExtensionIds: readonly string[] = LAUNCHER_COMPOSITION.extensionIds): PersistedLauncherState {
+  const language = normalizeLauncherLocale(value(snapshot, 'general.language', 'en-US', text))
   const preferences: LauncherSurfacePreferences = {
     alwaysOnTop: value(snapshot, 'window.alwaysOnTop', true, bool),
     doubleClickBehavior: value(snapshot, 'keyboardAndMouse.doubleClickBehavior', 'invokeSearchResultItem', clickBehavior),
     fuzziness: Math.min(1, Math.max(0, value(snapshot, 'searchEngine.fuzziness', 0.5, finiteNumber))),
     historyEnabled: value(snapshot, 'general.searchHistory.enabled', false, bool),
     historyLimit: Math.min(100, Math.max(1, value(snapshot, 'general.searchHistory.limit', 10, finiteNumber))),
-    hideWindowOn: Object.freeze([...value(snapshot, 'window.hideWindowOn', Object.freeze(['blur', 'afterInvocation'] as const), hideWindowOn)]),
-    language: normalizeLauncherLocale(value(snapshot, 'general.language', 'en-US', text)),
+    hideWindowOn: Object.freeze([...value(snapshot, 'window.hideWindowOn', LAUNCHER_HIDE_WINDOW_ON_DEFAULT, hideWindowOn)]),
+    language,
     maxSearchResultItems: Math.min(200, Math.max(1, value(snapshot, 'searchEngine.maxResultLength', 50, finiteNumber))),
-    placeholder: value(snapshot, 'appearance.searchBarPlaceholderText', 'Type here...', text).slice(0, 512),
+    placeholder: value(snapshot, 'appearance.searchBarPlaceholderText', language === 'zh-CN' ? '在此输入…' : 'Type here...', text).slice(0, 512),
     preserveUserInput: value(snapshot, 'general.preserveUserInput', true, bool),
     searchBarAppearance: value(snapshot, 'appearance.searchBarAppearance', 'auto', searchAppearance),
     searchBarSize: value(snapshot, 'appearance.searchBarSize', 'large', searchSize),

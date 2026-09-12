@@ -1,0 +1,23 @@
+✔ trust surface installs through the explicit two-step approve and keeps enabled separate (2.478584ms)
+✔ trust actions stay bound to the selected reviewed extension (0.412709ms)
+✔ installed capability exposes enable, disable and confirmed remove; recovery surfaces its action (0.749708ms)
+✔ inactive capability and failed actions stay honest and visible (0.421458ms)
+✔ zh-CN locale renders localized Title Case-free copy (0.2435ms)
+✖ first use reviews exact candidate without mutation; approval is explicit and duplicate/repeated Enter is fenced (0.172083ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.224875
+
+✖ failing tests:
+
+test at tests/trusted-raycast-trust-view.test.ts:143:1
+✖ first use reviews exact candidate without mutation; approval is explicit and duplicate/repeated Enter is fenced (0.172083ms)
+  TypeError: createTrustedRaycastFirstUseView is not a function
+      at TestContext.<anonymous> (file:///Users/taowang/projects/worktrees/launcher/tests/trusted-raycast-trust-view.test.ts:149:16)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)

@@ -1,4 +1,4 @@
-import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
+import { launcherActionCompletion, type LauncherActionRecord, type LauncherInternalAction, type LauncherInternalResultItem, type LauncherProviderActionResult } from './launcher-actions.ts'
 import {
   LAUNCHER_OS_EXTENSION_IDS,
   MACOS_SYSTEM_SETTINGS,
@@ -148,7 +148,7 @@ function supportedCatalog(platform: LauncherOsPlatform, id: LauncherOsExtensionI
 
 export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly<{
   close: () => Promise<void>
-  executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  executeAction: (record: LauncherActionRecord) => Promise<LauncherProviderActionResult>
   getLastError: () => string | undefined
   getProviderErrors: () => ReadonlyMap<LauncherOsExtensionId, string>
   invalidate: () => void
@@ -300,7 +300,7 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
     && enabled().has(known.extensionId)
     && actionSupported(known.extensionId)
 
-  const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
+  const executeAction = async (record: LauncherActionRecord): Promise<LauncherProviderActionResult> => {
     if (!LAUNCHER_OS_EXTENSION_IDS.includes(record.sourceExtension as LauncherOsExtensionId)) return false
     if (closed) throw new Error('TockLauncher OS provider is closed')
     const extensionId = record.sourceExtension as LauncherOsExtensionId
@@ -333,7 +333,8 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
         if (extensionId !== 'SystemCommands' || value.kind !== 'system-command') throw new Error('Invalid system command action')
         const command = SYSTEM_COMMAND_CATALOG[options.platform].find(row => row.command === value.command)
         if (command === undefined || known.displayName !== command.name || !actionIsCurrent(record.argument, known)) throw new Error('System command action is stale')
-        if (await options.effects.confirmPrivilegedAction({ detail: 'This operation can interrupt work or permanently remove trashed files.', operation: 'invoke-system-command', title: `${command.name}?` }, controller.signal)) {
+        const approved = await options.effects.confirmPrivilegedAction({ detail: 'This operation can interrupt work or permanently remove trashed files.', operation: 'invoke-system-command', title: `${command.name}?` }, controller.signal)
+        if (approved) {
           if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('System command action was canceled')
           if (options.platform === 'Linux' && command.command === 'empty-trash') {
             if (options.linuxTrashCapability?.atomic !== true) throw new Error('Linux Trash atomic capability is unavailable')
@@ -343,30 +344,32 @@ export function createLauncherOsExtensions(options: LauncherOsOptions): Readonly
           }
           if (controller.signal.aborted) throw new Error('System command action was canceled')
         }
-        return true
+        return approved ? true : launcherActionCompletion(true, false)
       }
       if (record.handlerKey === HANDLERS.controlPanel) {
         if (extensionId !== 'WindowsControlPanel' || value.kind !== 'control-panel' || (options.platform !== 'Windows' && options.includeControlPanelFixture !== true)) throw new Error('Invalid Control Panel action')
         const name = currentControlPanel.get(value.canonicalName)
         if (name === undefined || known.displayName !== name || !actionIsCurrent(record.argument, known)) throw new Error('Control Panel action is stale')
-        if (await options.effects.confirmPrivilegedAction({ detail: 'Windows may request administrator approval for this Control Panel item.', operation: 'open-control-panel-item', title: `Open ${name}?` }, controller.signal)) {
+        const approved = await options.effects.confirmPrivilegedAction({ detail: 'Windows may request administrator approval for this Control Panel item.', operation: 'open-control-panel-item', title: `Open ${name}?` }, controller.signal)
+        if (approved) {
           if (!actionIsCurrent(record.argument, known) || currentControlPanel.get(value.canonicalName) !== name || controller.signal.aborted) throw new Error('Control Panel action was canceled')
           await options.effects.openControlPanelItem(value.canonicalName, controller.signal)
           if (controller.signal.aborted) throw new Error('Control Panel action was canceled')
         }
-        return true
+        return approved ? true : launcherActionCompletion(true, false)
       }
       if (record.handlerKey === HANDLERS.ueliCommand) {
         if (extensionId !== 'UeliCommand' || value.kind !== 'ueli-command' || !UELI_COMMAND_CATALOG.some(row => row.command === value.command) && value.command !== 'enableHotkey' && value.command !== 'disableHotkey') throw new Error('Invalid TockLauncher command action')
         const hotkeyEnabled = options.getSetting('general.hotkey.enabled', true) === true
         if ((value.command === 'disableHotkey' && !hotkeyEnabled) || (value.command === 'enableHotkey' && hotkeyEnabled)) throw new Error('Hotkey command is stale')
         if (value.command === 'quit') {
-          if (await options.effects.confirmPrivilegedAction({ detail: 'TockTeam will close after active local state is secured.', operation: 'quit', title: 'Quit TockTeam?' }, controller.signal)) {
+          const approved = await options.effects.confirmPrivilegedAction({ detail: 'TockTeam will close after active local state is secured.', operation: 'quit', title: 'Quit TockTeam?' }, controller.signal)
+          if (approved) {
             if (!actionIsCurrent(record.argument, known) || controller.signal.aborted) throw new Error('Quit action was canceled')
             await options.effects.invokeUeliCommand(value.command, controller.signal)
             if (controller.signal.aborted) throw new Error('Quit action was canceled')
           }
-          return true
+          return approved ? true : launcherActionCompletion(true, false)
         }
         if (!actionIsCurrent(record.argument, known)) throw new Error('TockLauncher command action is stale')
         await options.effects.invokeUeliCommand(value.command, controller.signal)

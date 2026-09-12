@@ -145,7 +145,7 @@ test('Workflow denial leaves every effect untouched and audits denied', async ()
     revalidatePath: async () => true,
   })
   const item = (await provider.loadIndexedItems())[0]!
-  await assert.doesNotReject(provider.executeAction(record(item.defaultAction.argument)))
+  assert.deepEqual(await provider.executeAction(record(item.defaultAction.argument)), { handled: true, succeeded: false })
   assert.equal(events.at(-1), 'audit:denied')
   assert.equal(events.some(event => /^(file|url|terminal|execute-command):?/u.test(event)), false)
 })

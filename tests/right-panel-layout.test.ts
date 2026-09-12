@@ -139,7 +139,7 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
     main,
     /screen\.getAllDisplays\(\)[\s\S]*?display\.internal === false[\s\S]*?display\.id !== primaryDisplay\.id[\s\S]*?x: targetDisplay\.bounds\.x,[\s\S]*?y: targetDisplay\.bounds\.y,/s,
   )
-  assert.match(main, /if \(options\.preview !== true\) window\.maximize\(\)/)
+  assert.match(main, /if \(options\.preview !== true && !launcherInactiveVisualProofEnabled\) window\.maximize\(\)/)
   assert.match(workspace, /<header className="tockteam-window-titlebar [^"]+">/u)
   assert.match(workspace, /<span className="tockteam-window-title [^"]+">TockCoder<\/span>/u)
   assert.match(workspace, /<div className="[^"]+" id="tockteam-window-titlebar-slot" \/>/u)

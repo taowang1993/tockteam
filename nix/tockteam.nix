@@ -104,6 +104,11 @@ let
       pkgs.pnpmConfigHook
     ];
 
+    postPatch = ''
+      substituteInPlace scripts/trusted-raycast-build.mjs \
+        --replace-fail "'/usr/bin/tar'" "'${lib.getExe pkgs.gnutar}'"
+    '';
+
     # The upstream build scripts (esbuild) are what produce dist/.
     buildPhase = ''
       runHook preBuild

@@ -76,6 +76,7 @@ jobs:
         run: node --test --test-timeout=30000 tests/desktop-native-caller-abort.test.ts tests/desktop-picker-*.test.ts
 
       - name: Run tests
+        timeout-minutes: 5
         run: pnpm test
 
       - name: Build

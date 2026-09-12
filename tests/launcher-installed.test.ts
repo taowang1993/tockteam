@@ -92,6 +92,8 @@ test('TockTeam exposes an executable installed-artifact smoke and audit', () => 
   assert.match(installedReportCheck, /process\.exit\(1\)/u, 'invalid installed reports must fail their workflow step')
   assert.match(installedSmoke, /replaceMacBundle/u)
   assert.match(installedSmoke, /TOCKTEAM_INSTALLED_SMOKE/u)
+  assert.match(installedSmoke, /assertTrustedRaycastInstalledSmokeArtifact\(process\.env\.TRUSTED_RAYCAST_ARTIFACT_TAR\)/u)
+  assert.ok(installedSmoke.indexOf('assertTrustedRaycastInstalledSmokeArtifact(process.env.TRUSTED_RAYCAST_ARTIFACT_TAR)') < installedSmoke.indexOf('preparePackagedArtifact({ smokeRoot })'), 'exact reviewed artifact admission must fail before expensive packaging')
   assert.match(installedSmoke, /rollback|reinstall/iu)
   assert.match(installedSmoke, /unsigned|notarized/iu)
   assert.match(installedSmoke, /cp.*-cR/u)
@@ -162,6 +164,9 @@ test('installed smoke selects only the loopback descriptor and atomically replac
       assert.equal((await stat(join(path, '.tockteam-portable.json'))).isFile(), true)
       assert.equal((await stat(join(path, 'win-unpacked', 'TockTeam Desktop.exe'))).isFile(), true)
     }
+    const staleLock = join(rootPath, '.installed.install.lock')
+    await mkdir(staleLock)
+    await writeFile(join(staleLock, 'owner.json'), JSON.stringify({ createdAt: Date.now(), pid: 2_147_483_647 }))
     const result = await replaceWindowsPortableArchive({ archive, destination, backupDirectory, extractArchive, validateInstall })
     assert.equal(result.destination, destination)
     assert.equal(extracted.length, 1)
@@ -227,6 +232,12 @@ test('Windows source-build installer parses safe destinations and bounded extrac
   assert.throws(() => parseWindowsInstallArgs([], { LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local' }), /usage|archive/u)
   assert.throws(() => parseWindowsInstallArgs([archive, 'relative'], { LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local' }), /absolute|destination/u)
   assert.equal(defaultWindowsInstallDestination({ LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local' }), 'C:\\Users\\tester\\AppData\\Local\\TockTeam\\Desktop')
+})
+
+test('temporary macOS smoke launches put mock keychain before every app argument set', () => {
+  assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.macElectronSmokeArgs,\s*\.\.\.\(inactiveVisualProof \? \[LAUNCHER_INSTALLED_FIRST_USE_FLAG\]/u)
+  assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.macElectronSmokeArgs,\s*\.\.\.extraArgs,/u)
+  assert.doesNotMatch(packagedSmoke, /inactiveVisualProof && process\.platform === 'darwin' \? \['--use-mock-keychain'\]/u)
 })
 
 test('macOS installed smoke uses Launch Services and observes one persistent app process', () => {
@@ -591,6 +602,8 @@ test('launched smoke environments use disposable user roots and bounded tools', 
   const environment = smokeEnvironment({ NODE_OPTIONS: '--require=evil', NODE_PATH: '/tmp/evil', PATH: '/tmp/evil' }, smokeRoot)
   assert.equal(environment.NODE_OPTIONS, undefined)
   assert.equal(environment.NODE_PATH, undefined)
+  assert.equal(environment.TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY, '1')
+  assert.equal(environment.TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY, process.env.CI ? undefined : '1')
   assert.equal(environment.HOME, join(smokeRoot, 'home'))
   assert.equal(environment.USERPROFILE, join(smokeRoot, 'home'))
   assert.equal(environment.XDG_CONFIG_HOME, join(smokeRoot, 'xdg', 'config'))
@@ -705,7 +718,7 @@ test('extra-resource inspection is bounded and never follows symlink cycles', as
   }
 })
 
-test('installed evidence catalog owns exact platform rows with current checked-in proof', () => {
+test('installed evidence catalog owns current local proof and pending hosted proof', () => {
   assert.equal(catalog.schemaVersion, 1)
   assert.equal(catalog.issue, 'tockteam-tl.15')
   assert.deepEqual(catalog.evidenceStates, ['local-verified', 'hosted-verified', 'partially-verified', 'workflow-required', 'unverified', 'not-applicable'])
@@ -728,8 +741,8 @@ test('installed evidence catalog owns exact platform rows with current checked-i
   for (const row of catalog.rows) {
     assert.ok(row.id && row.platform && row.owner && row.state)
     if (row.required) assert.notEqual(row.owner, 'unowned')
-    assert.equal(row.state, row.platform === 'macOS' ? 'local-verified' : 'hosted-verified')
-    assert.equal(row.evidence?.kind, 'checked-in-report')
+    assert.equal(row.state, row.platform === 'macOS' ? 'local-verified' : 'workflow-required')
+    assert.equal(row.platform === 'macOS' ? row.evidence?.kind : row.evidence, row.platform === 'macOS' ? 'checked-in-report' : null)
   }
   assert.deepEqual(new Set(catalog.rows.map(row => row.platform)), new Set(['macOS', 'Windows', 'Linux']))
   assert.deepEqual(inspectInstalledEvidenceCatalog({ ...catalog, rows: catalog.rows.slice(1) }).failures.filter(failure => failure.includes('required installed evidence row is missing')), ['required installed evidence row is missing: macOS:artifact-build'])
@@ -774,7 +787,7 @@ test('installed report validation requires complete platform lifecycle evidence'
   const roots = ['dsh-runtime', 'node-runtime', 'tockteam-desktop.png', 'lib/tockteam/cli.js', 'lib/tockteam/package.json', 'bin/tockteam', 'bin/tockteam.cmd']
   const packageInventory = { version: '0.1.14', appId: 'ai.deepseek.tockteam-desktop', productName: 'TockTeam Desktop', assetCount: 65, assetsVerified: true, noticesVerified: true, appPathUsesAsar: true, appPath, extraResources: { roots }, vendorScan: { scope: 'bounded-no-follow', maxDepth: 2, maxEntries: 4096, checkedEntries: 114, forbiddenSourceFound: false, launcherSourceAbsent: true } }
   const rendererFor = (rendererAppPath: string) => ({
-    launcher: { apiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'invokeAction', 'onLocale', 'onTheme', 'openSettings', 'recordSearch', 'rescan', 'search'], csp: "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'", hasNodeProcess: false, hasRequire: false, notificationPermission: 'denied', ready: 'true', title: 'TockLauncher' },
+    launcher: { apiKeys: ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastFirstUse', 'trustedRaycastTrustAction'], csp: "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'", hasNodeProcess: false, hasRequire: false, notificationPermission: 'denied', ready: 'true', title: 'TockLauncher' },
     runtimeArchitecture: 'x64',
     search: { sourceExtension: 'Base64Conversion' },
     security: { appPath: rendererAppPath, appPathUsesAsar: true, launcherSessionPartition: 'persist:tockteam-launcher', sessionMatches: true },
@@ -793,6 +806,10 @@ test('installed report validation requires complete platform lifecycle evidence'
   }
   const expected = { appId: 'ai.deepseek.tockteam-desktop', platform: 'win32', productName: 'TockTeam Desktop', version: '0.1.14' }
   assert.equal(inspectInstalledReport(report, expected).failures.length, 0)
+  for (const apiKeys of [renderer.launcher.apiKeys.filter(key => key !== 'trustedRaycastFirstUse'), [...renderer.launcher.apiKeys, 'unreviewedHostAccess'].sort()]) {
+    const drifted = { ...report, installed: { ...report.installed, renderer: { ...renderer, launcher: { ...renderer.launcher, apiKeys } } } }
+    assert.ok(inspectInstalledReport(drifted, expected).failures.includes('installed renderer bridge differs from the exact contract'))
+  }
   const windowsRoots = roots.map(root => root.replaceAll('/', '\\'))
   const windowsAppPath = 'D:\\a\\_temp\\installed\\TockTeam Desktop\\resources\\app.asar'
   const windowsPackage = { ...packageInventory, appPath: windowsAppPath, extraResources: { roots: windowsRoots } }

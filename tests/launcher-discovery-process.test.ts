@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import {
+  digestLauncherElevationTarget,
   launchDetachedLauncherExecutable,
   resolveLinuxDesktopEntryInvocation,
   resolveWindowsApplicationElevationInvocation,
@@ -15,11 +16,30 @@ import {
 } from '../src/launcher-discovery-process.ts'
 
 test('fixed process adapters reject generic or malformed targets', () => {
-  assert.deepEqual(resolveLinuxDesktopEntryInvocation('/usr/share/applications/tockteam.desktop'), { executable: 'gio', args: ['launch', '/usr/share/applications/tockteam.desktop'] })
+  assert.deepEqual(resolveLinuxDesktopEntryInvocation('/usr/share/applications/tockteam.desktop'), { executable: '/usr/bin/gio', args: ['launch', '/usr/share/applications/tockteam.desktop'] })
   assert.throws(() => resolveLinuxDesktopEntryInvocation('../unsafe.desktop'), /desktop entry/u)
-  assert.deepEqual(resolveWindowsApplicationElevationInvocation('C:\\Program Files\\TockTeam\\tockteam.exe').executable, 'powershell.exe')
-  assert.deepEqual(resolveWindowsApplicationElevationInvocation('shell:AppsFolder\\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App').args.at(-1), 'shell:AppsFolder\\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App')
-  assert.throws(() => resolveWindowsApplicationElevationInvocation('powershell.exe; evil'), /Windows application target/u)
+  const digest = 'a'.repeat(64)
+  const elevated = resolveWindowsApplicationElevationInvocation('C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk', digest)
+  assert.equal(elevated.executable, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
+  assert.equal(elevated.args.at(-2), 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk')
+  assert.equal(elevated.args.at(-1), digest)
+  assert.match(elevated.args[4] ?? '', /FileShare\]::Read/u)
+  assert.match(elevated.args[4] ?? '', /SHA256/u)
+  assert.throws(() => resolveWindowsApplicationElevationInvocation('powershell.exe; evil', digest), /Windows application target/u)
+  assert.throws(() => resolveWindowsApplicationElevationInvocation('C:\\TockTeam.lnk', 'bad'), /digest/u)
+})
+
+test('elevation digests bind a regular shortcut and reject later content', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-elevation-'))
+  const target = join(root, 'TockTeam.lnk')
+  try {
+    await writeFile(target, 'shortcut-one')
+    const first = await digestLauncherElevationTarget(target)
+    assert.match(first ?? '', /^[a-f0-9]{64}$/u)
+    await writeFile(target, 'shortcut-two')
+    const second = await digestLauncherElevationTarget(target)
+    assert.notEqual(first, second)
+  } finally { await rm(root, { recursive: true, force: true }) }
 })
 
 test('detached launch uses argument arrays and hidden detached children', async () => {

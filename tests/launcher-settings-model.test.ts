@@ -26,6 +26,11 @@ test('settings model starts with the Tockbot search chrome', () => {
   })
   assert.equal(state.preferences.placeholder, 'Type here...')
   assert.equal(state.preferences.showSearchIcon, false)
+  assert.deepEqual(state.preferences.hideWindowOn, ['blur', 'afterInvocation', 'escapePressed'])
+  const chinese = readPersistedLauncherState({
+    externalGrantStatus: 'none', logs: [], missingSensitiveKeys: [], recoveredSettings: false, settingsSource: 'managed', values: { 'general.language': 'zh-CN' },
+  })
+  assert.equal(chinese.preferences.placeholder, '在此输入…')
 })
 
 test('settings snapshot merge preserves dirty values over an external reload', () => {

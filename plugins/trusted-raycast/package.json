@@ -1,0 +1,18 @@
+{
+  "name": "@tockteam/trusted-raycast",
+  "version": "0.1.0",
+  "description": "Desktop-only trusted Raycast compatibility capability",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./host": "./dist/index.js",
+    "./contract": "./dist/contract.js",
+    "./runtime": "./dist/runtime.js",
+    "./renderer": "./dist/renderer.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["dist/**"],
+  "tockTeam": { "hostDependencies": ["@tockteam/desktop"] }
+}

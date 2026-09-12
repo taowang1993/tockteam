@@ -9,7 +9,7 @@ import {
   type LauncherSearchResponse,
   type LauncherSurfaceSettings,
 } from './launcher-contract.ts'
-import type { LauncherCoreStatus, LauncherSearchOptions } from './launcher-core-search.ts'
+import type { LauncherCoreSearchSection, LauncherCoreStatus, LauncherSearchOptions } from './launcher-core-search.ts'
 import type { LauncherIpcGuard, LauncherIpcMain } from './launcher-window-ipc.ts'
 import { registerLauncherOwnedIpcHandlers } from './launcher-window-ipc.ts'
 
@@ -19,16 +19,16 @@ export type LauncherSearchProvider = (
 ) => Promise<Readonly<{
   after: readonly LauncherInternalResultItem[]
   before: readonly LauncherInternalResultItem[]
+  sections: readonly LauncherCoreSearchSection[]
   status: LauncherCoreStatus
 }>>
 
-type LauncherActions = Pick<LauncherActionStore, 'cancel' | 'invoke' | 'publish'> & Partial<Pick<LauncherActionStore, 'clearOwner'>>
+type LauncherActions = Pick<LauncherActionStore, 'cancel' | 'invoke' | 'publish'>
 
 type LauncherSearchIpcArgs = Readonly<{
   actions: LauncherActions
   guard: LauncherIpcGuard
   ipcMain: LauncherIpcMain
-  rescan: (owner?: LauncherActionOwner) => Promise<LauncherCoreStatus>
   search: LauncherSearchProvider
   surface?: Readonly<{
     getLocalExtensionSettings?: () => unknown
@@ -77,28 +77,34 @@ export function registerLauncherIpcHandlers(args: LauncherSearchIpcArgs): () => 
           throw new Error('TockLauncher search owner changed')
         }
         const beforeCount = result.before.length
+        const internalItems = result.sections.flatMap(section => section.items)
+        const legacyItems = [...result.before, ...result.after]
+        if (internalItems.length !== legacyItems.length || internalItems.some((item, index) => item.id !== legacyItems[index]?.id)) {
+          throw operationFailure()
+        }
         let published
         try {
           published = args.actions.publish({
-            items: [...result.before, ...result.after],
+            items: internalItems,
             owner: activeOwner,
           })
         } catch { throw operationFailure() }
+        let sectionOffset = 0
+        const sections = result.sections.map(section => {
+          const items = published.items.slice(sectionOffset, sectionOffset + section.items.length)
+          sectionOffset += section.items.length
+          return Object.freeze({ id: section.id, items: Object.freeze(items) })
+        })
+        if (sectionOffset !== published.items.length || published.items.length !== result.before.length + result.after.length) {
+          throw operationFailure()
+        }
         return Object.freeze({
           after: Object.freeze(published.items.slice(beforeCount)),
           before: Object.freeze(published.items.slice(0, beforeCount)),
           resultSetId: published.resultSetId,
+          sections: Object.freeze(sections),
           status: result.status,
         })
-      },
-    ],
-    [
-      LAUNCHER_IPC_CHANNELS.rescan,
-      async (event: unknown, ...rawArgs: unknown[]): Promise<LauncherCoreStatus> => {
-        const owner = args.guard.assert(event, 'launcher')
-        assertNoArguments(LAUNCHER_IPC_CHANNELS.rescan, rawArgs)
-        try { return await args.rescan(owner) }
-        catch { throw operationFailure() }
       },
     ],
     [

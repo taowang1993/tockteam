@@ -1,4 +1,20 @@
+import { createTrustedRaycastFirstUse } from './trusted-raycast-first-use.ts'
+import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
+import { TrustedRaycastTrustStore } from './trusted-raycast-trust.ts'
+import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
+import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, TrustedRaycastOrigin, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
+import { loadTrustedRaycastPreferenceState, loadTrustedRaycastPreferences, saveTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
+import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
+import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
+import { registerTrustedRaycastIpcHandlers } from './trusted-raycast-ipc.ts'
+import { trustedRaycastCommands, trustedRaycastCatalog, isTrustedTranslateProofUrl, TRUSTED_RAYCAST_CAN_I_USE_HANDLER, TRUSTED_RAYCAST_KAOMOJI_HANDLER, TRUSTED_RAYCAST_TRANSLATE_HANDLER, TRUSTED_RAYCAST_TRUST_HANDLER } from './trusted-raycast-catalog.ts'
+import { TRUSTED_RAYCAST_IPC_CHANNELS, type TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
+import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
+import { loadKaomojiPreferenceState, saveKaomojiPreferences } from './trusted-raycast-kaomoji-preferences.ts'
+import { loadTrustedRaycastCanIUsePreferences, saveTrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preference-store.ts'
+import { trustedRaycastDataPaths } from './trusted-raycast-paths.ts'
 import { randomBytes } from 'node:crypto'
+import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import {
@@ -62,6 +78,7 @@ import {
   stripWebClipResponseHeaders,
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
+import { pruneRuntimeBrowserCookies } from './runtime-browser-cookies.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { isTockTutorProtocol, parseSingleInstanceProtocolUrls, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
 import { applyWebClipFixtureEnvironment, scrubDesktopAuthorityEnvironment } from './desktop-runtime-environment.ts'
@@ -92,7 +109,13 @@ import {
   createLauncherWebPreferences,
   type LauncherUrlPolicy,
 } from './launcher-security.ts'
-import { LauncherActionStore, type LauncherActionOwner } from './launcher-actions.ts'
+import {
+  LauncherActionStore,
+  launcherActionCompletion,
+  normalizeLauncherActionResult,
+  type LauncherActionExecutionResult,
+  type LauncherActionOwner,
+} from './launcher-actions.ts'
 import { resolveMacOSApplicationIconPath } from './launcher-application-icons.ts'
 import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
 import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
@@ -124,6 +147,7 @@ import {
 } from './launcher-os-process.ts'
 import { MACOS_SYSTEM_SETTINGS, WINDOWS_SYSTEM_SETTINGS } from './launcher-os-catalog.ts'
 import {
+  digestLauncherElevationTarget,
   launchDetachedLauncherExecutable,
   revalidateLauncherExecutable,
   revalidateLauncherPath,
@@ -132,6 +156,7 @@ import {
   launcherPathIdentity,
   resolveLinuxDesktopEntryInvocation,
   resolveWindowsApplicationElevationInvocation,
+  resolveWindowsSystemExecutable,
   revalidateLauncherWindowsStoreId,
   statLauncherPathIdentity,
 } from './launcher-discovery-process.ts'
@@ -146,13 +171,13 @@ import { createLauncherLocalExtensions, resolveLauncherEnabledExtensionIds } fro
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
-import { LAUNCHER_COMPOSITION, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
+import { LAUNCHER_COMPOSITION, LAUNCHER_HIDE_WINDOW_ON_DEFAULT, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
 import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
 import {
   executeTockTeamDestination,
   createTockTeamDestinationResults,
 } from './launcher-specialists.ts'
-import { LauncherOverlayController } from './launcher-window-controller.ts'
+import { LauncherOverlayController, resolveLauncherDisplayWorkArea } from './launcher-window-controller.ts'
 import {
   registerLauncherWindowIpcHandlers,
   registerWorkbenchLauncherIpcHandlers,
@@ -188,6 +213,8 @@ import {
 import { createDesktopAppUpdater, type DesktopAppUpdater } from './app-update.ts'
 import { migrateLegacyDesktopState } from './data-root.ts'
 import { RuntimeStartCancelledError, RuntimeStartGate } from './runtime-start-gate.ts'
+import { installLauncherFocusProof, type LauncherFocusProofApp, type LauncherFocusProofChannel } from './launcher-focus-proof.ts'
+import { resolveLauncherProofMode } from './launcher-proof-mode.ts'
 import {
   handleUnexpectedRuntimeExit,
   stopLiveRuntimeForMarketplace,
@@ -211,9 +238,31 @@ const launcherPackagedSmokeEnabled = app.isPackaged
     || process.argv.includes('--tockteam-launcher-installed-smoke')
       && process.env.TOCKTEAM_INSTALLED_SMOKE === '1'
   )
+if (process.platform === 'darwin' && launcherPackagedSmokeEnabled) app.commandLine.appendSwitch('use-mock-keychain')
 const launcherNetworkFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_NETWORK_FIXTURE === '1'
 const webClipFixtureUrl = !app.isPackaged ? process.env.TOCKTEAM_WEB_CLIP_FIXTURE_URL : undefined
 const launcherOsFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_OS_FIXTURE === '1'
+const launcherProofMode = resolveLauncherProofMode({
+  argv: process.argv,
+  denyEffectsRequested: process.env.TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF === '1',
+  inactiveRequested: process.env.TOCKTEAM_LAUNCHER_INACTIVE_VISUAL_PROOF === '1',
+  ipcConnected: typeof process.send === 'function' && process.connected === true,
+  isPackaged: app.isPackaged,
+  nonce: process.env.TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE,
+  packagedSmokeEnabled: launcherPackagedSmokeEnabled,
+})
+const launcherInactiveVisualProofEnabled = launcherProofMode.inactive
+installLauncherFocusProof({
+  app: app as unknown as LauncherFocusProofApp,
+  channel: typeof process.send === 'function' ? process as unknown as LauncherFocusProofChannel : undefined,
+  emergencyExit: code => { const timer = setTimeout(() => { app.exit(code) }, 5_000); timer.unref() },
+  enabled: launcherInactiveVisualProofEnabled,
+  getAllWindows: () => BrowserWindow.getAllWindows(),
+  nonce: process.env.TOCKTEAM_LAUNCHER_VISUAL_PROOF_NONCE,
+  scheduleExit: callback => { setImmediate(callback) },
+  shutdown: code => { void requestSecureQuit('visual-proof', code) },
+})
+const trustedRaycastDenyEffectsProofEnabled = launcherProofMode.installedFirstUse || (!app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_DENY_EFFECTS_PROOF === '1')
 const launcherTerminalFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_TERMINAL_FIXTURE === '1'
 const launcherWorkflowFixtureEnabled = !app.isPackaged && process.env.TOCKTEAM_WORKFLOW_FIXTURE === '1'
 const configuredLauncherWorkflowFixtureActionTtlMs = launcherWorkflowFixtureEnabled && process.env.TOCKTEAM_WORKFLOW_ACTION_TTL_MS !== undefined
@@ -526,12 +575,36 @@ let transitioning = false
 let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
+let trustedRaycast: TrustedRaycastManager | undefined
+let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
+let trustedRaycastKaomojiTrust: TrustedRaycastTrustStore | undefined
+let trustedRaycastCanIUseTrust: TrustedRaycastTrustStore | undefined
+let trustedRaycastBootstrap: Promise<void> = Promise.resolve()
+const trustedRaycastOrigin = new TrustedRaycastOrigin()
+const trustedRaycastMutex = createTrustedRaycastMutex()
+let trustedRaycastFirstUse: ReturnType<typeof createTrustedRaycastFirstUse> | undefined
+const execFilePromise = promisify(execFile)
+const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
+  execFile: (file, args, options) => execFilePromise(file, args, { timeout: options?.timeout, maxBuffer: options?.maxBuffer }) as Promise<{ stdout: string }>,
+  readClipboard: () => clipboard.readText(),
+  writeClipboard: (text: string) => text === '' ? clipboard.clear() : clipboard.writeText(text),
+  readClipboardFormats: () => clipboard.availableFormats(),
+  readClipboardBuffer: (format: string) => clipboard.readBuffer(format),
+  writeClipboardBuffer: (format: string, data: Buffer) => clipboard.writeBuffer(format, data),
+  ownAppNames: Object.freeze(app.isPackaged ? [app.name] : [app.name, 'Electron']),
+})
+const trustedRaycastChannel = new DesktopTrustedRaycastChannel(async active => {
+  if (!active) trustedRaycastFirstUse?.cancel()
+  if (!active) await trustedRaycastMutex(async () => await trustedRaycast?.stop('activation-revoked'))
+  if (!quitting) await launcherRescan?.().catch(error => appendLog('desktop', String(error).slice(0, 512)))
+})
 let launcherController: LauncherOverlayController | undefined
 let launcherLifecycle: LauncherLifecycleController | undefined
 let launcherUpdater: DesktopAppUpdater | undefined
 let launcherIpcDisposer: (() => void) | undefined
 let workbenchLauncherIpcDisposer: (() => void) | undefined
 let secureTeardownPromise: Promise<void> | undefined
+let secureTeardownExitCode: 0 | 1 = 0
 let launcherUpdaterRuntimeWasActive = false
 let launcherRescan: ((owner?: LauncherActionOwner, preserveSignal?: AbortSignal, reason?: string) => Promise<unknown>) | undefined
 let launcherCoreFlush: (() => Promise<void>) | undefined
@@ -1111,6 +1184,11 @@ function runtimeEnvironment(
     fixtureUrl: webClipFixtureUrl,
     preview: overrides.preview !== undefined,
   })
+  const trusted = overrides.preview === undefined ? trustedRaycastChannel.environment : undefined
+  if (trusted !== undefined) {
+    environment.DSH_DESKTOP_TRUSTED_RAYCAST_ENDPOINT = trusted.endpoint
+    environment.DSH_DESKTOP_TRUSTED_RAYCAST_TOKEN = trusted.token
+  }
   const reveal = overrides.preview === undefined ? desktopRevealChannel.environment : undefined
   if (reveal !== undefined) {
     environment.DSH_DESKTOP_REVEAL_ENDPOINT = reveal.endpoint
@@ -1420,7 +1498,7 @@ function launcherSettingsSnapshot(): ReturnType<LauncherPersistenceRepository['s
     : context.platform === 'Windows'
       ? ['extension[ApplicationSearch].windowsFolders']
       : ['extension[ApplicationSearch].macOsFolders']
-  for (const key of [...dynamicKeys, 'extension[VSCode].command']) {
+  for (const key of [...dynamicKeys, 'extension[VSCode].command', 'appearance.searchBarPlaceholderText']) {
     if (Object.hasOwn(values, key)) continue
     const fallback = resolveLauncherSettingDefault(key, context)
     if (fallback !== undefined) values[key] = fallback
@@ -1548,7 +1626,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
     history: Object.freeze([...history]),
     historyEnabled,
     historyLimit,
-    hideWindowOn: Object.freeze((Array.isArray(values['window.hideWindowOn']) ? values['window.hideWindowOn'] : ['blur', 'afterInvocation']).filter((reason): reason is 'blur' | 'afterInvocation' | 'escapePressed' => reason === 'blur' || reason === 'afterInvocation' || reason === 'escapePressed')),
+    hideWindowOn: Object.freeze((Array.isArray(values['window.hideWindowOn']) ? values['window.hideWindowOn'] : LAUNCHER_HIDE_WINDOW_ON_DEFAULT).filter((reason): reason is 'blur' | 'afterInvocation' | 'escapePressed' => reason === 'blur' || reason === 'afterInvocation' || reason === 'escapePressed')),
     locale: language,
     maxSearchResultItems: Math.min(200, Math.max(1, numberValue('searchEngine.maxResultLength', 50))),
     placeholder: configuredPlaceholder.slice(0, 512),
@@ -1603,6 +1681,7 @@ function createLauncherWindow(args: Readonly<{
 }>): BrowserWindow {
   const window = new BrowserWindow({
     alwaysOnTop: true,
+    focusable: !launcherInactiveVisualProofEnabled,
     frame: false,
     fullscreenable: false,
     height: 475,
@@ -1624,6 +1703,13 @@ function createLauncherWindow(args: Readonly<{
     window.destroy()
     throw new Error('TockLauncher window was created with an unexpected session')
   }
+  const translateOwner = { webContentsId: window.webContents.id }
+  const closeTranslateOwner = (): void => { trustedRaycastOrigin.clear(); trustedRaycastFirstUse?.cancel(translateOwner.webContentsId); void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(translateOwner)).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
+  window.on('blur', () => trustedRaycastOrigin.clear())
+  window.on('hide', closeTranslateOwner)
+  window.webContents.on('render-process-gone', closeTranslateOwner)
+  window.webContents.on('did-start-navigation', closeTranslateOwner)
+  window.on('closed', closeTranslateOwner)
   writeLauncherPackagedSmokeSecurity(window, args.launcherSession)
   window.removeMenu()
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -1703,15 +1789,17 @@ function initializeLauncher(): void {
           return
         }
         if (platform === 'Windows' && revalidateLauncherWindowsStoreId(target)) {
-          await execFileAsync('explorer.exe', [target], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
+          await execFileAsync(resolveWindowsSystemExecutable('explorer'), [target], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
           return
         }
         const error = await launcherAwaitAbortable(shell.openPath(target), signal)
         if (error) throw new Error(error)
       },
-      openApplicationAsAdministrator: async (target, signal) => {
+      openApplicationAsAdministrator: async (target, digest, signal) => {
         if (signal.aborted) throw launcherAbortError(signal)
-        const invocation = resolveWindowsApplicationElevationInvocation(target)
+        if (await digestLauncherElevationTarget(target) !== digest) throw new Error('Application changed before elevation')
+        if (signal.aborted) throw launcherAbortError(signal)
+        const invocation = resolveWindowsApplicationElevationInvocation(target, digest)
         await execFileAsync(invocation.executable, [...invocation.args], { maxBuffer: 64 * 1024, signal, timeout: 15_000, windowsHide: true })
       },
       openExternal: async (url, signal) => {
@@ -1725,6 +1813,7 @@ function initializeLauncher(): void {
         if (signal.aborted) throw launcherAbortError(signal)
       },
     },
+    captureApplicationDigest: async target => await digestLauncherElevationTarget(target),
     capturePathIdentity: async target => await statLauncherPathIdentity(target),
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
     getApplicationIcon: async (target, signal) => {
@@ -2177,14 +2266,111 @@ function initializeLauncher(): void {
     },
   })
   launcherOs = os
+  const googleTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'google-translate')
+  const kaomojiTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'kaomoji-search')
+  const canIUseTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'can-i-use')
+  const translatePreferencesPath = googleTrustedPaths.preferencesFile
+  const selectionFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE === '1'
+  const pasteFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE === '1'
+  trustedRaycastTrust = new TrustedRaycastTrustStore({
+    descriptor: trustedRaycastDescriptors['google-translate'],
+    installRoot: googleTrustedPaths.installRoot,
+    candidateDir: join(currentDir, 'trusted-raycast'),
+    stateFile: googleTrustedPaths.trustFile,
+    preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Translate runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir),
+  })
+  trustedRaycastKaomojiTrust = new TrustedRaycastTrustStore({
+    descriptor: trustedRaycastDescriptors['kaomoji-search'],
+    installRoot: kaomojiTrustedPaths.installRoot,
+    candidateDir: join(currentDir, 'trusted-raycast-kaomoji'),
+    stateFile: kaomojiTrustedPaths.trustFile,
+    preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Kaomoji runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir, 'kaomoji-search'),
+  })
+  // The pinned trusted runtime currently depends on the POSIX tar executable.
+  trustedRaycastCanIUseTrust = process.platform === 'win32' ? undefined : new TrustedRaycastTrustStore({
+    descriptor: trustedRaycastDescriptors['can-i-use'],
+    installRoot: canIUseTrustedPaths.installRoot,
+    candidateDir: join(currentDir, 'trusted-raycast-can-i-use'),
+    stateFile: canIUseTrustedPaths.trustFile,
+    preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Can I Use runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir, 'can-i-use'),
+  })
+  const trustStoreFor = (extensionId: keyof typeof trustedRaycastDescriptors) => extensionId === 'can-i-use' ? trustedRaycastCanIUseTrust : extensionId === 'kaomoji-search' ? trustedRaycastKaomojiTrust : trustedRaycastTrust
+  trustedRaycast = new TrustedRaycastManager({
+    runtimeDir: extensionId => trustStoreFor(extensionId)?.runtimeDir(),
+    nodePath: runtimePaths().nodeBinary,
+    stateFile: extensionId => extensionId === 'can-i-use' ? canIUseTrustedPaths.stateFile : extensionId === 'kaomoji-search' ? kaomojiTrustedPaths.stateFile : googleTrustedPaths.stateFile,
+    preferencesConfigured: extensionId => extensionId === 'can-i-use' ? true : extensionId === 'kaomoji-search' ? loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).configured : loadTrustedRaycastPreferenceState(translatePreferencesPath).configured,
+    savePreferences: (preferences, extensionId) => {
+      if (extensionId === 'kaomoji-search') return saveKaomojiPreferences(kaomojiTrustedPaths.preferencesFile, preferences)
+      if (extensionId === 'google-translate') return saveTrustedRaycastPreferences(translatePreferencesPath, preferences)
+      throw new Error('Can I Use preferences require main-owned setup')
+    },
+    saveCanIUsePreferences: (preferences, canonicalTargets) => saveTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile, preferences, { canonicalTargets }),
+    openCanIUse: async url => {
+      if (trustedRaycastDenyEffectsProofEnabled) throw new Error('Browser opening is disabled in the bounded visual proof')
+      await shell.openExternal(url)
+    },
+    readSelectedText: async () => {
+      if (trustedRaycastDenyEffectsProofEnabled) return { unavailable: 'Selected text is disabled in the bounded visual proof. Manual input is available.' }
+      const result = await readTrustedRaycastSelectedText(trustedRaycastOrigin.current, { ...trustedRaycastNativeDeps, ...(selectionFixture ? { fixture: 'selection' as const } : {}) })
+      if (selectionFixture && 'text' in result) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-selection-proof.json'), JSON.stringify({ fixture: true }), { mode: 0o600 })
+      return result
+    },
+    pasteText: async text => {
+      if (trustedRaycastDenyEffectsProofEnabled) throw new Error('Paste is disabled in the bounded visual proof')
+      const result = await pasteTrustedRaycastText(text, trustedRaycastOrigin.current, { ...trustedRaycastNativeDeps, ...(pasteFixture ? { fixture: 'paste' as const } : {}) })
+      if (!app.isPackaged) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-paste-proof.json'), JSON.stringify({ target: result.target, fixture: result.fixture, restoration: result.restoration }), { mode: 0o600 })
+    },
+    copyText: async text => {
+      if (trustedRaycastDenyEffectsProofEnabled) throw new Error('Clipboard Copy is disabled in the bounded visual proof')
+      const proof = await copyTrustedRaycastText(text, clipboard,
+        !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_CLIPBOARD_FIXTURE === '1'
+          ? join(app.getAppPath(), 'scripts/trusted-raycast-clipboard-proof.swift') : undefined)
+      if (proof) writeFileSync(join(app.getPath('userData'), 'launcher', 'trusted-raycast-clipboard-proof.json'), JSON.stringify(proof), { mode: 0o600 })
+    },
+    openGoogleTranslate: async url => {
+      // Bounded development proof owns this private browser; never touch the user's default browser.
+      if (!app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_BROWSER_FIXTURE === '1') {
+        const extended = process.env.TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY === '1'
+          ? screen.getAllDisplays().find(display => display.id !== screen.getPrimaryDisplay().id)?.workArea
+          : undefined
+        if (extended === undefined && process.env.TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY === '1') throw new Error('Trusted Translate browser proof requires a connected extended display')
+        const browser = new BrowserWindow({ width: 900, height: 650, ...(extended === undefined ? {} : { x: extended.x + Math.max(0, Math.floor((extended.width - 900) / 2)), y: extended.y + Math.max(0, Math.floor((extended.height - 650) / 2)) }), webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: `trusted-translate-proof-${randomBytes(16).toString('hex')}` } })
+        browser.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+        browser.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+        browser.webContents.session.setPermissionCheckHandler(() => false)
+        browser.webContents.on('will-navigate', (event, destination) => { if (!isTrustedTranslateProofUrl(destination)) event.preventDefault() })
+        const timer = setTimeout(() => { if (!browser.isDestroyed()) browser.destroy() }, 15000)
+        browser.once('closed', () => clearTimeout(timer))
+        try { await browser.loadURL(url) } catch (error) { browser.destroy(); throw error }
+        return
+      }
+      await shell.openExternal(url)
+    },
+    onMessage: (owner, message) => {
+      const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
+      if (window !== undefined && !window.isDestroyed()) window.webContents.send(TRUSTED_RAYCAST_IPC_CHANNELS.patch, message)
+    },
+    onError: (_owner, error) => appendLog('desktop', error.message.slice(0, 512)),
+  })
+  // Bundled extensions are product features: admit, preview, install, and enable them before discovery.
+  // Existing trust files still preserve explicit user disablement and recovery state.
+  trustedRaycastBootstrap = trustedRaycastMutex(async () => {
+    for (const [name, store] of [['Translate', trustedRaycastTrust], ['Kaomoji', trustedRaycastKaomojiTrust], ['Can I Use', trustedRaycastCanIUseTrust]] as const) {
+      try { await store?.installBundledDefault() }
+      catch (error) { appendLog('desktop', `Bundled ${name} activation failed: ${error instanceof Error ? error.message.slice(0, 512) : String(error).slice(0, 512)}`) }
+    }
+  })
   const coreSearch = createLauncherCoreSearch({
     initialExcludedItemIds: repository.getSetting('searchEngine.excludedItems', []),
     initialFavoriteItemIds: repository.getSetting('favorites', []),
-    initialIndexedItems: repository.readIndex(),
+    initialIndexedItems: repository.readIndex().filter(item => !item.id.startsWith('trusted-raycast:')),
+    initialRanking: repository.readRanking(),
     appendLog: async (_level, message) => { await repository.appendLog('ERROR', message) },
     loadIndexedItems: async (signal, preserveSignal) => {
+      await trustedRaycastBootstrap
       const result = await createTockTeamDestinationResults('')
-      return [...result.before, ...result.after, ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
+      return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust?.status() ?? { digest: '', digestApproved: false, enabled: false, installed: false }, trustedRaycastKaomojiTrust?.status(), trustedRaycastCanIUseTrust?.status()), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
       const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
@@ -2199,6 +2385,7 @@ function initializeLauncher(): void {
       })
     },
     persistIndex: async items => { await repository.writeIndex(items) },
+    persistUsage: async (itemId, timestamp) => { await repository.recordUsage(itemId, timestamp) },
     persistSettings: async values => await runLauncherSettingsOperation(
       async () => await runLauncherMutation('launcher-core-settings-mutation', async signal => {
         await repository.updateSettings(values, signal)
@@ -2214,36 +2401,85 @@ function initializeLauncher(): void {
   const actions = new LauncherActionStore({
     ...(launcherWorkflowFixtureActionTtlMs === undefined ? {} : { ttlMsForSource: sourceExtension => sourceExtension === 'Workflow' ? launcherWorkflowFixtureActionTtlMs : undefined }),
     cancel: async record => await workflow.cancelAction(record),
+    onSuccessfulDefaultAction: async record => {
+      if (record.isDefaultAction !== true || record.resultItemId === undefined) return
+      await coreSearch.recordUsage(record.resultItemId)
+    },
     execute: async record => {
-      if (await coreSearch.executeAction(record)) return
-      if (await terminal.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
+      const trustedCommand = trustedRaycastCommands.find(command => command.handler === record.handlerKey)
+      const checkTrustedLaunch = trustedCommand ? trustedRaycastFirstUse!.captureLaunch(record.owner.webContentsId, trustedCommand.extensionId) : undefined
+      if (!trustedCommand) trustedRaycastFirstUse?.cancel(record.owner.webContentsId)
+      const setupCommand = record.handlerKey === TRUSTED_RAYCAST_TRUST_HANDLER ? trustedRaycastCommands.find(command => command.extensionId === record.argument) : undefined
+      const checkSetup = setupCommand ? trustedRaycastFirstUse!.captureLaunch(record.owner.webContentsId, setupCommand.extensionId) : undefined
+      let completion: LauncherActionExecutionResult = normalizeLauncherActionResult(await coreSearch.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await terminal.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await workflow.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await local.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await discovery.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await fileSearch.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await network.executeAction(record))
+      if (!completion.handled) completion = normalizeLauncherActionResult(await os.executeAction(record))
+      if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRANSLATE_HANDLER) {
+        await trustedRaycastBootstrap
+        await trustedRaycastMutex(async () => {
+          checkTrustedLaunch!()
+          if (!trustedRaycastChannel.active || !trustedRaycast?.available || trustedRaycastTrust?.status().enabled !== true || trustedRaycastTrust?.status().digestApproved !== true || record.argument !== 'translate') throw new Error('Translate capability is unavailable')
+          try {
+            await trustedRaycast.start(record.owner, { extensionId: 'google-translate', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'translate', preferences: loadTrustedRaycastPreferences(translatePreferencesPath) }, '', checkTrustedLaunch)
+            checkTrustedLaunch!()
+          } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
+        })
+        completion = launcherActionCompletion(true)
       }
-      if (await workflow.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
+      if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_KAOMOJI_HANDLER) {
+        await trustedRaycastMutex(async () => {
+          checkTrustedLaunch!()
+          const trust = trustedRaycastKaomojiTrust?.status()
+          if (!trustedRaycastChannel.active || !trustedRaycast?.availableFor('kaomoji-search') || trust?.enabled !== true || trust.digestApproved !== true || record.argument !== 'index') throw new Error('Kaomoji Search capability is unavailable')
+          try {
+            await trustedRaycast.start(record.owner, { extensionId: 'kaomoji-search', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).values }, '', checkTrustedLaunch)
+            checkTrustedLaunch!()
+          } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
+        })
+        completion = launcherActionCompletion(true)
       }
-      if (await local.executeAction(record)) return
-      if (await discovery.executeAction(record)) return
-      if (await fileSearch.executeAction(record)) return
-      if (await network.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
+      if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_CAN_I_USE_HANDLER) {
+        await trustedRaycastMutex(async () => {
+          checkTrustedLaunch!()
+          const trust = trustedRaycastCanIUseTrust?.status()
+          if (!trustedRaycastChannel.active || !trustedRaycast?.availableFor('can-i-use') || trust?.enabled !== true || trust.digestApproved !== true || record.argument !== 'index') throw new Error('Can I Use capability is unavailable')
+          try {
+            await trustedRaycast.start(record.owner, { extensionId: 'can-i-use', sessionId: randomBytes(16).toString('hex'), generation: randomBytes(16).toString('hex'), command: 'index', preferences: loadTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile) }, '', checkTrustedLaunch)
+            checkTrustedLaunch!()
+          } catch (error) { await trustedRaycast.closeOwner(record.owner); throw error }
+        })
+        completion = launcherActionCompletion(true)
       }
-      if (await os.executeAction(record)) {
-        if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
-        return
+      if (!completion.handled && record.handlerKey === TRUSTED_RAYCAST_TRUST_HANDLER) {
+        if (!trustedRaycastChannel.active) throw new Error('Extensions capability is inactive')
+        if (record.argument !== 'manage') {
+          const command = trustedRaycastCommands.find(command => command.extensionId === record.argument)
+          const store = command && trustStoreFor(command.extensionId)
+          if (!command || !store) throw new Error('Reviewed extension is unavailable')
+          const state = store.status()
+          if (!state.installed && !state.candidateAvailable && !state.recovery) throw new Error('Reviewed candidate is unavailable')
+          checkSetup!()
+        }
+        completion = launcherActionCompletion(true)
       }
-      await executeTockTeamDestination(record, () => {
-        if (runtimeUrl === undefined) return false
-        return mainWindow === undefined || mainWindow.isDestroyed()
-          ? true
-          : isEligibleDesktopRevealWindow()
-      }, destination => {
-        dispatchWorkbenchRoute({ destination })
-      })
+      if (!completion.handled) {
+        await executeTockTeamDestination(record, () => {
+          if (runtimeUrl === undefined) return false
+          return mainWindow === undefined || mainWindow.isDestroyed()
+            ? true
+            : isEligibleDesktopRevealWindow()
+        }, destination => {
+          dispatchWorkbenchRoute({ destination })
+        })
+        completion = launcherActionCompletion(true)
+      }
       if (record.hideWindowAfterInvocation) controller?.hideAfterInvocation(record.owner.webContentsId)
+      return completion
     },
   })
   launcherCore = coreSearch
@@ -2268,7 +2504,10 @@ function initializeLauncher(): void {
   }
   launcherRescan = rescan
   const onWindowCleared = (window: { webContents: { id: number } }): void => {
+    trustedRaycastOrigin.clear()
     const owner = { role: 'launcher' as const, webContentsId: window.webContents.id }
+    trustedRaycastFirstUse?.cancel(owner.webContentsId)
+    void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)).catch(error => appendLog('desktop', String(error).slice(0, 512)))
     // Revoke every provider before clearing this renderer's public action owner.
     invalidateAllLauncherProviders('launcher-owner-clear', owner)
     const ownerGeneration = ++launcherOwnerGeneration
@@ -2279,34 +2518,45 @@ function initializeLauncher(): void {
     })()
   }
   const nextController = new LauncherOverlayController({
+    beforeShow: async () => {
+      if (process.platform !== 'darwin' || trustedRaycastDenyEffectsProofEnabled) { trustedRaycastOrigin.clear(); return }
+      await trustedRaycastOrigin.capture(() => selectionFixture || pasteFixture
+        ? Promise.resolve({ name: 'TockTeam Fixture Target', capturedAt: Date.now() })
+        : captureTrustedRaycastPriorApp(trustedRaycastNativeDeps))
+    },
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
-    focusApp: () => app.focus({ steal: true }),
-    getDisplayWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+    focusApp: async () => {
+      app.focus({ steal: true })
+      const workbench = mainWindow
+      if (workbench !== undefined && !workbench.isDestroyed()
+        && screen.getDisplayMatching(workbench.getBounds()).id !== screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id) {
+        await new Promise<void>(resolve => setImmediate(resolve))
+      }
+    },
+    getDisplayWorkArea: () => resolveLauncherDisplayWorkArea(
+      screen.getAllDisplays(),
+      screen.getPrimaryDisplay().id,
+      screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+      process.env.TOCKTEAM_LAUNCHER_SMOKE_EXTENDED_DISPLAY === '1',
+      process.env.TOCKTEAM_LAUNCHER_SMOKE_REQUIRE_EXTENDED_DISPLAY === '1',
+    ),
     getLocale: () => launcherLocale,
     getHideWindowOn: () => {
-      const configured = repository.getSetting<unknown>('window.hideWindowOn', ['blur', 'afterInvocation'])
-      return Array.isArray(configured) ? configured.filter((value): value is string => value === 'blur' || value === 'afterInvocation' || value === 'escapePressed') : ['blur', 'afterInvocation']
+      const configured = repository.getSetting<unknown>('window.hideWindowOn', LAUNCHER_HIDE_WINDOW_ON_DEFAULT)
+      return Array.isArray(configured) ? configured.filter((value): value is string => value === 'blur' || value === 'afterInvocation' || value === 'escapePressed') : LAUNCHER_HIDE_WINDOW_ON_DEFAULT
     },
     globalShortcut: {
-      register: (accelerator, callback) => globalShortcut.register(accelerator, () => {
-        const workbench = mainWindow
-        if (process.platform === 'darwin'
-          && workbench !== undefined
-          && !workbench.isDestroyed()
-          && screen.getDisplayMatching(workbench.getBounds()).id
-            !== screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id) {
-          app.focus({ steal: true })
-          setImmediate(callback)
-          return
-        }
-        callback()
-      }),
+      register: (accelerator, callback) => {
+        if (launcherProofMode.installedFirstUse) return false
+        return globalShortcut.register(accelerator, callback)
+      },
       unregister: accelerator => { globalShortcut.unregister(accelerator) },
     },
     loadWindow: window => window.loadURL(urlPolicy.entryUrl).then(() => undefined),
     onWindowCleared,
     getThemeProjection: () => launcherThemeProjector.get(),
     platform: process.platform,
+    showInactive: launcherInactiveVisualProofEnabled,
     registerWindow: (_role, window) => launcherWindowRegistry.register(
       'launcher',
       window as unknown as LauncherRegistryWindow,
@@ -2315,6 +2565,7 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
+    await trustedRaycastMutex(async () => await trustedRaycast?.close())
     await launcherCustomBrowser?.close()
     const discoveryClose = discovery.close()
     const fileClose = fileSearch.close()
@@ -2340,6 +2591,66 @@ function initializeLauncher(): void {
     roleOf: window => launcherWindowRegistry.roleOf(window),
     urlPolicy,
   })
+  trustedRaycastFirstUse = createTrustedRaycastFirstUse({
+    mutex: trustedRaycastMutex, active: () => trustedRaycastChannel.active, store: trustStoreFor,
+    rescan: () => rescan(undefined, undefined, 'trusted-raycast-first-use'),
+    launch: async (webContentsId, extensionId, check) => {
+      check()
+      const command = trustedRaycastCommands.find(command => command.extensionId === extensionId)!
+      const item = trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust!.status(), trustedRaycastKaomojiTrust?.status(), trustedRaycastCanIUseTrust?.status()).find(item => item.id === command.id)
+      if (!item) throw new Error('Extension command is no longer available')
+      const owner = { role: 'launcher' as const, webContentsId }
+      // Publish from current Host trust, never replay the consumed setup action after rescan.
+      const fresh = actions.publish({ owner, items: [item] }).items[0]!
+      check()
+      await actions.invoke({ owner, actionId: fresh.defaultAction.actionId })
+      check()
+    },
+  })
+  const disposeTrustedRaycast = registerTrustedRaycastIpcHandlers({
+    guard: launcherGuard, ipcMain,
+    onEvent: (owner, event) => { if (!trustedRaycastChannel.active) throw new Error('Translate capability is inactive'); trustedRaycast?.send(owner, event) },
+    onClose: async owner => { trustedRaycastFirstUse?.cancel(owner.webContentsId); await trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)) },
+    getTrust: extensionId => Object.freeze({ extensionId, state: Object.freeze({ ...(trustStoreFor(extensionId)?.status() ?? Object.freeze({ candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '', staged: false })), active: trustedRaycastChannel.active }) }),
+    onFirstUse: async (owner, request) => {
+      const store = trustStoreFor(request.extensionId)
+      if (!store) throw new Error('Reviewed extension is unavailable')
+      const state = (): TrustedRaycastTrustState => ({ ...store.status(), active: trustedRaycastChannel.active })
+      try {
+        await trustedRaycastFirstUse!.run(owner.webContentsId, request)
+        return { extensionId: request.extensionId, ok: true, state: state() }
+      } catch (error) {
+        return { extensionId: request.extensionId, ok: false, state: state(), error: error instanceof Error ? error.message.slice(0, 512) : 'Extension opening failed' }
+      }
+    },
+    onTrustAction: async request => {
+      const { action, extensionId } = request
+      trustedRaycastFirstUse?.invalidate(extensionId)
+      const store = trustStoreFor(extensionId)
+      if (store === undefined) throw new Error('Trusted Extensions are unavailable')
+      try {
+        return await trustedRaycastMutex(async () => {
+          if (!trustedRaycastChannel.active) throw new Error('Extensions capability is inactive')
+          if (trustedRaycast?.activeExtensionId === extensionId && action === 'disable') await trustedRaycast.stop('capability-disabled')
+          if (trustedRaycast?.activeExtensionId === extensionId && action === 'remove') await trustedRaycast.stop('capability-removed')
+          if (trustedRaycast?.activeExtensionId === extensionId && action === 'recover') await trustedRaycast.stop('capability-recovery')
+          if (trustedRaycast?.activeExtensionId === extensionId && action === 'apply') await trustedRaycast.stop('capability-rotation')
+          const state = (): TrustedRaycastTrustState => Object.freeze({ ...store.status(), active: trustedRaycastChannel.active })
+          if (action === 'prepare') { store.stage(); await store.preview() }
+          else if (action === 'apply') store.apply()
+          else if (action === 'enable') store.enable()
+          else if (action === 'disable') store.disable()
+          else if (action === 'remove') store.remove()
+          else store.recover()
+          // Trust mutations change the main-owned catalog; successful mutations must not leave its index stale.
+          await rescan(undefined, undefined, 'trusted-raycast-mutation')
+          return Object.freeze({ extensionId, ok: true as const, state: state() })
+        })
+      } catch (error) {
+        return Object.freeze({ extensionId, ok: false as const, state: Object.freeze({ ...store.status(), active: trustedRaycastChannel.active }), error: error instanceof Error ? error.message.slice(0, 512) : 'Trusted Extensions action failed' })
+      }
+    },
+  })
   const disposeWindowIpc = registerLauncherWindowIpcHandlers({
     controller: nextController,
     getTheme: () => launcherThemeProjector.get(),
@@ -2352,7 +2663,6 @@ function initializeLauncher(): void {
       actions,
       guard: launcherGuard,
       ipcMain,
-      rescan,
       search: async (searchTerm) => {
         await launcherOwnerReady
         const surface = launcherSurfaceSettings()
@@ -2370,9 +2680,11 @@ function initializeLauncher(): void {
     })
     launcherIpcDisposer = () => {
       disposeSearchIpc()
+      disposeTrustedRaycast()
       disposeWindowIpc()
     }
   } catch (error) {
+    disposeTrustedRaycast()
     disposeWindowIpc()
     throw error
   }
@@ -2694,6 +3006,7 @@ async function resetLauncherSettings(signal?: AbortSignal): Promise<Readonly<{ c
   assertLauncherSignal(signal)
   await launcherCustomBrowser?.revoke(signal)
   await repository.resetSettings(signal)
+  launcherCore?.replaceRanking(repository.readRanking())
   assertLauncherSignal(signal)
   launcherPersistentSetsSync?.()
   await launcherLifecycle?.sync()
@@ -2809,6 +3122,7 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
     height: options.preview === true ? 760 : 840,
     minWidth: 900,
     minHeight: 620,
+    focusable: !launcherInactiveVisualProofEnabled,
     show: false,
     title: options.title ?? PRODUCT_NAME,
     ...(process.platform === 'darwin'
@@ -2827,8 +3141,8 @@ function createWindow(options: { preview?: boolean; title?: string } = {}): Brow
   })
   const windowId = String(window.webContents.id)
   window.webContents.setZoomFactor(DEFAULT_UI_ZOOM_FACTOR)
-  if (options.preview !== true) window.maximize()
-  window.once('ready-to-show', () => { window.show() })
+  if (options.preview !== true && !launcherInactiveVisualProofEnabled) window.maximize()
+  window.once('ready-to-show', () => { if (launcherInactiveVisualProofEnabled) window.showInactive(); else window.show() })
   window.on('close', event => {
     if (options.preview === true || !shouldCloseToTray({
       platform: process.platform,
@@ -3032,6 +3346,17 @@ function flushQueuedOpenRequests(): void {
 }
 
 let runtimeStopPromise: Promise<void> | undefined
+let runtimeCookieCleanup = Promise.resolve()
+
+async function prepareRuntimeBrowserCookies(): Promise<void> {
+  // Main and preview share this cookie jar. Serialize cleanup before either exchanges its launch token.
+  const cleanup = runtimeCookieCleanup.then(async () => {
+    const removed = await pruneRuntimeBrowserCookies(session.defaultSession.cookies, [runtimeUrl, previewUrl].filter(url => url !== undefined))
+    if (removed > 0) appendLog('desktop', `Retired ${String(removed)} stale runtime cookies`)
+  })
+  runtimeCookieCleanup = cleanup.catch(() => {})
+  await cleanup
+}
 
 async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolean }> = {}): Promise<void> {
   invalidateAllLauncherProviders('launcher-runtime-relaunch')
@@ -3057,6 +3382,7 @@ async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolea
       desktopCallerChannel.stop(),
       desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),
+      trustedRaycastChannel.stop(),
     ])
     const failed = results.find(result => result.status === 'rejected')
     if (failed?.status === 'rejected') throw failed.reason
@@ -3102,6 +3428,7 @@ async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>):
       await start()
       ensureCurrent()
     }
+    await startChannel(() => trustedRaycastChannel.start())
     await startChannel(() => desktopRevealChannel.start())
     await startChannel(() => desktopPickerChannel.start())
     await startChannel(() => desktopCallerChannel.start())
@@ -3121,6 +3448,8 @@ async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>):
     ensureCurrent()
     runtimeUrl = url
     runtimeOrigin = url.origin
+    await prepareRuntimeBrowserCookies()
+    ensureCurrent()
     if (mainWindow === undefined || mainWindow.isDestroyed()) assignMainWindow(createWindow())
     const window = mainWindow
     if (window === undefined || window.isDestroyed()) throw new Error('TockTeam workbench is unavailable')
@@ -3178,6 +3507,8 @@ async function startPreviewSurface(input: {
     if (previewRuntime !== supervisor) throw new Error('plugin preview was stopped before it became ready')
     previewUrl = url
     previewOrigin = url.origin
+    await prepareRuntimeBrowserCookies()
+    if (previewRuntime !== supervisor) throw new Error('plugin preview was stopped before cookie preparation completed')
     const window = createWindow({
       preview: true,
       title: `Preview ${input.pluginId} — ${PRODUCT_NAME}`,
@@ -3185,7 +3516,7 @@ async function startPreviewSurface(input: {
     previewWindow = window
     await window.loadURL(url.href)
   } catch (error) {
-    await stopPreviewSurface().catch(() => {})
+    if (previewRuntime === supervisor) await stopPreviewSurface().catch(() => {})
     throw error
   }
 }
@@ -3409,8 +3740,10 @@ function initializeLauncherTray(): void {
   })
 }
 
-function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-quit' | 'updater-install'): void {
-  if (secureTeardownPromise !== undefined) return
+function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-quit' | 'updater-install' | 'visual-proof', exitCode: 0 | 1 = 0): Promise<void> {
+  secureTeardownExitCode = Math.max(secureTeardownExitCode, exitCode) as 0 | 1
+  if (secureTeardownExitCode !== 0) process.exitCode = secureTeardownExitCode
+  if (secureTeardownPromise !== undefined) return secureTeardownPromise
   secureTeardownPromise = (async () => {
     quitting = true
     invalidateAllLauncherProviders('launcher-shutdown')
@@ -3447,12 +3780,15 @@ function requestSecureQuit(_reason: 'native-quit' | 'tray' | 'launcher-command-q
       }
     }
     logStream?.end()
-    app.quit()
+    if (secureTeardownExitCode === 0) app.quit()
+    else app.exit(secureTeardownExitCode)
   })()
   void secureTeardownPromise.catch(error => {
     appendLog('desktop', `secure quit failed: ${error instanceof Error ? error.message : String(error)}`)
-    app.quit()
+    if (secureTeardownExitCode === 0) app.quit()
+    else app.exit(secureTeardownExitCode)
   })
+  return secureTeardownPromise
 }
 
 async function reconcileLauncherAfterRelaunchFailure(reason: string): Promise<void> {
@@ -3827,7 +4163,7 @@ async function bootstrap(): Promise<void> {
       throw new Error('legacy Desktop state migration is incomplete; refusing to start')
     }
   }
-  if (app.isPackaged) app.setAsDefaultProtocolClient('tocktutor')
+  if (app.isPackaged && !launcherProofMode.installedFirstUse) app.setAsDefaultProtocolClient('tocktutor')
   initializeDesktopPicker()
   app.setAboutPanelOptions({
     applicationName: PRODUCT_NAME,

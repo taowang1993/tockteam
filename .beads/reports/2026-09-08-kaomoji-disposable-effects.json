@@ -1,0 +1,103 @@
+{
+  "artifactSha256": "9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f",
+  "authentication": {
+    "duplicateInFlightDenied": true,
+    "replayDenied": true,
+    "staleRevisionDenied": true,
+    "wrongActionDenied": true,
+    "wrongExtensionDenied": true,
+    "wrongGenerationDenied": true,
+    "wrongOwnerDenied": true,
+    "wrongSessionDenied": true
+  },
+  "buildIdentity": {
+    "artifactSha256": "9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f",
+    "childSha256": "6795a32af619356c111e0e35e66023c5a7eb074da809e69a814e1e277a1642e2",
+    "command": "index",
+    "extensionId": "kaomoji-search",
+    "projectionSha256": "99cfea55d2cf3a868750feca9b40d75d68bc943b549b1927298eaf2bc8c2510c",
+    "react": "19.0.0",
+    "reconciler": "0.31.0",
+    "resolutionSha256": "e9364a2ccfed1c9f28aba641b755e412e81281c72267128438b752ea63e89b47",
+    "metadataSha256": "d009f5c8a39f9faa189f1b75fbcd11287c4ace5d59a9be27138262e852453cf5"
+  },
+  "datasetEntries": 1822,
+  "defaultProjection": {
+    "actionableHandles": 256,
+    "itemLimit": 64,
+    "items": 64,
+    "primaryAction": "Paste in Active App",
+    "truncatedFromDataset": true
+  },
+  "diagnostics": [],
+  "effects": {
+    "acknowledgedCopyCalls": 20,
+    "acknowledgedPasteCalls": 1,
+    "callbackAfterAcknowledgement": true,
+    "deniedCopyUnmutated": true,
+    "deniedPasteUnmutated": true,
+    "exactText": true,
+    "timeoutMs": 10006,
+    "timeoutUnmutated": true
+  },
+  "extensionId": "kaomoji-search",
+  "grid": {
+    "items": 16,
+    "primaryAction": "Copy to Clipboard",
+    "svgChecks": {
+      "contentDark": 289,
+      "contentLight": 289
+    }
+  },
+  "installedOnlyInDisposableRoot": true,
+  "liveDataUnchanged": true,
+  "maxProjectionBytes": 69096,
+  "mockedEffectsOnly": true,
+  "preferences": {
+    "displayMode": "grid",
+    "primaryAction": "copy-to-clipboard"
+  },
+  "projectionViolations": [],
+  "search": {
+    "emptyResult": true,
+    "emptyTimeMs": 12,
+    "outsideInitialProjection": {
+      "name": "Upside Down Lenny",
+      "entry": "( ͜。 ͡ʖ ͜。)",
+      "keywords": [
+        "upside",
+        "down",
+        "lenny"
+      ],
+      "category": "UNASSIGNED"
+    },
+    "outsideResultFound": true,
+    "timeMs": 12
+  },
+  "state": {
+    "atomicMode": "0600",
+    "favoriteCount": 1,
+    "orderedWritesDrained": true,
+    "recentCount": 16,
+    "recentUnique": 16,
+    "symlinkDefenseCoveredByFocusedTest": true,
+    "twoConsumerConvergence": true
+  },
+  "timings": {
+    "gridMs": 84,
+    "listScenarioMs": 10729
+  },
+  "translateStateUnchanged": true,
+  "trust": {
+    "candidateAvailable": true,
+    "candidateDigest": "9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f",
+    "digest": "9b611940dc90e7ece19c370068d2eb087ea8d125613a034a70fbbb35390bc31f",
+    "digestApproved": true,
+    "enabled": true,
+    "hasPrevious": false,
+    "installed": true,
+    "previewed": false,
+    "recovery": "",
+    "staged": false
+  }
+}

@@ -214,6 +214,7 @@ test('custom and web rows expose bounded generated URLs without making actions p
     : baseSettings(key, undefined as never))
   const custom = await network.searchInstant('x hello')
   assert.equal(custom.after[0]?.details, 'https://example.com/search?q=hello')
+  assert.equal(custom.after[0]?.id, 'custom-web-search:custom:instantResult')
   assert.match(custom.after[0]?.defaultAction.argument ?? '', /^https:\/\/example\.com\/search\?q=hello$/u)
   const web = await network.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello`)
   assert.equal(web.after[0]?.details, 'https://google.com/search?q=hello&hl=en-us')

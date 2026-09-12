@@ -1,0 +1,21 @@
+{
+  "id": 1,
+  "url": "https://registry.npmjs.org/caniuse-lite/1.0.30001761",
+  "method": "GET",
+  "startedAt": "2026-09-09T23:03:16.588Z",
+  "redirectPolicy": "manual; each hop counts as another request",
+  "credentials": false,
+  "pending": false,
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "1977",
+    "date": "Wed, 09 Sep 2026 23:03:16 GMT"
+  },
+  "body": "request-1.body",
+  "bytes": 1977,
+  "sha256": "951884e9734e31a0f9e951444f95b0cd61329e653168c8ee9ab12024f0dd41c7",
+  "redirect": null,
+  "finishedAt": "2026-09-09T23:03:16.697Z",
+  "cumulativeBytes": 1977
+}

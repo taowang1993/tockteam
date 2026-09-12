@@ -3,7 +3,7 @@ import path from 'node:path'
 import { isAllowedLauncherVSCodeExecutable } from './launcher-settings-contract.ts'
 import { resolveLauncherExecutable } from './launcher-discovery-process.ts'
 import { isLauncherImageUrl } from './launcher-image-url.ts'
-import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
+import { launcherActionCompletion, type LauncherActionRecord, type LauncherInternalAction, type LauncherInternalResultItem, type LauncherProviderActionResult } from './launcher-actions.ts'
 
 export const LAUNCHER_DISCOVERY_EXTENSION_IDS = Object.freeze([
   'ApplicationSearch',
@@ -111,7 +111,7 @@ export type LauncherDiscoveryEffects = Readonly<{
   copyText: (text: string, signal: AbortSignal) => Promise<void> | void
   launchExecutable: (executable: string, args: readonly string[], signal: AbortSignal) => Promise<void> | void
   openApplication: (target: string, signal: AbortSignal) => Promise<void> | void
-  openApplicationAsAdministrator: (target: string, signal: AbortSignal) => Promise<void> | void
+  openApplicationAsAdministrator: (target: string, digest: string, signal: AbortSignal) => Promise<void> | void
   openExternal: (url: string, signal: AbortSignal) => Promise<void> | void
   revealPath: (target: string, signal: AbortSignal) => Promise<void> | void
 }>
@@ -136,6 +136,7 @@ export type LauncherDiscoveryOptions = Readonly<{
   homePath: string
   onProviderError?: (extensionId: LauncherDiscoveryExtensionId, error: Error) => void
   platform: LauncherDiscoveryPlatform
+  captureApplicationDigest?: (target: string) => Promise<string | undefined>
   capturePathIdentity?: (target: string) => Promise<LauncherDiscoveryIdentity | undefined>
   revalidate?: LauncherDiscoveryRevalidation
   resolveExecutable?: (command: string, platform: LauncherDiscoveryPlatform, environment: Readonly<Record<string, string | undefined>>) => Promise<string | undefined>
@@ -166,6 +167,13 @@ const MAX_ICON_CONCURRENCY = 8
 const MAX_APPLICATION_ICON_CALLS = MAX_ITEMS_PER_EXTENSION
 const MAX_TEXT_LENGTH = 16_384
 const WINDOWS_STORE_PATTERN = /^shell:AppsFolder\\[A-Za-z0-9._!{}-]{1,512}$/u
+type KnownAdministratorApplication = Readonly<{
+  digest: string
+  entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>
+  identity: LauncherDiscoveryIdentity
+  name: string
+  target: string
+}>
 
 function bounded(value: unknown, max = MAX_TEXT_LENGTH): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= max && !/[\0\r\n]/u.test(value)
@@ -259,7 +267,7 @@ async function withTimeout<T>(operation: Promise<T>, signal: AbortSignal, timeou
 
 export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOptions): Readonly<{
   close: () => Promise<void>
-  executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  executeAction: (record: LauncherActionRecord) => Promise<LauncherProviderActionResult>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   getProviderErrors: () => ReadonlyMap<LauncherDiscoveryExtensionId, string>
   loadIndexedItems: (signal: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
@@ -272,7 +280,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   const enabled = () => new Set(options.enabledExtensionIds())
   let vscodeRecents: readonly Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>[] = Object.freeze([])
   let knownActionArguments = new Set<string>()
-  let knownAdministratorActions = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined; name: string; target: string }>>()
+  let knownAdministratorActions = new Map<string, KnownAdministratorApplication>()
   let knownApplications = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
   let knownBookmarks = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'bookmark' }> }>>()
   let knownReveals = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
@@ -291,12 +299,21 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   const getProviderErrors = (): ReadonlyMap<LauncherDiscoveryExtensionId, string> => new Map(providerErrors)
   const activeControllers = new Set<AbortController>()
   const activeWork = new Set<Promise<unknown>>()
+  const activeIdentityMappings = new Set<Promise<unknown>>()
+  const activeIconMappings = new Set<Promise<unknown>>()
   const resolveExecutable = options.resolveExecutable ?? ((command, platform, values) => resolveLauncherExecutable(command, platform, values))
 
   const track = <T>(work: Promise<T>): Promise<T> => {
     let tracked!: Promise<T>
     tracked = work.then(value => { activeWork.delete(tracked); return value }, reason => { activeWork.delete(tracked); throw reason })
     activeWork.add(tracked)
+    return tracked
+  }
+  const startNativeMapping = <T>(active: Set<Promise<unknown>>, operation: () => Promise<T>): Promise<T> | undefined => {
+    if (active.size >= MAX_ICON_CONCURRENCY) return undefined
+    let tracked!: Promise<T>
+    tracked = Promise.resolve().then(operation).finally(() => { active.delete(tracked) })
+    active.add(tracked)
     return tracked
   }
   const abortAll = (reason: Error, preserveSignal?: AbortSignal): void => {
@@ -323,7 +340,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   }
   const waitForIdle = async (): Promise<void> => {
     const timer = new Promise<void>(resolve => setTimeout(resolve, 100))
-    await Promise.race([Promise.allSettled([...activeWork]).then(() => undefined), timer])
+    await Promise.race([Promise.allSettled([...activeWork, ...activeIdentityMappings, ...activeIconMappings]).then(() => undefined), timer])
   }
 
   const context = (extensionId: LauncherDiscoveryExtensionId, signal: AbortSignal, scanErrors: Map<LauncherDiscoveryExtensionId, Error>): LauncherDiscoveryScanContext => Object.freeze({
@@ -333,8 +350,19 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
   const mappingTimeoutMs = Math.min(scanTimeoutMs, 1_000)
   const captureIdentity = async (target: string, signal: AbortSignal, timeoutMs = mappingTimeoutMs): Promise<LauncherDiscoveryIdentity | undefined> => {
     if (options.capturePathIdentity === undefined) return undefined
-    try { return await withTimeout(Promise.resolve().then(() => options.capturePathIdentity!(target)), signal, Math.max(1, Math.min(mappingTimeoutMs, timeoutMs))) }
+    const operation = startNativeMapping(activeIdentityMappings, async () => await options.capturePathIdentity!(target))
+    if (operation === undefined) return undefined
+    try { return await withTimeout(operation, signal, Math.max(1, Math.min(mappingTimeoutMs, timeoutMs))) }
     catch { return undefined }
+  }
+  const captureApplicationDigest = async (target: string, signal: AbortSignal, timeoutMs: number): Promise<string | undefined> => {
+    if (options.captureApplicationDigest === undefined) return undefined
+    const operation = startNativeMapping(activeIdentityMappings, async () => await options.captureApplicationDigest!(target))
+    if (operation === undefined) return undefined
+    try {
+      const digest = await withTimeout(operation, signal, Math.max(1, Math.min(mappingTimeoutMs, timeoutMs)))
+      return typeof digest === 'string' && /^[a-f0-9]{64}$/u.test(digest) ? digest : undefined
+    } catch { return undefined }
   }
   const replaceVscodeActions = (next: ReadonlyMap<string, Readonly<{ command: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>): void => {
     const actionArguments = new Set(knownActionArguments)
@@ -393,7 +421,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     }
 
     const actionArguments = new Set<string>()
-    const administrators = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined; name: string; target: string }>>()
+    const administrators = new Map<string, KnownAdministratorApplication>()
     const applications = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
     const bookmarks = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'bookmark' }> }>>()
     const reveals = new Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined }>>()
@@ -407,7 +435,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     const mapEntry = async (
       entry: LauncherDiscoveryEntry,
       map: Set<string>,
-      adminMap: Map<string, Readonly<{ entry: Extract<LauncherDiscoveryEntry, { kind: 'application' }>; identity: LauncherDiscoveryIdentity | undefined; name: string; target: string }>>,
+      adminMap: Map<string, KnownAdministratorApplication>,
     ): Promise<LauncherInternalResultItem | undefined> => {
       if (!bounded(entry.id, 512) || (entry.kind !== 'vscode' && !bounded(entry.name, 512))) return undefined
       if (entry.kind === 'application') {
@@ -416,16 +444,22 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
         if (Date.now() >= mappingDeadline) return undefined
         const identity = !storeApplication ? await captureIdentity(entry.path, signal, Math.max(1, mappingDeadline - Date.now())) : undefined
         if (!storeApplication && identity === undefined) return undefined
-        const admin = options.platform === 'Windows' && !storeApplication
+        const digest = options.platform === 'Windows' && path.win32.extname(entry.path).toLocaleLowerCase('en-US') === '.lnk'
+          ? await captureApplicationDigest(entry.path, signal, Math.max(1, mappingDeadline - Date.now()))
+          : undefined
+        const admin = digest !== undefined
           ? action(HANDLERS.openApplicationAsAdministrator, 'Open application as administrator', { kind: 'application-administrator', target: entry.path }, { keyboardShortcut: 'Shift+Enter', requiresConfirmation: true })
           : undefined
-        if (admin !== undefined) adminMap.set(admin.argument, Object.freeze({ entry, identity, name: entry.name, target: entry.path }))
+        if (admin !== undefined && digest !== undefined && identity !== undefined) adminMap.set(admin.argument, Object.freeze({ digest, entry, identity, name: entry.name, target: entry.path }))
         let imageUrl: string | undefined
         try {
           if (options.getApplicationIcon !== undefined && applicationIconCalls < MAX_APPLICATION_ICON_CALLS && Date.now() < mappingDeadline) {
             applicationIconCalls++
-            const candidate = await withTimeout(Promise.resolve().then(() => options.getApplicationIcon!(entry.path, signal)), signal, Math.max(1, Math.min(mappingTimeoutMs, mappingDeadline - Date.now())))
-            if (isLauncherImageUrl(candidate)) imageUrl = candidate
+            const operation = startNativeMapping(activeIconMappings, async () => await options.getApplicationIcon!(entry.path, signal))
+            if (operation !== undefined) {
+              const candidate = await withTimeout(operation, signal, Math.max(1, Math.min(mappingTimeoutMs, mappingDeadline - Date.now())))
+              if (isLauncherImageUrl(candidate)) imageUrl = candidate
+            }
           }
         } catch (error) {
           if (signal.aborted) throw error
@@ -557,7 +591,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     }
   }
 
-  const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
+  const executeAction = async (record: LauncherActionRecord): Promise<LauncherProviderActionResult> => {
     if (!(Object.values(HANDLERS) as readonly string[]).includes(record.handlerKey)) return false
     if (!LAUNCHER_DISCOVERY_EXTENSION_IDS.includes(record.sourceExtension as LauncherDiscoveryExtensionId)) throw new Error('Invalid discovery action source')
     if (!knownActionArguments.has(record.argument)) throw new Error('Discovery action is not from the current main-owned scan')
@@ -586,11 +620,12 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
         if (options.platform !== 'Windows' || record.sourceExtension !== 'ApplicationSearch' || record.requiresConfirmation !== true || target === undefined || current === undefined || current.target !== target || !isApplicationTarget(target) || isWindowsStore(target)) throw new Error('Invalid application administrator action policy')
         if (current.identity === undefined) throw revalidationError('Application')
         if (options.revalidate?.application !== undefined && !await awaitEffect(options.revalidate.application(target, current.entry, current.identity))) throw revalidationError('Application')
-        if (await awaitEffect(options.effects.confirmOpenApplicationAsAdministrator({ name: current.name, target }, controller.signal))) {
+        const approved = await awaitEffect(options.effects.confirmOpenApplicationAsAdministrator({ name: current.name, target }, controller.signal))
+        if (approved) {
           if (options.revalidate?.application !== undefined && !await awaitEffect(options.revalidate.application(target, current.entry, current.identity))) throw revalidationError('Application')
-          await awaitEffect(options.effects.openApplicationAsAdministrator(target, controller.signal))
+          await awaitEffect(options.effects.openApplicationAsAdministrator(target, current.digest, controller.signal))
         }
-        return true
+        return approved ? true : launcherActionCompletion(true, false)
       }
       if (record.handlerKey === HANDLERS.openApplication) {
         if (record.sourceExtension !== 'ApplicationSearch' || value.kind !== 'application' || !bounded(value.target) || !isApplicationTarget(value.target)) throw new Error('Invalid application action')

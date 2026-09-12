@@ -9,7 +9,7 @@ import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_SETTINGS_CATALOG } from './launcher-setting-catalog.ts'
 import { launcherSettingDisposition } from './launcher-settings-model.ts'
 import { isLauncherRendererSettingValue, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
-import type { LauncherSurfacePlatform } from './launcher-contract.ts'
+import { LAUNCHER_HIDE_WINDOW_ON_DEFAULT, type LauncherSurfacePlatform } from './launcher-contract.ts'
 import { launcherFixedText } from './launcher-i18n.ts'
 import { LauncherSettingField as Field } from './launcher-setting-field.tsx'
 import { useLauncherDraft } from './launcher-settings-drafts.ts'
@@ -80,7 +80,7 @@ function effectiveValue(snapshot: LauncherSettingsSnapshot, key: string): unknow
   const value = snapshot.values[key]
   if (value !== undefined) return value
   if (key === 'appearance.searchBarAppearance') return 'auto'
-  if (key === 'appearance.searchBarPlaceholderText') return 'Type here...'
+  if (key === 'appearance.searchBarPlaceholderText') return snapshot.values['general.language'] === 'zh-CN' ? '在此输入…' : 'Type here...'
   if (key === 'appearance.searchBarSize') return 'large'
   if (key === 'appearance.searchResultListLayout') return 'compact'
   if (key === 'appearance.showSearchIcon') return false
@@ -90,7 +90,7 @@ function effectiveValue(snapshot: LauncherSettingsSnapshot, key: string): unknow
   if (key === 'keyboardAndMouse.doubleClickBehavior') return 'invokeSearchResultItem'
   if (key === 'keyboardAndMouse.singleClickBehavior') return 'selectSearchResultItem'
   if (key === 'searchEngine.automaticRescan') return true
-  if (key === 'window.hideWindowOn') return ['blur', 'afterInvocation']
+  if (key === 'window.hideWindowOn') return LAUNCHER_HIDE_WINDOW_ON_DEFAULT
   if (key === 'window.scrollBehavior') return 'smooth'
   return undefined
 }

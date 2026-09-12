@@ -12,7 +12,9 @@ const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'u
 const launcherSettings = readFileSync(new URL('../src/launcher-settings.tsx', import.meta.url), 'utf8')
 const launcherDrafts = readFileSync(new URL('../src/launcher-settings-drafts.tsx', import.meta.url), 'utf8')
 const launcherDraftValue = readFileSync(new URL('../src/launcher-settings-draft-value.ts', import.meta.url), 'utf8')
+const trustedRaycastRenderer = readFileSync(new URL('../src/trusted-raycast-renderer.ts', import.meta.url), 'utf8')
 const localSettings = readFileSync(new URL('../src/launcher-local-settings.tsx', import.meta.url), 'utf8')
+const discoverySettings = readFileSync(new URL('../src/launcher-discovery-settings.tsx', import.meta.url), 'utf8')
 const localTools = readFileSync(new URL('../src/launcher-local-tools.ts', import.meta.url), 'utf8')
 const fileSearchTool = readFileSync(new URL('../src/launcher-file-search-tool.ts', import.meta.url), 'utf8')
 const fileSearchSettings = readFileSync(new URL('../src/launcher-file-search-settings.tsx', import.meta.url), 'utf8')
@@ -36,7 +38,6 @@ test('launcher document is standalone, strict, external, and accessible', () => 
   assert.match(html, /id="launcher-search"[^>]+role="combobox"/u)
   assert.match(html, /role="listbox"/u)
   assert.match(html, /role="status"/u)
-  assert.match(html, /id="launcher-close"/u)
   assert.doesNotMatch(html, /<style[\s>]|<form[\s>]/u)
   assert.doesNotMatch(html, /<script(?! type="module" src=)[\s>]/u)
   assert.doesNotMatch(html, /unsafe-(?:inline|eval)|\*/u)
@@ -71,6 +72,11 @@ test('launcher renderer stays empty/search-ready and reports bootstrap status', 
   assert.match(launcher, /search\.disabled/u)
 })
 
+test('trusted extension result lists keep explicit built accessibility semantics', () => {
+  assert.match(trustedRaycastRenderer, /createElement\('ul'\).*setAttribute\('role', 'list'\).*setAttribute\('aria-label'/u)
+  assert.match(build, /\['trusted-raycast-renderer', 'renderer'\]/u)
+})
+
 test('workflow invocation fences late searches and blocks result interactions', () => {
   const invocationStart = launcher.indexOf('invokingWorkflow = isWorkflowAction')
   const searchFence = launcher.indexOf('revision += 1', invocationStart)
@@ -88,6 +94,10 @@ test('local settings controls cover every provider and keep UUID formats bounded
   for (const label of ['Base64 Conversion', 'Calculator', 'Color Converter', 'Password Generator', 'Quick Formatter', 'Rowland Text Editor', 'UUID / GUID Generator']) assert.match(localSettings, new RegExp(label, 'u'))
   assert.match(localSettings, /searchResultFormats/u)
   assert.match(localSettings, /maxLength.{0,3}4096/u)
+  assert.match(localSettings, /FieldError/u)
+  assert.match(localSettings, /aria-describedby/u)
+  assert.match(discoverySettings, /FieldError/u)
+  assert.match(discoverySettings, /aria-describedby/u)
 })
 
 test('local tools stay finite and browser-safe', () => {
@@ -117,8 +127,11 @@ test('settings renderer never inserts sensitive values and preserves focused con
   assert.match(launcherSettings, /createLauncherSettingsWriteQueue[\s\S]+writeQueue\.enqueue/u)
   assert.match(launcherSettings, /writeQueue\?\.waitForIdle\(\)/u)
   assert.match(launcherSettings, /save\('window\.visibleOnAllWorkspaces', checked\)/u)
+  assert.match(launcherSettings, /disabled=\{busy \|\| rendererPlatform === 'Windows'\}/u)
+  assert.match(launcherSettings, /disabled=\{busy \|\| rendererPlatform !== 'macOS'\}/u)
   assert.doesNotMatch(launcherSettings, /window\.visibleOnAll workspaces/u)
   assert.match(launcherDrafts, /useLauncherDraft<string \| number>/u)
+  assert.match(launcherDrafts, /commitDraft/u)
   assert.match(launcherDraftValue, /typeof left === 'string' && typeof right === 'number'/u)
   assert.match(launcherSettings, /onDraftFoldersChange/u)
   assert.match(launcherSettings, /<LauncherFileSearchSettings [\s\S]+draftFolders=\{simpleFileSearchDraft\}/u)
@@ -138,24 +151,36 @@ test('settings renderer never inserts sensitive values and preserves focused con
 })
 
 test('launcher renderer uses shared color tokens for actions and selection', () => {
-  assert.match(launcher, /brand-primary/u)
-  assert.match(launcher, /interactive-bg-active/u)
+  assert.match(tailwind, /launcher-command-footer-action[\s\S]+brand-primary/u)
+  assert.match(tailwind, /launcher-command-row[\s\S]+interactive-bg-active/u)
+  assert.match(tailwind, /@utility launcher-command-menu[\s\S]+max-height: 20rem/u)
   assert.doesNotMatch(launcher, /text-white|interactive-bg-selected|bg-selected/u)
 })
 
 test('launcher renderer uses the compact Tockbot composition', () => {
   assert.match(html, /<body class="[^"]*overflow-hidden[^"]*bg-transparent/u)
-  assert.match(html, /<main[^>]+id="launcher-root"[^>]+class="[^"]*h-full[^"]*overflow-hidden/u)
-  assert.match(html, /id="launcher-root"[^>]+bg-\[var\(--dsw-alias-bg-overlay,var\(--dsw-alias-bg-layer-1,Canvas\)\)\]/u)
-  assert.match(html, /id="launcher-search-form"[^>]+class="[^"]*box-border[^"]*h-\[60px\]/u)
+  assert.match(html, /<main[^>]+id="launcher-root"[^>]+class="[^"]*launcher-command-surface/u)
+  assert.match(tailwind, /@utility launcher-command-surface[\s\S]+bg-overlay/u)
+  assert.match(tailwind, /@utility launcher-command-surface\s*\{\s*box-sizing: border-box/u)
+  assert.match(html, /id="launcher-search-form"[^>]+class="[^"]*launcher-command-header/u)
+  assert.match(tailwind, /@utility launcher-command-header[\s\S]+height: 3rem/u)
   assert.match(html, /id="launcher-search-icon"[^>]+class="[^"]*hidden[^"]*"[^>]+hidden/u)
   assert.match(html, /id="launcher-history-toggle"[^>]+class="[^"]*text-\[0px\][^"]*"/u)
   assert.match(launcher, /searchIcon\.classList\.toggle\('hidden', !surfaceSettings\.showSearchIcon\)/u)
   assert.match(html, /id="launcher-search"[^>]+placeholder="Type here\.\.\."/u)
   assert.doesNotMatch(html, /id="launcher-search"[^>]+class="[^"]*pl-7/u)
   assert.match(tailwind, /#launcher-search::-webkit-search-decoration[\s\S]+appearance: none/u)
-  assert.match(html, /<footer[^>]+id="launcher-footer"[^>]+class="[^"]*box-border[^"]*h-11/u)
+  assert.match(html, /<footer[^>]+id="launcher-footer"[^>]+class="[^"]*launcher-command-footer/u)
   assert.match(html, /id="launcher-footer-selection"/u)
+  for (const id of ['launcher-rescan', 'launcher-settings', 'launcher-close']) {
+    assert.doesNotMatch(html, new RegExp(`id="${id}"`, 'u'))
+  }
+  assert.match(html, /id="launcher-details"[^>]+class="[^"]*ml-auto/u)
+  assert.match(launcher, /openCommand: 'Open Command'/u)
+  assert.match(launcher, /openText\.textContent = messages\(\)\.openCommand/u)
+  assert.match(launcher, /row\.className = 'launcher-command-footer-actions'/u)
+  assert.match(tailwind, /@utility launcher-command-footer-actions/u)
+  assert.doesNotMatch(launcher, /RefreshCw|\brescan\.|event\.key === 'F5'/u)
   assert.doesNotMatch(html, /id="launcher-root"[^>]+class="[^"]*(?:gap-3|p-5)/u)
   assert.match(launcher, /createLauncherShortcut/u)
   assert.match(launcher, /key\.className = '[^']*box-border[^']*px-\[1\.5px\]/u)
@@ -163,11 +188,12 @@ test('launcher renderer uses the compact Tockbot composition', () => {
   assert.match(launcher, /shadow-\[0_1px_0_0_var\(--dsw-alias-border-l1/u)
   assert.match(launcher, /launcher-result-shortcut/u)
   assert.match(launcher, /launcher-footer-selection/u)
-  assert.match(tailwind, /#launcher-results\s*\{[^}]*scrollbar-color: transparent transparent/u)
-  assert.match(tailwind, /#launcher-results::-webkit-scrollbar-track\s*\{[^}]*background: transparent/u)
-  assert.match(tailwind, /#launcher-results::-webkit-scrollbar-thumb\s*\{[^}]*background-color: transparent/u)
-  assert.match(tailwind, /#launcher-results\[data-scrolling='true'\]::-webkit-scrollbar-thumb\s*\{[^}]*color-mix/u)
-  assert.match(launcher, /results\.addEventListener\('scroll',[\s\S]+results\.dataset\.scrolling = 'true'[\s\S]+delete results\.dataset\.scrolling/u)
+  const scrollSurface = String.raw`#launcher-root :where\(\.launcher-command-content, \.launcher-command-list\)`
+  assert.match(tailwind, new RegExp(`${scrollSurface}\\s*\\{[^}]*scrollbar-color: transparent transparent`, 'u'))
+  assert.match(tailwind, new RegExp(`${scrollSurface}::-webkit-scrollbar-track\\s*\\{[^}]*background: transparent`, 'u'))
+  assert.match(tailwind, new RegExp(`${scrollSurface}::-webkit-scrollbar-thumb\\s*\\{[^}]*background-color: transparent`, 'u'))
+  assert.match(tailwind, new RegExp(`${scrollSurface}\\[data-scrolling='true'\\]::-webkit-scrollbar-thumb\\s*\\{[^}]*color-mix`, 'u'))
+  assert.match(launcher, /root\.addEventListener\('scroll',[\s\S]+target\.dataset\.scrolling = 'true'[\s\S]+delete target\.dataset\.scrolling/u)
 })
 
 test('TockTutor titlebar and all shared skins use valid TockTeam token contracts', () => {
@@ -193,11 +219,17 @@ test('launcher renderer uses shared types, Lucide icons, visible selection, and 
   assert.match(launcher, /from 'lucide'/u)
   assert.match(launcher, /from '\.\/launcher-preload-bridge\.ts'/u)
   assert.doesNotMatch(html, /⌕/u)
-  assert.match(launcher, /aria-selected:bg-/u)
+  assert.match(launcher, /button\.className = 'launcher-command-row'/u)
+  assert.match(tailwind, /@utility launcher-command-row[\s\S]+&\[aria-selected='true'\]/u)
+  assert.doesNotMatch(smoke, /className\.includes\('aria-selected:'\)/u)
+  assert.match(smoke, /getComputedStyle\(selected\)\.backgroundColor/u)
   assert.match(launcher, /tockteam-launcher-focus-search/u)
   assert.match(preload, /dispatchEvent\(new Event\('tockteam-launcher-focus-search'\)\)/u)
   assert.match(launcher, /No Recent Searches/u)
   assert.match(launcher, /Results Refreshed\. Try Again\./u)
+  assert.match(launcher, /messages\(\)\.actionsFor/u)
+  assert.match(launcher, /messages\(\)\.cancelWorkflow/u)
+  assert.doesNotMatch(launcher, /status\.textContent = copy\.initialStatus/u)
   assert.doesNotMatch(launcher, /event\.metaKey \|\| event\.ctrlKey/u)
   assert.match(launcher, /event\.stopPropagation\(\)/u)
 })
@@ -228,6 +260,16 @@ test('launcher Electron smoke enforces fresh build and DSH staging', () => {
   assert.match(packageJson.scripts?.['test:launcher:electron'] ?? '', /build:tocktutor/gu)
   assert.match(packageJson.scripts?.['test:launcher:electron'] ?? '', /run build/gu)
   assert.match(packageJson.scripts?.['test:launcher:electron'] ?? '', /stage-dsh\.mjs --quick/gu)
+})
+
+test('launcher Electron smoke covers the opening-screen lifecycle', () => {
+  for (const marker of ['openingFlowFacts', 'recentFlowFacts', 'pinFlowFacts', 'excludeFlowFacts', 'resetFlowFacts', 'typedSearchFacts']) {
+    assert.match(smoke, new RegExp(`const ${marker}\\b`, 'u'), marker)
+  }
+  assert.match(smoke, /Add to Favorites/u)
+  assert.match(smoke, /Exclude from Search Results/u)
+  assert.match(smoke, /tocklauncher-reset-trigger/u)
+  assert.match(smoke, /Confirm reset/u)
 })
 
 test('launcher smoke stops its Electron child on every host platform', () => {
