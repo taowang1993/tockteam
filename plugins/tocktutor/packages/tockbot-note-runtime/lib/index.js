@@ -211,61 +211,69 @@ class PersistentSearchIndex {
             if (error.code !== 'ENOENT')
                 return;
         }
-        let mounted = await this.open(databasePath, dependencies);
+        let mounted = await this.open(databasePath, dependencies, signal);
         if (mounted === null) {
+            signal.throwIfAborted();
             await rm(databasePath, { force: true });
-            mounted = await this.create(databasePath, dependencies);
-        }
-        const existing = await allSearchDatabase(mounted.database.db, 'SELECT id, modifiedAt, path, revision FROM documents');
-        const current = new Map(documents.map(document => [document.path, document]));
-        for (const row of existing) {
             signal.throwIfAborted();
-            if (current.has(row.path))
-                continue;
-            mounted.index.remove(row.id);
-            await runSearchDatabase(mounted.database.db, 'DELETE FROM documents WHERE id = ?', [row.id]);
+            mounted = await this.create(databasePath, dependencies, signal);
         }
-        const byPath = new Map(existing.map(row => [row.path, row]));
-        const revisionUpdates = [];
-        for (const document of documents) {
-            signal.throwIfAborted();
-            const prior = byPath.get(document.path);
-            if (prior?.revision === document.revision && prior.modifiedAt === document.modifiedAt)
-                continue;
-            let id = prior?.id;
-            if (id === undefined) {
-                await runSearchDatabase(mounted.database.db, 'INSERT INTO documents(path, modifiedAt, revision) VALUES (?, ?, ?)', [document.path, document.modifiedAt, '']);
-                id = (await allSearchDatabase(mounted.database.db, 'SELECT id FROM documents WHERE path = ?', [document.path]))[0]?.id;
+        try {
+            const existing = await allSearchDatabase(mounted.database.db, 'SELECT id, modifiedAt, path, revision FROM documents');
+            const current = new Map(documents.map(document => [document.path, document]));
+            for (const row of existing) {
+                signal.throwIfAborted();
+                if (current.has(row.path))
+                    continue;
+                mounted.index.remove(row.id);
+                await runSearchDatabase(mounted.database.db, 'DELETE FROM documents WHERE id = ?', [row.id]);
             }
-            if (id === undefined)
-                throw new Error('search index mapping failed');
-            const opened = await this.options.read(document.path, signal);
+            const byPath = new Map(existing.map(row => [row.path, row]));
+            const revisionUpdates = [];
+            for (const document of documents) {
+                signal.throwIfAborted();
+                const prior = byPath.get(document.path);
+                if (prior?.revision === document.revision && prior.modifiedAt === document.modifiedAt)
+                    continue;
+                let id = prior?.id;
+                if (id === undefined) {
+                    await runSearchDatabase(mounted.database.db, 'INSERT INTO documents(path, modifiedAt, revision) VALUES (?, ?, ?)', [document.path, document.modifiedAt, '']);
+                    id = (await allSearchDatabase(mounted.database.db, 'SELECT id FROM documents WHERE path = ?', [document.path]))[0]?.id;
+                }
+                if (id === undefined)
+                    throw new Error('search index mapping failed');
+                const opened = await this.options.read(document.path, signal);
+                signal.throwIfAborted();
+                if (opened === null || opened.revision !== document.revision) {
+                    this.fullReconcilePending = true;
+                    return;
+                }
+                mounted.index.update(id, { id, content: opened.content });
+                revisionUpdates.push({ id, modifiedAt: document.modifiedAt, revision: document.revision });
+            }
             signal.throwIfAborted();
-            if (opened === null || opened.revision !== document.revision) {
-                this.fullReconcilePending = true;
-                await closeSearchDatabase(mounted.database);
+            await mounted.index.commit();
+            signal.throwIfAborted();
+            for (const update of revisionUpdates) {
+                await runSearchDatabase(mounted.database.db, 'UPDATE documents SET modifiedAt = ?, revision = ? WHERE id = ?', [update.modifiedAt, update.revision, update.id]);
+            }
+            this.epoch = randomUUID();
+            await runSearchDatabase(mounted.database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['epoch', this.epoch]);
+            signal.throwIfAborted();
+            if (this.fullReconcilePending)
                 return;
-            }
-            mounted.index.update(id, { id, content: opened.content });
-            revisionUpdates.push({ id, modifiedAt: document.modifiedAt, revision: document.revision });
+            const previous = this.database;
+            this.database = mounted.database;
+            this.index = mounted.index;
+            this.ready = this.pendingPaths.size === 0;
+            if (previous !== null && previous !== mounted.database)
+                await closeSearchDatabase(previous);
         }
-        await mounted.index.commit();
-        for (const update of revisionUpdates) {
-            await runSearchDatabase(mounted.database.db, 'UPDATE documents SET modifiedAt = ?, revision = ? WHERE id = ?', [update.modifiedAt, update.revision, update.id]);
+        finally {
+            // The mounting connection is owned even before it becomes searchable.
+            if (this.database !== mounted.database)
+                await closeSearchDatabase(mounted.database);
         }
-        this.epoch = randomUUID();
-        await runSearchDatabase(mounted.database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['epoch', this.epoch]);
-        signal.throwIfAborted();
-        if (this.fullReconcilePending) {
-            await closeSearchDatabase(mounted.database);
-            return;
-        }
-        const previous = this.database;
-        this.database = mounted.database;
-        this.index = mounted.index;
-        this.ready = this.pendingPaths.size === 0;
-        if (previous !== null && previous !== mounted.database)
-            await closeSearchDatabase(previous);
     }
     async reconcilePaths(paths, signal) {
         const database = this.database;
@@ -297,38 +305,61 @@ class PersistentSearchIndex {
             index.update(id, { id, content: opened.content });
             revisionUpdates.push({ id, modifiedAt: opened.modifiedAt, revision: opened.revision });
         }
+        signal.throwIfAborted();
         await index.commit();
+        signal.throwIfAborted();
         for (const update of revisionUpdates) {
             await runSearchDatabase(database.db, 'UPDATE documents SET modifiedAt = ?, revision = ? WHERE id = ?', [update.modifiedAt, update.revision, update.id]);
         }
         this.epoch = randomUUID();
         await runSearchDatabase(database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['epoch', this.epoch]);
     }
-    async open(databasePath, { Document, Sqlite, sqlite3 }) {
+    async open(databasePath, { Document, Sqlite, sqlite3 }, signal) {
         const raw = new sqlite3.Database(databasePath);
+        let database = null;
         try {
             const metadata = await allSearchDatabase(raw, 'SELECT value FROM metadata WHERE key = ?', ['schema']);
             if (metadata[0]?.value !== SEARCH_INDEX_SCHEMA)
                 throw new Error('schema mismatch');
-            const database = new Sqlite(this.storageName(), { db: raw, type: 'integer' });
+            database = new Sqlite(this.storageName(), { db: raw, type: 'integer' });
             const index = createSearchIndex(Document);
+            signal.throwIfAborted();
+            // FlexSearch native work is not cancellable. Drain it before closing
+            // the connection; racing abort would let it issue SQL after close.
             await index.mount(database);
+            signal.throwIfAborted();
             return { database, index };
         }
         catch {
-            await new Promise(resolve => raw.close(() => resolve()));
+            if (database !== null)
+                await closeSearchDatabase(database);
+            else
+                await new Promise(resolve => raw.close(() => resolve()));
+            signal.throwIfAborted();
             return null;
         }
     }
-    async create(databasePath, { Document, Sqlite, sqlite3 }) {
+    async create(databasePath, { Document, Sqlite, sqlite3 }, signal) {
         const raw = new sqlite3.Database(databasePath);
-        await runSearchDatabase(raw, 'CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-        await runSearchDatabase(raw, 'CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL UNIQUE, modifiedAt REAL NOT NULL, revision TEXT NOT NULL)');
-        await runSearchDatabase(raw, 'INSERT INTO metadata(key, value) VALUES (?, ?)', ['schema', SEARCH_INDEX_SCHEMA]);
-        const database = new Sqlite(this.storageName(), { db: raw, type: 'integer' });
-        const index = createSearchIndex(Document);
-        await index.mount(database);
-        return { database, index };
+        let database = null;
+        try {
+            await runSearchDatabase(raw, 'CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+            await runSearchDatabase(raw, 'CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL UNIQUE, modifiedAt REAL NOT NULL, revision TEXT NOT NULL)');
+            await runSearchDatabase(raw, 'INSERT INTO metadata(key, value) VALUES (?, ?)', ['schema', SEARCH_INDEX_SCHEMA]);
+            database = new Sqlite(this.storageName(), { db: raw, type: 'integer' });
+            const index = createSearchIndex(Document);
+            signal.throwIfAborted();
+            await index.mount(database);
+            signal.throwIfAborted();
+            return { database, index };
+        }
+        catch (error) {
+            if (database !== null)
+                await closeSearchDatabase(database);
+            else
+                await new Promise(resolve => raw.close(() => resolve()));
+            throw error;
+        }
     }
     storageName() {
         return `tocktutor-${this.options.vaultId.slice(-16)}-${this.options.identity.slice(0, 16)}`;
