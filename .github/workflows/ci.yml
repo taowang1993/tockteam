@@ -75,9 +75,24 @@ jobs:
         if: runner.os == 'Windows'
         run: node --test --test-timeout=30000 tests/desktop-native-caller-abort.test.ts tests/desktop-picker-*.test.ts
 
+      - name: Run tests with root-suite coverage
+        if: matrix.name == 'Linux x64'
+        timeout-minutes: 5
+        run: pnpm run test:coverage
+
       - name: Run tests
+        if: matrix.name != 'Linux x64'
         timeout-minutes: 5
         run: pnpm test
+
+      - name: Upload root-suite coverage
+        if: matrix.name == 'Linux x64'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: root-suite-coverage
+          path: coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Build
         run: pnpm run build

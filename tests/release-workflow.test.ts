@@ -49,6 +49,18 @@ test('cross-platform core CI loads the native TockTutor search index dependency'
   assert.match(core, /pnpm -C plugins\/tocktutor\/packages\/tockbot-note-runtime run test:search-index/u)
 })
 
+test('Linux core CI publishes the root-suite coverage report once as an artifact', () => {
+  const workflow = readFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'utf8')
+  const core = workflow.slice(workflow.indexOf('  core:'), workflow.indexOf('  nix:'))
+
+  assert.equal((core.match(/pnpm run test:coverage/gu) ?? []).length, 1)
+  assert.equal((core.match(/actions\/upload-artifact@/gu) ?? []).length, 1)
+  assert.match(core, /name: Run tests with root-suite coverage\n        if: matrix\.name == 'Linux x64'\n        timeout-minutes: 5\n        run: pnpm run test:coverage/u)
+  assert.match(core, /name: Run tests\n        if: matrix\.name != 'Linux x64'\n        timeout-minutes: 5\n        run: pnpm test/u)
+  assert.match(core, /uses: actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4\.6\.2/u)
+  assert.match(core, /name: root-suite-coverage\n          path: coverage\/lcov\.info\n          if-no-files-found: error\n          retention-days: 7/u)
+})
+
 test('CI actions are immutable and release write access is publish-only', () => {
   for (const name of ['ci.yml', 'release.yml']) {
     const workflow = readFileSync(join(root, '.github', 'workflows', name), 'utf8')
