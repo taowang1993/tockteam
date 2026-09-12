@@ -494,6 +494,8 @@ function parseAudit(value: unknown): ProposalAuditEntry {
   }
 }
 
+export const MAIN_TOCKDRIVER_BINDING = 'tockdriver-main'
+
 export class ProposalQueue {
   private readonly clock: () => number
   private readonly randomId: () => string
@@ -643,7 +645,8 @@ export class ProposalQueue {
   invalidateForChild(currentInstanceId: string | null): number {
     let invalidated = 0
     for (const [token, record] of this.proposals) {
-      if (currentInstanceId !== null && record.childInstanceId === currentInstanceId) continue
+      if (record.childInstanceId === MAIN_TOCKDRIVER_BINDING
+        || currentInstanceId !== null && record.childInstanceId === currentInstanceId) continue
       this.proposals.delete(token)
       this.appendAudit(record, 'approval-denied', 'CHILD_REPLACED')
       invalidated += 1

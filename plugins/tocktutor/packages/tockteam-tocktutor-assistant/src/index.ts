@@ -14,6 +14,7 @@ import {
 } from './approval.ts'
 import {
   ProposalQueue,
+  MAIN_TOCKDRIVER_BINDING,
   type ApprovalContext,
   type ProposalAuditEntry,
   type ProposalAuditStatus,
@@ -143,7 +144,6 @@ declare module '@deepseek-ai/cordis' {
 }
 
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u
-const MAIN_TOCKDRIVER_BINDING = 'tockdriver-main'
 
 export type AssistantWritePermission = 'read-only' | 'propose'
 
@@ -425,6 +425,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
   }
 
   private mainTockDriverFacts(signal: AbortSignal, vaultId?: string): {
+    permissionEpoch: number
     settings: AssistantSettings
     vault: { generation: number; id: string }
   } {
@@ -435,7 +436,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     if (settings.writePermission !== 'propose' || !state.active || vaultId !== undefined && vaultId !== state.id) {
       throw new AssistantTurnBindingError('TOOL_UNAVAILABLE')
     }
-    return { settings, vault: { generation: state.generation, id: state.id } }
+    return { permissionEpoch: this.permissionEpoch, settings, vault: { generation: state.generation, id: state.id } }
   }
 
   private async stageMainTockDriverProposal(
@@ -445,6 +446,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
   ): Promise<ProposalSummary> {
     const current = this.mainTockDriverFacts(signal, facts.vault.id)
     if (current.vault.generation !== facts.vault.generation
+      || current.permissionEpoch !== facts.permissionEpoch
       || current.settings.provider !== facts.settings.provider
       || current.settings.model !== facts.settings.model) throw new AssistantTurnBindingError('STALE_TURN')
     const summary = this.proposalQueue.stage({
@@ -461,7 +463,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
       provider: facts.settings.provider,
       model: facts.settings.model,
       writePermission: 'propose',
-      permissionEpoch: this.permissionEpoch,
+      permissionEpoch: facts.permissionEpoch,
     })
     await this.persistProposalState()
     return summary

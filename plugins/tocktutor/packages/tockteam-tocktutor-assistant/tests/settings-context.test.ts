@@ -269,6 +269,31 @@ test('ordinary DSH agents stage durable reviewed Notes writes through the shared
   }
 })
 
+test('ordinary staging rejects a permission revoke-and-restore during its source read', async () => {
+  const { ctx, assistant, root } = await boot(true)
+  const agent = { id: 'agent-main-notes-12345678', ctx, options: {}, session: { id: 'session-main-notes-12345678' }, status: 'running' } as unknown as Agent
+  let release!: () => void
+  let entered!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const reading = new Promise<void>(resolve => { entered = resolve })
+  const open = ctx.noteVault.openDocument.bind(ctx.noteVault)
+  ctx.noteVault.openDocument = async (...args) => { const result = await open(...args); entered(); await gate; return result }
+  try {
+    await assistant.saveSettings({ ...defaults, writePermission: 'propose' })
+    const pending = ctx.tools.execute({ agent, arguments: { path: 'Inbox/capture.md' }, callId: ToolCallId('call-main-organize-12345678'), name: 'notes_organize_capture', signal: new AbortController().signal })
+    await reading
+    await assistant.saveSettings({ ...defaults, writePermission: 'read-only' })
+    await assistant.saveSettings({ ...defaults, writePermission: 'propose' })
+    release()
+    assert.equal((await pending).isError, true)
+    assert.deepEqual(await assistant.listProposals(), [])
+  } finally {
+    release()
+    await ctx.fiber.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('public proposal staging cannot bypass live turn acquisition', async () => {
   const { ctx, assistant, root } = await boot()
   try {

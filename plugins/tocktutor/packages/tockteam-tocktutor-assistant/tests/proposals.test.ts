@@ -100,6 +100,15 @@ test('maximum-size admitted proposals keep bounded previews and remain reviewabl
   }
 })
 
+test('Pennivo replacement does not invalidate independent TockDriver proposals', () => {
+  const { queue } = harness()
+  const ordinary = queue.stage(proposal({ childInstanceId: 'tockdriver-main', turnId: 'tockdriver-main', requestId: 'tockdriver-main' }))
+  queue.stage(proposal())
+  assert.equal(queue.invalidateForChild('child-2'), 1)
+  assert.equal(queue.invalidateForChild(null), 0)
+  assert.deepEqual(queue.list().map(entry => entry.proposalId), [ordinary.proposalId])
+})
+
 test('aggregate capacity rejection leaves accepted proposals and audit serializable', () => {
   const { queue } = harness()
   let accepted = 0
