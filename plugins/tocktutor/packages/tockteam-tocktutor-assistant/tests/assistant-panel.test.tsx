@@ -119,6 +119,7 @@ describe('TockTutorAssistantPanel', () => {
       sessions={sessions}
       vault={{ generation: 7, id: `vault:${'a'.repeat(64)}` }}
     />
+    const proposalLoad = vi.spyOn(remote.tocktutorAssistant, 'listProposals')
     const mounted = render(view)
     expect(screen.getByRole('complementary', { name: 'TockTutor Assistant' }).className).toContain('bg-[var(--tta-panel)]')
     expect(screen.getByRole('heading', { name: 'What can I help you with?' })).toBeTruthy()
@@ -151,6 +152,9 @@ describe('TockTutorAssistantPanel', () => {
     } as never)
     expect(await screen.findByText('Reading the note now…')).toBeTruthy()
     expect(screen.getByText('read_note · Reading…')).toBeTruthy()
+    const previousLoads = proposalLoad.mock.calls.length
+    act(() => { session.publish(emptyConversation()) })
+    await waitFor(() => expect(proposalLoad.mock.calls.length).toBeGreaterThan(previousLoads))
 
     mounted.unmount()
     expect(list.notifier.size).toBe(0)
