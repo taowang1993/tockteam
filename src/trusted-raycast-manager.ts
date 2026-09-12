@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, isAbsolute, dirname } from 'node:path'
-import { admitTrustedRaycastArtifact, readTrustedRaycastBuildIdentity, readTrustedRaycastDerivedFile, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
+import { admitTrustedRaycastArtifact, readLegacyGoogleTranslateBuildIdentity, readTrustedRaycastBuildIdentity, readTrustedRaycastDerivedFile } from './trusted-raycast-artifact-admission.ts'
 import { getTrustedRaycastRuntimeDescriptor, type TrustedRaycastExtensionId, type TrustedRaycastRuntimeExtensionId } from './trusted-raycast-descriptors.ts'
 import { createTrustedRaycastCanIUsePreferenceForm } from './trusted-raycast-can-i-use-preference-form.ts'
 import { createTrustedRaycastCanIUseRuntime, loadTrustedRaycastCanIUseData } from './trusted-raycast-can-i-use-runtime.ts'
@@ -51,16 +51,24 @@ export class TrustedRaycastManager {
     return resolved === '' ? undefined : resolved
   }
   get available(): boolean { return this.availableFor('google-translate') }
+  private readBuildIdentity(runtimeDir: string, extensionId: TrustedRaycastRuntimeExtensionId) {
+    const descriptor = getTrustedRaycastRuntimeDescriptor(extensionId)!
+    try { return readTrustedRaycastBuildIdentity(runtimeDir, descriptor) }
+    catch (error) {
+      if (extensionId !== 'google-translate') throw error
+      return readLegacyGoogleTranslateBuildIdentity(runtimeDir, descriptor)
+    }
+  }
   availableFor(extensionId: TrustedRaycastRuntimeExtensionId): boolean {
     if (process.platform !== 'darwin') return false
     const runtimeDir = this.resolveRuntimeDir(extensionId)
     if (runtimeDir === undefined) return false
-    try { readTrustedRaycastBuildIdentity(runtimeDir, getTrustedRaycastRuntimeDescriptor(extensionId)!); return true } catch { return false }
+    try { this.readBuildIdentity(runtimeDir, extensionId); return true } catch { return false }
   }
   /** Shared admission and workspace staging; main calls this before any child can load. */
   private stageWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen): { workspace: string; artifactRoot: string } {
     const descriptor = getTrustedRaycastRuntimeDescriptor(input.extensionId)!
-    const identity = readTrustedRaycastBuildIdentity(runtimeDir, descriptor)
+    const identity = this.readBuildIdentity(runtimeDir, input.extensionId)
     const bytes = admitTrustedRaycastArtifact(descriptor, join(runtimeDir, 'artifact.tar'))
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-trusted-raycast-'))
     try {

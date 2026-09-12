@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, truncateSync, existsSync, renameSync, symlinkSync, statSync, utimesSync } from 'node:fs'
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, truncateSync, existsSync, renameSync, symlinkSync, statSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { TrustedRaycastTrustStore } from '../src/trusted-raycast-trust.ts'
 import { attestTrustedRaycastBuildIdentity } from '../src/trusted-raycast-artifact-admission.ts'
+import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 import { trustedRaycastDescriptors, type TrustedRaycastDescriptor } from '../src/trusted-raycast-descriptors.ts'
 
 import type { TrustedRaycastTrustState } from '../src/trusted-raycast-contract.ts'
@@ -116,6 +117,35 @@ test('legacy approved Google Translate identity remains runnable without recover
     writeFileSync(join(fixture.install, 'current', 'child.mjs'), 'tampered')
     assert.equal(fixture.store().status().recovery, 'invalid-install', 'legacy metadata cannot authorize changed derived code')
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
+test('manager admits a legacy Google install for availability and staging only', { skip: process.platform !== 'darwin', timeout: 30000 }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'raycast-manager-legacy-'))
+  const runtime = join(root, 'current')
+  mkdirSync(runtime, { recursive: true })
+  const artifact = join(resolve('.'), 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
+  const child = `setImmediate(() => process.stdout.write(JSON.stringify({ type: 'ready', extensionId: process.env.TRUSTED_RAYCAST_EXTENSION_ID, sessionId: process.env.TRUSTED_RAYCAST_SESSION_ID, generation: process.env.TRUSTED_RAYCAST_GENERATION, revision: 0, root: { type: 'root', props: { querySequence: 0 }, children: [] } }) + '\\n')); process.stdin.resume()`
+  const resolution = 'export {}\n'
+  copyFileSync(artifact, join(runtime, 'artifact.tar'))
+  writeFileSync(join(runtime, 'child.mjs'), child)
+  writeFileSync(join(runtime, 'resolution.mjs'), resolution)
+  const identity = {
+    artifactSha256: trustedRaycastDescriptors['google-translate'].artifactSha256,
+    childSha256: digestOf(child), command: 'translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf(resolution),
+  }
+  writeFileSync(join(runtime, 'build.json'), JSON.stringify({ ...identity, metadataSha256: digestOf(JSON.stringify(identity)) }))
+  const messages: unknown[] = []
+  const manager = new TrustedRaycastManager({ runtimeDir: runtime, nodePath: process.execPath, onMessage: (_, message) => messages.push(message) })
+  try {
+    assert.equal(manager.availableFor('google-translate'), true)
+    assert.equal(manager.availableFor('kaomoji-search'), false, 'legacy normalization is limited to Google Translate')
+    await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate', sessionId: 'session', generation: 'generation', command: 'translate', preferences: {} })
+    assert.equal(manager.active, true)
+    assert.equal((messages[0] as { type?: string }).type, 'ready')
+  } finally {
+    await manager.close()
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test('install lifecycle: stage -> pinned candidate -> isolated preview -> explicit apply keeps installed separate from enabled', async () => {
