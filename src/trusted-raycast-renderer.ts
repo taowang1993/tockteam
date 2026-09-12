@@ -74,7 +74,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if (typeof eventId === 'string') sendEvent({ kind: 'fieldChanged', eventId, value: languageSelect.value.slice(0, 128) })
   })
   searchRow.append(label, languageSelect)
-  const status = document.createElement('p'); status.className = 'launcher-command-status mx-4'; status.setAttribute('role', 'status')
+  const status = document.createElement('p'); status.className = 'launcher-command-status mx-4 mt-2'; status.setAttribute('role', 'status')
   const panelActions = document.createElement('div'); panelActions.className = 'flex flex-wrap items-start gap-2 py-2'; panelActions.hidden = true
   const results = document.createElement('ul'); results.className = 'launcher-command-list'; results.setAttribute('role', 'list'); results.setAttribute('aria-label', zh ? '翻译结果' : 'Translations')
   const formArea = document.createElement('form'); formArea.className = 'flex flex-col items-start gap-3 py-2'; formArea.hidden = true; formArea.addEventListener('submit', event => { event.preventDefault(); invoke(submitAction) })
@@ -258,8 +258,8 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const gridMode = grid !== undefined
     results.className = gridMode ? 'launcher-command-list grid grid-cols-5 content-start gap-3 !p-3' : 'launcher-command-list'
     const items = waiting ? [] : descendants(root, gridMode ? 'raycast-grid-item' : 'raycast-list-item')
-    const itemSections = new Map<TrustedRaycastViewNode, string>()
-    for (const section of descendants(root, 'raycast-section')) for (const child of section.children) if (typeof child !== 'string') itemSections.set(child, String(section.props.title ?? ''))
+    const itemSections = new Map<TrustedRaycastViewNode, TrustedRaycastViewNode>()
+    for (const section of descendants(root, 'raycast-section')) for (const child of section.children) if (typeof child !== 'string') itemSections.set(child, section)
     selected = Math.min(selected, Math.max(0, items.length - 1))
     const itemActions = new Set(items.flatMap(item => descendants(item, 'raycast-action')))
     const rootActions = descendants(root, 'raycast-action').filter(action => !itemActions.has(action))
@@ -284,9 +284,13 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     }
     let lastSection: string | undefined
     items.forEach((node, index) => {
-      const sectionTitle = itemSections.get(node)
+      const section = itemSections.get(node)
+      const sectionTitle = section === undefined ? undefined : String(section.props.title ?? '')
       if (sectionTitle !== undefined && sectionTitle !== lastSection) {
-        const heading = document.createElement('li'); heading.className = gridMode ? 'col-span-full flex items-center justify-between px-1 pt-1 text-xs font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'px-4 pb-1 pt-3 text-xs font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'; heading.textContent = sectionTitle; heading.setAttribute('aria-hidden', 'true'); results.append(heading); lastSection = sectionTitle
+        const heading = document.createElement('li'); heading.className = gridMode ? 'col-span-full flex items-center px-1 pt-1 text-xs font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'flex items-center px-4 pb-1 pt-3 text-xs font-semibold text-[var(--dsw-alias-label-secondary,CanvasText)]'; heading.textContent = sectionTitle; heading.setAttribute('aria-hidden', 'true')
+        const sectionCount = String(section?.props.subtitle ?? '')
+        if (sectionCount) { const count = document.createElement('span'); count.className = 'ml-2 font-normal opacity-70'; count.textContent = sectionCount; heading.append(count) }
+        results.append(heading); lastSection = sectionTitle
       }
       const item = document.createElement('li'); item.className = gridMode ? 'launcher-command-row flex aspect-square min-w-0 flex-col items-center justify-center gap-2 p-2 text-center [overflow-wrap:anywhere]' : 'launcher-command-row !block [overflow-wrap:anywhere]'
       item.tabIndex = 0; item.setAttribute('data-selected', String(index === selected)); if (gridMode) item.setAttribute('aria-label', String(node.props.title ?? 'Kaomoji'))

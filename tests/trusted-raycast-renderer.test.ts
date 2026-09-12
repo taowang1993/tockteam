@@ -241,16 +241,18 @@ test('Kaomoji Grid renders bounded theme image data and extension identity', () 
   const dark = kaomojiSvg('#fff', '(^_^)'); const light = kaomojiSvg('#000', '(^_^)')
   view.update({
     type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 0,
-    root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-section', props: { title: 'emotion' }, children: Array.from({ length: 64 }, (_, index) => ({ type: 'raycast-grid-item' as const, props: { contentDark: dark, contentLight: light, title: `Happy Face ${index}` }, children: [{ type: 'raycast-action' as const, props: { actionEventId: `copy-${index}`, title: 'Copy to Clipboard' }, children: [] }] })) }] },
+    root: { type: 'raycast-grid', props: { queryCurrent: true, searchEventId: 'search' }, children: [{ type: 'raycast-section', props: { subtitle: '15', title: 'animal' }, children: Array.from({ length: 64 }, (_, index) => ({ type: 'raycast-grid-item' as const, props: { contentDark: dark, contentLight: light, title: `Happy Face ${index}` }, children: [{ type: 'raycast-action' as const, props: { actionEventId: `copy-${index}`, title: 'Copy to Clipboard' }, children: [] }] })) }] },
   })
   assert.equal((view.element as unknown as Element).getAttribute('aria-label'), 'Kaomoji Search')
   assert.ok(nodes.some(node => node.textContent === 'Search Kaomoji'))
   const results = nodes.find(node => node.getAttribute('aria-label') === 'Kaomoji Results' && node.getAttribute('role') === 'list')!
   assert.ok(results.className.includes('launcher-command-list'), 'grid extensions share the launcher scrollbar behavior')
   assert.ok(nodes.some(node => node.getAttribute('src') === light))
-  assert.ok(nodes.some(node => node.textContent === 'emotion'))
+  const sectionHeading = nodes.find(node => node.textContent === 'animal')!
+  assert.ok(sectionHeading.children.some(node => node.textContent === '15'), 'section heading shows the source category count')
   assert.ok(nodes.some(node => node.getAttribute('aria-label') === 'Happy Face 0'))
-  assert.ok(nodes.some(node => node.textContent === 'Showing 64 results. Search all 1,822 kaomoji.'))
+  const resultCount = nodes.find(node => node.textContent === 'Showing 64 results. Search all 1,822 kaomoji.')!
+  assert.ok(resultCount.className.includes('mt-2'), 'result disclosure is separated from the search header')
 })
 
 test('launcher focus requests target the visible Translate search control', () => {
