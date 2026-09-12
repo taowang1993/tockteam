@@ -396,6 +396,13 @@ export class LauncherPersistenceRepository {
       await syncDirectory(this.#rootPath).catch(() => undefined)
       return false
     }
+    // Recovery cannot recreate authority that was revoked or replaced after the write.
+    const authorized = await readJson(this.#grantPath, MAX_GRANT_BYTES, parseGrant).catch(() => undefined)
+    if (authorized === undefined || (!this.#sameGrant(authorized, journal.previous) && !this.#sameGrant(authorized, journal.next))) {
+      await rm(this.#externalTransactionPath, { force: true })
+      await syncDirectory(this.#rootPath)
+      return false
+    }
     try {
       const current = await this.#createGrant(journal.next.path)
       if (this.#sameGrant(current, journal.next)) {
@@ -648,10 +655,11 @@ export class LauncherPersistenceRepository {
       const current = await this.#createGrant(grant.path)
       if (!this.#sameGrant(current, grant)) throw new Error('TockLauncher external settings file changed')
       throwIfAborted(signal)
+      await this.#retireExternalGrant()
       await atomicWrite(this.#grantPath, JSON.stringify(grant, null, 2), { backup: false })
       try { throwIfAborted(signal) }
       catch (error) {
-        await rm(this.#grantPath, { force: true }).catch(() => undefined)
+        await this.#retireExternalGrant()
         throw error
       }
       this.#externalGrant = grant; this.#externalGrantStatus = 'active'; this.#settingsSource = 'external'; this.#settings = settings
@@ -662,10 +670,18 @@ export class LauncherPersistenceRepository {
     throwIfAborted(signal)
     await this.#enqueue(async () => {
       throwIfAborted(signal)
-      await rm(this.#grantPath, { force: true })
-      this.#externalGrant = undefined; this.#externalGrantStatus = 'none'; this.#settingsSource = 'managed'
-      this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
+      await this.#retireExternalGrant()
     })
+  }
+
+  async #retireExternalGrant(): Promise<void> {
+    await rm(this.#grantPath, { force: true })
+    this.#externalGrant = undefined; this.#externalGrantStatus = 'none'; this.#settingsSource = 'managed'
+    this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
+    // Persist revocation before retiring the journal, including crashes between these operations.
+    await syncDirectory(this.#rootPath)
+    await rm(this.#externalTransactionPath, { force: true })
+    await syncDirectory(this.#rootPath)
   }
 
   async flush(): Promise<void> { await this.#mutationTail }
