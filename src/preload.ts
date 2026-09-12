@@ -61,7 +61,7 @@ export function parseDesktopCommand(value: unknown): DesktopCommand {
   }
   if (value.type === 'open-paths') {
     if (keys.length !== 2 || !Array.isArray(value.paths) || value.paths.length > 128
-      || value.paths.some(path => typeof path !== 'string' || path.length === 0 || path.length > 4_096 || /[\\0\\r\\n]/u.test(path))) throw new Error('Invalid desktop paths command')
+      || value.paths.some(path => typeof path !== 'string' || path.length === 0 || path.length > 4_096 || /[\0\r\n]/u.test(path))) throw new Error('Invalid desktop paths command')
     return { paths: [...value.paths] as string[], type: 'open-paths' }
   }
   const commands = new Set([
