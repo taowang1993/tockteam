@@ -4449,6 +4449,29 @@ test('trash restores an entry when metadata storage fails after the move', async
   }
 })
 
+test('trash cancellation after the physical move restores the original entry', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-trash-cancel-'))
+  const note = join(fixture, 'Recover.md')
+  await writeFile(note, 'recover me')
+  const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+  try {
+    const state = loaded.context.noteVault.state
+    assert.ok(state.active)
+    const expectedVault = { id: state.id, generation: state.generation }
+    const controller = new AbortController()
+    const opened = await loaded.context.noteVault.openDocument('Recover.md', expectedVault, controller.signal)
+    await duringFirstFileSync(note, () => { controller.abort() }, async () => {
+      await assert.rejects(loaded.context.noteVault.trashEntry({ expectedRevision: opened.revision,
+        expectedVault, path: 'Recover.md' }, controller.signal), { name: 'AbortError' })
+    })
+    assert.equal(await readFile(note, 'utf8'), 'recover me')
+    assert.deepEqual(await readdir(join(fixture, '.trash')), [])
+  } finally {
+    await dispose(loaded.context, loaded.root)
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
 test('trash refuses to mutate when metadata storage is unavailable', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-trash-required-'))
   try {

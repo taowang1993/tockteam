@@ -6085,9 +6085,9 @@ export class NoteVaultRuntime extends Service {
       revision: mutation.revision,
       trashPath: mutation.path,
     }
-    this.assertCapturedVault(state, root)
-    signal.throwIfAborted()
     try {
+      this.assertCapturedVault(state, root)
+      signal.throwIfAborted()
       await writeTrashRecord(
         this.stateRoot,
         { id: state.id, generation: state.generation },
