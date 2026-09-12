@@ -3637,6 +3637,25 @@ test('an injected consumer atomically saves and exclusively creates documents', 
   }
 })
 
+test('document creation supplies missing confined parent folders for imports and journals', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-nested-create-'))
+  const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+  try {
+    const state = loaded.context.noteVault.state
+    assert.ok(state.active)
+    const request = { content: '# Imported\n', expectedVault: { id: state.id, generation: state.generation }, path: 'Imported/Course/Lesson.md' }
+    const result = await loaded.context.noteVault.createDocument(request, new AbortController().signal)
+    assert.equal(result.status, 'created')
+    assert.equal(await readFile(join(fixture, request.path), 'utf8'), request.content)
+    await assert.rejects(loaded.context.noteVault.createDocument(request, new AbortController().signal),
+      error => error instanceof NoteVaultError && error.code === 'exists')
+    assert.equal((await lstat(join(fixture, 'Imported', 'Course'))).isDirectory(), true)
+  } finally {
+    await dispose(loaded.context, loaded.root)
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
 test('document writes preserve conflicts, aliases, bounds, and confinement', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-write-guards-'))
   const vault = join(fixture, 'Vault')

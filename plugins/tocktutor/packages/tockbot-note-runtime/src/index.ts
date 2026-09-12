@@ -1373,7 +1373,7 @@ async function bindDestinationParent(
   return { identity, path: parentPath, realPath }
 }
 
-async function ensureAttachmentParent(
+async function ensureDestinationParent(
   root: string,
   candidate: string,
 ): Promise<DestinationParentBinding> {
@@ -1388,7 +1388,7 @@ async function ensureAttachmentParent(
     }
     const entry = await lstat(cursor, { bigint: true })
     if (!entry.isDirectory() || entry.isSymbolicLink()) {
-      throw new NoteVaultError('unsafe-target', 'Vault attachment folders must be regular directories')
+      throw new NoteVaultError('unsafe-target', 'Vault destination folders must be regular directories')
     }
     assertInside(root, await realpath(cursor))
   }
@@ -1824,9 +1824,8 @@ async function resolveNewDocumentTarget(root: string, requestedPath: string) {
   const relativePath = normalizeDocumentPath(requestedPath)
   const candidate = path.join(root, ...relativePath.split('/'))
   assertInside(root, candidate)
-  await assertNoDirectorySymlinks(root, candidate)
-  assertInside(root, await realpath(path.dirname(candidate)))
-  return { candidate, relativePath }
+  const parentBinding = await ensureDestinationParent(root, candidate)
+  return { candidate, parentBinding, relativePath }
 }
 
 async function assertWriteTargetUnchanged(
@@ -6320,7 +6319,7 @@ export class NoteVaultRuntime extends Service {
     assertInside(root, candidate)
     let committed = false
     try {
-      const parentBinding = await ensureAttachmentParent(root, candidate)
+      const parentBinding = await ensureDestinationParent(root, candidate)
       const data = Buffer.from(request.data)
       await writeDocumentAtomic(candidate, data, true, async () => {
         signal.throwIfAborted()
@@ -6374,8 +6373,7 @@ export class NoteVaultRuntime extends Service {
       await writeDocumentAtomic(target.candidate, data, true, async () => {
         signal.throwIfAborted()
         this.assertCapturedVault(state, root)
-        await assertNoDirectorySymlinks(root, target.candidate)
-        assertInside(root, await realpath(path.dirname(target.candidate)))
+        await assertDestinationParentBound(root, target.parentBinding)
       })
     } catch (error) {
       if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) {
