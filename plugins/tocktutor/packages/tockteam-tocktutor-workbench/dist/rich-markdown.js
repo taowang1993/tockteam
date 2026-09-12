@@ -1,5 +1,6 @@
 import { classifyExternalEmbed, externalEmbedButtonHtml, externalEmbedInertHtml, } from "./external-embeds.js";
 import { isSafeVaultRelativePath } from "./session.js";
+import { MAX_EMBED_DEPTH } from "./embeds.js";
 // Bounded TockTeam renderer informed by Tockbot's source-detached NotesExportHtml contract.
 export const MAX_RICH_MARKDOWN_BYTES = 2000_000;
 export const MAX_RICH_MARKDOWN_BLOCKS = 20000;
@@ -102,11 +103,13 @@ function resolvedEmbedMime(mimeType) {
         return null;
     return mime;
 }
-function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbeds) {
+function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbeds, ancestors) {
+    if (ancestors.length > MAX_EMBED_DEPTH || ancestors.includes(embed.target.path))
+        return escapeMarkdownHtml(embed.target.source);
     const path = escapeMarkdownHtml(embed.target.path);
     const label = escapeMarkdownHtml(embed.target.display ?? embed.target.path);
     if (embed.target.kind === 'note') {
-        return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbeds, resolvedEmbedParentPath: embed.target.path })}</span>`;
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbeds, resolvedEmbedParentPath: embed.target.path, resolvedEmbedAncestors: [...ancestors, embed.target.path] })}</span>`;
     }
     if (embed.target.kind === 'canvas' || embed.target.kind === 'base') {
         return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="${embed.target.kind}" data-embed-path="${path}"><pre>${escapeMarkdownHtml(embed.content)}</pre></span>`;
@@ -269,10 +272,8 @@ function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
             const image = external.kind === 'youtube' || external.kind === 'twitter' ? external : { ...external, kind: 'image' };
             return externalEmbedMode === 'viewer' ? externalEmbedButtonHtml(alt, image) : externalEmbedInertHtml(alt, image);
         }
-        const url = safeUrl(target);
-        return url === null || !/^(?:data:image\/|(?:https?:)?\/|\.\.?\/|[^:]+$)/iu.test(url)
-            ? escapeMarkdownHtml(match)
-            : `<img alt="${escapeMarkdownHtml(alt)}" loading="lazy" referrerpolicy="no-referrer" src="${escapeMarkdownHtml(url)}">`;
+        // Only Host-resolved data may become a resource; rejected URLs stay inert.
+        return hold(match);
     });
     text = text.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label, target) => {
         const url = safeUrl(target);
@@ -474,7 +475,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
         : resolvedEmbeds.filter(embed => embed.parentPath === options.resolvedEmbedParentPath);
     const resolvedEmbedReplacements = new Map([
         ...(options.resolvedEmbedSources ?? []).map(source => [source, '']),
-        ...rootResolvedEmbeds.map(embed => [embed.target.source, renderResolvedEmbed(embed, options.externalEmbedMode ?? 'inert', resolvedEmbeds)]),
+        ...rootResolvedEmbeds.map(embed => [embed.target.source, renderResolvedEmbed(embed, options.externalEmbedMode ?? 'inert', resolvedEmbeds, options.resolvedEmbedAncestors ?? [])]),
     ]);
     const replacedEmbeds = replaceResolvedEmbedSources(normalized, resolvedEmbedReplacements);
     const source = stripActiveHtml(replacedEmbeds.markdown);

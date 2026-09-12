@@ -9,6 +9,7 @@ export declare function parseClipPreview(value: unknown): ClipPreview;
 export declare function parseClipApplyResult(value: unknown): WriteDocumentResult;
 export declare function requestViewerPage(url: string, signal: AbortSignal): Promise<ViewerPageResult>;
 export declare function requestReaderView(url: string, signal: AbortSignal): Promise<ReaderViewResult>;
+export declare function defaultClipDestination(folder?: string, now?: Date): string;
 export declare function requestClipPreview(url: string, destination: string | undefined, signal: AbortSignal): Promise<ClipPreview>;
 export declare function requestClipApply(approval: ClipApproval, signal: AbortSignal): Promise<WriteDocumentResult>;
 export declare function requestClipCancel(reviewId: string, signal: AbortSignal): Promise<boolean>;

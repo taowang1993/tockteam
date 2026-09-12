@@ -2329,6 +2329,7 @@ export class WorkbenchRouteController {
         if (!sameVault(this.snapshot.vault, vault) || this.snapshot.path !== fromPath || this.snapshot.revision === null)
             return false;
         const operation = this.nextOperation();
+        const sourceAtRename = this.snapshot.source;
         this.pendingRename = { fromPath, toPath, vault };
         this.update({ message: `${action === 'moved' ? 'Moving' : 'Renaming'} ${fromPath}.` });
         try {
@@ -2385,10 +2386,12 @@ export class WorkbenchRouteController {
                 selectedSnapshot: null,
                 snapshots: Object.freeze([]),
                 revision: renamed.revision,
-                saveStatus: 'saved',
+                saveStatus: this.snapshot.source === sourceAtRename ? 'saved' : 'unsaved',
                 warnings: Object.freeze([...this.snapshot.warnings, ...renameWarnings].slice(-32)),
             });
             this.syncShell();
+            if (this.snapshot.saveStatus !== 'saved')
+                this.scheduleDraft();
             this.navigate(routeForPath(toPath), 'replace');
             await this.refreshTree(vault);
             if (renameWarnings.length > 0) {
@@ -2423,7 +2426,7 @@ export class WorkbenchRouteController {
             this.invalidateDispatch();
         else if (!this.dispatchCurrent(dispatchRevision, activeVault))
             return false;
-        if (path === this.snapshot.path)
+        if (path === this.snapshot.path && navigate)
             return true;
         const recoveryWasOpen = this.snapshot.recoveryOpen === true;
         this.cancelRecoveryOperations();
@@ -2446,6 +2449,7 @@ export class WorkbenchRouteController {
         }
         const vault = activeVault;
         const operation = this.nextOperation();
+        const sourceAtOpen = this.snapshot.source;
         this.update({ message: `Opening ${path}.` });
         try {
             const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal));
@@ -2476,6 +2480,8 @@ export class WorkbenchRouteController {
                         return false;
                 }
             }
+            if (this.snapshot.source !== sourceAtOpen)
+                return false;
             const mode = pane.tabs.find(tab => tab.path === path)?.mode
                 ?? (documentKind(path) === 'markdown' ? this.snapshot.settings?.defaultEditingMode ?? 'live-preview' : 'reading');
             this.cancelEmbedOperation();
@@ -2548,7 +2554,7 @@ export class WorkbenchRouteController {
             void this.loadEmbeds();
     }
     setSelection(start, end) {
-        if (this.snapshot.path === null)
+        if (this.snapshot.path === null || this.snapshot.mode !== 'source')
             return;
         const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0;
         const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart;
@@ -2569,7 +2575,7 @@ export class WorkbenchRouteController {
         }
     }
     runEditorCommand(command) {
-        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading')
+        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source')
             return;
         const result = applyEditorCommand(this.snapshot.source, command, this.snapshot.selectionStart ?? this.snapshot.source.length, this.snapshot.selectionEnd ?? this.snapshot.source.length);
         if (result.source === this.snapshot.source)
@@ -2583,7 +2589,7 @@ export class WorkbenchRouteController {
         if (mode === 'live-preview' && this.snapshot.documentKind !== 'markdown')
             return;
         this.shellSession = setNoteTabMode(this.shellSession, this.shellSession.focusedGroupId, this.snapshot.path, sessionModeFromRoute(mode));
-        this.syncShell({ mode });
+        this.syncShell({ mode, selectionStart: 0, selectionEnd: 0 });
     }
     toggleTask(index) {
         if (this.snapshot.documentKind !== 'markdown')
@@ -2627,8 +2633,10 @@ export class WorkbenchRouteController {
         const path = this.snapshot.path;
         const start = this.snapshot.selectionStart ?? 0;
         const end = this.snapshot.selectionEnd ?? 0;
-        if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || end <= start)
+        if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source' || end <= start)
             return false;
+        const identity = this.recoveryIdentity();
+        const routeOperation = this.operation;
         const destinationPath = `Extracted/${noteTitle(path)} Extract.md`;
         try {
             const extraction = extractSelectionToNote({
@@ -2647,6 +2655,11 @@ export class WorkbenchRouteController {
             }));
             if (created.status !== 'created' || created.generation !== vault.generation || created.path !== destinationPath)
                 return false;
+            if (this.operation !== routeOperation || !this.recoveryIdentityMatches(identity)) {
+                if (!this.disposed && sameVault(this.snapshot.vault, vault))
+                    this.update({ message: `${destinationPath} created; the changed source was left untouched.` });
+                return false;
+            }
             this.edit(extraction.sourceContent);
             this.update({ message: `${destinationPath} created; save the source note to finish extraction.` });
             return true;
@@ -2673,7 +2686,7 @@ export class WorkbenchRouteController {
         }
     }
     insertCurrentDateTime(kind) {
-        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading')
+        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source')
             return false;
         const start = this.snapshot.selectionStart ?? this.snapshot.source.length;
         const end = this.snapshot.selectionEnd ?? start;

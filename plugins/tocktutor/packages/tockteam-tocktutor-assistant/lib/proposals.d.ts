@@ -135,6 +135,7 @@ export interface ProposalQueueOptions {
     auditLimit?: number;
 }
 export declare function sha256(value: string): string;
+export declare const MAIN_TOCKDRIVER_BINDING = "tockdriver-main";
 export declare class ProposalQueue {
     private readonly clock;
     private readonly randomId;

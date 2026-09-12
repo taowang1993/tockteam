@@ -625,7 +625,7 @@ async function bindDestinationParent(root, candidate) {
     assertInside(root, realPath);
     return { identity, path: parentPath, realPath };
 }
-async function ensureAttachmentParent(root, candidate) {
+async function ensureDestinationParent(root, candidate) {
     const relativeParent = path.relative(root, path.dirname(candidate));
     let cursor = root;
     for (const part of relativeParent.split(path.sep).filter(Boolean)) {
@@ -639,7 +639,7 @@ async function ensureAttachmentParent(root, candidate) {
         }
         const entry = await lstat(cursor, { bigint: true });
         if (!entry.isDirectory() || entry.isSymbolicLink()) {
-            throw new NoteVaultError('unsafe-target', 'Vault attachment folders must be regular directories');
+            throw new NoteVaultError('unsafe-target', 'Vault destination folders must be regular directories');
         }
         assertInside(root, await realpath(cursor));
     }
@@ -828,7 +828,7 @@ async function readBounded(handle, limit, expectedSize, signal) {
     signal.throwIfAborted();
     return offset > limit ? null : Buffer.concat(chunks, offset);
 }
-async function readVaultDocument(root, requestedPath, maxBytes, signal) {
+async function readVaultDocument(root, requestedPath, maxBytes, signal, bindAliasEntry = false) {
     signal.throwIfAborted();
     const target = await resolveDocumentTarget(root, requestedPath);
     signal.throwIfAborted();
@@ -880,7 +880,7 @@ async function readVaultDocument(root, requestedPath, maxBytes, signal) {
             digest: `sha256:${createHash('sha256').update(data).digest('hex')}`,
             modifiedAt: Number(opened.mtimeMs),
             path: target.relativePath,
-            revision: fileRevision(opened),
+            revision: bindAliasEntry ? entryRevision(target.alias, target.aliasEntry, opened) : fileRevision(opened),
         };
     }
     finally {
@@ -987,9 +987,8 @@ async function resolveNewDocumentTarget(root, requestedPath) {
     const relativePath = normalizeDocumentPath(requestedPath);
     const candidate = path.join(root, ...relativePath.split('/'));
     assertInside(root, candidate);
-    await assertNoDirectorySymlinks(root, candidate);
-    assertInside(root, await realpath(path.dirname(candidate)));
-    return { candidate, relativePath };
+    const parentBinding = await ensureDestinationParent(root, candidate);
+    return { candidate, parentBinding, relativePath };
 }
 async function assertWriteTargetUnchanged(root, target, expectedRevision) {
     try {
@@ -3644,7 +3643,7 @@ export class NoteVaultRuntime extends Service {
                         },
                         read: async (requestedPath, signal) => {
                             try {
-                                const document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal);
+                                const document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal, true);
                                 this.assertCapturedVault(state, root);
                                 return {
                                     content: document.content,
@@ -3727,13 +3726,18 @@ export class NoteVaultRuntime extends Service {
             read: async (requestedPath, maxBytes, signal) => {
                 let document;
                 try {
-                    document = await this.openDocument(requestedPath, expectedVault, signal);
+                    const { root, state } = this.captureExpectedVault(expectedVault);
+                    const opened = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal, true);
+                    this.assertCapturedVault(state, root);
+                    document = { ...opened, generation: state.generation };
                 }
                 catch (error) {
                     if (error instanceof NoteVaultError && error.code === 'stale-vault') {
                         throw new Error('Vault generation changed during inspection.');
                     }
-                    throw error;
+                    if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError'))
+                        throw error;
+                    throw new NoteVaultError('unsafe-target', 'Vault document could not be opened safely');
                 }
                 if (Buffer.byteLength(document.content, 'utf8') > maxBytes) {
                     throw new Error(`Vault file exceeds the configured ${String(maxBytes)}-byte limit.`);
@@ -4723,9 +4727,9 @@ export class NoteVaultRuntime extends Service {
             revision: mutation.revision,
             trashPath: mutation.path,
         };
-        this.assertCapturedVault(state, root);
-        signal.throwIfAborted();
         try {
+            this.assertCapturedVault(state, root);
+            signal.throwIfAborted();
             await writeTrashRecord(this.stateRoot, { id: state.id, generation: state.generation }, record, signal, () => { this.assertCapturedVault(state, root); });
         }
         catch (error) {
@@ -4910,7 +4914,7 @@ export class NoteVaultRuntime extends Service {
         assertInside(root, candidate);
         let committed = false;
         try {
-            const parentBinding = await ensureAttachmentParent(root, candidate);
+            const parentBinding = await ensureDestinationParent(root, candidate);
             const data = Buffer.from(request.data);
             await writeDocumentAtomic(candidate, data, true, async () => {
                 signal.throwIfAborted();
@@ -4955,8 +4959,7 @@ export class NoteVaultRuntime extends Service {
             await writeDocumentAtomic(target.candidate, data, true, async () => {
                 signal.throwIfAborted();
                 this.assertCapturedVault(state, root);
-                await assertNoDirectorySymlinks(root, target.candidate);
-                assertInside(root, await realpath(path.dirname(target.candidate)));
+                await assertDestinationParentBound(root, target.parentBinding);
             });
         }
         catch (error) {

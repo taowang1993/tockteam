@@ -15491,15 +15491,17 @@ function base643(bytes) {
   }
   return btoa(binary);
 }
-async function startAudioRecording(authorization, path, vault, current, request, mediaDevices, createRecorder, now = () => /* @__PURE__ */ new Date(), readBlob = (blob) => blob.arrayBuffer()) {
+async function startAudioRecording(authorization, path, vault, current, request, mediaDevices, createRecorder, now = () => /* @__PURE__ */ new Date(), readBlob = (blob) => blob.arrayBuffer(), signal) {
+  if (signal?.aborted) return { result: { ok: true, value: { status: "stale" } }, status: "not-started" };
   const result = await request(authorization, vault);
   if (!result.ok || result.value.status !== "granted") return { result, status: "not-started" };
+  if (signal?.aborted) return { result: { ok: true, value: { status: "stale" } }, status: "not-started" };
   const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
   const tracks = stream.getTracks();
   const cleanup = () => {
     for (const track of tracks) track.stop();
   };
-  if (!sameRecordingOwner(path, vault, current())) {
+  if (signal?.aborted || !sameRecordingOwner(path, vault, current())) {
     cleanup();
     return { result: { ok: true, value: { status: "stale" } }, status: "not-started" };
   }
@@ -15551,7 +15553,7 @@ async function startAudioRecording(authorization, path, vault, current, request,
       return;
     }
     void readBlob(new Blob(chunks, { type: recorder.mimeType })).then((buffer) => {
-      if (!sameRecordingOwner(path, vault, current())) {
+      if (cancelled || signal?.aborted || !sameRecordingOwner(path, vault, current())) {
         finish({ status: "stale" });
         return;
       }
@@ -15875,10 +15877,17 @@ function TockTutorNativeActions(props) {
           return response;
         },
         navigator.mediaDevices,
-        (stream) => new MediaRecorder(stream)
+        (stream) => new MediaRecorder(stream),
+        void 0,
+        void 0,
+        signal
       );
       if (started.status !== "recording") {
         if (!signal.aborted) setMessage(started.result.ok ? resultMessage(started.result.value) : "Audio recording is unavailable.");
+        return;
+      }
+      if (signal.aborted) {
+        started.recording.cancel();
         return;
       }
       activeRecording.current = started.recording;

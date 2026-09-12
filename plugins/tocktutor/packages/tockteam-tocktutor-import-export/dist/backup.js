@@ -1,6 +1,6 @@
 import { isPassiveBackupPath } from 'tockbot-note-runtime';
 import { createDeterministicZip, parseZip } from "./archive.js";
-import { comparePortableText, destinationAliasKey, ImportExportError, normalizeRelativePath, sha256, stableJson, } from "./core.js";
+import { comparePortableText, destinationAliasKey, ImportExportError, MAX_PLAN_ITEMS, normalizeRelativePath, sha256, stableJson, } from "./core.js";
 export const BACKUP_FORMAT = 'tockbot-vault-backup';
 export const BACKUP_VERSION = 3;
 export const BACKUP_ARCHIVE_LIMITS = {
@@ -34,7 +34,7 @@ function supported(path, kind) {
     const extension = path.split('/').at(-1)?.split('.').at(-1)?.toLocaleLowerCase('en-US') ?? '';
     return kind === 'document'
         ? ['base', 'canvas', 'markdown', 'md'].includes(extension)
-        : ['3gp', 'avif', 'bmp', 'flac', 'gif', 'jpeg', 'jpg', 'm4a', 'mkv', 'mov', 'mp3', 'mp4', 'ogg', 'ogv', 'pdf', 'png', 'wav', 'webm', 'webp'].includes(extension);
+        : ['3gp', 'avif', 'bmp', 'flac', 'gif', 'ico', 'jpeg', 'jpg', 'm4a', 'mkv', 'mov', 'mp3', 'mp4', 'ogg', 'ogv', 'pdf', 'png', 'wav', 'weba', 'webm', 'webp'].includes(extension);
 }
 function backupPath(path, kind) {
     if (kind === 'passive') {
@@ -72,7 +72,7 @@ export function createBackupArchive(input) {
         || typeof input.vault.id !== 'string'
         || input.vault.id.length === 0
         || input.entries.length === 0
-        || input.entries.length > MAX_BACKUP_ENTRIES)
+        || input.entries.length > MAX_PLAN_ITEMS)
         invalidManifest();
     const byPath = new Map(input.entries.map(entry => [backupPath(entry.path, entry.kind), entry]));
     if (byPath.size !== input.entries.length)

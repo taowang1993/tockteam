@@ -220,7 +220,7 @@ export function TockTutorAssistantPanel(props) {
                 controller.abort();
             reviewControllers.clear();
         };
-    }, [loadAudit, loadProposals, reviewControllers]);
+    }, [loadAudit, loadProposals, reviewControllers, transcript.running, transcript.runningCalls.length]);
     useEffect(() => () => {
         for (const controller of pending.current)
             controller.abort();

@@ -26,7 +26,10 @@ async function treeSnapshot(runtime, vault, signal) {
         signal.throwIfAborted();
         const page = await runtime.listTree({ cursor, expectedVault: vault, limit: TREE_PAGE_SIZE }, signal);
         signal.throwIfAborted();
-        if (page.generation !== vault.generation || page.truncated || page.truncationReason !== null || page.warnings.length > 0) {
+        const paginated = !page.complete && page.truncated && page.truncationReason === 'result-limit'
+            && page.cursor !== null && page.cursor !== cursor;
+        if (page.generation !== vault.generation || (page.truncated || page.truncationReason !== null) && !paginated
+            || page.warnings.length > 0) {
             throw new ImportExportError('stale-vault');
         }
         for (const entry of page.entries) {

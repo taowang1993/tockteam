@@ -762,6 +762,9 @@ async function requestViewerPage(url, signal) {
 async function requestReaderView(url, signal) {
   return parseReaderViewResult(await requestApi(WEB_CLIP_READER_API_PATH, { url: viewerInputUrl(url) }, signal));
 }
+function defaultClipDestination(folder = "Clips", now = /* @__PURE__ */ new Date()) {
+  return `${folder}/Clip ${now.toISOString().replaceAll(":", "-")}.md`;
+}
 async function requestClipPreview(url, destination, signal) {
   return parseClipPreview(await requestApi(WEB_CLIP_REVIEW_API_PATH, {
     ...destination?.trim() ? { destination: destination.trim() } : {},
@@ -814,7 +817,7 @@ function WebViewer(props = {}) {
   const [loading, setLoading] = (0, import_react5.useState)(false);
   const [reader, setReader] = (0, import_react5.useState)(null);
   const [readerLoading, setReaderLoading] = (0, import_react5.useState)(false);
-  const [clipDestination, setClipDestination] = (0, import_react5.useState)(() => props.webClipFolder ?? "Clips");
+  const [clipDestination, setClipDestination] = (0, import_react5.useState)(() => defaultClipDestination(props.webClipFolder));
   const [clipPreview, setClipPreview] = (0, import_react5.useState)(null);
   const [clipLoading, setClipLoading] = (0, import_react5.useState)(false);
   const [clipApplying, setClipApplying] = (0, import_react5.useState)(false);
@@ -1053,7 +1056,7 @@ function WebViewer(props = {}) {
     });
   };
   (0, import_react5.useEffect)(() => {
-    if (clipPreviewRef.current === null) setClipDestination(props.webClipFolder ?? "Clips");
+    if (clipPreviewRef.current === null) setClipDestination(defaultClipDestination(props.webClipFolder));
   }, [props.webClipFolder]);
   const setReaderPreference = (key, value) => {
     const current = viewerRef.current;

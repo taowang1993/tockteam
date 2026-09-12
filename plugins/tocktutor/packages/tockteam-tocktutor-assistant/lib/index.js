@@ -2,7 +2,7 @@ import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
 import { answerSearchQuery, expandAndSearch } from "./search-intelligence.js";
 import { ProposalApprovalExecutor, } from "./approval.js";
-import { ProposalQueue, } from "./proposals.js";
+import { ProposalQueue, MAIN_TOCKDRIVER_BINDING, } from "./proposals.js";
 import { AssistantProposalStateStore } from "./proposal-state.js";
 import { AgentContinuationRouter, } from "./agent-continuation.js";
 import { registerAssistantReadTools } from "./read-tool-registration.js";
@@ -53,7 +53,6 @@ export * from "./text-turn.js";
 export * from "./turn-bindings.js";
 export * from "./write-tool-registration.js";
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u;
-const MAIN_TOCKDRIVER_BINDING = 'tockdriver-main';
 export const Config = Schema.object({
     provider: Schema.string().min(1).max(128).pattern(IDENTIFIER_PATTERN).default('deepseek-official'),
     model: Schema.string().min(1).max(256).pattern(IDENTIFIER_PATTERN).default('deepseek-v4-flash'),
@@ -268,11 +267,12 @@ export class NoteAssistant extends Service {
         if (settings.writePermission !== 'propose' || !state.active || vaultId !== undefined && vaultId !== state.id) {
             throw new AssistantTurnBindingError('TOOL_UNAVAILABLE');
         }
-        return { settings, vault: { generation: state.generation, id: state.id } };
+        return { permissionEpoch: this.permissionEpoch, settings, vault: { generation: state.generation, id: state.id } };
     }
     async stageMainTockDriverProposal(input, facts, signal) {
         const current = this.mainTockDriverFacts(signal, facts.vault.id);
         if (current.vault.generation !== facts.vault.generation
+            || current.permissionEpoch !== facts.permissionEpoch
             || current.settings.provider !== facts.settings.provider
             || current.settings.model !== facts.settings.model)
             throw new AssistantTurnBindingError('STALE_TURN');
@@ -290,7 +290,7 @@ export class NoteAssistant extends Service {
             provider: facts.settings.provider,
             model: facts.settings.model,
             writePermission: 'propose',
-            permissionEpoch: this.permissionEpoch,
+            permissionEpoch: facts.permissionEpoch,
         });
         await this.persistProposalState();
         return summary;

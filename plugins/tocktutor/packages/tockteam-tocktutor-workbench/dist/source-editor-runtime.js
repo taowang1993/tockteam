@@ -95,8 +95,10 @@ function sourceDecorations(state) {
         let cursor = 0;
         if (commentOpen) {
             const close = text.indexOf('%%');
-            if (close < 0)
-                decorations.push(Decoration.mark({ class: 'cm-tock-comment' }).range(line.from, line.to));
+            if (close < 0) {
+                if (line.from < line.to)
+                    decorations.push(Decoration.mark({ class: 'cm-tock-comment' }).range(line.from, line.to));
+            }
             else {
                 decorations.push(Decoration.mark({ class: 'cm-tock-comment' }).range(line.from, line.from + close + 2));
                 commentOpen = false;

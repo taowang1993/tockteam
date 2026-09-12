@@ -157,7 +157,7 @@ function recordSummary(record) {
         contentDigest: record.contentDigest,
         contentBytes: record.contentBytes,
         contentChars: record.contentChars,
-        preview: boundToolText(record.content, MAX_PREVIEW_CHARS),
+        preview: boundToolText(record.content.slice(0, 100_000), MAX_PREVIEW_CHARS),
         childInstanceId: record.childInstanceId,
         turnId: record.turnId,
         requestId: record.requestId,
@@ -333,6 +333,7 @@ function parseAudit(value) {
         ...value.reason === undefined ? {} : { reason: value.reason },
     };
 }
+export const MAIN_TOCKDRIVER_BINDING = 'tockdriver-main';
 export class ProposalQueue {
     clock;
     randomId;
@@ -418,9 +419,21 @@ export class ProposalQueue {
             warnings,
             skippedEntries,
         };
+        const summary = recordSummary(record);
+        const audits = [...this.audits];
+        const auditDropped = this.auditDropped;
         this.proposals.set(token, record);
-        this.appendAudit(record, 'staged');
-        return recordSummary(record);
+        try {
+            this.appendAudit(record, 'staged');
+            this.serialize();
+        }
+        catch {
+            this.proposals.delete(token);
+            this.audits = audits;
+            this.auditDropped = auditDropped;
+            fail('QUEUE_FULL');
+        }
+        return summary;
     }
     list() {
         this.pruneExpired();
@@ -465,7 +478,8 @@ export class ProposalQueue {
     invalidateForChild(currentInstanceId) {
         let invalidated = 0;
         for (const [token, record] of this.proposals) {
-            if (currentInstanceId !== null && record.childInstanceId === currentInstanceId)
+            if (record.childInstanceId === MAIN_TOCKDRIVER_BINDING
+                || currentInstanceId !== null && record.childInstanceId === currentInstanceId)
                 continue;
             this.proposals.delete(token);
             this.appendAudit(record, 'approval-denied', 'CHILD_REPLACED');

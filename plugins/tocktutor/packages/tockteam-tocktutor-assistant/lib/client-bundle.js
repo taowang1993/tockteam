@@ -20939,7 +20939,7 @@ function TockTutorAssistantPanel(props) {
       for (const controller of reviewControllers) controller.abort();
       reviewControllers.clear();
     };
-  }, [loadAudit, loadProposals, reviewControllers]);
+  }, [loadAudit, loadProposals, reviewControllers, transcript.running, transcript.runningCalls.length]);
   (0, import_react7.useEffect)(() => () => {
     for (const controller of pending.current) controller.abort();
     pending.current.clear();

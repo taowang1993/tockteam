@@ -23,6 +23,8 @@ export interface RenderMarkdownOptions {
     resolvedEmbeds?: readonly StaticMarkdownEmbed[];
     /** Internal parent path used while recursively rendering nested resolved embeds. */
     resolvedEmbedParentPath?: string;
+    /** Internal traversal guard; flattened resolver branches can share parent paths. */
+    resolvedEmbedAncestors?: readonly string[];
     strictLineBreaks?: boolean;
 }
 export interface BuildMarkdownExportDocumentOptions extends RenderMarkdownOptions {

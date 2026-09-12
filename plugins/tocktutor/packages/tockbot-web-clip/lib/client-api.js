@@ -200,6 +200,9 @@ export async function requestViewerPage(url, signal) {
 export async function requestReaderView(url, signal) {
     return parseReaderViewResult(await requestApi(WEB_CLIP_READER_API_PATH, { url: viewerInputUrl(url) }, signal));
 }
+export function defaultClipDestination(folder = 'Clips', now = new Date()) {
+    return `${folder}/Clip ${now.toISOString().replaceAll(':', '-')}.md`;
+}
 export async function requestClipPreview(url, destination, signal) {
     return parseClipPreview(await requestApi(WEB_CLIP_REVIEW_API_PATH, {
         ...(destination?.trim() ? { destination: destination.trim() } : {}),
