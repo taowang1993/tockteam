@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { appendFile, lstat, mkdir, mkdtemp, open as openFile, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import sqlite3 from 'sqlite3'
@@ -4968,6 +4969,64 @@ test('Loader rejects configured roots that are not existing directories', async 
     await rm(fixture, { recursive: true, force: true })
   }
 })
+
+for (const stage of ['mount', 'commit'] as const) {
+  test(`search index disposal drains ${stage} before closing its unpublished native connection`, async t => {
+    const { Document } = createRequire(import.meta.url)('flexsearch') as typeof import('flexsearch')
+    const fixture = await mkdtemp(join(tmpdir(), 'note-vault-index-dispose-'))
+    const vaultRoot = join(fixture, 'vault')
+    await mkdir(vaultRoot)
+    await writeFile(join(vaultRoot, 'Alpha.md'), '# Alpha\n#project canary\n')
+    await writeFile(join(vaultRoot, 'FalsePositive.md'), '# False\nproject is plain text\n')
+    await writeFile(join(vaultRoot, 'Other.md'), '# Other\nunrelated\n')
+    const reached = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    const originalMount = Document.prototype.mount
+    const originalCommit = Document.prototype.commit
+    let native: sqlite3.Database | undefined
+    t.mock.method(Document.prototype, 'mount', async function (this: import('flexsearch').Document, storage: import('flexsearch').StorageInterface) {
+      native = (storage as import('flexsearch').StorageInterface & { db: sqlite3.Database }).db
+      await originalMount.call(this, storage)
+      if (stage === 'mount') { reached.resolve(); await release.promise }
+    })
+    if (stage === 'commit') t.mock.method(Document.prototype, 'commit', async function (this: import('flexsearch').Document) {
+      await originalCommit.call(this)
+      reached.resolve()
+      await release.promise
+    })
+    const loaded = await load(`stateRoot: ${JSON.stringify(join(fixture, 'state'))}\nvaultRoot: ${JSON.stringify(vaultRoot)}`)
+    let disposal: Promise<void> | undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([reached.promise, new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`index never reached ${stage}`)), 5_000)
+      })])
+      clearTimeout(timer)
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const result = await loaded.context.noteVault.search({ mode: 'query', query: 'tag:project' },
+        { id: state.id, generation: state.generation }, new AbortController().signal)
+      assert.equal(result.scan.entries, 3, 'unready index must use the exact scanner')
+      assert.deepEqual(result.matches.map(match => match.path), ['Alpha.md'])
+      let disposed = false
+      disposal = dispose(loaded.context, loaded.root).then(() => { disposed = true })
+      await Promise.race([disposal, new Promise<void>(resolve => { timer = setTimeout(resolve, 50) })])
+      assert.equal(disposed, false, `disposal must drain native ${stage} work before closing`)
+      release.resolve()
+      await disposal
+      assert.ok(native, 'test must capture a real native SQLite connection')
+      await assert.rejects(new Promise((resolve, reject) => {
+        native!.all('SELECT 1', (error, rows) => error ? reject(error) : resolve(rows))
+      }), /closed/u)
+
+    } finally {
+      clearTimeout(timer)
+      release.resolve()
+      await (disposal ?? dispose(loaded.context, loaded.root))
+      await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+    }
+  })
+}
 
 test('Keyword search reconciles state-owned indexed candidates through the exact verifier', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-indexed-search-'))
