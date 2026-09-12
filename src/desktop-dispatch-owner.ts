@@ -74,8 +74,9 @@ export class DesktopDispatchOwner {
   publishProtocol(raw: string): boolean {
     const parsed = parseTockTutorProtocol(raw)
     if (parsed === null) return false
-    const resolved = this.options.resolveProtocol?.(parsed)
-      ?? this.resolveWithoutSensitiveFields(parsed)
+    const resolved = this.options.resolveProtocol === undefined
+      ? this.resolveWithoutSensitiveFields(parsed)
+      : this.options.resolveProtocol(parsed)
     if (resolved === null) {
       if (parsed.xError !== undefined) this.options.onCallback?.(parsed.xError, 'error')
       return false

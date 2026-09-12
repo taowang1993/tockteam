@@ -361,7 +361,7 @@ export function resolveTockTutorProtocolRequest(
   if (vault === undefined || vault === null || !validProtocolVault(vault)) return null
   const explicitTarget = request.vault !== undefined || request.path !== undefined
   const file = selected?.file ?? request.file
-  if (request.action === 'new' && file === undefined) return null
+  if (request.action === 'new' && file === undefined && request.name === undefined) return null
   if (request.clipboard === true
     && request.action !== 'new' && request.action !== 'daily' && request.action !== 'unique') return null
   const content = request.clipboard === true

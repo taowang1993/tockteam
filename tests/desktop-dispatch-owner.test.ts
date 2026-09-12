@@ -121,6 +121,41 @@ test('resolves named and absolute protocol selectors without exposing Host paths
   ), null)
 })
 
+test('resolves name-only note creation in the selected vault', () => {
+  const vault = { generation: 1, id: `vault:${'a'.repeat(64)}`, name: 'Work', path: vaultPath('work') }
+  for (const selector of ['', '&vault=Work']) {
+    const resolved = resolveTockTutorProtocolRequest(
+      parseTockTutorProtocol(`tocktutor://new?name=Plan${selector}`),
+      [vault],
+      vault,
+    )
+    assert.deepEqual(resolved, {
+      request: { action: 'new', name: 'Plan', ...(selector ? { vaultId: vault.id } : {}) },
+    })
+  }
+})
+
+test('a configured protocol resolver rejection cannot fall back to unresolved dispatch', async () => {
+  const callbacks: string[] = []
+  const dispatch = new DesktopDispatchOwner({
+    identity: (operationId, requestId) => ({ operationId, requestId, sessionId: 'session', vaultGeneration: 0, vaultId: null, windowId: 'window' }),
+    isAvailable: () => true,
+    onCallback: (url, status) => { callbacks.push(`${status}:${url}`) },
+    resolveProtocol: request => resolveTockTutorProtocolRequest(request, [], undefined),
+  })
+  try {
+    assert.equal(dispatch.publishProtocol('tocktutor://new?file=Plan.md&x-error=https%3A%2F%2Fexample.test%2Frejected'), false)
+    assert.deepEqual(callbacks, ['error:https://example.test/rejected'])
+    const controller = new AbortController()
+    const waiting = dispatch.next(controller.signal)
+    controller.abort()
+    assert.equal(await waiting, undefined)
+    assert.equal(dispatch.publishProtocol('tocktutor://choose-vault?'), true)
+  } finally {
+    dispatch.dispose()
+  }
+})
+
 test('delivers a named-vault request under the current boundary and completes under the activated boundary', async () => {
   const current = { generation: 4, id: `vault:${'a'.repeat(64)}` }
   const target = { generation: 5, id: `vault:${'b'.repeat(64)}` }
