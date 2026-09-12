@@ -203,7 +203,7 @@ const clampAssistantPanelWidth = (width: number): number => Math.min(
 export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
 
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
-  tocktutorAssistant?: WorkbenchSearchIntelligenceRemote
+  tocktutorAssistant?: WorkbenchSearchIntelligenceRemote | undefined
   tocktutorWorkbench: {
     currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>
     createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>

@@ -253,11 +253,27 @@ async function verifyPackedClient(
     await clientFiber
     assert.equal(registered.length, 1)
     assert.equal(registered[0]?.active, true)
-    assert.equal(
-      (registered[0]?.options.inject as () => { remote: { tocktutorWorkbench: unknown } })()
-        .remote.tocktutorWorkbench,
-      namespace,
-    )
+    const initialRouteRemote = (registered[0]?.options.inject as () => {
+      remote: {
+        tocktutorAssistant?: { searchIntelligence(this: unknown): Promise<string> }
+        tocktutorWorkbench: unknown
+      }
+    })().remote
+    const readAssistant = (): typeof initialRouteRemote.tocktutorAssistant => initialRouteRemote.tocktutorAssistant
+    assert.equal(initialRouteRemote.tocktutorWorkbench, namespace)
+    assert.equal(readAssistant(), undefined)
+    const assistant = {
+      searchIntelligence(this: unknown) {
+        assert.equal(this, assistant)
+        return Promise.resolve('assistant-result')
+      },
+    }
+    const removeAssistant = clientContext.reflect.provide('remote.tocktutorAssistant', assistant)
+    assert.equal(readAssistant(), assistant)
+    assert.equal(await readAssistant()!.searchIntelligence(), 'assistant-result')
+    await removeAssistant()
+    assert.equal(readAssistant(), undefined)
+    assert.equal(initialRouteRemote.tocktutorWorkbench, namespace)
 
     removeNamespace?.()
     for (let index = 0; index < 12; index += 1) await Promise.resolve()

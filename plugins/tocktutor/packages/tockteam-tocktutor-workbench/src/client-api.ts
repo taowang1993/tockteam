@@ -60,6 +60,9 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       const mountedRemote = child.remote as unknown as WorkbenchRouteRemote
       const remote: WorkbenchRouteRemote = {
         $on: mountedRemote.$on.bind(mountedRemote),
+        get tocktutorAssistant() {
+          return child.get('remote.tocktutorAssistant') as WorkbenchRouteRemote['tocktutorAssistant']
+        },
         tocktutorWorkbench: mountedRemote.tocktutorWorkbench,
       }
       const slots = (child as Context).slots

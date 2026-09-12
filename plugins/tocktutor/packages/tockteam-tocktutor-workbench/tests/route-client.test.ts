@@ -29,18 +29,33 @@ test('client contribution mounts Remote and the exact lifecycle-owned route seat
   const registered: Array<{ options: { name: string }; component: unknown }> = []
   const disposed: string[] = []
   let declaration: (() => () => void) | undefined
+  let assistantRemote: { searchIntelligence(this: unknown): Promise<string> } | undefined
+  let onReceiver: unknown
+  const workbenchRemote = {
+    search(this: unknown) {
+      assert.equal(this, workbenchRemote)
+      return Promise.resolve('local-result')
+    },
+  }
   const context = {
+    get(name: string) {
+      assert.equal(name, 'remote.tocktutorAssistant')
+      return assistantRemote
+    },
     inject(deps: string[], callback: (child: unknown) => unknown) {
       assert.deepEqual(deps, ['remote', 'remote.tocktutorWorkbench', 'slots'])
       return injectedFiber(context, callback)
     },
     remote: {
-      $on() { return () => {} },
+      $on(this: unknown) {
+        onReceiver = this
+        return () => {}
+      },
       async $mount(contribution: TypertRemoteContribution) {
         mounted.push(contribution)
         return async () => { disposed.push('remote') }
       },
-      tocktutorWorkbench: {},
+      tocktutorWorkbench: workbenchRemote,
     },
     slots: {
       inject(name: string, callback: () => () => void) {
@@ -78,13 +93,30 @@ test('client contribution mounts Remote and the exact lifecycle-owned route seat
   assert.equal(options.registrant, '@tockteam/tocktutor-workbench')
   const routeRemote = options.inject?.().remote as {
     $mount?: unknown
-    $on?: unknown
-    tocktutorWorkbench?: unknown
+    $on?: (event: string, listener: () => void) => () => void
+    tocktutorAssistant?: { searchIntelligence(this: unknown): Promise<string> }
+    tocktutorWorkbench?: { search(this: unknown): Promise<string> }
   }
   assert.notEqual(routeRemote, context.remote)
   assert.equal(routeRemote.tocktutorWorkbench, context.remote.tocktutorWorkbench)
   assert.equal(typeof routeRemote.$on, 'function')
+  routeRemote.$on!('test', () => {})
+  assert.equal(onReceiver, context.remote)
   assert.equal(routeRemote.$mount, undefined)
+  const readAssistant = (): typeof routeRemote.tocktutorAssistant => routeRemote.tocktutorAssistant
+  assert.equal(readAssistant(), undefined)
+  const assistant = {
+    searchIntelligence(this: unknown) {
+      assert.equal(this, assistant)
+      return Promise.resolve('assistant-result')
+    },
+  }
+  assistantRemote = assistant
+  assert.equal(readAssistant(), assistant)
+  assert.equal(await readAssistant()!.searchIntelligence(), 'assistant-result')
+  assistantRemote = undefined
+  assert.equal(readAssistant(), undefined)
+  assert.equal(await routeRemote.tocktutorWorkbench!.search(), 'local-result')
   disposeRoute()
   await dispose()
   assert.deepEqual(disposed, ['route', 'inject', 'remote'])

@@ -20,6 +20,9 @@ export async function apply(ctx) {
         const mountedRemote = child.remote;
         const remote = {
             $on: mountedRemote.$on.bind(mountedRemote),
+            get tocktutorAssistant() {
+                return child.get('remote.tocktutorAssistant');
+            },
             tocktutorWorkbench: mountedRemote.tocktutorWorkbench,
         };
         const slots = child.slots;
