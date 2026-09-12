@@ -231,6 +231,23 @@ test('records authorized audio and returns a stale-safe Workbench attachment han
   assert.equal(stopped, true)
 })
 
+test('unloading during media acquisition stops late tracks before recording starts', async () => {
+  const controller = new AbortController()
+  let stopped = false
+  let release!: (stream: { getTracks(): Array<{ stop(): void }> }) => void
+  const pending = startAudioRecording('authorization', 'Note.md', vault,
+    () => ({ activePath: 'Note.md', vault }),
+    async () => ({ ok: true, value: { status: 'granted' } }),
+    { getUserMedia: () => new Promise(resolve => { release = resolve }) },
+    () => { throw new Error('Recorder must not start after unload') },
+    undefined, undefined, controller.signal)
+  await new Promise(resolve => setImmediate(resolve))
+  controller.abort()
+  release({ getTracks: () => [{ stop() { stopped = true } }] })
+  assert.equal((await pending).status, 'not-started')
+  assert.equal(stopped, true)
+})
+
 test('cleans up failed recorder construction and rechecks ownership after byte conversion', async () => {
   let stopped = false
   const stream = { getTracks: () => [{ stop() { stopped = true } }] }

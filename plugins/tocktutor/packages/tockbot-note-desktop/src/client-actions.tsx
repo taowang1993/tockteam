@@ -335,16 +335,19 @@ export async function startAudioRecording(
   createRecorder: (stream: Awaited<ReturnType<AudioMediaDevices['getUserMedia']>>) => AudioMediaRecorder,
   now: () => Date = () => new Date(),
   readBlob: (blob: Blob) => Promise<ArrayBuffer> = blob => blob.arrayBuffer(),
+  signal?: AbortSignal,
 ): Promise<
   | { result: RemoteResult<NativeActionResult>; status: 'not-started' }
   | { recording: AudioRecording; status: 'recording' }
 > {
+  if (signal?.aborted) return { result: { ok: true, value: { status: 'stale' } }, status: 'not-started' }
   const result = await request(authorization, vault)
   if (!result.ok || result.value.status !== 'granted') return { result, status: 'not-started' }
+  if (signal?.aborted) return { result: { ok: true, value: { status: 'stale' } }, status: 'not-started' }
   const stream = await mediaDevices.getUserMedia({ audio: true, video: false })
   const tracks = stream.getTracks()
   const cleanup = (): void => { for (const track of tracks) track.stop() }
-  if (!sameRecordingOwner(path, vault, current())) {
+  if (signal?.aborted || !sameRecordingOwner(path, vault, current())) {
     cleanup()
     return { result: { ok: true, value: { status: 'stale' } }, status: 'not-started' }
   }
@@ -394,7 +397,7 @@ export async function startAudioRecording(
     }
     void readBlob(new Blob(chunks, { type: recorder.mimeType }))
       .then(buffer => {
-        if (!sameRecordingOwner(path, vault, current())) {
+        if (cancelled || signal?.aborted || !sameRecordingOwner(path, vault, current())) {
           finish({ status: 'stale' })
           return
         }
@@ -797,11 +800,15 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
         },
         navigator.mediaDevices,
         stream => new MediaRecorder(stream as MediaStream) as unknown as AudioMediaRecorder,
+        undefined,
+        undefined,
+        signal,
       )
       if (started.status !== 'recording') {
         if (!signal.aborted) setMessage(started.result.ok ? resultMessage(started.result.value) : 'Audio recording is unavailable.')
         return
       }
+      if (signal.aborted) { started.recording.cancel(); return }
       activeRecording.current = started.recording
       setRecording(true)
       setMessage('Recording Audio…')
