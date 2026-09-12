@@ -18,6 +18,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const svg = render(definition as unknown as SvgTuple); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', className)
     return svg
   }
+  const shortcut = (...parts: string[]): HTMLElement => {
+    const wrapper = document.createElement('span'); wrapper.className = 'inline-flex shrink-0 items-center gap-px'; wrapper.setAttribute('aria-hidden', 'true')
+    for (const part of parts) { const key = document.createElement('kbd'); key.className = 'inline-grid box-border h-4 min-w-4 place-items-center rounded-[3px] border border-[color-mix(in_srgb,var(--dsw-alias-label-primary,CanvasText)_12%,var(--dsw-alias-border-l1,CanvasText))] bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,CanvasText)_9%,transparent)] px-[1.5px] font-sans text-[9px] leading-none text-[var(--dsw-alias-label-secondary,CanvasText)] shadow-[0_1px_0_0_var(--dsw-alias-border-l1,CanvasText)]'; key.textContent = part; wrapper.append(key) }
+    return wrapper
+  }
   let current: TrustedRaycastViewMessage | undefined
   let themeImages: Array<{ dark: string; image: HTMLImageElement; light: string }> = []
   let lightTheme = document.documentElement?.style?.colorScheme === 'light'
@@ -83,7 +88,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const commandFooter = document.createElement('footer'); commandFooter.className = 'launcher-command-footer'; commandFooter.hidden = true
   const extensionLabel = document.createElement('span'); extensionLabel.className = 'launcher-command-footer-identity'
   const footerIcon = document.createElement('img'); footerIcon.setAttribute('src', './trusted-raycast/google-translate.png'); footerIcon.setAttribute('alt', ''); footerIcon.className = 'size-5'; extensionLabel.append(footerIcon); const footerText = document.createElement('span'); footerText.textContent = zh ? '翻译' : 'Translate'; extensionLabel.append(footerText)
-  const footerActions = document.createElement('div'); footerActions.className = 'flex items-center gap-2'; footerActions.setAttribute('role', 'group'); footerActions.setAttribute('aria-label', zh ? '命令操作' : 'Command Actions')
+  const footerActions = document.createElement('div'); footerActions.className = 'launcher-command-footer-actions'; footerActions.setAttribute('role', 'group'); footerActions.setAttribute('aria-label', zh ? '命令操作' : 'Command Actions')
   commandFooter.append(extensionLabel, footerActions); element.append(header, content, commandFooter)
   let actionPending: string | undefined
   let queryPending = false
@@ -347,10 +352,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       const emptyText = document.createElement('p'); emptyText.className = 'm-0 text-sm font-medium'; emptyText.textContent = emptyTitle || (zh ? '无结果' : 'No Results'); empty.append(emptyIcon, emptyText); results.append(empty)
       if (rootActions.length > 0) rootActionOwner = createActionOwner(rootActions, empty)
     }
-    primaryFooter = document.createElement('button'); primaryFooter.type = 'button'; primaryFooter.className = 'launcher-command-footer-action bg-[var(--dsw-alias-bg-layer-2,Canvas)]'
-    primaryFooterLabel = document.createElement('span'); const enter = document.createElement('kbd'); enter.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; enter.textContent = '↵'; primaryFooter.append(primaryFooterLabel, enter); syncPrimaryFooter(); primaryFooter.addEventListener('click', () => invoke(rows[selected]?.actions[0]))
-    const commandActions = document.createElement('button'); commandActions.type = 'button'; commandActions.className = 'launcher-command-footer-action'; commandActions.textContent = zh ? '操作' : 'Actions'
-    const shortcut = document.createElement('kbd'); shortcut.className = 'ml-2 text-xs font-normal text-[var(--dsw-alias-label-secondary,CanvasText)]'; shortcut.textContent = '⌘ K'; commandActions.append(shortcut)
+    primaryFooter = document.createElement('button'); primaryFooter.type = 'button'; primaryFooter.className = 'launcher-command-footer-action'
+    primaryFooterLabel = document.createElement('span'); primaryFooter.append(primaryFooterLabel, shortcut('↵')); syncPrimaryFooter(); primaryFooter.addEventListener('click', () => invoke(rows[selected]?.actions[0]))
+    const commandActions = document.createElement('button'); commandActions.type = 'button'; commandActions.className = 'launcher-command-footer-action'; commandActions.textContent = zh ? '操作' : 'Actions'; commandActions.append(shortcut('⌘', 'K'))
     commandActions.disabled = rows[selected] === undefined && rootActionOwner === undefined
     if (rootActionOwner) rootActionOwner.item = commandActions
     commandActions.addEventListener('click', event => { event.stopPropagation(); const owner = rows[selected] ?? rootActionOwner; if (!owner) return; owner.menu.open = !owner.menu.open; if (owner.menu.open) owner.buttons.find(button => !button.disabled)?.focus(); else commandActions.focus() })

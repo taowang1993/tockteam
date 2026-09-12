@@ -323,14 +323,20 @@ test('source action outcomes remain visible when React commits after callback co
   assert.ok(nodes.some(node => node.textContent === '<img src=x onerror=alert(1)>'), 'translation rendered as text, not HTML')
 })
 
-test('footer actions follow selection, open by pointer, and clamp after results shrink', () => {
+test('footer actions share one pill with theme-aware keycaps, follow selection, open by pointer, and clamp after results shrink', () => {
   const nodes: Element[] = []
-  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const document = { createElement(tagName: string) { const node = new Element(); node.tagName = tagName; nodes.push(node); return node } } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
   const item = (title: string, action: string, eventId: string): NonNullable<TrustedRaycastViewMessage['root']> => ({ type: 'raycast-list-item', props: { title }, children: [{ type: 'raycast-action', props: { title: action, actionEventId: eventId, shortcut: JSON.stringify({ macOS: { key: 'c', modifiers: ['cmd', 'shift'] } }) }, children: [] }] })
   view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [item('Hello', 'Copy Translation', 'copy-translation'), item('Source', 'Copy', 'copy')] } })
   const resultRows = nodes.filter(node => node.className.includes('launcher-command-row'))
   let primary = nodes.find(node => node.getAttribute('aria-label') === 'Copy Translation' && node.className.includes('launcher-command-footer-action'))!
+  const footerGroup = nodes.find(node => node.getAttribute('aria-label') === 'Command Actions')!
+  assert.equal(footerGroup.className, 'launcher-command-footer-actions', 'related footer actions share the established launcher pill')
+  assert.equal(primary.className, 'launcher-command-footer-action', 'the group owns one shared background')
+  const keycaps = nodes.filter(node => node.tagName === 'kbd' && ['↵', '⌘', 'K'].includes(node.textContent))
+  assert.deepEqual(keycaps.map(node => node.textContent), ['↵', '⌘', 'K'])
+  assert.ok(keycaps.every(node => node.className.includes('var(--dsw-alias-label-primary,CanvasText)_9%,transparent')), 'semantic foreground mixing darkens light keycaps and lightens dark keycaps')
   resultRows[1]!.dispatchEvent(new Event('focusin'))
   assert.equal(primary.getAttribute('aria-label'), 'Copy')
   const trigger = nodes.find(node => node.textContent === 'Actions' && node.className.includes('launcher-command-footer-action'))!
