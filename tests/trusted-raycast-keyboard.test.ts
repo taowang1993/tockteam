@@ -16,22 +16,22 @@ class Element extends EventTarget {
   querySelector(tag: string) { return this.children.find(child => child.tag === tag) }
 }
 const tick = () => new Promise(resolve => setImmediate(resolve))
-function setup() {
-  const nodes: Element[] = []; const sent: unknown[] = []
+function setup(extensionId = 'google-translate') {
+  const nodes: Element[] = []; const sent: unknown[] = []; let closed = 0
   const document = { activeElement: undefined as Element | undefined, createElement(tag: string) { const node = new Element(tag, this); nodes.push(node); return node } }
-  const view = createTrustedRaycastView(document as unknown as Document, { async trustedRaycastEvent(event: unknown) { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
+  const view = createTrustedRaycastView(document as unknown as Document, { async trustedRaycastEvent(event: unknown) { sent.push(event) } } as unknown as LauncherPreloadBridge, () => { closed++ })
   const input = nodes.find(node => node.tag === 'input')!
   let revision = 0
-  const update = (children: TrustedRaycastViewNode[], detail = true) => view.update({ type: revision ? 'patch' : 'ready', extensionId: 'google-translate', sessionId: 's', generation: 'g', revision: revision++, root: { type: 'raycast-list', props: { isShowingDetail: detail, searchEventId: 'search' }, children } } as TrustedRaycastViewMessage)
-  const key = (key: string, composing = false, keyCode = 0) => {
+  const update = (children: TrustedRaycastViewNode[], detail = true) => view.update({ type: revision ? 'patch' : 'ready', extensionId, sessionId: 's', generation: 'g', revision: revision++, root: { type: 'raycast-list', props: { isShowingDetail: detail, searchEventId: 'search' }, children } } as TrustedRaycastViewMessage)
+  const key = (key: string, composing = false, keyCode = 0, options: Partial<KeyboardEvent> = {}) => {
     const event = new Event('keydown', { bubbles: true, cancelable: true })
-    Object.defineProperties(event, Object.fromEntries(Object.entries({ key, isComposing: composing, keyCode, target: input, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false }).map(([key, value]) => [key, { value }])))
+    Object.defineProperties(event, Object.fromEntries(Object.entries({ key, isComposing: composing, keyCode, target: input, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...options }).map(([key, value]) => [key, { value }])))
     view.element.dispatchEvent(event)
     // src/launcher.ts owning bubble handler closes the active tool on an unconsumed Escape.
     const ownerClosed = key === 'Escape' && !event.cancelBubble
     return { event, ownerClosed }
   }
-  return { view, input, document, sent, update, key }
+  return { view, input, document, sent, update, key, get closed() { return closed } }
 }
 const row = (props: Record<string, string | boolean> = { actionEventId: 'toggle' }): TrustedRaycastViewNode => ({ type: 'raycast-list-item', props: { title: 'translation' }, children: [{ type: 'raycast-action', props: { title: 'Toggle Full Text', ...props }, children: [] }] })
 
@@ -44,6 +44,39 @@ test('composing keys preserve native defaults/focus and never reach owner close 
     assert.equal(result.event.defaultPrevented, false, `${key}: native composition preserved`)
     assert.equal(result.ownerClosed, false, `${key}: no owner close`)
   }
+})
+
+test('Backspace from an empty root search returns to launcher results without sending a child pop', () => {
+  for (const extension of ['kaomoji-search', 'google-translate', 'can-i-use']) {
+    const harness = setup(extension); harness.update([row()], false)
+    const result = harness.key('Backspace')
+    assert.equal(harness.closed, 1, `${extension}: return through the Back to Results callback`)
+    assert.equal(result.event.defaultPrevented, true)
+    assert.equal(harness.sent.length, 0, 'root exit is owned by the launcher, not the extension child')
+    harness.view.dispose()
+  }
+})
+
+test('root Backspace preserves editing, modifiers, repeats and composition', () => {
+  const harness = setup('kaomoji-search'); harness.update([row()], false)
+  harness.input.value = 'cat'
+  assert.equal(harness.key('Backspace').event.defaultPrevented, false)
+  harness.input.value = ''
+  for (const modifier of ['metaKey', 'ctrlKey', 'altKey', 'shiftKey']) {
+    assert.equal(harness.key('Backspace', false, 0, { [modifier]: true }).event.defaultPrevented, false)
+  }
+  for (const tagName of ['INPUT', 'TEXTAREA']) {
+    const target = Object.assign(new EventTarget(), { tagName })
+    assert.equal(harness.key('Backspace', false, 0, { target }).event.defaultPrevented, false)
+  }
+  const target = Object.assign(new EventTarget(), { isContentEditable: true })
+  assert.equal(harness.key('Backspace', false, 0, { target }).event.defaultPrevented, false)
+  harness.key('Backspace', false, 0, { repeat: true })
+  harness.key('Backspace', true)
+  harness.key('Backspace', false, 229)
+  assert.equal(harness.closed, 0)
+  assert.equal(harness.sent.length, 0)
+  harness.view.dispose()
 })
 
 test('Detail Escape bubbles to owner unless an admitted toggle actually starts', async () => {

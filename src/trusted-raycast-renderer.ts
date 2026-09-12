@@ -515,7 +515,11 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     const target = event.target as HTMLElement | null
     const tag = target?.tagName?.toLowerCase()
     const editing = target === input ? input.value !== '' : target?.isContentEditable === true || tag === 'input' || tag === 'textarea'
-    if (event.key === 'Backspace' && depth > 0 && !editing && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) { event.preventDefault(); event.stopPropagation(); if (!event.repeat) popNavigation(); return }
+    if (event.key === 'Backspace' && !editing && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+      event.preventDefault(); event.stopPropagation()
+      if (!event.repeat) { if (depth > 0) popNavigation(); else onClose() }
+      return
+    }
     if (event.key === 'Escape' && current?.root && descendants(current.root, 'raycast-list').some(list => list.props.isShowingDetail === true)) {
       if (invoke(row?.actions.find(action => action.props.title === 'Toggle Full Text'))) { event.preventDefault(); event.stopPropagation() }
       return
