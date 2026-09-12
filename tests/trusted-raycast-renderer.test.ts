@@ -11,6 +11,7 @@ class Element extends EventTarget {
   attributes = new Map<string, string>()
   value = ''; textContent = ''; placeholder = ''; hidden = false; disabled = false; isConnected = true; tabIndex = 0; open = false
   className = ''
+  classList = { toggle: (token: string, force: boolean) => { this.className = force ? `${this.className} ${token}`.trim() : this.className.split(/\s+/u).filter(value => value && value !== token).join(' ') } }
   style = { color: '' }
   id = ''; tagName = ''
   focused = false
@@ -534,7 +535,8 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.ok(!continueButton.className.includes('bg-['), 'setup action delegates its material to the shared footer recipe')
   assert.ok(continueButton.className.includes('!px-2') && continueButton.className.includes('!gap-1'), 'setup action keeps compact padding with a visible label-to-shortcut gap')
   assert.ok(nodes.some(node => node.className.includes('launcher-command-header')))
-  assert.ok(nodes.some(node => node.className.includes('launcher-command-content')))
+  const preferenceContent = nodes.find(node => node.className.includes('launcher-command-content'))!
+  assert.equal(preferenceContent.className.includes('!overflow-hidden'), false, 'overflowing setup fields remain scrollable')
   assert.ok(nodes.some(node => node.className.includes('launcher-command-field')))
   assert.equal(nodes.find(node => node.textContent === 'Translate from')?.className, 'text-right', 'preference labels align to the control edge')
   const preferenceControls = ['Translate from', 'Primary Language', 'Secondary Language'].map(name => nodes.find(node => node.getAttribute('aria-label') === name)!)

@@ -233,7 +233,6 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     setHidden(title, preferenceSetup || commandSearch)
     setHidden(titleIcon, preferenceSetup || commandSearch)
     setHidden(status, preferenceSetup)
-    content.classList?.toggle('!overflow-hidden', preferenceSetup && current?.extensionId !== 'can-i-use')
     syncSourceSearch(root)
     renderDropdown(root)
     const depth = typeof root.props.navigationDepth === 'number' ? root.props.navigationDepth : 0
