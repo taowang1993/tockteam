@@ -124,6 +124,15 @@ test('calculator rejects resource-amplifying constructors before evaluation', ()
   assert.equal(isLauncherCalculatorExpressionBounded('factorial(bignumber(100000000))'), false)
   assert.equal(isLauncherCalculatorExpressionBounded('[1:1000000]'), false)
   assert.equal(isLauncherCalculatorExpressionBounded('[1:10^9]'), false)
+  for (const expression of ['f=ones; f(100000000)', '(ones)(100000000)', 'evaluate("ones(100000000)")', 'ones(10000, 1) * ones(1, 10000)', 'multiply(ones(10000, 1), ones(1, 10000))', '[ones(10000, 1) * ones(1, 10000)]', 'sqrt(ones(10000, 1) * ones(1, 10000))']) {
+    assert.equal(isLauncherCalculatorExpressionBounded(expression), false, expression)
+  }
+})
+
+test('calculator bounds apply after custom separator normalization', async () => {
+  const custom = { ...options, getSetting: <T>(key: string, fallback: T) => (key === 'extension[Calculator].argumentSeparator' ? ';' : fallback) as T }
+  assert.equal((await search('ones(101;101)', custom)).after.some(item => item.sourceExtension === 'Calculator'), false)
+  assert.equal((await search('ones(2;2)', custom)).after.some(item => item.sourceExtension === 'Calculator'), true)
 })
 
 test('Unicode password symbols count code points instead of UTF-16 units', async () => {

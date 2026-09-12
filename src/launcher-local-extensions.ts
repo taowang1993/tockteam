@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import Color from 'color'
 import { XMLBuilder, XMLParser } from 'fast-xml-parser'
-import { create, all } from 'mathjs'
+import { create, all, parse, type FunctionNode, type SymbolNode } from 'mathjs'
 import { v4 as uuidv4, v6 as uuidv6, v7 as uuidv7, validate as uuidValidate } from 'uuid'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
 import {
@@ -87,6 +87,9 @@ function safeSeparator(value: string, fallback: string): string {
 }
 
 const MAX_CALCULATOR_COLLECTION_ITEMS = 10_000
+const CALCULATOR_NODE_TYPES = new Set(['ArrayNode', 'ConstantNode', 'FunctionNode', 'OperatorNode', 'ParenthesisNode', 'RangeNode', 'SymbolNode'])
+const CALCULATOR_SCALAR_FUNCTIONS = new Set(['abs', 'acos', 'acosh', 'acot', 'acoth', 'acsc', 'acsch', 'asec', 'asech', 'asin', 'asinh', 'atan', 'atan2', 'atanh', 'cbrt', 'ceil', 'complex', 'cos', 'cosh', 'cot', 'coth', 'csc', 'csch', 'exp', 'expm1', 'fix', 'floor', 'hypot', 'log', 'log10', 'log1p', 'log2', 'max', 'min', 'mod', 'nthRoot', 'pow', 'round', 'sec', 'sech', 'sign', 'sin', 'sinh', 'sqrt', 'tan', 'tanh', 'unit'])
+const CALCULATOR_COLLECTION_FUNCTIONS = new Set(['ones', 'zeros', 'identity', 'random', 'randomInt', 'range'])
 const CALCULATOR_COLLECTION_CALL = /\b(ones|zeros|identity|random|randomInt|range)\s*\(([^()]*)\)/giu
 const CALCULATOR_UNBOUNDED_CALL = /\b(?:ones|zeros|identity|random|randomInt|range|reshape|resize|matrixFromFunction)\s*\(/giu
 const CALCULATOR_DISALLOWED_CALL = /\b(?:bignumber|combinations|concat|eigs|factorial|fft|filter|forEach|ifft|kron|lusolve|map|matrixFromFunction|partitionSelect|permutations|reshape|resize|solveODE)\s*\(/iu
@@ -99,7 +102,22 @@ function numericArguments(value: string): number[] | undefined {
 }
 
 export function isLauncherCalculatorExpressionBounded(expression: string): boolean {
-  if (CALCULATOR_DISALLOWED_CALL.test(expression)) return false
+  if (expression.length > 512 || CALCULATOR_DISALLOWED_CALL.test(expression)) return false
+  try {
+    const root = parse(expression)
+    let valid = true
+    root.traverse((node, _path, parent) => {
+      if (!CALCULATOR_NODE_TYPES.has(node.type)) valid = false
+      if (node.type === 'SymbolNode' && CALCULATOR_COLLECTION_FUNCTIONS.has((node as SymbolNode).name) && _path !== 'fn') valid = false
+      const call = node.type === 'FunctionNode' ? node as FunctionNode : undefined
+      if (call && (call.fn.type !== 'SymbolNode' || (!CALCULATOR_SCALAR_FUNCTIONS.has(call.fn.name) && !CALCULATOR_COLLECTION_FUNCTIONS.has(call.fn.name)))) valid = false
+      // Collections may be displayed, not fed into matrix algebra or scalar functions.
+      const collection = node.type === 'ArrayNode' || node.type === 'RangeNode' || (call && CALCULATOR_COLLECTION_FUNCTIONS.has(call.fn.name))
+      if (collection && parent && parent.type !== 'ArrayNode'
+        && !(node.type === 'ArrayNode' && parent.type === 'FunctionNode' && CALCULATOR_COLLECTION_FUNCTIONS.has((parent as FunctionNode).fn.name))) valid = false
+    })
+    if (!valid) return false
+  } catch { return false }
   const calls = [...expression.matchAll(CALCULATOR_COLLECTION_CALL)]
   const callCount = [...expression.matchAll(CALCULATOR_UNBOUNDED_CALL)].length
   if (calls.length !== callCount) return false
@@ -128,10 +146,11 @@ export function isLauncherCalculatorExpressionBounded(expression: string): boole
 }
 
 function calculate(expression: string, precision: number, decimalSeparator: string, argumentSeparator: string): string | undefined {
-  if (expression.length === 0 || expression === 'version' || expression === 'i' || !isLauncherCalculatorExpressionBounded(expression)) return undefined
+  if (expression.length === 0 || expression === 'version' || expression === 'i') return undefined
   const decimal = safeSeparator(decimalSeparator, '.')
   const argument = safeSeparator(argumentSeparator, ',')
   const normalized = expression.split(decimal).join('.').split(argument).join(',')
+  if (!isLauncherCalculatorExpressionBounded(normalized)) return undefined
   try {
     const math = create(all as Parameters<typeof create>[0])
     const value = math.evaluate(normalized)
