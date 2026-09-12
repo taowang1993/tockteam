@@ -22,7 +22,8 @@ test('Can I Use preferences require exact targets and preserve unreadable or inv
     }
     await saveTrustedRaycastCanIUsePreferences(file, values, options)
     assert.deepEqual(loadTrustedRaycastCanIUsePreferences(file), values)
-    assert.equal(statSync(file).mode & 0o777, 0o600)
+    // Windows permissions come from inherited ACLs, not POSIX mode bits.
+    if (process.platform !== 'win32') assert.equal(statSync(file).mode & 0o777, 0o600)
     assert.ok(Object.isFrozen(loadTrustedRaycastCanIUsePreferences(file)))
     const link = join(directory, 'link.json'); symlinkSync(file, link)
     assert.deepEqual(loadTrustedRaycastCanIUsePreferences(link), {})

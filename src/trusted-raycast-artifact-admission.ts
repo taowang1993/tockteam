@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { closeSync, fstatSync, openSync, readSync, constants as fsConstants } from 'node:fs'
+import { closeSync, fstatSync, lstatSync, openSync, readSync, constants as fsConstants } from 'node:fs'
 import { join } from 'node:path'
 import { trustedRaycastDescriptors, type TrustedRaycastCommand, type TrustedRaycastDescriptor, type TrustedRaycastRuntimeExtensionId } from './trusted-raycast-descriptors.ts'
 
@@ -20,21 +20,28 @@ export type TrustedRaycastBuildIdentity = Readonly<{
   resolutionSha256: string
 }>
 
-/** Read one regular file through an O_NOFOLLOW descriptor; the descriptor is the checked object. */
+/** Read checked binary bytes without following links, including where O_NOFOLLOW is unavailable. */
 export function readTrustedRaycastFile(path: string, maxBytes = MAX_DERIVED_FILE): Buffer {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) throw new Error('Invalid trusted Raycast size bound')
+  const selected = lstatSync(path, { bigint: true })
+  if (!selected.isFile()) throw new Error('trusted Raycast file is not a regular file')
+  if (selected.size > BigInt(maxBytes)) throw new Error('trusted Raycast file exceeds its reviewed size bound')
   const flags = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_NONBLOCK ?? 0)
   const file = openSync(path, flags)
   try {
-    const stat = fstatSync(file)
+    const stat = fstatSync(file, { bigint: true })
     if (!stat.isFile()) throw new Error('trusted Raycast file is not a regular file')
-    if (stat.size > maxBytes) throw new Error('trusted Raycast file exceeds its reviewed size bound')
-    const bytes = Buffer.alloc(stat.size)
+    if (stat.dev !== selected.dev || stat.ino !== selected.ino) throw new Error('trusted Raycast file changed while opening')
+    if (stat.size > BigInt(maxBytes)) throw new Error('trusted Raycast file exceeds its reviewed size bound')
+    const bytes = Buffer.alloc(Number(stat.size))
     let offset = 0
     while (offset < bytes.length) {
       const read = readSync(file, bytes, offset, bytes.length - offset, null)
       if (read === 0) throw new Error('trusted Raycast file changed while reading')
       offset += read
     }
+    const current = lstatSync(path, { bigint: true })
+    if (!current.isFile() || current.dev !== stat.dev || current.ino !== stat.ino || current.size !== stat.size) throw new Error('trusted Raycast file changed while reading')
     return bytes
   } finally { closeSync(file) }
 }
