@@ -88,6 +88,36 @@ test('stages bounded create and update records without exposing full content', (
   assert.equal(queue.audit().filter(entry => entry.outcome === 'staged').length, 2)
 })
 
+test('maximum-size admitted proposals keep bounded previews and remain reviewable', () => {
+  for (const size of [100_000, 100_001, 1_048_576]) {
+    const { queue } = harness()
+    const staged = queue.stage(proposal({ content: 'x'.repeat(size) }))
+    assert.equal(staged.contentChars, size)
+    assert.ok(staged.preview.length <= 1_000)
+    assert.equal(queue.list().length, 1)
+    assert.equal(ProposalQueue.hydrate(queue.serialize(), { clock: () => 1_000 }).list().length, 1)
+    assert.equal(queue.consumeForApproval(staged.proposalId, approval).content.length, size)
+  }
+})
+
+test('aggregate capacity rejection leaves accepted proposals and audit serializable', () => {
+  const { queue } = harness()
+  let accepted = 0
+  for (; accepted < 100; accepted += 1) {
+    const before = queue.serialize()
+    try { queue.stage(proposal({ content: 'x'.repeat(100_000) })) } catch (error) {
+      assert.ok(error instanceof ProposalError && error.code === 'QUEUE_FULL')
+      assert.equal(queue.serialize(), before)
+      break
+    }
+  }
+  assert.ok(accepted > 0 && accepted < 100)
+  assert.equal(queue.list().length, accepted)
+  for (const entry of queue.list()) queue.reject(entry.proposalId, 'Not needed')
+  assert.equal(queue.list().length, 0)
+  assert.doesNotThrow(() => queue.serialize())
+})
+
 test('rejects unsafe, oversized, or unauthorized proposal input', () => {
   const { queue } = harness()
   for (const destination of ['../secret.md', '/tmp/secret.md', 'C:\\secret.md', 'bad\0name.md']) {
