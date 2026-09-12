@@ -90,7 +90,7 @@ test('TockTutor route synchronizes the trusted native frame without widening IPC
   assert.match(sidebar, /routeRoot\.current[\s\S]+node\.inert = !active/u)
   assert.match(tutorWorkbench, /active\?: boolean/u)
   assert.match(tutorWorkbench, /if \(!active\) return[\s\S]+controller\.syncLocation/u)
-  assert.match(tutorWorkbench, /if \(!active \|\| snapshot\.path === null\) return/u)
+  assert.match(tutorWorkbench, /if \(!active \|\| snapshot\.path === null \|\| container === null\) return/u)
   assert.match(tutorWorkbench, /titlebar !== null/u)
   assert.match(tutorWorkbench, /active && typeof document !== 'undefined'/u)
 })

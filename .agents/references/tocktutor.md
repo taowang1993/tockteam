@@ -4,7 +4,7 @@
 
 TockTutor is the Desktop-only note workspace distributed with TockTeam. It is not a second agent runtime. The packages under `plugins/tocktutor/` compose through the pinned DSH Loader and Cordis services, while TockTeam Desktop retains all Electron and native authority.
 
-The target runtime is the exact published package `@deepseek-ai/dsh@0.1.1-rc.2`. Package names, versions, Remote names, Cordis service names, slot names, profile names, and existing data roots are compatibility contracts.
+The current target runtime is the exact published package `@deepseek-ai/dsh@0.1.2-rc.1`, including the tarball and integrity pinned by `dsh-source.json`. Use that file and the package manifests as the version authorities. Package names, versions, Remote names, Cordis service names, slot names, profile names, and existing data roots are compatibility contracts.
 
 ## Composition
 
@@ -29,7 +29,7 @@ tockbot-note-runtime
   -> tockbot-web-clip
 ```
 
-`tockbot-note-vault` remains an aggregate dependency because the runtime imports its inspection library, but its standalone tool row is intentionally not inserted. `@tockteam/note-vault-tools` exposes the same eight tool contracts against the active runtime without registering duplicate tools.
+`tockbot-note-vault` remains an aggregate dependency because the runtime imports its inspection library, but its standalone tool row is intentionally not inserted. `@tockteam/note-vault-tools` exposes the eight `vault_*` contracts plus `notes_search` and `notes_read` compatibility aliases against the active runtime; do not also mount the standalone scanner.
 
 The Web and TUI profiles do not mount TockTutor or Desktop authority.
 
@@ -46,6 +46,8 @@ The Web and TUI profiles do not mount TockTutor or Desktop authority.
 | `@tockteam/tocktutor-import-export` | `0.1.1` | Reviewed import, backup, restore, and conversion workflows     |
 | `tockbot-web-clip`                  | `0.1.2` | Hardened public fetch, Reader View, and reviewed clipping      |
 | `@tockteam/tocktutor`               | `0.1.1` | Aggregate bundle only                                          |
+
+The aggregate requires `@tockteam/desktop >=0.1.11 <0.2.0`. Individual peer ranges differ: the Workbench permits Desktop `>=0.1.6 <0.2.0`, while the native and import/export adapters require `>=0.1.11 <0.2.0`. Do not infer aggregate compatibility from the Workbench alone.
 
 ## Package Responsibilities
 
@@ -73,21 +75,29 @@ The aggregate bundle does not activate this package's tool row. It retains the p
 `src/index.ts` provides the `noteVault` Cordis service. It is the sole active-vault filesystem writer and owns:
 
 - active and recent vault state;
-- bounded tree, document, attachment, and inspection access;
+- bounded tree, document, attachment, and inspection access, with persistent keyword-search acceleration;
 - exclusive create and revision-bound save operations;
 - draft, snapshot, trash, restore, move, duplicate, and link-rewrite recovery;
 - filesystem watching and the `note-vault/change` event;
 - Desktop reveal and caller-bound vault-selection seams.
 
-It also defines the abstract `tockTeamDesktopReveal` and `tockTeamDesktopVaultSelection` services. TockTeam Desktop supplies their native implementations. The aggregate row sets `vaultRoot: null`; Desktop selection activates a vault instead of accepting browser-provided absolute paths. Before a native action, the Runtime synchronizes an already authorized managed, sandbox, or recent vault through the authenticated Desktop owner; canonical paths never cross the browser or preload boundary. The Desktop bundle evaluates `stateRoot` under `DSH_DESKTOP_APP_DATA/tocktutor`, so recent-vault bindings, drafts, snapshots, trash metadata, and managed-vault state survive Desktop restarts without writing into the workspace.
+It also defines the abstract `tockTeamDesktopReveal` and `tockTeamDesktopVaultSelection` services. TockTeam Desktop supplies their native implementations. The aggregate row sets `vaultRoot: null`; Desktop selection activates a vault instead of accepting browser-provided absolute paths. Before a native action, the Runtime synchronizes an already authorized managed, sandbox, or recent vault through the authenticated Desktop owner; canonical paths never cross the browser or preload boundary.
+
+The Desktop bundle supplies the complete runtime configuration with `restoreActiveVault: true`, `vaultRoot: null`, and `stateRoot` under `DSH_DESKTOP_APP_DATA/tocktutor`; later Cordis row configurations replace rather than deep-merge earlier ones. Recent-vault bindings, drafts, snapshots, trash metadata, and managed-vault state survive Desktop restarts without writing runtime state into the workspace. Selection is persisted atomically in `vault-state/selection.json`; older `vault-state/active`, `vault-state/recent.json`, `notes-vault-path`, and `notes-recent-vaults.json` remain migration inputs.
 
 The runtime can activate opaque recent selections, create a collision-safe sandbox, and create named managed vaults under the state root. Attachment storage creates missing relative parent folders one segment at a time, revalidates each as a real in-vault directory, and binds the final parent identity before the exclusive write. Its passive-backup seam exposes only generation-bound, no-follow reads and exclusive restores for an inert allowlist under exact `.obsidian` and `.obsidian-*` roots. Hidden nested paths, aliases, links, executable/native/script payloads, and platforms without no-follow support fail closed.
 
-Important configuration includes read, attachment, draft, folder, tree, recent-vault, snapshot, state-root, vault-root, and restore limits. Keep their maximums intact.
+Important configuration includes read, attachment, draft, folder, tree, recent-vault, snapshot, state-root, vault-root, and restore limits. Keep their maximums intact. Defaults include 256 KiB document reads, 25 MiB attachments, 2 MiB drafts, 64 MiB folder operations, a depth-64/20,000-entry tree with 200-result pages, 20 recent vaults, and 20 snapshots retained for 30 days. `stateRoot: null` disables persistent recovery and search storage; `restoreActiveVault` defaults to false outside the Desktop override.
+
+#### Persistent Search
+
+The runtime uses `flexsearch@0.8.212` with `sqlite3@5.1.7`. Its rebuildable cache lives under `stateRoot/search-index/tocktutor-search-v1/`, keyed by opaque vault ID and filesystem root identity, not inside the vault. It reconciles document revisions on activation, invalidates affected paths on writes/watch events, and drains index work on replacement/disposal. Initial inventory has a separate 2,000,000-entry ceiling and still obeys document-size and tree-depth limits.
+
+The index supplies candidate paths, not authoritative content: shared inspection rereads candidates and applies the query and output budgets. Unsupported queries, incomplete/not-ready indexes, candidate overflow, unavailable native dependencies, or unsuitable state storage fall back to the bounded scanner. Do not equate successful fallback searches with a working native index, or claim that every search avoids a vault scan.
 
 ### `@tockteam/note-vault-tools`
 
-`src/index.ts` injects `tools` and `noteVault`. It registers the same eight public tool contracts as the standalone vault package, but every call is bound to the current `{ id, generation }` vault reference and forwards the tool `AbortSignal`.
+`src/index.ts` injects `tools` and `noteVault`. It registers the same eight `vault_*` contracts as the standalone vault package, plus `notes_search` and `notes_read`. Every call is bound to the current `{ id, generation }` vault reference and forwards the tool `AbortSignal`; generation remains Host-owned rather than becoming model-supplied authority.
 
 This package is an adapter, not another filesystem implementation. Do not duplicate inspection or mutation logic here.
 
@@ -98,7 +108,7 @@ The Host entry injects `noteVault` and mounts the `tocktutorWorkbench` Typert Re
 The browser client mounts that Remote and contributes the single `tockteam.tocktutor.route` slot. The route owns:
 
 - the `/tocktutor` browser route, bounded tabs, recently closed tabs, pinning, reordering, pane groups, focus mode, workspaces, and command palette;
-- Markdown Source, Live Preview, Reading, Slides, owner-compatible inert HTML/PDF projection, formatting/slash/table commands, Page Preview, and exact-source task toggles;
+- CodeMirror Source, Milkdown Live Preview, Reading, nested Slides Preview, owner-compatible inert HTML/PDF projection, formatting/table commands, and exact-source task toggles;
 - tree, keyword/Related search, Quick Switcher, Outline, Footnotes, Backlinks, Outgoing Links, unlinked mentions, Properties, Tags, Smart Views, bookmarks, capture, templates, journals, Note Composer, and reviewed organization;
 - deterministic finite Global and Local Graphs with persisted depth, semantic filters, query groups, viewport controls, and bounded node actions;
 - conflict-safe JSON Canvas and executable Base views, including card/group/edge edits and revision-preserving rollback;
@@ -114,8 +124,24 @@ Nested slots:
 - `tockteam.tocktutor.workbench.assistant`
 - `tockteam.tocktutor.workbench.native-actions`
 - `tockteam.tocktutor.workbench.review`
+- `tockteam.tocktutor.workbench.web-viewer`
+
+Assistant and Web Viewer slots are single contributions; native-action and review slots are lists. Client teardown disposes the route, awaits pending route flushes, and only then unmounts the Remote (`src/client-api.ts`).
 
 Native dispatches are invalidated by newer navigation. TockTeam Desktop resolves current, named, recent, and absolute-path protocol selectors against main-owned canonical vault records, then sends only an opaque vault ID to the Host/client adapter. The Workbench accepts that request only after the selected runtime publishes the matching opaque identity. Tab, split, and window requests retain dirty-save gating and exact completion callbacks.
+
+#### Browser State and Current Integration Limits
+
+`src/settings.ts` stores per-vault settings and Workbench state in bounded browser storage (`tocktutor.settings.v1.<vaultId>` and `tocktutor.workbench.v1.<vaultId>`). Tabs/pane sessions, focus mode, and named workspaces persist; recently closed tabs, back/forward history, and current search query/mode/open state are controller-local and reset on reload. Keep-mounted surface switching preserves that controller state, unlike relaunch. Browser preferences are separate from the runtime's recovery data and native search cache. Workbench defaults include five-minute recovery snapshots and seven-day retention; the Host runtime has its own 30-day retention default.
+
+Feature helpers and isolated component tests are not proof of complete route integration. In the current `src/route.tsx`:
+
+- **Page Preview** and **Backlinks in Document** settings are stored, but hover-preview and in-document backlinks rendering are not wired. Backlinks are available in the relationship panel; the status bar's literal `0 backlinks` is not an authoritative count.
+- `resolveSlashCommand()` and `pagePreviewTargetAtOffset()` in `src/editor-commands.ts` are helper-level APIs, not a mounted slash menu or Page Preview flow. Formatting shortcuts/palette actions and Milkdown table controls are wired separately.
+- **Slides Preview** is a static nested disclosure under Live Preview's **Rendered Preview**, not a fourth editor mode (`src/editor-surface.tsx`).
+- `src/base-executable-view.tsx` supports controlled view selection and per-view search, but the route omits those state/callback props, leaving the first view selected. Copy, edit, and CSV export callbacks are connected. Base formulas use the bounded evaluator and explicit unsupported-expression handling, not arbitrary JavaScript execution; provenance/divergences live in `src/base-evaluator-provenance.ts` and `src/base-view-provenance.ts`.
+- `openBookmark()` opens note, heading, block, folder, and search records, but returns false for link and graph records. A persisted Web Viewer link bookmark is not therefore openable from the Workbench bookmark list.
+- `src/utility-panel.tsx` exposes **Page Preview**, **Backlinks in Document**, and **Default Editing Mode** in **Settings and Workspaces**. Attachment/journal/template folder and retention settings exist in the model/controller but should not be described as fully exposed settings controls.
 
 ### `tockbot-note-desktop`
 
@@ -148,13 +174,17 @@ Unload aborts pending work and closes pop-outs opened by the adapter. Dirty edit
 - explicit approval/rejection and continuation routing;
 - the browser-safe `tocktutorAssistant` Remote and assistant panel.
 
-The child process receives a scrubbed environment, an empty temporary workspace, bounded JSON-RPC lines and requests, timeouts, restart limits, and lifecycle cleanup. It never receives direct vault filesystem authority.
+The reviewed dependency is `@pennivo/mcp-server@1.4.0`; `PENNIVO_PROVENANCE.md` and `THIRD_PARTY_NOTICES/Pennivo.txt` record its pinned source and MIT notice. `src/pennivo-child.ts` checks server version `1.4.0` and MCP protocol `2025-11-25`. The child receives a scrubbed environment, an empty temporary workspace, bounded JSON-RPC lines and requests, timeouts, restart limits, and lifecycle cleanup. It is a catalog-verification child: initialization and `tools/list` are supported, but there is no `tools/call` forwarding path and it never receives direct vault filesystem authority. The scrubbed environment and scratch directory are not an OS sandbox for arbitrary MCP servers; Pennivo remains a pinned, trusted dependency.
+
+The seven model-facing Pennivo read adapters are `list_files`, `read_file`, `search`, `find_backlinks`, `get_outline`, `list_snapshots`, and `list_trash`; `list_workspaces` is deliberately unavailable. Reads execute through TockTeam's runtime-backed adapters, not the child. Bound assistant turns also admit the `notes_search`/`notes_read` aliases; proposed writes use the same Host-owned approval boundary, including TockDriver-originated proposals.
 
 `writePermission` is `read-only` or `propose`. Proposed writes are bound to the exact vault generation, child instance, agent turn, request, provider, model, permission epoch, source revision, target revision, digest, expiry, and user approval. Only `tockbot-note-runtime` performs the accepted mutation and snapshot-backed save. A decision keeps a transient reference to the exact live originating Agent so approval or rejection can submit one bounded follow-up; a stale Agent cannot revive the write or alter the durable audit result.
 
+Queue and permission epoch persist in the version-1 DSH storage domain `tocktutor_assistant`, separate from vault files. Defaults are 100 pending proposals, 500 audit records, and five-minute expiry (at most ten minutes); proposal content is capped at 1 MiB and serialized queue state at 8 MiB. Persistence does not make a proposal's originating live-turn authority resumable.
+
 ### `@tockteam/tocktutor-import-export`
 
-The Host gateway injects `noteVault`, `tockTeamDesktopCaller`, and `tockTeamDesktopPicker`. It owns reviewed import, restore, and backup engines plus the review-panel client contribution.
+The Host gateway injects `noteVault`, `tockTeamDesktopCaller`, and `tockTeamDesktopPicker`. It mounts the `tocktutor-import-export` Typert Remote and owns reviewed import, restore, and backup engines plus the review-panel client contribution. `src/engine.ts` handles import/restore; `src/backup-engine.ts` handles backup publication. Each engine permits one active operation, expires plans after at most five minutes (or the underlying grant's earlier expiry), and bounds completed evidence to 64 operations/32 MiB. Approval and commit are distinct calls; cancellation, abandonment, expiry, and disposal must release retained grants and staged resources.
 
 Supported inputs include Markdown folders and ZIPs, HTML with bounded media/PDF resources, CSV, Apple Journal, Bear, Evernote, Google Keep, Roam Research, Textbundle/Textpack, and TockTutor backup archives. Craft, Notion, Apple Notes, and compatible exports delegate to the reviewed Markdown or HTML paths instead of adding parser stacks.
 
@@ -187,7 +217,9 @@ Existing vault files are never overwritten. Multi-file imports report committed,
 
 The Host accepts only credential-free HTTP(S), rejects local/private/reserved addresses and mixed DNS results, pins each request to a validated address, revalidates redirects, bypasses ambient proxies, disables compression, and bounds URLs, addresses, redirects, headers, bytes, decoded text, connection time, total time, and concurrency.
 
-Fetched HTML is reduced to bounded inert Reader text. Viewer HTML escapes the projection before TockTeam Desktop authorizes it for one isolated, script-disabled webview frame. The lifecycle-owned Workbench panel supports persistent tabs, keyboard/drag reordering, Reader text size/width/spacing/appearance, shared bookmarks, and settings-backed clipping. API requests require same-origin POST JSON with bounded bodies.
+Fetched HTML is reduced to bounded inert Reader text. Viewer HTML escapes the projection before TockTeam Desktop authorizes it for one isolated, script-disabled webview frame. The lifecycle-owned Workbench panel supports persistent tabs, keyboard/drag reordering, Reader text size/width/spacing/appearance, shared bookmarks, and settings-backed clipping. `src/viewer.ts` caps viewer state at 20 tabs, 20 viewer bookmarks, and 65,536 serialized characters; it persists URLs/titles and preferences, not fetched page bodies. API requests require same-origin POST JSON with bounded bodies.
+
+TockTeam's `src/web-clip-frame.ts` and `src/main.ts` own the isolated guest partition, exact one-document authorization, restrictive CSP, credential-header stripping, and denied network/navigation/download/permission behavior. The viewer displays Host-fetched inert projections, not an unrestricted browser session.
 
 Clipping creates a one-use, expiring, digest-bound, destination-bound, vault-generation-bound preview. The browser must approve the exact preview before the runtime performs an exclusive Markdown create.
 
@@ -199,13 +231,16 @@ This package contains no agent loop or feature implementation. It is the install
 
 Outside the plugin workspace:
 
-- `src/profile.ts` owns the Desktop aggregate bundle and retires old standalone bundle rows without removing unrelated user bundles.
-- `plugins/sidebar/src/client/tocktutor-route.ts` defines the bounded same-origin route contract.
-- `plugins/sidebar/src/client/plugin.tsx` mounts the Desktop-only route and app-rail entry.
+- `src/profile.ts` owns the Desktop aggregate bundle, browser-client enrollment, and retired standalone bundle migration without removing unrelated user bundles. `plugins/plugin-marketplace/src/protocol.ts` protects bundled TockTutor package/row identities from ordinary marketplace replacement.
+- `plugins/shared/surface.ts` owns `tockTeamSurface`; never provide TockTeam identity as DSH's `ctx.web`.
+- `plugins/sidebar/src/client/tocktutor-route.ts` defines the bounded same-origin route contract and the shared last-TockTutor-path state used by separately bundled Desktop and Sidebar clients.
+- `plugins/sidebar/src/client/plugin.tsx` mounts the Desktop-only route and app-rail entry. Switching to TockCoder hides and makes the existing Workbench inert instead of unmounting it; returning restores the remembered note, query, and hash. While TockTutor is active, the underlying DSH/sidebar roots are inert.
+- `src/launcher-navigation.ts`, `src/launcher-specialists.ts`, and `src/client.ts` admit only the finite `tockcoder`/`tocktutor` destinations and navigate the existing Workbench without reloading it. Global settings navigation goes through `src/desktop-settings-navigation.ts`; it must wait for the active TockCoder surface rather than click hidden settings controls.
 - `src/main.ts` owns native menus, protocol admission, dispatch delivery, pop-outs, theme lifecycle, and restricted IPC. Pop-outs load the same-origin SPA root before a fixed main-authored History navigation, avoiding direct-route HTTP fallthrough without admitting arbitrary renderer code or routes.
-- `src/preload.ts` exposes only the bounded TockTutor bridge.
-- `src/desktop-*-owner.ts` modules own native identity, capability, and transaction checks.
-- `scripts/stage-dsh.mjs` copies tracked package payloads into the staged runtime.
+- `src/preload.ts` exposes only the bounded TockTutor bridge. Public browser/Host contracts are exported through `client.d.ts`, `host.d.ts`, and the Desktop package's conditional `./client` and `./host` entries.
+- `src/desktop-*-owner.ts` modules own native identity, capability, and transaction checks. `src/plugin.ts` installs the corresponding Host providers and their lifecycle cleanup.
+- `plugins/ui/` owns shared React controls; `plugins/skins/src/client/tailwind.css` scans TockTutor sources and owns the shared Tailwind utilities. Keep React/ReactDOM external in browser bundles and resolve the Workbench and shared UI to the same React instance.
+- `scripts/stage-dsh.mjs` copies tracked package payloads into the staged runtime; `scripts/stage-package-dependencies.mjs` preserves package-local dependency resolution. `nix/tockteam.nix` and `nix/register-plugins.py` own the equivalent Nix payload/native-dependency wiring.
 - `scripts/tocktutor-build-manifest.mjs` rejects source/output drift before staging.
 
 Do not move Electron authority, native path handling, or unrestricted filesystem operations into a browser client or DSH Remote.
@@ -222,13 +257,17 @@ Do not move Electron authority, native path handling, or unrestricted filesystem
 
 ## Parity and Cutover Ledger
 
-`plugins/tocktutor/parity/ledger.json` is the machine-checked capability contract. It preserves all 122 observed rows from the pinned Obsidian checklist, the source's declared-123/observed-122 discrepancy, six earlier compatibility capabilities, and 14 feature-level residual Tockbot capabilities anchored to commit `af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba`. The validator reports 108 proven rows/capabilities and zero gaps, including all 14 residual capabilities; 36 unchecked rows remain `excluded` or `not-needed`, and two static-output behaviors remain explicit security divergences rather than invented parity.
+`plugins/tocktutor/parity/ledger.json` is the machine-checked capability contract. It preserves all 122 observed rows from the pinned Obsidian checklist, the source's declared-123/observed-122 discrepancy, six earlier compatibility capabilities, and 14 feature-level residual Tockbot capabilities anchored to commit `af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba`. The ledger records 108 proven rows/capabilities (88 checklist rows, six additional capabilities, and 14 residual capabilities) and zero gaps. There are 34 unchecked checklist rows: 29 `excluded` and five `not-needed`. The validator's total of 36 excluded items includes those 34 rows plus two retained static-output security divergences.
 
-The in-scope cutover includes Desktop install/upgrade, disable/uninstall/rollback transaction safety, copied-vault compatibility, legacy recent-vault reads, passive configuration backup, accessibility gates, destructive recovery, generated-payload drift checks, packaged Loader composition, and real Electron flows. Retiring the old Tockbot browser route is a separate reviewable change. It removes route and navigation admission only; it does not delete vaults, local settings, backup compatibility, or rollback code.
+This is scoped compatibility, not exhaustive Tockbot or Obsidian parity. The validator checks ledger structure, evidence-file existence, and fixtures; it does not rerun the recorded focused commands or real-consumer checks. A `proven` ledger entry is historical evidence, not a fresh Desktop acceptance result.
+
+The in-scope cutover includes Desktop install/upgrade, disable/uninstall/rollback transaction safety, copied-vault compatibility, legacy recent-vault reads, passive configuration backup, accessibility gates, destructive recovery, generated-payload drift checks, packaged Loader composition, and real Electron flows. Route retirement and data migration are separate concerns: the current shell admits `/tocktutor` and `/tockcoder` (with `/` canonicalized to TockCoder), not a second Tockbot route. Removing legacy route admission must not delete vaults, local settings, backup compatibility, or rollback code.
 
 ## Known Operational Limits
 
-The standalone `tockbot-note-vault` filesystem adapter sorts the native directory inventory before producing deterministic cursor pages. Search bytes, inspected entries, files, results, and output remain bounded, but native directory enumeration itself scales with the vault. Split unusually wide vaults or use the active runtime; replace this adapter with a cursorable index only if measured vault size makes enumeration a real bottleneck.
+The standalone `tockbot-note-vault` filesystem adapter sorts the native directory inventory before producing deterministic cursor pages. Search bytes, inspected entries, files, results, and output remain bounded, but native directory enumeration itself scales with the vault. The active runtime's persistent index can reduce eligible repeated-search work, but initial reconciliation and fallback still scan; measure before changing indexing or enumeration policy.
+
+Attachment acceptance is layer-specific. Direct runtime storage accepts `.ico` and `.weba`, while the standalone/shared inspection extension maps omit them. Do not infer inspection, preview, or static-export support merely from successful attachment storage.
 
 The assistant panel intentionally uses a render-time route epoch to prevent an aborted decision from reviving across an A → B → A navigation. Its component regression test protects that behavior; do not replace it with a route-key-only comparison.
 
@@ -238,18 +277,33 @@ Static export recursively expands bounded local note, Canvas, Base, and allowlis
 
 Tracked `lib/` and `dist/` directories are release payloads. Never hand-edit them. Rebuild changed sources through the package scripts, then regenerate `plugins/tocktutor/build-manifest.json`.
 
-The root workspace intentionally excludes `plugins/tocktutor`; that workspace has its own `pnpm-lock.yaml` and resolves exact published DSH packages independently.
+The root workspace intentionally excludes `plugins/tocktutor`; that workspace has its own `pnpm-lock.yaml` and resolves exact published DSH packages independently. It also includes `../ui`, links `@tockteam/desktop` to the root, and overrides React to the root's React 18.3.1 instance. `install:tocktutor` uses the root-installed pnpm with `--frozen-lockfile`, not an ambient DSH checkout. Root dependency/CI pnpm and DSH assembly pnpm pins are separate; do not derive installer behavior from an individual component's `packageManager` field.
+
+Package scripts generate Typert transport outputs before compilation where applicable, and browser builds wrap clients for DSH's `window.__ModuleLoader__`. The root `build:tocktutor` script builds the nested workspace and then writes the manifest; root `build` alone does not rebuild TockTutor. The manifest hashes workspace inputs and outputs (excluding Markdown, tests, notices, and local analysis/dependency caches); its check detects drift but is not a substitute for executing the build.
+
+Native SQLite must be packaged with the runtime's exact dependency closure. `.github/workflows/ci.yml` runs the dedicated search-index check across macOS, Linux, and Windows; `nix/smoke-native.cjs` exercises the Nix FlexSearch/SQLite mount, commit, search, and close path.
 
 ## Verification
 
-Run the parity validator and focused package test first, then the TockTutor workspace gates:
+For reference-only updates, verify the documented pins, package/slot names, script names, and source paths; run `pnpm -C plugins/tocktutor run validate:parity`, `node scripts/tocktutor-build-manifest.mjs`, and the relevant root contract tests. Do not rebuild unchanged tracked outputs solely for prose edits.
+
+For implementation changes, install dependencies before running the affected package's focused test, then run the TockTutor workspace gates:
 
 ```sh
-pnpm -C plugins/tocktutor run validate:parity
 pnpm run install:tocktutor
+pnpm -C plugins/tocktutor run validate:parity
 pnpm run typecheck:tocktutor
 pnpm run test:tocktutor
 pnpm run build:tocktutor
+node scripts/tocktutor-build-manifest.mjs
+```
+
+`test:tocktutor` runs packages serially; its pretest validates parity and prepares a Desktop tarball under `.cache/tocktutor-tests/`. Several package tests build/generate files, and Workbench/assistant suites include Vitest/jsdom component tests as well as `node:test`. Inspect generated diffs afterward. Do not run package-boundary/full packaging checks concurrently with an installed smoke.
+
+For search-index or native dependency changes, also run:
+
+```sh
+pnpm -C plugins/tocktutor/packages/tockbot-note-runtime run test:search-index
 ```
 
 Then run the root gate:
@@ -271,7 +325,9 @@ pnpm run dist:mac:quick
 pnpm run smoke:app
 ```
 
-TockTutor Desktop behavior that depends on a real Electron window still needs the applicable packed Loader and Desktop smoke path; unit tests and `--dump-config` do not prove native authorization, isolated Web Viewer frames, picker, microphone, attachment ingestion, pop-out, print, export, managed-vault creation, or restart recovery. Packaged Desktop preserves Electron's standard `--user-data-dir` switch for copied-profile acceptance; without that explicit switch it retains the compatibility data root. Use copied disposable user data for destructive cutover proof and stop every Electron/runtime process afterward.
+On macOS, use `pnpm test:launcher:electron` while iterating; it rebuilds TockTutor and the root, quick-stages, and runs the Electron launcher/route checks. Run `pnpm test:launcher:installed` only after focused checks pass, once per final commit, never concurrently, with `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT` inside a `.noindex` cache directory. Those launcher checks do not cover every TockTutor native feature.
+
+TockTutor Desktop behavior that depends on a real Electron window still needs the applicable packed Loader and Desktop smoke path; unit tests and `--dump-config` do not prove native authorization, isolated Web Viewer frames, picker, microphone, attachment ingestion, pop-out, print, export, managed-vault creation, or restart recovery. Packaged Desktop preserves Electron's standard `--user-data-dir` switch for copied-profile acceptance; without that explicit switch it retains the compatibility data root. Use copied disposable user data for destructive cutover proof and stop every Electron/runtime process afterward. For temporary macOS Electron/Chromium verification, preserve `HOME` where possible and isolate application data; pass `--use-mock-keychain` before any `HOME` override and never interact with the user's Keychain.
 
 ## Change Checklist
 
@@ -280,9 +336,9 @@ When adding or removing a TockTutor component, update every applicable layer:
 1. package manifest, exports, client metadata, and `cordis.patch.yml`;
 2. aggregate dependencies and aggregate patch order;
 3. `plugins/tocktutor/pnpm-lock.yaml`;
-4. root package file allowlist and staging copy list;
+4. root package file allowlist, staging copy list, and Nix/native dependency wiring;
 5. `src/profile.ts` protected or retired bundle lists;
-6. Host/client injections and slot declarations;
+6. Host/client injections, slot declarations, shared UI singleton resolution, and Tailwind source coverage;
 7. composition, packed-client, lifecycle, and focused behavior tests;
 8. tracked build outputs and `build-manifest.json`;
 9. this reference.

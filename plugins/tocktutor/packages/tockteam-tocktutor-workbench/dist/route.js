@@ -3577,12 +3577,39 @@ export function TockTutorRoute(props) {
     useEffect(() => () => {
         trackTockTutorRouteFlush(controller.dispose());
     }, [controller]);
+    const pendingEditorFocus = useRef(null);
     const focusEditor = useCallback(() => {
-        if (!active || snapshot.path === null)
+        pendingEditorFocus.current?.();
+        const container = root.current;
+        if (!active || snapshot.path === null || container === null)
             return;
-        root.current?.querySelector(snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]')?.focus();
+        const selector = snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]';
+        const stop = () => {
+            observer.disconnect();
+            container.ownerDocument.removeEventListener('pointerdown', stop, true);
+            container.ownerDocument.removeEventListener('keydown', stop, true);
+            pendingEditorFocus.current = null;
+        };
+        const focus = () => {
+            const editor = container.querySelector(selector);
+            if (editor === null)
+                return;
+            stop();
+            editor.focus();
+        };
+        // Both editors load asynchronously. Keep this request until their DOM is
+        // ready, but never reclaim focus after the user chooses another control.
+        const observer = new MutationObserver(focus);
+        pendingEditorFocus.current = stop;
+        observer.observe(container, { childList: true, subtree: true });
+        container.ownerDocument.addEventListener('pointerdown', stop, true);
+        container.ownerDocument.addEventListener('keydown', stop, true);
+        focus();
     }, [active, snapshot.mode, snapshot.path]);
-    useEffect(focusEditor, [focusEditor]);
+    useEffect(() => {
+        focusEditor();
+        return () => { pendingEditorFocus.current?.(); };
+    }, [focusEditor]);
     useEffect(() => {
         if (!active || snapshot.documentKind !== 'markdown' || snapshot.path === null || snapshot.settings === undefined)
             return;
