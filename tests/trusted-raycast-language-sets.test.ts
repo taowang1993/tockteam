@@ -123,10 +123,16 @@ test('cached state persists across child restarts and admits legacy stored shape
     assert.deepEqual(legacy, { langFrom: 'en', langTo: 'zh-CN' }, 'stored legacy shape is loaded for source-side unification')
     const [, set] = useCachedState('languages', [])
     set([{ langFrom: 'auto', langTo: ['zh-CN', 'en'] }])
-    await new Promise(resolve => setImmediate(resolve))
-    const persisted = JSON.parse(readFileSync(stateFile, 'utf8'))
+    let persisted = JSON.parse(readFileSync(stateFile, 'utf8'))
+    for (let attempt = 0; attempt < 20 && persisted.languages?.length !== 1; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 5))
+      persisted = JSON.parse(readFileSync(stateFile, 'utf8'))
+    }
     assert.deepEqual(persisted.languages, [{ langFrom: 'auto', langTo: ['zh-CN', 'en'] }])
     assert.equal((persisted.selectedLanguageSet as { langTo: string }).langTo, 'zh-CN', 'unrelated cached keys are preserved')
+    const compatibilityUtils = readFileSync(join(resolve('.'), 'src', 'trusted-raycast-compat-utils.ts'), 'utf8')
+    assert.match(compatibilityUtils, /atomicWrite\(stateFile,/)
+    assert.doesNotMatch(compatibilityUtils, /writeFileSync\(stateFile,/)
   } finally {
     if (previousEnv === undefined) delete process.env.TRUSTED_RAYCAST_STATE_FILE; else process.env.TRUSTED_RAYCAST_STATE_FILE = previousEnv
     rmSync(dir, { recursive: true, force: true })

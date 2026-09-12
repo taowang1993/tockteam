@@ -1,6 +1,7 @@
 import React from 'react'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { atomicWrite } from './launcher-persistence.ts'
 import { queryEpoch, queryText } from './trusted-raycast-compat-api.ts'
 import { isKaomojiState, loadKaomojiState, saveKaomojiState, type KaomojiRecord } from './trusted-raycast-kaomoji-state.ts'
 import { createCachedStateStore } from './trusted-raycast-cached-state.ts'
@@ -33,7 +34,7 @@ const cachedState = createCachedStateStore({
   ...(kaomojiDataset === undefined ? {} : { validate: (snapshot: Readonly<Record<string, unknown>>) => isKaomojiState(snapshot, kaomojiDataset) }),
   ...(stateFile === undefined ? {} : { persist: async (snapshot: Readonly<Record<string, unknown>>) => {
     if (kaomojiDataset !== undefined) await saveKaomojiState(stateFile, snapshot, kaomojiDataset)
-    else writeFileSync(stateFile, JSON.stringify(snapshot), { mode: 0o600 })
+    else await atomicWrite(stateFile, `${JSON.stringify(snapshot)}\n`, { backup: false })
   } }),
 })
 export function useCachedState<T>(key: string, initial: T): readonly [T, (next: T | ((old: T) => T)) => void] {
