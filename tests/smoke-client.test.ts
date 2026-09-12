@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { runInNewContext } from 'node:vm'
+import type { DesktopBridge } from '../src/contracts.ts'
 
 const source = readFileSync(new URL('../scripts/smoke-client.cjs', import.meta.url), 'utf8')
 
@@ -16,6 +17,20 @@ test('Chromium smoke watchdog starts before navigation and renderer work', () =>
 
 test('Chromium smoke rejects the visible TockCoder Preview badge', () => {
   assert.match(source, /state\.previewBadgeVisible === true/u)
+})
+
+test('Chromium smoke preload supports the real route activation and cleanup facade', async () => {
+  const exposed: { bridge?: Pick<DesktopBridge, 'syncWorkbenchDestination' | 'setTockTutorActive'> } = {}
+  runInNewContext(readFileSync(new URL('../scripts/smoke-client-preload.cjs', import.meta.url), 'utf8'), {
+    require: () => ({ contextBridge: { exposeInMainWorld: (_name: string, bridge: NonNullable<typeof exposed.bridge>) => { exposed.bridge = bridge } } }),
+    process: { platform: 'linux' },
+  })
+  assert.ok(exposed.bridge)
+  assert.equal(await exposed.bridge.syncWorkbenchDestination('tockcoder'), undefined)
+  assert.equal(await exposed.bridge.setTockTutorActive(false), undefined)
+  assert.equal(await exposed.bridge.syncWorkbenchDestination('tocktutor'), undefined)
+  assert.equal(await exposed.bridge.setTockTutorActive(true), undefined)
+  assert.equal(await exposed.bridge.setTockTutorActive(false), undefined)
 })
 
 type SmokeFixture = {

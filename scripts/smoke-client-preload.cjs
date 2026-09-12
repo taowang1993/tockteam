@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld('dshDesktop', Object.freeze({
   openExternal: async () => {},
   syncLauncherLocale: async () => {},
   syncLauncherTheme: async () => {},
+  syncWorkbenchDestination: async () => {},
+  setTockTutorActive: async () => {},
   pluginMarketplace: Object.freeze({
     dispatch: async () => emptyMarketplaceSnapshot,
     getSnapshot: async () => emptyMarketplaceSnapshot,
