@@ -66,7 +66,7 @@ The public tools are:
 - `vault_canvas`
 - `vault_facets`
 
-The package accepts a root plus read, search-byte, search-entry, per-file, and result limits. It rejects traversal, hidden paths, symbolic-link paths, type changes, and unsafe direct reads. Canvas URLs, Base expressions, external links, attachments, and Markdown syntax are inspected as inert data; the plugin performs no network fetches and exposes only attachment metadata.
+The package accepts a root plus read, search-byte, search-entry, per-file, and result limits. Its standalone filesystem adapter rejects traversal, hidden paths, symbolic-link paths, type changes, and unsafe direct reads. The runtime-backed inspection provider additionally supports confined, same-kind direct file aliases; directory aliases and aliases leaving the vault remain rejected. Canvas URLs, Base expressions, external links, attachments, and Markdown syntax are inspected as inert data; the plugin performs no network fetches and exposes only attachment metadata.
 
 The aggregate bundle does not activate this package's tool row. It retains the package for `tockbot-note-vault/inspection` and contract parity tests.
 
@@ -81,17 +81,17 @@ The aggregate bundle does not activate this package's tool row. It retains the p
 - filesystem watching and the `note-vault/change` event;
 - Desktop reveal and caller-bound vault-selection seams.
 
-It also defines the abstract `tockTeamDesktopReveal` and `tockTeamDesktopVaultSelection` services. TockTeam Desktop supplies their native implementations. The aggregate row sets `vaultRoot: null`; Desktop selection activates a vault instead of accepting browser-provided absolute paths. Before a native action, the Runtime synchronizes an already authorized managed, sandbox, or recent vault through the authenticated Desktop owner; canonical paths never cross the browser or preload boundary.
+It also defines the abstract `tockTeamDesktopReveal` and `tockTeamDesktopVaultSelection` services. TockTeam Desktop supplies their native implementations. The aggregate row sets `vaultRoot: null`; Desktop selection activates a vault instead of accepting browser-provided absolute paths. Before a native action, the Runtime synchronizes an already authorized managed, sandbox, or recent vault through the authenticated Desktop owner; native authority never comes from a browser-supplied canonical path. The Workbench's `currentVault.displayPath` is a display-only exception: roots under HOME are abbreviated, while roots outside HOME may be shown canonically. That string is not a native-action capability.
 
 The Desktop bundle supplies the complete runtime configuration with `restoreActiveVault: true`, `vaultRoot: null`, and `stateRoot` under `DSH_DESKTOP_APP_DATA/tocktutor`; later Cordis row configurations replace rather than deep-merge earlier ones. Recent-vault bindings, drafts, snapshots, trash metadata, and managed-vault state survive Desktop restarts without writing runtime state into the workspace. Selection is persisted atomically in `vault-state/selection.json`; older `vault-state/active`, `vault-state/recent.json`, `notes-vault-path`, and `notes-recent-vaults.json` remain migration inputs.
 
-The runtime can activate opaque recent selections, create a collision-safe sandbox, and create named managed vaults under the state root. Attachment storage creates missing relative parent folders one segment at a time, revalidates each as a real in-vault directory, and binds the final parent identity before the exclusive write. Its passive-backup seam exposes only generation-bound, no-follow reads and exclusive restores for an inert allowlist under exact `.obsidian` and `.obsidian-*` roots. Hidden nested paths, aliases, links, executable/native/script payloads, and platforms without no-follow support fail closed.
+The runtime can activate opaque recent selections, create a collision-safe sandbox, and create named managed vaults under the state root. Document creation and attachment storage create missing relative parent folders one segment at a time, revalidate each as a real in-vault directory, and bind the final parent identity before the exclusive write. Cancellation after a physical trash move enters the same recovery path as metadata failure; unsuccessful rollback reports the retained destination rather than losing recovery evidence. Its passive-backup seam exposes only generation-bound, no-follow reads and exclusive restores for an inert allowlist under exact `.obsidian` and `.obsidian-*` roots. Hidden nested paths, aliases, links, executable/native/script payloads, and platforms without no-follow support fail closed.
 
 Important configuration includes read, attachment, draft, folder, tree, recent-vault, snapshot, state-root, vault-root, and restore limits. Keep their maximums intact. Defaults include 256 KiB document reads, 25 MiB attachments, 2 MiB drafts, 64 MiB folder operations, a depth-64/20,000-entry tree with 200-result pages, 20 recent vaults, and 20 snapshots retained for 30 days. `stateRoot: null` disables persistent recovery and search storage; `restoreActiveVault` defaults to false outside the Desktop override.
 
 #### Persistent Search
 
-The runtime uses `flexsearch@0.8.212` with `sqlite3@5.1.7`. Its rebuildable cache lives under `stateRoot/search-index/tocktutor-search-v1/`, keyed by opaque vault ID and filesystem root identity, not inside the vault. It reconciles document revisions on activation, invalidates affected paths on writes/watch events, and drains index work on replacement/disposal. Initial inventory has a separate 2,000,000-entry ceiling and still obeys document-size and tree-depth limits.
+The runtime uses `flexsearch@0.8.212` with `sqlite3@5.1.7`. Its rebuildable cache lives under `stateRoot/search-index/tocktutor-search-v2/`, keyed by opaque vault ID and filesystem root identity, not inside the vault. It reconciles document revisions on activation, invalidates affected paths on writes/watch events, and drains index work on replacement/disposal. Index and inspection providers use alias-entry revisions consistently; ordinary document opens retain canonical file revisions for safe saves. Initial inventory has a separate 2,000,000-entry ceiling and still obeys document-size and tree-depth limits.
 
 The index supplies candidate paths, not authoritative content: shared inspection rereads candidates and applies the query and output budgets. Unsupported queries, incomplete/not-ready indexes, candidate overflow, unavailable native dependencies, or unsuitable state storage fall back to the bounded scanner. Do not equate successful fallback searches with a working native index, or claim that every search avoids a vault scan.
 
@@ -99,7 +99,7 @@ The index supplies candidate paths, not authoritative content: shared inspection
 
 `src/index.ts` injects `tools` and `noteVault`. It registers the same eight `vault_*` contracts as the standalone vault package, plus `notes_search` and `notes_read`. Every call is bound to the current `{ id, generation }` vault reference and forwards the tool `AbortSignal`; generation remains Host-owned rather than becoming model-supplied authority.
 
-This package is an adapter, not another filesystem implementation. Do not duplicate inspection or mutation logic here.
+This package is an adapter, not another filesystem implementation. Do not duplicate inspection or mutation logic here. The `notes_*` compatibility aliases currently validate Markdown-only paths, unlike the broader `vault_*` contracts; mixed Canvas/Base search results and whitespace-normalized queries remain audit follow-ups, not a proven compatibility guarantee.
 
 ### `@tockteam/tocktutor-workbench`
 
@@ -108,7 +108,7 @@ The Host entry injects `noteVault` and mounts the `tocktutorWorkbench` Typert Re
 The browser client mounts that Remote and contributes the single `tockteam.tocktutor.route` slot. The route owns:
 
 - the `/tocktutor` browser route, bounded tabs, recently closed tabs, pinning, reordering, pane groups, focus mode, workspaces, and command palette;
-- CodeMirror Source, Milkdown Live Preview, Reading, nested Slides Preview, owner-compatible inert HTML/PDF projection, formatting/table commands, and exact-source task toggles;
+- CodeMirror Source, Milkdown Live Preview, Reading, owner-compatible inert HTML/PDF projection, formatting/table commands, and exact-source task toggles;
 - tree, keyword/Related search, Quick Switcher, Outline, Footnotes, Backlinks, Outgoing Links, unlinked mentions, Properties, Tags, Smart Views, bookmarks, capture, templates, journals, Note Composer, and reviewed organization;
 - deterministic finite Global and Local Graphs with persisted depth, semantic filters, query groups, viewport controls, and bounded node actions;
 - conflict-safe JSON Canvas and executable Base views, including card/group/edge edits and revision-preserving rollback;
@@ -123,24 +123,29 @@ Nested slots:
 
 - `tockteam.tocktutor.workbench.assistant`
 - `tockteam.tocktutor.workbench.native-actions`
+- `tockteam.tocktutor.workbench.vault-actions`
 - `tockteam.tocktutor.workbench.review`
 - `tockteam.tocktutor.workbench.web-viewer`
 
-Assistant and Web Viewer slots are single contributions; native-action and review slots are lists. Client teardown disposes the route, awaits pending route flushes, and only then unmounts the Remote (`src/client-api.ts`).
+Assistant and Web Viewer slots are single contributions; native-action, vault-action, and review slots are lists. Vault actions supply the vault menu and no-vault entry controls separately from note-bound native actions. Client teardown disposes the route, awaits pending route flushes, and only then unmounts the Remote (`src/client-api.ts`).
 
-Native dispatches are invalidated by newer navigation. TockTeam Desktop resolves current, named, recent, and absolute-path protocol selectors against main-owned canonical vault records, then sends only an opaque vault ID to the Host/client adapter. The Workbench accepts that request only after the selected runtime publishes the matching opaque identity. Tab, split, and window requests retain dirty-save gating and exact completion callbacks.
+Native dispatches are invalidated by newer navigation. TockTeam Desktop resolves current, named, recent, and absolute-path protocol selectors against main-owned canonical vault records, then sends only an opaque vault ID to the Host/client adapter. The Workbench accepts that request only after the selected runtime publishes the matching opaque identity. Tab, split, and window requests retain dirty-save gating and exact completion callbacks. Protocol note creation accepts a name without requiring a separate file selector. Delayed document loads, renames, and selection extraction preserve later navigation and edits; source-offset formatting, date/time insertion, and extraction require Source mode because Live Preview positions are not Markdown offsets.
+
+#### Search Intelligence
+
+The mounted search palette supports **Keyword** and **Related** modes, title/folder/modified-date filters, keyboard selection, result previews, and **Quick Answer** with source citations. Related retrieval is bounded lexical/metadata ranking, optionally augmented by model-generated alternate queries; it is not a vector database. The route controller in `src/route.tsx` owns query/navigation cancellation and stale-result rejection. The assistant's `aiSearch` policy is `off`, `on-demand` (default), or `automatic`; missing/disabled providers do not remove local search. `src/search-intelligence.ts` validates bounded model output and rechecks vault/settings ownership; Quick Answer rereads candidate evidence and accepts only supported citations.
 
 #### Browser State and Current Integration Limits
 
-`src/settings.ts` stores per-vault settings and Workbench state in bounded browser storage (`tocktutor.settings.v1.<vaultId>` and `tocktutor.workbench.v1.<vaultId>`). Tabs/pane sessions, focus mode, and named workspaces persist; recently closed tabs, back/forward history, and current search query/mode/open state are controller-local and reset on reload. Keep-mounted surface switching preserves that controller state, unlike relaunch. Browser preferences are separate from the runtime's recovery data and native search cache. Workbench defaults include five-minute recovery snapshots and seven-day retention; the Host runtime has its own 30-day retention default.
+`src/settings.ts` stores per-vault settings and Workbench state in bounded browser storage (`tocktutor.settings.v1.<vaultId>` and `tocktutor.workbench.v1.<vaultId>`). Tabs/pane sessions, focus mode, and named workspaces persist; recently closed tabs, back/forward history, and current search query/mode/open state are controller-local and reset on reload. Keep-mounted surface switching preserves that controller state, unlike relaunch. Browser preferences are separate from the runtime's recovery data and native search cache. Workbench defaults include five-minute recovery snapshots and a stored seven-day retention preference; the latter is not consumed by the route. Actual Host retention has its own 30-day default.
 
 Feature helpers and isolated component tests are not proof of complete route integration. In the current `src/route.tsx`:
 
-- **Page Preview** and **Backlinks in Document** settings are stored, but hover-preview and in-document backlinks rendering are not wired. Backlinks are available in the relationship panel; the status bar's literal `0 backlinks` is not an authoritative count.
+- **Page Preview** and **Backlinks in Document** settings are stored, but hover-preview and in-document backlinks rendering are not wired. Backlinks are available in the relationship panel; the status bar uses loaded backlink details and defaults to zero before they arrive, rather than proving an exhaustive count.
 - `resolveSlashCommand()` and `pagePreviewTargetAtOffset()` in `src/editor-commands.ts` are helper-level APIs, not a mounted slash menu or Page Preview flow. Formatting shortcuts/palette actions and Milkdown table controls are wired separately.
-- **Slides Preview** is a static nested disclosure under Live Preview's **Rendered Preview**, not a fourth editor mode (`src/editor-surface.tsx`).
-- `src/base-executable-view.tsx` supports controlled view selection and per-view search, but the route omits those state/callback props, leaving the first view selected. Copy, edit, and CSV export callbacks are connected. Base formulas use the bounded evaluator and explicit unsupported-expression handling, not arbitrary JavaScript execution; provenance/divergences live in `src/base-evaluator-provenance.ts` and `src/base-view-provenance.ts`.
-- `openBookmark()` opens note, heading, block, folder, and search records, but returns false for link and graph records. A persisted Web Viewer link bookmark is not therefore openable from the Workbench bookmark list.
+- `MarkdownSlidesView` in `src/editor-surface.tsx` is a standalone static helper; neither **Slides Preview** nor **Rendered Preview** is mounted in the current Live Preview route.
+- `src/base-executable-view.tsx` receives route-owned view selection and per-view search, reset when the document path changes. Copy, edit, and CSV export callbacks are connected. Base formulas use the bounded evaluator and explicit unsupported-expression handling, not arbitrary JavaScript execution; provenance/divergences live in `src/base-evaluator-provenance.ts` and `src/base-view-provenance.ts`.
+- `openBookmark()` opens note, heading, block, folder, and search records, but returns false for link and graph records. Block bookmarks currently ignore `blockId`; heading/search selection is recorded by the controller but is not applied to the mounted Source editor. A persisted Web Viewer link bookmark is not therefore openable from the Workbench bookmark list.
 - `src/utility-panel.tsx` exposes **Page Preview**, **Backlinks in Document**, and **Default Editing Mode** in **Settings and Workspaces**. Attachment/journal/template folder and retention settings exist in the model/controller but should not be described as fully exposed settings controls.
 
 ### `tockbot-note-desktop`
@@ -149,23 +154,26 @@ The Host entry refuses non-Desktop surfaces and mounts the `tocktutorDesktop` Re
 
 The client contributes the **Native Actions** controls for:
 
-- **Choose Vault**
 - **Reveal Entry**
 - **Open Pop-Out** and **Close Pop-Out**
 - **Close All Pop-Outs**
 - **Request Microphone**
+- **Start Recording** and **Stop Recording**
 - **Print Note**
 - **Export HTML** and **Export PDF**
 
+The separate vault-action contribution supplies **Open Folder as Vault** and the existing **Rename vault...**, **Move vault...**, **Reveal vault in Finder**, and **Remove from list** menu labels. Removing a recent selection does not delete vault contents.
+
 Every native operation starts with an opaque authorization minted by the isolated preload for the trusted main frame. For vault-bound operations, the authorization records the browser-observed opaque `{ id, generation }`; the trusted Host independently proves the same live Runtime vault, synchronizes the Desktop owner, and only then claims the authorization to obtain the main-owned session, window, and operation identity. A browser assertion cannot mint vault authority by itself. Browser payloads never supply absolute paths, Electron objects, native handles, or unrestricted IPC names.
 
-Unload aborts pending work and closes pop-outs opened by the adapter. Dirty editors save before choose-vault, pop-out, print, HTML, or PDF authorization is claimed. Print and export content is bounded, sanitized, stripped of network-bearing resource attributes, and rendered through the shared Markdown exporter before the Desktop owner revalidates it. Generation-bound runtime reads expand bounded nested notes, Canvas, Base, and supported data images through the shared resolver; audio/video/PDF embeds remain metadata-only in static output. Recorded audio returns only bounded bytes to the active Workbench owner, which rechecks the note and vault after byte conversion before the runtime stores it.
+Unload aborts pending work and closes pop-outs opened by the adapter. Dirty editors save before choose-vault, pop-out, print, HTML, or PDF authorization is claimed. Print and export content is bounded, sanitized, stripped of network-bearing resource attributes, and rendered through the shared Markdown exporter before the Desktop owner revalidates it. Generation-bound runtime reads supply bounded first-level note, Canvas, Base, and supported data-image projections; audio/video/PDF embeds remain metadata-only in static output. The native adapter does not yet supply recursively resolved children or a source path for explicitly relative embeds. Recorded audio returns only bounded bytes to the active Workbench owner, which rechecks the note and vault after byte conversion before the runtime stores it. Unload during microphone authorization or media acquisition rejects the late result and stops acquired tracks; the client also cancels a recording returned after its lifetime ended.
 
 ### `@tockteam/tocktutor-assistant`
 
 `NoteAssistant` is a Cordis service injecting `agents`, `noteVault`, `settings`, `storageDomain`, `subprocess`, and `tools`. It owns:
 
-- assistant provider/model/write-permission settings;
+- assistant provider/model/write-permission and `aiSearch` settings;
+- provider-backed query expansion and citation-bound Quick Answer through DSH's existing `llm` service;
 - production agent-turn binding;
 - a restricted Pennivo MCP child process;
 - active-turn read tools, including generation-bound `notes_search` and `notes_read` aliases;
@@ -178,13 +186,13 @@ The reviewed dependency is `@pennivo/mcp-server@1.4.0`; `PENNIVO_PROVENANCE.md` 
 
 The seven model-facing Pennivo read adapters are `list_files`, `read_file`, `search`, `find_backlinks`, `get_outline`, `list_snapshots`, and `list_trash`; `list_workspaces` is deliberately unavailable. Reads execute through TockTeam's runtime-backed adapters, not the child. Bound assistant turns also admit the `notes_search`/`notes_read` aliases; proposed writes use the same Host-owned approval boundary, including TockDriver-originated proposals.
 
-`writePermission` is `read-only` or `propose`. Proposed writes are bound to the exact vault generation, child instance, agent turn, request, provider, model, permission epoch, source revision, target revision, digest, expiry, and user approval. Only `tockbot-note-runtime` performs the accepted mutation and snapshot-backed save. A decision keeps a transient reference to the exact live originating Agent so approval or rejection can submit one bounded follow-up; a stale Agent cannot revive the write or alter the durable audit result.
+`writePermission` is `read-only` or `propose`. Bound-assistant proposals carry the exact vault generation, child instance, agent turn, request, provider, model, permission epoch, source revision, target revision, digest, expiry, and user approval. Ordinary DSH `notes_stage_write`/`notes_organize_capture` proposals use the independent `tockdriver-main` binding instead of a Pennivo child; child replacement must not invalidate them. Their source reads capture the permission epoch so a revoke-and-restore during an await cannot stage under a newer permission grant. Only `tockbot-note-runtime` performs the accepted mutation and snapshot-backed save. A decision keeps a transient reference to the originating Agent for one bounded follow-up; stale Agent identity suppresses that continuation. Stored turn/request identifiers are provenance, not an independently revalidated live-turn requirement at approval: the current approval path supplies those identifiers from the proposal itself. Vault, permission, revision, digest, expiry, and replay checks remain the mutation boundary.
 
-Queue and permission epoch persist in the version-1 DSH storage domain `tocktutor_assistant`, separate from vault files. Defaults are 100 pending proposals, 500 audit records, and five-minute expiry (at most ten minutes); proposal content is capped at 1 MiB and serialized queue state at 8 MiB. Persistence does not make a proposal's originating live-turn authority resumable.
+Queue and permission epoch persist in the version-1 DSH storage domain `tocktutor_assistant`, separate from vault files. Defaults are 100 pending proposals, 500 audit records, and five-minute expiry (at most ten minutes); proposal content is capped at 1 MiB and serialized queue state at 8 MiB. Ordinary TockDriver proposals can survive assistant restart after revalidation; child-bound live-turn state is not resumed. The browser reviews a redacted 1,000-character summary, not the full proposed content or a complete diff. Summary previews stay below transport limits, and a stage rejected by aggregate serialization limits leaves the accepted queue and audit intact. The assistant panel reloads proposals/audit as the selected conversation's running/tool state changes, so asynchronously staged writes become reviewable without leaving the note.
 
 ### `@tockteam/tocktutor-import-export`
 
-The Host gateway injects `noteVault`, `tockTeamDesktopCaller`, and `tockTeamDesktopPicker`. It mounts the `tocktutor-import-export` Typert Remote and owns reviewed import, restore, and backup engines plus the review-panel client contribution. `src/engine.ts` handles import/restore; `src/backup-engine.ts` handles backup publication. Each engine permits one active operation, expires plans after at most five minutes (or the underlying grant's earlier expiry), and bounds completed evidence to 64 operations/32 MiB. Approval and commit are distinct calls; cancellation, abandonment, expiry, and disposal must release retained grants and staged resources.
+The Host gateway injects `noteVault`, `tockTeamDesktopCaller`, and `tockTeamDesktopPicker`. It mounts the `tocktutor-import-export` Typert Remote and owns reviewed import, restore, and backup engines plus the review-panel client contribution. `src/engine.ts` handles import/restore; `src/backup-engine.ts` handles backup publication. Each engine permits one active operation, expires plans after at most five minutes (or the underlying grant's earlier expiry), and bounds completed evidence to 64 operations/32 MiB. Approval and commit are distinct calls; cancellation, abandonment, expiry, and disposal must release retained grants and staged resources. Retained completed evidence supports retries of the same operation/token/digest for at most five minutes, subject to count/byte eviction; engine restart does not restore pending approval or replay authority.
 
 Supported inputs include Markdown folders and ZIPs, HTML with bounded media/PDF resources, CSV, Apple Journal, Bear, Evernote, Google Keep, Roam Research, Textbundle/Textpack, and TockTutor backup archives. Craft, Notion, Apple Notes, and compatible exports delegate to the reviewed Markdown or HTML paths instead of adding parser stacks.
 
@@ -201,9 +209,9 @@ trusted caller authorization
   -> bounded result and recovery evidence
 ```
 
-ZIP parsing rejects traversal, aliases, symbolic links, executable entries, unsupported flags/methods, malformed headers, CRC mismatches, excessive depth, entry count, member size, aggregate size, parser time, and compression ratio. Backup archives use deterministic manifest version 3. Passive configuration is hashed and stored under opaque archive member names, follows the same inspect-preview-approve-apply transaction, and restores only through the runtime seam. Version-2 archives without passive members remain restorable.
+ZIP parsing rejects traversal, aliases, symbolic links, Unix executable regular-file modes, unsupported flags/methods, invalid signatures/names, payload CRC mismatches, excessive depth, entry count, member size, aggregate size, parser time, and compression ratio. Executable filenames can instead be skipped during conversion; local-header CRC/size fields and directory local headers are not exhaustively cross-checked against central metadata. Backup archives use deterministic manifest version 3. Passive configuration is hashed and stored under opaque archive member names, follows the same inspect-preview-approve-apply transaction, and restores only through the runtime seam. Version-2 archives without passive members remain restorable. Backups capture supported runtime-visible documents/attachments and accepted passive configuration, not arbitrary files, empty directories, browser Workbench state, or Runtime recovery storage. New archives obey the 5,000-file reviewed-plan ceiling.
 
-Existing vault files are never overwritten. Multi-file imports report committed, skipped, failed, and recovery-required entries rather than claiming rollback after partial success.
+Existing vault files are never overwritten. Multi-file imports report committed, skipped, failed, and recovery-required entries rather than claiming rollback after partial success. Import and backup planning drain ordinary `result-limit` pages with valid cursors; depth/entry limits and incomplete inventories still fail closed. New backup creation enforces the restore-side entry/member limits, preventing publication of archives the same version cannot restore.
 
 ### `tockbot-web-clip`
 
@@ -221,7 +229,7 @@ Fetched HTML is reduced to bounded inert Reader text. Viewer HTML escapes the pr
 
 TockTeam's `src/web-clip-frame.ts` and `src/main.ts` own the isolated guest partition, exact one-document authorization, restrictive CSP, credential-header stripping, and denied network/navigation/download/permission behavior. The viewer displays Host-fetched inert projections, not an unrestricted browser session.
 
-Clipping creates a one-use, expiring, digest-bound, destination-bound, vault-generation-bound preview. The browser must approve the exact preview before the runtime performs an exclusive Markdown create.
+Clipping initializes the configured folder with a timestamped Markdown filename, not a bare directory. It creates a one-use, expiring, digest-bound, destination-bound, vault-generation-bound preview. The browser must approve the exact preview before the runtime performs an exclusive Markdown create.
 
 ### `@tockteam/tocktutor`
 
@@ -267,11 +275,11 @@ The in-scope cutover includes Desktop install/upgrade, disable/uninstall/rollbac
 
 The standalone `tockbot-note-vault` filesystem adapter sorts the native directory inventory before producing deterministic cursor pages. Search bytes, inspected entries, files, results, and output remain bounded, but native directory enumeration itself scales with the vault. The active runtime's persistent index can reduce eligible repeated-search work, but initial reconciliation and fallback still scan; measure before changing indexing or enumeration policy.
 
-Attachment acceptance is layer-specific. Direct runtime storage accepts `.ico` and `.weba`, while the standalone/shared inspection extension maps omit them. Do not infer inspection, preview, or static-export support merely from successful attachment storage.
+Runtime storage, standalone/shared inspection, and backup agree on `.ico` and `.weba` inventory support. Acceptance is still layer-specific: successful attachment storage or inventory does not imply inline preview or static-export support.
 
 The assistant panel intentionally uses a render-time route epoch to prevent an aborted decision from reviving across an A → B → A navigation. Its component regression test protects that behavior; do not replace it with a route-key-only comparison.
 
-Static export recursively expands bounded local note, Canvas, Base, and allowlisted data-image content to the same depth-three ceiling as live projection, but never fetches network resources. Audio, video, PDF, BMP, and other non-allowlisted data-image payloads remain labeled metadata because the Desktop print/export owner accepts only bounded AVIF, GIF, JPEG, PNG, and WebP data URLs.
+The shared static renderer can consume bounded recursive embed projections and never fetches network resources, but the native print/export adapter currently supplies only first-level resolutions. Explicitly relative and nested native-export embeds remain a follow-up, not live/static parity. Audio, video, PDF, BMP, and other non-allowlisted data-image payloads remain labeled metadata because the Desktop print/export owner accepts only bounded AVIF, GIF, JPEG, PNG, and WebP data URLs.
 
 ## Generated and Release Payloads
 
