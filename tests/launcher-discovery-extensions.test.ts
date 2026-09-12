@@ -70,6 +70,29 @@ test('maps applications, bookmarks, JetBrains projects, and VS Code to opaque bo
   assert.equal(instant.after[0]?.defaultAction.argument.includes('file:///work/tockteam'), true)
 })
 
+test('VS Code retains all local recents while bounding identity concurrency', async () => {
+  let active = 0
+  let peak = 0
+  const recents = Array.from({ length: 20 }, (_, index) => ({ commandArg: '--folder-uri' as const, fileType: 'Folder', id: `vscode:${index}`, kind: 'vscode' as const, path: `/work/project-${index}`, uri: `file:///work/project-${index}` }))
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    enabledExtensionIds: () => ['VSCode'],
+    scanners: { ...entries, VSCode: async () => recents },
+    capturePathIdentity: async () => {
+      peak = Math.max(peak, ++active)
+      await new Promise<void>(resolve => setImmediate(resolve))
+      active--
+      return { dev: '1', ino: '1' }
+    },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  try {
+    await provider.loadIndexedItems(new AbortController().signal)
+    assert.deepEqual((await provider.searchInstant('vscode project')).after.map(item => item.id), recents.map(entry => entry.id))
+    assert.ok(peak <= 8)
+  } finally { await provider.close() }
+})
+
 test('application icon failures keep Application Search available with fallback icons', async () => {
   const reported: string[] = []
   const provider = createLauncherDiscoveryExtensions({

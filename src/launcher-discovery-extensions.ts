@@ -565,24 +565,29 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (closed || controller.signal.aborted || generation !== instantGeneration || scanAtStart !== scanGeneration || executable === undefined || !isConcreteVSCodeExecutable(executable)) return empty()
       const executableIdentity = await captureIdentity(executable, controller.signal)
       if (closed || controller.signal.aborted || executableIdentity === undefined) return empty()
-      const mapped = await Promise.all(vscodeRecents.filter(entry => term.length === 0 || `${entry.label ?? ''} ${entry.path} ${entry.uri}`.toLocaleLowerCase('en-US').includes(term)).slice(0, MAX_ITEMS_PER_EXTENSION).map(async entry => {
-        const id = entry.id.length <= 512 ? entry.id : `vscode:${createHash('sha256').update(entry.id).digest('hex')}`
-        const identity = entry.uri.startsWith('file:') ? await captureIdentity(entry.path, controller.signal) : undefined
-        if (entry.uri.startsWith('file:') && identity === undefined) return undefined
-        const item = Object.freeze({
-          defaultAction: action(HANDLERS.launch, `Open ${entry.fileType} in VSCode`, { args: [entry.commandArg, entry.uri], executable, kind: 'executable' }),
-          description: entry.fileType, details: entry.path, id, imageKey: entry.commandArg === '--file-uri' ? 'vscode-file' : 'vscode',
-          name: `${entry.label ?? path.basename(entry.path)}${showPath ? ` (${entry.path})` : ''}`.slice(0, 512), sourceExtension: 'VSCode',
-        })
-        return Object.freeze({ identity, item, argument: item.defaultAction.argument, command: parsedExecutable, entry })
-      }))
-      if (closed || controller.signal.aborted || generation !== instantGeneration || scanAtStart !== scanGeneration) return empty()
+      const matches = vscodeRecents.filter(entry => term.length === 0 || `${entry.label ?? ''} ${entry.path} ${entry.uri}`.toLocaleLowerCase('en-US').includes(term)).slice(0, MAX_ITEMS_PER_EXTENSION)
       const next = new Map<string, Readonly<{ command: string; entry: Extract<LauncherDiscoveryEntry, { kind: 'vscode' }>; executableIdentity: LauncherDiscoveryIdentity | undefined; identity: LauncherDiscoveryIdentity | undefined }>>()
       const items: LauncherInternalResultItem[] = []
-      for (const value of mapped) {
-        if (value === undefined) continue
-        next.set(value.argument, Object.freeze({ command: value.command, entry: value.entry, executableIdentity, identity: value.identity }))
-        items.push(value.item)
+      const deadline = Date.now() + scanTimeoutMs
+      for (let offset = 0; offset < matches.length && Date.now() < deadline; offset += MAX_ICON_CONCURRENCY) {
+        if (closed || controller.signal.aborted || generation !== instantGeneration || scanAtStart !== scanGeneration) return empty()
+        const mapped = await Promise.all(matches.slice(offset, offset + MAX_ICON_CONCURRENCY).map(async entry => {
+          const id = entry.id.length <= 512 ? entry.id : `vscode:${createHash('sha256').update(entry.id).digest('hex')}`
+          const identity = entry.uri.startsWith('file:') ? await captureIdentity(entry.path, controller.signal, Math.max(1, deadline - Date.now())) : undefined
+          if (entry.uri.startsWith('file:') && identity === undefined) return undefined
+          const item = Object.freeze({
+            defaultAction: action(HANDLERS.launch, `Open ${entry.fileType} in VSCode`, { args: [entry.commandArg, entry.uri], executable, kind: 'executable' }),
+            description: entry.fileType, details: entry.path, id, imageKey: entry.commandArg === '--file-uri' ? 'vscode-file' : 'vscode',
+            name: `${entry.label ?? path.basename(entry.path)}${showPath ? ` (${entry.path})` : ''}`.slice(0, 512), sourceExtension: 'VSCode',
+          })
+          return Object.freeze({ identity, item, argument: item.defaultAction.argument, command: parsedExecutable, entry })
+        }))
+        if (closed || controller.signal.aborted || generation !== instantGeneration || scanAtStart !== scanGeneration) return empty()
+        for (const value of mapped) {
+          if (value === undefined) continue
+          next.set(value.argument, Object.freeze({ command: value.command, entry: value.entry, executableIdentity, identity: value.identity }))
+          items.push(value.item)
+        }
       }
       replaceVscodeActions(next)
       return Object.freeze({ after: Object.freeze(items), before: Object.freeze([]) })
