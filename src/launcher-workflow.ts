@@ -611,10 +611,8 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
       } else {
         const executeCommand = options.effects.executeCommand ?? (async request => await runBoundedWorkflowCommand({ command: request.command, platform: options.platform, signal: request.signal, workingDirectory: request.workingDirectory }))
         throwIfAborted(controller.signal)
-        const result = commandResultBytes(await awaitAbortable(
-          () => executeCommand({ command: action.args.command, signal: controller.signal, workingDirectory: options.homePath }),
-          controller.signal,
-        ))
+        // The command runner owns abort cleanup; do not race away its process-tree drain.
+        const result = commandResultBytes(await executeCommand({ command: action.args.command, signal: controller.signal, workingDirectory: options.homePath }))
         stdoutBytes += result.stdoutBytes
         stderrBytes += result.stderrBytes
       }
