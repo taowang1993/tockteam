@@ -1,0 +1,378 @@
+{
+  "schemaVersion": 1,
+  "publication": "Allowlisted synthetic evidence; historical canonical gallery and original failed receipts preserved.",
+  "captureCommit": "tutor@7e6c8190d1d7d26d43662e90424f717bc45fdb13",
+  "validatedBuildCommit": "49e485c2207fe3c7ebc9aec9488c7ce610459fad",
+  "scope": "Staged-development Desktop live provider proof plus separate installed macOS arm64 packaging smoke; not notarized-release evidence.",
+  "captureMethod": "bounded Playwright Electron/CDP against the staged-development Desktop composition",
+  "geometry": {
+    "css": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2
+    },
+    "pixels": {
+      "width": 3024,
+      "height": 1898
+    }
+  },
+  "theme": {
+    "activeSkin": null,
+    "backgroundMatchesSidebar": false,
+    "baseline": "built-in-dark-no-skin",
+    "colorScheme": "dark",
+    "documentSkin": null,
+    "themePreference": "dark"
+  },
+  "route": "/tocktutor/Notes/Live Search Marker.md",
+  "mode": "live-preview",
+  "searchMode": "related",
+  "query": "what exact synthetic marker is identified by grounding topic",
+  "filter": {
+    "active": true,
+    "directory": "Notes",
+    "modifiedFrom": null,
+    "modifiedTo": null,
+    "name": "In Folder",
+    "titleOnly": false
+  },
+  "results": {
+    "activeIndex": 1,
+    "activePath": "Notes/Live Search Marker.md",
+    "count": 3,
+    "matchCount": 9,
+    "paths": [
+      "Notes/Live Search Marker.md",
+      "Notes/Related Context.md",
+      "Notes/Welcome.md"
+    ],
+    "ranked": true,
+    "scores": [
+      300,
+      137,
+      100,
+      100,
+      100,
+      100,
+      100,
+      99,
+      22
+    ],
+    "state": "ranked",
+    "visible": true
+  },
+  "preview": {
+    "contentVerified": true,
+    "generation": 1,
+    "line": 3,
+    "local": true,
+    "path": "Notes/Live Search Marker.md",
+    "state": "loaded",
+    "visible": true
+  },
+  "relatedSearch": {
+    "provider": "deepseek-official",
+    "model": "deepseek-v4-flash",
+    "status": "applied",
+    "query": "what exact synthetic marker is identified by grounding topic",
+    "matchedPrimary": true,
+    "matchedRelated": true
+  },
+  "quickAnswer": {
+    "model": "deepseek-v4-flash",
+    "provider": "deepseek-official",
+    "providerConfigured": true,
+    "state": "completed",
+    "status": "completed",
+    "answerContainsMarker": true,
+    "citationCount": 3,
+    "citations": [
+      {
+        "id": "qa-1",
+        "path": "Notes/Live Search Marker.md",
+        "line": null,
+        "lineEnd": null
+      },
+      {
+        "id": "qa-2",
+        "path": "Notes/Live Search Marker.md",
+        "line": 3,
+        "lineEnd": 3
+      },
+      {
+        "id": "qa-4",
+        "path": "Notes/Live Search Marker.md",
+        "line": 3,
+        "lineEnd": 3
+      }
+    ],
+    "truthful": true
+  },
+  "citationNavigation": {
+    "path": "Notes/Live Search Marker.md",
+    "mode": "source",
+    "citationLine": 3,
+    "selectedLine": 3,
+    "selectionStart": 22,
+    "selectionEnd": 166,
+    "selectionContainsMarker": true,
+    "editorFocus": {
+      "exists": true,
+      "contentEditable": true,
+      "focused": true
+    }
+  },
+  "providerNetwork": {
+    "route": "official DeepSeek provider through DSH LLM runtime",
+    "requestInterception": false,
+    "fixtureEnvironmentKeysScrubbed": [],
+    "boundedCalls": {
+      "logicalCalls": 2,
+      "maxRetriesPerCall": 1,
+      "maxAttempts": 4,
+      "maxTokensPerCall": 2048,
+      "streamIdleTimeoutMs": 45000
+    }
+  },
+  "runtimeErrors": [],
+  "cleanup": {
+    "browserSessionStopped": true,
+    "browserCloseTimedOut": false,
+    "browserCloseError": null,
+    "processStageFailures": [],
+    "electronTreeStopped": true,
+    "runtimeDescendantsStopped": true,
+    "temporaryProfilesRemoved": true,
+    "verified": true
+  },
+  "syntheticEvidence": {
+    "marker": "cinder-8a3fc35e322741c09d09",
+    "query": "what exact synthetic marker is identified by grounding topic",
+    "queryContainsMarker": false,
+    "primaryPath": "Notes/Live Search Marker.md",
+    "relatedPath": "Notes/Related Context.md"
+  },
+  "screenshot": {
+    "path": "tocktutor-search-provider.png",
+    "bytes": 380865,
+    "sha256": "bd8bc7eccb7e49c08063ca0112fb6e2862ad6e0bf3a5061d8c9368a54d7a1485"
+  },
+  "originalProofSha256": "b88d55e4449d5d8db7afa055a4e6cc8dc2bb6ef4bd853b7ff44d22cdf6dc481f",
+  "originalReceiptDefect": "Missing /usr/bin/date left three original timestamp receipts empty and did not prevent launch. These receipts remain unreconstructed. Functional assertions and independent cleanup passed; no live request was repeated just for timestamps.",
+  "offlineRepair": {
+    "result": "passed",
+    "correctedTemplateSha256": "9e1eb60d9950521fbe72749ce95f2ed720a5a04771999f75363e0a0ee8a5ba4d",
+    "redExit": 2,
+    "greenExit": 0,
+    "cases": [
+      "Successful receipt timestamps",
+      "Unavailable/failing timestamp or setup command prevents launch",
+      "Postflight receipt failure is nonzero",
+      "Nonzero child status propagates after receipts",
+      "Post-spawn receipt failure still waits for child cleanup"
+    ],
+    "lineage": {
+      "checkedAt": "2026-09-12T07:54:39.515Z",
+      "note": "Original worker stale boundary diffs retained unchanged; these additive replacements reconstruct actual corrected executable both directions. No live replay.",
+      "rows": [
+        {
+          "label": "boundary",
+          "direction": "forward",
+          "fromSha256": "a636527853e047be1f0f43fb37f4d00d9e91d62061619c7ebcbe55144dbb8776",
+          "toSha256": "248117f1828748873ee7447c22ce3c2357d544fafc45b055208d26d2b8e18ad0",
+          "patchSha256": "2c5ce39d654f4775cf91a38da63a9fd4630d1b2ac827e3b6fdd421c70a533a01",
+          "byteExactReconstruction": true
+        },
+        {
+          "label": "boundary",
+          "direction": "inverse",
+          "fromSha256": "248117f1828748873ee7447c22ce3c2357d544fafc45b055208d26d2b8e18ad0",
+          "toSha256": "a636527853e047be1f0f43fb37f4d00d9e91d62061619c7ebcbe55144dbb8776",
+          "patchSha256": "4c169cf3a9e6fd90eb6b9c6f71487c0769393a5e597a29aa666ac0af49ed95ce",
+          "byteExactReconstruction": true
+        },
+        {
+          "label": "template",
+          "direction": "forward",
+          "fromSha256": "2bda65a7fde0531a544a4843ae584e6f41015a6d29b8b7082d6ea00da14f133d",
+          "toSha256": "9e1eb60d9950521fbe72749ce95f2ed720a5a04771999f75363e0a0ee8a5ba4d",
+          "patchSha256": "266cebb596306c536fbbb822b61749ea0b6e9b3fbd8c586b961b469aed559802",
+          "byteExactReconstruction": true
+        },
+        {
+          "label": "template",
+          "direction": "inverse",
+          "fromSha256": "9e1eb60d9950521fbe72749ce95f2ed720a5a04771999f75363e0a0ee8a5ba4d",
+          "toSha256": "2bda65a7fde0531a544a4843ae584e6f41015a6d29b8b7082d6ea00da14f133d",
+          "patchSha256": "b05b3bd303522eaf129747589e59aaa5f5eb332a1036cb63163f5eae1ae1ce39",
+          "byteExactReconstruction": true
+        }
+      ]
+    },
+    "limitations": "An intermediate worker boundary diff was stale. Additive parent diff/inverse replacements were verified by byte-exact reconstruction in both directions; stale originals preserved. Offline report-generation EEXIST and replaced own diagnostics are not live-attempt receipts.",
+    "publication": "Raw patch files intentionally omitted: they contain local operator paths. Private byte-exact originals/reconstructions and the hashes above remain retained."
+  },
+  "installed": {
+    "result": "passed",
+    "sourceCommit": "49e485c2207fe3c7ebc9aec9488c7ce610459fad",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "version": "0.1.14",
+    "appId": "ai.deepseek.tockteam-desktop",
+    "classification": "unsigned/internal macOS evidence (ad-hoc signed for local execution); not notarized or public distribution",
+    "appPathUsesAsar": true,
+    "sessionMatches": true,
+    "secondInstance": {
+      "singleInstance": true,
+      "permissions": "renderer-permission-denied",
+      "launchPath": "macOS Launch Services (/usr/bin/open)",
+      "persistentAppProcesses": 1,
+      "toggleDelivered": true
+    },
+    "rollback": {
+      "preservedAsarSha256": "1bc5e4a7e64b34dc3815993455f40962e9296abc25ec244402b684b0b8c76580",
+      "validationFailureRecovered": true
+    },
+    "reinstall": {
+      "processTreesGone": true,
+      "restored": 0.6,
+      "runtimeReady": "ready"
+    },
+    "cleanup": {
+      "processTreesGone": true,
+      "smokeRootRemoved": true,
+      "temporaryInstallRemoved": true
+    }
+  },
+  "gates": [
+    {
+      "name": "nested-install-after-frozen",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs run install:tocktutor",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:34:44.787Z",
+      "finishedAt": "2026-09-12T07:34:46.049Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "nested-typecheck",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs run typecheck:tocktutor",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:34:46.079Z",
+      "finishedAt": "2026-09-12T07:34:56.142Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "nested-tests",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs run test:tocktutor",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:34:56.171Z",
+      "finishedAt": "2026-09-12T07:36:55.038Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "nested-build",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs run build:tocktutor",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:37:16.180Z",
+      "finishedAt": "2026-09-12T07:37:24.924Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "manifest",
+      "command": "node scripts/tocktutor-build-manifest.mjs --check",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:37:24.953Z",
+      "finishedAt": "2026-09-12T07:37:25.064Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "root-typecheck",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs run typecheck",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:37:25.093Z",
+      "finishedAt": "2026-09-12T07:37:28.700Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "root-tests",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs test",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:37:28.729Z",
+      "finishedAt": "2026-09-12T07:37:32.464Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "root-build",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs run build",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:37:32.493Z",
+      "finishedAt": "2026-09-12T07:37:33.789Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "installed-smoke",
+      "command": "/usr/bin/env TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT=<private-noindex-root> TOCKTEAM_INSTALLED_SMOKE_REPORT=<private-noindex-root>/installed-report.json TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS=<private-noindex-root>/installed-diagnostics.json node node_modules/pnpm/bin/pnpm.cjs run test:launcher:installed",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:43:24.739Z",
+      "finishedAt": "2026-09-12T07:52:35.884Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "installed-report-check",
+      "command": "node scripts/check-installed-report.mjs <private-noindex-root>/installed-report.json",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:52:52.632Z",
+      "finishedAt": "2026-09-12T07:52:52.741Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "post-installed-workbench-boundary",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs -C plugins/tocktutor/packages/tockteam-tocktutor-workbench exec node --test tests/package-boundary.test.ts",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:53:39.493Z",
+      "finishedAt": "2026-09-12T07:53:40.027Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    },
+    {
+      "name": "post-installed-desktop-boundary",
+      "command": "node node_modules/pnpm/bin/pnpm.cjs -C plugins/tocktutor/packages/tockbot-note-desktop exec node --test tests/package-boundary.test.ts",
+      "exitCode": 0,
+      "startedAt": "2026-09-12T07:53:40.120Z",
+      "finishedAt": "2026-09-12T07:53:40.487Z",
+      "remainingOwned": [],
+      "processGroupStopped": true
+    }
+  ],
+  "independentReviews": [
+    {
+      "run": "c874c09a-49b5-4e42-b4c5-75387a26f790",
+      "scope": "Actual live PNG, consumer/citation/focus proof and cleanup; functional PASS, original procedure defect disclosed."
+    },
+    {
+      "run": "1d1a775b-3054-4ca2-9555-f1488348bbab",
+      "scope": "Corrected offline executable and independent RED/GREEN accepted; required additive stale-diff correction and one installed smoke, subsequently completed by parent."
+    },
+    {
+      "run": "e400436e-1d37-40d8-9567-b533a542c390",
+      "scope": "Prior lineage and installed gates accepted, objective receipts/actual screenshot checked; PR opening approved after omitting raw path-bearing patches, which the parent removed. Remote final-head CI still required."
+    }
+  ],
+  "limitations": [
+    "Configured provider budget is not a measured HTTP attempt count.",
+    "Live screenshot precedes citation navigation; editor focus is DOM evidence, not a source-editor screenshot.",
+    "Search Options layout has separate historical proof; this screenshot does not establish full palette parity.",
+    "Historical early offline retry profile cleanup remains unverified; it is not attributed to the fully cleaned live or installed runs.",
+    "CI must pass on the final PR head before merge readiness is claimed."
+  ]
+}
