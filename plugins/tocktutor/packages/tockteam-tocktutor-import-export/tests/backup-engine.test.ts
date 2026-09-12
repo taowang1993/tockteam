@@ -138,6 +138,45 @@ function setup() {
   }
 }
 
+test('backup captures every ordinary runtime cursor page before publishing', async t => {
+  const { desktop, runtime, service } = setup()
+  const full = await runtime.listTree() as Awaited<ReturnType<BackupRuntimePort['listTree']>>
+  const cursors: Array<string | null | undefined> = []
+  t.mock.method(runtime, 'listTree', async (request: Parameters<BackupRuntimePort['listTree']>[0]) => {
+    cursors.push(request.cursor)
+    const more = request.cursor == null
+    return { ...full, entries: full.entries.slice(more ? 0 : 1, more ? 1 : 2), complete: !more,
+      cursor: more ? 'next-page' : null, truncated: more, truncationReason: more ? 'result-limit' : null }
+  })
+  try {
+    const preview = await service.prepare({ identity }, AbortSignal.timeout(5_000))
+    const binding = { operationId: identity.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+    await service.approve(binding)
+    assert.equal((await service.commit(binding, AbortSignal.timeout(5_000))).status, 'published')
+    assert.deepEqual(verifyBackupArchive(desktop.written).manifest.entries.map(entry => entry.path),
+      ['.obsidian/app.json', 'Folder/Note.md', 'image.png'])
+    assert.deepEqual(cursors, [null, 'next-page', null, 'next-page', null, 'next-page'])
+  } finally {
+    await service.dispose()
+  }
+})
+
+for (const reason of ['entry-limit', 'depth-limit', 'result-limit'] as const) {
+  test(`backup rejects an incomplete tree without a resumable cursor (${reason})`, async t => {
+    const { desktop, runtime, service } = setup()
+    const full = await runtime.listTree() as Awaited<ReturnType<BackupRuntimePort['listTree']>>
+    t.mock.method(runtime, 'listTree', async () => ({ ...full, complete: false, cursor: null,
+      truncated: true, truncationReason: reason }))
+    try {
+      await assert.rejects(service.prepare({ identity }, AbortSignal.timeout(5_000)),
+        (error: unknown) => error instanceof ImportExportError && error.code === 'stale-vault')
+      assert.deepEqual(desktop.calls, [])
+    } finally {
+      await service.dispose()
+    }
+  })
+}
+
 test('prepares and publishes once while response-loss retries return the same evidence', async () => {
   const { desktop, service } = setup()
   let resumePick = (): void => {}

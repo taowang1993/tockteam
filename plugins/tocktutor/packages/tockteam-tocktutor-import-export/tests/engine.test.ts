@@ -186,6 +186,32 @@ function engine(picker = new FakePicker(), runtime = new FakeRuntime()) {
   }
 }
 
+test('import checks destination collisions across ordinary runtime cursor pages', async t => {
+  const { picker, runtime, service } = engine()
+  runtime.existing = new Set(['Other.md', 'A.md'])
+  const full = await runtime.listTree() as Awaited<ReturnType<RuntimePort['listTree']>>
+  const cursors: Array<string | null | undefined> = []
+  t.mock.method(runtime, 'listTree', async (request: Parameters<RuntimePort['listTree']>[0]) => {
+    cursors.push(request.cursor)
+    const more = request.cursor == null
+    return { ...full, entries: full.entries.slice(more ? 0 : 1, more ? 1 : 2), complete: !more,
+      cursor: more ? 'next-page' : null, truncated: more, truncationReason: more ? 'result-limit' : null }
+  })
+  try {
+    const preview = await service.inspect({ format: 'markdown-folder', identity }, AbortSignal.timeout(5_000))
+    assert.deepEqual(preview.items.map(item => item.destination), ['image.png'])
+    assert.ok(preview.skipped.some(item => item.label === 'A.md' && item.reason === 'destination-exists'))
+    const binding = { operationId: preview.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+    await service.approve(binding)
+    assert.equal((await service.commit(binding, AbortSignal.timeout(5_000))).status, 'committed')
+    assert.deepEqual(runtime.created, ['image.png'])
+    assert.deepEqual(cursors, [null, 'next-page', null, 'next-page'])
+    assert.equal(picker.released, 1)
+  } finally {
+    await service.dispose()
+  }
+})
+
 test('reviews and exclusively restores passive backup bytes while preserving existing config', async () => {
   const picker = new FakePicker()
   picker.backup = createBackupArchive({
