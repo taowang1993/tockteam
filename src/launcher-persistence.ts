@@ -218,7 +218,7 @@ async function syncDirectory(directory: string): Promise<void> {
   finally { await handle.close() }
 }
 
-export async function ensurePrivateDirectory(directory: string): Promise<void> {
+export async function ensurePrivateDirectory(directory: string, preserveMode = false): Promise<void> {
   await mkdir(path.dirname(directory), { recursive: true, mode: 0o700 })
   try { await mkdir(directory, { mode: 0o700 }) }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
@@ -231,23 +231,24 @@ export async function ensurePrivateDirectory(directory: string): Promise<void> {
       throw new Error('TockLauncher managed directory changed')
     }
     // Windows inherits the app-data ACL; directory fchmod neither establishes ACL privacy nor works there.
-    if (process.platform !== 'win32') await handle.chmod(0o700)
+    if (!preserveMode && process.platform !== 'win32') await handle.chmod(0o700)
   } finally { await handle.close() }
 }
 
-/** Managed app-owned atomic file writer. It never follows a temporary symlink. */
+/** Atomic file writer. Export destinations keep their user-owned directory permissions. */
 export async function atomicWrite(filePath: string, contents: string, options: Readonly<{
   backup?: boolean
   backupMaxBytes?: number
+  preserveDirectoryMode?: boolean
   validateBackup?: (contents: string) => void
 }> = {}): Promise<void> {
   const directory = path.dirname(filePath)
-  await ensurePrivateDirectory(directory)
+  await ensurePrivateDirectory(directory, options.preserveDirectoryMode)
   if (options.backup !== false && await exists(filePath)) {
     try {
       const previous = await readBoundedRegularFile(filePath, options.backupMaxBytes ?? MAX_LAUNCHER_INDEX_BYTES)
       options.validateBackup?.(previous)
-      await atomicWrite(`${filePath}.bak`, previous, { backup: false })
+      await atomicWrite(`${filePath}.bak`, previous, { backup: false, preserveDirectoryMode: options.preserveDirectoryMode === true })
     } catch { /* invalid primary is not copied over a known-good backup */ }
   }
   const temporary = path.join(directory, `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`)
@@ -677,7 +678,7 @@ export class LauncherPersistenceRepository {
         }
       }
       const exported = parseLauncherSettingsRecord(this.#settings, { omitMainOwned: true, omitSensitive: true })
-      await atomicWrite(absolute, JSON.stringify(exported, null, 2), { backup: false })
+      await atomicWrite(absolute, JSON.stringify(exported, null, 2), { backup: false, preserveDirectoryMode: true })
     })
   }
 

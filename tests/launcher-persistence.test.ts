@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { link as hardLink, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
+import { chmod, link as hardLink, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -101,6 +101,22 @@ test('startup removes stale negligible ranking entries from the managed artifact
 test('persistence tolerates only unsupported Windows directory fsync after committing the file', () => {
   assert.match(persistenceSource, /process\.platform !== 'win32'[\s\S]+EPERM/u)
   assert.match(persistenceSource, /await handle\.sync\(\)/u)
+})
+
+test('settings export preserves user directory permissions and rejects symlink parents', { skip: process.platform === 'win32' }, async () => {
+  const userDataPath = await root()
+  const repository = await LauncherPersistenceRepository.open({ userDataPath })
+  try {
+    const directory = path.join(userDataPath, 'shared-exports')
+    await mkdir(directory)
+    await chmod(directory, 0o750)
+    await repository.exportSettingsToPath(path.join(directory, 'settings.json'))
+    assert.equal((await lstat(directory)).mode & 0o777, 0o750)
+    assert.equal((await lstat(path.join(directory, 'settings.json'))).mode & 0o777, 0o600)
+    const alias = path.join(userDataPath, 'alias')
+    await symlink(directory, alias)
+    await assert.rejects(repository.exportSettingsToPath(path.join(alias, 'other.json')), /symlink/u)
+  } finally { await repository.close(); await rm(userDataPath, { recursive: true, force: true }) }
 })
 
 test('managed persistence rejects a pre-existing launcher symlink', async () => {
