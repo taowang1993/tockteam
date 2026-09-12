@@ -38,6 +38,24 @@ test('creates a deterministic complete nested backup and independently verifies 
   ])
 })
 
+test('round-trips recorded WebM audio and icon attachments', () => {
+  const attachments: BackupSnapshotEntry[] = ['Recording.weba', 'favicon.ico'].map(path => ({
+    bytes: new Uint8Array([1, 2, 3]), kind: 'attachment', path, revision: 'rev-asset',
+  }))
+  const archive = createBackupArchive({ createdAt: 1_000, entries: [...entries, ...attachments], vault })
+  assert.deepEqual(planVerifiedRestore(archive).files.filter(file => /\.(weba|ico)$/u.test(file.destination))
+    .map(file => file.destination).sort(), ['Recording.weba', 'favicon.ico'].sort())
+})
+
+test('new backup publication cannot exceed the reviewed restore item bound', () => {
+  const files: BackupSnapshotEntry[] = Array.from({ length: 5_001 }, (_, index) => ({
+    bytes: encode('note'), kind: 'document', path: `${index}.md`, revision: 'revision',
+  }))
+  assert.throws(() => createBackupArchive({ createdAt: 1_000, entries: files, vault }), ImportExportError)
+  const archive = createBackupArchive({ createdAt: 1_000, entries: files.slice(0, 5_000), vault })
+  assert.equal(planVerifiedRestore(archive).files.length, 5_000)
+})
+
 test('orders archive paths by portable code units instead of the host locale', () => {
   const archive = createBackupArchive({
     createdAt: 1_000,

@@ -4,6 +4,7 @@ import {
   comparePortableText,
   destinationAliasKey,
   ImportExportError,
+  MAX_PLAN_ITEMS,
   normalizeRelativePath,
   sha256,
   stableJson,
@@ -78,7 +79,7 @@ function supported(path: string, kind: BackupSnapshotEntry['kind']): boolean {
   const extension = path.split('/').at(-1)?.split('.').at(-1)?.toLocaleLowerCase('en-US') ?? ''
   return kind === 'document'
     ? ['base', 'canvas', 'markdown', 'md'].includes(extension)
-    : ['3gp', 'avif', 'bmp', 'flac', 'gif', 'jpeg', 'jpg', 'm4a', 'mkv', 'mov', 'mp3', 'mp4', 'ogg', 'ogv', 'pdf', 'png', 'wav', 'webm', 'webp'].includes(extension)
+    : ['3gp', 'avif', 'bmp', 'flac', 'gif', 'ico', 'jpeg', 'jpg', 'm4a', 'mkv', 'mov', 'mp3', 'mp4', 'ogg', 'ogv', 'pdf', 'png', 'wav', 'weba', 'webm', 'webp'].includes(extension)
 }
 
 function backupPath(path: string, kind: BackupSnapshotEntry['kind']): string {
@@ -122,7 +123,7 @@ export function createBackupArchive(input: {
     || typeof input.vault.id !== 'string'
     || input.vault.id.length === 0
     || input.entries.length === 0
-    || input.entries.length > MAX_BACKUP_ENTRIES) invalidManifest()
+    || input.entries.length > MAX_PLAN_ITEMS) invalidManifest()
   const byPath = new Map(input.entries.map(entry => [backupPath(entry.path, entry.kind), entry]))
   if (byPath.size !== input.entries.length) invalidManifest()
   const aliases = new Set<string>()
