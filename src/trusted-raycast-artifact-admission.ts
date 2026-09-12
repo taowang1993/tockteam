@@ -62,6 +62,19 @@ export function attestTrustedRaycastBuildIdentity(identity: Omit<TrustedRaycastB
   return createHash('sha256').update(identityPayload(identity)).digest('hex')
 }
 
+/** Admit the exact pre-extension-ID Google format and normalize it before comparison. */
+export function upgradeLegacyGoogleTranslateBuildIdentity(metadata: unknown, descriptor: TrustedRaycastDescriptor): TrustedRaycastBuildIdentity {
+  if (descriptor.extensionId !== 'google-translate' || typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) throw new Error('Legacy Google Translate build identity is unavailable')
+  const record = metadata as Record<string, unknown>
+  if (Object.keys(record).sort().join(',') !== 'artifactSha256,childSha256,command,metadataSha256,react,reconciler,resolutionSha256') throw new Error('Legacy Google Translate build identity is incomplete')
+  if (record.artifactSha256 !== descriptor.artifactSha256 || record.command !== descriptor.command || record.react !== descriptor.react || record.reconciler !== descriptor.reconciler) throw new Error('Legacy Google Translate build identity mismatch')
+  for (const key of ['artifactSha256', 'childSha256', 'metadataSha256', 'resolutionSha256'] as const) if (typeof record[key] !== 'string' || !SHA256_PATTERN.test(record[key])) throw new Error('Legacy Google Translate build identity digest is invalid')
+  const legacyPayload = { artifactSha256: record.artifactSha256, childSha256: record.childSha256, command: record.command, react: record.react, reconciler: record.reconciler, resolutionSha256: record.resolutionSha256 }
+  if (createHash('sha256').update(JSON.stringify(legacyPayload)).digest('hex') !== record.metadataSha256) throw new Error('Legacy Google Translate build metadata attestation mismatch')
+  const identity = { artifactSha256: record.artifactSha256 as string, childSha256: record.childSha256 as string, command: descriptor.command, extensionId: descriptor.extensionId, react: descriptor.react, reconciler: descriptor.reconciler, resolutionSha256: record.resolutionSha256 as string } satisfies Omit<TrustedRaycastBuildIdentity, 'metadataSha256'>
+  return Object.freeze({ ...identity, metadataSha256: attestTrustedRaycastBuildIdentity(identity) })
+}
+
 /** Every load path shares this admission: pinned archive, reviewed pairing, and attested derived bytes. */
 export function assertTrustedRaycastBuildIdentity(metadata: unknown, descriptor: TrustedRaycastDescriptor): TrustedRaycastBuildIdentity {
   if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) throw new Error('Trusted extension build identity is missing')
@@ -84,10 +97,18 @@ export function readTrustedRaycastDerivedFile(path: string, expected: string): B
   return bytes
 }
 
-export function readTrustedRaycastBuildIdentity(runtimeDir: string, descriptor: TrustedRaycastDescriptor): TrustedRaycastBuildIdentity {
-  const metadata = JSON.parse(readTrustedRaycastFile(join(runtimeDir, 'build.json'), 64 * 1024).toString('utf8')) as unknown
-  const identity = assertTrustedRaycastBuildIdentity(metadata, descriptor)
+const verifyTrustedRaycastBuildFiles = (runtimeDir: string, descriptor: TrustedRaycastDescriptor, identity: TrustedRaycastBuildIdentity): TrustedRaycastBuildIdentity => {
   admitTrustedRaycastArtifact(descriptor, join(runtimeDir, 'artifact.tar'))
   for (const [name, digest] of [['child.mjs', identity.childSha256], ['resolution.mjs', identity.resolutionSha256]] as const) readTrustedRaycastDerivedFile(join(runtimeDir, name), digest)
   return identity
+}
+
+export function readTrustedRaycastBuildIdentity(runtimeDir: string, descriptor: TrustedRaycastDescriptor): TrustedRaycastBuildIdentity {
+  const metadata = JSON.parse(readTrustedRaycastFile(join(runtimeDir, 'build.json'), 64 * 1024).toString('utf8')) as unknown
+  return verifyTrustedRaycastBuildFiles(runtimeDir, descriptor, assertTrustedRaycastBuildIdentity(metadata, descriptor))
+}
+
+export function readLegacyGoogleTranslateBuildIdentity(runtimeDir: string, descriptor: TrustedRaycastDescriptor): TrustedRaycastBuildIdentity {
+  const metadata = JSON.parse(readTrustedRaycastFile(join(runtimeDir, 'build.json'), 64 * 1024).toString('utf8')) as unknown
+  return verifyTrustedRaycastBuildFiles(runtimeDir, descriptor, upgradeLegacyGoogleTranslateBuildIdentity(metadata, descriptor))
 }

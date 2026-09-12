@@ -11,6 +11,7 @@ import {
   admitTrustedRaycastArtifact,
   assertTrustedRaycastBuildIdentity,
   attestTrustedRaycastBuildIdentity,
+  upgradeLegacyGoogleTranslateBuildIdentity,
 } from '../src/trusted-raycast-artifact-admission.ts'
 import { TRUSTED_RAYCAST_EXTENSION_IDS, getTrustedRaycastDescriptor } from '../src/trusted-raycast-descriptors.ts'
 
@@ -79,6 +80,12 @@ test('build identity cannot select another descriptor, command, or artifact dige
   }
   const identity = { ...payload, metadataSha256: attestTrustedRaycastBuildIdentity(payload) }
   assert.equal(assertTrustedRaycastBuildIdentity(identity, getTrustedRaycastDescriptor('google-translate')!).extensionId, 'google-translate')
+  const { extensionId: _extensionId, ...legacyPayload } = payload
+  const legacyIdentity = { ...legacyPayload, metadataSha256: digest(JSON.stringify(legacyPayload)) }
+  assert.throws(() => assertTrustedRaycastBuildIdentity(legacyIdentity, getTrustedRaycastDescriptor('google-translate')!), /incomplete/)
+  assert.equal(upgradeLegacyGoogleTranslateBuildIdentity(legacyIdentity, getTrustedRaycastDescriptor('google-translate')!).extensionId, 'google-translate')
+  assert.throws(() => upgradeLegacyGoogleTranslateBuildIdentity(legacyIdentity, getTrustedRaycastDescriptor('kaomoji-search')!), /unavailable/)
+  assert.throws(() => upgradeLegacyGoogleTranslateBuildIdentity({ ...legacyIdentity, childSha256: digest('tampered') }, getTrustedRaycastDescriptor('google-translate')!), /attestation/)
   assert.throws(() => assertTrustedRaycastBuildIdentity(identity, getTrustedRaycastDescriptor('kaomoji-search')!), /identity mismatch/)
   assert.throws(() => assertTrustedRaycastBuildIdentity({ ...identity, command: 'index' }, getTrustedRaycastDescriptor('google-translate')!), /identity mismatch|attestation/)
   assert.throws(() => assertTrustedRaycastBuildIdentity({ ...identity, artifactSha256: '0'.repeat(64) }, getTrustedRaycastDescriptor('google-translate')!), /identity mismatch/)

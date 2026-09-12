@@ -94,6 +94,30 @@ test('bundled reviewed Translate installs enabled on first run and preserves lat
   } finally { rmSync(fixture.root, { recursive: true, force: true }) }
 })
 
+test('legacy approved Google Translate identity remains runnable without recovery', async () => {
+  let previews = 0
+  const fixture = makeFixture(DIGEST_V1, async () => { previews++; return '' })
+  try {
+    await install(fixture)
+    const currentBuild = JSON.parse(readFileSync(join(fixture.install, 'current', 'build.json'), 'utf8')) as Record<string, string>
+    const { extensionId: _extensionId, metadataSha256: _metadataSha256, ...legacyPayload } = currentBuild
+    const legacyIdentity = { ...legacyPayload, metadataSha256: digestOf(JSON.stringify(legacyPayload)) }
+    writeFileSync(join(fixture.install, 'current', 'build.json'), JSON.stringify(legacyIdentity))
+    writeFileSync(fixture.state, JSON.stringify({ enabled: true, approvedSha256: DIGEST_V1, installedSha256: DIGEST_V1, approvedIdentity: legacyIdentity }))
+
+    const status = fixture.store().status()
+    assert.equal(status.installed, true)
+    assert.equal(status.digestApproved, true)
+    assert.equal(status.recovery, '')
+    assert.equal(fixture.store().runtimeDir(), join(fixture.install, 'current'))
+    await fixture.store().installBundledDefault()
+    assert.equal(previews, 1, 'compatibility admission does not reinstall an unchanged reviewed runtime')
+
+    writeFileSync(join(fixture.install, 'current', 'child.mjs'), 'tampered')
+    assert.equal(fixture.store().status().recovery, 'invalid-install', 'legacy metadata cannot authorize changed derived code')
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
 test('install lifecycle: stage -> pinned candidate -> isolated preview -> explicit apply keeps installed separate from enabled', async () => {
   const fixture = makeFixture()
   try {

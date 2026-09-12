@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { closeSync, constants as fsConstants, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
-import { assertTrustedRaycastBuildIdentity, readTrustedRaycastBuildIdentity, readTrustedRaycastFile, type TrustedRaycastBuildIdentity } from './trusted-raycast-artifact-admission.ts'
+import { assertTrustedRaycastBuildIdentity, readLegacyGoogleTranslateBuildIdentity, readTrustedRaycastBuildIdentity, readTrustedRaycastFile, upgradeLegacyGoogleTranslateBuildIdentity, type TrustedRaycastBuildIdentity } from './trusted-raycast-artifact-admission.ts'
 import type { TrustedRaycastDescriptor } from './trusted-raycast-descriptors.ts'
 import type { TrustedRaycastTrustRecovery, TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
 
@@ -34,9 +34,13 @@ const descriptorForArtifact = (descriptor: TrustedRaycastDescriptor, artifactSha
     ? Object.freeze({ ...descriptor, artifactSha256 })
     : undefined
 }
-const identityFrom = (value: unknown, descriptor: TrustedRaycastDescriptor): TrustedRaycastBuildIdentity | undefined => {
+const identityFrom = (value: unknown, descriptor: TrustedRaycastDescriptor, allowLegacyGoogle = false): TrustedRaycastBuildIdentity | undefined => {
   const expected = descriptorForArtifact(descriptor, (value as { artifactSha256?: unknown } | null)?.artifactSha256)
-  try { return expected === undefined ? undefined : assertTrustedRaycastBuildIdentity(value, expected) } catch { return undefined }
+  if (expected === undefined) return undefined
+  try { return assertTrustedRaycastBuildIdentity(value, expected) } catch {
+    if (allowLegacyGoogle) try { return upgradeLegacyGoogleTranslateBuildIdentity(value, expected) } catch { /* Invalid legacy identity. */ }
+    return undefined
+  }
 }
 const sameIdentity = (left: TrustedRaycastBuildIdentity | undefined, right: TrustedRaycastBuildIdentity | undefined): boolean => left !== undefined && right !== undefined && JSON.stringify(left) === JSON.stringify(right)
 const readTrustFile = (path: string, descriptor: TrustedRaycastDescriptor): TrustFile => {
@@ -83,12 +87,14 @@ export class TrustedRaycastTrustStore {
   private readonly stageTmpDir = (): string => join(this.options.installRoot, 'stage.tmp')
   private readonly journalPath = (): string => join(this.options.installRoot, 'rotation.json')
 
-  private readIdentity(dir: string, includePrevious = true): TrustedRaycastBuildIdentity | undefined {
+  private readIdentity(dir: string, includePrevious = true, allowLegacyGoogle = false): TrustedRaycastBuildIdentity | undefined {
     try {
       if (lstatSync(dir).isSymbolicLink()) return undefined
       for (const artifactSha256 of [this.descriptor.artifactSha256, ...(includePrevious ? this.descriptor.previousArtifactSha256s : [])]) {
         const descriptor = artifactSha256 === this.descriptor.artifactSha256 ? this.descriptor : Object.freeze({ ...this.descriptor, artifactSha256 })
-        try { return readTrustedRaycastBuildIdentity(dir, descriptor) } catch { /* Try the next source-controlled historical digest. */ }
+        try { return readTrustedRaycastBuildIdentity(dir, descriptor) } catch {
+          if (allowLegacyGoogle) try { return readLegacyGoogleTranslateBuildIdentity(dir, descriptor) } catch { /* Try the next source-controlled historical digest. */ }
+        }
       }
       return undefined
     } catch { return undefined }
@@ -99,7 +105,7 @@ export class TrustedRaycastTrustStore {
   }
   private readExact(dir: string, identity: TrustedRaycastBuildIdentity | undefined): TrustedRaycastBuildIdentity | undefined {
     if (identity === undefined || identityFrom(identity, this.descriptor) === undefined) return undefined
-    const actual = this.readIdentity(dir)
+    const actual = this.readIdentity(dir, true, true)
     return sameIdentity(actual, identity) ? actual : undefined
   }
   private readJournal(): RotationJournal | undefined {
@@ -120,9 +126,9 @@ export class TrustedRaycastTrustStore {
     const trust = readTrustFile(this.options.stateFile, this.descriptor)
     const journalPresent = existsSync(this.journalPath())
     const journal = this.readJournal()
-    const approvedIdentity = identityFrom(trust.approvedIdentity, this.descriptor)
-    const previousIdentity = identityFrom(trust.previousIdentity, this.descriptor)
-    const current = this.readIdentity(this.currentDir()) ?? this.readExact(this.currentDir(), approvedIdentity)
+    const approvedIdentity = identityFrom(trust.approvedIdentity, this.descriptor, true)
+    const previousIdentity = identityFrom(trust.previousIdentity, this.descriptor, true)
+    const current = this.readIdentity(this.currentDir(), true, true) ?? this.readExact(this.currentDir(), approvedIdentity)
     const currentApproved = current !== undefined && (sameIdentity(current, approvedIdentity) || (approvedIdentity === undefined && current.artifactSha256 === trust.approvedSha256))
     const previous = this.readExact(this.previousDir(), previousIdentity)
     const stage = (() => { try { const parsed = JSON.parse(readTrustedRaycastFile(join(this.stageDir(), 'stage.json'), 4096).toString('utf8')) as Record<string, unknown>; return parsed.extensionId === this.descriptor.extensionId && typeof parsed.digest === 'string' && SHA256_PATTERN.test(parsed.digest) && typeof parsed.previewed === 'boolean' ? { digest: parsed.digest, previewed: parsed.previewed } : { digest: '', previewed: false } } catch { return { digest: '', previewed: false } } })()
@@ -177,7 +183,7 @@ export class TrustedRaycastTrustStore {
     const candidate = this.readIdentity(this.stageDir(), false)
     if (candidate === undefined) throw new Error('Staged Translate candidate failed its digest check')
     const trust = readTrustFile(this.options.stateFile, this.descriptor)
-    const previous = this.readIdentity(this.currentDir())
+    const previous = this.readIdentity(this.currentDir(), true, true)
     writeAtomic(this.journalPath(), Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, candidate, ...(previous === undefined ? {} : { previous }) })))
     try {
       this.ensureInstallRoot()
@@ -199,7 +205,7 @@ export class TrustedRaycastTrustStore {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
     }
     const candidate = this.candidateIdentity()
-    const installed = current.installed ? this.readIdentity(this.currentDir()) : undefined
+    const installed = current.installed ? this.readIdentity(this.currentDir(), true, true) : undefined
     const hostRefresh = decided && candidate !== undefined && installed !== undefined
       && candidate.artifactSha256 === installed.artifactSha256 && !sameIdentity(candidate, installed)
     if ((decided && !hostRefresh) || !current.candidateAvailable || current.recovery !== '') return current
@@ -229,7 +235,7 @@ export class TrustedRaycastTrustStore {
     if (healthy.recovery === '') return healthy
     const trust = readTrustFile(this.options.stateFile, this.descriptor)
     const journal = this.readJournal()
-    const approvedIdentity = identityFrom(trust.approvedIdentity, this.descriptor)
+    const approvedIdentity = identityFrom(trust.approvedIdentity, this.descriptor, true)
     const currentApproved = this.readExact(this.currentDir(), approvedIdentity)
     if (journal === undefined && existsSync(this.journalPath()) && currentApproved !== undefined) {
       rmSync(this.journalPath(), { force: true }); return this.status()
