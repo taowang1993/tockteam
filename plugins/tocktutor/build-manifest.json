@@ -223,7 +223,7 @@
     },
     {
       "path": "packages/tockbot-note-vault/index.js",
-      "sha256": "4dce5142e88cdb98b1a8eb24389883c153086bde45daf38e4086e3d75eb02ab6"
+      "sha256": "6caea307d028bf3eb2fde0c803043306ee573881ce80fd629f5d74d805c02142"
     },
     {
       "path": "packages/tockbot-note-vault/inspection.d.ts",
@@ -231,7 +231,7 @@
     },
     {
       "path": "packages/tockbot-note-vault/inspection.js",
-      "sha256": "c6d9ac109186962b70612cd08062d02ee5d5705ff03e38e8392e30b745016da0"
+      "sha256": "6ca873be0f792213f4d1bfaa9183cdd87f39268e61a12b69e96efe408c90da83"
     },
     {
       "path": "packages/tockbot-note-vault/package.json",
