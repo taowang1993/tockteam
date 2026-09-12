@@ -975,7 +975,7 @@ export async function launchPackaged(executable, userData, port, extraArgs = [],
   const temporaryRoot = process.platform === 'linux' ? await mkdtemp(join(tmpdir(), 'tt-')) : undefined
   await prepareSmokeEnvironmentRoots(userData, temporaryRoot)
   const childArgs = [
-    ...(inactiveVisualProof && process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
+    ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
     ...(inactiveVisualProof ? [LAUNCHER_INSTALLED_FIRST_USE_FLAG] : []),
     ...extraArgs,
     `--remote-debugging-address=127.0.0.1`,

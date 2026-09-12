@@ -458,6 +458,7 @@ export async function recoverDebTransition({ candidate, prior, install, validate
 
 async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = [], temporaryRoot = undefined, applicationPath = undefined) {
   const secondArgs = [
+    ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
     ...extraArgs,
     `--user-data-dir=${userData}`,
     '--toggle',
