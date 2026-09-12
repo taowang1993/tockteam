@@ -31,7 +31,7 @@ test('an injected mid-gate failure removes only a verified post-baseline workspa
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
-test('refuses pre-existing, symlinked, and unowned workspace candidates', async () => {
+test('refuses pre-existing, symlinked, and unowned workspace candidates', { skip: posixOnly }, async () => {
   const root = await fixture(); const outside = await fixture()
   try {
     const existing = join(root, 'tockteam-trusted-raycast-existing'); await mkdir(existing, { mode: 0o700 })
