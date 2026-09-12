@@ -1,5 +1,6 @@
-import { lstatSync, readFileSync } from 'node:fs'
+import { lstatSync } from 'node:fs'
 import { isTrustedRaycastPreferences, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastPreference } from './trusted-raycast-contract.ts'
+import { readBoundedRegularFile } from './trusted-raycast-bounded-file.ts'
 import { atomicWrite } from './launcher-persistence.ts'
 
 export type TrustedRaycastPreferences = Readonly<Record<string, TrustedRaycastPreference>>
@@ -8,7 +9,7 @@ export type TrustedRaycastPreferenceState = Readonly<{ configured: boolean; valu
 /** User-owned preference file; missing or invalid entries fall back without rewriting it. */
 export function loadTrustedRaycastPreferenceState(path: string): TrustedRaycastPreferenceState {
   try {
-    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
+    const parsed: unknown = JSON.parse(readBoundedRegularFile(path, 4096))
     if (!isTrustedRaycastPreferences(parsed)) throw new Error('invalid')
     return Object.freeze({ configured: true, values: Object.freeze({ ...parsed }) })
   } catch { return Object.freeze({ configured: false, values: TRUSTED_RAYCAST_PREFERENCE_DEFAULTS }) }

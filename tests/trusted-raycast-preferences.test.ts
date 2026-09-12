@@ -1,8 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import {
   loadTrustedRaycastPreferenceState,
   saveTrustedRaycastPreferences,
@@ -23,6 +25,33 @@ test('Translate preferences begin unconfigured, persist exact values, and reject
     assert.equal(JSON.parse(readFileSync(path, 'utf8')).lang2, 'zh-CN')
     assert.deepEqual(loadTrustedRaycastPreferenceState(path), { configured: true, values })
     await assert.rejects(saveTrustedRaycastPreferences(path, { ...values, lang1: '<script>' }), /preferences/i)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('Translate preference reads use bounded no-follow regular-file admission', () => {
+  const root = mkdtempSync(join(tmpdir(), 'raycast-preferences-read-'))
+  const path = join(root, 'preferences.json')
+  const outside = join(root, 'outside.json')
+  try {
+    writeFileSync(path, 'x'.repeat(4097))
+    assert.deepEqual(loadTrustedRaycastPreferenceState(path), { configured: false, values: TRUSTED_RAYCAST_PREFERENCE_DEFAULTS })
+    rmSync(path)
+    mkdirSync(path)
+    assert.deepEqual(loadTrustedRaycastPreferenceState(path), { configured: false, values: TRUSTED_RAYCAST_PREFERENCE_DEFAULTS })
+    rmSync(path, { recursive: true })
+    writeFileSync(outside, JSON.stringify(TRUSTED_RAYCAST_PREFERENCE_DEFAULTS))
+    symlinkSync(outside, path)
+    assert.deepEqual(loadTrustedRaycastPreferenceState(path), { configured: false, values: TRUSTED_RAYCAST_PREFERENCE_DEFAULTS })
+
+    if (process.platform !== 'win32') {
+      rmSync(path)
+      const fifo = join(root, 'fifo')
+      assert.equal(spawnSync('/usr/bin/mkfifo', [fifo]).status, 0)
+      const module = pathToFileURL(resolve('src/trusted-raycast-preferences.ts')).href
+      const child = spawnSync(process.execPath, ['--input-type=module', '-e', `import { loadTrustedRaycastPreferenceState } from ${JSON.stringify(module)}; if (loadTrustedRaycastPreferenceState(process.argv[1]).configured) process.exit(2)`, fifo], { timeout: 1500, killSignal: 'SIGKILL' })
+      assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' })
+      assert.equal(child.status, 0, child.error?.message ?? child.stderr.toString())
+    }
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
