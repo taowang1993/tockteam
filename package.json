@@ -115,6 +115,7 @@
     "start": "pnpm run build && node scripts/stage-dsh.mjs --quick && node scripts/electron-runtime.mjs && electron .",
     "start:fresh": "pnpm run build && pnpm run stage:dsh && node scripts/electron-runtime.mjs && electron .",
     "test": "node --test tests/*.test.ts",
+    "test:coverage": "node -e \"require('node:fs').mkdirSync('coverage', { recursive: true })\" && node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-include=\"plugins/**/*.ts\" --test-coverage-include=\"scripts/**/*.mjs\" --test-coverage-include=\"scripts/**/*.ts\" --test-coverage-exclude=\"tests/**\" --test-coverage-exclude=\"**/node_modules/**\" --test-coverage-exclude=\"**/dist/**\" --test-coverage-exclude=\"**/vendor/**\" --test-coverage-exclude=\"upstream/**\" --test-coverage-exclude=\"**/release/**\" --test-coverage-exclude=\"**/.stage/**\" --test-coverage-exclude=\"plugins/tocktutor/**\" --test-coverage-exclude=\"scripts/**/*tocktutor*.mjs\" --test-reporter lcov --test-reporter-destination coverage/lcov.info --test-reporter spec --test-reporter-destination stdout \"tests/*.test.ts\"",
     "test:tocktutor": "pnpm -C plugins/tocktutor run test",
     "typecheck": "tsc --noEmit",
     "typecheck:tocktutor": "pnpm -C plugins/tocktutor run typecheck",

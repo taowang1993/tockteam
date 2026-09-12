@@ -8,6 +8,7 @@ plugins/tocktutor/packages/*/*.tgz
 .cache/
 /.local/
 release/
+coverage/
 tmp/
 .clawpatch/
 *.log
