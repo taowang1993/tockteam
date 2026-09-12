@@ -1208,6 +1208,131 @@ test('the marketplace protects the upstream Better Sidebar alias', async () => {
   }
 })
 
+test('protected uninstall, enable, and disable cannot mutate marketplace state', async () => {
+  for (const action of ['uninstall', 'enable', 'disable'] as const) {
+    const setup = fixture()
+    try {
+      const managed = join(setup.profileDir, '.tockteam')
+      const state = {
+        entries: [{
+          installedAt: '2026-08-24T00:00:00Z',
+          mechanism: 'bundle',
+          packageName: '@tockteam/desktop',
+          pluginId: 'tockteam-desktop',
+          resolvedCommit: COMMIT,
+          source: `github:dsh-external/tockteam-desktop#${COMMIT}`,
+        }],
+        locks: [],
+        version: 2,
+      }
+      mkdirSync(managed, { recursive: true })
+      writeFileSync(join(managed, 'marketplace.json'), JSON.stringify(state, undefined, 2) + '\n')
+      const manifest = {
+        name: 'desktop',
+        private: true,
+        dependencies: { '@tockteam/desktop': 'link:.tockteam/sources/desktop' },
+        dsh: { profile: { bundles: action === 'enable' ? [] : ['@tockteam/desktop'] } },
+      }
+      writeFileSync(join(setup.profileDir, 'package.json'), JSON.stringify(manifest, undefined, 2) + '\n')
+      const before = await setup.manager.dispatch({ type: 'refresh' })
+      const stateBefore = readFileSync(join(managed, 'marketplace.json'), 'utf8')
+      const manifestBefore = readFileSync(join(setup.profileDir, 'package.json'), 'utf8')
+
+      const after = await setup.manager.dispatch({
+        type: 'prepare',
+        action,
+        pluginId: 'tockteam-desktop',
+      })
+      assert.match(after.error ?? '', /protected by the desktop/u)
+      assert.equal(after.preview, null)
+      assert.deepEqual(after.installed, before.installed)
+      assert.deepEqual(after.sourceLocks, before.sourceLocks)
+      assert.deepEqual(after.lifecycle, before.lifecycle)
+      assert.equal(readFileSync(join(managed, 'marketplace.json'), 'utf8'), stateBefore)
+      assert.equal(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'), manifestBefore)
+      assert.deepEqual(setup.platform.commands, [])
+    } finally {
+      setup.cleanup()
+    }
+  }
+})
+
+test('manifest package names remain protected even when the catalog row is not', async () => {
+  const setup = fixture()
+  try {
+    const readRepositoryFile = setup.platform.readRepositoryFile.bind(setup.platform)
+    setup.platform.readRepositoryFile = async (repository: string, path: string, _commit?: string) => {
+      if (repository === 'omdsh-dev/safe-demo' && path === 'package.json') {
+        return JSON.stringify({
+          name: '@tockteam/skins',
+          dsh: { bundle: { patch: './cordis.patch.yml' } },
+        })
+      }
+      return await readRepositoryFile(repository, path)
+    }
+    const before = await setup.manager.dispatch({ type: 'refresh' })
+    const after = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'safe-demo',
+    })
+    assert.match(after.error ?? '', /protected by the desktop/u)
+    assert.equal(after.preview, null)
+    assert.deepEqual(after.installed, before.installed)
+    assert.deepEqual(after.lifecycle, before.lifecycle)
+    assert.deepEqual(setup.platform.commands, [])
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('empty and hidden catalogs expose no filtered marketplace rows', async () => {
+  const setup = fixture()
+  try {
+    setup.platform.catalog = {
+      schema: 'dsh-external-hub/v0.1',
+      generated: '2026-08-30T00:00:00Z',
+      repos: [
+        { name: 'hidden', category: 'plugin', bundle: true, hide: true },
+        { name: 'empty', category: 'plugin', bundle: true, empty: true },
+        { name: '../invalid', category: 'plugin', bundle: true },
+      ],
+    }
+    const snapshot = await setup.manager.dispatch({ type: 'refresh' })
+    assert.deepEqual(snapshot.catalog, [])
+    assert.equal(snapshot.error, null)
+    assert.equal(snapshot.lastAction, 'Loaded 0 catalog plugins.')
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('a rejected protected mutation leaves the manager ready for a safe transaction', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    let snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'uninstall',
+      pluginId: 'tockteam-desktop',
+    })
+    assert.match(snapshot.error ?? '', /protected by the desktop/u)
+    assert.equal(snapshot.preview, null)
+
+    snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'safe-demo',
+    })
+    assert.equal(snapshot.error, null)
+    assert.equal(snapshot.preview?.pluginId, 'safe-demo')
+    assert.equal(snapshot.preview?.action, 'install')
+    await setup.manager.dispatch({ type: 'discard' })
+  } finally {
+    setup.cleanup()
+  }
+})
+
 test('installed bundles keep enabled state and update through isolated previews', async () => {
   const setup = fixture()
   try {

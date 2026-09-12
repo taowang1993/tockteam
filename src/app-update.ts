@@ -47,6 +47,7 @@ export type DesktopAppUpdater = Readonly<{
 const STARTUP_DELAY_MS = 15_000
 const POLL_INTERVAL_MS = 4 * 60 * 1_000
 const MAX_TEXT = 2_048
+const REDACTED_TEXT = '[REDACTED]'
 
 type UpdaterFactory = () => AutoUpdaterPort | Promise<AutoUpdaterPort>
 
@@ -55,6 +56,18 @@ type DownloadProgress = Readonly<{ percent?: unknown }>
 
 function boundedText(value: unknown): string {
   return (typeof value === 'string' ? value : String(value)).slice(0, MAX_TEXT)
+}
+
+/** Keep provider diagnostics useful without forwarding credential-shaped values. */
+function updaterErrorText(value: unknown): string {
+  let text = boundedText(value)
+  text = text.replace(/(\bhttps?:\/\/)[^/?#\s@]+@/giu, `$1${REDACTED_TEXT}@`)
+  text = text.replace(/([?&](?:access[_-]?token|api[_-]?key|apikey|auth(?:orization)?|client[_-]?secret|credential|password|private[_-]?key|refresh[_-]?token|secret|sig(?:nature)?|token)(?:=|%3d))[^&#\s]*/giu, `$1${REDACTED_TEXT}`)
+  text = text.replace(/(\bauthorization\b\s*[:=]\s*)(?:(?:bearer|basic|token)\s+)[^\s,;]+/giu, `$1${REDACTED_TEXT}`)
+  text = text.replace(/(\b(?:access[_-]?token|api[_-]?key|apikey|auth(?:orization)?|client[_-]?secret|credential|password|private[_-]?key|refresh[_-]?token|secret|token)\b\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;&}]+)/giu, `$1${REDACTED_TEXT}`)
+  text = text.replace(/(\bbearer\s+)[^\s,;]+/giu, `$1${REDACTED_TEXT}`)
+  text = text.replace(/(\b(?:access[_-]?token|api[_-]?key|apikey|client[_-]?secret|credential|password|private[_-]?key|refresh[_-]?token|secret|token)\b\s+)[^\s,;]+/giu, `$1${REDACTED_TEXT}`)
+  return boundedText(text)
 }
 
 function versionOf(value: unknown, fallback: string | null): string | null {
@@ -175,7 +188,7 @@ export function createDesktopAppUpdater(args: Readonly<{
   ): DesktopAppUpdateState => setState({
     ...state,
     status: 'error',
-    message: boundedText(error instanceof Error ? error.message : error),
+    message: updaterErrorText(error instanceof Error ? error.message : error),
     errorContext: context,
     checkedAt: context === 'check' ? now().toISOString() : state.checkedAt,
     canRetry: true,
@@ -188,7 +201,7 @@ export function createDesktopAppUpdater(args: Readonly<{
     setState({
       ...state,
       status: 'downloaded',
-      message: boundedText(error instanceof Error ? error.message : error),
+      message: updaterErrorText(error instanceof Error ? error.message : error),
       errorContext: 'install',
       canRetry: true,
     })

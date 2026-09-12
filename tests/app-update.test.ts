@@ -270,3 +270,56 @@ test('failed check/download/install remain retryable and recovery runs', async (
   assert.equal(recovered, 1)
   owner.dispose()
 })
+
+test('credential-shaped updater failures are redacted from state and emitted logs', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-update-redaction-'))
+  mkdirSync(join(root, 'resources'))
+  writeFileSync(join(root, 'resources', 'app-update.yml'), 'provider: generic\n')
+  const updater = new FakeUpdater()
+  const failure = 'update metadata request failed: https://release-user:release-password@updates.example.test/channel?token=query-token&api_key=api-key-value&channel=stable Authorization: Bearer bearer-token'
+  const emitted: string[] = []
+  let recovered = 0
+  const owner = createDesktopAppUpdater({
+    app: { ...fakeApp(root, true), resourcesPath: join(root, 'resources') },
+    updater,
+    onStateChange: state => { emitted.push(JSON.stringify(state)) },
+    recoverInstallFailure: async () => { recovered += 1 },
+  })
+  const assertRedacted = (message: string | null): void => {
+    assert.match(message ?? '', /update metadata request failed/u)
+    for (const secret of [
+      'release-user',
+      'release-password',
+      'query-token',
+      'api-key-value',
+      'bearer-token',
+    ]) {
+      assert.doesNotMatch(message ?? '', new RegExp(secret, 'u'))
+      assert.doesNotMatch(emitted.join('\\n'), new RegExp(secret, 'u'))
+    }
+  }
+
+  updater.checkForUpdates = async () => { throw new Error(failure) }
+  let result = await owner.check()
+  assert.equal(result.state.errorContext, 'check')
+  assert.equal(result.state.canRetry, true)
+  assertRedacted(result.state.message)
+
+  updater.checkForUpdates = async () => { updater.emit('update-available', { version: '1.3.0' }) }
+  assert.equal((await owner.check()).state.status, 'available')
+  updater.downloadUpdate = async () => { throw new Error(failure) }
+  result = await owner.download()
+  assert.equal(result.state.errorContext, 'download')
+  assert.equal(result.state.canRetry, true)
+  assertRedacted(result.state.message)
+
+  updater.downloadUpdate = async () => { updater.emit('update-downloaded', { version: '1.3.0' }) }
+  assert.equal((await owner.download()).state.status, 'downloaded')
+  updater.quitAndInstall = () => { throw new Error(failure) }
+  result = await owner.install()
+  assert.equal(result.state.errorContext, 'install')
+  assert.equal(result.state.canRetry, true)
+  assert.equal(recovered, 1)
+  assertRedacted(result.state.message)
+  owner.dispose()
+})
