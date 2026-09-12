@@ -4,12 +4,27 @@ import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawn, execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { isDeepStrictEqual, promisify } from 'node:util'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastNativeDeps } from '../src/trusted-raycast-native.ts'
 import { isTrustedRaycastNativeRequest, isTrustedRaycastNativeOutcome, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS } from '../src/trusted-raycast-contract.ts'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 const exec = promisify(execFile)
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+type PersistedState = Readonly<Record<string, unknown>>
+const waitForPersistedState = async (path: string, predicate: (state: unknown) => boolean, timeout = 5000): Promise<PersistedState> => {
+  const deadline = Date.now() + timeout
+  let last: unknown
+  while (Date.now() < deadline) {
+    try {
+      last = JSON.parse(readFileSync(path, 'utf8')) as unknown
+      if (predicate(last)) return last as PersistedState
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+    await wait(25)
+  }
+  assert.fail(`persisted state predicate unmet: ${JSON.stringify(last)?.slice(0, 512) ?? '<missing>'}`)
+}
 const prior = Object.freeze({ name: 'Notes', capturedAt: Date.now() })
 const defaultClipboardFormats = ['text/plain']
 const deps = (overrides: Partial<TrustedRaycastNativeDeps> = {}): TrustedRaycastNativeDeps => ({ execFile: async () => ({ stdout: '' }), readClipboard: () => 'original clipboard', writeClipboard: () => {}, readClipboardFormats: () => defaultClipboardFormats, readClipboardBuffer: (format: string) => Buffer.from(format === 'text/plain' ? 'original clipboard' : 'bytes'), writeClipboardBuffer: () => {}, ownAppNames: ['TockTeam Desktop'], ...overrides })
@@ -243,7 +258,8 @@ test('reviewed artifact: language sets, nested AddLanguageForm, and restart pers
     manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settled.revision, eventId: dropdown(settled.root).props.fieldEventId, kind: 'fieldChanged', value: JSON.stringify({ langFrom: 'auto', langTo: ['zh-CN', 'en'] }) })
     const selected = await waitRoot(root => dropdown(root)?.props.value === JSON.stringify({ langFrom: 'auto', langTo: ['zh-CN', 'en'] }))
     assert.equal(dropdown(selected.root).props.value, JSON.stringify({ langFrom: 'auto', langTo: ['zh-CN', 'en'] }))
-    assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).selectedLanguageSet.langTo.length, 2, 'cached set persisted to the main-owned state file')
+    const persistedSet = await waitForPersistedState(stateFile, state => state !== null && typeof state === 'object' && isDeepStrictEqual((state as { selectedLanguageSet?: unknown }).selectedLanguageSet, { langFrom: 'auto', langTo: ['zh-CN', 'en'] }))
+    assert.deepEqual(persistedSet.selectedLanguageSet, { langFrom: 'auto', langTo: ['zh-CN', 'en'] }, 'cached set persisted to the main-owned state file')
     await manager.stop()
     // Restart persistence: a fresh child reads the persisted set.
     manager = await start()
@@ -288,7 +304,7 @@ test('reviewed artifact: language sets, nested AddLanguageForm, and restart pers
     manager.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: settledSubmit.revision, eventId: submit.props.actionEventId, kind: 'action' })
     await waitRoot(root => JSON.stringify(root).includes('English') && JSON.stringify(root).includes('French') && !JSON.stringify(root).includes('raycast-form'))
     assert.ok(messages.some((message: any) => message.type === 'toast' && message.title === 'Language set was saved!'), 'success toast from the unchanged source')
-    const persisted = JSON.parse(readFileSync(stateFile, 'utf8'))
+    const persisted = await waitForPersistedState(stateFile, state => state !== null && typeof state === 'object' && isDeepStrictEqual((state as { languages?: unknown }).languages, [{ langFrom: 'en', langTo: ['fr'] }]))
     assert.deepEqual(persisted.languages, [{ langFrom: 'en', langTo: ['fr'] }])
     // Pop back to the translate root.
     const settledBack = await settle()
