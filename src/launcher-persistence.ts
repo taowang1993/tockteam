@@ -754,6 +754,9 @@ export class LauncherPersistenceRepository {
         this.#externalGrant = await this.#writeExternalDescriptor(grant, serialized, previous)
       } catch (error) {
         this.#externalGrant = undefined; this.#externalGrantStatus = 'revoked'; this.#settingsSource = 'managed'
+        // Retire authority durably, without deleting the displaced editor/recovery copies.
+        await rm(this.#grantPath, { force: true })
+        await syncDirectory(this.#rootPath)
         this.#settings = await this.#recoverJson(this.#managedSettingsPath, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), {})
         throw new Error('TockLauncher external settings grant changed or was revoked. Any recovery copies remain beside the selected file.', { cause: error })
       }

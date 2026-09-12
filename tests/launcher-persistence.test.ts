@@ -229,6 +229,14 @@ test('same-inode external edits are preserved and revoke stale launcher state', 
     assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'zh-CN', 'searchEngine.fuzziness': 0.9 })
     assert.equal(repository.snapshot().externalGrantStatus, 'revoked')
     await repository.close()
+    const restarted = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, userDataPath })
+    try {
+      assert.equal(restarted.snapshot().settingsSource, 'managed')
+      await restarted.updateSetting('general.language', 'fr-FR')
+      assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'zh-CN', 'searchEngine.fuzziness': 0.9 })
+      await restarted.grantExternalSettingsFile(external)
+      assert.equal(restarted.snapshot().settingsSource, 'external')
+    } finally { await restarted.close() }
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
