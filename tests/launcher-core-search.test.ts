@@ -48,6 +48,19 @@ test('core search matches both engines, instant ordering, empty ordering, limits
   }
 })
 
+test('core exclusions suppress instant results in both provider positions', async () => {
+  const core = createLauncherCoreSearch({
+    initialExcludedItemIds: ['hidden-before', 'hidden-after'],
+    loadIndexedItems: async () => [],
+    searchInstant: async () => ({ before: [item('hidden-before', 'Hidden'), item('visible', 'Visible')], after: [item('hidden-after', 'Hidden')] }),
+  })
+  try {
+    const result = await core.search('query', options)
+    assert.deepEqual(result.after.map(item => item.id), ['visible'])
+    assert.deepEqual(result.sections.flatMap(section => section.items.map(item => item.id)), ['visible'])
+  } finally { await core.close() }
+})
+
 test('empty search publishes decayed recent items before deduplicated command and application sections', async () => {
   const now = 1_000_000
   const persisted: Array<Readonly<{ itemId: string; now: number }>> = []

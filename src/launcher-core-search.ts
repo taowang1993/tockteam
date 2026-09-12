@@ -325,6 +325,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
 
     let beforeItems = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS)
     let afterItems: readonly LauncherInternalResultItem[] = [...instantBefore, ...ordinaryItems, ...instantAfter]
+      .filter(({ id }) => !excluded.has(id))
       .slice(0, Math.max(0, LAUNCHER_MAX_RESULT_ITEMS - beforeItems.length))
     let sections: readonly LauncherCoreSearchSection[]
     if (trimmedSearchTerm.length === 0) {
