@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { lstat, realpath } from 'node:fs/promises'
 import path from 'node:path'
 import type { LauncherTerminalPlatform } from './launcher-terminal-config.ts'
+import { resolveWindowsSystemExecutable } from './launcher-discovery-process.ts'
 
 export type LauncherWorkflowCommandRequest = Readonly<{
   command: string
@@ -174,7 +175,10 @@ export async function resolveTrustedWorkflowWindowsExecutable(
   capture: LauncherWorkflowExecutableCapture = captureWorkflowWindowsExecutable,
 ): Promise<Readonly<{ executable: string; identity: LauncherWorkflowExecutableIdentity }>> {
   if (!WINDOWS_SYSTEM_EXECUTABLES.has(executableName)) throw new Error('Invalid TockLauncher Workflow Windows executable')
-  const candidate = path.win32.join(boundedSystemRoot(environment.SystemRoot), 'System32', executableName)
+  const systemRoot = boundedSystemRoot(environment.SystemRoot)
+  const candidate = executableName === 'powershell.exe'
+    ? resolveWindowsSystemExecutable('powershell', { SystemRoot: systemRoot })
+    : path.win32.join(systemRoot, 'System32', executableName)
   const selected = await capture(candidate)
   if (selected === undefined || !path.win32.isAbsolute(selected.canonicalPath) || comparableWindowsPath(selected.canonicalPath) !== comparableWindowsPath(candidate)) {
     throw new Error('TockLauncher Workflow Windows executable is unavailable')

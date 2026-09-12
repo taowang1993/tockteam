@@ -63,7 +63,7 @@ function windowsTerminalCandidates(
   const systemRoot = windowsEnvironmentValue(environment, 'SystemRoot')
   const systemExecutable = (name: string): string | undefined => systemRoot === undefined ? undefined : path.win32.join(systemRoot, 'System32', name)
   if (terminalId === 'Command Prompt') return systemExecutable('cmd.exe') === undefined ? [] : [systemExecutable('cmd.exe')!]
-  if (terminalId === 'Powershell') return systemExecutable('powershell.exe') === undefined ? [] : [systemExecutable('powershell.exe')!]
+  if (terminalId === 'Powershell') return systemRoot === undefined ? [] : [path.win32.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')]
   if (terminalId === 'WSL') return systemExecutable('wsl.exe') === undefined ? [] : [systemExecutable('wsl.exe')!]
   if (terminalId !== 'Powershell Core') return []
   const candidates = [

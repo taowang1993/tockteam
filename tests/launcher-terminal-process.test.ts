@@ -68,6 +68,8 @@ test('Windows terminal trust resolution ignores PATH and hostile home paths', as
   const commandPrompt = await resolveTrustedWindowsTerminalExecutable('Command Prompt', { environment, captureIdentity })
   assert.equal(commandPrompt.executable, 'C:\\Windows\\System32\\cmd.exe')
   assert.deepEqual(seen, ['C:\\Windows\\System32\\cmd.exe'])
+  const powershell = await resolveTrustedWindowsTerminalExecutable('Powershell', { environment, captureIdentity })
+  assert.equal(powershell.executable, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
   const powershellCore = await resolveTrustedWindowsTerminalExecutable('Powershell Core', { environment, captureIdentity })
   assert.equal(powershellCore.executable, 'C:\\Program Files\\PowerShell\\7\\pwsh.exe')
 })
