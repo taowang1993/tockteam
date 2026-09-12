@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
+import { link as hardLink, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile, lstat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -25,9 +25,92 @@ const item = {
   sourceExtension: 'TockTeam',
 }
 
+test('ranking persistence survives restart, recovers its validated backup, and resets independently', async () => {
+  const userDataPath = await root()
+  const now = 2_000_000
+  try {
+    const repository = await LauncherPersistenceRepository.open({ now: () => now, userDataPath })
+    await repository.updateSetting('general.language', 'fr-FR')
+    await repository.writeIndex([{ ...item, id: 'indexed' }])
+    await repository.recordUsage('recent')
+    await repository.recordUsage('recent')
+    await repository.flush()
+    assert.deepEqual(repository.readRanking().map(value => value.id), ['recent'])
+    assert.equal(repository.readRanking()[0]?.useCount, 2)
+    await repository.close()
+
+    const rankingPath = path.join(userDataPath, 'launcher', 'usage-ranking.json')
+    await writeFile(rankingPath, '{bad', 'utf8')
+    const recovered = await LauncherPersistenceRepository.open({ now: () => now, userDataPath })
+    assert.equal(recovered.readRanking()[0]?.useCount, 1)
+    assert.equal(recovered.getSetting('general.language', 'en-US'), 'fr-FR')
+    assert.equal(recovered.readIndex()[0]?.id, 'indexed')
+    await recovered.resetSettings()
+    assert.deepEqual(recovered.readRanking(), [])
+    await assert.rejects(readFile(rankingPath), /ENOENT/u)
+    await assert.rejects(readFile(`${rankingPath}.bak`), /ENOENT/u)
+    await recovered.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('reset fences a queued ranking write from restoring cleared usage', async () => {
+  const userDataPath = await root()
+  try {
+    const repository = await LauncherPersistenceRepository.open({ userDataPath })
+    const usage = repository.recordUsage('stale')
+    const reset = repository.resetSettings()
+    await Promise.all([reset, usage])
+    assert.deepEqual(repository.readRanking(), [])
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('invalid ranking persistence falls back to empty without damaging other launcher artifacts', async () => {
+  const userDataPath = await root()
+  try {
+    const launcherRoot = path.join(userDataPath, 'launcher')
+    await mkdir(launcherRoot, { recursive: true })
+    await writeFile(path.join(launcherRoot, 'usage-ranking.json'), JSON.stringify([{ id: 'bad', score: 'not-a-number', lastUsedAt: 1, useCount: 1 }]), 'utf8')
+    await writeFile(path.join(launcherRoot, 'usage-ranking.json.bak'), JSON.stringify([{ id: 'recovered', score: 1, lastUsedAt: 1, useCount: 1 }]), 'utf8')
+    const repository = await LauncherPersistenceRepository.open({ now: () => 1_000, userDataPath })
+    assert.deepEqual(repository.readRanking().map(value => value.id), ['recovered'])
+    await repository.close()
+
+    await writeFile(path.join(launcherRoot, 'usage-ranking.json'), 'x'.repeat(512 * 1024 + 1), 'utf8')
+    const oversized = await LauncherPersistenceRepository.open({ now: () => 1_000, userDataPath })
+    assert.deepEqual(oversized.readRanking().map(value => value.id), ['recovered'])
+    await oversized.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('startup removes stale negligible ranking entries from the managed artifact', async () => {
+  const userDataPath = await root()
+  const now = 121 * 24 * 60 * 60 * 1000
+  try {
+    const launcherRoot = path.join(userDataPath, 'launcher')
+    await mkdir(launcherRoot, { recursive: true })
+    const rankingPath = path.join(launcherRoot, 'usage-ranking.json')
+    await writeFile(rankingPath, JSON.stringify([{ id: 'stale', lastUsedAt: 1, score: 0.01, useCount: 1 }]), 'utf8')
+    const repository = await LauncherPersistenceRepository.open({ now: () => now, userDataPath })
+    assert.deepEqual(repository.readRanking(), [])
+    assert.deepEqual(JSON.parse(await readFile(rankingPath, 'utf8')), [])
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('persistence tolerates only unsupported Windows directory fsync after committing the file', () => {
   assert.match(persistenceSource, /process\.platform !== 'win32'[\s\S]+EPERM/u)
   assert.match(persistenceSource, /await handle\.sync\(\)/u)
+})
+
+test('managed persistence rejects a pre-existing launcher symlink', async () => {
+  const userDataPath = await root()
+  const redirected = await root()
+  try {
+    await symlink(redirected, path.join(userDataPath, 'launcher'))
+    await assert.rejects(LauncherPersistenceRepository.open({ userDataPath }), /directory|symlink/u)
+    assert.equal(await readFile(path.join(redirected, 'settings.json'), 'utf8').catch(() => undefined), undefined)
+  } finally { await Promise.all([userDataPath, redirected].map(value => rm(value, { recursive: true, force: true }))) }
 })
 
 test('persistence survives restart, encrypts secrets, strips index image data, and recovers backups', async () => {
@@ -73,8 +156,13 @@ test('external settings accepts regular files, preserves replacement, and fails 
     await assert.rejects(repository.grantExternalSettingsFile(link))
     await repository.grantExternalSettingsFile(external)
     assert.equal(repository.snapshot().settingsSource, 'external')
+    const originalIdentity = await lstat(external, { bigint: true })
     await repository.updateSetting('general.language', 'fr-FR')
+    const replacedIdentity = await lstat(external, { bigint: true })
+    assert.notEqual(`${replacedIdentity.dev}:${replacedIdentity.ino}`, `${originalIdentity.dev}:${originalIdentity.ino}`)
     assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'fr-FR' })
+    await repository.updateSetting('general.language', 'de-CH')
+    assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'de-CH' })
     const replacement = `${external}.replacement`
     await writeFile(replacement, JSON.stringify({ 'general.language': 'zh-CN' }), { mode: 0o600 })
     await rm(external); await rename(replacement, external)
@@ -91,6 +179,87 @@ test('external settings accepts regular files, preserves replacement, and fails 
     await assert.rejects(readonly.updateSetting('general.language', 'en-US'), /unavailable|platform/i)
     await readonly.close()
   } finally { await Promise.all([userDataPath, readonlyUserDataPath].map(path => rm(path, { recursive: true, force: true }))) }
+})
+
+test('external settings cannot be exported over the active grant or a hard-link alias', { skip: process.platform === 'win32' }, async () => {
+  const userDataPath = await root()
+  try {
+    const external = path.join(userDataPath, 'external.json')
+    const alias = path.join(userDataPath, 'external-alias.json')
+    await writeFile(external, JSON.stringify({ 'general.language': 'de-CH' }), { mode: 0o600 })
+    await hardLink(external, alias)
+    const repository = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, secretCodec: codec, secureStorageAvailable: true, userDataPath })
+    await repository.grantExternalSettingsFile(external)
+    await assert.rejects(repository.exportSettingsToPath(external), /active external settings/u)
+    await assert.rejects(repository.exportSettingsToPath(alias), /active external settings/u)
+    assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'de-CH' })
+    assert.equal(repository.snapshot().settingsSource, 'external')
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('same-inode external edits are preserved and revoke stale launcher state', { skip: process.platform === 'win32' }, async () => {
+  const userDataPath = await root()
+  try {
+    const external = path.join(userDataPath, 'external.json')
+    await writeFile(external, JSON.stringify({ 'general.language': 'de-CH' }), { mode: 0o600 })
+    const repository = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, secretCodec: codec, secureStorageAvailable: true, userDataPath })
+    await repository.grantExternalSettingsFile(external)
+    const identity = await lstat(external, { bigint: true })
+    await writeFile(external, JSON.stringify({ 'general.language': 'zh-CN', 'searchEngine.fuzziness': 0.9 }), { mode: 0o600 })
+    const editedIdentity = await lstat(external, { bigint: true })
+    assert.equal(`${editedIdentity.dev}:${editedIdentity.ino}`, `${identity.dev}:${identity.ino}`)
+    await assert.rejects(repository.updateSetting('general.language', 'fr-FR'), /changed or was revoked/u)
+    assert.deepEqual(JSON.parse(await readFile(external, 'utf8')), { 'general.language': 'zh-CN', 'searchEngine.fuzziness': 0.9 })
+    assert.equal(repository.snapshot().externalGrantStatus, 'revoked')
+    await repository.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('startup rejects an external grant whose canonical parent metadata changed', { skip: process.platform === 'win32' }, async () => {
+  const userDataPath = await root()
+  try {
+    const external = path.join(userDataPath, 'external.json')
+    await writeFile(external, JSON.stringify({ 'general.language': 'de-CH' }), { mode: 0o600 })
+    const repository = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, userDataPath })
+    await repository.grantExternalSettingsFile(external)
+    await repository.close()
+    const grantPath = path.join(userDataPath, 'launcher', 'external-settings-grant.json')
+    const grant = JSON.parse(await readFile(grantPath, 'utf8')) as Record<string, unknown>
+    await writeFile(grantPath, JSON.stringify({ ...grant, parentRealPath: path.dirname(userDataPath) }), 'utf8')
+    const restarted = await LauncherPersistenceRepository.open({ externalWriteAvailable: true, userDataPath })
+    assert.equal(restarted.snapshot().externalGrantStatus, 'revoked')
+    assert.equal(restarted.snapshot().settingsSource, 'managed')
+    await restarted.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('startup completes a journaled external settings replacement', async () => {
+  const userDataPath = await root()
+  const externalRoot = await root()
+  const external = path.join(externalRoot, 'settings.json')
+  try {
+    await writeFile(external, JSON.stringify({ 'general.language': 'en-US' }))
+    const repository = await LauncherPersistenceRepository.open({ userDataPath, externalWriteAvailable: true })
+    await repository.grantExternalSettingsFile(external)
+    await repository.close()
+    const grantPath = path.join(userDataPath, 'launcher', 'external-settings-grant.json')
+    const previous = JSON.parse(await readFile(grantPath, 'utf8')) as Record<string, unknown>
+    const staged = path.join(externalRoot, '.replacement')
+    await writeFile(staged, JSON.stringify({ 'general.language': 'zh-CN' }))
+    await rename(staged, external)
+    const identity = await lstat(external, { bigint: true })
+    const next = { ...previous, dev: identity.dev.toString(), ino: identity.ino.toString() }
+    const journalPath = path.join(userDataPath, 'launcher', 'external-settings-transaction.json')
+    await writeFile(journalPath, JSON.stringify({ next, previous, version: 1 }))
+
+    const reopened = await LauncherPersistenceRepository.open({ userDataPath, externalWriteAvailable: true })
+    assert.equal(reopened.snapshot().settingsSource, 'external')
+    assert.equal(reopened.getSetting('general.language', 'en-US'), 'zh-CN')
+    assert.deepEqual(JSON.parse(await readFile(grantPath, 'utf8')), next)
+    await assert.rejects(readFile(journalPath), /ENOENT/u)
+    await reopened.close()
+  } finally { await Promise.all([userDataPath, externalRoot].map(value => rm(value, { recursive: true, force: true }))) }
 })
 
 test('external folder grant drift falls back to managed folders before later writes', async () => {

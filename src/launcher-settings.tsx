@@ -33,7 +33,7 @@ import type { LocaleMessages, LocaleService } from '../plugins/shared/i18n.ts'
 
 const MESSAGES = {
   en: {
-    about: 'A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.',
+    about: 'A focused launcher over the TockTeam workbench with bounded local, discovery, file, and network providers.',
     sectionAbout: 'About and Contract',
     sectionAppearance: 'Appearance and Input',
     sectionBrowser: 'Browser and Shortcuts',
@@ -51,15 +51,15 @@ const MESSAGES = {
     sectionUpdates: 'Updates',
     sectionWorkflow: 'Workflows',
     badge: 'Ueli-compatible contract',
-    description: 'A focused launcher over the TockTeam Desktop workbench with bounded local, discovery, file, and network providers.',
+    description: 'A focused launcher over the TockTeam workbench with bounded local, discovery, file, and network providers.',
     ready: 'TockLauncher settings are ready.',
     saving: 'Saving…',
     saved: 'Saved.',
     title: 'TockLauncher',
-    unavailable: 'TockLauncher settings are available in TockTeam Desktop only.',
+    unavailable: 'TockLauncher settings are available only in the TockTeam desktop app.',
   },
   zh: {
-    about: '基于 TockTeam Desktop 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
+    about: '基于 TockTeam 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
     sectionAbout: '关于与合约',
     sectionAppearance: '外观与输入',
     sectionBrowser: '浏览器与快捷键',
@@ -77,12 +77,12 @@ const MESSAGES = {
     sectionUpdates: '更新',
     sectionWorkflow: '工作流',
     badge: '兼容 Ueli 合约',
-    description: '基于 TockTeam Desktop 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
+    description: '基于 TockTeam 工作台的专注启动器，提供受限的本地、发现、文件和网络提供方。',
     ready: 'TockLauncher 设置已就绪。',
     saving: '正在保存…',
     saved: '已保存。',
     title: 'TockLauncher',
-    unavailable: 'TockLauncher 设置仅在 TockTeam Desktop 中可用。',
+    unavailable: 'TockLauncher 设置仅在 TockTeam 桌面应用中可用。',
   },
 } satisfies LocaleMessages<'about' | 'badge' | 'description' | 'ready' | 'saving' | 'saved' | 'sectionAbout' | 'sectionAppearance' | 'sectionBrowser' | 'sectionDesktop' | 'sectionDiscovery' | 'sectionExtensions' | 'sectionFile' | 'sectionKeyboard' | 'sectionLocal' | 'sectionNetwork' | 'sectionSearch' | 'sectionSecurity' | 'sectionStorage' | 'sectionTerminal' | 'sectionUpdates' | 'sectionWorkflow' | 'title' | 'unavailable'>
 
@@ -372,9 +372,9 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           <Switch aria-label={launcherFixedText('Show TockLauncher on startup')} checked={state.preferences.showOnStartup} disabled={busy} onCheckedChange={checked => { void save('window.showOnStartup', checked) }} />
         </Field>
         <Field title="Keep TockLauncher always on top"><Switch aria-label={launcherFixedText('Keep TockLauncher always on top')} checked={state.preferences.alwaysOnTop} disabled={busy} onCheckedChange={checked => { void save('window.alwaysOnTop', checked) }} /></Field>
-        <Field title="Show on all workspaces"><Switch aria-label={launcherFixedText('Show on all workspaces')} checked={state.preferences.visibleOnAllWorkspaces} disabled={busy} onCheckedChange={checked => { void save('window.visibleOnAllWorkspaces', checked) }} /></Field>
+        <Field title="Show on all workspaces" description={rendererPlatform === 'Windows' ? 'Unavailable on Windows.' : 'Available on macOS and Linux.'}><Switch aria-label={launcherFixedText('Show on all workspaces')} checked={state.preferences.visibleOnAllWorkspaces} disabled={busy || rendererPlatform === 'Windows'} onCheckedChange={checked => { void save('window.visibleOnAllWorkspaces', checked) }} /></Field>
         <Field title="Show tray icon"><Switch aria-label={launcherFixedText('Show tray icon')} checked={state.preferences.showTrayIcon} disabled={busy} onCheckedChange={checked => { void save('general.tray.showIcon', checked) }} /></Field>
-        <Field title="Show Dock icon"><Switch aria-label={launcherFixedText('Show Dock icon')} checked={state.preferences.showDockIcon} disabled={busy} onCheckedChange={checked => { void save('appearance.showAppIconInDock', checked) }} /></Field>
+        <Field title="Show Dock icon" description={rendererPlatform === 'macOS' ? 'Available on macOS.' : `Unavailable on ${rendererPlatform}.`}><Switch aria-label={launcherFixedText('Show Dock icon')} checked={state.preferences.showDockIcon} disabled={busy || rendererPlatform !== 'macOS'} onCheckedChange={checked => { void save('appearance.showAppIconInDock', checked) }} /></Field>
         <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="window" snapshot={snapshot} />
       </SectionCard>
 
@@ -439,10 +439,10 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
             <Button size="sm" variant="outline" disabled={busy || snapshot.externalGrantStatus === 'none'} onClick={() => { void operation('External revocation', settings.revokeExternalSettings, true, true) }}>{launcherFixedText('Revoke external file')}</Button>
           </div>
         </Field>
-        <Field title="Custom browser" description={rendererIsLinux ? 'Linux always uses the system browser; custom browser selection is unavailable.' : 'The native browser grant is status-only in the renderer; the selected target never crosses this page.'}>
+        <Field title="Custom Browser" description={rendererPlatform === 'macOS' ? 'The native browser grant is status-only in the renderer; the selected target never crosses this page.' : `${rendererPlatform} always uses the system browser; custom browser selection is unavailable.`}>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button aria-label={launcherFixedText('Choose custom browser')} data-testid="tockteam-custom-browser-choose" size="sm" variant="outline" disabled={busy || rendererIsLinux} onClick={event => { const target = event.currentTarget; void operation('Custom browser selection', settings.selectCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>{launcherFixedText('Choose custom browser')}</Button>
-            <Button aria-label={launcherFixedText('Revoke custom browser')} data-testid="tockteam-custom-browser-revoke" size="sm" variant="outline" disabled={busy || rendererIsLinux || snapshot.customBrowserStatus === 'none'} onClick={event => { const target = event.currentTarget; void operation('Custom browser revocation', settings.revokeCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>{launcherFixedText('Revoke custom browser')}</Button>
+            <Button aria-label={launcherFixedText('Choose Custom Browser')} data-testid="tockteam-custom-browser-choose" size="sm" variant="outline" disabled={busy || rendererPlatform !== 'macOS'} onClick={event => { const target = event.currentTarget; void operation('Custom browser selection', settings.selectCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>{launcherFixedText('Choose Custom Browser')}</Button>
+            <Button aria-label={launcherFixedText('Revoke Custom Browser')} data-testid="tockteam-custom-browser-revoke" size="sm" variant="outline" disabled={busy || rendererPlatform !== 'macOS' || snapshot.customBrowserStatus === 'none'} onClick={event => { const target = event.currentTarget; void operation('Custom browser revocation', settings.revokeCustomBrowser, true, false, target).finally(() => { setTimeout(() => target.focus(), 50) }) }}>{launcherFixedText('Revoke Custom Browser')}</Button>
           </div>
         </Field>
         <Field title="Reset TockLauncher settings" description="Clears overrides, favorites, exclusions, history, and the custom-browser grant, then securely relaunches Desktop.">

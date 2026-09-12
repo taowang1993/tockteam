@@ -19,7 +19,6 @@ import {
 } from 'react'
 import { defineStore } from '@deepseek-ai/dsh-client-store'
 import {
-  Blocks,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
@@ -118,12 +117,14 @@ import {
 } from './runtime-settings.ts'
 import {
   canonicalTockTeamPath,
+  isSettingsPath,
   isTockCoderPath,
   isTockTutorPath,
   readLastTockTutorPath,
   readTockTutorRouteLocation,
   rememberTockTutorPath,
   resolveTockTutorNavigation,
+  SETTINGS_ROUTE_PREFIX,
   TOCKCODER_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_SLOT,
@@ -437,12 +438,20 @@ function installPrimarySidebarAdapter(): () => void {
 
   let stopActiveResize = (): void => {}
   const beginResize = (event: PointerEvent): void => {
-    const target = event.target instanceof Element
-      ? event.target.closest<HTMLElement>('[data-side="sidebar"]')
+    const pointerTarget = event.target instanceof Element
+      ? event.target.closest<HTMLElement>('[data-side="sidebar"], [data-tockteam-settings-page-resize]')
       : null
+    const settingsResize = pointerTarget?.dataset.tockteamSettingsPageResize === 'true'
+    const target = settingsResize
+      ? document.querySelector<HTMLElement>('#root [data-side="sidebar"]')
+      : pointerTarget
     const frame = target?.parentElement
-    if (target === null || !(frame instanceof HTMLElement)
+    if (pointerTarget === null || target === null || !(frame instanceof HTMLElement)
       || frame.closest('#root') === null) return
+    if (settingsResize) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
     const pointerId = event.pointerId
     const startX = event.clientX
     const sidebarColumn = frame.children.item(0)
@@ -461,7 +470,7 @@ function installPrimarySidebarAdapter(): () => void {
       animationFrame = 0
       // Keep DSH's upper and center-column limits while allowing TockTeam's denser minimum.
       width = Math.min(420, Math.max(TOCKTEAM_PRIMARY_SIDEBAR_MIN_WIDTH, Math.round(startWidth + latestX - startX)))
-      overriddenWidth = width < DSH_PRIMARY_SIDEBAR_MIN_WIDTH ? width : undefined
+      overriddenWidth = settingsResize || width < DSH_PRIMARY_SIDEBAR_MIN_WIDTH ? width : undefined
       let details = detailsWidth
       if (details > 0 && width + details + 640 > frameWidth) {
         details = Math.max(300, frameWidth - width - 640)
@@ -2005,6 +2014,69 @@ function AppRailIcon({ kind }: { kind: 'agent' | 'notebook' }): ReactNode {
   return <Notebook aria-hidden="true" />
 }
 
+function settingsPageSurface(): HTMLElement | null {
+  const adapted = document.querySelector<HTMLElement>('[data-tockteam-settings-page-surface]')
+  if (adapted !== null) return adapted
+  return [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')]
+    .find(dialog => dialog.querySelector('button[aria-current]') !== null) ?? null
+}
+
+function showSettingsPageTitle(surface: HTMLElement): () => void {
+  const title = document.querySelector<HTMLElement>('.tockteam-window-title')
+  const labelId = surface.getAttribute('aria-labelledby')
+  const label = labelId === null ? null : document.getElementById(labelId)?.textContent?.trim()
+  if (title === null || !label) return () => {}
+  const previous = title.textContent
+  title.textContent = label
+  return () => {
+    if (title.isConnected) title.textContent = previous
+  }
+}
+
+function isolateSettingsPage(surface: HTMLElement): () => void {
+  const previous = new Map<HTMLElement, boolean>()
+  let child = surface
+  while (child.parentElement !== null) {
+    const parent = child.parentElement
+    for (const sibling of parent.children) {
+      if (!(sibling instanceof HTMLElement) || sibling === child
+        || sibling.id === 'tockteam-rail-root'
+        || sibling.querySelector('#tockteam-rail-root') !== null) continue
+      previous.set(sibling, sibling.inert)
+      sibling.inert = true
+    }
+    if (parent === document.body) break
+    child = parent
+  }
+  return () => {
+    for (const [element, inert] of previous) {
+      if (element.isConnected) element.inert = inert
+    }
+  }
+}
+
+function adaptSettingsPage(): void {
+  const surface = settingsPageSurface()
+  if (surface === null || surface.dataset.tockteamSettingsPageSurface === 'true') return
+  surface.dataset.tockteamSettingsPageSurface = 'true'
+  const shell = surface.parentElement
+  if (shell !== null) {
+    shell.dataset.tockteamSettingsPageShell = 'true'
+    const mask = [...shell.children].find(child => child !== surface && child.getAttribute('aria-hidden') === 'true')
+    if (mask instanceof HTMLElement) mask.dataset.tockteamSettingsPageMask = 'true'
+  }
+  const closeSlot = surface.querySelector('[data-slot="settings.close"]')
+  const closeButton = closeSlot?.closest('button')
+  if (closeButton instanceof HTMLButtonElement) closeButton.dataset.tockteamSettingsPageClose = 'true'
+  const resize = document.createElement('div')
+  resize.dataset.tockteamSettingsPageResize = 'true'
+  resize.setAttribute('aria-hidden', 'true')
+  surface.append(resize)
+  window.requestAnimationFrame(() => {
+    surface.querySelector<HTMLButtonElement>('button[aria-current]')?.focus()
+  })
+}
+
 function DesktopAppRail({
   location,
   navigate,
@@ -2014,18 +2086,9 @@ function DesktopAppRail({
   navigate: (path: string) => void
   t: Translate<WorkspaceMessage>
 }): ReactNode {
+  const settingsActive = isSettingsPath(location.pathname)
   const tockCoderActive = isTockCoderPath(location.pathname)
   const tockTutorActive = isTockTutorPath(location.pathname)
-  const [pluginsAvailable, setPluginsAvailable] = useState(false)
-  useEffect(() => {
-    const sync = (): void => {
-      setPluginsAvailable(document.querySelector('[data-tockteam-marketplace-nav]') !== null)
-    }
-    const observer = new MutationObserver(sync)
-    observer.observe(document.body, { childList: true, subtree: true })
-    sync()
-    return () => { observer.disconnect() }
-  }, [])
   return (
     <TooltipProvider>
       <nav className="tockteam-app-rail flex h-full box-border flex-col items-center gap-1 px-1 py-2 [&_button]:grid [&_button]:size-8 [&_button]:flex-none [&_button]:cursor-pointer [&_button]:place-items-center [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_62%,transparent)] [&_button:hover]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_7%,transparent)] [&_button:hover]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button[aria-current='page']]:bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#1f2328)_11%,transparent)] [&_button[aria-current='page']]:text-[var(--dsw-alias-label-primary,#1f2328)] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-1 [&_button:focus-visible]:outline-[var(--dsw-alias-border-focus,#315efb)] [&_svg]:size-[18px]" aria-label="App Navigation">
@@ -2053,32 +2116,13 @@ function DesktopAppRail({
         </Tooltip>
         <div className="mt-auto flex flex-col gap-1 pb-1">
           <DesktopLauncherFallback t={t} />
-          {pluginsAvailable && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button unstyled
-                  type="button"
-                  aria-label="Plugins"
-                  onClick={() => {
-                    if (!tockCoderActive) navigate(TOCKCODER_ROUTE_PREFIX)
-                    const target = document.querySelector('[data-tockteam-marketplace-nav]')
-                    if (target instanceof HTMLButtonElement) target.click()
-                  }}
-                ><Blocks aria-hidden="true" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Plugins</TooltipContent>
-            </Tooltip>
-          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button unstyled
                 type="button"
                 aria-label="Settings"
-                onClick={() => {
-                  if (!tockCoderActive) navigate(TOCKCODER_ROUTE_PREFIX)
-                  document.querySelector('[data-slot="settings.trigger"]')
-                    ?.closest<HTMLButtonElement>('button')?.click()
-                }}
+                aria-current={settingsActive ? 'page' : undefined}
+                onClick={() => { navigate(SETTINGS_ROUTE_PREFIX) }}
               ><Settings aria-hidden="true" /></Button>
             </TooltipTrigger>
             <TooltipContent side="right">Settings</TooltipContent>
@@ -2156,6 +2200,46 @@ function TockTutorRouteHost(
     window.addEventListener('popstate', onPopState)
     return () => { window.removeEventListener('popstate', onPopState) }
   }, [props.actions])
+  const settingsActive = isSettingsPath(location.pathname)
+  useEffect(() => {
+    if (!settingsActive) return
+    document.documentElement.dataset.tockteamSettingsPage = 'true'
+    let opened = false
+    let returning = false
+    let restoreBackground: (() => void) | undefined
+    let restoreTitle: (() => void) | undefined
+    const sync = (): void => {
+      const surface = settingsPageSurface()
+      if (surface !== null) {
+        opened = true
+        adaptSettingsPage()
+        restoreBackground ??= isolateSettingsPage(surface)
+        restoreTitle ??= showSettingsPageTitle(surface)
+        return
+      }
+      if (!opened) {
+        document.querySelector('[data-slot="settings.trigger"]')
+          ?.closest<HTMLButtonElement>('button')?.click()
+        return
+      }
+      if (!returning) {
+        returning = true
+        window.history.back()
+      }
+    }
+    const observer = new MutationObserver(sync)
+    observer.observe(document.body, { childList: true, subtree: true })
+    sync()
+    return () => {
+      observer.disconnect()
+      restoreBackground?.()
+      restoreTitle?.()
+      delete document.documentElement.dataset.tockteamSettingsPage
+      if (settingsPageSurface() !== null) {
+        document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
+      }
+    }
+  }, [settingsActive])
   const active = routeEntries > 0 && isTockTutorPath(location.pathname)
   useEffect(() => {
     const bridge = window.dshDesktop

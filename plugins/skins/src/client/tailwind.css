@@ -61,14 +61,358 @@
 }
 
 /* The Desktop bridge has no component seam for the inherited DSH shell. */
-/* Launcher tools share these small semantic recipes across every provider surface. */
-@utility launcher-local-tool {
+/* TockLauncher command views share Raycast-like density and material without sharing behavior or authority. */
+@utility launcher-command-surface {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
+  border-radius: 1.125rem;
+  background:
+    radial-gradient(ellipse at 82% 52%, color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 5%, transparent), transparent 54%),
+    color-mix(in srgb, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)) 96%, var(--dsw-alias-bg-base, Canvas));
+  color: var(--dsw-alias-label-primary, CanvasText);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 28%), inset 0 1px rgb(255 255 255 / 3%);
+}
+
+@utility launcher-command-header {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  min-width: 0;
+  min-height: 3rem;
+  height: 3rem;
+  flex: none;
+  align-items: center;
+  gap: 0.75rem;
+  padding-inline: 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1, var(--dsw-alias-border-l2, CanvasText)) 72%, transparent);
+}
+
+@utility launcher-command-search {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 2.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  outline: none;
+
+  &::placeholder {
+    color: var(--dsw-alias-label-secondary, CanvasText);
+  }
+}
+
+@utility launcher-command-content {
   display: flex;
   min-width: 0;
   min-height: 0;
   flex: 1;
   flex-direction: column;
+  gap: 0.625rem;
+  overflow: auto;
+  padding: 0.75rem 1rem;
+}
+
+@utility launcher-command-list {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.375rem;
+  list-style: none;
+}
+
+@utility launcher-command-field {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+  align-items: center;
   gap: 0.75rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  & > span:first-child {
+    text-align: right;
+  }
+}
+
+@utility launcher-command-control {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.375rem;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 82%, transparent);
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, Canvas) 88%, transparent);
+  padding: 0.5rem 0.75rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+
+  &:focus-visible {
+    border-color: var(--dsw-alias-brand-primary, CanvasText);
+    outline: 2px solid color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 34%, transparent);
+    outline-offset: 1px;
+  }
+}
+
+@utility launcher-command-select-content {
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 30;
+  width: 100%;
+  max-height: 12rem;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 82%, transparent);
+  border-radius: 0.625rem;
+  background: var(--dsw-alias-bg-overlay, Canvas);
+  padding: 0.25rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, CanvasText 14%, transparent);
+}
+
+@utility launcher-command-select-item {
+  position: relative;
+  display: flex;
+  width: 100%;
+  cursor: default;
+  align-items: center;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  padding: 0.375rem 2rem 0.375rem 0.5rem;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--dsw-alias-bg-hover, color-mix(in srgb, CanvasText 10%, transparent));
+    outline: none;
+  }
+}
+
+@utility launcher-command-status {
+  min-height: 1.125rem;
+  margin: 0;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+@utility launcher-command-empty {
+  display: flex;
+  min-height: 11rem;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  text-align: center;
+}
+
+@utility launcher-command-error {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary, CanvasText);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+@utility launcher-command-group-title {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.25rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+@utility launcher-command-row {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.625rem;
+  align-items: center;
+  gap: 0.625rem;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  text-align: left;
+  transition: background-color 100ms ease;
+
+  &:hover,
+  &[aria-selected='true'],
+  &[data-selected='true'] {
+    background: var(--dsw-alias-interactive-bg-active, color-mix(in srgb, CanvasText 10%, transparent));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dsw-alias-brand-primary, CanvasText);
+    outline-offset: -2px;
+  }
+}
+
+@utility launcher-command-row-icon {
+  display: flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: var(--dsw-alias-bg-layer-2, Canvas);
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  object-fit: contain;
+}
+
+@utility launcher-command-footer {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  border-top: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1, var(--dsw-alias-border-l2, CanvasText)) 72%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)) 88%, transparent);
+  padding-inline: 0.75rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+}
+
+@utility launcher-command-footer-identity {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2rem;
+  max-width: 15rem;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, Canvas) 84%, transparent);
+  padding-inline: 0.625rem;
+
+  &:empty {
+    display: none;
+  }
+}
+
+@utility launcher-command-footer-actions {
+  box-sizing: border-box;
+  display: inline-flex;
+  min-height: 2rem;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, Canvas) 84%, transparent);
+  padding: 1px;
+
+  & > .launcher-command-footer-action {
+    min-height: 1.75rem;
+  }
+}
+
+@utility launcher-command-footer-action {
+  display: inline-flex;
+  min-height: 2rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  padding-inline: 0.625rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, CanvasText 6%, transparent));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dsw-alias-brand-primary, CanvasText);
+    outline-offset: 1px;
+  }
+}
+
+@utility launcher-command-menu {
+  position: absolute;
+  z-index: 50;
+  min-width: 0;
+  width: min(20rem, calc(100vw - 2rem));
+  max-width: 100%;
+  max-height: 20rem;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 82%, transparent);
+  border-radius: 0.75rem;
+  background: var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas));
+  padding: 0.375rem;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 34%);
+}
+
+@utility launcher-command-menu-item {
+  box-sizing: border-box;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.375rem 0.625rem;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, CanvasText 7%, transparent));
+    outline: none;
+  }
+}
+
+/* Launcher tools share these small semantic recipes across every provider surface. */
+@utility launcher-local-tool {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0;
 }
 
 @utility launcher-local-tool-header {
@@ -117,10 +461,12 @@
   display: inline-flex;
   min-height: 2.25rem;
   max-width: 100%;
+  align-self: flex-start;
   align-items: center;
   gap: 0.375rem;
   border: 1px solid var(--dsw-alias-border-l2, CanvasText);
   border-radius: 0.5rem;
+  background: transparent;
   padding-inline: 0.75rem;
   color: var(--dsw-alias-label-primary, CanvasText);
 }
@@ -128,15 +474,292 @@
 @utility launcher-primary-button {
   display: inline-flex;
   min-height: 2.25rem;
+  align-self: flex-start;
   align-items: center;
   gap: 0.375rem;
+  border: 0;
   border-radius: 0.5rem;
   background: var(--dsw-alias-brand-primary, CanvasText);
   padding-inline: 0.75rem;
   color: var(--dsw-alias-brand-primary-invert, Canvas);
 }
 
+/* First-use approval is a short security review, not an empty form. */
+#launcher-root [data-view='extension-first-use'] {
+  --tockteam-approval-panel: color-mix(in srgb, var(--dsw-alias-bg-layer-2, Canvas) 72%, var(--dsw-alias-bg-overlay, Canvas));
+  --tockteam-approval-border: color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 82%, transparent);
+}
+
+#launcher-root [data-view='extension-first-use'] > .launcher-command-header {
+  min-height: 4rem;
+  height: 4rem;
+  padding-inline: 1.25rem;
+  border-bottom-color: var(--tockteam-approval-border);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-icon {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 60%, transparent);
+  border-radius: 0.625rem;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-title {
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-back {
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-weight: 500;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-back::before {
+  content: '←';
+  margin-inline-end: 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+
+#launcher-root [data-view='extension-first-use'] > .extension-first-use-content {
+  gap: 0;
+  overflow: auto;
+  padding: 1.125rem 1.25rem 1rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-review {
+  display: flex;
+  width: min(100%, 42rem);
+  min-width: 0;
+  margin-block: auto;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-eyebrow {
+  margin: 0;
+  color: var(--dsw-alias-brand-primary, CanvasText);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-lead {
+  max-width: 42rem;
+  margin: -0.125rem 0 0;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-warning {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary, CanvasText) 30%, var(--tockteam-approval-border));
+  border-inline-start: 3px solid var(--dsw-alias-state-warn-primary, CanvasText);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary, Canvas) 8%, var(--tockteam-approval-panel));
+  padding: 0.75rem 0.875rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-warning-title {
+  display: block;
+  color: var(--dsw-alias-label-primary, CanvasText);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-warning-text {
+  margin: 0.25rem 0 0;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status {
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 4%, transparent);
+  padding: 0.4375rem 0.625rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status::before {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  flex: none;
+  border-radius: 9999px;
+  background: var(--dsw-alias-label-tertiary, CanvasText);
+  content: '';
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='ready']::before,
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='installed']::before {
+  background: var(--dsw-alias-state-success-primary, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='busy']::before {
+  background: var(--dsw-alias-brand-primary, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='recovery']::before {
+  background: var(--dsw-alias-state-warn-primary, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-status[data-state='unavailable']::before {
+  background: var(--dsw-alias-state-error-primary, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-error {
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary, CanvasText) 30%, var(--tockteam-approval-border));
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, Canvas) 8%, var(--tockteam-approval-panel));
+  padding: 0.5rem 0.625rem;
+  overflow-wrap: anywhere;
+}
+
+#launcher-root [data-view='extension-first-use'] > .extension-first-use-footer {
+  min-height: 3.5rem;
+  height: auto;
+  padding: 0.625rem 1.25rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-primary {
+  min-height: 2.25rem;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 72%, transparent);
+  border-radius: 0.625rem;
+  background: var(--dsw-alias-brand-primary, CanvasText);
+  padding-inline: 0.875rem;
+  color: var(--dsw-alias-brand-primary-invert, Canvas);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 20%, transparent);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-primary:hover {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary, CanvasText) 88%, CanvasText);
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-primary:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, CanvasText);
+  outline-offset: 2px;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-escape {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--dsw-alias-label-tertiary, CanvasText);
+  font-size: 0.75rem;
+}
+
+#launcher-root [data-view='extension-first-use'] .extension-first-use-escape kbd {
+  min-width: 1.75rem;
+  border: 1px solid var(--tockteam-approval-border);
+  border-radius: 0.375rem;
+  background: var(--tockteam-approval-panel);
+  padding: 0.125rem 0.375rem;
+  color: var(--dsw-alias-label-secondary, CanvasText);
+  font-family: inherit;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  text-align: center;
+}
+
 /* Launcher settings are derived from the shared DSH surface projection. */
+#launcher-root [data-view='preference-setup'] {
+  --tockteam-preference-control-light: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 4%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)));
+}
+
+#launcher-root [data-view='preference-setup'] > .launcher-command-header {
+  min-height: 4rem;
+  height: 4rem;
+  border-bottom-color: transparent;
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-command-field {
+  gap: 1.4375rem;
+  font-size: 0.84375rem;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-command-control {
+  min-height: 2.125rem;
+  height: 2.125rem;
+  border-color: light-dark(
+    var(--dsw-alias-border-l2, CanvasText),
+    color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 27%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
+  );
+  border-radius: 0.875rem;
+  background: light-dark(
+    var(--tockteam-preference-control-light),
+    color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 21%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
+  );
+  padding-block: 0.375rem;
+  padding-inline: 0.75rem 2rem;
+  font-size: 0.875rem;
+  letter-spacing: normal;
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-command-control:focus-visible {
+  border-color: var(--dsw-alias-border-l3, var(--dsw-alias-border-l2, CanvasText));
+  outline: none;
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-preference-logo {
+  background: light-dark(
+    var(--tockteam-preference-control-light),
+    var(--dsw-alias-bg-layer-2, Canvas)
+  );
+}
+
+#launcher-root [data-view='preference-setup'] details > summary {
+  background: light-dark(
+    var(--tockteam-preference-control-light),
+    color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 26%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
+  );
+}
+
+#launcher-root [data-view='preference-setup'] > .launcher-command-footer {
+  border-top-color: transparent;
+  background: transparent;
+}
+
+#launcher-root [data-view='preference-setup'] > .launcher-command-footer > * {
+  transform: translateY(-0.25rem);
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-command-footer-identity,
+#launcher-root [data-view='preference-setup'] .launcher-command-footer-action {
+  border-color: color-mix(in srgb, var(--dsw-alias-border-l2, CanvasText) 72%, transparent);
+  background: light-dark(
+    var(--tockteam-preference-control-light),
+    color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 9%, var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-1, Canvas)))
+  );
+}
+
+#launcher-root [data-view='preference-setup'] > .launcher-command-header .launcher-command-footer-action {
+  border-color: transparent;
+  background: transparent;
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-command-footer-identity {
+  padding-inline: 0.625rem;
+}
+
+#launcher-root [data-view='preference-setup'] .launcher-command-footer-action:hover {
+  background: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, CanvasText 6%, transparent));
+}
+
 #launcher-search::-webkit-search-cancel-button,
 #launcher-search::-webkit-search-decoration {
   -webkit-appearance: none;
@@ -156,32 +779,32 @@
   background: color-mix(in srgb, var(--dsw-alias-bg-base, Canvas) 92%, var(--dsw-alias-label-primary, CanvasText));
 }
 
-#launcher-results {
+#launcher-root :where(.launcher-command-content, .launcher-command-list) {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
 
-#launcher-results::-webkit-scrollbar {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-#launcher-results::-webkit-scrollbar-track {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)::-webkit-scrollbar-track {
   background: transparent;
 }
 
-#launcher-results::-webkit-scrollbar-thumb {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 9999px;
   background-clip: padding-box;
   background-color: transparent;
 }
 
-#launcher-results[data-scrolling='true'] {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)[data-scrolling='true'] {
   scrollbar-color: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 24%, transparent) transparent;
 }
 
-#launcher-results[data-scrolling='true']::-webkit-scrollbar-thumb {
+#launcher-root :where(.launcher-command-content, .launcher-command-list)[data-scrolling='true']::-webkit-scrollbar-thumb {
   background-color: color-mix(in srgb, var(--dsw-alias-label-primary, CanvasText) 24%, transparent);
 }
 
@@ -253,8 +876,7 @@
     display: none !important;
   }
 
-  & [data-slot='sidebar'] button:has([data-slot='settings.trigger']),
-  & [data-slot='sidebar'] [data-tockteam-marketplace-nav] {
+  & [data-slot='sidebar'] button:has([data-slot='settings.trigger']) {
     display: none !important;
   }
 
@@ -289,18 +911,51 @@
   &:has(#root [role='presentation'] > [role='dialog']) #tockteam-chrome-layer {
     z-index: 999 !important;
   }
-}
 
-/* The marketplace navigation is contributed inside the inherited DSH sidebar. */
-@utility tockteam-marketplace-shell {
-  & [data-tockteam-marketplace-footer-stack='true']:has([data-tockteam-marketplace-nav][data-collapsed='true']) {
-    display: flex !important;
-    align-items: center !important;
-    flex-direction: column !important;
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-shell] {
+    position: fixed !important;
+    z-index: 1000 !important;
+    inset: var(--tockteam-titlebar-height) 0 0 var(--tockteam-rail-width) !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    background: var(--dsw-alias-bg-base) !important;
+    backdrop-filter: none !important;
   }
 
-  &[data-tockteam-marketplace-open='true'] [data-tockteam-pinned-summary],
-  &[data-tockteam-marketplace-open='true'] #tockteam-sidebar-root {
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    background: var(--dsw-alias-bg-layer-1) !important;
+    box-shadow: none !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] > nav {
+    width: var(--tockteam-primary-sidebar-width) !important;
+    border-right: 1px solid var(--dsw-alias-border-l1) !important;
+    background: var(--dsw-specific-sidebar-fill) !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-resize] {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    bottom: 0;
+    left: var(--tockteam-primary-sidebar-width);
+    width: 8px;
+    margin-left: -4px;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-surface] div:has(> [role='tabpanel'] [data-tockteam-plugin-marketplace-settings]) {
+    width: 100%;
+    max-width: none !important;
+  }
+
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-mask],
+  &[data-tockteam-settings-page='true'] [data-tockteam-settings-page-close] {
     display: none !important;
   }
 }
@@ -314,6 +969,10 @@
   }
 
   & body {
+    /* Pinned Obsidian-compatible document roles; shell actions keep the active DSH brand. */
+    --dsw-specific-markdown-accent: light-dark(#705dcf, #a68af9);
+    --dsw-specific-markdown-highlight: rgb(255 208 0 / 40%);
+    --dsw-specific-markdown-inline-code: color-mix(in srgb, var(--dsw-alias-label-primary, currentColor) 9%, transparent);
     --tockteam-main-pane: var(--dsw-alias-bg-layer-1, var(--dsw-alias-bg-base, #fff));
     --tockteam-shell-chrome: color-mix(in srgb, var(--dsw-alias-bg-base, #fff) 96%, var(--dsw-alias-label-primary, #1f2328));
     --tockteam-shell-divider: color-mix(in srgb, var(--dsw-alias-label-primary, #1f2328) 9%, transparent);

@@ -81,7 +81,7 @@ export class DesktopMicrophoneProvider implements TockTeamDesktopMicrophone {
     await Promise.allSettled([...this.pending])
     if (this.admitted && this.endpoint !== undefined && this.token !== undefined) {
       const result = await this.nativeRequest({ disposeProvider: true }) as { status?: string }
-      if (result.status !== 'closed') throw new Error('TockTeam Desktop microphone cleanup was incomplete')
+      if (result.status !== 'closed') throw new Error('TockTeam microphone cleanup was incomplete')
     }
   }
 

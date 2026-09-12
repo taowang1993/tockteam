@@ -1,0 +1,3 @@
+Using pinned DSH npm release 0.1.2-rc.1 (sha512-RPq48TzxvwpdT9/7W…)
+Refreshing staged desktop bundles
+Refreshed staged DSH runtime: /Users/taowang/projects/worktrees/launcher/.stage/dsh-runtime

@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   canonicalTockTeamPath,
+  isSettingsPath,
   isTockCoderPath,
   isTockTutorPath,
   readTockTutorRouteLocation,
   resolveTockTutorNavigation,
+  SETTINGS_ROUTE_PREFIX,
   TOCKCODER_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_SLOT,
 } from '../plugins/sidebar/src/client/tocktutor-route.ts'
@@ -47,6 +49,7 @@ test('locks the Desktop TockTutor route seat and publishes its package type entr
   assert.equal(packageJson.exports['./client'].default, './dist/client.js')
   assert.ok(packageJson.files.includes('client.d.ts'))
   assert.equal(TOCKTUTOR_ROUTE_SLOT, 'tockteam.tocktutor.route')
+  assert.equal(SETTINGS_ROUTE_PREFIX, '/settings')
   assert.equal(TOCKCODER_ROUTE_PREFIX, '/tockcoder')
   assert.equal(isTockCoderPath('/tockcoder'), true)
   assert.equal(isTockCoderPath('/tockcoder/session/123'), true)
@@ -56,6 +59,9 @@ test('locks the Desktop TockTutor route seat and publishes its package type entr
   assert.equal(isTockTutorPath('/tocktutor/notes/Plan.md'), true)
   assert.equal(isTockTutorPath('/tocktutors'), false)
   assert.equal(isTockTutorPath('/'), false)
+  assert.equal(isSettingsPath('/settings'), true)
+  assert.equal(isSettingsPath('/settings/models'), true)
+  assert.equal(isSettingsPath('/setting'), false)
 })
 
 test('TockTeam routes the legacy root entrance to TockCoder', () => {
@@ -84,7 +90,7 @@ test('TockTutor route synchronizes the trusted native frame without widening IPC
   assert.match(sidebar, /routeRoot\.current[\s\S]+node\.inert = !active/u)
   assert.match(tutorWorkbench, /active\?: boolean/u)
   assert.match(tutorWorkbench, /if \(!active\) return[\s\S]+controller\.syncLocation/u)
-  assert.match(tutorWorkbench, /if \(!active \|\| snapshot\.path === null\) return/u)
+  assert.match(tutorWorkbench, /if \(!active \|\| snapshot\.path === null \|\| container === null\) return/u)
   assert.match(tutorWorkbench, /titlebar !== null/u)
   assert.match(tutorWorkbench, /active && typeof document !== 'undefined'/u)
 })

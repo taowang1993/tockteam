@@ -64,6 +64,29 @@ test('Simple File Search isolates a broken root and reports bounded provider sta
   assert.equal(status.lastError, undefined)
 })
 
+test('Simple File Search applies one deadline across all configured roots', async () => {
+  let scans = 0
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['SimpleFileSearch'],
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[SimpleFileSearch].folders' ? [
+      { id: 'first', path: '/home/max/first', recursive: true, searchFor: 'files' as const },
+      { id: 'second', path: '/home/max/second', recursive: true, searchFor: 'files' as const },
+    ] as T : fallback,
+    homePath: '/home/max', platform: 'Linux', scanTimeoutMs: 20,
+    scanners: {
+      queryFileSearch: async () => [],
+      scanSimpleFolder: async ({ signal }) => {
+        scans += 1
+        return await new Promise<readonly never[]>(resolve => signal.addEventListener('abort', () => resolve([]), { once: true }))
+      },
+      validatePath: async () => true,
+    },
+  })
+  await provider.loadIndexedItems(new AbortController().signal)
+  assert.equal(scans, 1)
+})
+
 test('FileSearch query status ignores a stale Simple File Search scan error', async () => {
   const provider = createLauncherFileSearchExtensions({
     effects: { openPath: () => undefined, revealPath: () => undefined },

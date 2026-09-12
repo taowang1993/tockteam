@@ -66,6 +66,12 @@ function assertAuthorization(value) {
         throw new TypeError('Desktop authorization must be one bounded opaque token.');
     }
 }
+function assertVaultName(value) {
+    const normalized = value.trim();
+    if (normalized !== value || normalized.length === 0 || normalized.length > 80 || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(normalized)) {
+        throw new TypeError('Vault name must be one bounded folder name.');
+    }
+}
 function popOutKey(vault, path) {
     return `${vault.id}:${String(vault.generation)}:${path}`;
 }
@@ -182,6 +188,10 @@ let TockTutorDesktopGateway = (() => {
     let _exportNote_decorators;
     let _requestMicrophone_decorators;
     let _revealEntry_decorators;
+    let _revealVault_decorators;
+    let _renameVault_decorators;
+    let _moveVault_decorators;
+    let _removeVault_decorators;
     return class TockTutorDesktopGateway extends _classSuper {
         static {
             const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
@@ -194,6 +204,10 @@ let TockTutorDesktopGateway = (() => {
             _exportNote_decorators = [Remote];
             _requestMicrophone_decorators = [Remote];
             _revealEntry_decorators = [Remote];
+            _revealVault_decorators = [Remote];
+            _renameVault_decorators = [Remote];
+            _moveVault_decorators = [Remote];
+            _removeVault_decorators = [Remote];
             __esDecorate(this, null, _activateVault_decorators, { kind: "method", name: "activateVault", static: false, private: false, access: { has: obj => "activateVault" in obj, get: obj => obj.activateVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _activateVaultTarget_decorators, { kind: "method", name: "activateVaultTarget", static: false, private: false, access: { has: obj => "activateVaultTarget" in obj, get: obj => obj.activateVaultTarget }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _openPopOut_decorators, { kind: "method", name: "openPopOut", static: false, private: false, access: { has: obj => "openPopOut" in obj, get: obj => obj.openPopOut }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -203,6 +217,10 @@ let TockTutorDesktopGateway = (() => {
             __esDecorate(this, null, _exportNote_decorators, { kind: "method", name: "exportNote", static: false, private: false, access: { has: obj => "exportNote" in obj, get: obj => obj.exportNote }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _requestMicrophone_decorators, { kind: "method", name: "requestMicrophone", static: false, private: false, access: { has: obj => "requestMicrophone" in obj, get: obj => obj.requestMicrophone }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _revealEntry_decorators, { kind: "method", name: "revealEntry", static: false, private: false, access: { has: obj => "revealEntry" in obj, get: obj => obj.revealEntry }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _revealVault_decorators, { kind: "method", name: "revealVault", static: false, private: false, access: { has: obj => "revealVault" in obj, get: obj => obj.revealVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _renameVault_decorators, { kind: "method", name: "renameVault", static: false, private: false, access: { has: obj => "renameVault" in obj, get: obj => obj.renameVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _moveVault_decorators, { kind: "method", name: "moveVault", static: false, private: false, access: { has: obj => "moveVault" in obj, get: obj => obj.moveVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _removeVault_decorators, { kind: "method", name: "removeVault", static: false, private: false, access: { has: obj => "removeVault" in obj, get: obj => obj.removeVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             if (_metadata) Object.defineProperty(this, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
         }
         static inject = [
@@ -248,6 +266,14 @@ let TockTutorDesktopGateway = (() => {
             if (recovered.fingerprint !== fingerprint || !sameIdentity(recovered.identity, identity)) {
                 throw new Error('Desktop action changed during response recovery.');
             }
+            return recovered.result;
+        }
+        recoverMutationResult(authorization, fingerprint) {
+            const recovered = this.recoveredResults.get(authorization);
+            if (recovered === undefined)
+                return undefined;
+            if (recovered.fingerprint !== fingerprint)
+                throw new Error('Desktop action changed during response recovery.');
             return recovered.result;
         }
         rememberResult(authorization, fingerprint, identity, result) {
@@ -556,6 +582,93 @@ let TockTutorDesktopGateway = (() => {
                 if (this.revealed.size > 128)
                     this.revealed.delete(this.revealed.keys().next().value);
                 return { status: 'revealed' };
+            }, signal);
+        }
+        async revealVault(authorization, expectedVault, signal) {
+            assertAuthorization(authorization);
+            assertVault(expectedVault);
+            assertCurrentVault(this.ctx.noteVault, expectedVault);
+            return this.lifetime.run(async (ownerSignal) => {
+                const identity = await this.claimForVault(authorization, 'reveal-vault', expectedVault, ownerSignal);
+                const fingerprint = `reveal-vault:${expectedVault.id}:${String(expectedVault.generation)}`;
+                const recovered = this.recoverResult(authorization, fingerprint, identity);
+                if (recovered !== undefined)
+                    return recovered;
+                await this.ctx.noteVault.revealVault(expectedVault, ownerSignal);
+                assertClaim(this.ctx.noteVault, expectedVault, identity);
+                return this.rememberResult(authorization, fingerprint, identity, { status: 'revealed' });
+            }, signal);
+        }
+        async renameVault(authorization, name, expectedVault, signal) {
+            assertAuthorization(authorization);
+            assertVaultName(name);
+            assertVault(expectedVault);
+            return this.lifetime.run(async (ownerSignal) => {
+                const fingerprint = `rename-vault:${expectedVault.id}:${String(expectedVault.generation)}:${name}`;
+                const recovered = this.recoverMutationResult(authorization, fingerprint);
+                if (recovered !== undefined)
+                    return recovered;
+                const identity = await this.claimForVault(authorization, 'rename-vault', expectedVault, ownerSignal);
+                ownerSignal.throwIfAborted();
+                const renamed = this.ctx.noteVault.renameVault(name, expectedVault);
+                if (!renamed.active || renamed.id !== expectedVault.id || renamed.generation !== expectedVault.generation + 1) {
+                    throw new Error('Desktop vault rename completed with stale state.');
+                }
+                const result = this.rememberResult(authorization, fingerprint, identity, { status: 'renamed' });
+                try {
+                    await this.ctx.noteVault.synchronizeDesktopSelection(ownerSignal);
+                }
+                catch { /* the next native action retries binding */ }
+                return result;
+            }, signal);
+        }
+        async moveVault(authorization, expectedVault, signal) {
+            assertAuthorization(authorization);
+            assertVault(expectedVault);
+            return this.lifetime.run(async (ownerSignal) => {
+                const fingerprint = `move-vault:${expectedVault.id}:${String(expectedVault.generation)}`;
+                const recovered = this.recoverMutationResult(authorization, fingerprint);
+                if (recovered !== undefined)
+                    return recovered;
+                const identity = await this.claimForVault(authorization, 'move-vault', expectedVault, ownerSignal);
+                const selection = await this.ctx.tockTeamDesktopPicker.pick({ identity, kind: 'vault', purpose: 'move' }, ownerSignal);
+                assertClaim(this.ctx.noteVault, expectedVault, identity);
+                if (selection.status !== 'selected')
+                    return { status: selection.status };
+                if (selection.operationId !== identity.operationId)
+                    throw new Error('Desktop picker returned a mismatched operation.');
+                const moved = await this.ctx.noteVault.moveDesktopSelection({
+                    authorization: selection.authorization,
+                    expectedVault,
+                    identity,
+                }, ownerSignal);
+                if (moved.operationId !== identity.operationId
+                    || moved.vaultId !== expectedVault.id
+                    || moved.vaultGeneration !== expectedVault.generation + 1)
+                    throw new Error('Desktop vault move completed with stale state.');
+                const result = this.rememberResult(authorization, fingerprint, identity, { status: 'moved' });
+                try {
+                    await this.ctx.noteVault.synchronizeDesktopSelection(ownerSignal);
+                }
+                catch { /* the next native action retries binding */ }
+                return result;
+            }, signal);
+        }
+        async removeVault(authorization, expectedVault, signal) {
+            assertAuthorization(authorization);
+            assertVault(expectedVault);
+            return this.lifetime.run(async (ownerSignal) => {
+                const fingerprint = `remove-vault:${expectedVault.id}:${String(expectedVault.generation)}`;
+                const recovered = this.recoverMutationResult(authorization, fingerprint);
+                if (recovered !== undefined)
+                    return recovered;
+                const identity = await this.claimForVault(authorization, 'remove-vault', expectedVault, ownerSignal);
+                ownerSignal.throwIfAborted();
+                const removed = await this.ctx.noteVault.removeVault(expectedVault);
+                if (removed.active || removed.generation !== expectedVault.generation + 1) {
+                    throw new Error('Desktop vault removal completed with stale state.');
+                }
+                return this.rememberResult(authorization, fingerprint, identity, { status: 'closed' });
             }, signal);
         }
     };

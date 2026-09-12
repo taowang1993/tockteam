@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "kind": "can-i-use-notice-provenance-supplement",
+  "evidenceOnly": true,
+  "runtimeAdmitted": false,
+  "fixtureRuntimeAdmitted": false,
+  "packageAdmissionAuthorized": false,
+  "sourceCheckpoint": "d41351a513ef57a90d4df0878366a0a00e0a7087",
+  "fixture": {
+    "sha256": "3e2e16d1b9764f9df605f666c590e5ac86997259a5b480a75e7a59dc680e2d55",
+    "bytes": 27679242,
+    "envelopeSchemaVersion": 2,
+    "generatorSha256": "f42b9935b3e3b2dc6b43ed6c5fe7a1a27ca03578add9b219da5f85afb35d2767",
+    "retainedInThisSupplement": false,
+    "scope": "Approved generation evidence; no runtime admission. Future extraction requires exact original envelope bytes and separate authority."
+  },
+  "approvedNotice": {
+    "path": "THIRD_PARTY_NOTICES.proposed.md",
+    "sha256": "791f9758d274b29ee450352421702dd1b855790f2b2fe3416d7b90e6a9f95bc1",
+    "bytes": 910,
+    "eventualLocation": "THIRD_PARTY_NOTICES.md at the data-bundle root with licenses/caniuse-lite.txt; distribution notice index includes or links the local notice."
+  },
+  "retrievalManifest": {
+    "path": "manifest.json",
+    "sha256": "2f9b627bbbb5ec161c18b7c1070108c58939c6bb7cdcf903eb0a6b54d774da25"
+  },
+  "findings": {
+    "path": "findings.md",
+    "sha256": "5cd5408110f647452a638c390fb0ce97fc27bd2db8e72cd3f356183210a55708",
+    "historicalStatus": "Retained verbatim from before independent approval; current approval is recorded below."
+  },
+  "upstream": {
+    "package": "caniuse-lite@1.0.30001761",
+    "archiveSha256": "dad057386ae3d0178226ca938355312c16e94b6680627ec297ce1b1dcf55e2d1",
+    "registryMetadata": {
+      "path": "request-1.body",
+      "url": "https://registry.npmjs.org/caniuse-lite/1.0.30001761",
+      "sha256": "951884e9734e31a0f9e951444f95b0cd61329e653168c8ee9ab12024f0dd41c7",
+      "nature": "Retained retrieval-time response; gitHead is registry-declared, not independently signature-attested."
+    },
+    "gitHead": "59e2d41ee743d54efec1bb8ce067957b9766ca50",
+    "readme": {
+      "path": "request-2.body",
+      "url": "https://raw.githubusercontent.com/browserslist/caniuse-lite/59e2d41ee743d54efec1bb8ce067957b9766ca50/README.md",
+      "sha256": "d668423e1ae99542c8974c99275b2455c349b496f8195f77ffe020e5b15e4fd3"
+    },
+    "license": {
+      "path": "request-3.body",
+      "url": "https://raw.githubusercontent.com/browserslist/caniuse-lite/59e2d41ee743d54efec1bb8ce067957b9766ca50/LICENSE",
+      "sha256": "fd3a263fe19ed8faa9068b43abaebafc02c77897b0c6fc09abc04bb592e5f16e"
+    }
+  },
+  "approval": {
+    "fixtureEvidence": "approved",
+    "attribution": "approved",
+    "proposedDistributionNotice": "approved",
+    "basis": "Independent reviewer verdicts relayed by parent conductor; not runtime or package admission.",
+    "relayedBy": "01a07a9f",
+    "messageId": "8173adbc-e6ab-4bac-8915-d740c19a00a7",
+    "relayedAt": "2026-09-09T23:12:31.263Z"
+  },
+  "retainedArtifacts": [
+    {
+      "path": "findings.md",
+      "bytes": 7614,
+      "sha256": "5cd5408110f647452a638c390fb0ce97fc27bd2db8e72cd3f356183210a55708"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 2207,
+      "sha256": "2f9b627bbbb5ec161c18b7c1070108c58939c6bb7cdcf903eb0a6b54d774da25"
+    },
+    {
+      "path": "metadata-identity.json",
+      "bytes": 490,
+      "sha256": "3e5d6ffeece0109992cc6acb0cc4090e5aad9bf81689a5fb380df006b2384111"
+    },
+    {
+      "path": "request-1.body",
+      "bytes": 1977,
+      "sha256": "951884e9734e31a0f9e951444f95b0cd61329e653168c8ee9ab12024f0dd41c7"
+    },
+    {
+      "path": "request-1.json",
+      "bytes": 618,
+      "sha256": "bfa47a587ff77732cdf118fcc61e0d99034c91d9460cd38e6f52cb822b5e1cbe"
+    },
+    {
+      "path": "request-2.body",
+      "bytes": 3132,
+      "sha256": "d668423e1ae99542c8974c99275b2455c349b496f8195f77ffe020e5b15e4fd3"
+    },
+    {
+      "path": "request-2.json",
+      "bytes": 769,
+      "sha256": "ba680604b3cb69f19411b1f7ad491da1314c8956eb1aec3a0de525dfda8bf1a3"
+    },
+    {
+      "path": "request-3.body",
+      "bytes": 18651,
+      "sha256": "fd3a263fe19ed8faa9068b43abaebafc02c77897b0c6fc09abc04bb592e5f16e"
+    },
+    {
+      "path": "request-3.json",
+      "bytes": 770,
+      "sha256": "701aea66e05c2ece05cb79bbcf75dc7113d7ae9d7064e8a33ce72b4d7a3e235f"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.proposed.md",
+      "bytes": 910,
+      "sha256": "791f9758d274b29ee450352421702dd1b855790f2b2fe3416d7b90e6a9f95bc1"
+    }
+  ],
+  "omittedHistoricalArtifact": {
+    "path": "retrieve.mjs",
+    "reason": "The original retrieval manifest retains its hash; replay tooling is unnecessary because all HTTP response bodies, receipts, identity checks, findings and approved notice are retained. No executable retrieval tool is added to the repository."
+  }
+}

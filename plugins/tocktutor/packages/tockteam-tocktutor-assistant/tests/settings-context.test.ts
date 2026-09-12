@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
+import LlmRuntime, { LlmAdapter, type GenerateOptions, type LlmResolvedModelInfo, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SettingsProvider, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import Storage from '@deepseek-ai/dsh-storage'
@@ -28,6 +29,30 @@ import {
   boundToolText,
   type AssistantPromptInput,
 } from '../src/context.ts'
+
+class QuickAnswerAdapter extends LlmAdapter {
+  private calls = 0
+
+  listModels(): Promise<readonly []> {
+    return Promise.resolve([])
+  }
+
+  resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
+    return Promise.resolve({ provider, id: model, name: model })
+  }
+
+  async *stream(_options: GenerateOptions): AsyncIterable<StreamChunk> {
+    this.calls += 1
+    yield {
+      type: 'text-delta',
+      index: 0,
+      text: this.calls === 1
+        ? '{"queries":["vehicle"]}'
+        : '{"answer":"Use the vehicle checklist.","citations":["qa-1"]}',
+    }
+    yield { type: 'finish', reason: { kind: 'stop' } }
+  }
+}
 
 class MemorySubprocess extends SubprocessRuntime {
   resolveExecutable(command: string): Promise<string> {
@@ -64,6 +89,7 @@ const defaults: AssistantSettings = {
   provider: 'deepseek-official',
   model: 'deepseek-v4-flash',
   writePermission: 'read-only',
+  aiSearch: 'on-demand',
 }
 
 async function installStorage(ctx: Context, root: string): Promise<void> {
@@ -72,7 +98,7 @@ async function installStorage(ctx: Context, root: string): Promise<void> {
   await ctx.plugin(StorageDomain, { backend: 'json' })
 }
 
-async function boot(activeVault = false): Promise<{ ctx: Context; assistant: NoteAssistant; assistantFiber: Context['fiber']; root: string; vaultRoot: string | null }> {
+async function boot(activeVault = false, includeLlm = false): Promise<{ ctx: Context; assistant: NoteAssistant; assistantFiber: Context['fiber']; root: string; vaultRoot: string | null }> {
   const root = await mkdtemp(join(tmpdir(), 'assistant-settings-'))
   const vaultRoot = activeVault ? join(root, 'vault') : null
   if (vaultRoot !== null) {
@@ -81,6 +107,7 @@ async function boot(activeVault = false): Promise<{ ctx: Context; assistant: Not
   }
   const ctx = new Context()
   await ctx.plugin(AgentRegistry)
+  if (includeLlm) await ctx.plugin(LlmRuntime)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await installStorage(ctx, join(root, 'storage'))
@@ -92,6 +119,65 @@ async function boot(activeVault = false): Promise<{ ctx: Context; assistant: Not
   return { ctx, assistant: ctx.noteAssistant, assistantFiber, root, vaultRoot }
 }
 
+test('Quick Answer verifies semantic Related candidates against the current generation', async () => {
+  const { ctx, assistant, assistantFiber, root, vaultRoot } = await boot(true, true)
+  assert.ok(vaultRoot)
+  await writeFile(join(vaultRoot, 'Mobility.md'), '# Mobility\nVehicle checklist.\n')
+  ctx.llm.registerAdapter(['fake'], new QuickAnswerAdapter())
+  try {
+    await assistant.saveSettings({ ...defaults, provider: 'fake', model: 'model' })
+    const state = ctx.noteVault.state
+    assert.equal(state.active, true)
+    if (!state.active) throw new Error('expected active vault')
+    const related = await assistant.searchIntelligence({
+      mode: 'related',
+      query: 'car',
+      vaultGeneration: state.generation,
+    }, new AbortController().signal)
+    assert.equal(related.status, 'applied')
+    const match = related.matches[0]
+    assert.ok(match)
+    const revision = match.revision
+    if (typeof revision !== 'string') throw new Error('expected a candidate revision')
+    const answered = await assistant.quickAnswer({
+      mode: 'related',
+      query: 'car',
+      vaultGeneration: state.generation,
+      candidates: [{ id: 'qa-1', revision, line: match.line, ...(match.lineEnd === undefined ? {} : { lineEnd: match.lineEnd }), path: match.path, preview: match.preview }],
+    }, new AbortController().signal)
+    assert.deepEqual(answered, {
+      status: 'completed',
+      answer: 'Use the vehicle checklist.',
+      citations: [{ id: 'qa-1', line: match.line, lineEnd: match.lineEnd ?? match.line, path: match.path }],
+    })
+    const automatic = await assistant.quickAnswer({
+      mode: 'query',
+      query: 'car',
+      vaultGeneration: state.generation,
+      candidates: [{ id: 'qa-1', revision, line: match.line, ...(match.lineEnd === undefined ? {} : { lineEnd: match.lineEnd }), path: match.path, preview: match.preview }],
+    }, new AbortController().signal)
+    assert.equal(automatic.status, 'no-evidence')
+    const staleRevision = await assistant.quickAnswer({
+      mode: 'related',
+      query: 'car',
+      vaultGeneration: state.generation,
+      candidates: [{ id: 'qa-1', revision: 'stale-revision', line: match.line, ...(match.lineEnd === undefined ? {} : { lineEnd: match.lineEnd }), path: match.path, preview: match.preview }],
+    }, new AbortController().signal)
+    assert.equal(staleRevision.status, 'no-evidence')
+    const unknown = await assistant.quickAnswer({
+      mode: 'related',
+      query: 'car',
+      vaultGeneration: state.generation,
+      candidates: [{ id: 'qa-1', revision: 'unknown-revision', line: 1, path: 'Unknown.md', preview: 'not in search results' }],
+    }, new AbortController().signal)
+    assert.equal(unknown.status, 'no-evidence')
+  } finally {
+    await assistantFiber.dispose()
+    await ctx.fiber.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('settings are bounded, persisted through DSH settings, and unregistered on unload', async () => {
   const { ctx, assistant, assistantFiber, root } = await boot()
   try {
@@ -100,11 +186,13 @@ test('settings are bounded, persisted through DSH settings, and unregistered on 
       provider: 'gateway/acme',
       model: 'acme:model-v2',
       writePermission: 'propose',
+      aiSearch: 'automatic',
     })
     assert.deepEqual(assistant.currentSettings(), {
       provider: 'gateway/acme',
       model: 'acme:model-v2',
       writePermission: 'propose',
+      aiSearch: 'automatic',
     })
     assert.equal(ctx.settings.describe().some(entry => entry.ns === ASSISTANT_SETTINGS_NAMESPACE), true)
 

@@ -7,9 +7,7 @@ const timeoutMs = 20_000
 if (runtimeUrl === undefined) throw new Error('runtime URL is required')
 
 app.disableHardwareAcceleration()
-// Keep requestAnimationFrame ticking in the hidden smoke window: the plugin
-// marketplace places its sidebar nav entry from a rAF callback, and hidden
-// renderers are backgrounded by default (no frames, no placement).
+// Keep scheduled UI work ticking throughout the bounded client-graph smoke.
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 
@@ -26,9 +24,7 @@ function finish(window, error) {
 void app.whenReady().then(async () => {
   const window = new BrowserWindow({
     height: 800,
-    // The plugin marketplace places its nav entry from a requestAnimationFrame
-    // callback; never-shown windows receive no frames, so the smoke window is
-    // visible (rc.5 behavior).
+    // CI runs this window under Xvfb so layout and animation frames stay live.
     show: true,
     webPreferences: {
       backgroundThrottling: false,
@@ -39,8 +35,8 @@ void app.whenReady().then(async () => {
     },
     width: 1280,
   })
-  const startedAt = Date.now()
   let navigationReadyAt = null
+  let lastState = null
   let settled = false
   let watchdog
 
@@ -51,7 +47,8 @@ void app.whenReady().then(async () => {
     finish(window, error)
   }
   watchdog = setTimeout(() => {
-    settle(new Error('DSH Chromium client graph timed out during navigation or renderer execution'))
+    settle(new Error('DSH Chromium client graph timed out during navigation or renderer execution'
+      + `\nLast state: ${JSON.stringify(lastState)}`))
   }, timeoutMs)
 
   window.webContents.on('render-process-gone', (_event, details) => {
@@ -68,182 +65,92 @@ void app.whenReady().then(async () => {
     if (settled) return
     try {
       const state = await window.webContents.executeJavaScript(`(() => {
-        // rc.5+ gates first launch behind onboarding dialogs (welcome notice,
-        // then API-key setup). Dismiss both so the shell navigation is visible.
         const onboardingButton = [...document.querySelectorAll('button')]
           .find(button => /^(继续|continue|start using|开始使用|稍后配置|configure later|skip|later)$/i.test((button.textContent ?? '').trim()))
         if (onboardingButton !== undefined) onboardingButton.click()
-        const marketplaceButton = document.querySelector('[data-tockteam-marketplace-nav]')
-        const collapsed = marketplaceButton?.dataset.collapsed === 'true'
-        if (document.documentElement.dataset.tockteamDesktop === 'true'
-          && marketplaceButton instanceof HTMLButtonElement
-          && !collapsed
-          && window.__TOCKTEAM_SMOKE_COLLAPSE_REQUESTED__ !== true) {
-          const toggle = [...document.querySelectorAll('button')]
-            .find(button => /^(collapse sidebar|收起侧边栏)$/i.test(
-              button.getAttribute('aria-label') ?? '',
-            ))
-          if (toggle instanceof HTMLButtonElement) {
-            window.__TOCKTEAM_SMOKE_COLLAPSE_REQUESTED__ = true
-            toggle.click()
-          }
-        }
         return {
-        body: document.body?.innerText ?? '',
-        tailwind: (() => {
-          const probe = document.createElement('div')
-          const reference = document.createElement('div')
-          probe.className = 'flex flex-col text-foreground'
-          reference.style.color = 'var(--dsw-alias-label-primary)'
-          document.body.append(probe, reference)
-          const probeStyle = getComputedStyle(probe)
-          const referenceColor = getComputedStyle(reference).color
-          const result = {
-            color: probeStyle.color,
-            display: probeStyle.display,
-            flexDirection: probeStyle.flexDirection,
-            ready: probeStyle.display === 'flex'
-              && probeStyle.flexDirection === 'column'
-              && probeStyle.color === referenceColor,
-            referenceColor,
-          }
-          probe.remove()
-          reference.remove()
-          return result
-        })(),
-        previewBadgeVisible: (() => {
-          const headline = document.querySelector('[data-tockteam-hero-headline]')
-          const badge = headline?.nextElementSibling
-          return badge instanceof HTMLElement
-            && !badge.hidden
-            && badge.getBoundingClientRect().width > 0
-        })(),
-        navigation: (() => {
-          const pluginsIcon = document.querySelector('[data-tockteam-marketplace-nav] svg')
-          const slotted = [...document.querySelectorAll('button')]
-            .find(button => button.querySelector('[data-slot="settings.trigger"]') !== null
-              && button.closest('[data-slot="sidebar"]') !== null)
-          const labeled = [...document.querySelectorAll('button')]
-            .filter(button => /settings|设置/i.test([
-              button.textContent,
-              button.getAttribute('aria-label'),
-              button.getAttribute('title'),
-            ].filter(Boolean).join(' ')))
-          const settings = slotted
-            ?? (labeled.length > 0
-              ? labeled[labeled.length - 1]
-              : [...document.querySelectorAll('button[aria-haspopup="dialog"]')]
-                .filter(button => button.closest('[data-slot="sidebar"]') !== null)
-                .sort((left, right) => right.getBoundingClientRect().bottom - left.getBoundingClientRect().bottom)[0])
-          const settingsIcon = settings?.querySelector('svg')
-          const pluginsButton = pluginsIcon?.closest('button')
-          if (!(pluginsIcon instanceof SVGElement)
-            || !(settingsIcon instanceof SVGElement)
-            || !(pluginsButton instanceof HTMLButtonElement)
-            || !(settings instanceof HTMLButtonElement)) return null
-          if (collapsed) {
-            let footer = pluginsButton.parentElement
-            while (footer !== null && !footer.contains(settings)) {
-              footer = footer.parentElement
+          body: document.body?.innerText ?? '',
+          tailwind: (() => {
+            const probe = document.createElement('div')
+            const reference = document.createElement('div')
+            probe.className = 'flex flex-col text-foreground'
+            reference.style.color = 'var(--dsw-alias-label-primary)'
+            document.body.append(probe, reference)
+            const style = getComputedStyle(probe)
+            const referenceColor = getComputedStyle(reference).color
+            const result = {
+              color: style.color,
+              display: style.display,
+              flexDirection: style.flexDirection,
+              ready: style.display === 'flex'
+                && style.flexDirection === 'column'
+                && style.color === referenceColor,
+              referenceColor,
             }
-            // Replay hosts that lay out both collapsed footer actions in a row.
-            // The marketplace contract must keep the icon rail vertical.
-            footer?.style.setProperty('flex-direction', 'row')
-          }
-          const pluginsRect = pluginsIcon.getBoundingClientRect()
-          const settingsRect = settingsIcon.getBoundingClientRect()
-          const pluginsBox = pluginsIcon.getBBox()
-          const settingsBox = settingsIcon.getBBox()
-          const pluginsView = pluginsIcon.viewBox.baseVal
-          const settingsView = settingsIcon.viewBox.baseVal
-          const pluginsArtwork = {
-            height: pluginsBox.height / pluginsView.height * pluginsRect.height,
-            width: pluginsBox.width / pluginsView.width * pluginsRect.width,
-          }
-          const settingsArtwork = {
-            height: settingsBox.height / settingsView.height * settingsRect.height,
-            width: settingsBox.width / settingsView.width * settingsRect.width,
-          }
-          return {
-            artworkDelta: Math.max(
-              Math.abs(pluginsArtwork.height - settingsArtwork.height),
-              Math.abs(pluginsArtwork.width - settingsArtwork.width),
-            ),
-            collapsed,
-            delta: Math.abs(
-              pluginsRect.left + pluginsRect.width / 2
-              - settingsRect.left - settingsRect.width / 2
-            ),
-            pluginsArtwork,
-            pluginsBottom: pluginsRect.bottom,
-            pluginsCenter: pluginsRect.left + pluginsRect.width / 2,
-            pluginsTop: pluginsRect.top,
-            settingsArtwork,
-            settingsBottom: settingsRect.bottom,
-            settingsCenter: settingsRect.left + settingsRect.width / 2,
-            settingsTop: settingsRect.top,
-            viewportHeight: window.innerHeight,
-          }
-        })(),
-        ready: document.documentElement.dataset.tockteamDesktop === 'true',
-      }
-    })()`)
+            probe.remove()
+            reference.remove()
+            return result
+          })(),
+          previewBadgeVisible: (() => {
+            const headline = document.querySelector('[data-tockteam-hero-headline]')
+            const badge = headline?.nextElementSibling
+            return badge instanceof HTMLElement && !badge.hidden && badge.getBoundingClientRect().width > 0
+          })(),
+          navigation: (() => {
+            const rail = document.querySelector('nav[aria-label="App Navigation"]')
+            if (!(rail instanceof HTMLElement)) return null
+            const bounds = element => {
+              const rect = element.getBoundingClientRect()
+              return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height }
+            }
+            const items = ['TockCoder', 'TockTutor', 'Settings'].map(label => {
+              const button = rail.querySelector('button[aria-label="' + label + '"]')
+              const icon = button?.querySelector('svg')
+              if (!(button instanceof HTMLButtonElement) || !(icon instanceof SVGElement)) return null
+              return { label, button: bounds(button), icon: bounds(icon) }
+            })
+            if (items.some(item => item === null)) return null
+            return {
+              items,
+              rail: bounds(rail),
+              viewport: { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight },
+            }
+          })(),
+          ready: document.documentElement.dataset.tockteamDesktop === 'true',
+        }
+      })()`)
+      lastState = { ready: state.ready, tailwind: state.tailwind, navigation: state.navigation }
       if (state.ready === true && state.previewBadgeVisible === true) {
         settle(new Error('TockCoder Preview badge is visible.'))
         return
-      }
-      if (state.ready === true
-        && state.navigation !== null
-        && state.navigation.collapsed === false
-        && state.navigation.artworkDelta > 1) {
-        settle(new Error(
-          'Plugins and Settings icons are not optically sized: '
-          + JSON.stringify(state.navigation),
-        ))
-        return
-      }
-      if (state.ready === true
-        && state.navigation !== null
-        && state.navigation.collapsed === true) {
-        if (state.navigation.pluginsTop < 0
-          || state.navigation.pluginsBottom > state.navigation.viewportHeight
-          || state.navigation.settingsTop < 0
-          || state.navigation.settingsBottom > state.navigation.viewportHeight) {
-          settle(new Error(
-            'Plugins and Settings navigation is outside the viewport: '
-            + JSON.stringify(state.navigation),
-          ))
-          return
-        }
-        if (state.navigation.delta > 0.5) {
-          settle(new Error(
-            'Plugins and Settings icons are not aligned: '
-            + JSON.stringify(state.navigation),
-          ))
-          return
-        }
-        if (state.navigation.settingsTop < state.navigation.pluginsBottom) {
-          settle(new Error(
-            'Plugins and Settings icons are not stacked vertically: '
-            + JSON.stringify(state.navigation),
-          ))
-          return
-        }
-        navigationReadyAt ??= Date.now()
-        if (Date.now() - navigationReadyAt >= 750 && state.tailwind.ready === true) {
-          settle()
-          return
-        }
       }
       if (state.body.includes('Failed to load plugins')) {
         settle(new Error(state.body.trim()))
         return
       }
-      if (Date.now() - startedAt >= timeoutMs) {
-        settle(new Error(
-          `DSH Chromium client graph timed out:\n${state.body.trim()}\nTailwind: ${JSON.stringify(state.tailwind)}\nNavigation: ${JSON.stringify(state.navigation)}`,
-        ))
-        return
+      if (state.ready === true && state.navigation !== null && state.tailwind.ready === true) {
+        const { items, rail, viewport } = state.navigation
+        const inside = (rect, container) => rect.width > 0 && rect.height > 0
+          && rect.left >= container.left && rect.right <= container.right
+          && rect.top >= container.top && rect.bottom <= container.bottom
+        const center = items[0].icon.left + items[0].icon.width / 2
+        const invalid = !inside(rail, viewport) || items.some((item, index) =>
+          !inside(item.button, rail) || !inside(item.icon, item.button)
+          || Math.abs(item.icon.width - 18) > 0.5 || Math.abs(item.icon.height - 18) > 0.5
+          || Math.abs(item.icon.left + item.icon.width / 2 - center) > 0.5
+          || (index > 0 && item.button.top < items[index - 1].button.bottom))
+        if (invalid) {
+          settle(new Error('App navigation bounds, icon sizing, alignment, or vertical order is invalid: '
+            + JSON.stringify(state.navigation)))
+          return
+        }
+        navigationReadyAt ??= Date.now()
+        if (Date.now() - navigationReadyAt >= 750) {
+          settle()
+          return
+        }
+      } else {
+        navigationReadyAt = null
       }
     } catch (error) {
       settle(error instanceof Error ? error : new Error(String(error)))

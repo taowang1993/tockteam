@@ -16,7 +16,6 @@ const migratedReactFiles = [
   'plugins/tocktutor/packages/tockteam-tocktutor-import-export/src/review-panel.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base-executable-view.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/canvas-board.tsx',
-  'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor-runtime.tsx',
   'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx',
   'src/launcher-discovery-settings.tsx',
   'src/launcher-file-search-settings.tsx',
@@ -116,7 +115,7 @@ test('icon-only actions use shared tooltips instead of native titles', () => {
     assert.match(source, /from '@tockteam\/ui\/tooltip'/)
     assert.match(source, /<TooltipProvider>/)
   }
-  assert.match(marketplace, /<TooltipContent>\{t\('close'\)\}<\/TooltipContent>/)
+  assert.match(marketplace, /<TooltipContent>\{t\('close-details'\)\}<\/TooltipContent>/)
   assert.match(marketplace, /<TooltipContent>\{t\('search\.clear'\)\}<\/TooltipContent>/)
   assert.doesNotMatch(marketplace, /title=\{t\('close'\)\}/)
   for (const message of ['side.back', 'workspace.refresh', 'workspace.add', 'workspace.close-review', 'workspace.remove-comment']) {

@@ -12,10 +12,14 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     closeAllPopOuts: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     closePopOut: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     exportNote: (authorization: string, format: 'html' | 'pdf', path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    moveVault: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     openPopOut: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     printNote: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    removeVault: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    renameVault: (authorization: string, name: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     requestMicrophone: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     revealEntry: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    revealVault: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
   }
   interface TypertRemoteMap {
     'tocktutorDesktop/activateVault': (authorization: string, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
@@ -23,10 +27,14 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorDesktop/closeAllPopOuts': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/closePopOut': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/exportNote': (authorization: string, format: 'html' | 'pdf', path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    'tocktutorDesktop/moveVault': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/openPopOut': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/printNote': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    'tocktutorDesktop/removeVault': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    'tocktutorDesktop/renameVault': (authorization: string, name: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/requestMicrophone': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/revealEntry': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    'tocktutorDesktop/revealVault': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
   }
   interface TypertRemoteNamespaceMap {
     'tocktutorDesktop': TypertRemoteNamespace$746f636b7475746f724465736b746f70

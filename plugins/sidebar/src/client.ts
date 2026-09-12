@@ -2,10 +2,12 @@ export { apply, inject } from './client/plugin.tsx'
 export type { WorkspaceTools } from './client/plugin.tsx'
 export {
   canonicalTockTeamPath,
+  isSettingsPath,
   isTockCoderPath,
   isTockTutorPath,
   readTockTutorRouteLocation,
   resolveTockTutorNavigation,
+  SETTINGS_ROUTE_PREFIX,
   TOCKCODER_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_PREFIX,
   TOCKTUTOR_ROUTE_SLOT,

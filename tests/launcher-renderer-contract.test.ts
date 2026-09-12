@@ -14,6 +14,8 @@ import {
 import { launcherSettingDisposition } from '../src/launcher-settings-model.ts'
 
 const launcherSource = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
+const launcherHtml = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf8')
+const launcherStyles = readFileSync(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
 
 test('surface projection has bounded locale, appearance, interaction, and provider status facts', () => {
   const projection = parseLauncherSurfaceSettings({
@@ -61,6 +63,7 @@ test('launcher surface defaults match the Tockbot search chrome', () => {
   })
   assert.equal(projection.placeholder, 'Type here...')
   assert.equal(projection.showSearchIcon, false)
+  assert.deepEqual(projection.hideWindowOn, ['blur', 'afterInvocation', 'escapePressed'])
 })
 
 test('launcher shortcut matching requires exact modifiers and supports finite provider shortcuts', () => {
@@ -74,9 +77,47 @@ test('launcher shortcut matching requires exact modifiers and supports finite pr
   assert.equal(launcherShortcutAriaLabel('Shift+Enter'), 'Shift+Enter')
 })
 
+test('theme changes refresh an active trusted view without rerunning root search', () => {
+  assert.match(launcherSource, /if \(trustedView !== undefined\) \{ trustedView\.refreshTheme\(\); return \}/u)
+  const close = launcherSource.slice(launcherSource.indexOf('const closeLocalTool ='), launcherSource.indexOf('const hideLauncherControls ='))
+  assert.match(close, /trustedView\.dispose\(\);\s*trustedView = undefined\b/u)
+  const ready = launcherSource.slice(launcherSource.indexOf("if (message.type === 'ready')"), launcherSource.indexOf('trustedView?.update(message)'))
+  assert.match(ready, /if \(!trustedOpening\) \{ closeTrusted\(\); return \}/u)
+  assert.ok(ready.indexOf('if (!trustedOpening)') < ready.indexOf('firstUseView?.dispose()'), 'reject unowned readiness before disposing approval')
+  assert.ok(ready.indexOf('firstUseView?.dispose()') < ready.indexOf('trustedView?.dispose()'), 'dispose approval before replacing the command')
+  assert.ok(ready.indexOf('trustedView?.dispose()') < ready.indexOf('trustedView = createTrustedRaycastView('), 'dispose the old command before its replacement')
+})
+
 test('programmatic launcher scrolling is instant when reduced motion is active', () => {
   assert.equal(launcherEffectiveScrollBehavior('smooth', true), 'instant')
   assert.equal(launcherEffectiveScrollBehavior('smooth', false), 'smooth')
+})
+
+test('root command UI uses one shared Raycast-like visual recipe', () => {
+  for (const name of ['surface', 'header', 'search', 'list', 'footer', 'footer-identity', 'menu']) {
+    assert.match(launcherHtml, new RegExp(`launcher-command-${name}`, 'u'))
+    assert.match(launcherStyles, new RegExp(`@utility launcher-command-${name}`, 'u'))
+  }
+  for (const name of ['group-title', 'row', 'row-icon', 'footer-action', 'menu', 'menu-item']) {
+    assert.match(launcherSource, new RegExp(`launcher-command-${name}`, 'u'))
+    assert.match(launcherStyles, new RegExp(`@utility launcher-command-${name}`, 'u'))
+  }
+})
+
+test('launcher renderer consumes only finite main-owned result sections', () => {
+  assert.match(launcherSource, /currentSections = \[\.\.\.response\.sections\]/u)
+  assert.match(launcherSource, /section\.id === 'commands'/u)
+  assert.match(launcherSource, /section\.id === 'applications'/u)
+  assert.doesNotMatch(launcherSource, /pinnedCount/u)
+})
+
+test('launcher sections keep localized accessible headings and keyboard traversal order', () => {
+  assert.match(launcherSource, /applications: 'Applications'/u)
+  assert.match(launcherSource, /applications: '应用程序'/u)
+  assert.match(launcherSource, /const heading = document\.createElement\('h2'\)/u)
+  assert.match(launcherSource, /group\.setAttribute\('aria-labelledby', heading\.id\)/u)
+  assert.match(launcherSource, /else if \(event\.key === 'Home' \|\| event\.key === 'End'\)/u)
+  assert.match(launcherSource, /const item = currentItems\[Number\(event\.key\) - 1\]/u)
 })
 
 test('launcher renderer guards hidden tool focus from result shortcuts', () => {
@@ -109,6 +150,8 @@ test('long result and action labels retain an inspection affordance', () => {
 })
 
 test('every catalog row has an explicit renderer disposition', () => {
+  assert.equal(launcherSettingDisposition('general.browser.useDefaultWebBrowser', 'Windows'), 'platform-disabled')
+  assert.equal(launcherSettingDisposition('general.browser.useDefaultWebBrowser', 'macOS'), 'effective')
   for (const platform of ['macOS', 'Windows', 'Linux'] as const) {
     for (const key of ['appearance.searchBarSize', 'general.language', 'window.vibrancy', 'favorites']) {
       assert.ok(['effective', 'platform-disabled', 'status-only', 'internal'].includes(launcherSettingDisposition(key, platform)), `${platform}:${key}`)

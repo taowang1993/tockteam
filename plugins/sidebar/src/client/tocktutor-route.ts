@@ -16,6 +16,7 @@ export interface TockTutorRouteOwnerProps {
   navigate: (path: string, mode?: TockTutorNavigationMode) => void
 }
 
+export const SETTINGS_ROUTE_PREFIX = '/settings'
 export const TOCKCODER_ROUTE_PREFIX = '/tockcoder'
 export const TOCKTUTOR_ROUTE_PREFIX = '/tocktutor'
 
@@ -28,6 +29,10 @@ interface SharedTockTutorRouteState {
 
 function matchesRoute(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`)
+}
+
+export function isSettingsPath(pathname: string): boolean {
+  return matchesRoute(pathname, SETTINGS_ROUTE_PREFIX)
 }
 
 export function isTockCoderPath(pathname: string): boolean {

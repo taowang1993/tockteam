@@ -76,6 +76,34 @@ async function activate(owner: DesktopPickerOwner): Promise<void> {
   })
 }
 
+test('picker owner grants an explicit active-vault move destination', async () => {
+  const activeVault = await canonicalTemp('tockteam-picker-move-active-')
+  const destination = await canonicalTemp('tockteam-picker-move-destination-')
+  const dialogs = dialogQueue([activeVault, destination])
+  const owner = new DesktopPickerOwner({
+    isAvailable: () => true,
+    showOpenDialog: dialogs.open,
+    showSaveDialog: dialogs.save,
+  })
+  try {
+    await activate(owner)
+    const moveIdentity = identity('move')
+    const picked = await owner.pick({ identity: moveIdentity, kind: 'vault', purpose: 'move' }, new AbortController().signal)
+    assert.equal(picked.status, 'selected')
+    if (picked.status !== 'selected') return
+    const consumed = await owner.consumeVaultSelection({
+      authorization: picked.authorization,
+      identity: moveIdentity,
+      purpose: 'move',
+    }, new AbortController().signal)
+    assert.equal(consumed.status, 'consumed')
+    if (consumed.status !== 'consumed') return
+    assert.equal(consumed.canonicalPath, destination)
+  } finally {
+    await owner.dispose()
+  }
+})
+
 test('picker owner adopts a runtime-bound active vault only after canonical revalidation', async () => {
   const root = await canonicalTemp('tockteam-picker-adopt-')
   let transitions = 0
@@ -88,13 +116,21 @@ test('picker owner adopts a runtime-bound active vault only after canonical reva
   })
   const adopt = (owner as unknown as { adoptVaultSelection(request: unknown, signal: AbortSignal): Promise<unknown> }).adoptVaultSelection
   const request = { canonicalPath: root, operationId: 'runtime-adopt', vaultGeneration: 4, vaultId: `vault:${'a'.repeat(64)}` }
-  assert.deepEqual(await adopt.call(owner, request, new AbortController().signal), { operationId: 'runtime-adopt', status: 'bound' })
+  const bound = { claim: 'runtime:runtime-claim', operationId: 'runtime-adopt', status: 'bound' }
+  assert.deepEqual(await adopt.call(owner, request, new AbortController().signal), bound)
   assert.deepEqual(owner.nativeVaultSnapshot(), { generation: 4, id: request.vaultId })
   assert.equal(owner.matchesActiveIdentity({ ...identity('runtime'), vaultGeneration: 4, vaultId: request.vaultId }), true)
   assert.equal(transitions, 1)
-  assert.deepEqual(await adopt.call(owner, request, new AbortController().signal), { operationId: 'runtime-adopt', status: 'bound' })
+  assert.deepEqual(await adopt.call(owner, request, new AbortController().signal), bound)
   assert.equal(transitions, 1)
   assert.deepEqual(await adopt.call(owner, { ...request, canonicalPath: `${root}/.` }, new AbortController().signal), { operationId: 'runtime-adopt', status: 'stale' })
+  await owner.releaseVaultSelection({ claim: 'runtime:runtime-claim' as never, operationId: 'latest-sync' })
+  assert.deepEqual(owner.nativeVaultSnapshot(), { generation: 0, id: null })
+  assert.equal(transitions, 2)
+  assert.deepEqual(
+    await owner.pick({ identity: identity('after-remove', false), kind: 'vault', purpose: 'activate' }, new AbortController().signal),
+    { operationId: 'after-remove', status: 'cancelled' },
+  )
   await owner.dispose()
 })
 

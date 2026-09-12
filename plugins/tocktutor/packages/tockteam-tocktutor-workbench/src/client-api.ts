@@ -7,7 +7,7 @@ import {
 } from '@tockteam/desktop/client'
 import workbenchRemote from '@tockteam/tocktutor-workbench/remote'
 import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
-import { TOCKTUTOR_NATIVE_ACTIONS_SLOT } from './native-actions.ts'
+import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
 import {
@@ -60,6 +60,9 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       const mountedRemote = child.remote as unknown as WorkbenchRouteRemote
       const remote: WorkbenchRouteRemote = {
         $on: mountedRemote.$on.bind(mountedRemote),
+        get tocktutorAssistant() {
+          return child.get('remote.tocktutorAssistant') as WorkbenchRouteRemote['tocktutorAssistant']
+        },
         tocktutorWorkbench: mountedRemote.tocktutorWorkbench,
       }
       const slots = (child as Context).slots
@@ -70,6 +73,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
             [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: 'single', scope: 'root' },
             [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
             [TOCKTUTOR_REVIEW_PANEL_SLOT]: { kind: 'list', scope: 'root' },
+            [TOCKTUTOR_VAULT_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
             [TOCKTUTOR_WEB_VIEWER_PANEL_SLOT]: { kind: 'single', scope: 'root' },
           },
           inject: () => ({ remote }),

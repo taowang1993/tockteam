@@ -394,26 +394,12 @@ var createLucideIcon2 = (iconName, iconNode) => {
   return Component;
 };
 
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/arrow-left.js
-var __iconNode2 = [
-  ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
-  ["path", { d: "M19 12H5", key: "x3x0zl" }]
-];
-var ArrowLeft = createLucideIcon2("ArrowLeft", __iconNode2);
-
-// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/arrow-right.js
-var __iconNode3 = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
-];
-var ArrowRight = createLucideIcon2("ArrowRight", __iconNode3);
-
 // ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/x.js
-var __iconNode4 = [
+var __iconNode2 = [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
-var X = createLucideIcon2("X", __iconNode4);
+var X = createLucideIcon2("X", __iconNode2);
 
 // src/viewer.ts
 var WEB_CLIP_APPLY_API_PATH = "/web-clip/api/clip/apply";
@@ -842,7 +828,7 @@ function WebViewer(props = {}) {
   const navigate = (0, import_react5.useCallback)((raw, tabId = activeId.current) => {
     if (clipApplyingRef.current) return;
     if (!bridge) {
-      setError("Web Viewer is available only in TockTeam Desktop.");
+      setError("Web Viewer is available only in the TockTeam desktop app.");
       return;
     }
     let url;
@@ -1076,12 +1062,12 @@ function WebViewer(props = {}) {
       readerPreferences: { ...current.readerPreferences, [key]: value }
     });
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { "aria-label": "Web Viewer", className: "flex min-h-0 flex-1 flex-col", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Viewer Tabs", className: "flex gap-1 overflow-x-auto", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { "aria-label": "Web Viewer", className: "flex min-h-0 flex-1 flex-col gap-2 text-xs", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Viewer Tabs", className: "flex min-h-8 items-end gap-0.5 overflow-x-auto border-b border-[var(--tt-border)]", children: [
       viewer.tabs.map((tab2, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
         "span",
         {
-          className: "inline-flex",
+          className: "group inline-flex min-w-0 items-center rounded-t-md border border-b-0 border-transparent has-[button[aria-pressed=true]]:border-[var(--tt-border)] has-[button[aria-pressed=true]]:bg-[var(--tt-bg)]",
           draggable: !clipApplying,
           onDragOver: (event) => {
             if (!clipApplying) event.preventDefault();
@@ -1105,6 +1091,7 @@ function WebViewer(props = {}) {
                 onClick: () => {
                   activate(tab2);
                 },
+                className: "min-w-0 max-w-28 truncate border-0 bg-transparent px-2 py-1.5 text-left",
                 onKeyDown: (event) => {
                   if (!event.altKey || event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
                   event.preventDefault();
@@ -1120,38 +1107,13 @@ function WebViewer(props = {}) {
               {
                 unstyled: true,
                 "aria-label": `Close ${tab2.title}`,
+                className: "grid size-6 shrink-0 place-items-center rounded border-0 bg-transparent text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]",
                 disabled: clipApplying,
                 onClick: () => {
                   close(tab2.id);
                 },
                 type: "button",
                 children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(X, { "aria-hidden": "true", size: 16 })
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-              Button,
-              {
-                unstyled: true,
-                "aria-label": `Move ${tab2.title} Left`,
-                disabled: index === 0,
-                onClick: () => {
-                  applyViewer(moveViewerTab(viewerRef.current, tab2.id, index - 1));
-                },
-                type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowLeft, { "aria-hidden": "true", size: 16 })
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
-              Button,
-              {
-                unstyled: true,
-                "aria-label": `Move ${tab2.title} Right`,
-                disabled: index === viewer.tabs.length - 1,
-                onClick: () => {
-                  applyViewer(moveViewerTab(viewerRef.current, tab2.id, index + 1));
-                },
-                type: "button",
-                children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ArrowRight, { "aria-hidden": "true", size: 16 })
               }
             )
           ]
@@ -1162,6 +1124,7 @@ function WebViewer(props = {}) {
         Button,
         {
           unstyled: true,
+          className: "shrink-0 rounded px-2 py-1.5 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]",
           disabled: clipApplying,
           onClick: () => {
             if (clipApplyingRef.current) return;
@@ -1183,13 +1146,14 @@ function WebViewer(props = {}) {
           event.preventDefault();
           navigate(draft);
         },
-        className: "flex gap-1",
+        className: "grid grid-cols-[minmax(0,1fr)_auto] gap-1",
         children: [
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
             Input,
             {
               unstyled: true,
               "aria-label": "URL",
+              className: "min-w-0 rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 outline-none focus-visible:border-[var(--tt-accent)]",
               disabled: clipApplying,
               onChange: (event) => {
                 setDraft(event.currentTarget.value);
@@ -1198,11 +1162,12 @@ function WebViewer(props = {}) {
               value: draft
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, disabled: loading || clipApplying, type: "submit", children: loading ? "Loading\u2026" : "Go" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, className: "rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]", disabled: loading || clipApplying, type: "submit", children: loading ? "Loading\u2026" : "Go" }),
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
             Button,
             {
               unstyled: true,
+              className: "rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]",
               disabled: !active?.url,
               onClick: () => {
                 applyViewer(addViewerBookmark(viewerRef.current));
@@ -1216,6 +1181,7 @@ function WebViewer(props = {}) {
             Button,
             {
               unstyled: true,
+              className: "rounded-md border border-[var(--tt-border)] bg-transparent px-2 py-1.5 hover:bg-[var(--tt-selected)]",
               disabled: !active?.url || readerLoading || clipApplying,
               onClick: () => {
                 reader ? invalidateReader() : loadReader();
@@ -1227,10 +1193,10 @@ function WebViewer(props = {}) {
         ]
       }
     ),
-    viewer.bookmarks.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("details", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("summary", { children: "Bookmarks" }),
-      viewer.bookmarks.map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, disabled: clipApplying, onClick: () => {
+    viewer.bookmarks.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("details", { className: "rounded-md border border-[var(--tt-border)] p-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("summary", { className: "cursor-pointer font-medium", children: "Bookmarks" }),
+      viewer.bookmarks.map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "mt-1 flex items-center", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { unstyled: true, className: "min-w-0 flex-1 truncate rounded px-2 py-1 text-left hover:bg-[var(--tt-selected)]", disabled: clipApplying, onClick: () => {
           navigate(bookmark.url);
         }, type: "button", children: bookmark.title }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
@@ -1238,6 +1204,7 @@ function WebViewer(props = {}) {
           {
             unstyled: true,
             "aria-label": `Remove ${bookmark.title}`,
+            className: "grid size-6 place-items-center rounded border-0 bg-transparent text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]",
             onClick: () => {
               applyViewer(removeViewerBookmark(viewerRef.current, bookmark.id));
             },
@@ -1247,7 +1214,7 @@ function WebViewer(props = {}) {
         )
       ] }, bookmark.id))
     ] }),
-    error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Alert, { unstyled: true, children: error }),
+    error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Alert, { unstyled: true, className: "rounded-md bg-[color-mix(in_srgb,var(--dsw-alias-state-error-primary)_10%,transparent)] p-2 text-[var(--dsw-alias-state-error-primary)]", role: "alert", children: error }),
     reader && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
       "article",
       {
@@ -1261,7 +1228,7 @@ function WebViewer(props = {}) {
           maxWidth: viewer.readerPreferences.width === "narrow" ? 640 : viewer.readerPreferences.width === "wide" ? 1e3 : 800
         },
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Reader Settings", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { "aria-label": "Reader Settings", className: "grid grid-cols-2 gap-2 border-b border-[var(--tt-border)] pb-3 [&_label]:grid [&_label]:gap-1 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-transparent [&_select]:p-1.5", children: [
             /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Label, { unstyled: true, children: [
               "Text Size ",
               /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
@@ -1439,8 +1406,6 @@ lucide-react/dist/esm/shared/src/utils.js:
 lucide-react/dist/esm/defaultAttributes.js:
 lucide-react/dist/esm/Icon.js:
 lucide-react/dist/esm/createLucideIcon.js:
-lucide-react/dist/esm/icons/arrow-left.js:
-lucide-react/dist/esm/icons/arrow-right.js:
 lucide-react/dist/esm/icons/x.js:
 lucide-react/dist/esm/lucide-react.js:
   (**

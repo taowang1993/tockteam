@@ -10,6 +10,7 @@ const DEFAULT_REPO_ROOT = path.resolve(SCRIPT_DIR, '../..')
 const EXPECTED_IDENTITY = Object.freeze({
   packageName: '@tockteam/desktop',
   productName: 'TockTeam Desktop',
+  displayName: 'TockTeam',
   appId: 'ai.deepseek.tockteam-desktop',
   executableName: 'tockteam-desktop',
   desktopName: 'tockteam-desktop.desktop',
@@ -376,7 +377,7 @@ export function inspectLauncherPackageFeasibility(inputs) {
   const identity = contract?.identity ?? {}
 
   addFailure(failures, contract?.schemaVersion === 1, 'release contract schemaVersion is not 1')
-  for (const key of ['packageName', 'productName', 'appId', 'executableName', 'desktopName', 'dataDirectory']) {
+  for (const key of ['packageName', 'productName', 'displayName', 'appId', 'executableName', 'desktopName', 'dataDirectory']) {
     addFailure(failures, identity[key] === EXPECTED_IDENTITY[key], `${key} differs from TockTeam identity`)
   }
   addFailure(failures, sameJson(identity.protocols, EXPECTED_IDENTITY.protocols), 'protocol list differs from TockTeam identity')
@@ -386,7 +387,7 @@ export function inspectLauncherPackageFeasibility(inputs) {
   addFailure(failures, build.appId === identity.appId, 'app ID differs from TockTeam identity')
   addFailure(failures, build.productName === identity.productName, 'Builder product name differs from TockTeam identity')
   addFailure(failures, build.linux?.executableName === identity.executableName, 'Builder executable name differs from TockTeam identity')
-  addFailure(failures, typeof mainSource === 'string' && mainSource.includes(`const PRODUCT_NAME = '${identity.productName}'`), 'Electron main display name differs from TockTeam identity')
+  addFailure(failures, typeof mainSource === 'string' && mainSource.includes(`const PRODUCT_NAME = '${identity.displayName}'`), 'Electron main display name differs from TockTeam identity')
   addFailure(failures, typeof mainSource === 'string' && mainSource.includes(`const DATA_DIRECTORY = '${identity.dataDirectory}'`), 'Electron main data directory differs from TockTeam identity')
   for (const protocol of identity.protocols ?? []) {
     addFailure(failures, typeof mainSource === 'string' && mainSource.includes(`setAsDefaultProtocolClient('${protocol}')`), `Electron main protocol registration is missing: ${protocol}`)

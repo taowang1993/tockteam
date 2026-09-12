@@ -9,16 +9,18 @@ import {
 } from '../dist/properties.js'
 
 test('round-trips supported property types without corrupting the Markdown body', () => {
-  const source = '---\ntitle: "Lesson: one"\ntags:\n  - class\npoints: 3\ndone: false\ndate: 2026-08-26\nwhen: 2026-08-26T10:30:00Z\n---\n# Body\n'
+  const source = '---\ntitle: "Lesson: one"\ntags:\n  - class\naliases: [one, "two words"]\npoints: 3\ndone: false\ndate: 2026-08-26\nwhen: 2026-08-26T10:30:00Z\n---\n# Body\n'
   const properties = parseFrontmatterProperties(source)
   assert.deepEqual(properties.map(property => [property.key, property.type]), [
     ['title', 'text'],
     ['tags', 'list'],
+    ['aliases', 'list'],
     ['points', 'number'],
     ['done', 'checkbox'],
     ['date', 'date'],
     ['when', 'datetime'],
   ])
+  assert.deepEqual(properties.find(property => property.key === 'aliases')?.value, ['one', 'two words'])
   const changed = setFrontmatterProperty(source, 'title', 'Draft #2')
   assert.match(changed, /title: "Draft #2"/u)
   assert.match(changed, /---\n# Body\n$/u)

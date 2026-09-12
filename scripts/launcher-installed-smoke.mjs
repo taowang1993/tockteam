@@ -31,6 +31,7 @@ import {
   windowsPortableArchiveArgs,
   writeWindowsPortableArchiveMetadata,
 } from './windows-portable-archive.mjs'
+import { runCanIUseInstalledSmoke } from './trusted-raycast-can-i-use-installed-proof.mjs'
 export {
   PORTABLE_MANIFEST_MAX_ENTRIES,
   WINDOWS_PORTABLE_MARKER,
@@ -39,6 +40,10 @@ export {
   writeWindowsPortableArchiveMetadata,
 } from './windows-portable-archive.mjs'
 import { assertOwnedProcessGone } from './process-cleanup.mjs'
+import { findFocusProofResidue, focusProofDescendants, readFocusProofProcessSnapshot } from './trusted-raycast-focus-proof-client.ts'
+import { LAUNCHER_INSTALLED_FIRST_USE_FLAG } from '../src/launcher-proof-mode.ts'
+import { admitTrustedRaycastArtifact } from '../src/trusted-raycast-artifact-admission.ts'
+import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
 
 const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -47,6 +52,18 @@ const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'
 const electronPackage = JSON.parse(await readFile(join(root, 'node_modules/electron/package.json'), 'utf8'))
 const smokeFlag = '--tockteam-launcher-installed-smoke'
 const smokeMarker = 'TOCKTEAM_INSTALLED_SMOKE '
+
+export function shouldRemoveInstalledSmokeRoot({ firstUse, processTreesGone }) {
+  return !firstUse || processTreesGone === true
+}
+
+/** Installed/package proof admits either an explicit update candidate or the repository-owned reviewed bundle. */
+export function assertTrustedRaycastInstalledSmokeArtifact(path) {
+  const candidate = typeof path === 'string' && path.trim() !== '' ? path.trim() : join(root, 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar')
+  assert.ok(isAbsolute(candidate), 'TRUSTED_RAYCAST_ARTIFACT_TAR must point to the absolute reviewed artifact')
+  admitTrustedRaycastArtifact(trustedRaycastDescriptors['google-translate'], candidate)
+  return candidate
+}
 
 function trustedWindowsTool(name) {
   const systemRoot = process.env.SystemRoot?.trim()
@@ -271,17 +288,122 @@ async function installedSession(executable, userData, inventory, target, options
   }
 }
 
+async function installedFirstUseSession(executable, userData, inventory, options = {}) {
+  const port = await freePort()
+  const processBaseline = await readFocusProofProcessSnapshot()
+  const launched = await launchPackaged(
+    executable,
+    userData,
+    port,
+    options.args ?? [],
+    { flag: smokeFlag, env: { TOCKTEAM_INSTALLED_SMOKE: '1' }, inactiveVisualProof: true },
+  )
+  const observedProcesses = new Map()
+  const pathMarkers = [userData, options.installRoot].filter(marker => typeof marker === 'string' && marker !== '')
+  let samplingError
+  let sampling = Promise.resolve()
+  const captureProcesses = async () => {
+    try {
+      const snapshot = await readFocusProofProcessSnapshot()
+      for (const row of [...focusProofDescendants(snapshot, launched.child.pid), ...snapshot.filter(row => pathMarkers.some(marker => row.command.includes(marker)))]) observedProcesses.set(row.pid, row)
+    } catch (error) {
+      samplingError ??= error
+    }
+  }
+  const sampler = setInterval(() => { sampling = sampling.then(captureProcesses) }, 100)
+  sampler.unref()
+  await captureProcesses()
+  const processEvidence = {
+    cleaned: undefined,
+    async cleanup() {
+      if (this.cleaned !== undefined) return this.cleaned
+      clearInterval(sampler)
+      await sampling
+      await captureProcesses()
+      const rootPid = launched.child.pid
+      if (!Number.isSafeInteger(rootPid) || rootPid <= 0) throw new Error('installed first-use proof has no root PID')
+      const markers = pathMarkers
+      const matches = snapshot => findFocusProofResidue(processBaseline, snapshot, { gatePgid: rootPid, markers, observedDescendants: [...observedProcesses.values()] })
+      const killOwned = async (signal, snapshot) => {
+        const residue = matches(snapshot)
+        const groups = new Set()
+        for (const row of residue) {
+          const observed = observedProcesses.get(row.pid)
+          if (observed?.command !== row.command) continue
+          if (row.pgid === row.pid) groups.add(row.pid)
+          else {
+            try { process.kill(row.pid, signal) } catch {}
+          }
+        }
+        for (const pgid of groups) { try { process.kill(-pgid, signal) } catch {} }
+      }
+      let snapshot = await readFocusProofProcessSnapshot()
+      for (const signal of ['SIGTERM', 'SIGKILL']) {
+        const residue = matches(snapshot)
+        if (residue.length === 0) break
+        await killOwned(signal, snapshot)
+        await new Promise(resolve => setTimeout(resolve, 300))
+        snapshot = await readFocusProofProcessSnapshot()
+      }
+      const residue = matches(snapshot)
+      if (samplingError !== undefined) throw new Error(`installed process sampling failed: ${samplingError instanceof Error ? samplingError.message : String(samplingError)}`)
+      if (residue.length) throw new Error(`owned installed processes remain: ${residue.map(row => `${row.pid}:${row.command}`).join('; ')}`)
+      this.cleaned = Object.freeze({ observedPids: [...observedProcesses.keys()].sort((left, right) => left - right), residuePids: [], rootPid })
+      return this.cleaned
+    },
+  }
+  try {
+    assert.ok(launched.focus !== undefined, 'installed first-use proof must authenticate inherited focus IPC')
+    assert.ok(launched.child.pid !== undefined, 'installed first-use proof must expose a root PID')
+    const startupCheckpoint = await launched.focus.checkpoint('installed-first-use-ready')
+    const canIUse = await runCanIUseInstalledSmoke(launched.launcher, userData, {
+      waitFor,
+      clickExactText: async (page, text) => await page.evaluate(`(() => { const button = [...document.querySelectorAll('button, summary')].find(element => element.textContent?.trim() === ${JSON.stringify(text)} && element.getClientRects().length && !element.matches(':disabled')); if (!(button instanceof HTMLElement)) return false; button.click(); return true })()`),
+    }, {
+      clickSelector: selector => launched.launcher.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!(element instanceof HTMLElement) || element.hidden || !element.getClientRects().length || element.matches(':disabled')) return false; element.focus(); if (document.activeElement !== element) return false; element.click(); return true })()`),
+      firstUseOnly: true,
+    })
+    const finalCheckpoint = await launched.focus.checkpoint('installed-first-use-complete')
+    await launched.focus.assertClean()
+    return Object.freeze({
+      canIUse,
+      checkpoints: Object.freeze({ final: finalCheckpoint, startup: startupCheckpoint }),
+      launch: Object.freeze({ argv: Object.freeze([...(launched.child.spawnargs ?? [])].map(value => String(value))), pid: launched.child.pid }),
+      launched,
+      inventory,
+      processEvidence,
+    })
+  } catch (error) {
+    let failure = error
+    try {
+      const diagnostics = await launched.diagnostics()
+      failure = new Error(`${error instanceof Error ? error.message : String(error)}\n${diagnostics}`, { cause: error })
+    } catch (diagnosticsError) {
+      failure = new AggregateError([error, diagnosticsError], 'installed first-use assertion and diagnostics both failed')
+    }
+    try {
+      await closeInstalledSession({ launched, processEvidence }, executable, options.installRoot)
+    } catch (cleanupError) {
+      throw new AggregateError([failure, cleanupError], 'installed first-use assertion and cleanup both failed')
+    }
+    throw failure
+  }
+}
+
 async function closeInstalledSession(session, executable = undefined, installRoot = undefined) {
   const errors = []
+  try { if (session.launched.focus !== undefined && !session.launched.focus.closed) await session.launched.focus.shutdownAndWait() } catch (error) { errors.push(error) }
   try { session.launched.launcher.close() } catch (error) { errors.push(error) }
   try { session.launched.workbench.close() } catch (error) { errors.push(error) }
   try { await stopPackagedChild(session.launched.child) } catch (error) { errors.push(error) }
+  let processEvidence
+  try { if (session.processEvidence !== undefined) processEvidence = await session.processEvidence.cleanup() } catch (error) { errors.push(error) }
   if (executable !== undefined) {
     try { await assertOwnedProcessGone(executable, 20, installRoot) } catch (error) { errors.push(error) }
   }
   if (errors.length === 1) throw errors[0]
   if (errors.length > 1) throw new AggregateError(errors, 'installed session cleanup failed')
-  return true
+  return Object.freeze({ processEvidence })
 }
 
 export async function withInstalledSession(session, operation, cleanup) {
@@ -336,6 +458,7 @@ export async function recoverDebTransition({ candidate, prior, install, validate
 
 async function runSecondInstanceSmoke(executable, userData, workbench, launcher, extraArgs = [], temporaryRoot = undefined, applicationPath = undefined) {
   const secondArgs = [
+    ...(process.platform === 'darwin' ? ['--use-mock-keychain'] : []),
     ...extraArgs,
     `--user-data-dir=${userData}`,
     '--toggle',
@@ -458,6 +581,50 @@ async function runPlatformOutcomeSmoke(workbench, launcher, target) {
   })()`)
   assert.equal(terminalAction?.requiresConfirmation, true, 'Windows terminal actions must require elevation confirmation')
   return Object.freeze({ controlPanel: statuses.WindowsControlPanel, destructiveEffects: 'not-invoked', elevation: 'confirmation-required-not-invoked', providerCount: settings.providerStatuses.length, terminal: statuses.TerminalLauncher })
+}
+
+async function runInstalledFirstUseSmoke(artifact) {
+  assert.equal(process.platform, 'darwin', 'installed first-use proof currently targets macOS')
+  const sourceApp = artifact.inventory.executable.split('/Contents/MacOS/')[0]
+  const installRoot = join(artifact.rootPath, 'first-use-installed')
+  const destination = join(installRoot, 'TockTeam Desktop.app')
+  const backupDirectory = join(installRoot, 'Trash')
+  await mkdir(installRoot, { recursive: true })
+  const copyBundle = async (from, to) => {
+    try {
+      await execFileAsync('/bin/cp', ['-cR', from, to])
+    } catch (error) {
+      const detail = `${error?.message ?? ''} ${error?.stderr ?? ''}`
+      if (!/(?:clone|illegal option|operation not supported|not supported)/iu.test(detail)) throw error
+      await execFileAsync('/usr/bin/ditto', [from, to])
+    }
+  }
+  await replaceMacBundle({ source: sourceApp, destination, backupDirectory, copyBundle })
+  const identity = await inspectMacBundle(destination)
+  const inventory = await inspectPackage(destination, artifact.target, { executable: identity.executable })
+  assertPackageParity(artifact.inventory, inventory)
+  const first = await installedFirstUseSession(identity.executable, artifact.userData, inventory, { installRoot: destination })
+  let cleanup
+  const canIUse = await withInstalledSession(first, async session => session.canIUse, async session => { cleanup = await closeInstalledSession(session, identity.executable, destination); return cleanup })
+  assert.ok(cleanup?.processEvidence !== undefined, 'installed first-use proof is missing process evidence')
+  await rm(destination, { recursive: true, force: true })
+  await rm(backupDirectory, { recursive: true, force: true })
+  assert.equal(existsSync(destination), false)
+  return Object.freeze({
+    classification: 'unsigned/internal macOS first-use evidence (ad-hoc signed for local execution); not notarized or public distribution',
+    installed: {
+      directExecutable: identity.executable,
+      firstUse: canIUse,
+      installRoot: destination,
+      launch: first.launch,
+      package: inventory,
+      checkpoints: first.checkpoints,
+      cleanupEvidence: cleanup.processEvidence,
+      observedPids: cleanup.processEvidence.observedPids,
+      processTreesGone: cleanup.processEvidence.residuePids.length === 0,
+      temporaryInstallRemoved: true,
+    },
+  })
 }
 
 async function runMacInstalledSmoke(artifact) {
@@ -756,6 +923,7 @@ async function runNonMacInstalledSmoke(artifact) {
 }
 
 async function main() {
+  assertTrustedRaycastInstalledSmokeArtifact(process.env.TRUSTED_RAYCAST_ARTIFACT_TAR)
   if (process.platform === 'darwin' && process.arch !== 'arm64' && process.arch !== 'x64') throw new Error(`Unsupported macOS architecture: ${process.arch}`)
   const parent = process.env.TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT?.trim() || tmpdir()
   await mkdir(parent, { recursive: true })
@@ -764,10 +932,13 @@ async function main() {
   const diagnosticsPath = process.env.TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS?.trim() || join(parent, `tockteam-installed-smoke-${String(process.pid)}-diagnostics.json`)
   let evidence
   try {
+    if (process.argv.includes(LAUNCHER_INSTALLED_FIRST_USE_FLAG)) assert.equal(process.platform, 'darwin', 'installed first-use proof currently targets macOS')
     const artifact = await preparePackagedArtifact({ smokeRoot })
-    evidence = process.platform === 'darwin'
-      ? await runMacInstalledSmoke(artifact)
-      : await runNonMacInstalledSmoke(artifact)
+    evidence = process.argv.includes(LAUNCHER_INSTALLED_FIRST_USE_FLAG)
+      ? await runInstalledFirstUseSmoke(artifact)
+      : process.platform === 'darwin'
+        ? await runMacInstalledSmoke(artifact)
+        : await runNonMacInstalledSmoke(artifact)
     const sourceCommit = await installedSmokeSourceCommit()
     assert.match(sourceCommit ?? '', /^[0-9a-f]{40}$/u, 'installed evidence source commit must be immutable')
     evidence = Object.freeze({
@@ -795,6 +966,7 @@ async function main() {
     throw error
   } finally {
     const keepArtifacts = process.env.TOCKTEAM_KEEP_INSTALLED_SMOKE === '1'
+      || !shouldRemoveInstalledSmokeRoot({ firstUse: process.argv.includes(LAUNCHER_INSTALLED_FIRST_USE_FLAG), processTreesGone: evidence?.installed?.processTreesGone === true })
     if (!keepArtifacts) await rm(smokeRoot, { recursive: true, force: true })
     else console.log(`TockTeam installed launcher smoke artifacts retained at ${smokeRoot}`)
   }

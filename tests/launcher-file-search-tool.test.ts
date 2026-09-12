@@ -53,6 +53,10 @@ function find(root: FakeElement, predicate: (element: FakeElement) => boolean): 
   return undefined
 }
 
+function findAll(root: FakeElement, predicate: (element: FakeElement) => boolean): FakeElement[] {
+  return [...(predicate(root) ? [root] : []), ...root.children.flatMap(child => findAll(child, predicate))]
+}
+
 function flush(): Promise<void> {
   return new Promise(resolve => setImmediate(resolve))
 }
@@ -66,11 +70,38 @@ test('File Search exposes keyboard-first results and semantic list items', () =>
   assert.match(source, /ArrowDown/u)
   assert.match(source, /event\.key === 'Enter'/u)
   assert.match(source, /event\.key === 'Tab'/u)
+  assert.match(source, /launcher-command-status/u)
+  assert.match(source, /data-\[tone=error\]/u)
 })
 
 test('File Search consumes Escape at the menu and tool-input layers', () => {
   assert.match(source, /if \(event\.key === 'Escape' \|\| event\.key === 'Tab'\) \{[\s\S]{0,100}event\.stopPropagation\(\)/u)
   assert.match(source, /if \(event\.key === 'Escape'\) \{[\s\S]{0,80}event\.stopPropagation\(\)[\s\S]{0,80}options\.onClose\(\)/u)
+})
+
+test('File Search result buttons support roving arrow-key focus', async () => {
+  const items = ['first.txt', 'second.txt'].map((name, index): LauncherPublicResultItem => ({
+    defaultAction: { actionId: `launcher-action:${index}`, description: 'Open file', hideWindowAfterInvocation: true },
+    description: 'File',
+    id: `file-search-result:${index}`,
+    name,
+    sourceExtension: 'FileSearch',
+  }))
+  const bridge = {
+    search: async () => ({ before: [], after: items, resultSetId: 'launcher-results:1', status: { indexedItemCount: 2, rescanStatus: 'idle' as const } }),
+  } as unknown as LauncherPreloadBridge
+  const document = new FakeDocument()
+  const tool = createLauncherFileSearchTool({ bridge, document: document as unknown as Document, onClose: () => undefined, searchOptions: options }) as unknown as FakeElement
+  const input = find(tool, element => element.tagName === 'input')!
+  input.value = 'txt'
+  input.dispatch('input')
+  await flush()
+  const buttons = findAll(tool, element => element.getAttribute('aria-label')?.endsWith('— Open file') === true)
+  buttons[0]!.focus()
+  buttons[0]!.dispatch('keydown', { key: 'ArrowDown', preventDefault() {} })
+  assert.equal(document.activeElement, buttons[1])
+  buttons[1]!.dispatch('keydown', { key: 'ArrowUp', preventDefault() {} })
+  assert.equal(document.activeElement, buttons[0])
 })
 
 test('non-hiding reveal rerender restores keyboard focus to the live action menu', async () => {

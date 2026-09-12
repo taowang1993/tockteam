@@ -15,6 +15,10 @@ import type {
   AssistantSettingsView,
   AssistantTurnRequest,
   AssistantTurnResult,
+  AssistantSearchIntelligenceRequest,
+  AssistantSearchIntelligenceResult,
+  AssistantQuickAnswerRequest,
+  AssistantQuickAnswerResult,
 } from './remote-types.ts'
 
 export class TockTutorAssistantRemoteModel extends TypertRemoteService {
@@ -64,6 +68,22 @@ export class TockTutorAssistantRemoteModel extends TypertRemoteService {
     request: AssistantRejectionRequest,
     signal: AbortSignal,
   ): Promise<AssistantDecisionView> {
+    throw new Error('Typert reflection model is not executable.')
+  }
+
+  @Remote
+  async searchIntelligence(
+    request: AssistantSearchIntelligenceRequest,
+    signal: AbortSignal,
+  ): Promise<AssistantSearchIntelligenceResult> {
+    throw new Error('Typert reflection model is not executable.')
+  }
+
+  @Remote
+  async quickAnswer(
+    request: AssistantQuickAnswerRequest,
+    signal: AbortSignal,
+  ): Promise<AssistantQuickAnswerResult> {
     throw new Error('Typert reflection model is not executable.')
   }
 

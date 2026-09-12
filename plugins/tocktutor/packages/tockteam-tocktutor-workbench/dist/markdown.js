@@ -112,6 +112,11 @@ function inlineLinks(text) {
     }
     return links;
 }
+/**
+ * Keep the compatibility projection's warning separate from the active rich Reading View.
+ * `projectReading()` is still exported for bounded plain-text consumers; the route renders
+ * through `renderMarkdownHtml()`, which sanitizes active HTML instead of surfacing this warning.
+ */
 function containsUnsafeMarkup(text) {
     return /<\/?(?:script|style|iframe|object|embed|form|img|audio|video|svg|link|meta)\b[^>]*>/iu.test(text);
 }

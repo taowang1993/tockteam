@@ -1,0 +1,22 @@
+{
+  "id": 2,
+  "url": "https://raw.githubusercontent.com/browserslist/caniuse-lite/59e2d41ee743d54efec1bb8ce067957b9766ca50/README.md",
+  "method": "GET",
+  "startedAt": "2026-09-09T23:03:45.989Z",
+  "redirectPolicy": "manual; each hop counts as another request",
+  "credentials": false,
+  "pending": false,
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain; charset=utf-8",
+    "content-length": "3132",
+    "etag": "\"33b486eec5c164ef7b02595af509ff9522010a15c255626757e49c7f5c9f8df9\"",
+    "date": "Wed, 09 Sep 2026 23:03:46 GMT"
+  },
+  "body": "request-2.body",
+  "bytes": 3132,
+  "sha256": "d668423e1ae99542c8974c99275b2455c349b496f8195f77ffe020e5b15e4fd3",
+  "redirect": null,
+  "finishedAt": "2026-09-09T23:03:46.183Z",
+  "cumulativeBytes": 5109
+}

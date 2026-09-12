@@ -157,7 +157,8 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       'install',
       '--prefer-offline',
       '--ignore-scripts',
-      '--strict-peer-dependencies',
+      // Local link peers have no semver for pnpm to validate; package-boundary tests cover the ranges.
+      '--config.strict-peer-dependencies=false',
     ], { cwd: root })
     const manifest = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')) as {
       name?: string

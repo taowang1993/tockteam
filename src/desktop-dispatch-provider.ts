@@ -100,7 +100,7 @@ export class DesktopDispatchProvider implements TockTeamDesktopDispatch {
     ))
     if (this.endpoint === undefined || this.token === undefined) return
     const result = await this.request({ method: 'disposeProvider' }) as { status?: string }
-    if (result.status !== 'closed') throw new Error('TockTeam Desktop dispatch cleanup was incomplete')
+    if (result.status !== 'closed') throw new Error('TockTeam dispatch cleanup was incomplete')
   }
 
   private current(event: DesktopDispatchEvent): boolean {

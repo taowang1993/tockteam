@@ -7,7 +7,6 @@ import {
 } from './launcher-window-contract.ts'
 import type { LauncherThemeProjection } from './launcher-theme.ts'
 
-export const TOCKLAUNCHER_PRODUCT_NAME = 'TockLauncher'
 export const LAUNCHER_WORK_AREA_MARGIN = 16
 export const LAUNCHER_TOP_FACTOR = 0.12
 
@@ -15,6 +14,19 @@ export const TOCKLAUNCHER_WINDOW_SIZE = Object.freeze({
   height: 475,
   width: 750,
 })
+
+export function resolveLauncherDisplayWorkArea(
+  displays: readonly Readonly<{ id: number; workArea: Rectangle }>[],
+  primaryId: number,
+  cursorWorkArea: Rectangle,
+  preferExtended: boolean,
+  requireExtended = false,
+): Rectangle {
+  if (!preferExtended) return cursorWorkArea
+  const extended = displays.find(display => display.id !== primaryId)
+  if (extended === undefined && requireExtended) throw new Error('TockLauncher smoke requires a connected extended display')
+  return extended?.workArea ?? cursorWorkArea
+}
 
 type LauncherWebContents = Readonly<{
   id: number
@@ -42,6 +54,7 @@ export type LauncherOverlayWindow = Readonly<{
     }>,
   ) => void
   show: () => void
+  showInactive?: () => void
   webContents: LauncherWebContents
 }>
 
@@ -79,13 +92,15 @@ export function resolveLauncherBounds(workArea: Rectangle): Rectangle {
 
 export class LauncherOverlayController {
   private readonly args: Readonly<{
+    beforeShow?: () => Promise<void>
     createWindow: () => LauncherOverlayWindow
-    focusApp?: () => void
+    focusApp?: () => void | Promise<void>
     getDisplayWorkArea: () => Rectangle
     getHideWindowOn?: () => readonly string[]
     globalShortcut: LauncherGlobalShortcut
     loadWindow: (window: LauncherOverlayWindow) => Promise<void>
     platform: NodeJS.Platform
+    showInactive?: boolean
     registerWindow: (
       role: 'launcher',
       window: LauncherOverlayWindow,
@@ -103,19 +118,22 @@ export class LauncherOverlayController {
   private shortcutEnabled = true
   private shortcutState: LauncherShortcutState
   private disposed = false
+  private visibilityEpoch = 0
   private readonly windowPreferences = {
     alwaysOnTop: true,
     visibleOnAllWorkspaces: true,
   }
 
   constructor(args: Readonly<{
+    beforeShow?: () => Promise<void>
     createWindow: () => LauncherOverlayWindow
-    focusApp?: () => void
+    focusApp?: () => void | Promise<void>
     getDisplayWorkArea: () => Rectangle
     getHideWindowOn?: () => readonly string[]
     globalShortcut: LauncherGlobalShortcut
     loadWindow: (window: LauncherOverlayWindow) => Promise<void>
     platform: NodeJS.Platform
+    showInactive?: boolean
     registerWindow: (
       role: 'launcher',
       window: LauncherOverlayWindow,
@@ -182,15 +200,27 @@ export class LauncherOverlayController {
 
   async show(): Promise<void> {
     this.assertUsable()
+    const epoch = this.visibilityEpoch
     const window = await this.getOrCreateWindow()
     this.assertUsable()
+    if (epoch !== this.visibilityEpoch) return
+    if ((!window.isVisible() || !window.isFocused()) && this.args.beforeShow !== undefined) await this.args.beforeShow()
+    this.assertUsable()
+    if (epoch !== this.visibilityEpoch) return
     if (this.window !== window || window.isDestroyed()) {
       throw new Error('Launcher window is unavailable')
     }
     window.setBounds(resolveLauncherBounds(this.args.getDisplayWorkArea()))
-    if (this.args.platform === 'darwin') this.args.focusApp?.()
-    window.show()
-    window.focus()
+    if (this.args.showInactive === true) {
+      if (window.showInactive === undefined) throw new Error('Inactive visual proof requires showInactive support')
+      window.showInactive()
+    } else {
+      if (this.args.platform === 'darwin') await this.args.focusApp?.()
+      this.assertUsable()
+      if (epoch !== this.visibilityEpoch || this.window !== window || window.isDestroyed()) return
+      window.show()
+      window.focus()
+    }
     this.sendTheme()
     this.sendLocale()
     window.webContents.send(LAUNCHER_WINDOW_IPC_CHANNELS.focusSearch)
@@ -233,7 +263,7 @@ export class LauncherOverlayController {
   hideAfterInvocation(ownerWebContentsId: number): void {
     const window = this.liveWindow()
     if (window === null || window.webContents.id !== ownerWebContentsId) return
-    if (this.shouldHideOn('afterInvocation')) window.hide()
+    if (this.shouldHideOn('afterInvocation')) this.hide()
   }
 
   sendTheme(projection?: LauncherThemeProjection): void {
@@ -267,6 +297,7 @@ export class LauncherOverlayController {
   }
 
   hide(): void {
+    this.visibilityEpoch++
     this.liveWindow()?.hide()
   }
 
@@ -327,6 +358,7 @@ export class LauncherOverlayController {
 
   private clearWindow(window: LauncherOverlayWindow): void {
     if (this.window !== window) return
+    this.visibilityEpoch++
     this.window = null
     const dispose = this.windowDisposer
     this.windowDisposer = undefined

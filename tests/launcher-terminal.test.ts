@@ -238,7 +238,7 @@ test('Terminal Launcher rejects stale actions after a newer query and denied con
   await provider.searchInstant('> second')
   await assert.rejects(provider.executeAction(record(first)), /current|stale/u)
   const second = (await provider.searchInstant('> second')).after[0]!
-  assert.equal(await provider.executeAction(record(second)), true)
+  assert.deepEqual(await provider.executeAction(record(second)), { handled: true, succeeded: false })
   assert.deepEqual(launches, [])
   approved = true
   const third = (await provider.searchInstant('> third')).after[0]!

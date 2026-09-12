@@ -1,4 +1,5 @@
 import { classifyExternalEmbed, externalEmbedButtonHtml, externalEmbedInertHtml, } from "./external-embeds.js";
+import { isSafeVaultRelativePath } from "./session.js";
 // Bounded TockTeam renderer informed by Tockbot's source-detached NotesExportHtml contract.
 export const MAX_RICH_MARKDOWN_BYTES = 2000_000;
 export const MAX_RICH_MARKDOWN_BLOCKS = 20000;
@@ -36,6 +37,150 @@ function safeUrl(value) {
 const SAFE_RAW_TAG = /^<\/?(?:br|code|del|em|kbd|mark|s|small|strong|sub|sup|u)>$/iu;
 const SAFE_RAW_BLOCK_TAGS = new Set(['a', 'br', 'code', 'del', 'div', 'em', 'mark', 'p', 's', 'span', 'strong', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u']);
 const SAFE_RAW_VOID_TAGS = new Set(['br']);
+const RAW_HTML_BLOCK_TAGS = new Set(['div', 'p', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr']);
+const ACTIVE_HTML_TAGS = new Set(['embed', 'form', 'iframe', 'link', 'math', 'meta', 'object', 'script', 'style', 'svg']);
+const ACTIVE_HTML_VOID_TAGS = new Set(['link', 'meta']);
+const ACTIVE_HTML_OPEN = /<\s*(embed|form|iframe|link|math|meta|object|script|style|svg)\b[^>]*>/iu;
+function activeHtmlClose(name) {
+    return new RegExp(`</\\s*${name}\\s*>`, 'iu');
+}
+function inlineCodeRanges(line) {
+    const ranges = [];
+    for (const match of line.matchAll(/(`+)([^`]*?)\1/gu)) {
+        if (match.index !== undefined)
+            ranges.push([match.index, match.index + match[0].length]);
+    }
+    return ranges;
+}
+function escapedAt(line, index) {
+    let slashes = 0;
+    for (let cursor = index - 1; cursor >= 0 && line[cursor] === '\\'; cursor -= 1)
+        slashes += 1;
+    return slashes % 2 === 1;
+}
+/** Replace resolved local embed markers without touching fenced or inline code. */
+function replaceResolvedEmbedSources(markdown, replacements) {
+    if (replacements.size === 0)
+        return { markdown, tokens: [] };
+    const tokens = [];
+    const sourceTokens = new Map();
+    for (const [source, html] of replacements) {
+        sourceTokens.set(source, `\u0000tocktutor-resolved-embed-${String(tokens.length)}\u0000`);
+        tokens.push(html);
+    }
+    let fence = null;
+    const replaced = markdown.split('\n').map(line => {
+        const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u)?.[1];
+        if (marker !== undefined) {
+            if (fence === null)
+                fence = { character: marker[0], length: marker.length };
+            else if (marker[0] === fence.character && marker.length >= fence.length && /^ {0,3}(?:`{3,}|~{3,})\s*$/u.test(line))
+                fence = null;
+            return line;
+        }
+        if (fence !== null)
+            return line;
+        const code = inlineCodeRanges(line);
+        return line.replace(/!\[\[([^\]\r\n]{1,4096})\]\]/gu, (match, _target, offset) => {
+            const token = sourceTokens.get(match);
+            return token !== undefined && !code.some(([start, end]) => offset >= start && offset < end) && !escapedAt(line, offset) ? token : match;
+        });
+    }).join('\n');
+    return { markdown: replaced, tokens };
+}
+function resolvedEmbedDimensions(display) {
+    const match = display?.match(/^(\d{1,4})x(\d{1,4})$/iu);
+    if (match === null || match === undefined)
+        return null;
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    return width >= 1 && width <= 2_000 && height >= 1 && height <= 2_000 ? { height, width } : null;
+}
+function resolvedEmbedMime(mimeType) {
+    const mime = mimeType?.toLocaleLowerCase().split(';', 1)[0]?.trim();
+    if (mime === undefined || !/^image\/(?:avif|bmp|gif|jpeg|png|svg\+xml|webp)$|^audio\/(?:3gpp|flac|mp4|mpeg|ogg|wav|webm)$|^video\/(?:3gpp|mp4|mpeg|ogg|quicktime|webm)$|^application\/pdf$/u.test(mime))
+        return null;
+    return mime;
+}
+function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbeds) {
+    const path = escapeMarkdownHtml(embed.target.path);
+    const label = escapeMarkdownHtml(embed.target.display ?? embed.target.path);
+    if (embed.target.kind === 'note') {
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbeds, resolvedEmbedParentPath: embed.target.path })}</span>`;
+    }
+    if (embed.target.kind === 'canvas' || embed.target.kind === 'base') {
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="${embed.target.kind}" data-embed-path="${path}"><pre>${escapeMarkdownHtml(embed.content)}</pre></span>`;
+    }
+    const mimeType = resolvedEmbedMime(embed.mimeType);
+    if (mimeType === null || bytes(embed.content) > 64 * 1024 * 1024 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(embed.content))
+        return '';
+    const source = `data:${escapeMarkdownHtml(mimeType)};base64,${escapeMarkdownHtml(embed.content)}`;
+    const dimensions = resolvedEmbedDimensions(embed.target.display);
+    const sizing = dimensions === null ? '' : ` height="${String(dimensions.height)}" width="${String(dimensions.width)}"`;
+    if (mimeType.startsWith('image/'))
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><img alt="${label}" class="max-h-80 max-w-full object-contain" loading="lazy"${sizing} src="${source}"></span>`;
+    if (mimeType.startsWith('audio/'))
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><audio aria-label="${label}" class="max-w-full" controls preload="metadata" src="${source}"></audio></span>`;
+    if (mimeType.startsWith('video/'))
+        return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><video aria-label="${label}" class="max-h-80 max-w-full object-contain" controls preload="metadata"${sizing} src="${source}"></video></span>`;
+    return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><iframe aria-label="${label}" class="h-80 max-w-full" sandbox="" src="${source}" title="${label}"></iframe></span>`;
+}
+/** Remove active HTML outside fenced code without reordering the authored Markdown. */
+function stripActiveHtml(markdown) {
+    const inlineCode = [];
+    const protectInlineCode = (value) => value.replace(/`([^`\n]{0,10000})`/gu, (match) => {
+        const token = `\u0000tocktutor-inline-code-${String(inlineCode.length)}\u0000`;
+        inlineCode.push(match);
+        return token;
+    });
+    const lines = markdown.split('\n');
+    let fence = null;
+    let active = null;
+    const stripped = lines.map(line => {
+        const marker = line.match(/^ {0,3}(`{3,}|~{3,})/u);
+        if (fence !== null) {
+            if (marker !== null && marker[1][0] === fence.character && marker[1].length >= fence.length
+                && line.slice((marker.index ?? 0) + marker[1].length).trim() === '')
+                fence = null;
+            return line;
+        }
+        if (active === null && marker !== null) {
+            fence = { character: marker[1][0], length: marker[1].length };
+            return line;
+        }
+        let result = line;
+        if (active !== null) {
+            const close = result.match(activeHtmlClose(active));
+            if (close === null)
+                return '';
+            result = result.slice((close.index ?? 0) + close[0].length);
+            active = null;
+        }
+        result = protectInlineCode(result);
+        while (true) {
+            const open = result.match(ACTIVE_HTML_OPEN);
+            if (open === null)
+                break;
+            const name = open[1].toLocaleLowerCase();
+            if (!ACTIVE_HTML_TAGS.has(name))
+                break;
+            const start = open.index ?? 0;
+            if (ACTIVE_HTML_VOID_TAGS.has(name) || /\/\s*>$/u.test(open[0])) {
+                result = result.slice(0, start) + result.slice(start + open[0].length);
+                continue;
+            }
+            const close = result.match(activeHtmlClose(name));
+            if (close === null) {
+                result = result.slice(0, start);
+                active = name;
+                break;
+            }
+            result = result.slice(0, start) + result.slice((close.index ?? 0) + close[0].length);
+        }
+        return result.replace(/<\/\s*(?:embed|form|iframe|math|object|script|style|svg)\s*>/giu, '');
+    }).join('\n');
+    return stripped.replace(/\u0000tocktutor-inline-code-(\d+)\u0000/gu, (_match, index) => inlineCode[Number(index)] ?? '');
+}
 function rawHtmlAttributes(source) {
     const attributes = {};
     for (const match of source.matchAll(/([A-Za-z][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gu)) {
@@ -105,7 +250,7 @@ function renderSafeRawHtmlBlock(source) {
 }
 function rawHtmlBlockName(line) {
     const name = line.trim().match(/^<\s*([A-Za-z][\w:-]*)(?:\s|>|\/)/u)?.[1]?.toLocaleLowerCase();
-    return name !== undefined && SAFE_RAW_BLOCK_TAGS.has(name) && name !== 'a' && name !== 'br' ? name : null;
+    return name !== undefined && RAW_HTML_BLOCK_TAGS.has(name) ? name : null;
 }
 function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
     const tokens = [];
@@ -135,15 +280,18 @@ function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
             ? escapeMarkdownHtml(match)
             : `<a href="${escapeMarkdownHtml(url)}" rel="noopener noreferrer">${label}</a>`;
     });
-    text = text.replace(/\[\[([^\]\n]{1,2000})(?:\|([^\]\n]{0,2000}))?\]\]/gu, (_match, target, alias) => {
-        const path = safeUrl(target);
+    text = text.replace(/\[\[([^\]|\n]{1,2000})(?:\|([^\]\n]{1,2000}))?\]\]/gu, (match, target, alias, offset) => {
+        if (escapedAt(text, offset) || offset > 0 && text[offset - 1] === '!' && escapedAt(text, offset - 1))
+            return match;
+        const candidate = target.trim();
+        const path = isSafeVaultRelativePath(candidate) ? candidate : null;
         return path === null
             ? escapeMarkdownHtml(`[[${target}${alias === undefined ? '' : `|${alias}`}]]`)
             : `<a class="internal-link" data-target="${escapeMarkdownHtml(path)}" href="#">${escapeMarkdownHtml(alias ?? target)}</a>`;
     });
     text = text.replace(/\[\^([^\]\n]{1,200})\]/gu, (match, label) => {
         const number = footnoteNumbers.get(label.toLocaleLowerCase());
-        return number === undefined ? match : `<sup class="footnote-ref"><a href="#fn-${String(number)}">${String(number)}</a></sup>`;
+        return number === undefined ? match : `<sup class="footnote-ref"><a href="#fn-${String(number)}">[${String(number)}]</a></sup>`;
     });
     text = text.replace(/\^\[([^\]\n]{1,2000})\]/gu, (_match, value) => hold(`<sup class="footnote-inline">${renderInline(value, footnoteNumbers, externalEmbedMode)}</sup>`));
     text = text.replace(/\$([^$\n]{1,20000})\$/gu, (_match, value) => `<span class="math-inline" role="math">${escapeMarkdownHtml(value)}</span>`);
@@ -201,15 +349,45 @@ function renderBoundedMermaid(source) {
     if (!/^graph\s+(?:TD|TB|LR|RL|BT)$/iu.test(statements.shift() ?? '') || statements.length === 0 || statements.length > 100)
         return null;
     const edges = [];
+    const labels = new Map();
     for (const statement of statements) {
         const match = statement.match(/^([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?\s*--+>?\s*([A-Za-z][\w-]*)(?:\[([^\]]{1,200})\])?$/u);
         if (match === null)
             return null;
-        const from = escapeMarkdownHtml(match[2] ?? match[1]);
-        const to = escapeMarkdownHtml(match[4] ?? match[3]);
-        edges.push(`<span class="mermaid-node">${from}</span><span aria-hidden="true"> → </span><span class="mermaid-node">${to}</span>`);
+        const from = match[1];
+        const to = match[3];
+        if (!labels.has(from))
+            labels.set(from, match[2] ?? from);
+        if (!labels.has(to))
+            labels.set(to, match[4] ?? to);
+        edges.push({ from, to });
     }
-    return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img">${edges.join('<br>')}</div>`;
+    const nodeIds = [...labels.keys()];
+    const nodeWidth = 132;
+    const width = Math.max(320, Math.min(1200, 40 + nodeIds.length * 180));
+    const height = 128;
+    const gap = nodeIds.length < 2 ? 0 : (width - 40 - nodeWidth) / (nodeIds.length - 1);
+    const position = (id) => ({
+        x: 20 + nodeIds.indexOf(id) * gap,
+        y: 38,
+    });
+    const edgeMarkup = edges.map(edge => {
+        const from = position(edge.from);
+        const to = position(edge.to);
+        const fromX = from.x + nodeWidth / 2;
+        const toX = to.x + nodeWidth / 2;
+        const direction = toX >= fromX ? 1 : -1;
+        const startX = from.x + (direction > 0 ? nodeWidth : 0);
+        const endX = to.x + (direction > 0 ? 0 : nodeWidth);
+        const midpoint = (startX + endX) / 2;
+        const arrowBase = endX - direction * 8;
+        return `<path class="mermaid-edge-path" d="M ${String(startX)} 64 C ${String(midpoint)} 20, ${String(midpoint)} 20, ${String(endX)} 64"></path><path class="mermaid-arrow-head" d="M ${String(arrowBase)} 58 L ${String(endX)} 64 L ${String(arrowBase)} 70 z"></path>`;
+    }).join('');
+    const nodeMarkup = nodeIds.map(id => {
+        const point = position(id);
+        return `<g class="mermaid-node" data-node-id="${escapeMarkdownHtml(id)}"><rect class="mermaid-node-shape" height="52" rx="8" width="${String(nodeWidth)}" x="${String(point.x)}" y="${String(point.y)}"></rect><text class="mermaid-node-label" text-anchor="middle" x="${String(point.x + nodeWidth / 2)}" y="70">${escapeMarkdownHtml(labels.get(id) ?? id)}</text></g>`;
+    }).join('');
+    return `<div aria-label="Mermaid Diagram" class="mermaid-diagram" role="img"><svg aria-hidden="true" class="mermaid-svg" preserveAspectRatio="xMidYMid meet" viewBox="0 0 ${String(width)} ${String(height)}" xmlns="http://www.w3.org/2000/svg">${edgeMarkup}${nodeMarkup}</svg></div>`;
 }
 function tableDelimiter(line) {
     const cells = line.trim().replace(/^\|/u, '').replace(/\|$/u, '').split('|');
@@ -218,21 +396,88 @@ function tableDelimiter(line) {
 function tableCells(line) {
     return line.trim().replace(/^\|/u, '').replace(/\|$/u, '').split('|').map(cell => cell.trim());
 }
+function blockIdText(value) {
+    const match = value.match(/(?:^|\s)\^([A-Za-z0-9][A-Za-z0-9_-]{0,63})\s*$/u);
+    if (match === null)
+        return null;
+    return { id: match[1], text: value.slice(0, match.index ?? 0).replace(/[ \t]+$/u, '') };
+}
 function paragraphHtml(lines, strict, footnotes, externalEmbedMode) {
     if (lines.length === 0)
         return '';
-    let html = renderInline(lines[0].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode);
-    for (let index = 1; index < lines.length; index += 1) {
-        const previous = lines[index - 1];
+    const last = blockIdText(lines.at(-1).replace(/[ \t]+$/u, ''));
+    const content = last === null ? lines : [...lines.slice(0, -1), last.text];
+    let html = renderInline(content[0].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode);
+    for (let index = 1; index < content.length; index += 1) {
+        const previous = content[index - 1];
         const separator = !strict || / {2,}$/u.test(previous) ? '<br>' : ' ';
-        html += `${separator}${renderInline(lines[index].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)}`;
+        html += `${separator}${renderInline(content[index].replace(/[ \t]+$/u, ''), footnotes, externalEmbedMode)}`;
     }
-    return `<p>${html}</p>`;
+    return `<p${last === null ? '' : ` id="${escapeMarkdownHtml(last.id)}"`}>${html}</p>`;
+}
+function parseMarkdownListItem(line) {
+    const match = line.match(/^( {0,64})([-+*]|\d{1,9}[.)])\s+(.*)$/u);
+    if (match === null)
+        return null;
+    const ordered = /^\d/u.test(match[2]);
+    const task = ordered ? null : match[3].match(/^\[([^\]])\]\s*(.*)$/u);
+    return {
+        checked: task === null ? null : task[1] !== ' ',
+        content: task?.[2] ?? match[3],
+        indent: match[1].length,
+        marker: match[2],
+        ordered,
+    };
+}
+function renderMarkdownList(items, start, indent, taskIndex, footnotes, externalEmbedMode) {
+    const ordered = items[start].ordered;
+    const children = [];
+    let cursor = start;
+    let nextTaskIndex = taskIndex;
+    let hasTasks = false;
+    while (cursor < items.length) {
+        const item = items[cursor];
+        if (item.indent !== indent || item.ordered !== ordered)
+            break;
+        cursor += 1;
+        let input = '';
+        if (item.checked !== null) {
+            hasTasks = true;
+            input = `<input aria-label="Task" data-task-index="${String(nextTaskIndex)}" type="checkbox"${item.checked ? ' checked' : ''}> `;
+            nextTaskIndex += 1;
+        }
+        let nested = '';
+        while (cursor < items.length && items[cursor].indent > indent) {
+            const result = renderMarkdownList(items, cursor, items[cursor].indent, nextTaskIndex, footnotes, externalEmbedMode);
+            nested += result.html;
+            cursor = result.next;
+            nextTaskIndex = result.taskIndex;
+        }
+        const content = blockIdText(item.content);
+        const id = content === null ? '' : ` id="${escapeMarkdownHtml(content.id)}"`;
+        children.push(`<li${id}>${input}${renderInline(content?.text ?? item.content, footnotes, externalEmbedMode)}${nested}</li>`);
+    }
+    const tag = ordered ? 'ol' : 'ul';
+    const startValue = ordered ? Number.parseInt(items[start].marker, 10) : 1;
+    const attributes = ordered && startValue !== 1
+        ? ` start="${String(startValue)}"`
+        : !ordered && hasTasks ? ' class="task-list"' : '';
+    return { html: `<${tag}${attributes}>${children.join('')}</${tag}>`, next: cursor, taskIndex: nextTaskIndex };
 }
 export function renderMarkdownHtml(markdown, options = {}) {
     if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES)
         return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
-    const source = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    const normalized = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    const resolvedEmbeds = options.resolvedEmbeds ?? [];
+    const rootResolvedEmbeds = options.resolvedEmbedParentPath === undefined
+        ? resolvedEmbeds.filter(embed => embed.parentPath === undefined)
+        : resolvedEmbeds.filter(embed => embed.parentPath === options.resolvedEmbedParentPath);
+    const resolvedEmbedReplacements = new Map([
+        ...(options.resolvedEmbedSources ?? []).map(source => [source, '']),
+        ...rootResolvedEmbeds.map(embed => [embed.target.source, renderResolvedEmbed(embed, options.externalEmbedMode ?? 'inert', resolvedEmbeds)]),
+    ]);
+    const replacedEmbeds = replaceResolvedEmbedSources(normalized, resolvedEmbedReplacements);
+    const source = stripActiveHtml(replacedEmbeds.markdown);
     const lines = source.split('\n');
     const footnotes = collectFootnotes(lines);
     const externalEmbedMode = options.externalEmbedMode ?? 'inert';
@@ -293,7 +538,10 @@ export function renderMarkdownHtml(markdown, options = {}) {
         if (heading !== null) {
             flush();
             const level = heading[1].length;
-            blocks.push(`<h${String(level)}>${renderInline(heading[2], footnotes.numbers, externalEmbedMode)}</h${String(level)}>`);
+            const content = blockIdText(heading[2]);
+            const title = content?.text ?? heading[2];
+            const id = content === null ? '' : ` id="${escapeMarkdownHtml(content.id)}"`;
+            blocks.push(`<h${String(level)}${id}>${renderInline(title, footnotes.numbers, externalEmbedMode)}</h${String(level)}>`);
             continue;
         }
         const callout = line.match(/^>\s*\[!([A-Za-z0-9_-]+)\]([+-])?(?:\s+(.*))?$/u);
@@ -306,7 +554,21 @@ export function renderMarkdownHtml(markdown, options = {}) {
             }
             const type = callout[1].toLocaleLowerCase();
             const title = callout[3] ?? type[0].toLocaleUpperCase() + type.slice(1);
-            blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers, externalEmbedMode)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</aside>`);
+            blocks.push(`<aside class="callout callout-${escapeMarkdownHtml(type)}" data-callout="${escapeMarkdownHtml(type)}" data-fold="${callout[2] === '-' ? 'closed' : 'open'}"><strong>${renderInline(title, footnotes.numbers, externalEmbedMode)}</strong>${paragraphHtml(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)}</aside>`);
+            continue;
+        }
+        const quote = line.match(/^ {0,3}> ?(.*)$/u);
+        if (quote !== null) {
+            flush();
+            const body = [quote[1]];
+            while (index + 1 < lines.length && /^ {0,3}> ?/u.test(lines[index + 1])) {
+                index += 1;
+                body.push(lines[index].replace(/^ {0,3}> ?/u, ''));
+            }
+            const content = body.join('\n').split(/\n[ \t]*\n/u)
+                .map(value => paragraphHtml(value.split('\n'), options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode))
+                .join('');
+            blocks.push(`<blockquote>${content}</blockquote>`);
             continue;
         }
         if (index + 1 < lines.length && line.includes('|') && tableDelimiter(lines[index + 1])) {
@@ -321,18 +583,26 @@ export function renderMarkdownHtml(markdown, options = {}) {
             blocks.push(`<table><thead><tr>${headers.map(cell => `<th>${renderInline(cell, footnotes.numbers, externalEmbedMode)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_header, cell) => `<td>${renderInline(row[cell] ?? '', footnotes.numbers, externalEmbedMode)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
             continue;
         }
-        const task = line.match(/^\s{0,64}[-+*]\s+\[([^\]])\]\s*(.*)$/u);
-        if (task !== null) {
-            flush();
-            blocks.push(`<ul class="task-list"><li><input aria-label="Task" data-task-index="${String(taskIndex)}" type="checkbox"${task[1] === ' ' ? '' : ' checked'}> ${renderInline(task[2], footnotes.numbers, externalEmbedMode)}</li></ul>`);
-            taskIndex += 1;
-            continue;
-        }
-        const list = line.match(/^\s{0,64}([-+*]|\d{1,9}[.)])\s+(.*)$/u);
+        const list = parseMarkdownListItem(line);
         if (list !== null) {
             flush();
-            const ordered = /^\d/u.test(list[1]);
-            blocks.push(`<${ordered ? 'ol' : 'ul'}><li>${renderInline(list[2], footnotes.numbers, externalEmbedMode)}</li></${ordered ? 'ol' : 'ul'}>`);
+            const items = [list];
+            while (index + 1 < lines.length) {
+                const next = parseMarkdownListItem(lines[index + 1]);
+                if (next === null)
+                    break;
+                items.push(next);
+                index += 1;
+            }
+            let cursor = 0;
+            let html = '';
+            while (cursor < items.length) {
+                const result = renderMarkdownList(items, cursor, items[cursor].indent, taskIndex, footnotes.numbers, externalEmbedMode);
+                html += result.html;
+                cursor = result.next;
+                taskIndex = result.taskIndex;
+            }
+            blocks.push(html);
             continue;
         }
         if (/^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(line)) {
@@ -350,7 +620,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
     if (footnotes.definitions.length > 0) {
         blocks.push(`<section class="footnotes"><ol>${footnotes.definitions.map(definition => `<li id="fn-${String(definition.number)}">${renderInline(definition.text, footnotes.numbers, externalEmbedMode)}</li>`).join('')}</ol></section>`);
     }
-    return blocks.join('\n');
+    return blocks.join('\n').replace(/\u0000tocktutor-resolved-embed-(\d+)\u0000/gu, (_match, index) => replacedEmbeds.tokens[Number(index)] ?? '');
 }
 export function buildMarkdownSlides(markdown, options = {}) {
     if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES)

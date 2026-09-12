@@ -87,7 +87,11 @@ export type NativeFailureResult = {
 
 export type DesktopCallerOperation =
   | 'activate-vault'
+  | 'move-vault'
+  | 'remove-vault'
+  | 'rename-vault'
   | 'reveal-entry'
+  | 'reveal-vault'
   | 'popout-open'
   | 'popout-close'
   | 'popout-close-all'
@@ -159,7 +163,7 @@ export type DesktopSourcePurpose =
 export type DesktopExportPurpose = 'export-html' | 'export-pdf' | 'vault-backup'
 
 export type DesktopPickerRequest = { identity: DesktopPickerIdentity } & (
-  | { kind: 'vault'; purpose: 'activate' }
+  | { kind: 'vault'; purpose: 'activate' | 'move' }
   | { kind: 'source'; purpose: DesktopSourcePurpose }
   | { kind: 'destination'; purpose: DesktopExportPurpose }
 )
@@ -601,6 +605,7 @@ export type TockTeamDesktopVaultSelectionFailureStatus = NativeFailureStatus
 export interface TockTeamDesktopVaultSelectionConsumeInput {
   authorization: string
   identity: TockTeamDesktopVaultSelectionIdentity
+  purpose?: 'activate' | 'move'
 }
 
 export type TockTeamDesktopVaultSelectionConsumeResult = {
@@ -640,6 +645,7 @@ export type TockTeamDesktopVaultSelectionAdoptResult = {
   operationId: string
   status: TockTeamDesktopVaultSelectionFailureStatus
 } | {
+  claim: TockTeamDesktopVaultSelectionClaim
   operationId: string
   status: 'bound'
 }

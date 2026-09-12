@@ -40,6 +40,9 @@
     "dist/launcher-preload.cjs",
     "dist/launcher-preload.cjs.map",
     "dist/launcher-assets/**",
+    "dist/trusted-raycast/**",
+    "dist/trusted-raycast-kaomoji/**",
+    "dist/trusted-raycast-can-i-use/**",
     "dist/client.js",
     "dist/client.js.map",
     "dist/client-api.js",
@@ -86,6 +89,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test:ueli-package-feasibility": "node --test tests/ueli-package-feasibility.test.ts",
+    "test:trusted-raycast-artifact": "node --test tests/trusted-raycast-artifact-admission.test.ts",
+    "trace:trusted-raycast": "node scripts/trusted-raycast-tracer.mjs",
     "test:launcher:electron": "pnpm run build:tocktutor && pnpm run build && node scripts/stage-dsh.mjs --quick && node scripts/launcher-electron-smoke.mjs",
     "test:launcher:packaged": "node scripts/launcher-packaged-smoke.mjs --tockteam-launcher-packaged-smoke",
     "test:launcher:installed": "node scripts/launcher-installed-smoke.mjs --tockteam-launcher-installed-smoke",
@@ -170,6 +175,9 @@
       "dist/launcher-preload.cjs",
       "dist/launcher-preload.cjs.map",
       "dist/launcher-assets/**",
+      "dist/trusted-raycast/**",
+      "dist/trusted-raycast-kaomoji/**",
+      "dist/trusted-raycast-can-i-use/**",
       "dist/splash.html",
       "LICENSE",
       "THIRD_PARTY_NOTICES.md",
@@ -216,10 +224,10 @@
       "darkModeSupport": true,
       "minimumSystemVersion": "12.0.0",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "TockTeam Desktop uses Apple Events only when a TockTeam tool needs to interact with a Mac app.",
-        "NSDesktopFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select on the Desktop.",
-        "NSDocumentsFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select in Documents.",
-        "NSDownloadsFolderUsageDescription": "TockTeam Desktop needs access to workspaces you select in Downloads."
+        "NSAppleEventsUsageDescription": "TockTeam uses Apple Events only when a TockTeam tool needs to interact with a Mac app.",
+        "NSDesktopFolderUsageDescription": "TockTeam needs access to workspaces you select on the Desktop.",
+        "NSDocumentsFolderUsageDescription": "TockTeam needs access to workspaces you select in Documents.",
+        "NSDownloadsFolderUsageDescription": "TockTeam needs access to workspaces you select in Downloads."
       }
     },
     "linux": {
@@ -241,7 +249,7 @@
       "icon": "assets/icons/512x512.png"
     },
     "dmg": {
-      "title": "TockTeam Desktop ${version}",
+      "title": "TockTeam ${version}",
       "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}",
       "window": {
         "width": 540,

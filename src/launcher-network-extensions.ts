@@ -420,7 +420,7 @@ function mapCustomResult(
     defaultAction: action(HANDLERS.open, value, `Search ${engine.name}`),
     description: `Search in ${engine.name}`,
     details: value,
-    id: `${engine.id}:instantResult`,
+    id: `custom-web-search:${engine.id}:instantResult`,
     imageKey: 'custom-web-search',
     name: engine.name,
     sourceExtension: 'CustomWebSearch',
@@ -835,7 +835,6 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         await assertPublicResolution(url, options.resolveAddresses ?? defaultResolveAddresses, trackRaw)
         if (signal.aborted) throw abortReason(signal, 'Network navigation canceled')
       }, controller.signal, timeoutMs)
-      if (!current()) throw new Error('Network URL action is stale')
       if (!current()) throw new Error('Network URL action is stale')
       await track(Promise.resolve(options.openExternal(url.toString(), controller.signal)))
       if (!current()) throw new Error('Network URL action is stale')

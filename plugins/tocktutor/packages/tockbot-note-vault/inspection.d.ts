@@ -61,18 +61,27 @@ export interface VaultInspectionInventoryPage {
 export interface VaultInspectionDocument {
   path: string
   content: string
+  revision?: string
 }
 
 export interface VaultSearchCandidateRequest {
   directory: string
   groups: Array<Array<{ field: 'property' | 'tag'; value: string }>>
   limit: number
+  modifiedFrom?: number
+  modifiedTo?: number
+}
+
+export interface VaultSearchCandidateEntry {
+  path: string
+  modifiedMs: number
+  revision: string
 }
 
 export interface VaultSearchCandidateResult {
   complete: true
   epoch: string
-  paths: string[]
+  entries: VaultSearchCandidateEntry[]
 }
 
 export interface VaultInspectionInput {
@@ -86,7 +95,7 @@ export interface VaultInspectionInput {
     maxBytes: number,
     signal: AbortSignal,
   ): Promise<VaultInspectionDocument>
-  /** Return a complete conservative path superset, or null to use the bounded scanner. */
+  /** Return a complete conservative candidate set with inventory metadata, or null to use the bounded scanner. */
   searchCandidates?(
     request: VaultSearchCandidateRequest,
     signal: AbortSignal,
@@ -142,11 +151,18 @@ export interface VaultSearchArgs {
   wholeWord?: boolean
   regex?: boolean
   directory?: string
+  titleOnly?: boolean
+  modifiedFrom?: number
+  modifiedTo?: number
   limit?: number
   cursor?: string
 }
 
 export interface VaultSearchMatch {
+  /** Stable identity for one exact note location within a search query. */
+  id?: string
+  /** Revision captured with the search result for stale-preview protection. */
+  revision?: string
   path: string
   kind: 'base' | 'block' | 'canvas' | 'content' | 'line' | 'path' | 'property' | 'section' | 'tag' | 'task'
   line: number | null

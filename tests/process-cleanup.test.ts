@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { runInNewContext } from 'node:vm'
 import {
   parseWindowsProcessSnapshot,
   windowsOwnedProcessQuery,
@@ -50,4 +51,51 @@ test('child cleanup handles prior signals and escalates ignored termination', as
   await new Promise<void>(resolve => { stubborn.stdout.once('data', () => { resolve() }) })
   await stopChildProcess(stubborn, 20, 500)
   assert.notEqual(stubborn.signalCode, null)
+})
+
+// Execute the production Unix branch with a stubbed probe; never enumerate or signal real processes.
+test('Unix process-tree inspection accepts only no-match and bounds failed probes', async t => {
+  const source = cleanupSource.slice(
+    cleanupSource.indexOf('export async function assertProcessTreeGone('),
+    cleanupSource.indexOf('export async function stopChildProcess('),
+  ).replace('export ', '')
+  const noMatch = Object.assign(new Error('no match'), { code: 1, killed: false, signal: null })
+  const cases = [
+    { name: 'no-match', error: noMatch, absent: true },
+    { name: 'timeout', error: Object.assign(new Error('timed out'), { code: null, killed: true, signal: 'SIGKILL' }), absent: false },
+    { name: 'killed-exit-one', error: Object.assign(new Error('killed'), { code: 1, killed: true, signal: 'SIGKILL' }), absent: false },
+    { name: 'signalled-exit-one', error: Object.assign(new Error('signalled'), { code: 1, killed: false, signal: 'SIGTERM' }), absent: false },
+    { name: 'spawn-failure', error: Object.assign(new Error('missing pgrep'), { code: 'ENOENT' }), absent: false },
+    { name: 'permission-failure', error: Object.assign(new Error('denied'), { code: 'EACCES' }), absent: false },
+    { name: 'other-exit', error: Object.assign(new Error('pgrep failed'), { code: 2, killed: false, signal: null }), absent: false },
+    { name: 'incomplete-exit-one', error: Object.assign(new Error('unknown'), { code: 1 }), absent: false },
+  ]
+  for (const scenario of cases) {
+    await t.test(scenario.name, async () => {
+      let options: { timeout?: number, killSignal?: string } | undefined
+      let calls = 0
+      const inspect = runInNewContext(`${source}\nassertProcessTreeGone`, {
+        process: { platform: 'darwin' },
+        execFileAsync: async (file: string, args: string[], probeOptions: typeof options) => {
+          calls += 1
+          assert.equal(file, '/usr/bin/pgrep')
+          assert.deepEqual(Array.from(args), ['-g', '123'])
+          options = probeOptions
+          throw scenario.error
+        },
+        setTimeout,
+      })
+      if (scenario.absent) await inspect({ pid: 123 })
+      else await assert.rejects(() => inspect({ pid: 123 }), error => error === scenario.error)
+      assert.equal(calls, 1, 'failed inspection must not retry or certify absence')
+      assert.equal(options?.timeout, 2000)
+      assert.equal(options?.killSignal, 'SIGKILL')
+    })
+  }
+  await t.test('successful probe is not no-match, even with empty output', async () => {
+    const inspect = runInNewContext(`${source}\nassertProcessTreeGone`, {
+      process: { platform: 'linux' }, execFileAsync: async () => ({ stdout: '' }), setTimeout,
+    })
+    await assert.rejects(() => inspect({ pid: 123 }, 1), /process tree for 123 did not stop/u)
+  })
 })

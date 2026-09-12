@@ -197,7 +197,8 @@ test('desktop Host plugin publishes capability, prompt, and bash environment', (
     assert.ok(provided.has('tockTeamDesktopMicrophone'))
     assert.ok(provided.has('tockTeamDesktopPopOut'))
     assert.ok(provided.has('tockTeamDesktopPrintExport'))
-    assert.match(prompt, /TockTeam Desktop/)
+    assert.match(prompt, /through TockTeam 9\.8\.7/)
+    assert.doesNotMatch(prompt, /TockTeam Desktop/)
     assert.doesNotMatch(prompt, /ChatGPT|OpenAI/)
     assert.deepEqual(resolvedEnvironment, {
       DSH_DESKTOP: '1',
@@ -261,7 +262,7 @@ test('desktop Agent tools share the guarded marketplace transaction owner', asyn
     await policy({ name: 'desktop_plugin_apply' }, async () => ({ kind: 'allow' })),
     {
       kind: 'ask',
-      reason: 'Apply the tested plugin preview to TockTeam Desktop?',
+      reason: 'Apply the tested plugin preview to TockTeam?',
     },
   )
   assert.deepEqual(

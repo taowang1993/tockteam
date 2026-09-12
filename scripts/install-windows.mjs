@@ -12,6 +12,7 @@ import {
   PORTABLE_RUNTIME_LINK_MAX_ENTRIES,
   WINDOWS_PORTABLE_MARKER,
 } from './windows-portable-archive.mjs'
+import { acquireInstallLock } from './install-lock.mjs'
 
 export { WINDOWS_PORTABLE_MARKER }
 
@@ -282,12 +283,7 @@ export async function replaceWindowsPortableArchive(options) {
   let promoted = false
 
   await access(archive, constants.R_OK)
-  try {
-    await mkdir(lock)
-  } catch (error) {
-    if (error?.code === 'EEXIST') throw new Error('another TockTeam portable install is already in progress')
-    throw error
-  }
+  await acquireInstallLock(lock, 'another TockTeam portable install is already in progress')
   try {
     await mkdir(pending)
     await extractArchive(archive, pending)

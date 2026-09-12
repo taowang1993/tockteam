@@ -1,5 +1,6 @@
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
+import { answerSearchQuery, expandAndSearch } from "./search-intelligence.js";
 import { ProposalApprovalExecutor, } from "./approval.js";
 import { ProposalQueue, } from "./proposals.js";
 import { AssistantProposalStateStore } from "./proposal-state.js";
@@ -9,6 +10,33 @@ import { PennivoReadAdapter, REVIEWED_PENNIVO_READ_TOOLS, } from "./read-tools.j
 import { AssistantTurnBindingError, AssistantTurnBindingRegistry, } from "./turn-bindings.js";
 import { organizedCaptureContent, publicTockDriverWriteResult, registerAssistantWriteTools, registerMainTockDriverWriteTools, } from "./write-tool-registration.js";
 import { TockTutorAssistantGateway, } from "./remote.js";
+const MAX_SEARCH_CANDIDATE_MAPS = 8;
+function answerCandidateKey(candidate) {
+    return JSON.stringify([
+        candidate.path,
+        candidate.line,
+        candidate.lineEnd ?? null,
+        candidate.preview,
+        candidate.revision ?? null,
+    ]);
+}
+function searchRequestKey(request) {
+    return JSON.stringify({
+        directory: request.directory?.trim() ?? '',
+        mode: request.mode ?? 'query',
+        modifiedFrom: request.modifiedFrom,
+        modifiedTo: request.modifiedTo,
+        query: request.query.trim(),
+        titleOnly: request.titleOnly === true,
+    });
+}
+function searchCandidateMapKey(vaultId, vaultGeneration, request) {
+    return JSON.stringify({
+        requestKey: searchRequestKey(request),
+        vaultGeneration,
+        vaultId,
+    });
+}
 import { PennivoChildManager, } from "./pennivo-child.js";
 import { ProductionAssistantTurnBinder, } from "./production-turns.js";
 export { buildAssistantPrompt, boundToolText, redactBoundaryText, } from "./context.js";
@@ -20,6 +48,7 @@ export * from "./read-tool-registration.js";
 export * from "./read-tools.js";
 export * from "./remote.js";
 export * from "./remote-types.js";
+export * from "./search-intelligence.js";
 export * from "./text-turn.js";
 export * from "./turn-bindings.js";
 export * from "./write-tool-registration.js";
@@ -32,6 +61,11 @@ export const Config = Schema.object({
         Schema.const('read-only'),
         Schema.const('propose'),
     ]).default('read-only'),
+    aiSearch: Schema.union([
+        Schema.const('off'),
+        Schema.const('on-demand'),
+        Schema.const('automatic'),
+    ]).default('on-demand'),
 });
 export const ASSISTANT_SETTINGS_NAMESPACE = 'tocktutor-assistant';
 export class NoteAssistant extends Service {
@@ -39,6 +73,7 @@ export class NoteAssistant extends Service {
     static inject = ['agents', 'noteVault', 'settings', 'storageDomain', 'subprocess', 'tools'];
     agents;
     noteVault;
+    llm;
     settings;
     observedSettings;
     settingsAbort = new AbortController();
@@ -55,12 +90,14 @@ export class NoteAssistant extends Service {
     proposalState;
     proposalPersistence = Promise.resolve();
     decisionTasks = new Set();
+    searchCandidateMaps = new Map();
     decisionAdmissionOpen = true;
     mainTockDriverDispose;
     constructor(ctx, config) {
         super(ctx, 'noteAssistant');
         this.agents = ctx.agents;
         this.noteVault = ctx.noteVault;
+        this.llm = ctx.get('llm');
         this.settings = ctx.settings.register(ASSISTANT_SETTINGS_NAMESPACE, Config, { base: config });
         this.observedSettings = { ...this.settings.get() };
         this.continuation = new AgentContinuationRouter(ctx.agents, (agentId, agent) => agent.id === agentId && this.agents.get(agent.id) === agent);
@@ -80,11 +117,14 @@ export class NoteAssistant extends Service {
         });
         this.syncMainTockDriverTools();
         ctx.on('settings/updated', (namespace) => {
-            if (namespace === ASSISTANT_SETTINGS_NAMESPACE)
+            if (namespace === ASSISTANT_SETTINGS_NAMESPACE) {
+                this.searchCandidateMaps.clear();
                 this.observeSettings(this.settings.get());
+            }
         });
         ctx.plugin(TockTutorAssistantGateway);
         ctx.on('note-vault/change', event => {
+            this.searchCandidateMaps.clear();
             this.turnBindings.invalidateVault(event.vault);
             this.proposalQueue.invalidateVault(event.vault);
             this.scheduleProposalPersistence();
@@ -427,7 +467,8 @@ export class NoteAssistant extends Service {
         const previous = this.observedSettings;
         const providerChanged = next.provider !== previous.provider || next.model !== previous.model;
         const permissionChanged = next.writePermission !== previous.writePermission;
-        if (!providerChanged && !permissionChanged)
+        const aiSearchChanged = next.aiSearch !== previous.aiSearch;
+        if (!providerChanged && !permissionChanged && !aiSearchChanged)
             return;
         this.observedSettings = { ...next };
         this.settingsAbort.abort(new Error('Assistant settings changed.'));
@@ -549,6 +590,123 @@ export class NoteAssistant extends Service {
         const current = this.settings.get();
         this.observeSettings(current);
         return { ...current };
+    }
+    rememberSearchCandidates(request, vaultId, matches) {
+        const key = searchCandidateMapKey(vaultId, request.vaultGeneration, request);
+        this.searchCandidateMaps.delete(key);
+        this.searchCandidateMaps.set(key, Object.freeze({
+            candidates: new Set(matches.map(answerCandidateKey)),
+            mode: request.mode,
+            requestKey: searchRequestKey(request),
+            vaultGeneration: request.vaultGeneration,
+            vaultId,
+        }));
+        while (this.searchCandidateMaps.size > MAX_SEARCH_CANDIDATE_MAPS) {
+            const oldest = this.searchCandidateMaps.keys().next().value;
+            if (oldest === undefined)
+                break;
+            this.searchCandidateMaps.delete(oldest);
+        }
+    }
+    async searchIntelligence(request, signal) {
+        const settings = this.currentSettings();
+        if ((settings.aiSearch ?? 'on-demand') === 'off')
+            return { status: 'disabled', matches: [] };
+        const vault = this.noteVault.state;
+        if (!vault.active || vault.generation !== request.vaultGeneration)
+            return { status: 'error', matches: [] };
+        const isCurrent = (current) => {
+            const currentVault = this.noteVault.state;
+            const currentSettings = this.settings.get();
+            return current.vaultGeneration === request.vaultGeneration
+                && currentVault.active
+                && currentVault.id === vault.id
+                && currentVault.generation === vault.generation
+                && currentSettings.provider === settings.provider
+                && currentSettings.model === settings.model
+                && currentSettings.aiSearch === settings.aiSearch;
+        };
+        const result = await expandAndSearch(this.llm, request, settings.provider, settings.model, async (searchRequest, searchSignal) => {
+            const result = await this.noteVault.search(searchRequest, {
+                id: vault.id,
+                generation: vault.generation,
+            }, searchSignal);
+            if (result.generation !== vault.generation)
+                throw new Error('Search vault changed.');
+            return result;
+        }, signal, isCurrent);
+        if (result.status === 'applied' && (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration }))) {
+            return { status: 'cancelled', matches: [] };
+        }
+        if (result.status === 'applied')
+            this.rememberSearchCandidates(request, vault.id, result.matches);
+        return result;
+    }
+    async quickAnswer(request, signal) {
+        const settings = this.currentSettings();
+        if ((settings.aiSearch ?? 'on-demand') === 'off')
+            return { status: 'disabled', answer: '', citations: [] };
+        const vault = this.noteVault.state;
+        if (!vault.active || vault.generation !== request.vaultGeneration)
+            return { status: 'error', answer: '', citations: [] };
+        const mode = request.mode ?? 'query';
+        const isCurrent = (current) => {
+            const currentVault = this.noteVault.state;
+            const currentSettings = this.settings.get();
+            return current.vaultGeneration === request.vaultGeneration
+                && currentVault.active
+                && currentVault.id === vault.id
+                && currentVault.generation === vault.generation
+                && currentSettings.provider === settings.provider
+                && currentSettings.model === settings.model
+                && currentSettings.aiSearch === settings.aiSearch;
+        };
+        if (request.candidates.some(candidate => typeof candidate.revision !== 'string' || candidate.revision.length === 0)) {
+            return { status: 'no-evidence', answer: '', citations: [] };
+        }
+        let exactMatches;
+        try {
+            const exact = await this.noteVault.search({
+                mode,
+                query: request.query,
+                limit: 100,
+                ...(request.directory === undefined ? {} : { directory: request.directory }),
+                ...(request.modifiedFrom === undefined ? {} : { modifiedFrom: request.modifiedFrom }),
+                ...(request.modifiedTo === undefined ? {} : { modifiedTo: request.modifiedTo }),
+                ...(request.titleOnly === undefined ? {} : { titleOnly: request.titleOnly }),
+            }, { id: vault.id, generation: vault.generation }, signal);
+            exactMatches = exact.matches;
+        }
+        catch {
+            if (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration })) {
+                return { status: 'cancelled', answer: '', citations: [] };
+            }
+            return { status: 'error', answer: '', citations: [] };
+        }
+        if (signal.aborted || !isCurrent({ vaultGeneration: request.vaultGeneration })) {
+            return { status: 'cancelled', answer: '', citations: [] };
+        }
+        const requestKey = searchRequestKey({ ...request, mode });
+        const cached = this.searchCandidateMaps.get(searchCandidateMapKey(vault.id, vault.generation, { ...request, mode }));
+        const relatedKeys = cached !== undefined
+            && cached.vaultId === vault.id
+            && cached.vaultGeneration === vault.generation
+            && cached.mode === mode
+            && cached.requestKey === requestKey
+            ? cached.candidates
+            : undefined;
+        const exactKeys = new Set(exactMatches.map(answerCandidateKey));
+        for (const key of relatedKeys ?? [])
+            exactKeys.add(key);
+        if (request.candidates.some(candidate => !exactKeys.has(answerCandidateKey(candidate)))) {
+            return { status: 'no-evidence', answer: '', citations: [] };
+        }
+        return await answerSearchQuery(this.llm, request, settings.provider, settings.model, async (path) => {
+            const result = await this.noteVault.read({ path }, { id: vault.id, generation: vault.generation }, signal);
+            if (result.generation !== vault.generation || result.path !== path)
+                throw new Error('Search vault changed.');
+            return result;
+        }, signal, isCurrent);
     }
     async saveSettings(settings) {
         await this.settings.replace(settings);

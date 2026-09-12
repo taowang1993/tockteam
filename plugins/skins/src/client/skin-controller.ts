@@ -91,6 +91,8 @@ export class DesktopSkinsController implements DesktopSkins {
       const skin = stored === null ? undefined : desktopSkin(stored)
       if (skin === undefined) {
         if (stored !== null) this.remove(ACTIVE_SKIN_KEY)
+        const fallback = this.fallbackPreference()
+        if (fallback !== 'system') this.theme.setTheme(fallback)
       } else {
         const preference = this.theme.getTheme().preference
         if (builtinPreference(preference) && !builtinPreference(this.read(FALLBACK_THEME_KEY))) {

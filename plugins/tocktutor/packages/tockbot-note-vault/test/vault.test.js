@@ -147,7 +147,12 @@ async function loadTools(vault, overrides = {}) {
 }
 
 function withoutScanMetadata({ cursor: _cursor, scan: _scan, truncationReason: _reason, warnings: _warnings, ...value }) {
-  return value
+  return {
+    ...value,
+    ...(Array.isArray(value.matches) ? {
+      matches: value.matches.map(({ id: _id, lineEnd: _lineEnd, provenance: _provenance, score: _score, ...match }) => match),
+    } : {}),
+  }
 }
 
 function withoutLinkDetails({ outgoingDetails: _outgoing, backlinkDetails: _backlinks, tagRelations: _tags, ...value }) {
@@ -352,8 +357,8 @@ test('supports structured property, tag, line, block, section, and task queries'
     assert.deepEqual(uniquePaths(await run('task-todo:"cursor canary"')), ['advanced/query.md'])
     assert.deepEqual(uniquePaths(await run('task-done:Archive')), ['advanced/query.md'])
     assert.deepEqual(uniquePaths(await run('tag:project -[status:active] OR task-done:Archive')), [
-      'advanced/query.md',
       'linked.md',
+      'advanced/query.md',
     ])
 
     const task = await run('task-todo:"cursor canary"')

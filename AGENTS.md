@@ -72,6 +72,20 @@ Folder: `.agents/references/`
 | `tocktutor.md`     | TockTutor plugin and package contracts        |
 | `usage.md`         | Installation, operations, and troubleshooting |
 
+## UIUX
+
+Folder: `.agents/uiux/`
+
+| Product   | Path                                    |
+| --------- | --------------------------------------- |
+| Tocktutor | `.agents/uiux/tocktutor/tocktutor.html` |
+
+Use a bounded Playwright browser session (including Playwright’s Electron/CDP connection when Desktop is the target) for app-scoped navigation, interaction, and screenshot capture at a 1512 × 949 CSS-pixel viewport with a 2× device scale, producing 3024 × 1898-pixel screenshots; record and verify that exact CSS/device-pixel geometry, route/content/mode, visible state, and runtime-error evidence, publish only allowlisted screenshots transactionally, and stop the full browser/app/server process tree.
+
+- Canonical TockTutor-versus-Obsidian comparison screenshots must use the built-in dark theme and no active TockTeam skin: `colorScheme: 'dark'` and `skinId: null`. This is the default parity baseline and must match Obsidian’s default dark appearance.
+- Do not inherit system appearance, persisted profile settings, or a previously selected skin. For isolated Desktop captures, seed `skins.json` with `{"activeId":null,"fallbackTheme":"dark"}`; before taking or publishing the screenshot, verify `document.documentElement.style.colorScheme === 'dark'` and that `document.documentElement.dataset.tockteamSkin` is absent, and record those facts in the proof.
+- A light theme or named skin is allowed only for a separately labeled theme/skin capture, never for the canonical parity screenshot.
+
 ## Development Guidelines
 
 - Must reuse `plugins/shared/surface.ts`. Never provide a TockTeam surface as `ctx.web`; DSH owns that service name.
@@ -79,8 +93,9 @@ Folder: `.agents/references/`
 - Must keep Host and browser-client halves separate when adding a bundled plugin. Update every owning layer: package exports and metadata, `scripts/build.mjs`, the relevant patch file, `src/profile.ts`, browser-client injections, and focused composition tests. Do not mount it on a surface that cannot provide its dependencies.
 - Must use the TDD skill for non-trivial implementation or bug fixes: run the failing check first, then report the exact verification command.
 - Must use the design skill for UI/UX work and the playwright-cli skill to verify browser-visible UI or user-flow changes.
-- Must stop any Electron app, web server, and child process started for verification unless the user asks to keep it running.
-- On macOS, use `pnpm test:launcher:electron` while iterating. Run `pnpm test:launcher:installed` only after focused checks pass and only once per final commit; never run installed smokes concurrently.
+- Must stop every Electron app, browser session, web server, and descendant process started for verification unless the user asks to keep it running. Record the launched root PID or process group, clean it up in `finally` or a shell trap, and verify the full process tree stopped; terminating only a wrapper or parent process is insufficient.
+- Never use the long-lived `pnpm start` or `pnpm start:fresh` commands for temporary verification. Use a bounded smoke command or focused browser/component harness instead.
+- Prefer focused tests and browser or component verification while iterating. On macOS, run `pnpm test:launcher:electron` only when a change affects Electron, the launcher, preload or IPC behavior, packaging, or explicitly requires a final Desktop smoke; never run it for an isolated browser UI styling change. Run `pnpm test:launcher:installed` only after focused checks pass and only once per final commit; never run installed smokes concurrently.
 - Run local installed smokes with `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT` inside a `.noindex` cache directory to reduce Spotlight churn.
 - Write new reports in `.beads/reports`.
 - Never push without explicit authority from the user, orchestrator, or active repository profile. Never squash-merge pull requests; use merge commits.

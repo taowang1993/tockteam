@@ -21,6 +21,7 @@ test('declares the installable Desktop-only bundle and immutable peers', async (
   assert.equal(manifest.devDependencies['@tockteam/desktop'], 'workspace:*')
   assert.equal(manifest.devDependencies['@tockteam/tocktutor-workbench'], 'workspace:0.1.7')
   assert.equal(manifest.devDependencies['tockbot-note-runtime'], 'workspace:0.1.2')
+  assert.equal(manifest.dependencies['lucide-react'], undefined)
   assert.equal(JSON.stringify(manifest).includes('file:'), false)
   assert.equal(JSON.stringify(manifest).includes('/Users/'), false)
 })
@@ -55,4 +56,5 @@ test('never imports Electron, vault paths, or environment/browser surface heuris
   assert.doesNotMatch(source, /from ['"]node:(?:fs|path)['"]/u)
   assert.doesNotMatch(source, /process\.env|typeof window|navigator\.platform/u)
   assert.doesNotMatch(clientSource, /\b(?:canonicalPath|requestId|sessionId|windowId)\b/u)
+  assert.doesNotMatch(clientSource, /@tockteam\/ui\/dropdown-menu/u)
 })

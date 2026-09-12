@@ -9,7 +9,10 @@ import type {
 import {
   defaultPublicFetchLimits,
   fetchPublicText,
+  readBoundedText,
+  responseHeaderBytes,
   maximumPublicFetchLimits,
+  WebFetchError,
   type PublicFetchLimits,
   type PublicTextResult,
 } from './fetch.ts'
@@ -93,6 +96,8 @@ export const Config: Schema<Config> = Schema.object({
 })
 
 const MAX_VIEWER_HTML_CHARS = 1_000_000
+const WEB_CLIP_FIXTURE_URL_ENV = 'TOCKTEAM_WEB_CLIP_FIXTURE_URL'
+const fixtureContentTypes = new Set<PublicTextResult['contentType']>(['application/xhtml+xml', 'text/html', 'text/plain'])
 
 function escapedViewerText(value: string, maxChars: number): string {
   return value.toWellFormed()
@@ -325,8 +330,60 @@ export class WebClipHost extends Service {
     return result
   }
 
+  private async loadLoopbackFixture(url: string, signal: AbortSignal): Promise<PublicTextResult | null> {
+    if (process.env[WEB_CLIP_FIXTURE_URL_ENV] !== url) return null
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      return null
+    }
+    if (parsed.protocol !== 'http:' || parsed.hostname !== '127.0.0.1.nip.io' || parsed.pathname !== '/tockteam-web-clip-fixture') return null
+
+    const controller = new AbortController()
+    let timedOut = false
+    const abortFromCaller = () => { controller.abort(signal.reason) }
+    signal.addEventListener('abort', abortFromCaller, { once: true })
+    if (signal.aborted) controller.abort(signal.reason)
+    const timer = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, this.fetchLimits.timeoutMs)
+    try {
+      const response = await fetch(url, { redirect: 'manual', signal: controller.signal })
+      if (responseHeaderBytes(response.headers) > this.fetchLimits.maxResponseHeadersBytes) {
+        await response.body?.cancel().catch(() => undefined)
+        throw new WebFetchError('headers', 'The loopback fixture response headers are too large.')
+      }
+      if (response.status >= 300 && response.status < 400) {
+        await response.body?.cancel().catch(() => undefined)
+        throw new WebFetchError('redirect', 'The loopback fixture must not redirect.')
+      }
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined)
+        throw new WebFetchError('status', 'The loopback fixture returned an unsuccessful status.')
+      }
+      const type = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() as PublicTextResult['contentType'] | undefined
+      if (type === undefined || !fixtureContentTypes.has(type)) {
+        await response.body?.cancel().catch(() => undefined)
+        throw new WebFetchError('content-type', 'The loopback fixture must contain HTML or plain text.')
+      }
+      const text = await readBoundedText(response, this.fetchLimits, controller.signal)
+      return { contentType: type, text, url }
+    } catch (error) {
+      if (signal.aborted) throw signal.reason
+      if (timedOut) throw new WebFetchError('timeout', 'The loopback fixture request timed out.')
+      if (error instanceof WebFetchError) throw error
+      throw new WebFetchError('network', 'The loopback fixture request failed.')
+    } finally {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', abortFromCaller)
+    }
+  }
+
   protected async loadPublicText(url: string, signal: AbortSignal): Promise<PublicTextResult> {
-    return await fetchPublicText(url, { limits: this.fetchLimits, signal })
+    const fixture = await this.loadLoopbackFixture(url, signal)
+    return fixture ?? await fetchPublicText(url, { limits: this.fetchLimits, signal })
   }
 
   async fetchText(url: string, options: { signal?: AbortSignal } = {}): Promise<PublicTextResult> {

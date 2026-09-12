@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
+import { assertNoAppleDoubleEntries, packagingEnvironment } from './desktop-pack-environment.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const output = resolve(process.argv[2] ?? '')
@@ -11,20 +12,23 @@ if (!output || output === root || existsSync(output)) {
 }
 
 const work = mkdtempSync(join(tmpdir(), 'tockteam-desktop-pack-'))
+const packEnv = packagingEnvironment()
 try {
   execFileSync('pnpm', ['run', 'build'], {
     cwd: root,
+    env: packEnv,
     stdio: 'inherit',
   })
   execFileSync('pnpm', ['pack', '--pack-destination', work], {
     cwd: root,
+    env: packEnv,
     stdio: 'inherit',
   })
   const sourceManifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
   const packed = join(work, `tockteam-desktop-${String(sourceManifest.version)}.tgz`)
   if (!existsSync(packed)) throw new Error(`pnpm pack did not create ${packed}`)
 
-  execFileSync('tar', ['-xzf', packed, '-C', work])
+  execFileSync('tar', ['-xzf', packed, '-C', work], { env: packEnv })
   const packageDir = join(work, 'package')
   for (const required of ['dist/client-api.js', 'dist/host.js', 'client.d.ts', 'host.d.ts']) {
     if (!existsSync(join(packageDir, required))) throw new Error(`packed Desktop is missing ${required}`)
@@ -42,7 +46,11 @@ try {
   delete manifest.peerDependencies
   writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`)
 
-  execFileSync('tar', ['-czf', output, '-C', work, 'package'])
+  execFileSync('tar', ['-czf', output, '-C', work, 'package'], { env: packEnv })
+  const entries = execFileSync('tar', ['-tzf', output], { encoding: 'utf8', env: packEnv })
+    .split(/\r?\n/u)
+    .filter(Boolean)
+  assertNoAppleDoubleEntries(entries, output)
 } finally {
   rmSync(work, { recursive: true, force: true })
 }

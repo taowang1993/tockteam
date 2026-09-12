@@ -5,7 +5,7 @@ export { launcherDraftValueEquals }
 export type LauncherDraftUpdate<T> = T | ((current: T) => T)
 
 /** Keep an active edit stable while adopting clean values from a newer main snapshot. */
-export function useLauncherDraft<T>(value: T, equals: (left: T, right: T) => boolean = launcherDraftValueEquals): readonly [T, (next: LauncherDraftUpdate<T>) => void] {
+export function useLauncherDraft<T>(value: T, equals: (left: T, right: T) => boolean = launcherDraftValueEquals): readonly [T, (next: LauncherDraftUpdate<T>) => void, () => void] {
   const equalsRef = useRef(equals)
   equalsRef.current = equals
   const draftRef = useRef(value)
@@ -17,7 +17,7 @@ export function useLauncherDraft<T>(value: T, equals: (left: T, right: T) => boo
     draftRef.current = value
     dirtyRef.current = false
     setDraftState(value)
-  }, [value])
+  })
 
   const setDraft = useCallback((next: LauncherDraftUpdate<T>): void => {
     setDraftState(current => {
@@ -29,6 +29,10 @@ export function useLauncherDraft<T>(value: T, equals: (left: T, right: T) => boo
       return resolved
     })
   }, [])
+  const commitDraft = useCallback((): void => {
+    if (!equalsRef.current(draftRef.current, value)) return
+    dirtyRef.current = false
+  }, [value])
 
-  return [draft, setDraft]
+  return [draft, setDraft, commitDraft]
 }

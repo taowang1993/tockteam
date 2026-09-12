@@ -1,0 +1,36 @@
+✔ trust surface installs through the explicit two-step approve and keeps enabled separate (2.570833ms)
+✔ trust actions stay bound to the selected reviewed extension (0.401375ms)
+✔ installed capability exposes enable, disable and confirmed remove; recovery surfaces its action (0.722708ms)
+✔ inactive capability and failed actions stay honest and visible (0.452417ms)
+✔ zh-CN locale renders localized Title Case-free copy (0.262ms)
+✔ first use reviews exact candidate without mutation; approval is explicit and duplicate/repeated Enter is fenced (0.594167ms)
+✔ retry refreshes partial success and new candidates without automatically consenting (0.307458ms)
+✔ recovery is reachable without a candidate and selected management rows are not disabled (0.261583ms)
+✖ a failed review read retries in place without approving (2.219ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 72.31175
+
+✖ failing tests:
+
+test at tests/trusted-raycast-trust-view.test.ts:188:1
+✖ a failed review read retries in place without approving (2.219ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+    assert.ok(retry)
+
+      at TestContext.<anonymous> (file:///Users/taowang/projects/worktrees/launcher/tests/trusted-raycast-trust-view.test.ts:193:90)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

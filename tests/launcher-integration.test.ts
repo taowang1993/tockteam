@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+const launcher = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
+const launcherFileSearchTool = readFileSync(new URL('../src/launcher-file-search-tool.ts', import.meta.url), 'utf8')
+const launcherNetworkTool = readFileSync(new URL('../src/launcher-network-extension-tool.ts', import.meta.url), 'utf8')
 const client = readFileSync(new URL('../src/client.ts', import.meta.url), 'utf8')
 const security = readFileSync(new URL('../src/launcher-security.ts', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/preload.ts', import.meta.url), 'utf8')
@@ -14,9 +17,19 @@ const tockTutorRoute = readFileSync(new URL('../plugins/tocktutor/packages/tockt
 const webPatch = readFileSync(new URL('../web/cordis.patch.yml', import.meta.url), 'utf8')
 const tuiPatch = readFileSync(new URL('../plugins/tui/cordis.patch.yml', import.meta.url), 'utf8')
 const electronSmoke = readFileSync(new URL('../scripts/launcher-electron-smoke.mjs', import.meta.url), 'utf8')
+const packagedSmoke = readFileSync(new URL('../scripts/launcher-packaged-smoke.mjs', import.meta.url), 'utf8')
+const installedSmoke = readFileSync(new URL('../scripts/launcher-installed-smoke.mjs', import.meta.url), 'utf8')
+const smokeRuntime = readFileSync(new URL('../scripts/smoke-runtime.mjs', import.meta.url), 'utf8')
 
-test('main activates the macOS app before handling a cross-display launcher shortcut', () => {
-  assert.match(main, /globalShortcut: \{[\s\S]*?const workbench = mainWindow[\s\S]*?screen\.getDisplayMatching\(workbench\.getBounds\(\)\)\.id[\s\S]*?screen\.getDisplayNearestPoint\(screen\.getCursorScreenPoint\(\)\)\.id[\s\S]*?app\.focus\(\{ steal: true \}\)\s*setImmediate\(callback\)\s*return/u)
+test('main does not spawn Windows system helpers by a bare search-path name', () => {
+  assert.doesNotMatch(main, /execFileAsync\('(powershell|explorer)\.exe'/u)
+})
+
+test('main captures native origin before centralized cross-display activation', () => {
+  assert.match(main, /beforeShow: async \(\) => \{[\s\S]*?trustedRaycastOrigin\.capture/u)
+  assert.match(main, /focusApp: async \(\) => \{[\s\S]*?app\.focus\(\{ steal: true \}\)[\s\S]*?screen\.getDisplayMatching\(workbench\.getBounds\(\)\)\.id[\s\S]*?screen\.getDisplayNearestPoint\(screen\.getCursorScreenPoint\(\)\)\.id[\s\S]*?setImmediate\(resolve\)/u)
+  assert.match(main, /return globalShortcut\.register\(accelerator, callback\)/u)
+  assert.doesNotMatch(main, /trustedRaycastPriorCaptureTimer|captureTranslatePriorApp/u)
 })
 
 test('main assembles one launcher owner without branching the DSH workbench factory', () => {
@@ -37,7 +50,6 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /launcherController\?\.dispose\(\)/u)
   assert.match(main, /executeTockTeamDestination\(record, \(\) =>/u)
   assert.match(main, /fileSearch\.executeAction\(record\)[\s\S]+network\.executeAction\(record\)[\s\S]+executeTockTeamDestination/u)
-  assert.match(main, /if \(await network\.executeAction\(record\)\) \{[\s\S]+hideAfterInvocation/u)
   assert.match(main, /createLauncherLocalExtensions/u)
   assert.match(main, /createLauncherOsExtensions/u)
   assert.match(main, /createLauncherTerminal/u)
@@ -49,8 +61,8 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /launcherAwaitAbortableWithTimeout/u)
   assert.match(main, /properties: \['openFile'\][\s\S]+Browser applications|Browser executables/u)
   assert.match(main, /os\.loadIndexedItems\(signal(?:, preserveSignal)?/u)
-  assert.match(main, /if \(await terminal\.executeAction\(record\)\)/u)
-  assert.match(main, /if \(await os\.executeAction\(record\)\)/u)
+  assert.match(main, /terminal\.executeAction\(record\)/u)
+  assert.match(main, /os\.executeAction\(record\)/u)
   assert.match(main, /invalidateAllLauncherProviders/u)
   assert.match(main, /onWindowCleared/u)
   assert.match(main, /waitForLauncherProvidersIdle/u)
@@ -77,6 +89,7 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /const launcherPackagedSmokeEnabled = app\.isPackaged[\s\S]+TOCKTEAM_PACKAGED_SMOKE/u)
   assert.match(main, /appDataPath: launcherPackagedSmokeEnabled \? app\.getPath\('userData'\) : app\.getPath\('appData'\)/u)
   assert.match(main, /if \(launcherPackagedSmokeEnabled\) return false/u)
+  assert.match(main, /process\.platform === 'darwin' && launcherPackagedSmokeEnabled\) app\.commandLine\.appendSwitch\('use-mock-keychain'\)/u)
   assert.match(main, /writeLauncherPackagedSmokeSecurity/u)
   assert.match(main, /launcherCoreFlush = async \(\) => \{[\s\S]+discovery\.close\(\)[\s\S]+fileSearch\.close\(\)[\s\S]+network\.close\(\)[\s\S]+os\.close\(\)[\s\S]+local\.close\(\)[\s\S]+await coreSearch\.close\(\)/u)
   assert.match(main, /updateSetting: async \(key, value\) => await runLauncherSettingsOperation\([\s\S]+runLauncherMutation\('launcher-setting-update'[\s\S]+requireLauncherPersistence\(\)\.updateSetting\(key, value, signal\)[\s\S]+launcherRescan/u)
@@ -126,7 +139,17 @@ test('main assembles one launcher owner without branching the DSH workbench fact
   assert.match(main, /stopLiveRuntimeForMarketplace/u)
   assert.match(client, /unsubscribeTheme\(\)[\s\S]+unsubscribeRoute\(\)[\s\S]+unsubscribeCommand\(\)/u)
   assert.match(client, /deferSettingsOpen\([\s\S]+requestAnimationFrame[\s\S]+queueMicrotask/u)
+  assert.match(client, /#tockteam-rail-root button\[aria-label="Settings"\]/u)
   assert.doesNotMatch(main, /createWindow\([^)]*launcher/u)
+})
+
+test('Electron main exclusively applies the after-invocation window policy', () => {
+  const dispatch = main.slice(main.indexOf('const actions = new LauncherActionStore'), main.indexOf('launcherCore = coreSearch'))
+  assert.equal(dispatch.match(/controller\?\.hideAfterInvocation/gu)?.length, 1)
+  assert.match(dispatch, /if \(record\.hideWindowAfterInvocation\) controller\?\.hideAfterInvocation\(record\.owner\.webContentsId\)/u)
+  for (const renderer of [launcher, launcherFileSearchTool, launcherNetworkTool]) {
+    assert.doesNotMatch(renderer, /action\.hideWindowAfterInvocation[\s\S]{0,160}bridge\.dismiss/u)
+  }
 })
 
 test('fixture smoke reads host-owned effect counters instead of renderer authority', () => {
@@ -147,6 +170,15 @@ test('fixture smoke reads host-owned effect counters instead of renderer authori
   assert.match(electronSmoke, /TOCKTEAM_WORKFLOW_SLOW_HISTORY/u)
 })
 
+test('temporary Electron smoke launches use Chromium mock keychain on macOS', () => {
+  const inlineMacSmokeArgs = /\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\)/gu
+  assert.equal(electronSmoke.match(inlineMacSmokeArgs)?.length, 3)
+  assert.match(packagedSmoke, /const childArgs = \[\s*\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\),/u)
+  assert.match(installedSmoke, /const secondArgs = \[\s*\.\.\.\(process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]\),/u)
+  assert.match(smokeRuntime, /const macElectronSmokeArgs = process\.platform === 'darwin' \? \['--use-mock-keychain'\] : \[\]/u)
+  assert.match(smokeRuntime, /const client = spawnSync\(electronBinary, \[\s*\.\.\.macElectronSmokeArgs,/u)
+})
+
 test('workbench preload waits for route readiness before initial launcher appearance sync', () => {
   assert.match(preload, /const workbenchReady = [\s\S]*ipcRenderer\.invoke\(LAUNCHER_WORKBENCH_ROUTE_READY_CHANNEL\)/u)
   assert.match(preload, /syncLauncherLocale:[\s\S]*?await workbenchReady[\s\S]*?LAUNCHER_WINDOW_IPC_CHANNELS\.syncLocale/u)
@@ -159,7 +191,8 @@ test('workbench bridge and Desktop navigation expose only finite launcher operat
   assert.match(contracts, /show\(\): Promise<DesktopLauncherState>/u)
   assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.getState/u)
   assert.match(preload, /LAUNCHER_WINDOW_IPC_CHANNELS\.show/u)
-  assert.match(sidebar, /<div className="mt-auto flex flex-col gap-1 pb-1">\s*<DesktopLauncherFallback t=\{t\} \/>\s*\{pluginsAvailable && \([\s\S]*aria-label="Plugins"[\s\S]*aria-label="Settings"/u)
+  assert.match(sidebar, /<div className="mt-auto flex flex-col gap-1 pb-1">\s*<DesktopLauncherFallback t=\{t\} \/>\s*<Tooltip>[\s\S]*aria-label="Settings"/u)
+  assert.doesNotMatch(sidebar, /aria-label="Plugins"/u)
   assert.match(launcherFallback, /window\.dshDesktop\?\.launcher/u)
   assert.match(launcherFallback, /bridge\.getState\(\)/u)
   assert.match(launcherFallback, /bridge\.show\(\)/u)

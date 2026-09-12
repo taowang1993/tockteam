@@ -1,0 +1,69 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { inspectTrustedRaycastProjection, isTrustedRaycastKaomojiSvg, isTrustedRaycastViewMessage, parseTrustedRaycastChildMessage } from '../src/trusted-raycast-contract.ts'
+
+const svg = (text: string, fill: '#000' | '#fff'): string => `data:image/svg+xml;base64,${Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" >\n  <text dominant-baseline="middle" x="45" y="45" text-anchor="middle" fill="${fill}" font-size="8px" text-length="90" length-adjust="spacing">\n    ${[...text].map(value => `&#${value.charCodeAt(0)};`).join('')}\n  </text>\n</svg>`).toString('base64')}`
+const action = { type: 'raycast-action', props: { actionEventId: 'copy', icon: 'Clipboard', title: 'Copy to Clipboard' }, children: [] }
+const item = {
+  type: 'raycast-grid-item',
+  props: { contentDark: svg('(^_^)', '#fff'), contentLight: svg('(^_^)', '#000'), title: 'Happy Face' },
+  children: [{ type: 'raycast-action-panel', props: {}, children: [action] }],
+}
+const root = {
+  type: 'raycast-grid',
+  props: { isLoading: false, querySequence: 0, searchBarPlaceholder: 'Search by name...', searchEventId: 'search', searchable: true },
+  children: [{ type: 'raycast-section', props: { subtitle: '1', title: 'emotion' }, children: [item] }],
+}
+const message = { type: 'ready', extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', revision: 0, root }
+
+test('Kaomoji admits only finite Grid/Section projection with theme-bounded data SVGs', () => {
+  assert.equal(isTrustedRaycastViewMessage(message), true)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, extra: true } }), false)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, props: { ...root.props, arbitrary: 'value' } } }), false)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, children: [{ ...root.children[0], type: 'div' }] } }), false)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, children: [{ ...root.children[0], children: [{ ...item, props: { ...item.props, contentDark: 'https://example.com/icon.svg' } }] }] } }), false)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, children: [{ ...root.children[0], children: [{ ...item, props: { ...item.props, contentDark: svg('<script>', '#fff') } }] }] } }), true, 'text is encoded as numeric entities, never markup')
+  const foreign = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><foreignObject>bad</foreignObject></svg>').toString('base64')}`
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, children: [{ ...root.children[0], children: [{ ...item, props: { ...item.props, contentDark: foreign } }] }] } }), false)
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, children: [{ ...root.children[0], children: [{ ...item, props: { ...item.props, contentDark: svg('x'.repeat(2000), '#fff') } }] }] } }), false)
+})
+
+test('Kaomoji SVG admission permits only the canonical namespace grammar', () => {
+  const canonical = svg('(^_^)', '#fff')
+  assert.equal(isTrustedRaycastKaomojiSvg(canonical, '#fff'), true)
+  const decoded = Buffer.from(canonical.slice(canonical.indexOf(',') + 1), 'base64').toString('utf8')
+  const encoded = (value: string) => `data:image/svg+xml;base64,${Buffer.from(value).toString('base64')}`
+  for (const invalid of [
+    decoded.replace('<svg ', '<svg xmlns:xlink="http://www.w3.org/1999/xlink" '),
+    decoded.replace('<svg ', '<svg onload="alert(1)" '),
+    decoded.replace('<text ', '<text href="https://example.com/x" '),
+    decoded.replace('<text ', '<text style="fill:url(https://example.com/x)" '),
+    decoded.replace('  <text', '  <script></script>\n  <text'),
+    decoded.replace('  <text', '  <foreignObject></foreignObject>\n  <text'),
+  ]) assert.equal(isTrustedRaycastKaomojiSvg(encoded(invalid), '#fff'), false)
+})
+
+test('Grid and fixed Kaomoji icons cannot cross extension or capability boundaries', () => {
+  assert.equal(isTrustedRaycastViewMessage({ ...message, extensionId: 'google-translate' }), false)
+  const unknownIcon = { ...item, children: [{ type: 'raycast-action-panel', props: {}, children: [{ ...action, props: { ...action.props, icon: 'Terminal' } }] }] }
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: { ...root, children: [{ ...root.children[0], children: [unknownIcon] }] } }), false)
+  const list = { ...root, type: 'raycast-list', children: [{ ...root.children[0], children: [{ type: 'raycast-list-item', props: { accessories: '[{"text":"Happy Face"}]', subtitle: '', title: '(^_^)' }, children: [action] }] }] }
+  assert.equal(isTrustedRaycastViewMessage({ ...message, root: list }), true)
+})
+
+test('Kaomoji projection admits exactly 64 four-action items and diagnoses the next item', () => {
+  const inertAction = { type: 'raycast-action', props: { title: 'Unavailable', unavailable: true }, children: [] }
+  const fourActions = { type: 'raycast-action-panel', props: {}, children: [...Array.from({ length: 4 }, (_, index) => ({ ...action, props: { ...action.props, actionEventId: `action-${index}` } })), inertAction] }
+  const withItems = (count: number) => ({ ...root, children: [{ ...root.children[0], children: Array.from({ length: count }, (_, index) => ({ ...item, props: { ...item.props, title: `item-${index}` }, children: [fourActions] })) }] })
+  const boundary = { ...message, root: withItems(64) }
+  assert.equal(isTrustedRaycastViewMessage(boundary), true, 'inert action nodes do not consume invocation handles')
+  assert.deepEqual({ actions: inspectTrustedRaycastProjection(boundary.root).actionableHandles, items: inspectTrustedRaycastProjection(boundary.root).itemNodes }, { actions: 256, items: 64 })
+  const nonLeaf = { ...boundary, root: { ...boundary.root, children: [{ ...boundary.root.children[0], children: [{ ...item, children: [{ ...fourActions, children: [{ ...action, children: ['unexpected'] }] }] }] }] } }
+  assert.equal(isTrustedRaycastViewMessage(nonLeaf), false)
+  const patch = { ...boundary, type: 'patch', revision: 1, status: 'ready' }
+  assert.equal(isTrustedRaycastViewMessage(patch), true)
+  assert.doesNotThrow(() => parseTrustedRaycastChildMessage(JSON.stringify(patch), { extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', command: 'index', preferences: {} }, 0))
+  const oversized = { ...message, root: withItems(65) }
+  assert.equal(isTrustedRaycastViewMessage(oversized), false)
+  assert.throws(() => parseTrustedRaycastChildMessage(JSON.stringify(oversized), { extensionId: 'kaomoji-search', sessionId: 's', generation: 'g', command: 'index', preferences: {} }, -1), /projection exceeded finite view bounds \(action-handles 260\/256\)/)
+})

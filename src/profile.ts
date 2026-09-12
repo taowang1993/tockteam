@@ -27,6 +27,7 @@ export const BUNDLED_DESKTOP_CLIENT_PLUGINS = [
 
 /** Host-only capability providers shipped inside the desktop runtime. */
 export const BUNDLED_DESKTOP_HOST_PLUGINS = [
+  '@tockteam/trusted-raycast',
   '@tockteam/better-sidebar-runtime',
 ] as const
 

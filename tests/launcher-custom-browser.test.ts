@@ -25,6 +25,22 @@ function harness(platform: 'Linux' | 'macOS' | 'Windows', userDataPath: string, 
   return { defaults, launches, open: async () => await LauncherCustomBrowserController.open(options) }
 }
 
+test('production Windows configuration always falls back to the system browser', async () => {
+  const userDataPath = await root()
+  try {
+    const defaults: string[] = []
+    const controller = await ProductionLauncherCustomBrowserController.open({
+      getSetting: <T>(key: string, fallback: T): T => key === 'general.browser.useDefaultWebBrowser' ? false as T : fallback,
+      launch: async () => { throw new Error('custom launch must stay disabled') },
+      openDefault: async url => { defaults.push(url) },
+      platform: 'Windows',
+      userDataPath,
+    })
+    await controller.openUrl('https://example.test/')
+    assert.deepEqual(defaults, ['https://example.test/'])
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('custom browser accepts only inert HTTP(S) URL arguments', () => {
   assert.deepEqual(parseLauncherCustomBrowserArgumentTemplate('{{url}}', 'https://example.com/a?q=1'), ['https://example.com/a?q=1'])
   for (const template of ['--private {{url}}', '{{url}} {{url}}', '{{url}} && calc.exe']) {

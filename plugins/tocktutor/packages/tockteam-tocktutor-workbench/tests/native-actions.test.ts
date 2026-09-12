@@ -9,12 +9,14 @@ import type {
   TockTutorNativeActionsDispatchEvent,
   TockTutorNativeActionsOwnerProps,
   TockTutorProtocolRequest,
+  TockTutorVaultActionsOwnerProps,
 } from '../src/native-actions.ts'
 
 const TOCKTUTOR_ASSISTANT_PANEL_SLOT = 'tockteam.tocktutor.workbench.assistant'
 const TOCKTUTOR_WEB_VIEWER_PANEL_SLOT = 'tockteam.tocktutor.workbench.web-viewer'
 const TOCKTUTOR_REVIEW_PANEL_SLOT = 'tockteam.tocktutor.workbench.review'
 const TOCKTUTOR_NATIVE_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.native-actions'
+const TOCKTUTOR_VAULT_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.vault-actions'
 const vault = {
   generation: 29,
   id: `vault:${'9'.repeat(64)}`,
@@ -39,6 +41,17 @@ const exactOwner = {
   vault,
 } satisfies TockTutorNativeActionsOwnerProps
 
+const exactVaultOwner = {
+  beginRename() {},
+  close() {},
+  closeMenu() {},
+  placement: 'actions',
+  renderMenuItem() { return null },
+  async saveCurrent() { return true },
+  vault,
+  vaultName: 'Research Vault',
+} satisfies TockTutorVaultActionsOwnerProps
+
 const rejectedEvent: TockTutorNativeActionsDispatchEvent = {
   action: 'search',
   kind: 'quick-action',
@@ -61,6 +74,10 @@ const exactSpec = {
   kind: 'list',
   scope: 'root',
 } satisfies Pick<SlotMap[typeof TOCKTUTOR_NATIVE_ACTIONS_SLOT], 'kind' | 'scope'>
+const exactVaultSpec = {
+  kind: 'list',
+  scope: 'root',
+} satisfies Pick<SlotMap[typeof TOCKTUTOR_VAULT_ACTIONS_SLOT], 'kind' | 'scope'>
 
 test('exports a distinct bounded root list contract for native actions', async () => {
   const client = await import('../dist/client-api.js') as unknown as Pick<
@@ -68,15 +85,20 @@ test('exports a distinct bounded root list contract for native actions', async (
     | 'TOCKTUTOR_ASSISTANT_PANEL_SLOT'
     | 'TOCKTUTOR_NATIVE_ACTIONS_SLOT'
     | 'TOCKTUTOR_REVIEW_PANEL_SLOT'
+    | 'TOCKTUTOR_VAULT_ACTIONS_SLOT'
   >
   assert.equal(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_NATIVE_ACTIONS_SLOT)
+  assert.equal(client.TOCKTUTOR_VAULT_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT)
   assert.notEqual(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT, client.TOCKTUTOR_ASSISTANT_PANEL_SLOT)
   assert.notEqual(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT, client.TOCKTUTOR_REVIEW_PANEL_SLOT)
+  assert.notEqual(client.TOCKTUTOR_NATIVE_ACTIONS_SLOT, client.TOCKTUTOR_VAULT_ACTIONS_SLOT)
   assert.deepEqual(exactSpec, { kind: 'list', scope: 'root' })
+  assert.deepEqual(exactVaultSpec, { kind: 'list', scope: 'root' })
   assert.equal(await exactOwner.handleDispatch(exactEvent), 'handled')
   assert.equal(exactOwner.activePath, 'Native/Actions.md')
   assert.equal(exactOwner.vault, vault)
   assert.deepEqual(Object.keys(exactOwner).sort(), ['activePath', 'handleDispatch', 'vault'])
+  assert.deepEqual(Object.keys(exactVaultOwner).sort(), ['beginRename', 'close', 'closeMenu', 'placement', 'renderMenuItem', 'saveCurrent', 'vault', 'vaultName'])
 })
 
 test('route renders an accessible Native Actions area with bounded owner props', () => {
@@ -149,6 +171,7 @@ test('route declaration removes and restores ordered Native Actions entries', ()
       [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: 'single', scope: 'root' },
       [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
       [TOCKTUTOR_REVIEW_PANEL_SLOT]: { kind: 'list', scope: 'root' },
+      [TOCKTUTOR_VAULT_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
     },
     name: TOCKTUTOR_ROUTE_SLOT,
     registrant: '@tockteam/tocktutor-workbench',
@@ -156,6 +179,7 @@ test('route declaration removes and restores ordered Native Actions entries', ()
 
   const disposeRoute = mountRoute()
   assert.deepEqual(core.spec(TOCKTUTOR_NATIVE_ACTIONS_SLOT), { kind: 'list', scope: 'root' })
+  assert.deepEqual(core.spec(TOCKTUTOR_VAULT_ACTIONS_SLOT), { kind: 'list', scope: 'root' })
   const disposePrint = register({
     id: 'print',
     name: TOCKTUTOR_NATIVE_ACTIONS_SLOT,
@@ -175,6 +199,7 @@ test('route declaration removes and restores ordered Native Actions entries', ()
 
   disposeRoute()
   assert.equal(core.spec(TOCKTUTOR_NATIVE_ACTIONS_SLOT), undefined)
+  assert.equal(core.spec(TOCKTUTOR_VAULT_ACTIONS_SLOT), undefined)
   assert.equal(core.entries(TOCKTUTOR_NATIVE_ACTIONS_SLOT).length, 0)
   disposePrint()
   disposeReveal()
@@ -190,6 +215,7 @@ test('route declaration removes and restores ordered Native Actions entries', ()
   disposeDesktop()
   assert.equal(core.spec(TOCKTUTOR_ROUTE_SLOT), undefined)
   assert.equal(core.spec(TOCKTUTOR_NATIVE_ACTIONS_SLOT), undefined)
+  assert.equal(core.spec(TOCKTUTOR_VAULT_ACTIONS_SLOT), undefined)
   assert.equal(core.entries(TOCKTUTOR_NATIVE_ACTIONS_SLOT).length, 0)
   disposeReplacement()
 })

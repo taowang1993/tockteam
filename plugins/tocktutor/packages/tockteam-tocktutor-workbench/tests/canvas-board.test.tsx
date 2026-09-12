@@ -21,7 +21,8 @@ describe('CanvasBoard', () => {
     const onChange = vi.fn()
     render(<CanvasBoard source={source} revision="sha256:before" onChange={onChange} />)
 
-    expect(screen.getByRole('region', { name: 'Canvas Board' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Canvas Board' }).className).toContain('h-full')
+    expect(screen.getByLabelText('Canvas Board Surface').className).toContain('min-h-full')
     const sourceHandle = screen.getByRole('button', { name: 'Right Connection Handle for First' })
     const targetHandle = screen.getByRole('button', { name: 'Left Connection Handle for Notes/File.md' })
     expect(sourceHandle.tagName).toBe('BUTTON')
@@ -46,6 +47,33 @@ describe('CanvasBoard', () => {
       toSide: 'left',
       toEnd: 'arrow',
     }])
+  })
+
+  it('keeps grouped card bodies above groups and renders persisted edge connectors', () => {
+    const grouped = JSON.stringify({
+      nodes: [
+        { id: 'text', type: 'text', x: 0, y: 0, width: 240, height: 120, text: 'First' },
+        { id: 'file', type: 'file', x: 320, y: 0, width: 240, height: 120, file: 'Notes/File.md' },
+        { id: 'group', type: 'group', x: -20, y: -20, width: 600, height: 180, label: 'Lesson' },
+      ],
+      edges: [{ id: 'edge-1', fromNode: 'text', fromSide: 'right', toNode: 'file', toSide: 'left', toEnd: 'arrow', label: 'opens' }],
+    })
+    render(<CanvasBoard source={grouped} revision="sha256:visible" onChange={() => {}} />)
+
+    const card = screen.getByRole('article', { name: 'Canvas Card First' })
+    const group = screen.getByRole('article', { name: 'Canvas Group Lesson' })
+    expect(card.textContent).toContain('First')
+    expect(group.textContent).toContain('Lesson')
+    expect(Number(card.getAttribute('style')?.match(/z-index:\s*(\d+)/u)?.[1] ?? 0)).toBeGreaterThan(Number(group.getAttribute('style')?.match(/z-index:\s*(\d+)/u)?.[1] ?? 0))
+
+    const lines = screen.getByRole('img', { name: 'Canvas Connection Lines' })
+    expect(lines.getAttribute('style')).toContain('height: 500px')
+    expect(lines.getAttribute('style')).toContain('width: 800px')
+    const line = lines.querySelector('[data-canvas-edge="edge-1"]')
+    expect(line).toBeTruthy()
+    expect(line?.getAttribute('d')).toContain('M 300 120 C')
+    expect(line?.getAttribute('d')).toContain('380 120')
+    expect(line?.getAttribute('marker-end')).toContain('tocktutor-canvas-arrow')
   })
 
   it('cancels an armed connection with Escape and keeps unsafe persisted links inert', () => {

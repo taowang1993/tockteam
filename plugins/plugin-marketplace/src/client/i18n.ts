@@ -2,6 +2,7 @@ import type { LocaleMessages } from '../../../shared/i18n.ts'
 
 export type MarketplaceMessage =
   | 'plugins'
+  | 'marketplace'
   | 'subtitle'
   | 'installed'
   | 'enabled'
@@ -78,6 +79,7 @@ export type MarketplaceMessage =
   | 'working'
   | 'refresh'
   | 'close'
+  | 'close-details'
   | 'preview.running'
   | 'discard'
   | 'apply-to-desktop'
@@ -104,6 +106,7 @@ export type MarketplaceMessage =
 export const MARKETPLACE_MESSAGES: LocaleMessages<MarketplaceMessage> = {
   en: {
     plugins: 'Plugins',
+    marketplace: 'Marketplace',
     subtitle: 'Public DSH catalog · isolated preview before every change',
     installed: 'Installed',
     enabled: 'Enabled',
@@ -180,6 +183,7 @@ export const MARKETPLACE_MESSAGES: LocaleMessages<MarketplaceMessage> = {
     working: 'Working…',
     refresh: 'Refresh',
     close: 'Close Plugins',
+    'close-details': 'Close Plugin Details',
     'preview.running': '{plugin} is running in an isolated preview window.',
     discard: 'Discard',
     'apply-to-desktop': 'Apply to desktop',
@@ -205,6 +209,7 @@ export const MARKETPLACE_MESSAGES: LocaleMessages<MarketplaceMessage> = {
   },
   zh: {
     plugins: '插件',
+    marketplace: '插件市场',
     subtitle: '公开 DSH 目录 · 每次变更前均进行隔离预览',
     installed: '已安装',
     enabled: '已启用',
@@ -281,6 +286,7 @@ export const MARKETPLACE_MESSAGES: LocaleMessages<MarketplaceMessage> = {
     working: '处理中…',
     refresh: '刷新',
     close: '关闭插件市场',
+    'close-details': '关闭插件详情',
     'preview.running': '{plugin} 正在隔离预览窗口中运行。',
     discard: '放弃',
     'apply-to-desktop': '应用到桌面端',

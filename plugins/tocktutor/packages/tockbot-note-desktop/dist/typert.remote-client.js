@@ -3,14 +3,14 @@ import { z } from 'zod'
 
 const tockbot_note_desktop_tocktutorDesktop_activateVault_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 const tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_1$schema = z.object({
   'id': z.string(),
 })
 const tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 const tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_1$schema = z.object({
@@ -18,7 +18,7 @@ const tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_1$schema =
   'id': z.string(),
 })
 const tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 const tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_1$schema = z.string()
@@ -27,7 +27,7 @@ const tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_2$schema = z.o
   'id': z.string(),
 })
 const tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 const tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_1$schema = z.union([z.literal("html"), z.literal("pdf")])
@@ -37,7 +37,15 @@ const tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_3$schema = z.ob
   'id': z.string(),
 })
 const tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
+})
+const tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_0$schema = z.string()
+const tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_1$schema = z.object({
+  'generation': z.number(),
+  'id': z.string(),
+})
+const tockbot_note_desktop_tocktutorDesktop_moveVault_result$schema = z.object({
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 const tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_1$schema = z.string()
@@ -46,7 +54,7 @@ const tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_2$schema = z.ob
   'id': z.string(),
 })
 const tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 const tockbot_note_desktop_tocktutorDesktop_printNote_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_printNote_parameter_1$schema = z.string()
@@ -55,7 +63,24 @@ const tockbot_note_desktop_tocktutorDesktop_printNote_parameter_2$schema = z.obj
   'id': z.string(),
 })
 const tockbot_note_desktop_tocktutorDesktop_printNote_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
+})
+const tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_0$schema = z.string()
+const tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_1$schema = z.object({
+  'generation': z.number(),
+  'id': z.string(),
+})
+const tockbot_note_desktop_tocktutorDesktop_removeVault_result$schema = z.object({
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
+})
+const tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_0$schema = z.string()
+const tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_1$schema = z.string()
+const tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_2$schema = z.object({
+  'generation': z.number(),
+  'id': z.string(),
+})
+const tockbot_note_desktop_tocktutorDesktop_renameVault_result$schema = z.object({
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 const tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_1$schema = z.object({
@@ -63,7 +88,7 @@ const tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_1$schema
   'id': z.string(),
 })
 const tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 const tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_0$schema = z.string()
 const tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_1$schema = z.string()
@@ -72,7 +97,15 @@ const tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_2$schema = z.o
   'id': z.string(),
 })
 const tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema = z.object({
-  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("opened"), z.literal("printed"), z.literal("revealed")]),
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
+})
+const tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_0$schema = z.string()
+const tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_1$schema = z.object({
+  'generation': z.number(),
+  'id': z.string(),
+})
+const tockbot_note_desktop_tocktutorDesktop_revealVault_result$schema = z.object({
+  'status': z.union([z.literal("cancelled"), z.literal("denied"), z.literal("stale"), z.literal("unavailable"), z.literal("activated"), z.literal("closed"), z.literal("exported"), z.literal("focused"), z.literal("granted"), z.literal("moved"), z.literal("opened"), z.literal("printed"), z.literal("renamed"), z.literal("revealed")]),
 })
 
 export const TYPERT_REMOTE = {
@@ -102,7 +135,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":289,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":306,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/activateVaultTarget',
@@ -138,7 +171,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":336,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":353,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/closeAllPopOuts',
@@ -174,7 +207,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":456,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":473,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/closePopOut',
@@ -220,7 +253,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":411,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":428,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/exportNote',
@@ -276,7 +309,43 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":526,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":543,"column":9},
+    },
+    {
+      id: 'tockbot-note-desktop#tocktutorDesktop/moveVault',
+      service: 'tocktutorDesktop',
+      namespace: 'tocktutorDesktop',
+      method: 'moveVault',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'authorization',
+          wire: 'authorization',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop#tocktutorDesktop/moveVault:authorization',
+            schema: tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_0$schema,
+          },
+        },
+        {
+          name: 'expectedVault',
+          wire: 'expectedVault',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop/types#DesktopVaultReference',
+            schema: tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_1$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
+        schema: tockbot_note_desktop_tocktutorDesktop_moveVault_result$schema,
+      },
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":697,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/openPopOut',
@@ -322,7 +391,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":379,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":396,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/printNote',
@@ -368,7 +437,89 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_printNote_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":493,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":510,"column":9},
+    },
+    {
+      id: 'tockbot-note-desktop#tocktutorDesktop/removeVault',
+      service: 'tocktutorDesktop',
+      namespace: 'tocktutorDesktop',
+      method: 'removeVault',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'authorization',
+          wire: 'authorization',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop#tocktutorDesktop/removeVault:authorization',
+            schema: tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_0$schema,
+          },
+        },
+        {
+          name: 'expectedVault',
+          wire: 'expectedVault',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop/types#DesktopVaultReference',
+            schema: tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_1$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
+        schema: tockbot_note_desktop_tocktutorDesktop_removeVault_result$schema,
+      },
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":730,"column":9},
+    },
+    {
+      id: 'tockbot-note-desktop#tocktutorDesktop/renameVault',
+      service: 'tocktutorDesktop',
+      namespace: 'tocktutorDesktop',
+      method: 'renameVault',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'authorization',
+          wire: 'authorization',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop#tocktutorDesktop/renameVault:authorization',
+            schema: tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_0$schema,
+          },
+        },
+        {
+          name: 'name',
+          wire: 'name',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop#tocktutorDesktop/renameVault:name',
+            schema: tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_1$schema,
+          },
+        },
+        {
+          name: 'expectedVault',
+          wire: 'expectedVault',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop/types#DesktopVaultReference',
+            schema: tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_2$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
+        schema: tockbot_note_desktop_tocktutorDesktop_renameVault_result$schema,
+      },
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":671,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/requestMicrophone',
@@ -404,7 +555,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":582,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":599,"column":9},
     },
     {
       id: 'tockbot-note-desktop#tocktutorDesktop/revealEntry',
@@ -450,7 +601,43 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
         schema: tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema,
       },
-      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":605,"column":9},
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":622,"column":9},
+    },
+    {
+      id: 'tockbot-note-desktop#tocktutorDesktop/revealVault',
+      service: 'tocktutorDesktop',
+      namespace: 'tocktutorDesktop',
+      method: 'revealVault',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'authorization',
+          wire: 'authorization',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop#tocktutorDesktop/revealVault:authorization',
+            schema: tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_0$schema,
+          },
+        },
+        {
+          name: 'expectedVault',
+          wire: 'expectedVault',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'tockbot-note-desktop/types#DesktopVaultReference',
+            schema: tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_1$schema,
+          },
+        },
+      ],
+      cancellation: { parameter: 'signal' },
+      result: {
+        mode: 'strict',
+        typeSymbol: 'tockbot-note-desktop/types#NativeActionResult',
+        schema: tockbot_note_desktop_tocktutorDesktop_revealVault_result$schema,
+      },
+      sourceLocation: {"file":"packages/desktop-adapter/src/host-actions.ts","line":651,"column":9},
     },
   ],
 }

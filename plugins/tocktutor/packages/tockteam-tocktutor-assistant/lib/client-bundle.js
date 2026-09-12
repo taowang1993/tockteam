@@ -14573,7 +14573,7 @@ var _tockteam_tocktutor_assistant_tocktutorAssistant_audit_result$schema = exter
     "auditCorrelationId": external_exports.string(),
     "proposalId": external_exports.string(),
     "timestamp": external_exports.number(),
-    "outcome": external_exports.union([external_exports.literal("staged"), external_exports.literal("approval-consumed"), external_exports.literal("approval-denied"), external_exports.literal("approval-failed"), external_exports.literal("applied"), external_exports.literal("rejected")]),
+    "outcome": external_exports.union([external_exports.literal("applied"), external_exports.literal("staged"), external_exports.literal("approval-consumed"), external_exports.literal("approval-denied"), external_exports.literal("approval-failed"), external_exports.literal("rejected")]),
     "destination": external_exports.string(),
     "operation": external_exports.union([external_exports.literal("create"), external_exports.literal("update")]),
     "contentBytes": external_exports.number(),
@@ -14597,7 +14597,8 @@ var _tockteam_tocktutor_assistant_tocktutorAssistant_continueTurn_result$schema 
 var _tockteam_tocktutor_assistant_tocktutorAssistant_currentSettings_result$schema = external_exports.object({
   "provider": external_exports.string(),
   "model": external_exports.string(),
-  "writePermission": external_exports.union([external_exports.literal("read-only"), external_exports.literal("propose")])
+  "writePermission": external_exports.union([external_exports.literal("read-only"), external_exports.literal("propose")]),
+  "aiSearch": external_exports.union([external_exports.literal("off"), external_exports.literal("on-demand"), external_exports.literal("automatic")]).optional()
 });
 var _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_parameter_0$schema = external_exports.object({
   "offset": external_exports.number().optional(),
@@ -14621,6 +14622,33 @@ var _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_result$schema
   "total": external_exports.number(),
   "nextOffset": external_exports.union([external_exports.literal(null), external_exports.number()])
 });
+var _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_parameter_0$schema = external_exports.object({
+  "query": external_exports.string(),
+  "vaultGeneration": external_exports.number(),
+  "mode": external_exports.union([external_exports.literal("related"), external_exports.literal("query")]).optional(),
+  "directory": external_exports.string().optional(),
+  "modifiedFrom": external_exports.number().optional(),
+  "modifiedTo": external_exports.number().optional(),
+  "titleOnly": external_exports.boolean().optional(),
+  "candidates": external_exports.array(external_exports.object({
+    "id": external_exports.string(),
+    "revision": external_exports.string().optional(),
+    "path": external_exports.string(),
+    "line": external_exports.union([external_exports.literal(null), external_exports.number()]),
+    "lineEnd": external_exports.union([external_exports.literal(null), external_exports.number()]).optional(),
+    "preview": external_exports.string()
+  }))
+});
+var _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("disabled"), external_exports.literal("provider-unavailable"), external_exports.literal("invalid-output"), external_exports.literal("error"), external_exports.literal("cancelled"), external_exports.literal("completed"), external_exports.literal("no-evidence")]),
+  "answer": external_exports.string(),
+  "citations": external_exports.array(external_exports.object({
+    "id": external_exports.string(),
+    "path": external_exports.string(),
+    "line": external_exports.union([external_exports.literal(null), external_exports.number()]),
+    "lineEnd": external_exports.union([external_exports.literal(null), external_exports.number()])
+  }))
+});
 var _tockteam_tocktutor_assistant_tocktutorAssistant_rejectProposal_parameter_0$schema = external_exports.object({
   "proposalId": external_exports.string(),
   "reason": external_exports.string()
@@ -14632,12 +14660,38 @@ var _tockteam_tocktutor_assistant_tocktutorAssistant_rejectProposal_result$schem
 var _tockteam_tocktutor_assistant_tocktutorAssistant_saveSettings_parameter_0$schema = external_exports.object({
   "provider": external_exports.string(),
   "model": external_exports.string(),
-  "writePermission": external_exports.union([external_exports.literal("read-only"), external_exports.literal("propose")])
+  "writePermission": external_exports.union([external_exports.literal("read-only"), external_exports.literal("propose")]),
+  "aiSearch": external_exports.union([external_exports.literal("off"), external_exports.literal("on-demand"), external_exports.literal("automatic")]).optional()
 });
 var _tockteam_tocktutor_assistant_tocktutorAssistant_saveSettings_result$schema = external_exports.object({
   "provider": external_exports.string(),
   "model": external_exports.string(),
-  "writePermission": external_exports.union([external_exports.literal("read-only"), external_exports.literal("propose")])
+  "writePermission": external_exports.union([external_exports.literal("read-only"), external_exports.literal("propose")]),
+  "aiSearch": external_exports.union([external_exports.literal("off"), external_exports.literal("on-demand"), external_exports.literal("automatic")]).optional()
+});
+var _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_parameter_0$schema = external_exports.object({
+  "query": external_exports.string(),
+  "vaultGeneration": external_exports.number(),
+  "mode": external_exports.literal("related"),
+  "directory": external_exports.string().optional(),
+  "modifiedFrom": external_exports.number().optional(),
+  "modifiedTo": external_exports.number().optional(),
+  "titleOnly": external_exports.boolean().optional()
+});
+var _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("applied"), external_exports.literal("disabled"), external_exports.literal("provider-unavailable"), external_exports.literal("invalid-output"), external_exports.literal("error"), external_exports.literal("cancelled")]),
+  "matches": external_exports.array(external_exports.object({
+    "id": external_exports.string().optional(),
+    "revision": external_exports.string().optional(),
+    "path": external_exports.string(),
+    "kind": external_exports.union([external_exports.literal("base"), external_exports.literal("block"), external_exports.literal("canvas"), external_exports.literal("content"), external_exports.literal("line"), external_exports.literal("path"), external_exports.literal("property"), external_exports.literal("section"), external_exports.literal("tag"), external_exports.literal("task")]),
+    "line": external_exports.union([external_exports.literal(null), external_exports.number()]),
+    "preview": external_exports.string(),
+    "lineEnd": external_exports.union([external_exports.literal(null), external_exports.number()]).optional(),
+    "score": external_exports.number().optional(),
+    "operator": external_exports.union([external_exports.literal("related"), external_exports.literal("block"), external_exports.literal("content"), external_exports.literal("line"), external_exports.literal("path"), external_exports.literal("property"), external_exports.literal("section"), external_exports.literal("tag"), external_exports.literal("task"), external_exports.literal("any"), external_exports.literal("file"), external_exports.literal("task-done"), external_exports.literal("task-todo")]).optional(),
+    "provenance": external_exports.union([external_exports.literal("canvas"), external_exports.literal("path"), external_exports.literal("section"), external_exports.literal("task"), external_exports.literal("body"), external_exports.literal("frontmatter")]).optional()
+  }))
 });
 var TYPERT_REMOTE = {
   package: "@tockteam/tocktutor-assistant",
@@ -14666,7 +14720,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantApprovalView",
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_approveProposal_result$schema
       },
-      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 55, "column": 9 }
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 59, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-assistant#tocktutorAssistant/audit",
@@ -14692,7 +14746,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantAuditResult",
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_audit_result$schema
       },
-      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 71, "column": 9 }
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 91, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-assistant#tocktutorAssistant/continueTurn",
@@ -14727,7 +14781,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantTurnResult",
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_continueTurn_result$schema
       },
-      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 39, "column": 9 }
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 43, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-assistant#tocktutorAssistant/currentSettings",
@@ -14742,7 +14796,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantSettingsView",
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_currentSettings_result$schema
       },
-      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 26, "column": 9 }
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 30, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-assistant#tocktutorAssistant/listProposals",
@@ -14768,7 +14822,33 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantProposalListResult",
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_listProposals_result$schema
       },
-      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 47, "column": 9 }
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 51, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-assistant#tocktutorAssistant/quickAnswer",
+      service: "tocktutorAssistant",
+      namespace: "tocktutorAssistant",
+      method: "quickAnswer",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "request",
+          wire: "request",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantQuickAnswerRequest",
+            schema: _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_parameter_0$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantQuickAnswerResult",
+        schema: _tockteam_tocktutor_assistant_tocktutorAssistant_quickAnswer_result$schema
+      },
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 83, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-assistant#tocktutorAssistant/rejectProposal",
@@ -14794,7 +14874,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantDecisionView",
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_rejectProposal_result$schema
       },
-      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 63, "column": 9 }
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 67, "column": 9 }
     },
     {
       id: "@tockteam/tocktutor-assistant#tocktutorAssistant/saveSettings",
@@ -14820,7 +14900,33 @@ var TYPERT_REMOTE = {
         typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantSettingsView",
         schema: _tockteam_tocktutor_assistant_tocktutorAssistant_saveSettings_result$schema
       },
-      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 31, "column": 9 }
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 35, "column": 9 }
+    },
+    {
+      id: "@tockteam/tocktutor-assistant#tocktutorAssistant/searchIntelligence",
+      service: "tocktutorAssistant",
+      namespace: "tocktutorAssistant",
+      method: "searchIntelligence",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "request",
+          wire: "request",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantSearchIntelligenceRequest",
+            schema: _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_parameter_0$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "@tockteam/tocktutor-assistant/client#AssistantSearchIntelligenceResult",
+        schema: _tockteam_tocktutor_assistant_tocktutorAssistant_searchIntelligence_result$schema
+      },
+      sourceLocation: { "file": "packages/assistant/src/remote-model.ts", "line": 75, "column": 9 }
     }
   ]
 };
@@ -21182,6 +21288,28 @@ ${text}`;
                           children: [
                             /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(NativeSelectOption, { value: "read-only", children: "Read Only" }),
                             /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(NativeSelectOption, { value: "propose", children: "Propose Writes" })
+                          ]
+                        }
+                      )
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(Label, { unstyled: true, className: "grid gap-1 text-xs", children: [
+                      "AI Search",
+                      /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(
+                        NativeSelect,
+                        {
+                          unstyled: true,
+                          "aria-label": "AI Search",
+                          className: "w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit",
+                          disabled: settings === null || settingsSaving,
+                          onChange: (event) => {
+                            const aiSearch = event.target.value === "off" || event.target.value === "automatic" ? event.target.value : "on-demand";
+                            setSettings((currentSettings) => currentSettings === null ? null : { ...currentSettings, aiSearch });
+                          },
+                          value: settings?.aiSearch ?? "on-demand",
+                          children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(NativeSelectOption, { value: "off", children: "Off" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(NativeSelectOption, { value: "on-demand", children: "On Demand" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(NativeSelectOption, { value: "automatic", children: "Automatic" })
                           ]
                         }
                       )

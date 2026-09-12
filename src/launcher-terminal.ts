@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
+import { launcherActionCompletion, type LauncherActionRecord, type LauncherInternalAction, type LauncherInternalResultItem, type LauncherProviderActionResult } from './launcher-actions.ts'
 import {
   LAUNCHER_TERMINALS,
   isLauncherTerminalIds,
@@ -193,7 +193,7 @@ function sameAction(left: KnownAction, right: KnownAction): boolean {
 
 export function createLauncherTerminal(options: LauncherTerminalOptions): Readonly<{
   close: () => Promise<void>
-  executeAction: (record: LauncherActionRecord) => Promise<boolean>
+  executeAction: (record: LauncherActionRecord) => Promise<LauncherProviderActionResult>
   getProviderErrors: () => ReadonlyMap<'TerminalLauncher', string>
   invalidate: (reason?: string, preserveSignal?: AbortSignal) => void
   loadIndexedItems: (signal?: AbortSignal, preserveSignal?: AbortSignal) => Promise<readonly LauncherInternalResultItem[]>
@@ -288,7 +288,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
     if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('TockLauncher Terminal Launcher load canceled')
     return Object.freeze([])
   }
-  const executeAction = (record: LauncherActionRecord): Promise<boolean> => track(async () => {
+  const executeAction = (record: LauncherActionRecord): Promise<LauncherProviderActionResult> => track(async () => {
     if (record.handlerKey !== HANDLER) return false
     if (record.sourceExtension !== 'TerminalLauncher' || record.requiresConfirmation !== true) throw new Error('Invalid TockLauncher Terminal action policy')
     if (closed) throw new Error('TockLauncher Terminal Launcher is closed')
@@ -317,7 +317,7 @@ export function createLauncherTerminal(options: LauncherTerminalOptions): Readon
       if (!await validateHome() || !isCurrent(record.argument, known, known.generation, settingsState(options).digest) || controller.signal.aborted) throw new Error('TockLauncher Terminal action was canceled')
       if (!approved) {
         await options.effects.auditLaunch(Object.freeze({ ...auditBase, outcome: 'denied' }))
-        return true
+        return launcherActionCompletion(true, false)
       }
       if (!await validateHome() || !isCurrent(record.argument, known, known.generation, settingsState(options).digest)) throw new Error('TockLauncher Terminal action was canceled')
       try {

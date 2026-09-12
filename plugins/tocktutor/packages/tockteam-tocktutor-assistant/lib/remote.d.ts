@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
-import type { AssistantApprovalRequest, AssistantApprovalView, AssistantAuditResult, AssistantDecisionView, AssistantPageRequest, AssistantProposalListResult, AssistantRejectionRequest, AssistantRemoteAuditOutcome, AssistantRemoteOperation, AssistantSettingsView, AssistantTurnRequest, AssistantTurnResult } from './remote-types.ts';
+import type { AssistantApprovalRequest, AssistantApprovalView, AssistantAuditResult, AssistantDecisionView, AssistantPageRequest, AssistantProposalListResult, AssistantRejectionRequest, AssistantRemoteAuditOutcome, AssistantRemoteOperation, AssistantSettingsView, AssistantTurnRequest, AssistantTurnResult, AssistantSearchIntelligenceRequest, AssistantSearchIntelligenceResult, AssistantQuickAnswerRequest, AssistantQuickAnswerResult } from './remote-types.ts';
 export type * from './remote-types.ts';
 interface HostProposal {
     proposalId: string;
@@ -52,6 +52,8 @@ export interface AssistantRemoteHost {
         entries: number;
         dropped: number;
     }>;
+    searchIntelligence?(request: AssistantSearchIntelligenceRequest, signal: AbortSignal): Promise<AssistantSearchIntelligenceResult>;
+    quickAnswer(request: AssistantQuickAnswerRequest, signal: AbortSignal): Promise<AssistantQuickAnswerResult>;
 }
 declare module '@deepseek-ai/cordis' {
     interface Context {
@@ -69,6 +71,8 @@ export declare class TockTutorAssistantGateway extends TypertRemoteService {
     listProposals(request: AssistantPageRequest, signal: AbortSignal): Promise<AssistantProposalListResult>;
     approveProposal(request: AssistantApprovalRequest, signal: AbortSignal): Promise<AssistantApprovalView>;
     rejectProposal(request: AssistantRejectionRequest, signal: AbortSignal): Promise<AssistantDecisionView>;
+    searchIntelligence(request: AssistantSearchIntelligenceRequest, signal: AbortSignal): Promise<AssistantSearchIntelligenceResult>;
+    quickAnswer(request: AssistantQuickAnswerRequest, signal: AbortSignal): Promise<AssistantQuickAnswerResult>;
     audit(request: AssistantPageRequest, signal: AbortSignal): Promise<AssistantAuditResult>;
 }
 //# sourceMappingURL=remote.d.ts.map

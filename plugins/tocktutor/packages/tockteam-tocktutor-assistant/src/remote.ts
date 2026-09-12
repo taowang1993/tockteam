@@ -17,6 +17,10 @@ import type {
   AssistantSettingsView,
   AssistantTurnRequest,
   AssistantTurnResult,
+  AssistantSearchIntelligenceRequest,
+  AssistantSearchIntelligenceResult,
+  AssistantQuickAnswerRequest,
+  AssistantQuickAnswerResult,
 } from './remote-types.ts'
 
 export type * from './remote-types.ts'
@@ -35,6 +39,9 @@ const MAX_SKIPPED_ENTRIES = 20
 const MAX_PAGE_SIZE = 20
 const MAX_REMOTE_RESULT_BYTES = 256 * 1024
 const MAX_BOUNDARY_INPUT_CHARS = 100_000
+const MAX_QUICK_ANSWER_CANDIDATES = 20
+const MAX_QUICK_ANSWER_CITATIONS = 5
+const MAX_QUICK_ANSWER_CHARS = 8_000
 
 interface HostProposal {
   proposalId: string
@@ -85,6 +92,8 @@ export interface AssistantRemoteHost {
   rejectProposal(proposalId: string, reason: string): Promise<AssistantDecisionView>
   proposalAudit(): Promise<HostAuditEntry[]>
   proposalAuditStatus(): Promise<{ entries: number; dropped: number }>
+  searchIntelligence?(request: AssistantSearchIntelligenceRequest, signal: AbortSignal): Promise<AssistantSearchIntelligenceResult>
+  quickAnswer(request: AssistantQuickAnswerRequest, signal: AbortSignal): Promise<AssistantQuickAnswerResult>
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -133,6 +142,12 @@ function safeInteger(value: unknown, label: string): number {
   return value as number
 }
 
+function isSafeDirectory(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 1_000 || value === '') return false
+  try { assertSafeRelativePath(value) } catch { return false }
+  return true
+}
+
 function safeRelativePath(value: unknown, label: string): string {
   if (typeof value !== 'string') throw failure(label)
   try {
@@ -162,13 +177,15 @@ function checkSignal(signal: AbortSignal): void {
 }
 
 function settingsView(value: unknown, label = 'Settings result'): AssistantSettingsView {
-  assertPlainRecord(value, ['provider', 'model', 'writePermission'], label)
+  assertPlainRecord(value, ['provider', 'model', 'writePermission', 'aiSearch'], label)
   const provider = route(value.provider, 128, label)
   const model = route(value.model, 256, label)
   if (value.writePermission !== 'read-only' && value.writePermission !== 'propose') {
     throw failure(label)
   }
-  return { provider, model, writePermission: value.writePermission }
+  const aiSearch = value.aiSearch === undefined ? undefined : value.aiSearch
+  if (aiSearch !== undefined && aiSearch !== 'off' && aiSearch !== 'on-demand' && aiSearch !== 'automatic') throw failure(label)
+  return { provider, model, writePermission: value.writePermission, ...(aiSearch === undefined ? {} : { aiSearch }) }
 }
 
 function turnRequest(value: unknown): AssistantTurnRequest {
@@ -286,6 +303,91 @@ function approvalView(value: unknown): AssistantApprovalView {
     snapshotCaptured: value.snapshotCaptured,
     status: acceptedOperation === 'create' ? 'created' : 'saved',
   }
+}
+
+function searchIntelligenceResult(value: unknown): AssistantSearchIntelligenceResult {
+  assertPlainRecord(value, ['status', 'matches'], 'Search intelligence result')
+  const acceptedStatuses = ['applied', 'disabled', 'provider-unavailable', 'invalid-output', 'error', 'cancelled']
+  if (!acceptedStatuses.includes(value.status as string) || !Array.isArray(value.matches) || value.matches.length > 100) throw failure('Search intelligence result')
+  const matches = value.matches.map(candidate => {
+    assertPlainRecord(candidate, ['id', 'revision', 'path', 'kind', 'line', 'lineEnd', 'preview', 'score', 'operator', 'provenance'], 'Search intelligence result')
+    const path = safeRelativePath(candidate.path, 'Search intelligence result')
+    if (typeof candidate.preview !== 'string' || candidate.preview.length > 4_096
+      || (candidate.id !== undefined && (typeof candidate.id !== 'string' || candidate.id.length < 1 || candidate.id.length > 128))
+      || (candidate.revision !== undefined && (typeof candidate.revision !== 'string' || candidate.revision.length === 0 || candidate.revision.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(candidate.revision)))
+      || (candidate.line !== null && !Number.isSafeInteger(candidate.line))
+      || (candidate.lineEnd !== undefined && candidate.lineEnd !== null && !Number.isSafeInteger(candidate.lineEnd))
+      || (candidate.score !== undefined && !Number.isFinite(candidate.score))) throw failure('Search intelligence result')
+    return { ...candidate, path } as AssistantSearchIntelligenceResult['matches'][number]
+  })
+  return { status: value.status as AssistantSearchIntelligenceResult['status'], matches }
+}
+
+function quickAnswerRequest(value: unknown): AssistantQuickAnswerRequest {
+  assertPlainRecord(value, ['query', 'vaultGeneration', 'mode', 'directory', 'modifiedFrom', 'modifiedTo', 'titleOnly', 'candidates'], 'Quick Answer request')
+  const query = boundaryText(value.query, 1_000, 'Quick Answer request')
+  const vaultGeneration = safeInteger(value.vaultGeneration, 'Quick Answer request')
+  const mode = value.mode === undefined ? 'query' : value.mode
+  const directory = value.directory as string | undefined
+  const modifiedFrom = value.modifiedFrom as number | undefined
+  const modifiedTo = value.modifiedTo as number | undefined
+  if (
+    vaultGeneration < 1
+    || !['query', 'related'].includes(mode as string)
+    || directory !== undefined && !isSafeDirectory(directory)
+    || modifiedFrom !== undefined && !Number.isSafeInteger(modifiedFrom)
+    || modifiedTo !== undefined && !Number.isSafeInteger(modifiedTo)
+    || value.titleOnly !== undefined && typeof value.titleOnly !== 'boolean'
+    || !Array.isArray(value.candidates)
+    || value.candidates.length > MAX_QUICK_ANSWER_CANDIDATES
+  ) throw failure('Quick Answer request')
+  const ids = new Set<string>()
+  const candidates = value.candidates.map(candidate => {
+    assertPlainRecord(candidate, ['id', 'revision', 'path', 'line', 'lineEnd', 'preview'], 'Quick Answer request')
+    const id = opaqueId(candidate.id, 'Quick Answer request')
+    const revision = candidate.revision as string | undefined
+    const line = candidate.line as number | null | undefined
+    const lineEnd = candidate.lineEnd as number | null | undefined
+    if (ids.has(id) || revision !== undefined && (typeof revision !== 'string' || revision.length === 0 || revision.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(revision)) || typeof candidate.preview !== 'string' || candidate.preview.length > 4_096 || (line !== null && (line === undefined || !Number.isSafeInteger(line) || line < 1)) || (lineEnd !== undefined && lineEnd !== null && (!Number.isSafeInteger(lineEnd) || lineEnd < 1)) || (line !== null && line !== undefined && lineEnd !== undefined && lineEnd !== null && lineEnd < line)) throw failure('Quick Answer request')
+    ids.add(id)
+    return {
+      id,
+      ...(revision === undefined ? {} : { revision }),
+      path: safeRelativePath(candidate.path, 'Quick Answer request'),
+      line: line as number | null,
+      ...(lineEnd === undefined ? {} : { lineEnd: lineEnd as number | null }),
+      preview: boundaryText(candidate.preview, 4_096, 'Quick Answer request'),
+    }
+  })
+  return {
+    query,
+    vaultGeneration,
+    mode: mode as 'query' | 'related',
+    ...(directory === undefined ? {} : { directory }),
+    ...(modifiedFrom === undefined ? {} : { modifiedFrom }),
+    ...(modifiedTo === undefined ? {} : { modifiedTo }),
+    ...(value.titleOnly === undefined ? {} : { titleOnly: value.titleOnly }),
+    candidates,
+  }
+}
+
+function quickAnswerResult(value: unknown): AssistantQuickAnswerResult {
+  assertPlainRecord(value, ['status', 'answer', 'citations'], 'Quick Answer result')
+  const statuses = ['completed', 'no-evidence', 'provider-unavailable', 'disabled', 'invalid-output', 'error', 'cancelled']
+  if (!statuses.includes(value.status as string) || typeof value.answer !== 'string' || value.answer.length > MAX_QUICK_ANSWER_CHARS || !Array.isArray(value.citations) || value.citations.length > MAX_QUICK_ANSWER_CITATIONS) throw failure('Quick Answer result')
+  const citations = value.citations.map(citation => {
+    assertPlainRecord(citation, ['id', 'path', 'line', 'lineEnd'], 'Quick Answer result')
+    const line = citation.line as number | null | undefined
+    const lineEnd = citation.lineEnd as number | null | undefined
+    if ((line !== null && (line === undefined || !Number.isSafeInteger(line) || line < 1)) || (lineEnd !== null && (lineEnd === undefined || !Number.isSafeInteger(lineEnd) || lineEnd < 1)) || (line !== null && line !== undefined && lineEnd !== null && lineEnd !== undefined && lineEnd < line)) throw failure('Quick Answer result')
+    return {
+      id: opaqueId(citation.id, 'Quick Answer result'),
+      path: safeRelativePath(citation.path, 'Quick Answer result'),
+      line: line as number | null,
+      lineEnd: lineEnd as number | null,
+    }
+  })
+  return { status: value.status as AssistantQuickAnswerResult['status'], answer: redactBoundaryText(value.answer), citations }
 }
 
 function decisionView(value: unknown, label: string): AssistantDecisionView {
@@ -424,6 +526,44 @@ export class TockTutorAssistantGateway extends TypertRemoteService {
     )
   }
 
+  async searchIntelligence(
+    request: AssistantSearchIntelligenceRequest,
+    signal: AbortSignal,
+  ): Promise<AssistantSearchIntelligenceResult> {
+    assertPlainRecord(request, ['query', 'vaultGeneration', 'mode', 'directory', 'modifiedFrom', 'modifiedTo', 'titleOnly'], 'Search intelligence request')
+    const query = boundaryText(request.query, 1_000, 'Search intelligence request')
+    const vaultGeneration = safeInteger(request.vaultGeneration, 'Search intelligence request')
+    if (request.mode !== 'related' || vaultGeneration < 1 || (request.directory !== undefined && !isSafeDirectory(request.directory))
+      || (request.modifiedFrom !== undefined && !Number.isSafeInteger(request.modifiedFrom))
+      || (request.modifiedTo !== undefined && !Number.isSafeInteger(request.modifiedTo))
+      || (request.titleOnly !== undefined && typeof request.titleOnly !== 'boolean')) throw failure('Search intelligence request')
+    checkSignal(signal)
+    const result = this.assistant.searchIntelligence === undefined
+      ? { status: 'provider-unavailable' as const, matches: [] }
+      : await this.assistant.searchIntelligence({
+      query,
+      vaultGeneration,
+      mode: 'related',
+      ...(request.directory === undefined ? {} : { directory: request.directory }),
+      ...(request.modifiedFrom === undefined ? {} : { modifiedFrom: request.modifiedFrom }),
+      ...(request.modifiedTo === undefined ? {} : { modifiedTo: request.modifiedTo }),
+      ...(request.titleOnly === undefined ? {} : { titleOnly: request.titleOnly }),
+    }, signal)
+    checkSignal(signal)
+    return searchIntelligenceResult(result)
+  }
+
+  async quickAnswer(
+    request: AssistantQuickAnswerRequest,
+    signal: AbortSignal,
+  ): Promise<AssistantQuickAnswerResult> {
+    const accepted = quickAnswerRequest(request)
+    checkSignal(signal)
+    const result = await this.assistant.quickAnswer(accepted, signal)
+    checkSignal(signal)
+    return quickAnswerResult(result)
+  }
+
   async audit(
     request: AssistantPageRequest,
     signal: AbortSignal,
@@ -463,6 +603,8 @@ type AssistantRemoteMethod =
   | 'approveProposal'
   | 'rejectProposal'
   | 'audit'
+  | 'searchIntelligence'
+  | 'quickAnswer'
 
 const REMOTE_METHODS: readonly AssistantRemoteMethod[] = [
   'currentSettings',
@@ -472,6 +614,8 @@ const REMOTE_METHODS: readonly AssistantRemoteMethod[] = [
   'approveProposal',
   'rejectProposal',
   'audit',
+  'searchIntelligence',
+  'quickAnswer',
 ]
 
 function installRemoteMethods(instance: TockTutorAssistantGateway): void {

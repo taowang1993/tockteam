@@ -2,7 +2,6 @@ import { constants } from 'node:fs'
 import { access as accessPath, lstat, mkdir, open, realpath, rename, rm, type FileHandle } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import { parseLauncherBrowserHttpUrl, parseLauncherCustomBrowserArgumentTemplate } from './launcher-custom-browser-contract.ts'
 
 export { parseLauncherCustomBrowserArgumentTemplate } from './launcher-custom-browser-contract.ts'
@@ -36,18 +35,6 @@ export type LauncherCustomBrowserSnapshot = Readonly<{
   platform: LauncherCustomBrowserPlatform
   status: 'active' | 'none' | 'revoked'
 }>
-
-/** Browser identity is main-owned; renderer snapshots intentionally contain status only. */
-export function projectLauncherCustomBrowserSettings(
-  snapshot: LauncherSettingsSnapshot,
-  _browser: LauncherCustomBrowserSnapshot | Readonly<Record<string, unknown>>,
-  _platform: LauncherCustomBrowserPlatform,
-): LauncherSettingsSnapshot {
-  const values = { ...snapshot.values }
-  delete values['general.browser.customWebBrowser.executableFilePath']
-  delete values['general.browser.customWebBrowserName']
-  return Object.freeze({ ...snapshot, values: Object.freeze(values) })
-}
 
 type ControllerOptions = Readonly<{
   getSetting: <T>(key: string, fallback: T) => T
@@ -462,7 +449,7 @@ export class LauncherCustomBrowserController {
     if (this.#disposed) throw new Error('Custom browser controller is disposed')
     if (this.options.platform === 'Linux') throw new Error('Custom browsers are not supported on Linux')
     if (this.#parentBinding === undefined) throw new Error('Custom browser grant directory is unavailable')
-    if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser selection is unavailable on this platform')
+    if ((this.options.platform === 'Windows' || !HAS_NOFOLLOW) && this.options.identitySafeEffects !== true) throw new Error('Custom browser selection is unavailable on this platform')
     throwIfAborted(signal)
     await this.#enqueue(async operationSignal => {
       throwIfAborted(operationSignal)
@@ -557,7 +544,7 @@ export class LauncherCustomBrowserController {
     await this.#enqueue(async operationSignal => {
       throwIfAborted(operationSignal)
       const useDefault = this.options.getSetting('general.browser.useDefaultWebBrowser', true)
-      if (useDefault || this.options.platform === 'Linux') {
+      if (useDefault || this.options.platform === 'Linux' || this.options.platform === 'Windows' && this.options.identitySafeEffects !== true) {
         await awaitBoundedEffect(() => this.options.openDefault(normalized, operationSignal), operationSignal, effectTimeout(this.options))
         throwIfAborted(operationSignal)
         return
@@ -566,7 +553,7 @@ export class LauncherCustomBrowserController {
       if (this.#status === 'none') throw new Error('No custom browser grant is selected')
       if (this.#status !== 'active' || grant === undefined || grant.platform !== this.options.platform) throw new Error('Custom browser grant is revoked')
       if (this.#parentBinding === undefined) throw new Error('Custom browser grant directory is unavailable')
-      if (!HAS_NOFOLLOW && this.options.identitySafeEffects !== true) throw new Error('Custom browser launch is unavailable on this platform')
+      if ((this.options.platform === 'Windows' || !HAS_NOFOLLOW) && this.options.identitySafeEffects !== true) throw new Error('Custom browser launch is unavailable on this platform')
       try { await revalidateGrant(grant, this.#parentBinding) }
       catch (error) { this.#grant = undefined; this.#status = 'revoked'; throw new Error('Custom browser grant changed or was revoked', { cause: error }) }
       throwIfAborted(operationSignal)

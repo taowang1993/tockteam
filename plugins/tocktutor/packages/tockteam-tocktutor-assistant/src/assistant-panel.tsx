@@ -664,6 +664,23 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   <NativeSelectOption value="propose">Propose Writes</NativeSelectOption>
                 </NativeSelect>
               </Label>
+              <Label unstyled className="grid gap-1 text-xs">
+                AI Search
+                <NativeSelect unstyled
+                  aria-label="AI Search"
+                  className="w-full rounded-[7px] border border-[var(--tta-border)] bg-[var(--tta-panel)] px-2 py-[7px] text-inherit"
+                  disabled={settings === null || settingsSaving}
+                  onChange={event => {
+                    const aiSearch = event.target.value === 'off' || event.target.value === 'automatic' ? event.target.value : 'on-demand'
+                    setSettings(currentSettings => currentSettings === null ? null : { ...currentSettings, aiSearch })
+                  }}
+                  value={settings?.aiSearch ?? 'on-demand'}
+                >
+                  <NativeSelectOption value="off">Off</NativeSelectOption>
+                  <NativeSelectOption value="on-demand">On Demand</NativeSelectOption>
+                  <NativeSelectOption value="automatic">Automatic</NativeSelectOption>
+                </NativeSelect>
+              </Label>
               <Button unstyled className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50" disabled={settings === null || settingsSaving} type="submit">
                 {settingsSaving ? 'Saving…' : 'Save Settings'}
               </Button>

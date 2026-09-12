@@ -95,6 +95,21 @@ test('bounds application icon mapping by the scan deadline', async () => {
   assert.equal(indexed.some(item => item.sourceExtension === 'ApplicationSearch'), true)
 })
 
+test('caps unresolved native mapping work across repeated rescans', async () => {
+  let iconCalls = 0
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    scanTimeoutMs: 5,
+    getApplicationIcon: async () => {
+      iconCalls += 1
+      return await new Promise<string | undefined>(() => {})
+    },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  for (let attempt = 0; attempt < 10; attempt += 1) await provider.loadIndexedItems(new AbortController().signal)
+  assert.equal(iconCalls, 8)
+})
+
 test('caps public bookmark labels after adding URL details', async () => {
   const longUrl = `https://docs.example.test/${'x'.repeat(4_096)}`
   const provider = createLauncherDiscoveryExtensions({
@@ -294,6 +309,35 @@ test('VSCode and JetBrains launch effects receive the provider signal before own
     await provider.waitForIdle()
     await provider.close()
   }
+})
+
+test('Windows shortcut elevation carries its scan-bound digest through confirmation', async () => {
+  const target = 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk'
+  const digest = 'a'.repeat(64)
+  let approved = true
+  const elevated: Array<{ digest: string; target: string }> = []
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    appDataPath: 'C:\\Users\\max\\AppData\\Roaming',
+    captureApplicationDigest: async () => digest,
+    enabledExtensionIds: () => ['ApplicationSearch'],
+    effects: {
+      confirmOpenApplicationAsAdministrator: async () => approved,
+      copyText: () => {}, launchExecutable: () => {}, openApplication: () => {},
+      openApplicationAsAdministrator: async (applicationTarget, applicationDigest) => { elevated.push({ digest: applicationDigest, target: applicationTarget }) },
+      openExternal: () => {}, revealPath: () => {},
+    },
+    homePath: 'C:\\Users\\max', platform: 'Windows',
+    revalidate: { application: async () => true },
+    scanners: { ...entries, ApplicationSearch: async () => [{ id: `applications:${target}`, kind: 'application' as const, name: 'TockTeam', path: target }] },
+  })
+  const [item] = await provider.loadIndexedItems(new AbortController().signal)
+  const admin = item?.additionalActions?.find(action => action.description === 'Open application as administrator')
+  assert.ok(item && admin)
+  assert.equal(await provider.executeAction(record(item, { argument: admin.argument, handlerKey: admin.handlerKey, requiresConfirmation: true })), true)
+  assert.deepEqual(elevated, [{ digest, target }])
+  approved = false
+  assert.deepEqual(await provider.executeAction(record(item, { argument: admin.argument, handlerKey: admin.handlerKey, requiresConfirmation: true })), { handled: true, succeeded: false })
 })
 
 test('Windows applications expose confirmed elevation and store IDs omit reveal', async () => {

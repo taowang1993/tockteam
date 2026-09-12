@@ -362,10 +362,13 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
         return Object.freeze(items)
       }
       const folders = asFolderSettings(options.getSetting('extension[SimpleFileSearch].folders', []))
+      const scanDeadline = Date.now() + scanTimeoutMs
       let count = 0
       const seen = new Set<string>()
       for (const folder of folders) {
         if (scanController.signal.aborted || signal.aborted) throw error(signal.reason, 'TockLauncher file search canceled')
+        const remainingScanMs = scanDeadline - Date.now()
+        if (remainingScanMs <= 0) break
         if (!isWithinHome(options.platform, options.homePath, folder.path, true)) {
           reportProviderError('SimpleFileSearch', new Error('Configured root is outside the allowed home scope'))
           continue
@@ -378,10 +381,10 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
               homePath: options.homePath,
               maxResults: MAX_SIMPLE_RESULTS - count,
               maxVisitedEntries: 10_000,
-              scanTimeoutMs,
+              scanTimeoutMs: remainingScanMs,
               signal: scanSignal,
             }))
-          }, scanController.signal, scanTimeoutMs, `Simple File Search root timed out: ${folder.path}`)
+          }, scanController.signal, remainingScanMs, `Simple File Search root timed out: ${folder.path}`)
           throwIfNotCurrent(scanController.signal, generation, scanGeneration)
           for (const entry of entries) {
             throwIfNotCurrent(scanController.signal, generation, scanGeneration)

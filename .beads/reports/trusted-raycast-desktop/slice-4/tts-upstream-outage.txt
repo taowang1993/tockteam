@@ -1,0 +1,1 @@
+No live afplay was observed in this bounded run; outside-child probe: PROBE 200 27648. Existing deterministic/live proof is retained in slice-3/tts-proof.txt.

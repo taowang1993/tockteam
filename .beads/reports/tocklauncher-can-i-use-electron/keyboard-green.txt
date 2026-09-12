@@ -1,0 +1,16 @@
+### Result
+{"submits":0,"pids":[6131,6141,6142,6137,6138,6139,6143,6144]}
+### Ran Playwright code
+```js
+await (async page => { const browser = await page.context().browser().newBrowserCDPSession(); const pids = (await browser.send("SystemInfo.getProcessInfo")).processInfo.map(p => p.id); await page.setContent("<input id=launcher><div id=view></div>"); await page.evaluate(() => { window.submits=0; const launcher=document.querySelector("#launcher"); launcher.focus(); launcher.addEventListener("keydown", event => { if(event.key!=="Enter")return; event.preventDefault(); document.querySelector("#view").innerHTML="<form><input id=prefs><button>Continue</button></form>"; document.querySelector("form").onsubmit=e=>{e.preventDefault();window.submits++};document.querySelector("#prefs").focus(); }); }); const cdp=await page.context().newCDPSession(page); const driver={call:(method,params)=>cdp.send(method,params), async pressKey(key) {
+    const virtualKeyCodes = { Escape: 27, Enter: 13, ArrowDown: 40, ArrowUp: 38 }
+    const virtualKeyCode = virtualKeyCodes[key]
+    const payload = virtualKeyCode === undefined
+      ? { key, code: key }
+      : { key, code: key, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode }
+    // A separate char event bypasses preventDefault and can submit a newly opened form.
+    const text = key === 'Enter' ? '\r' : key === ' ' ? ' ' : undefined
+    await this.call('Input.dispatchKeyEvent', { type: 'keyDown', ...payload, text })
+    await this.call('Input.dispatchKeyEvent', { type: 'keyUp', ...payload })
+  }}; await driver.pressKey("Enter"); return {submits:await page.evaluate(()=>window.submits),pids}; })(page);
+```

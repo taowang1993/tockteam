@@ -1,8 +1,9 @@
 import desktopRemote from 'tockbot-note-desktop/remote';
-import { TockTutorNativeActions, } from "./client-actions.js";
+import { TockTutorNativeActions, TockTutorVaultActions, } from "./client-actions.js";
 import { assertDesktopSurface, TOCKTEAM_SURFACE_SERVICE } from "./guard.js";
 export const name = 'tockbot-note-desktop';
 const TOCKTUTOR_NATIVE_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.native-actions';
+const TOCKTUTOR_VAULT_ACTIONS_SLOT = 'tockteam.tocktutor.workbench.vault-actions';
 export const inject = [TOCKTEAM_SURFACE_SERVICE, 'remote', 'slots'];
 async function disposeClient(bridge, disposeRemote) {
     try {
@@ -56,12 +57,33 @@ export async function apply(ctx) {
                 tocktutorDesktop: child.remote.tocktutorDesktop,
             };
             const slots = child.slots;
-            return slots.inject(TOCKTUTOR_NATIVE_ACTIONS_SLOT, () => slots.register({
+            const disposeNativeActions = slots.inject(TOCKTUTOR_NATIVE_ACTIONS_SLOT, () => slots.register({
                 id: name,
                 inject: () => ({ bridge, remote }),
                 name: TOCKTUTOR_NATIVE_ACTIONS_SLOT,
                 registrant: name,
             }, TockTutorNativeActions));
+            let disposeVaultActions;
+            try {
+                disposeVaultActions = slots.inject(TOCKTUTOR_VAULT_ACTIONS_SLOT, () => slots.register({
+                    id: name,
+                    inject: () => ({ bridge, remote }),
+                    name: TOCKTUTOR_VAULT_ACTIONS_SLOT,
+                    registrant: name,
+                }, TockTutorVaultActions));
+            }
+            catch (error) {
+                disposeNativeActions();
+                throw error;
+            }
+            return () => {
+                try {
+                    disposeVaultActions();
+                }
+                finally {
+                    disposeNativeActions();
+                }
+            };
         });
         await slotFiber;
     }

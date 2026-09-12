@@ -79,7 +79,7 @@ const callerBridge: DesktopCallerAuthorizer = {
       window?: { dshDesktop?: { tockTutor?: TockTutorDesktopCallerBridge } }
     }
     const bridge = root.window?.dshDesktop?.tockTutor
-    if (bridge === undefined) throw new Error('This operation is available only in the trusted TockTeam Desktop window.')
+    if (bridge === undefined) throw new Error('This operation is available only in the trusted TockTeam desktop window.')
     return await bridge.authorize(operation, expectedVault)
   },
 }
@@ -383,7 +383,7 @@ export function ImportExportReviewPanelView(props: {
   const warnings = preview !== null && 'warnings' in preview ? preview.warnings : []
   const busy = snapshot.phase === 'inspecting' || snapshot.phase === 'approving' || snapshot.phase === 'committing'
   return (
-    <Card unstyled aria-label="Import, Backup, and Restore" className="tocktutor-import-export-review grid gap-3 rounded-[10px] border border-[var(--tt-border)] p-3.5 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 [&_button]:min-h-8 [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-[9px] [&_button]:py-[5px] [&_button]:text-inherit [&_select]:min-h-8 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-[var(--tt-panel)] [&_select]:px-[9px] [&_select]:py-[5px] [&_select]:text-inherit" role="region">
+    <Card unstyled aria-label="Import, Backup, and Restore" className="tocktutor-import-export-review grid gap-3 [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 [&_button]:min-h-8 [&_button]:rounded-md [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-transparent [&_button]:px-[9px] [&_button]:py-[5px] [&_button]:text-inherit [&_button:hover]:bg-[var(--tt-selected)] [&_select]:min-h-8 [&_select]:rounded-md [&_select]:border [&_select]:border-[var(--tt-border)] [&_select]:bg-[var(--tt-panel)] [&_select]:px-[9px] [&_select]:py-[5px] [&_select]:text-inherit" role="region">
       <header>
         <p className="tocktutor-import-export-kicker text-[11px] font-bold tracking-[.08em] text-[var(--tt-muted)] uppercase">Reviewed Operations</p>
         <h2>Import, Backup, and Restore</h2>
@@ -391,11 +391,11 @@ export function ImportExportReviewPanelView(props: {
       <p>Choose the export shape you downloaded. Each source uses the existing reviewed Markdown or HTML transaction.</p>
       {(snapshot.phase === 'idle' || snapshot.phase === 'complete' || (snapshot.phase === 'error' && preview === null)) && (
         <>
-          <fieldset className="m-0 grid gap-2 rounded-md border border-[var(--tt-border)] p-2.5">
-            <legend className="px-1 text-xs font-medium">Popular Export Sources</legend>
-            <div className="flex flex-wrap gap-2">
+          <fieldset className="m-0 grid gap-1 border-0 p-0">
+            <legend className="mb-1 text-xs font-medium">Popular Export Sources</legend>
+            <div className="grid gap-1">
               {IMPORT_CHOOSER_DELEGATIONS.map(delegation => (
-                <Button unstyled key={delegation.id} onClick={() => { props.onStart(delegation.format) }} type="button">
+                <Button unstyled className="border-transparent text-left hover:bg-[var(--tt-selected)]" key={delegation.id} onClick={() => { props.onStart(delegation.format) }} type="button">
                   {delegation.label}
                 </Button>
               ))}

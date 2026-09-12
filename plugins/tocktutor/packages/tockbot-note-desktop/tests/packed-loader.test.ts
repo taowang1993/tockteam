@@ -183,7 +183,10 @@ async function verifyClient(consumerRequire: NodeJS.Require): Promise<void> {
       },
       slots: {
         inject(name: string, register: () => () => void) {
-          assert.equal(name, 'tockteam.tocktutor.workbench.native-actions')
+          assert.ok([
+            'tockteam.tocktutor.workbench.native-actions',
+            'tockteam.tocktutor.workbench.vault-actions',
+          ].includes(name))
           const disposeRegistration = register()
           return () => { cleanup.push('slot'); disposeRegistration() }
         },
@@ -194,11 +197,17 @@ async function verifyClient(consumerRequire: NodeJS.Require): Promise<void> {
       },
     }
     const dispose = await client.apply(clientContext)
-    assert.equal(registered.length, 1)
-    assert.equal(registered[0]?.options.id, packageName)
-    assert.equal(typeof registered[0]?.component, 'function')
+    assert.equal(registered.length, 2)
+    assert.deepEqual(registered.map(entry => entry.options.name), [
+      'tockteam.tocktutor.workbench.native-actions',
+      'tockteam.tocktutor.workbench.vault-actions',
+    ])
+    for (const entry of registered) {
+      assert.equal(entry.options.id, packageName)
+      assert.equal(typeof entry.component, 'function')
+    }
     await dispose()
-    assert.deepEqual(cleanup, ['slot', 'registration', 'dispatch', 'remote'])
+    assert.deepEqual(cleanup, ['slot', 'registration', 'slot', 'registration', 'dispatch', 'remote'])
     await assert.rejects(
       client.apply({ get: () => ({ kind: 'web' }) }),
       /Desktop surface is required/u,

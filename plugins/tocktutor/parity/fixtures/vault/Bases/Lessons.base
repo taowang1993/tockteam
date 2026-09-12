@@ -19,7 +19,8 @@ views:
   - type: list
     name: Drafts
     filters:
-      - 'note.status == "draft"'
+      and:
+        - 'note.status == "draft"'
     order:
       - file.name
   - type: cards
