@@ -1634,6 +1634,7 @@ async function readVaultDocument(
   requestedPath: string,
   maxBytes: number,
   signal: AbortSignal,
+  bindAliasEntry = false,
 ): Promise<{ content: string; digest: string; modifiedAt: number; path: string; revision: string }> {
   signal.throwIfAborted()
   const target = await resolveDocumentTarget(root, requestedPath)
@@ -1701,7 +1702,7 @@ async function readVaultDocument(
       digest: `sha256:${createHash('sha256').update(data).digest('hex')}`,
       modifiedAt: Number(opened.mtimeMs),
       path: target.relativePath,
-      revision: fileRevision(opened),
+      revision: bindAliasEntry ? entryRevision(target.alias, target.aliasEntry, opened) : fileRevision(opened),
     }
   } finally {
     await handle.close().catch(() => undefined)
@@ -4746,7 +4747,7 @@ export class NoteVaultRuntime extends Service {
           },
           read: async (requestedPath, signal) => {
             try {
-              const document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal)
+              const document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal, true)
               this.assertCapturedVault(state, root)
               return {
                 content: document.content,

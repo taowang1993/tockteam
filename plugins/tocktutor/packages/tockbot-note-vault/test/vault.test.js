@@ -1095,6 +1095,15 @@ test('lists accepted attachment metadata without opening binaries', async () => 
   })
 })
 
+test('inspection keeps runtime-supported icon and recorded audio attachments', async () => {
+  await withVault(async vault => {
+    await writeFile(join(vault, 'icon.ico'), Buffer.from([0, 1, 2]))
+    await writeFile(join(vault, 'voice.weba'), Buffer.from([3, 4, 5]))
+    const result = await (await loadTools(vault)).get('vault_list').execute({ kind: 'attachments' }, { signal: new AbortController().signal })
+    assert.deepEqual(result.entries.map(entry => [entry.path, entry.mediaKind]), [['icon.ico', 'image'], ['voice.weba', 'audio']])
+  })
+})
+
 test('reports outgoing links and backlinks', async () => {
   await withVault(async vault => {
     const links = (await loadTools(vault)).get('vault_links')

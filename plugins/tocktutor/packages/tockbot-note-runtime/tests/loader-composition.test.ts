@@ -5176,6 +5176,7 @@ test('persistent FlexSearch SQLite indexes reopen outside the user vault', async
   ].join('\n')
   await Promise.all([mkdir(stateRoot), mkdir(vaultRoot)])
   await writeFile(join(vaultRoot, 'Alpha.md'), '# Alpha\n#project canary\n')
+  await symlink('Alpha.md', join(vaultRoot, 'Alias.md'))
   await writeFile(join(vaultRoot, 'FalsePositive.md'), '# False\nproject is plain text\n')
   await writeFile(join(vaultRoot, 'Other.md'), '# Other\nunrelated\n')
 
@@ -5190,8 +5191,8 @@ test('persistent FlexSearch SQLite indexes reopen outside the user vault', async
         mode: 'query',
         query: 'tag:project',
       }, { id: state.id, generation: state.generation }, new AbortController().signal)
-      if (result.scan.entries === 2) {
-        assert.deepEqual(result.matches.map(match => match.path), ['Alpha.md'])
+      if (result.scan.entries === 3) {
+        assert.deepEqual(result.matches.map(match => match.path).sort(), ['Alias.md', 'Alpha.md'])
         return
       }
       if (Date.now() >= deadline) assert.fail('timed out waiting for persistent indexed candidates')
