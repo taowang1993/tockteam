@@ -25,6 +25,105 @@ async function interruptedReplacement(f: Awaited<ReturnType<typeof fixture>>) {
   await fs.writeFile(f.journalPath, JSON.stringify({ next, previous, version: 1 }))
 }
 
+for (const timing of ['journal', 'displacement', 'publication'] as const) test(`external saves preserve another app's edit during ${timing}`, { skip: process.platform === 'win32' }, async t => {
+  const f = await fixture()
+  const editor = path.join(f.root, 'editor.json')
+  const destination = await fs.realpath(f.external)
+  const rename = fs.rename
+  const link = fs.link
+  let injected = false
+  try {
+    await fs.writeFile(editor, JSON.stringify({ 'general.language': 'de-CH' }))
+    if (timing !== 'publication') t.mock.method(fs, 'rename', async (from: Parameters<typeof rename>[0], to: Parameters<typeof rename>[1]) => {
+      if (timing === 'displacement' && String(from) === destination && !injected) { injected = true; await rename(editor, f.external) }
+      await rename(from, to)
+      if (timing === 'journal' && String(to) === f.journalPath && !injected) { injected = true; await rename(editor, f.external) }
+    })
+    else t.mock.method(fs, 'link', async (from: Parameters<typeof link>[0], to: Parameters<typeof link>[1]) => {
+      if (String(to) === destination && !injected) { injected = true; await rename(editor, f.external) }
+      await link(from, to)
+    })
+    syncBuiltinESMExports()
+    await assert.rejects(f.repository.updateSetting('general.language', 'fr-FR'), /changed|revoked/)
+    assert.equal(injected, true)
+    assert.deepEqual(JSON.parse(await fs.readFile(f.external, 'utf8')), { 'general.language': 'de-CH' })
+    assert.equal(f.repository.snapshot().externalGrantStatus, 'revoked')
+    if (timing === 'publication') {
+      const directory = (await fs.readdir(f.root)).find(name => name.startsWith('.external.json.tockteam-'))
+      assert.ok(directory, 'conflicting versions remain recoverable beside the shared file')
+      assert.deepEqual(JSON.parse(await fs.readFile(path.join(f.root, directory, 'previous.json'), 'utf8')), { 'general.language': 'en-US' })
+      assert.deepEqual(JSON.parse(await fs.readFile(path.join(f.root, directory, 'next.json'), 'utf8')), { 'general.language': 'fr-FR' })
+    }
+  } finally {
+    t.mock.restoreAll(); syncBuiltinESMExports()
+    await f.repository.close()
+    await fs.rm(f.root, { recursive: true, force: true })
+  }
+})
+
+for (const published of [false, true]) test(`startup recovers an external save ${published ? 'after publication' : 'during the missing-path interval'}`, { skip: process.platform === 'win32' }, async () => {
+  const f = await fixture()
+  let reopened: LauncherPersistenceRepository | undefined
+  try {
+    const previous = JSON.parse(await fs.readFile(f.grantPath, 'utf8'))
+    const directory = await fs.mkdtemp(path.join(path.dirname(previous.path), '.external.json.tockteam-'))
+    const nextFile = path.join(directory, 'next.json')
+    await fs.writeFile(nextFile, JSON.stringify({ 'general.language': 'fr-FR' }))
+    const identity = await fs.lstat(nextFile, { bigint: true })
+    const next = { ...previous, dev: String(identity.dev), ino: String(identity.ino) }
+    await fs.writeFile(f.journalPath, JSON.stringify({ next, previous, directory, version: 2 }))
+    await fs.rename(f.external, path.join(directory, 'previous.json'))
+    if (published) await fs.link(nextFile, f.external)
+    await f.repository.close()
+    reopened = await LauncherPersistenceRepository.open({ userDataPath: f.root, externalWriteAvailable: true })
+    assert.equal(reopened.snapshot().settingsSource, 'external')
+    assert.equal(reopened.getSetting('general.language', ''), published ? 'fr-FR' : 'en-US')
+    assert.deepEqual(JSON.parse(await fs.readFile(f.external, 'utf8')), { 'general.language': published ? 'fr-FR' : 'en-US' })
+    await assert.rejects(fs.lstat(directory), { code: 'ENOENT' })
+    await assert.rejects(fs.lstat(f.journalPath), { code: 'ENOENT' })
+  } finally { await f.repository.close(); await reopened?.close(); await fs.rm(f.root, { recursive: true, force: true }) }
+})
+
+test('recovery cannot revive a grant removed before its journal was retired', { skip: process.platform === 'win32' }, async () => {
+  const f = await fixture()
+  let reopened: LauncherPersistenceRepository | undefined
+  try {
+    await interruptedReplacement(f)
+    await f.repository.close()
+    await fs.rm(f.grantPath)
+    reopened = await LauncherPersistenceRepository.open({ userDataPath: f.root, externalWriteAvailable: true })
+    assert.equal(reopened.snapshot().settingsSource, 'managed')
+    await assert.rejects(fs.lstat(f.grantPath), { code: 'ENOENT' })
+    assert.deepEqual(JSON.parse(await fs.readFile(f.external, 'utf8')), { 'general.language': 'zh-CN' })
+  } finally { await f.repository.close(); await reopened?.close(); await fs.rm(f.root, { recursive: true, force: true }) }
+})
+
+test('recovery rejects a journal pointing outside the external file directory', { skip: process.platform === 'win32' }, async () => {
+  const f = await fixture()
+  let reopened: LauncherPersistenceRepository | undefined
+  try {
+    const previous = JSON.parse(await fs.readFile(f.grantPath, 'utf8'))
+    const protectedDirectory = path.join(f.root, 'unrelated')
+    await fs.mkdir(protectedDirectory)
+    const sentinel = path.join(protectedDirectory, 'previous.json')
+    await fs.writeFile(sentinel, 'preserve')
+    await fs.writeFile(f.journalPath, JSON.stringify({ next: previous, previous, directory: protectedDirectory, version: 2 }))
+    await f.repository.close()
+    reopened = await LauncherPersistenceRepository.open({ userDataPath: f.root, externalWriteAvailable: true })
+    assert.equal(await fs.readFile(sentinel, 'utf8'), 'preserve')
+    assert.equal(reopened.getSetting('general.language', ''), 'en-US')
+  } finally { await f.repository.close(); await reopened?.close(); await fs.rm(f.root, { recursive: true, force: true }) }
+})
+
+test('successful external saves retain a bounded recovery set', { skip: process.platform === 'win32' }, async () => {
+  const f = await fixture()
+  try {
+    for (let index = 0; index < 8; index++) await f.repository.updateSetting('general.language', index % 2 ? 'en-US' : 'fr-FR')
+    assert.ok((await fs.readdir(path.join(f.root, 'launcher/external-backups'))).length <= 2)
+    assert.equal((await fs.readdir(f.root)).some(name => name.startsWith('.external.json.tockteam-')), false)
+  } finally { await f.repository.close(); await fs.rm(f.root, { recursive: true, force: true }) }
+})
+
 test('revocation or a new selection retires an interrupted external grant', { skip: process.platform === 'win32' }, async () => {
   for (const replaceGrant of [false, true]) {
     const f = await fixture()
