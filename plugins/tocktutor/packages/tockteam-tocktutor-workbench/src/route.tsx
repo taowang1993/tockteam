@@ -489,6 +489,18 @@ function recentSearchMatches(entries: readonly VaultTreeEntry[]): readonly Vault
     .map(entry => ({ kind: 'path' as const, line: null, path: entry.path, preview: 'Recently modified note.' })))
 }
 
+function compareSearchMatches(left: VaultSearchMatch, right: VaultSearchMatch): number {
+  return (right.score ?? 0) - (left.score ?? 0)
+    || left.path.localeCompare(right.path)
+    || (left.line ?? -1) - (right.line ?? -1)
+    || (left.lineEnd ?? -1) - (right.lineEnd ?? -1)
+    || left.kind.localeCompare(right.kind)
+    || (left.operator ?? '').localeCompare(right.operator ?? '')
+    || (left.provenance ?? '').localeCompare(right.provenance ?? '')
+    || left.preview.localeCompare(right.preview)
+    || (left.revision ?? '').localeCompare(right.revision ?? '')
+}
+
 function validSearchResult(value: VaultSearchResult, vault: VaultReference): boolean {
   const ids = new Set<string>()
   return value?.generation === vault.generation
@@ -1296,7 +1308,9 @@ export class WorkbenchRouteController {
           const previous = merged.get(identity)
           if (previous === undefined || (match.score ?? 0) > (previous.score ?? 0)) merged.set(identity, match)
         }
-        const matches = Object.freeze([...merged.values()].map(match => Object.freeze({ ...match })))
+        const matches = Object.freeze([...merged.values()]
+          .toSorted(compareSearchMatches)
+          .map(match => Object.freeze({ ...match })))
         this.update({
           message: `${String(matches.length)} related search results.`,
           searchActiveIndex: matches.length > 0 ? 0 : null,

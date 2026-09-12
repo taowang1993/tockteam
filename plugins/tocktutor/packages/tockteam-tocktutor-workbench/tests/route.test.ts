@@ -21,6 +21,7 @@ import type {
   TrashMutationResult,
   VaultLinksResult,
   VaultReference,
+  VaultSearchMatch,
   VaultSearchResult,
   VaultTreePage,
   WriteDocumentResult,
@@ -2005,6 +2006,74 @@ test('uses optional bounded search intelligence without making local search depe
   assert.equal(controller.getSnapshot().searchMatches?.some(match => match.path === 'Folder/Note.md'), true)
   assert.equal(controller.getSnapshot().searchMatches?.some(match => match.path === 'Mobility.md'), true)
   assert.equal(controller.getSnapshot().searchIntelligenceStatus, 'applied')
+  controller.dispose()
+})
+
+test('ranks merged search matches before limiting Quick Answer candidates', async () => {
+  const localMatches: VaultSearchMatch[] = [
+    { id: 'local-shared', kind: 'content', line: 1, path: 'Shared.md', preview: 'Shared match', score: 20 },
+    { id: 'local-tie-z', kind: 'content', line: 1, path: 'Tie-z.md', preview: 'Tie z', score: 7 },
+    { id: 'local-tie-a', kind: 'content', line: 1, path: 'Tie-a.md', preview: 'Tie a', score: 7 },
+    ...Array.from({ length: 18 }, (_, index) => ({
+      id: `local-${String(index).padStart(2, '0')}`,
+      kind: 'content' as const,
+      line: index + 2,
+      path: `Local-${String(index).padStart(2, '0')}.md`,
+      preview: `Local ${String(index)}`,
+      score: 1,
+    })),
+  ]
+  const assistantMatches: VaultSearchMatch[] = [
+    { id: 'assistant-expanded', kind: 'content', line: 1, path: 'Expanded.md', preview: 'Expanded evidence', score: 100 },
+    { id: 'assistant-shared', kind: 'content', line: 1, path: 'Shared.md', preview: 'Shared match', score: 40 },
+    { id: 'assistant-tie-z', kind: 'content', line: 1, path: 'Tie-z.md', preview: 'Tie z', score: 7 },
+    { id: 'assistant-extra', kind: 'content', line: 1, path: 'Assistant.md', preview: 'Assistant evidence', score: 20 },
+  ]
+  const quickAnswerPaths: string[] = []
+  const remote = new FakeRemote()
+  remote.searchOverride = async () => success({
+    cursor: null,
+    generation: firstVault.generation,
+    matches: localMatches,
+    query: 'lesson',
+    scan: { bytes: 30, entries: localMatches.length, files: localMatches.length },
+    truncated: false,
+    truncationReason: null,
+    warnings: [],
+  })
+  remote.tocktutorAssistant = {
+    searchIntelligence: async () => success({ status: 'applied', matches: assistantMatches }),
+    quickAnswer: async request => {
+      quickAnswerPaths.push(...request.candidates.map(candidate => candidate.path))
+      return success({ status: 'no-evidence', answer: '', citations: [] })
+    },
+  }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  controller.openSearch('lesson')
+  controller.setSearchMode('related')
+  assert.equal(await controller.runSearch(), true)
+
+  const matches = controller.getSnapshot().searchMatches ?? []
+  assert.equal(matches.length, 23)
+  assert.deepEqual(matches.slice(0, 5).map(match => [match.path, match.score]), [
+    ['Expanded.md', 100],
+    ['Shared.md', 40],
+    ['Assistant.md', 20],
+    ['Tie-a.md', 7],
+    ['Tie-z.md', 7],
+  ])
+  assert.deepEqual(matches.map(match => match.score ?? 0), [...matches].map(match => match.score ?? 0).toSorted((left, right) => right - left))
+  assert.equal(matches.find(match => match.path === 'Shared.md')?.id, 'assistant-shared')
+  assert.equal(matches.find(match => match.path === 'Tie-z.md')?.id, 'local-tie-z')
+  assert.equal(Object.isFrozen(matches), true)
+  assert.equal(matches.every(match => Object.isFrozen(match)), true)
+  assert.equal(matches.length > 20, true)
+
+  assert.equal(await controller.runQuickAnswer(), false)
+  assert.equal(quickAnswerPaths.length, 20)
+  assert.deepEqual(quickAnswerPaths, matches.slice(0, 20).map(match => match.path))
+  assert.equal(quickAnswerPaths.includes('Expanded.md'), true)
   controller.dispose()
 })
 
