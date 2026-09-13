@@ -17,7 +17,7 @@ const root = join(import.meta.dirname, '..')
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
   homepage?: string
   dependencies?: Record<string, string>
-  build?: { asar?: boolean; files?: unknown; extraResources?: unknown }
+  build?: { asar?: boolean; asarUnpack?: unknown; files?: unknown; extraResources?: unknown }
 }
 const mainSource = readFileSync(join(root, 'src/main.ts'), 'utf8')
 const splashSource = readFileSync(join(root, 'src/splash.html'), 'utf8')
@@ -44,6 +44,11 @@ test('native product surfaces identify the app as TockTeam', () => {
 
 test('package contract admits the complete launcher resource inventory', () => {
   assert.equal(packageJson.build?.asar, true)
+  assert.deepEqual(packageJson.build?.asarUnpack, [
+    'dist/trusted-raycast/**',
+    'dist/trusted-raycast-kaomoji/**',
+    'dist/trusted-raycast-can-i-use/**',
+  ])
   assert.equal(contract.resources.asar, true)
   assert.deepEqual(packageJson.build?.files, contract.resources.builderFiles)
   assert.deepEqual(packageJson.build?.extraResources, contract.resources.builderExtraResources)
@@ -73,6 +78,7 @@ test('package contract admits the complete launcher resource inventory', () => {
 
 test('programmatic electron-builder config leaves publishing unset', () => {
   const config = packagedBuilderConfig('/tmp/tockteam-output', currentTarget(), '/tmp/tockteam-app')
+  assert.deepEqual(config.asarUnpack, packageJson.build?.asarUnpack)
   assert.equal(Object.hasOwn(config, 'publish'), false)
   assert.equal(config.publish, undefined)
 })

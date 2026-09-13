@@ -162,6 +162,11 @@
     "appId": "ai.deepseek.tockteam-desktop",
     "productName": "TockTeam Desktop",
     "asar": true,
+    "asarUnpack": [
+      "dist/trusted-raycast/**",
+      "dist/trusted-raycast-kaomoji/**",
+      "dist/trusted-raycast-can-i-use/**"
+    ],
     "afterPack": "scripts/after-pack.cjs",
     "directories": {
       "output": "release",

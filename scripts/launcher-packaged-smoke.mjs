@@ -857,6 +857,15 @@ async function assertArchiveInventory(files, asar, asarText, asarPath) {
     const content = await readAsarBuffer(asarPath, asar, asset.path)
     assert.equal(sha256(content), asset.sha256, `ASAR launcher asset hash drifted: ${asset.path}`)
   }
+  for (const directory of ['trusted-raycast', 'trusted-raycast-kaomoji', 'trusted-raycast-can-i-use']) {
+    for (const name of ['artifact.tar', 'build.json', 'child.mjs', 'resolution.mjs']) {
+      const path = `dist/${directory}/${name}`
+      const entry = asarEntry(asar.header, path)
+      assert.equal(entry?.unpacked, true, `trusted runtime must be ASAR-unpacked: ${path}`)
+      const unpacked = await lstat(join(`${asarPath}.unpacked`, ...path.split('/')))
+      assert.equal(unpacked.isFile() && !unpacked.isSymbolicLink(), true, `trusted runtime unpacked file is invalid: ${path}`)
+    }
+  }
   assert.doesNotMatch(files.join('\n'), /vendor[/\\]ueli/iu, 'ASAR contains vendor/ueli source')
   assert.doesNotMatch(asarText, /vendor[/\\]ueli/iu, 'ASAR metadata contains vendor/ueli source')
   return Object.freeze({
