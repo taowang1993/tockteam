@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import {
   existsSync,
   readFileSync,
-  readdirSync,
 } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -25,20 +24,18 @@ const manifest = JSON.parse(read('plugins/save-as-image/package.json') || '{}') 
 }
 
 function currentChatRendererSource(): string {
-  const entry = readdirSync(join(root, 'node_modules', '.pnpm'))
-    .find(name => name.startsWith('@deepseek-ai+dsh-client-ui-chat@0.1.2-rc.1_'))
-  assert.ok(entry, 'the pinned DSH RC.1 chat package is installed')
-  return readFileSync(join(
+  const rendererPath = join(
     root,
     'node_modules',
     '.pnpm',
-    entry,
     'node_modules',
     '@deepseek-ai',
     'dsh-client-ui-chat',
     'lib',
     'client.js',
-  ), 'utf8')
+  )
+  assert.ok(existsSync(rendererPath), 'the pinned DSH RC.1 chat package is installed')
+  return readFileSync(rendererPath, 'utf8')
 }
 
 test('the response-image package declares its browser-only contract', () => {

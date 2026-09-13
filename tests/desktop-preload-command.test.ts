@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
 import { runInNewContext } from 'node:vm'
 import { buildSync } from 'esbuild'
 
 // Execute the real preload with only Electron's boundary replaced.
 const bundled = buildSync({
-  entryPoints: [new URL('../src/preload.ts', import.meta.url).pathname],
+  entryPoints: [fileURLToPath(new URL('../src/preload.ts', import.meta.url))],
   bundle: true, platform: 'node', format: 'cjs', external: ['electron'], write: false,
 }).outputFiles[0]!.text
 const module = { exports: {} as { parseDesktopCommand?: (value: unknown) => { paths?: string[]; type: string } } }
