@@ -5049,7 +5049,8 @@ for (const stage of ['mount', 'commit'] as const) {
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
       await Promise.race([reached.promise, new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`index never reached ${stage}`)), 5_000)
+        // Cold native SQLite startup can exceed five seconds on hosted Windows.
+        timer = setTimeout(() => reject(new Error(`index never reached ${stage}`)), 15_000)
       })])
       clearTimeout(timer)
       const state = loaded.context.noteVault.state

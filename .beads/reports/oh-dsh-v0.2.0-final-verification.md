@@ -35,8 +35,17 @@ The explicit `.mjs` Electron/ASAR regression is outside the root `.test.ts` glob
 
 [Fresh Review](oh-dsh-v0.2.0-installed-followup-review.md): no material introduced findings across correctness, simplification, security, and performance. Reviewed commits `19ac946c..34789765`. Reviewer inspected the successful installed report and log; command execution remained parent-owned.
 
+## Additional Local Gates
+
+- `CI=1 node scripts/launcher-electron-smoke.mjs`: passed the complete bounded launcher fixture flow, including updater, second-instance intents, restart persistence, and graceful quit. Post-run process listing found no matching fixture processes.
+- `react-doctor . --scope changed --base 0a902979 --verbose --no-supply-chain --no-score --yes --max-duration 90`: scanned nine changed files, no errors, one known crowded-component warning in `plugins/sidebar/src/client/plugin.tsx:903`. Numeric scoring and supply-chain scanning were not requested from the service; no score-improvement claim is made.
+
 ## Outstanding Final Gates
 
-Hosted CI for the follow-up commits remains pending. The prior hosted run `34730554741` passed all six jobs at `19ac946c`, including Nix, but is not proof for these new commits. Do not advance the Oh-DSH baseline or close `tockteam-9lt.16` until the remaining final evidence is verified and committed.
+Hosted CI for the follow-up commits remains pending. Run `34743595824` passed Nix, runtime, Linux coverage, Windows, and macOS arm64. Its macOS x64 test assumed the latest projection was the initial `ready` message; commit `086e9f1a` separately asserts the handshake and current rendered state so a valid later `patch` is accepted. Fresh root tests and typecheck passed after that test-only correction.
+
+Run `34744036818` then passed Nix, runtime, Linux, and both macOS jobs. Windows failed the native index test's five-second mount-startup watchdog; the other three native-index tests passed. `tockteam-zil` tracks the test-only 15-second cold-start allowance; disposal/drain and closed-connection assertions are unchanged. `cd plugins/tocktutor/packages/tockbot-note-runtime && node scripts/test-search-index.mjs` passed all four locally.
+
+Do not advance the Oh-DSH baseline or close `tockteam-9lt.16` until the final hosted evidence is verified and committed.
 
 `bd preflight` emitted a generic Go-project checklist, not executable TockTeam validation; it is not counted as a passing project gate.
