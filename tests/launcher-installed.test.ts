@@ -43,6 +43,7 @@ import {
   recoverDebTransition,
   runProcess as runInstalledProcess,
   withInstalledSession,
+  withMacApplicationRegistration,
   writeInstalledSmokeDiagnostics,
 } from '../scripts/launcher-installed-smoke.mjs'
 import {
@@ -247,6 +248,21 @@ test('macOS installed smoke uses Launch Services and observes one persistent app
     '-n', '--env', 'TOCKTEAM_INSTALLED_SMOKE=1', app, '--args', '--toggle', '--user-data-dir=/tmp/profile',
   ])
   assert.deepEqual(macMainProcessPids(`  41 ${executable} --flag\n  42 ${app}/Contents/Frameworks/TockTeam Desktop Helper.app/Contents/MacOS/TockTeam Desktop Helper --type=renderer\n  bad row\n`, executable), [41])
+})
+
+test('macOS installed smoke balances temporary Launch Services registration', async () => {
+  const app = '/tmp/Applications/TockTeam Desktop.app'
+  const calls: Array<readonly [string, readonly string[]]> = []
+  const run = async (command: string, args: readonly string[]) => { calls.push([command, args]) }
+  assert.equal(await withMacApplicationRegistration(app, async () => 'verified', run), 'verified')
+  assert.deepEqual(calls, [
+    ['/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister', ['-f', app]],
+    ['/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister', ['-u', app]],
+  ])
+
+  calls.length = 0
+  await assert.rejects(withMacApplicationRegistration(app, async () => { throw new Error('verification failed') }, run), /verification failed/u)
+  assert.deepEqual(calls.at(-1)?.[1], ['-u', app])
 })
 
 test('Linux deb recovery reinstalls and validates the preserved prior artifact', async () => {

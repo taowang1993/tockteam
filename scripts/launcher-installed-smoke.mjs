@@ -429,6 +429,15 @@ export function macApplicationLaunchArgs(appPath, args) {
   return Object.freeze(['-n', '--env', 'TOCKTEAM_INSTALLED_SMOKE=1', appPath, '--args', ...args])
 }
 
+const macLaunchServicesRegister = '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister'
+
+export async function withMacApplicationRegistration(appPath, operation, run = execFileAsync) {
+  assert.ok(isAbsolute(appPath) && appPath.endsWith('.app'), 'macOS application registration requires an absolute app bundle')
+  assert.equal(typeof operation, 'function', 'macOS application registration requires an operation')
+  await run(macLaunchServicesRegister, ['-f', appPath])
+  return await withInstalledSession(appPath, operation, () => run(macLaunchServicesRegister, ['-u', appPath]))
+}
+
 export function macMainProcessPids(output, executable) {
   if (!isAbsolute(executable)) return Object.freeze([])
   return Object.freeze(String(output).split(/\r?\n/u).flatMap(line => {
@@ -470,8 +479,7 @@ async function runSecondInstanceSmoke(executable, userData, workbench, launcher,
     stdio: 'ignore',
     env: smokeEnvironment({ TOCKTEAM_INSTALLED_SMOKE: '1' }, userData, temporaryRoot),
   }) : undefined
-  let primaryError
-  try {
+  const verify = async () => {
     if (applicationPath !== undefined) await execFileAsync('/usr/bin/open', macApplicationLaunchArgs(applicationPath, secondArgs))
     await waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === true, 10_000)
     let applicationLaunch
@@ -486,6 +494,12 @@ async function runSecondInstanceSmoke(executable, userData, workbench, launcher,
     await launcher.evaluate('(async () => await window.tockteamLauncher?.dismiss())()')
     await waitFor(() => workbench.evaluate('(async () => (await window.dshDesktop?.launcher?.getState())?.visible)()'), visible => visible === false, 10_000)
     return Object.freeze({ singleInstance: true, permissions: 'renderer-permission-denied', ...(applicationLaunch ?? {}) })
+  }
+  let primaryError
+  try {
+    return applicationPath === undefined
+      ? await verify()
+      : await withMacApplicationRegistration(applicationPath, verify)
   } catch (error) {
     primaryError = error
     throw error
