@@ -132,7 +132,7 @@ export function latestSummary(nodes: readonly unknown[]): SummaryRecord | undefi
     const text = node.blocks.flatMap((block) => {
       return isRecord(block) && block.kind === 'text' && typeof block.text === 'string' ? [block.text] : []
     }).join('\n').trim()
-    if (text !== '') return { kind: 'assistant', text: text.slice(0, 5000) }
+    if (text !== '') return { kind: 'assistant', text }
   }
   return undefined
 }
@@ -212,7 +212,7 @@ function safeHttpUrl(value: string): string | undefined {
 
 /** Render the small audited Markdown subset without interpreting raw HTML. */
 function appendInline(parent: HTMLElement, input: string): void {
-  const pattern = /(`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|\[[^\]\n]+\]\([^\s)]+\))/g
+  const pattern = /(`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|\[[^\[\]\n]+\]\([^\s)]+\))/g
   let cursor = 0
   for (const match of input.matchAll(pattern)) {
     const token = match[0]
@@ -225,7 +225,7 @@ function appendInline(parent: HTMLElement, input: string): void {
     } else if (token.startsWith('*') || token.startsWith('_')) {
       parent.append(makeElement('em', token.slice(1, -1)))
     } else {
-      const linkMatch = /^\[([^\]]+)\]\(([^\s)]+)\)$/.exec(token)
+      const linkMatch = /^\[([^\[\]]+)\]\(([^\s)]+)\)$/.exec(token)
       const url = linkMatch?.[2] === undefined ? undefined : safeHttpUrl(linkMatch[2])
       if (linkMatch !== null && url !== undefined) {
         const link = makeElement('a', linkMatch[1])
@@ -354,6 +354,7 @@ class PinnedSummaryService implements PinnedSummary {
   #unsubscribeLocale: (() => void) | undefined
   readonly #handleDocumentKeyDown = (event: KeyboardEvent): void => {
     if (!this.#open || this.#panel === undefined || event.key !== 'Escape') return
+    if (!this.#panel.contains(document.activeElement)) return
     event.preventDefault()
     event.stopPropagation()
     this.setOpen(false)

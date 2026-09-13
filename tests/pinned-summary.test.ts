@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { performance } from 'node:perf_hooks'
 import { test } from 'node:test'
 import {
   appendSummaryMarkdown,
@@ -102,6 +103,11 @@ test('selects the latest usable compaction summary before assistant text blocks'
     ] }]),
     { kind: 'assistant', text: 'first part' },
   )
+  const longAnswer = 'a'.repeat(6_000)
+  assert.deepEqual(
+    latestSummary([{ kind: 'assistant', blocks: [{ kind: 'text', text: longAnswer }] }]),
+    { kind: 'assistant', text: longAnswer },
+  )
   assert.equal(latestSummary([{ kind: 'assistant', blocks: [] }]), undefined)
 })
 
@@ -166,6 +172,22 @@ test('renders only the restricted rich-text subset and safe external links', () 
     assert.equal(links[0]?.rel, 'noreferrer noopener')
     assert.match(root.textContent, /<script>alert\(1\)<\/script>/u)
     assert.match(root.textContent, /\[unsafe\]\(javascript:alert\(1\)\)/u)
+  } finally {
+    Object.assign(globalThis, { document: previousDocument })
+  }
+})
+
+test('renders long malformed link syntax in bounded time', () => {
+  const previousDocument = globalThis.document
+  Object.assign(globalThis, { document: new FakeDocument() })
+  try {
+    const root = new FakeElement('article')
+    const markdown = '['.repeat(40_000)
+    const start = performance.now()
+    appendSummaryMarkdown(root as unknown as HTMLElement, markdown)
+    const elapsed = performance.now() - start
+    assert.equal(root.textContent, markdown)
+    assert.ok(elapsed < 500, `malformed Markdown took ${elapsed.toFixed(1)}ms`)
   } finally {
     Object.assign(globalThis, { document: previousDocument })
   }

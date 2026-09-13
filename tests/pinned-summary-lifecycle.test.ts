@@ -41,6 +41,7 @@ test('pinned summary wires bounded actions and invalidates stale copy feedback',
 test('pinned summary cleans global listeners and restores focus on close or unload', () => {
   assert.match(source, /#returnFocus: HTMLElement \| null = null/u)
   assert.match(source, /event\.key !== 'Escape'/u)
+  assert.match(source, /this\.#panel\.contains\(document\.activeElement\)/u)
   assert.match(source, /event\.stopPropagation\(\)/u)
   assert.match(source, /this\.focusPanel\(\)/u)
   assert.match(source, /this\.#currentSession === session/u)
