@@ -252,7 +252,7 @@ export function appendSummaryMarkdown(parent: HTMLElement, markdown: string): vo
       index += 1
       continue
     }
-    const fence = /^\s*```([^`]*)\s*$/.exec(line)
+    const fence = /^\s*```([^`]*)$/.exec(line)
     if (fence !== null) {
       const codeLines: string[] = []
       index += 1
@@ -269,7 +269,7 @@ export function appendSummaryMarkdown(parent: HTMLElement, markdown: string): vo
       parent.append(pre)
       continue
     }
-    const heading = /^(#{1,6})\s+(.+)$/.exec(line)
+    const heading = /^(#{1,6})[ \t]+(\S.*)$/.exec(line)
     if (heading !== null) {
       const level = Math.min(6, heading[1]!.length + 2) as 3 | 4 | 5 | 6
       const title = makeElement(`h${level}` as 'h3' | 'h4' | 'h5' | 'h6')
@@ -289,14 +289,14 @@ export function appendSummaryMarkdown(parent: HTMLElement, markdown: string): vo
       parent.append(quote)
       continue
     }
-    const unordered = /^\s*[-*+]\s+(.+)$/.exec(line)
-    const ordered = /^\s*\d+[.)]\s+(.+)$/.exec(line)
+    const unordered = /^\s*[-*+][ \t]+(\S.*)$/.exec(line)
+    const ordered = /^\s*\d+[.)][ \t]+(\S.*)$/.exec(line)
     if (unordered !== null || ordered !== null) {
       const list = makeElement(ordered !== null ? 'ol' : 'ul')
       while (index < lines.length) {
         const item = (ordered !== null
-          ? /^\s*\d+[.)]\s+(.+)$/
-          : /^\s*[-*+]\s+(.+)$/).exec(lines[index]!)
+          ? /^\s*\d+[.)][ \t]+(\S.*)$/
+          : /^\s*[-*+][ \t]+(\S.*)$/).exec(lines[index]!)
         if (item === null) break
         const li = makeElement('li')
         appendInline(li, item[1]!)

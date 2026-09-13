@@ -181,12 +181,20 @@ test('renders long malformed link syntax in bounded time', () => {
   const previousDocument = globalThis.document
   Object.assign(globalThis, { document: new FakeDocument() })
   try {
-    for (const markdown of ['['.repeat(40_000), '[x]('.repeat(10_000)]) {
+    const spaces = ' '.repeat(40_000)
+    for (const { markdown, expected } of [
+      { markdown: '['.repeat(40_000), expected: '['.repeat(40_000) },
+      { markdown: '[x]('.repeat(10_000), expected: '[x]('.repeat(10_000) },
+      { markdown: `\`\`\`${spaces}\``, expected: `\`\`${spaces}` },
+      { markdown: `# ${spaces}\u2028`, expected: `# ${spaces}\u2028` },
+      { markdown: `- ${spaces}\u2028`, expected: `- ${spaces}\u2028` },
+      { markdown: `1. ${spaces}\u2028`, expected: `1. ${spaces}\u2028` },
+    ]) {
       const root = new FakeElement('article')
       const start = performance.now()
       appendSummaryMarkdown(root as unknown as HTMLElement, markdown)
       const elapsed = performance.now() - start
-      assert.equal(root.textContent, markdown)
+      assert.equal(root.textContent, expected)
       assert.ok(elapsed < 100, `malformed Markdown took ${elapsed.toFixed(1)}ms`)
     }
   } finally {
