@@ -216,20 +216,14 @@ export async function captureAssistantStep(
 /** Trigger a local PNG download and revoke its object URL after navigation. */
 export function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob)
-  let revoked = false
-  const revoke = (): void => {
-    if (revoked) return
-    revoked = true
-    URL.revokeObjectURL(url)
-  }
   try {
     const anchor = document.createElement('a')
     anchor.href = url
     anchor.download = fileName
     anchor.click()
-    window.setTimeout(revoke, REVOKE_DELAY_MS)
+    window.setTimeout(() => { URL.revokeObjectURL(url) }, REVOKE_DELAY_MS)
   } catch (error) {
-    revoke()
+    URL.revokeObjectURL(url)
     throw error
   }
 }

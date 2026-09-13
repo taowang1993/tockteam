@@ -46,7 +46,7 @@ interface ClientContext {
 
 type Phase = 'idle' | 'capturing' | 'saved' | 'failed'
 
-function ActionIcon({ phase }: { phase: Phase }): JSX.Element {
+function ActionIcon({ phase }: { phase: Phase }) {
   if (phase === 'capturing') return <LoaderCircle aria-hidden="true" className="animate-spin" />
   if (phase === 'saved') return <Check aria-hidden="true" />
   if (phase === 'failed') return <TriangleAlert aria-hidden="true" />
@@ -57,7 +57,7 @@ function ActionIcon({ phase }: { phase: Phase }): JSX.Element {
  * One finalized assistant response's local save control. The RC.1 renderer
  * mounts this component only when a turn has a durable final assistant node.
  */
-export function SaveAsImageAction({ messageId, t }: SaveAsImageActionProps): JSX.Element {
+export function SaveAsImageAction({ messageId, t }: SaveAsImageActionProps) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [phase, setPhase] = useState<Phase>('idle')
   const alive = useRef(true)
