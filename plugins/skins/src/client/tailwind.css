@@ -18,6 +18,7 @@
 @source '../../../sidebar/src/**/*.{ts,tsx}';
 @source '../../../panel-controls/src/**/*.{ts,tsx}';
 @source '../../../pinned-summary/src/**/*.{ts,tsx}';
+@source '../../../save-as-image/src/**/*.{ts,tsx}';
 @source '../../../plugin-marketplace/src/**/*.{ts,tsx}';
 @source '../../../tocktutor/packages/*/src/**/*.{ts,tsx}';
 @source '../../../ui/src/**/*.{ts,tsx}';

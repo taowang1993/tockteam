@@ -99,6 +99,7 @@ for (const row of [
   'tockteam-better-sidebar-runtime',
   'tockteam-skins',
   'tockteam-pinned-summary',
+  'tockteam-save-as-image',
   'tockteam-sidebar',
   'tockteam-panel-controls',
 ]) {
@@ -213,6 +214,7 @@ try {
     '@tockteam/web',
     '@tockteam/skins',
     '@tockteam/pinned-summary',
+    '@tockteam/save-as-image',
     '@tockteam/sidebar',
     '@tockteam/panel-controls',
   ]) {

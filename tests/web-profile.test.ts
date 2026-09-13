@@ -124,6 +124,7 @@ test('web bundle patch mounts the web-capable TockTeam plugins', () => {
     'tockteam-better-sidebar-runtime',
     'tockteam-skins',
     'tockteam-pinned-summary',
+    'tockteam-save-as-image',
     'tockteam-sidebar',
     'tockteam-panel-controls',
   ]) {

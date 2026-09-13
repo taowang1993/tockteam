@@ -42,6 +42,7 @@ const PROTECTED_PLUGIN_IDS = new Set([
   'web-clip',
   'panel-controls',
   'pinned-summary',
+  'save-as-image',
   'plugin-marketplace',
   'workspace-tools',
 ])
@@ -51,6 +52,7 @@ const PROTECTED_PLUGIN_PACKAGES = new Set([
   '@tockteam/desktop',
   '@tockteam/desktop-sidebar',
   '@tockteam/panel-controls',
+  '@tockteam/save-as-image',
   '@tockteam/sidebar',
   '@tockteam/skins',
   '@tockteam/pinned-summary',

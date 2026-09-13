@@ -830,6 +830,7 @@ function installDesktopPackages({ desktopOnly = false } = {}) {
       'sidebar',
       'panel-controls',
       'pinned-summary',
+      'save-as-image',
       'plugin-marketplace',
     ].map(directory => ({
       manifest: join(root, 'plugins', directory, 'package.json'),
@@ -985,6 +986,8 @@ for (const required of [
   'plugins/panel-controls/client.js',
   'plugins/pinned-summary/index.js',
   'plugins/pinned-summary/client.js',
+  'plugins/save-as-image/index.js',
+  'plugins/save-as-image/client.js',
   'plugins/plugin-marketplace/index.js',
   'plugins/plugin-marketplace/client.js',
   'plugins/tui/index.js',

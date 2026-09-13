@@ -17,6 +17,7 @@ export const BUNDLED_DESKTOP_CLIENT_PLUGINS = [
   '@tockteam/sidebar',
   '@tockteam/panel-controls',
   '@tockteam/pinned-summary',
+  '@tockteam/save-as-image',
   '@tockteam/plugin-marketplace',
   '@tockteam/tocktutor-workbench',
   'tockbot-note-desktop',

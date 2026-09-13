@@ -79,6 +79,7 @@
         "@deepseek-ai/dsh-client-ui-slots",
         "@tockteam/panel-controls",
         "@tockteam/pinned-summary",
+        "@tockteam/save-as-image",
         "@tockteam/sidebar",
         "@tockteam/plugin-marketplace"
       ],

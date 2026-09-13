@@ -88,6 +88,7 @@ const pluginPackages = [
   { directory: 'sidebar', id: '@tockteam/sidebar' },
   { directory: 'panel-controls', id: '@tockteam/panel-controls' },
   { directory: 'pinned-summary', id: '@tockteam/pinned-summary' },
+  { directory: 'save-as-image', id: '@tockteam/save-as-image' },
   { directory: 'plugin-marketplace', id: '@tockteam/plugin-marketplace' },
 ]
 

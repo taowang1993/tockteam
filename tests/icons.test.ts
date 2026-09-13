@@ -15,10 +15,11 @@ test('all first-party interface icons use Lucide except product marks', () => {
   const terminal = read('plugins/panel-controls/src/terminal/TerminalPanel.tsx')
   const skins = read('plugins/skins/src/client/plugin.tsx')
   const summary = read('plugins/pinned-summary/src/client.ts')
+  const saveAsImage = read('plugins/save-as-image/src/SaveAsImageAction.tsx')
   const tockTutor = read('plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx')
   const webClip = read('plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx')
 
-  for (const source of [sidebar, sideTools, marketplace, terminal, skins, tockTutor, webClip]) {
+  for (const source of [sidebar, sideTools, marketplace, terminal, skins, saveAsImage, tockTutor, webClip]) {
     assert.match(source, /from 'lucide-react'/u)
   }
   assert.match(summary, /from 'lucide'/u)
@@ -27,10 +28,10 @@ test('all first-party interface icons use Lucide except product marks', () => {
   assert.match(sidebar, /<svg\b[^>]*data-tockteam-product-mark="true"/u)
   assert.match(desktop, /<svg\b[^>]*data-tockteam-product-mark="true"/u)
   assert.match(splash, /<svg\b[^>]*data-tockteam-product-mark="true"/u)
-  for (const source of [sideTools, marketplace, terminal, skins, tockTutor, webClip]) {
+  for (const source of [sideTools, marketplace, terminal, skins, saveAsImage, tockTutor, webClip]) {
     assert.doesNotMatch(source, /<svg\b/u)
   }
-  for (const source of [sidebar, sideTools, marketplace, terminal, skins, summary, tockTutor, webClip]) {
+  for (const source of [sidebar, sideTools, marketplace, terminal, skins, summary, saveAsImage, tockTutor, webClip]) {
     assert.doesNotMatch(source, />\s*[‹↻×−+✓⌃⌄←→↑↓↥▭▣◷▱⑂♩]\s*</u)
   }
 })

@@ -6,6 +6,7 @@ import test from 'node:test'
 const root = join(import.meta.dirname, '..')
 const migratedReactFiles = [
   'plugins/panel-controls/src/terminal/TerminalPanel.tsx',
+  'plugins/save-as-image/src/SaveAsImageAction.tsx',
   'plugins/plugin-marketplace/src/client/plugin.tsx',
   'plugins/sidebar/src/client/SideToolsPanel.tsx',
   'plugins/sidebar/src/client/plugin.tsx',
@@ -105,13 +106,14 @@ test('rich floating controls use shared popovers and tooltips', () => {
 
 test('icon-only actions use shared tooltips instead of native titles', () => {
   const marketplace = read('plugins/plugin-marketplace/src/client/plugin.tsx')
+  const saveAsImage = read('plugins/save-as-image/src/SaveAsImageAction.tsx')
   const sidebar = read('plugins/sidebar/src/client/plugin.tsx')
   const sideTools = read('plugins/sidebar/src/client/SideToolsPanel.tsx')
   const workbench = read('plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx')
   const workbenchUtilities = read('plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/utility-panel.tsx')
   const workbenchSurfaces = `${workbench}\n${workbenchUtilities}`
 
-  for (const source of [marketplace, sidebar, sideTools, workbench]) {
+  for (const source of [marketplace, saveAsImage, sidebar, sideTools, workbench]) {
     assert.match(source, /from '@tockteam\/ui\/tooltip'/)
     assert.match(source, /<TooltipProvider>/)
   }

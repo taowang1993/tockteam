@@ -36,6 +36,9 @@
     - id: tockteam-pinned-summary
       name: '@tockteam/pinned-summary'
 
+    - id: tockteam-save-as-image
+      name: '@tockteam/save-as-image'
+
     - id: tockteam-plugin-marketplace
       name: '@tockteam/plugin-marketplace'
 

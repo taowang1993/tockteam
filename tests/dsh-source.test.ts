@@ -43,6 +43,7 @@ test('browser plugins use the 0.1.2 platform store without the removed client ru
     '../web/package.json',
     '../plugins/panel-controls/package.json',
     '../plugins/pinned-summary/package.json',
+    '../plugins/save-as-image/package.json',
     '../plugins/plugin-marketplace/package.json',
     '../plugins/sidebar/package.json',
     '../plugins/skins/package.json',

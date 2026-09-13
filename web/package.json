@@ -27,6 +27,7 @@
         "@deepseek-ai/dsh-client-ui-layout",
         "@tockteam/skins",
         "@tockteam/pinned-summary",
+        "@tockteam/save-as-image",
         "@tockteam/sidebar",
         "@tockteam/panel-controls"
       ],

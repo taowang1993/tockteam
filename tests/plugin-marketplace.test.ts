@@ -90,6 +90,7 @@ test('the marketplace protects every in-box Desktop and TockTutor package and ro
   for (const packageName of [
     '@tockteam/skins',
     '@tockteam/pinned-summary',
+    '@tockteam/save-as-image',
     '@tockteam/plugin-marketplace',
     '@tockteam/note-vault-tools',
     '@tockteam/tocktutor',
@@ -107,6 +108,7 @@ test('the marketplace protects every in-box Desktop and TockTutor package and ro
     'note-vault-tools',
     'tockbot-note-desktop',
     'tockteam-skins',
+    'save-as-image',
     'tocktutor',
     'tocktutor-assistant',
     'tocktutor-import-export',

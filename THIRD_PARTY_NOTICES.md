@@ -27,6 +27,16 @@ TockTeam uses Tailwind CSS at build time to generate a browser-only utility
 layer mapped to DSH semantic theme tokens. TockTeam TUI continues to use its
 native renderer and the shared TockTeam skin palette.
 
+## html-to-image
+
+- Project: <https://github.com/bubkoo/html-to-image>
+- Version: `1.11.13`
+- Declared license: MIT
+
+TockTeam uses html-to-image in Desktop and Web to render a finalized assistant
+response into a browser-local PNG. Its license text remains in the bundled
+package; TockTeam TUI does not include or activate this browser feature.
+
 ## Fira Code
 
 - Project: <https://github.com/tonsky/FiraCode>
