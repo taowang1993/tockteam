@@ -212,7 +212,7 @@ function safeHttpUrl(value: string): string | undefined {
 
 /** Render the small audited Markdown subset without interpreting raw HTML. */
 function appendInline(parent: HTMLElement, input: string): void {
-  const pattern = /(`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|\[[^\[\]\n]+\]\([^\s)]+\))/g
+  const pattern = /(`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|\[[^\[\]\n]+\]\([^\[\s)]+\))/g
   let cursor = 0
   for (const match of input.matchAll(pattern)) {
     const token = match[0]
@@ -225,7 +225,7 @@ function appendInline(parent: HTMLElement, input: string): void {
     } else if (token.startsWith('*') || token.startsWith('_')) {
       parent.append(makeElement('em', token.slice(1, -1)))
     } else {
-      const linkMatch = /^\[([^\[\]]+)\]\(([^\s)]+)\)$/.exec(token)
+      const linkMatch = /^\[([^\[\]]+)\]\(([^\[\s)]+)\)$/.exec(token)
       const url = linkMatch?.[2] === undefined ? undefined : safeHttpUrl(linkMatch[2])
       if (linkMatch !== null && url !== undefined) {
         const link = makeElement('a', linkMatch[1])
