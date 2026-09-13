@@ -244,7 +244,7 @@ test('macOS installed smoke uses Launch Services and observes one persistent app
   const app = '/tmp/Applications/TockTeam Desktop.app'
   const executable = `${app}/Contents/MacOS/TockTeam Desktop`
   assert.deepEqual(macApplicationLaunchArgs(app, ['--toggle', '--user-data-dir=/tmp/profile']), [
-    '-n', app, '--args', '--toggle', '--user-data-dir=/tmp/profile',
+    '-n', '--env', 'TOCKTEAM_INSTALLED_SMOKE=1', app, '--args', '--toggle', '--user-data-dir=/tmp/profile',
   ])
   assert.deepEqual(macMainProcessPids(`  41 ${executable} --flag\n  42 ${app}/Contents/Frameworks/TockTeam Desktop Helper.app/Contents/MacOS/TockTeam Desktop Helper --type=renderer\n  bad row\n`, executable), [41])
 })

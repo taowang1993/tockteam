@@ -426,7 +426,7 @@ export async function withInstalledSession(session, operation, cleanup) {
 export function macApplicationLaunchArgs(appPath, args) {
   assert.ok(isAbsolute(appPath) && appPath.endsWith('.app'), 'macOS application launch requires an absolute app bundle')
   assert.ok(Array.isArray(args) && args.every(argument => typeof argument === 'string' && !/[\0\r\n]/u.test(argument)), 'macOS application launch arguments are invalid')
-  return Object.freeze(['-n', appPath, '--args', ...args])
+  return Object.freeze(['-n', '--env', 'TOCKTEAM_INSTALLED_SMOKE=1', appPath, '--args', ...args])
 }
 
 export function macMainProcessPids(output, executable) {
