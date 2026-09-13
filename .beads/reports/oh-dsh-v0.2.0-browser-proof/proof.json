@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "feature": "Pinned Summary",
+  "sourceCommit": "13153e42",
+  "surface": {
+    "application": "TockTeam Web",
+    "route": "/",
+    "mode": "Web",
+    "viewportCssPixels": {
+      "width": 1512,
+      "height": 949
+    },
+    "deviceScaleFactor": 2,
+    "screenshotDevicePixels": {
+      "width": 3024,
+      "height": 1898
+    },
+    "reducedMotion": true
+  },
+  "fixtureBoundary": {
+    "description": "The built production pinned-summary client bundle was mounted into the real staged Web application with an in-page Sessions/locale service fixture. The application chrome, theme service, generated Tailwind CSS, DOM, focus system, and browser runtime were real.",
+    "reason": "The approved implementation reads the legacy sessions binding seam. DSH RC.1 exposes finalized chat nodes through uiConversation instead; adapting that ownership boundary is intentionally tracked separately by tockteam-9lt.17.",
+    "notClaimed": "This proof does not claim that a real RC.1 session currently supplies summary nodes to the pane."
+  },
+  "visibleReadyState": {
+    "panelRole": "dialog",
+    "ariaModal": false,
+    "status": "Ready",
+    "source": "DSH Context Summary",
+    "panelBoxCssPixels": {
+      "x": 1212,
+      "y": 52,
+      "width": 288,
+      "height": 442.5,
+      "rightInset": 12
+    },
+    "desktopRootPaddingRight": "312px",
+    "previewBounded": true,
+    "previewEndsWithEllipsis": true,
+    "fullContentSentinelHiddenUntilExpansion": true
+  },
+  "interactionEvidence": {
+    "outsideClickKeepsPaneOpen": true,
+    "outsideEscapeKeepsPaneOpen": true,
+    "insideEscapeClosesPane": true,
+    "closedPaneAriaHidden": true,
+    "closedPaneInert": true,
+    "closeRemovesLayoutReservation": true,
+    "closeRestoresTriggerFocus": true,
+    "reopenFocusesCloseControl": true,
+    "openPreferencePersisted": true,
+    "expansionShowsFullContentSentinel": true,
+    "copyUsesExactUntruncatedSource": true,
+    "copySuccessFeedback": "Summary Copied",
+    "copyFailureFeedback": "Copy Unavailable"
+  },
+  "securityEvidence": {
+    "rawHtmlExecuted": false,
+    "scriptElementsCreated": 0,
+    "allowedLinkCount": 1,
+    "allowedLink": {
+      "href": "https://example.test/path",
+      "target": "_blank",
+      "rel": "noreferrer noopener"
+    },
+    "javascriptLinkRenderedAsText": true,
+    "credentialUrlRenderedAsText": true
+  },
+  "localizedEvidence": {
+    "locale": "zh",
+    "title": "固定摘要",
+    "close": "关闭固定摘要",
+    "copy": "复制摘要",
+    "expand": "查看完整内容",
+    "readyStatus": "就绪"
+  },
+  "lifecycleStates": {
+    "no-session": "No Session",
+    "loading": "Loading",
+    "error": "Error",
+    "blank": "Not Started",
+    "waiting": "Waiting for Input",
+    "running": "Running",
+    "unavailable": "Unavailable",
+    "ready": "Ready"
+  },
+  "responsiveEvidence": {
+    "viewportCssPixels": {
+      "width": 840,
+      "height": 949
+    },
+    "deviceScaleFactor": 2,
+    "panelContainedInViewport": true,
+    "panelBoxCssPixels": {
+      "x": 540,
+      "y": 52,
+      "width": 288,
+      "height": 442.5,
+      "rightInset": 12
+    },
+    "rootPaddingRight": "0px"
+  },
+  "themes": {
+    "activeSkin": null,
+    "dark": {
+      "documentColorScheme": "dark",
+      "panelBackground": "rgb(21, 21, 23)",
+      "surfaceToken": "#151517",
+      "screenshot": {
+        "path": "pinned-summary-dark.png",
+        "sha256": "907570a3cfa36a565d25230923816d4b503c20c8244c0bdc13c5d1d24e78d9da"
+      }
+    },
+    "light": {
+      "documentColorScheme": "light",
+      "panelBackground": "rgb(255, 255, 255)",
+      "surfaceToken": "#fff",
+      "screenshot": {
+        "path": "pinned-summary-light.png",
+        "sha256": "695b718768890c0e8c2eb5b4364e10bde5d80a3ef3841037a0a63bedf01eb77c"
+      }
+    }
+  },
+  "runtimeEvidence": {
+    "consoleErrors": 0,
+    "consoleWarnings": 0,
+    "startedRootPids": {
+      "web": 65955,
+      "browser": 66092,
+      "orchestrator": 65951
+    },
+    "fixtureServerPort": 62259,
+    "webServerPort": 62260,
+    "browserSessionClosed": true,
+    "fullProcessTreeStopped": true,
+    "postCleanupMatchingProcesses": 0,
+    "postCleanupPlaywrightSessions": 0
+  }
+}
