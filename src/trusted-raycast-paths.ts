@@ -8,6 +8,11 @@ export type TrustedRaycastDataPaths = Readonly<{
   trustFile: string
 }>
 
+/** ASAR's synthetic inode cannot pass descriptor identity checks, even for unpacked entries. */
+export function trustedRaycastCandidateRoot(appPath: string, isPackaged: boolean): string {
+  return join(isPackaged ? `${appPath}.unpacked` : appPath, 'dist')
+}
+
 /** Fixed main-owned namespaces; Google keeps its compatibility paths. */
 export function trustedRaycastDataPaths(userData: string, extensionId: TrustedRaycastExtensionId): TrustedRaycastDataPaths {
   if (getTrustedRaycastDescriptor(extensionId) === undefined) throw new Error('Invalid trusted extension identity')

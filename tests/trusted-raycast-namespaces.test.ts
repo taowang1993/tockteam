@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { join } from 'node:path'
-import { trustedRaycastDataPaths } from '../src/trusted-raycast-paths.ts'
+import { trustedRaycastDataPaths, trustedRaycastCandidateRoot } from '../src/trusted-raycast-paths.ts'
+
+test('packaged candidates use physical files, while development keeps its dist root', () => {
+  assert.equal(trustedRaycastCandidateRoot('/app/Resources/app.asar', true), join('/app/Resources/app.asar.unpacked', 'dist'))
+  assert.equal(trustedRaycastCandidateRoot('/checkout', false), join('/checkout', 'dist'))
+})
 
 test('trusted extension data paths preserve Translate and isolate Kaomoji state', () => {
   const root = '/managed/user-data'

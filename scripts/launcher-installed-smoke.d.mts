@@ -10,6 +10,12 @@ export function assertPackageParity(expected: Record<string, any>, actual: Recor
 
 export function macApplicationLaunchArgs(appPath: string, args: readonly string[]): readonly string[]
 
+export function withMacApplicationRegistration<T>(
+  appPath: string,
+  operation: (appPath: string) => T | Promise<T>,
+  run?: (command: string, args: string[]) => Promise<unknown>,
+): Promise<T>
+
 export function macMainProcessPids(output: string, executable: string): readonly number[]
 
 export function runProcess(

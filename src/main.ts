@@ -12,7 +12,7 @@ import { TRUSTED_RAYCAST_IPC_CHANNELS, type TrustedRaycastTrustState } from './t
 import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
 import { loadKaomojiPreferenceState, saveKaomojiPreferences } from './trusted-raycast-kaomoji-preferences.ts'
 import { loadTrustedRaycastCanIUsePreferences, saveTrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preference-store.ts'
-import { trustedRaycastDataPaths } from './trusted-raycast-paths.ts'
+import { trustedRaycastCandidateRoot, trustedRaycastDataPaths } from './trusted-raycast-paths.ts'
 import { randomBytes } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
@@ -2266,6 +2266,7 @@ function initializeLauncher(): void {
     },
   })
   launcherOs = os
+  const trustedCandidateRoot = trustedRaycastCandidateRoot(app.getAppPath(), app.isPackaged)
   const googleTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'google-translate')
   const kaomojiTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'kaomoji-search')
   const canIUseTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'can-i-use')
@@ -2275,14 +2276,14 @@ function initializeLauncher(): void {
   trustedRaycastTrust = new TrustedRaycastTrustStore({
     descriptor: trustedRaycastDescriptors['google-translate'],
     installRoot: googleTrustedPaths.installRoot,
-    candidateDir: join(currentDir, 'trusted-raycast'),
+    candidateDir: join(trustedCandidateRoot, 'trusted-raycast'),
     stateFile: googleTrustedPaths.trustFile,
     preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Translate runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir),
   })
   trustedRaycastKaomojiTrust = new TrustedRaycastTrustStore({
     descriptor: trustedRaycastDescriptors['kaomoji-search'],
     installRoot: kaomojiTrustedPaths.installRoot,
-    candidateDir: join(currentDir, 'trusted-raycast-kaomoji'),
+    candidateDir: join(trustedCandidateRoot, 'trusted-raycast-kaomoji'),
     stateFile: kaomojiTrustedPaths.trustFile,
     preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Kaomoji runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir, 'kaomoji-search'),
   })
@@ -2290,7 +2291,7 @@ function initializeLauncher(): void {
   trustedRaycastCanIUseTrust = process.platform === 'win32' ? undefined : new TrustedRaycastTrustStore({
     descriptor: trustedRaycastDescriptors['can-i-use'],
     installRoot: canIUseTrustedPaths.installRoot,
-    candidateDir: join(currentDir, 'trusted-raycast-can-i-use'),
+    candidateDir: join(trustedCandidateRoot, 'trusted-raycast-can-i-use'),
     stateFile: canIUseTrustedPaths.trustFile,
     preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Can I Use runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir, 'can-i-use'),
   })
