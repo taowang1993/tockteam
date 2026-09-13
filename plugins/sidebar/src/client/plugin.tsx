@@ -859,8 +859,12 @@ function DesktopPanelToolbar({
               <TooltipTrigger asChild>
                 <Button unstyled
                   type="button"
+                  data-tockteam-summary-toggle=""
                   aria-label={t('summary.toggle')}
                   aria-pressed={summaryOpen}
+                  aria-expanded={summaryOpen}
+                  aria-controls="tockteam-pinned-summary"
+                  aria-haspopup="dialog"
                   onClick={() => { service.setOpen(false); pinnedSummary.toggle() }}
                 ><PanelIcon kind="summary" /></Button>
               </TooltipTrigger>
