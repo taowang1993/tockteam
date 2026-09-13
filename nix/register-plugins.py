@@ -31,6 +31,7 @@ def main():
         "sidebar": os.path.join("plugins", "sidebar"),
         "panel-controls": os.path.join("plugins", "panel-controls"),
         "pinned-summary": os.path.join("plugins", "pinned-summary"),
+        "save-as-image": os.path.join("plugins", "save-as-image"),
         "plugin-marketplace": os.path.join("plugins", "plugin-marketplace"),
         "better-sidebar-runtime": os.path.join("plugins", "better-sidebar-runtime"),
     }
@@ -48,7 +49,7 @@ def main():
     source_packages = tocktutor_plugins | {"ui"}
     selected = {
         "full": set(plugin_dirs) | {"tui-renderer"} | source_packages,
-        "web": {"web", "skins", "sidebar", "panel-controls", "pinned-summary", "better-sidebar-runtime"},
+        "web": {"web", "skins", "sidebar", "panel-controls", "pinned-summary", "save-as-image", "better-sidebar-runtime"},
         "tui": {"tui", "tui-renderer", "skins"},
     }.get(surface)
     if selected is None:

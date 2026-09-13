@@ -114,6 +114,35 @@ function writePackage(store: string, name: string, version: string, manifest: ob
   writeFileSync(join(packageDir, 'index.js'), source)
 }
 
+test('Nix Web registration includes the browser-only response-image package', () => {
+  const fixture = mkdtempSync(join(tmpdir(), 'tockteam-nix-save-as-image-'))
+  const bundle = join(fixture, 'bundle')
+  const dist = join(fixture, 'dist')
+  const runtime = join(fixture, 'runtime')
+  try {
+    mkdirSync(join(bundle, 'manifests'), { recursive: true })
+    mkdirSync(join(dist, 'plugins', 'save-as-image'), { recursive: true })
+    mkdirSync(join(runtime, 'node_modules'), { recursive: true })
+    writeFileSync(join(runtime, 'package.json'), JSON.stringify({ dependencies: {} }))
+    writeFileSync(join(bundle, 'manifests', 'save-as-image.json'), JSON.stringify({
+      name: '@tockteam/save-as-image',
+      version: '0.1.5',
+    }))
+    writeFileSync(join(dist, 'plugins', 'save-as-image', 'index.js'), '')
+    writeFileSync(join(dist, 'plugins', 'save-as-image', 'client.js'), '')
+
+    const result = spawnSync('python3', [join(root, 'nix', 'register-plugins.py'), bundle, dist, runtime, 'web'], {
+      encoding: 'utf8',
+    })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(existsSync(join(runtime, 'node_modules', '@tockteam', 'save-as-image', 'dist', 'client.js')), true)
+    const manifest = JSON.parse(readFileSync(join(runtime, 'package.json'), 'utf8')) as { dependencies: Record<string, string> }
+    assert.equal(manifest.dependencies['@tockteam/save-as-image'], '0.1.5')
+  } finally {
+    rmSync(fixture, { recursive: true, force: true })
+  }
+})
+
 test('Nix registration preserves exact package-local native dependencies', () => {
   const fixture = mkdtempSync(join(tmpdir(), 'tockteam-nix-native-deps-'))
   const bundle = join(fixture, 'bundle')
