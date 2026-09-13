@@ -242,6 +242,8 @@ test('download creates and revokes exactly one object URL after the navigation t
   const clicked: Array<{ href?: string; download?: string }> = []
   const revoked: string[] = []
   let timer: (() => void) | undefined
+  let throwOnClick = false
+  let urlIndex = 0
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
   const previousUrl = Object.getOwnPropertyDescriptor(globalThis, 'URL')
@@ -253,7 +255,10 @@ test('download creates and revokes exactly one object URL after the navigation t
         const anchor = {
           href: '',
           download: '',
-          click() { clicked.push(anchor) },
+          click() {
+            clicked.push(anchor)
+            if (throwOnClick) throw new Error('blocked download')
+          },
         }
         return anchor
       },
@@ -266,18 +271,27 @@ test('download creates and revokes exactly one object URL after the navigation t
   Object.defineProperty(globalThis, 'URL', {
     configurable: true,
     value: {
-      createObjectURL: () => 'blob:test',
+      createObjectURL: () => `blob:test-${String(++urlIndex)}`,
       revokeObjectURL: (url: string) => { revoked.push(url) },
     },
   })
   try {
     downloadBlob(new Blob(['png'], { type: 'image/png' }), 'response.png')
     assert.equal(clicked.length, 1)
-    assert.equal(clicked[0]?.href, 'blob:test')
+    assert.equal(clicked[0]?.href, 'blob:test-1')
     assert.equal(clicked[0]?.download, 'response.png')
     assert.deepEqual(revoked, [])
     timer?.()
-    assert.deepEqual(revoked, ['blob:test'])
+    assert.deepEqual(revoked, ['blob:test-1'])
+
+    timer = undefined
+    throwOnClick = true
+    assert.throws(
+      () => downloadBlob(new Blob(['png'], { type: 'image/png' }), 'blocked.png'),
+      /blocked download/u,
+    )
+    assert.equal(timer, undefined)
+    assert.deepEqual(revoked, ['blob:test-1', 'blob:test-2'])
   } finally {
     if (previousDocument === undefined) delete (globalThis as { document?: unknown }).document
     else Object.defineProperty(globalThis, 'document', previousDocument)
