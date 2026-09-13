@@ -248,7 +248,8 @@ test('reviewed artifact: language sets, nested AddLanguageForm, and restart pers
     manager = await start()
     let { latestRoot, waitRoot, settle, dropdown, action, fields } = projections(messages)
     const ready = await waitRoot(root => dropdown(root) !== undefined && typeof root.props.searchEventId === 'string')
-    assert.equal(ready.type, 'ready')
+    // The latest matching projection may already be a patch after the initial ready message.
+    assert.ok(messages.some(message => message.type === 'ready'), 'the child emitted its ready handshake')
     assert.equal(ready.root.props.searchable, true)
     const accessor = dropdown(ready.root)
     assert.equal(accessor.props.value, JSON.stringify({ langFrom: 'auto', langTo: ['zh-CN'] }), 'selected set initializes from preferences.lang1')
