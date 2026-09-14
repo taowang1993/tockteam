@@ -5155,6 +5155,17 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     let loaded: Awaited<ReturnType<typeof load>> | undefined
     const failed = Promise.withResolvers<void>()
     const sqlTrace: Array<[number, string]> = []
+    const timeline: Array<{ at: number; event: string; detail: unknown }> = []
+    const started = Date.now()
+    const record = (event: string, detail: unknown = null) => {
+      timeline.push({ at: Date.now() - started, event, detail })
+      if (timeline.length > 200) timeline.shift()
+    }
+    let lastReconcileError: unknown
+    let pollId = 0
+    let pollStarted = 0
+    let pollOutstanding = false
+    let corruptCandidateOnce = false
     const bounded = <T>(operation: Promise<T>) => {
       const timeoutError = new Error('native failure did not settle')
       let timer: ReturnType<typeof setTimeout>
@@ -5163,8 +5174,9 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
           t.diagnostic(inspect({
             nativeError: native && Reflect.get(native, 'searchError'),
             runtimeIndex: loaded && Reflect.get(loaded.context.noteVault, 'searchIndex'),
-            sqlTrace,
-          }, { depth: 4, breakLength: Infinity }))
+            sqlTrace, timeline, lastReconcileError,
+            poll: { id: pollId, outstanding: pollOutstanding, age: Date.now() - pollStarted },
+          }, { depth: 5, maxArrayLength: 200, breakLength: Infinity }))
           reject(timeoutError)
         }, 5_000)
       })]).finally(() => clearTimeout(timer))
@@ -5234,6 +5246,67 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       const fallback = await loaded.context.noteVault.search({ mode: 'query', query: 'tag:project' }, expectedVault, new AbortController().signal)
       assert.equal(fallback.scan.entries, 3, 'failed index must use the exact scanner')
       assert.deepEqual(fallback.matches.map(match => match.path), ['Alpha.md'])
+      // Test-only branch observations: installed before constructing the reopened index.
+      const indexPrototype = Object.getPrototypeOf(Reflect.get(loaded.context.noteVault, 'searchIndex').index)
+      const reconcileNow = Reflect.get(indexPrototype, 'reconcileNow')
+      const observed = new WeakSet<object>()
+      const indexState = (index: object) => ({
+        ready: Reflect.get(index, 'ready'),
+        full: Reflect.get(index, 'fullReconcilePending'),
+        paths: [...Reflect.get(index, 'pendingPaths')],
+      })
+      t.mock.method(indexPrototype, 'reconcileNow', async function (this: object) {
+        record('reconcile/start', indexState(this))
+        const options = Reflect.get(this, 'options')
+        if (!observed.has(options)) {
+          observed.add(options)
+          const revisions = new Map<string, string>()
+          const list = Reflect.get(options, 'list')
+          const read = Reflect.get(options, 'read')
+          t.mock.method(options, 'list', async function (this: object, ...args: unknown[]) {
+            record('list/start')
+            const rows = await Reflect.apply(list, this, args) as Array<{ path: string; revision: string }> | null
+            revisions.clear()
+            for (const row of rows ?? []) revisions.set(row.path, row.revision)
+            record('list/end', rows)
+            return rows
+          })
+          t.mock.method(options, 'read', async function (this: object, ...args: unknown[]) {
+            record('read/start', args[0])
+            const row = await Reflect.apply(read, this, args) as { path: string; revision: string } | null
+            record('read/end', { path: args[0], listed: revisions.get(String(args[0])), read: row?.revision })
+            return row
+          })
+        }
+        try {
+          const result = await Reflect.apply(reconcileNow, this, [])
+          record('reconcile/end', indexState(this))
+          return result
+        } catch (error) {
+          lastReconcileError = error
+          record('reconcile/error', error)
+          throw error
+        }
+      })
+      const invalidate = Reflect.get(indexPrototype, 'invalidate')
+      t.mock.method(indexPrototype, 'invalidate', function (this: object, ...args: unknown[]) {
+        record('invalidate', { path: args[0], state: indexState(this) })
+        return Reflect.apply(invalidate, this, args)
+      })
+      const runtimePrototype = Object.getPrototypeOf(loaded.context.noteVault)
+      const candidates = Reflect.get(runtimePrototype, 'searchCandidates')
+      t.mock.method(runtimePrototype, 'searchCandidates', async function (this: object, ...args: unknown[]) {
+        const poll = pollId
+        record('candidates/start', poll)
+        const result = await Reflect.apply(candidates, this, args) as import('tockbot-note-vault/inspection').VaultSearchCandidateResult | null
+        record('candidates/end', { poll, result })
+        if (corruptCandidateOnce && result !== null) {
+          corruptCandidateOnce = false
+          record('control/corrupt-revision', poll)
+          return { ...result, entries: result.entries.map((entry: { revision: string }, i: number) => i === 0 ? { ...entry, revision: 'diagnostic-mismatch' } : entry) }
+        }
+        return result
+      })
       // Disposal must drain even if a callback-less FlexSearch SQL statement failed.
       const first = loaded
       loaded = undefined
@@ -5247,8 +5320,14 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
         if (!state.active) assert.fail('reopened vault must be active')
         const deadline = Date.now() + 5_000
         while (true) {
+          const poll = ++pollId
+          pollStarted = Date.now()
+          pollOutstanding = true
+          record('poll/start', { poll, query })
           const result = await loaded!.context.noteVault.search({ mode: 'query', query },
             { id: state.id, generation: state.generation }, new AbortController().signal)
+          pollOutstanding = false
+          record('poll/end', { poll, entries: result.scan.entries })
           assert.deepEqual(result.matches.map(match => match.path), ['Alpha.md'], 'partial index must never hide the real match')
           if (result.scan.entries === entries) return
           if (Date.now() >= deadline) assert.fail('index did not rebuild')
@@ -5256,6 +5335,18 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
         }
       })())
       await verify()
+      if (failure === 'open') {
+        corruptCandidateOnce = true
+        const state = loaded.context.noteVault.state
+        if (!state.active) assert.fail('vault must be active')
+        const control = await loaded.context.noteVault.search({ mode: 'query', query: 'tag:project' },
+          { id: state.id, generation: state.generation }, new AbortController().signal)
+        assert.equal(corruptCandidateOnce, false)
+        assert.equal(Reflect.get(loaded.context.noteVault, 'searchIndex').index.ready, true)
+        assert.equal(control.scan.entries, 3, 'a rejected candidate revision also causes scanner fallback while the index is ready')
+        assert.deepEqual(control.matches.map(match => match.path), ['Alpha.md'])
+        await verify()
+      }
       if (failure === 'insert') {
         assert.ok(native)
         const retired = Promise.withResolvers<void>()
