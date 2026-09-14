@@ -55,6 +55,29 @@ The pre-injection failure means verification-query traffic was not necessary for
 
 Latest local verification at `75f00838`: runtime 87/87 and package typecheck passed. Diagnostic callbacks preserve the original receiver, arguments, return values, and promises; no C++ SQL trace or additional native error handlers are installed. The manual workflow has returned to one verification query per poll.
 
+### Captured Schema-Setup Delay
+
+Windows run `34903097899` failed at iteration 25. The lock and insertion cases missed the five-second **pre-injection** gate with zero verification polls; neither reached its intended native fault. Before CDB started, successful schema callbacks in the lock case took 829, 1,598, 633, and 286 ms. Its next schema operation was pending at the deadline.
+
+CDB capture occupied 322 ms. Later stacks showed waiting workers, not an identifiable SQLite I/O operation. Mount subsequently completed at 9,615 ms, followed by successful drain and close. The insertion case, without another debugger capture, completed mount at 5,780 ms; twelve successful schema-write callback latencies totaled 5,750 ms. Both ended with empty pending SQL. These are submission-to-callback timings, not measured disk execution times; disposal had already aborted reconciliation, so mount completion does not prove full readiness.
+
+The persistent-index test failed on its **third verification, after deliberate schema-version corruption**, not its ordinary valid-schema reopen. Its outstanding operation was not captured. The native owner exited with three failed tests, zero cancellations, and verified process-tree cleanup. Raw evidence: `/tmp/tockteam-bon-native-stack-windows.log`.
+
+A paired real-SQLite control now delays only successful schema callbacks using the insertion trace's twelve timings. It separately records native callback arrival and artificial delivery. Undelayed setup passes the original five-second observation; replay explicitly misses it, still returns the correct match through the three-file scanner, and subsequently reaches two-entry indexed search without invalidation or reload. The separate post-failure observation does not convert the original missed deadline into a pass. Cleanup keeps its own five-second bound.
+
+Negative calibration with delays disabled correctly failed the expected deadline-miss assertion. Enabling the recorded delays passed the paired control, all 91 runtime tests (including its nested cases), and typecheck. This establishes that cumulative successful callback latency is sufficient for the setup symptom, **not** what caused that latency on Windows or the historical cancellation. No transaction change, timeout increase, or production repair is justified by this control alone.
+
+Commands and calibration logs:
+
+- `pnpm -C plugins/tocktutor/packages/tockbot-note-runtime exec node --test --test-isolation=none --test-name-pattern='schema callback latency' tests/loader-composition.test.ts`
+- `pnpm -C plugins/tocktutor/packages/tockbot-note-runtime test`
+- `pnpm -C plugins/tocktutor/packages/tockbot-note-runtime typecheck`
+- `/tmp/tockteam-bon-schema-replay-red.log`
+- `/tmp/tockteam-bon-schema-replay-green.log`
+- `/tmp/tockteam-bon-schema-replay-runtime.log`
+
+Fresh read-only causal review agreed with this limited interpretation and rejected a speculative transactional-schema repair. Review artifact: `/Users/taowang/.pi/agent/sessions/--Users-taowang-projects-tockteam--/subagent-artifacts/outputs/e90c43fb-114c-4c15-b5d8-747c1fdb9b41/causal-review.md`.
+
 ### Native Stack Capture Preflight
 
 Debugger discovery `34900302460` found an existing Microsoft-signed CDB; no debugger installation was required. The first preflight correctly rejected an exit-zero/no-stack result caused by an incompatible detach option. Corrected preflight `34901443107` captured real thread stacks using non-suspending, noninvasive `-pvr`; the owned Node parent and blocked worker then continued, and process-tree cleanup passed.

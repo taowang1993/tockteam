@@ -5153,6 +5153,110 @@ test('search index remount waits for its prior native owner before reusing a vau
   }
 })
 
+test('search index schema callback latency preserves fallback and eventual readiness', async t => {
+  // Successful schema callback latencies from Windows run 34903097899's insert
+  // case (no CDB capture in that case). This tests sufficiency, not I/O causality.
+  const schedule: Array<[string, number]> = [
+    ['CREATE TABLE metadata(', 515],
+    ['CREATE TABLE documents(', 572],
+    ['INSERT INTO metadata(', 237],
+    ['CREATE TABLE IF NOT EXISTS main.map_content(', 142],
+    ['CREATE INDEX IF NOT EXISTS map_key_index_content', 888],
+    ['CREATE TABLE IF NOT EXISTS main.ctx_content(', 507],
+    ['CREATE INDEX IF NOT EXISTS ctx_key_index_content', 523],
+    ['CREATE TABLE IF NOT EXISTS main.reg(', 443],
+    ['CREATE INDEX IF NOT EXISTS reg_index', 208],
+    ['CREATE TABLE IF NOT EXISTS main.tag_content(', 505],
+    ['CREATE INDEX IF NOT EXISTS tag_index_content', 762],
+    ['CREATE TABLE IF NOT EXISTS main.cfg_content', 448],
+  ]
+  for (const replay of [false, true]) await t.test(replay ? 'recorded callback delays' : 'undelayed control', async t => {
+    const fixture = await mkdtemp(join(tmpdir(), 'note-vault-schema-latency-'))
+    const vaultRoot = join(fixture, 'vault')
+    await mkdir(vaultRoot)
+    await writeFile(join(vaultRoot, 'Alpha.md'), '#project target\n')
+    await writeFile(join(vaultRoot, 'FalsePositive.md'), 'project plain text\n')
+    await writeFile(join(vaultRoot, 'Other.md'), 'unrelated\n')
+    const originalDatabase = sqlite3.Database
+    const completed: string[] = []
+    const timings: Array<{ operation: string; nativeAt: number; deliveredAt: number }> = []
+    const pending = new Set<() => void>()
+    const started = Date.now()
+    let ending = false
+    t.mock.method(sqlite3, 'Database', function (...args: unknown[]) {
+      const raw = Reflect.construct(originalDatabase, args) as sqlite3.Database
+      for (const method of ['run', 'exec'] as const) {
+        const original = raw[method]
+        Reflect.set(raw, method, function (this: sqlite3.Database, ...parameters: unknown[]) {
+          const sql = String(parameters[0]).replace(/\s+/gu, ' ').trim()
+          const step = schedule.find(([prefix]) => sql.startsWith(prefix))
+          const callback = parameters.at(-1)
+          if (step && typeof callback === 'function') {
+            parameters[parameters.length - 1] = function (this: unknown, ...values: unknown[]) {
+              if (values[0]) return Reflect.apply(callback, this, values)
+              completed.push(step[0])
+              const nativeAt = Date.now() - started
+              let timer: ReturnType<typeof setTimeout> | undefined
+              const deliver = () => {
+                clearTimeout(timer)
+                pending.delete(deliver)
+                timings.push({ operation: step[0], nativeAt, deliveredAt: Date.now() - started })
+                return Reflect.apply(callback, this, values)
+              }
+              if (replay && !ending) {
+                pending.add(deliver)
+                timer = setTimeout(deliver, step[1])
+              } else return deliver()
+            }
+          }
+          return Reflect.apply(original, this, parameters)
+        })
+      }
+      return raw
+    })
+    const withinDeadline = (operation: Promise<unknown>) => {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      return Promise.race([
+        operation.then(() => true),
+        new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), 5_000) }),
+      ]).finally(() => clearTimeout(timer))
+    }
+    let loaded: Awaited<ReturnType<typeof load>> | undefined
+    try {
+      loaded = await load(`stateRoot: ${JSON.stringify(join(fixture, 'state'))}\nvaultRoot: ${JSON.stringify(vaultRoot)}`)
+      const runtime = loaded.context.noteVault
+      const state = runtime.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const vault = { id: state.id, generation: state.generation }
+      const search = () => runtime.search({ mode: 'query', query: 'tag:project' }, vault, new AbortController().signal)
+      const index = Reflect.get(runtime, 'searchIndex').index
+      const setup = Promise.resolve(Reflect.get(index, 'reconcileTask'))
+      const initialDeadlineMet = await withinDeadline(setup)
+      t.diagnostic(JSON.stringify({ replay, initialDeadlineMet }))
+      assert.equal(initialDeadlineMet, !replay, 'record the original five-second setup outcome')
+      if (replay) {
+        assert.ok(timings.length < schedule.length, 'deadline expires before schema setup completes')
+        const fallback = await search()
+        assert.equal(fallback.scan.entries, 3)
+        assert.deepEqual(fallback.matches.map(match => match.path), ['Alpha.md'])
+        // A separate observation after the failed deadline, not a passing retry
+        // of that deadline. Do not invalidate, reload, or abort the live index.
+        assert.equal(await withinDeadline(setup), true, 'setup eventually settles without intervention')
+      }
+      const indexed = await search()
+      assert.equal(indexed.scan.entries, 2)
+      assert.deepEqual(indexed.matches.map(match => match.path), ['Alpha.md'])
+      assert.deepEqual(completed, schedule.map(([prefix]) => prefix))
+      t.diagnostic(JSON.stringify({ replay, indexedEntries: indexed.scan.entries, timings }))
+    } finally {
+      ending = true
+      for (const deliver of pending) deliver()
+      if (loaded) assert.equal(await withinDeadline(dispose(loaded.context, loaded.root)), true, 'disposal retains its five-second bound')
+      await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+    }
+  })
+})
+
 for (const failure of ['open', 'lock', 'insert'] as const) {
   test(`search index native ${failure} failure falls back, disposes, and rebuilds on reopen`, async t => {
     const { Document } = createRequire(import.meta.url)('flexsearch') as typeof import('flexsearch')
