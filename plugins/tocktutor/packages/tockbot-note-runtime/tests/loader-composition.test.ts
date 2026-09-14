@@ -5155,12 +5155,21 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     let loaded: Awaited<ReturnType<typeof load>> | undefined
     const failed = Promise.withResolvers<void>()
     const timeline: Array<{ at: number; event: string; detail: unknown }> = []
+    const phases: typeof timeline = []
+    const pendingSql = new Map<number, { at: number; sql: string; key: unknown }>()
+    let sqlId = 0
     const started = Date.now()
     const record = (event: string, detail: unknown = null) => {
-      timeline.push({ at: Date.now() - started, event, detail })
+      const entry = { at: Date.now() - started, event, detail }
+      timeline.push(entry)
       if (timeline.length > 200) timeline.shift()
+      if (!event.startsWith('poll/') && !event.startsWith('candidates/')) {
+        phases.push(entry)
+        if (phases.length > 200) phases.shift()
+      }
     }
     let lastReconcileError: unknown
+    let timedOut = false
     let pollId = 0
     let pollStarted = 0
     let pollOutstanding = false
@@ -5170,10 +5179,11 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       let timer: ReturnType<typeof setTimeout>
       return Promise.race([operation, new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
+          timedOut = true
           t.diagnostic(inspect({
             nativeError: native && Reflect.get(native, 'searchError'),
             runtimeIndex: loaded && Reflect.get(loaded.context.noteVault, 'searchIndex'),
-            timeline, lastReconcileError,
+            timeline, phases, pendingSql, lastReconcileError,
             poll: { id: pollId, outstanding: pollOutstanding, age: Date.now() - pollStarted },
           }, { depth: 5, maxArrayLength: 200, breakLength: Infinity }))
           reject(timeoutError)
@@ -5195,6 +5205,23 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       native = (storage as import('flexsearch').StorageInterface & { db: sqlite3.Database }).db
       assert.ok(native)
       native.once('close', () => failed.resolve())
+      // [DEBUG-bon-sql] Observe only existing callbacks; leave callback-less SQL capture untouched.
+      const run = native.run
+      native.run = function (sql: string, ...args: unknown[]) {
+        const callback = args.at(-1)
+        if (typeof callback === 'function') {
+          const id = ++sqlId
+          const operation = { at: Date.now() - started, sql, key: Array.isArray(args[0]) ? args[0][0] : null }
+          pendingSql.set(id, operation)
+          record('sql/start', { id, ...operation })
+          args[args.length - 1] = function (this: unknown, ...values: unknown[]) {
+            pendingSql.delete(id)
+            record('sql/end', { id, error: values[0] })
+            return Reflect.apply(callback, this, values)
+          }
+        }
+        return Reflect.apply(run, this, [sql, ...args])
+      }
       record('mount/start')
       await originalMount.call(this, storage)
       record('mount/end')
@@ -5378,6 +5405,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     } finally {
       await release
       if (loaded !== undefined) await bounded(dispose(loaded.context, loaded.root))
+      if (timedOut) t.diagnostic(`[DEBUG-bon-settled] ${inspect({ phases, pendingSql, lastReconcileError }, { depth: 5, maxArrayLength: 200, breakLength: Infinity })}`)
       await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     }
   })
