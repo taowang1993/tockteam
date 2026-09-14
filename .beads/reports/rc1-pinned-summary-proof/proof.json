@@ -1,0 +1,106 @@
+{
+  "issue": "tockteam-9lt.17",
+  "sourceCommit": "b75b992e662bbb93fff64bf447d67f8fc9513fa4",
+  "testCommit": "b8a1d4db",
+  "surface": "TockTeam Web",
+  "runtime": "DSH 0.1.2-rc.1",
+  "route": "/",
+  "mode": "Standard mode",
+  "model": "DeepSeek-V4-Flash",
+  "content": "Two synthetic exact-string requests and a real /compact command; no conversation fixtures or injected replacement services in the browser.",
+  "configuration": {
+    "isolatedDataRoot": true,
+    "credentialFileCopiedWithMode": "0600",
+    "originalCredentialFileUnmodified": true,
+    "HOMEOverridden": false,
+    "chromiumUseMockKeychain": true,
+    "workspaceSetup": "Existing authenticated workspace/create API over a disposable directory, followed by UI session creation.",
+    "paneOpened": "Existing persisted open preference, followed by browser reload. No new UI trigger was added."
+  },
+  "geometry": {
+    "cssWidth": 1512,
+    "cssHeight": 949,
+    "deviceScaleFactor": 2,
+    "pngWidth": 3024,
+    "pngHeight": 1898
+  },
+  "theme": {
+    "colorScheme": "dark",
+    "documentInlineColorScheme": "dark",
+    "skinId": null,
+    "skinDatasetAbsent": true
+  },
+  "checks": {
+    "finalizedAssistantSummary": "Pinned Summary RC.1 Verified.",
+    "assistantSourceLabel": "Latest Assistant Response",
+    "realCompactionRendered": true,
+    "compactionSourceLabel": "DSH Context Summary",
+    "compactionWinsOverLaterAssistant": true,
+    "laterAssistantResponse": "Later Assistant Response Verified.",
+    "fullContentExpansion": true,
+    "clipboardContainsMoreThan480Characters": true,
+    "copyFeedback": "Summary Copied",
+    "newSessionIsBlankWithoutOldContent": true,
+    "returnToOriginalSessionRestoresCompaction": true,
+    "sessionSwitchResetsExpansion": true,
+    "outsideEscapeKeepsPaneOpen": true,
+    "insideEscapeClosesPane": true,
+    "rootPaddingRight": "312px",
+    "consoleErrors": 0,
+    "consoleWarnings": 0,
+    "mountedTestSubscriptionsAfterDispose": 0,
+    "mountedTestKeydownListenersAfterDispose": 0,
+    "pendingClipboardFeedbackRejectedAfterEqualTextChatReplacement": true
+  },
+  "setupCorrections": [
+    "The initial workspace controls invoked two native directory-picker subprocesses. Both were terminated without interacting with the native dialogs; their browser error dialogs were dismissed and setup used the existing Web API instead.",
+    "The first workspace/create request omitted the descriptor's request wrapper and was rejected; the corrected request passed.",
+    "The first screenshot used the CLI's CSS scale; it was replaced with an explicitly device-scaled capture before publication.",
+    "The initial clipboard assertion guessed sentence-case feedback; the observed existing label is Summary Copied, and actual clipboard content was verified."
+  ],
+  "screenshotAllowlist": [
+    "assistant.png",
+    "context.png"
+  ],
+  "publication": "Only validated allowlisted PNGs and this proof were copied into a temporary sibling and atomically renamed into the report directory.",
+  "limits": [
+    "No fresh Electron, installed-package, Nix, or hosted CI run for this browser-client-only follow-up.",
+    "The wider local root suite is not green: 1273 passed, 14 skipped, one unchanged live Translate debounce integration timed out (tockteam-fno).",
+    "No new shell was started by browser interaction; Web composition smoke separately checked and cleaned its PTY."
+  ],
+  "cleanup": {
+    "rootPid": 30208,
+    "browserDaemonPid": 30219,
+    "tracked": [
+      30208,
+      30217,
+      30218,
+      30219,
+      30220,
+      30221,
+      30222,
+      30223,
+      30357,
+      30419
+    ],
+    "remaining": [],
+    "stopped": true,
+    "isolatedDataAndCredentialCopyRemoved": true,
+    "documentationCheckoutRemoved": true
+  },
+  "screenshots": [
+    {
+      "file": "assistant.png",
+      "sha256": "b6bebec5a07c27d0d022532f46c69eec0c4f08aa4afdd7e3a412a93fdd2aec8d",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "context.png",
+      "sha256": "2b3abf58d184445eacf1579cc68c821e03ab6fac29b4ccdcb7b823ca65c7e7d7",
+      "width": 3024,
+      "height": 1898
+    }
+  ],
+  "bundleSha256": "66036c1907cd4295655bf8f8bd47f9c019bfb10fb4302d031854c36a9e444ff7"
+}
