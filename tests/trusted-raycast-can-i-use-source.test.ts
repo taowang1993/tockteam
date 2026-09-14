@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawn, execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -39,8 +39,13 @@ for (const rejection of ['component', 'environment', 'replay', 'context', 'overs
   let child: ReturnType<typeof spawn> | undefined
   try {
     const env = { PATH: '/usr/bin:/bin', HOME: work, TMPDIR: work, TMP: work, TEMP: work, TZ: 'UTC', LANG: 'C' }
-    for (const input of [archive, reactArchive]) execFileSync(tar, ['xf', '-', '-C', work], { input, timeout: 5000, env })
-    symlinkSync(join(work, trustedRaycastDescriptors['google-translate'].artifactRoot, 'runtime/node_modules'), join(work, 'node_modules'))
+    execFileSync(tar, ['xf', '-', '-C', work], { input: archive, timeout: 5000, env })
+    // Avoid extracting hundreds of unrelated Translate files per case on Windows.
+    const reactMembers = ['react', 'react-reconciler', 'scheduler'].map(name => `${trustedRaycastDescriptors['google-translate'].artifactRoot}/runtime/node_modules/${name}`)
+    execFileSync(tar, ['xf', '-', '-C', work, ...reactMembers], { input: reactArchive, timeout: 5000, env })
+    const modules = join(work, trustedRaycastDescriptors['google-translate'].artifactRoot, 'runtime/node_modules')
+    assert.deepEqual(readdirSync(modules).sort(), ['react', 'react-reconciler', 'scheduler'], 'the Can I Use probe needs only the reviewed React runtime, not Translate dependencies')
+    symlinkSync(modules, join(work, 'node_modules'))
     const entry = join(work, 'probe.ts')
     writeFileSync(entry, reconciled ? readFileSync(join(repository, 'src/trusted-raycast-child.ts'), 'utf8')
       .replaceAll("'/tmp/trusted-raycast-source/src/translate'", () => JSON.stringify(join(work, 'can-i-use/src/index.tsx')))
