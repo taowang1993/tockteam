@@ -12,7 +12,7 @@ export function captureNativeStack(debuggerPath: string) {
   const cwd = mkdtempSync(join(tmpdir(), 'tockteam-native-stack-'))
   try {
     return spawnSync(debuggerPath, [
-      '-pvr', '-pd', '-noshell', '-nosqm', '-sins', '-netsyms:no',
+      '-pvr', '-noshell', '-nosqm', '-sins', '-netsyms:no',
       '-y', cwd, '-p', String(process.pid), '-c', '~* k; q',
     ], {
       cwd, encoding: 'utf8', windowsHide: true,
