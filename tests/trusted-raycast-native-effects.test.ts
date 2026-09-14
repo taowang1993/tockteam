@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { spawn, execFile } from 'node:child_process'
 import { isDeepStrictEqual, promisify } from 'node:util'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastNativeDeps } from '../src/trusted-raycast-native.ts'
@@ -177,7 +178,7 @@ const projections = (messages: any[]) => {
     }
     const message = latestRoot()
     const summary = (root: any) => { const visit = (node: any): any[] => (node.type === 'raycast-form-dropdown' ? [node] : (node.children ?? []).flatMap((child: any) => typeof child === 'string' ? [] : visit(child))); return visit(root).map((field: any) => `${field.props.title}=${field.props.value}`).join(' | ') }
-    assert.ok(predicate(message.root), `projection predicate unmet; fields: ${summary(message.root)}; last message: ${JSON.stringify(message).slice(0, 200)}`)
+    assert.ok(predicate(message.root), `projection predicate unmet; fields: ${summary(message.root)}; last message: ${JSON.stringify(message).slice(0, 200)}; service messages: ${JSON.stringify(messages.filter(message => !message.root).slice(-5)).slice(0, 2048)}`)
     return message
   }
   // The child and manager converge only when the stream quiesces; send only after a quiet spell.
@@ -371,29 +372,57 @@ test('configured artifact: TTS runs the upstream https.get + afplay flow in priv
   }
 })
 
-test('reviewed artifact: debounce coalesces keystrokes into one final translation', { skip: process.platform === 'win32' ? 'POSIX trusted-child integration is unsupported on Windows' : false, timeout: 60000 }, async () => {
+test(`reviewed artifact: debounce coalesces keystrokes into one final translation (${configuredArtifact ? 'live' : 'offline'} network)`, { skip: process.platform === 'win32' ? 'POSIX trusted-child integration is unsupported on Windows' : false, timeout: 60000 }, async () => {
   // @ts-expect-error JavaScript helper owns the configured artifact build.
   const { buildTrustedRaycast } = await import('../scripts/trusted-raycast-build.mjs')
   const work = mkdtempSync(join(tmpdir(), 'raycast-slice3-debounce-'))
   const messages: any[] = []
+  const requestsFile = join(work, 'requests.json')
   let manager: TrustedRaycastManager | undefined
   try {
     await buildTrustedRaycast(work, artifact)
-    manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath: process.execPath, onMessage: (_owner, message) => messages.push(message) })
+    let nodePath = process.execPath
+    if (!configuredArtifact) {
+      // Mock only HTTP, using the admitted artifact's own undici; source and manager stay unchanged.
+      // Setting TRUSTED_RAYCAST_ARTIFACT_TAR retains the explicit live-network proof.
+      const preload = join(work, 'network.mjs')
+      writeFileSync(preload, `import { createRequire } from 'node:module';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+const { MockAgent, setGlobalDispatcher } = createRequire(join(process.cwd(), 'child.mjs'))('undici');
+const agent = new MockAgent();
+agent.disableNetConnect();
+setGlobalDispatcher(agent);
+const requests = [];
+agent.get('https://translate.google.com').intercept({ path: /^\\/translate_a\\/single\\?/, method: 'GET' }).reply(options => {
+  const query = new URL(options.path, 'https://translate.google.com').searchParams.get('q');
+  requests.push(query);
+  writeFileSync(${JSON.stringify(requestsFile)}, JSON.stringify(requests));
+  return { statusCode: 200, data: JSON.stringify([[['translated ' + query, query]], null, 'en', null, null, null, null, null, [['en']]]) };
+}).persist();
+`)
+      nodePath = join(work, 'node-with-network-fixture')
+      const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
+      writeFileSync(nodePath, `#!/bin/sh\nexec ${quote(process.execPath)} --import ${quote(pathToFileURL(preload).href)} "$@"\n`, { mode: 0o700 })
+    }
+    manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath, onMessage: (_owner, message) => messages.push(message) })
     await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, autoInput: false } })
     const { latestRoot, waitRoot } = projections(messages)
-    const ready = latestRoot()
     const send = (value: string) => {
-      const session = Reflect.get(manager!, 'session')!
-      manager!.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: session.revision, eventId: session.eventId, kind: 'searchChanged', value })
+      const view = latestRoot()
+      manager!.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: view.revision, eventId: view.root.props.searchEventId, kind: 'searchChanged', value })
     }
     send('ab')
-    await wait(60)
     send('abc')
     const finalRoot = await waitRoot(root => root.props.queryCurrent === true && JSON.stringify(root).includes('raycast-list-item') && root.children.some((child: any) => child.type === 'raycast-list' && child.props.searchText === 'abc'), 25000)
     assert.equal(finalRoot.root.props.queryCurrent, true)
     assert.ok(finalRoot.root.children.some((child: any) => child.type === 'raycast-list' && child.props.searchText === 'abc'), 'the debounced final query, not each keystroke, produces results')
     assert.ok(messages.some((message: any) => message.root?.props.queryCurrent === false), 'intermediate loading projections remain honest')
+    if (!configuredArtifact) {
+      assert.ok(JSON.stringify(finalRoot.root).includes('translated abc'), 'the HTTP response reaches the unchanged rendered source')
+      assert.deepEqual(JSON.parse(readFileSync(requestsFile, 'utf8')), ['abc', 'translated abc'], 'only the final query and its upstream reverse translation reach HTTP')
+    }
+    assert.equal(messages.some(message => message.type === 'toast' && message.style === 'failure'), false)
   } finally {
     await manager?.stop().catch(() => {})
     await manager?.close().catch(() => {})
