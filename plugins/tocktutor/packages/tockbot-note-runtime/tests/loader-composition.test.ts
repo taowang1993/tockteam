@@ -5158,6 +5158,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     const phases: typeof timeline = []
     const pendingSql = new Map<number, { at: number; sql: string; key: unknown }>()
     let sqlId = 0
+    let maxSqlMs = 0
     const started = Date.now()
     const record = (event: string, detail: unknown = null) => {
       const entry = { at: Date.now() - started, event, detail }
@@ -5216,7 +5217,9 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
           record('sql/start', { id, ...operation })
           args[args.length - 1] = function (this: unknown, ...values: unknown[]) {
             pendingSql.delete(id)
-            record('sql/end', { id, error: values[0] })
+            const duration = Date.now() - started - operation.at
+            maxSqlMs = Math.max(maxSqlMs, duration)
+            record('sql/end', { id, duration, error: values[0] })
             return Reflect.apply(callback, this, values)
           }
         }
@@ -5351,8 +5354,10 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
           pollStarted = Date.now()
           pollOutstanding = true
           record('poll/start', { poll, query })
-          const result = await loaded!.context.noteVault.search({ mode: 'query', query },
-            { id: state.id, generation: state.generation }, new AbortController().signal)
+          const results: import('tockbot-note-vault/inspection').VaultSearchResult[] = await Promise.all(Array.from({ length: process.env.TOCKTEAM_SEARCH_QUERY_LOAD === '1' ? 4 : 1 }, () =>
+            loaded!.context.noteVault.search({ mode: 'query', query },
+              { id: state.id, generation: state.generation }, new AbortController().signal)))
+          const result = results[0]!
           pollOutstanding = false
           record('poll/end', { poll, entries: result.scan.entries })
           assert.deepEqual(result.matches.map(match => match.path), ['Alpha.md'], 'partial index must never hide the real match')
@@ -5406,6 +5411,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       await release
       if (loaded !== undefined) await bounded(dispose(loaded.context, loaded.root))
       if (timedOut) t.diagnostic(`[DEBUG-bon-settled] ${inspect({ phases, pendingSql, lastReconcileError }, { depth: 5, maxArrayLength: 200, breakLength: Infinity })}`)
+      if (process.env.TOCKTEAM_SEARCH_QUERY_LOAD === '1') t.diagnostic(`[DEBUG-bon-load] ${JSON.stringify({ maxSqlMs, totalMs: Date.now() - started, polls: pollId })}`)
       await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     }
   })

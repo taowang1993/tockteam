@@ -21,6 +21,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -C plugins/tocktutor install --frozen-lockfile
       - name: Locate the Recovery Timeout
+        env:
+          TOCKTEAM_SEARCH_QUERY_LOAD: '1'
         shell: pwsh
         working-directory: plugins/tocktutor/packages/tockbot-note-runtime
         run: |
