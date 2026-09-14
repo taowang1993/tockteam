@@ -363,17 +363,18 @@ test('load close during raw-operation wait cannot register or publish stale work
   assert.deepEqual(await pendingSearch, { before: [], after: [] })
 })
 
-test('currency refresh owns and aborts its raw operation', async () => {
-  let fetchSignal!: AbortSignal
+test('currency refresh owns and aborts its raw operation', { timeout: 5_000 }, async t => {
+  const started = Promise.withResolvers<AbortSignal>()
   const network = createLauncherNetworkExtensions({
     copyText: () => undefined, enabledExtensionIds: () => ['CurrencyConversion'],
-    fetch: async (_url, init) => { fetchSignal = init?.signal as AbortSignal; return await new Promise<Response>(() => {}) },
+    fetch: async (_url, init) => { started.resolve(init?.signal as AbortSignal); return await new Promise<Response>(() => {}) },
     getSetting: baseSettings, openExternal: () => undefined, requestTimeoutMs: 5, resolveAddresses: publicResolver,
   })
+  t.after(() => network.close())
   const load = network.loadIndexedItems(new AbortController().signal)
-  await new Promise<void>(resolve => setImmediate(resolve))
+  // Invalidate the running request before its watchdog can settle the load.
+  const fetchSignal = await started.promise
   network.invalidate()
   await assert.rejects(load)
   assert.equal(fetchSignal.aborted, true)
-  await network.close()
 })

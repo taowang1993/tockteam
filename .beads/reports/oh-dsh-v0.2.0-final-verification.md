@@ -46,6 +46,10 @@ Hosted CI for the follow-up commits remains pending. Run `34743595824` passed Ni
 
 Run `34744036818` then passed Nix, runtime, Linux, and both macOS jobs. Windows failed the native index test's five-second mount-startup watchdog; the other three native-index tests passed. `tockteam-zil` tracks the test-only 15-second cold-start allowance; disposal/drain and closed-connection assertions are unchanged. `cd plugins/tocktutor/packages/tockbot-note-runtime && node scripts/test-search-index.mjs` passed all four locally.
 
+Run `34744544356` passed Windows (including the native-index startup correction), Nix, runtime, Linux, and macOS arm64. macOS x64 found a separate test scheduling race: currency cancellation yielded an event-loop turn while its five-millisecond request timeout could already finish the load. `tockteam-61q` replaces that yield with the mock fetch-start signal and guarantees cleanup through `t.after`. A disposable reproduction with a 25 ms yield produced the identical `Missing expected rejection`; the corrected transport/provider suites passed 33/33 and typecheck passed.
+
+A fresh local root-suite attempt at this point passed 1,271 tests, skipped 14, and failed the unchanged live Translate debounce integration. Focused repetition and a disposable full-message diagnostic identified `Could not translate` / `ConnectTimeoutError: Connect Timeout Error`; the final `abc` query was current but had no translation rows. This is not a passing local root run and is not hidden by a retry or skipped assertion. Hosted root-suite evidence on the final commit remains required. Production code is unchanged since the already-recorded installed and full local source verification.
+
 Do not advance the Oh-DSH baseline or close `tockteam-9lt.16` until the final hosted evidence is verified and committed.
 
 `bd preflight` emitted a generic Go-project checklist, not executable TockTeam validation; it is not counted as a passing project gate.
