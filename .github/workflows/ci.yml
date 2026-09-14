@@ -63,6 +63,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Use the Runner-Owned Windows Test Folder
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+
+      - name: Verify the Windows Test Folder
+        if: runner.os == 'Windows'
+        run: |
+          node -e "require('node:assert/strict').equal(require('node:os').tmpdir(), process.env.RUNNER_TEMP); console.log('Windows test temporary folder:', require('node:os').tmpdir())"
+
       - name: Load the native TockTutor search index dependency
         run: |
           pnpm -C plugins/tocktutor install --frozen-lockfile

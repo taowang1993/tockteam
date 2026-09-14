@@ -2,6 +2,16 @@ name: Search Recovery Diagnostic
 
 on:
   workflow_dispatch:
+    inputs:
+      runner_temp:
+        description: Use the runner-owned temporary folder instead of the operating-system default.
+        type: boolean
+        default: false
+      iterations:
+        description: Number of bounded native-gate runs.
+        type: choice
+        default: '30'
+        options: ['1', '30']
 
 permissions:
   contents: read
@@ -20,6 +30,12 @@ jobs:
           node-version: 24
       - run: pnpm install --frozen-lockfile
       - run: pnpm -C plugins/tocktutor install --frozen-lockfile
+      - name: Use the Runner-Owned Test Folder
+        if: inputs.runner_temp
+        shell: pwsh
+        run: |
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - name: Verify Native Stack Capture
         shell: pwsh
         run: |
@@ -35,10 +51,16 @@ jobs:
       - name: Locate the Recovery Timeout
         env:
           TOCKTEAM_SEARCH_QUERY_LOAD: '0'
+          RECOVERY_ITERATIONS: ${{ inputs.iterations }}
+          USE_RUNNER_TEMP: ${{ inputs.runner_temp }}
         shell: pwsh
         working-directory: plugins/tocktutor/packages/tockbot-note-runtime
         run: |
-          for ($i = 1; $i -le 30; $i++) {
+          node -e "const folder = require('node:os').tmpdir(); console.log('Native test temporary folder:', folder); if (process.env.USE_RUNNER_TEMP === 'true') require('node:assert/strict').equal(folder, process.env.RUNNER_TEMP)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $iterations = [int]$env:RECOVERY_ITERATIONS
+          if ($iterations -notin 1, 30) { throw 'Expected 1 or 30 iterations.' }
+          for ($i = 1; $i -le $iterations; $i++) {
             Write-Output "Recovery iteration $i"
             node scripts/test-search-index.mjs
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
