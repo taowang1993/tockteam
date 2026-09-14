@@ -5177,6 +5177,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       await originalMount.call(this, storage)
     })
     t.mock.method(Document.prototype, 'commit', async function (this: import('flexsearch').Document) {
+      let unlock: (() => void) | undefined
       if (!injected) {
         assert.ok(native)
         if (failure === 'insert') {
@@ -5188,16 +5189,22 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
           const locker = new originalDatabase((native as sqlite3.Database & { filename: string }).filename)
           await new Promise<void>((resolve, reject) => locker.exec('BEGIN EXCLUSIVE', error => error ? reject(error) : resolve()))
           native.configure('busyTimeout', 5)
+          const exec = native.exec
+          // Keep the real SQLite fault fast even when FlexSearch resets its timeout.
+          native.exec = function (sql, callback) {
+            return exec.call(this, sql === 'PRAGMA busy_timeout = 5000' ? 'PRAGMA busy_timeout = 5' : sql, callback)
+          }
           release = new Promise<void>((resolve, reject) => {
-            setTimeout(() => locker.exec('COMMIT', error => locker.close(closeError => {
+            unlock = () => locker.exec('COMMIT', error => locker.close(closeError => {
               if (error || closeError) reject(error || closeError)
               else resolve()
-            })), 50)
+            }))
           })
         }
         injected = true
       }
-      await originalCommit.call(this)
+      // No clock race: retain the lock until the real commit has failed/settled.
+      try { await originalCommit.call(this) } finally { unlock?.() }
     })
     try {
       loaded = await load(config)
