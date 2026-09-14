@@ -32,6 +32,10 @@ Windows diagnostic pool 1 initially failed **before tests**, when the SQLite pre
 
 The prior historical-source diagnostic replayed 100 fresh cold-start checks across the two Windows worker pools without reproducing the historical failure. No exact historical causal attribution is claimed.
 
+## Post-Cleanup Failure
+
+Full CI `34863380830` at cleanup commit `6b88be79` failed the Windows native insertion-recovery test: `native failure did not settle` after a five-second test deadline. The other seven native tests completed, and the native-owning process exited; this was not a dependency-download failure. The earlier green checks above remain historical evidence, **not final acceptance**. No timeout was increased. The test now captures timeout errors at the operation's call site so the next failure identifies the stalled recovery phase. Investigation remains open.
+
 ## Actual Consumer Proof
 
 A disposable pinned DSH `0.1.2-rc.1` headless profile installed fresh local tarballs through the real CLI. The preexisting conflicting vault plugin was disabled only in that temporary profile. A model used the real `vault_search` and `vault_read` tools against three fixture files. A read-only `tools/result` observer captured the final tool outcomes after DSH's strict output validation:

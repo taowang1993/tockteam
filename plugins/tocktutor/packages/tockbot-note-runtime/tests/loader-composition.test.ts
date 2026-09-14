@@ -5154,9 +5154,10 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     let loaded: Awaited<ReturnType<typeof load>> | undefined
     const failed = Promise.withResolvers<void>()
     const bounded = <T>(operation: Promise<T>) => {
+      const timeoutError = new Error('native failure did not settle')
       let timer: ReturnType<typeof setTimeout>
       return Promise.race([operation, new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('native failure did not settle')), 5_000)
+        timer = setTimeout(() => reject(timeoutError), 5_000)
       })]).finally(() => clearTimeout(timer))
     }
     if (failure === 'open') {
