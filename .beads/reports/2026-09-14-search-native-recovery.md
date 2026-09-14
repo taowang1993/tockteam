@@ -12,7 +12,7 @@ The separate real-consumer output-contract bug, `tockteam-8my`, is fixed: `vault
 - `0a19b9ab`: reviewed generated outputs and added bounded Windows diagnostics.
 - `c0663262`: hold the fixture's actual exclusive SQLite lock until the operation settles. Only the fixture's connection-local vendor busy-timeout reset is shortened; production timing is unchanged.
 - `b567cf61`: project search/read results onto their existing public tool schemas, without mutating runtime results.
-- `3bc0fe6c`: final diagnostic target. Temporary tracing and the manual diagnostic workflow are removed after evidence collection; regression tests and the native-owner process deadline remain.
+- `3bc0fe6c`: earlier diagnostic target. Tracing was subsequently removed, then test-only diagnostics were reintroduced after the post-cleanup failures below. Temporary instrumentation and `search-recovery-diagnostic.yml` currently remain; they are not production repairs.
 
 ## Test Evidence
 
@@ -35,6 +35,33 @@ The prior historical-source diagnostic replayed 100 fresh cold-start checks acro
 ## Post-Cleanup Failure
 
 Full CI `34863380830` at cleanup commit `6b88be79` failed the Windows native insertion-recovery test: `native failure did not settle` after a five-second test deadline. The other seven native tests completed, and the native-owning process exited; this was not a dependency-download failure. The earlier green checks above remain historical evidence, **not final acceptance**. No timeout was increased. The test now captures timeout errors at the operation's call site so the next failure identifies the stalled recovery phase. Investigation remains open.
+
+## Subsequent Readiness Investigation
+
+Production recovery code remains unchanged; these experiments change tests and diagnostics only. Five-second deadlines and exact indexed-candidate assertions remain intact.
+
+| Windows Run | Observation |
+| --- | --- |
+| `34865200902` | Native open recovery failed on the first-reopen `verify()` call, not initial failure handling or disposal. |
+| `34893638357` | Iteration 23 failed after saving Alpha: expected one indexed candidate, observed three scanned files. Native recovery cases passed. |
+| `34894488757` | Iteration 7 captured native lock recovery's first-reopen timeout: index/database null, readiness false, reconciliation pending, no pending paths, and repeated null candidates followed by completed three-file scans. No reconciliation/native error was recorded. |
+| `34895140471` | Thirty runs passed with retained lifecycle phases and post-mount SQL callback timing; no failure snapshot. |
+| `34896043106` | With four concurrent read-only searches enabled, iteration 30 failed before fault injection was observed, with zero verification polls. The preceding open case recorded a 1,038 ms SQL operation versus roughly 25 ms normally. This does not establish the cause of either failure. |
+| `34897088010` | Thirty runs passed after moving callback timing to construction, including pre-mount operations. No failure snapshot. |
+
+The captured pending-reconciliation window rules out downstream candidate rejection for that window. A nonempty epoch suggested final metadata publication, but it does **not** conclusively identify the outstanding operation: an epoch can survive an earlier unpublished reconciliation. The original snapshot's poll traffic had displaced lifecycle events. Separate bounded phase history and pending-operation tracking now address that gap.
+
+The pre-injection failure means verification-query traffic was not necessary for that occurrence. It does not establish slow storage, a native deadlock, a lost invalidation, or a shared cause with the historical cancellation. No speculative production repair or timeout increase has been applied. A fresh read-only evidence review is in progress.
+
+Latest local verification at `75f00838`: runtime 87/87 and package typecheck passed. Diagnostic callbacks preserve the original receiver, arguments, return values, and promises; no C++ SQL trace or additional native error handlers are installed. The manual workflow has returned to one verification query per poll.
+
+Additional raw evidence:
+
+- `/tmp/tockteam-bon-preserved-windows.log`
+- `/tmp/tockteam-bon-keyword-windows.log`
+- `/tmp/tockteam-bon-metadata-windows.log`
+- `/tmp/tockteam-bon-query-load-windows.log`
+- `/tmp/tockteam-bon-full-sql-windows.log`
 
 ## Actual Consumer Proof
 
