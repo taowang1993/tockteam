@@ -93,7 +93,7 @@ const SEARCH_INDEX_SCHEMA = 'tocktutor-search-v2'
 const SEARCH_INDEX_TOKEN = /[\p{L}\p{N}_.-]+(?:\/[\p{L}\p{N}_.-]+)*/gu
 
 type IndexedSearchDocument = { modifiedAt: number; path: string; revision: string }
-type SearchDatabase = import('sqlite3').Database
+type SearchDatabase = import('sqlite3').Database & { searchError?: Error }
 type SearchStorage = StorageInterface & { db: SearchDatabase }
 type SearchDependencies = {
   Document: typeof import('flexsearch').Document
@@ -115,6 +115,30 @@ function encodeSearchIndex(value: string): string[] {
     const parts = token.split('/')
     return parts.map((_, index) => parts.slice(0, index + 1).join('/'))
   })
+}
+
+async function openSearchDatabase(Database: SearchDependencies['sqlite3']['Database'], filename: string): Promise<SearchDatabase> {
+  // Failed native opens never drain queued SQL/close callbacks. Do not queue
+  // anything until the constructor callback confirms that the handle is open.
+  const database = await new Promise<SearchDatabase>((resolve, reject) => {
+    const raw = new Database(filename, error => error ? reject(error) : resolve(raw))
+  })
+  const capture = (error: Error | null) => { if (error) database.searchError ??= error }
+  const exec = database.exec
+  const run = database.run
+  // FlexSearch issues callback-less SQL. Its native error events can throw
+  // before sqlite3 drains the queue, permanently stranding commit and close.
+  database.exec = function (sql, callback) { return exec.call(this, sql, callback ?? capture) }
+  database.run = function (sql: string, ...parameters: unknown[]) {
+    if (typeof parameters.at(-1) !== 'function') parameters.push(capture)
+    return Reflect.apply(run, this, [sql, ...parameters])
+  }
+  return database
+}
+
+async function drainSearchDatabase(database: SearchDatabase): Promise<void> {
+  await new Promise<void>((resolve, reject) => database.wait(error => error ? reject(error) : resolve()))
+  if (database.searchError !== undefined) throw database.searchError
 }
 
 function runSearchDatabase(
@@ -258,11 +282,22 @@ class PersistentSearchIndex {
 
   private reconcile(): void {
     if (this.reconcileTask !== null || this.controller.signal.aborted) return
+    let failed = false
     this.reconcileTask = this.reconcileNow()
-      .catch(() => { this.ready = false })
+      .catch(async () => {
+        failed = true
+        this.ready = false
+        this.fullReconcilePending = true
+        const database = this.database
+        this.database = null
+        this.index = null
+        if (database !== null) await closeSearchDatabase(database)
+      })
       .finally(() => {
         this.reconcileTask = null
-        if (this.fullReconcilePending || this.pendingPaths.size > 0) this.reconcile()
+        // A native failure stays on the exact scanner until a new invalidation;
+        // never retry a poisoned partial batch or spin on an unavailable DB.
+        if (!failed && (this.fullReconcilePending || this.pendingPaths.size > 0)) this.reconcile()
       })
   }
 
@@ -302,6 +337,7 @@ class PersistentSearchIndex {
       mounted = await this.create(databasePath, dependencies, signal)
     }
     try {
+      await runSearchDatabase(mounted.database.db, 'DELETE FROM metadata WHERE key = ?', ['schema'])
       const existing = await allSearchDatabase<{ id: number; modifiedAt: number; path: string; revision: string }>(
         mounted.database.db,
         'SELECT id, modifiedAt, path, revision FROM documents',
@@ -344,6 +380,7 @@ class PersistentSearchIndex {
       }
       signal.throwIfAborted()
       await mounted.index.commit()
+      await drainSearchDatabase(mounted.database.db)
       signal.throwIfAborted()
       for (const update of revisionUpdates) {
         await runSearchDatabase(
@@ -359,6 +396,7 @@ class PersistentSearchIndex {
         ['epoch', this.epoch],
       )
       signal.throwIfAborted()
+      await runSearchDatabase(mounted.database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['schema', SEARCH_INDEX_SCHEMA])
       if (this.fullReconcilePending) return
       const previous = this.database
       this.database = mounted.database
@@ -375,6 +413,7 @@ class PersistentSearchIndex {
     const database = this.database
     const index = this.index
     if (database === null || index === null) return
+    await runSearchDatabase(database.db, 'DELETE FROM metadata WHERE key = ?', ['schema'])
     const revisionUpdates: Array<{ id: number; modifiedAt: number; revision: string }> = []
     for (const changedPath of paths) {
       signal.throwIfAborted()
@@ -412,6 +451,7 @@ class PersistentSearchIndex {
     }
     signal.throwIfAborted()
     await index.commit()
+    await drainSearchDatabase(database.db)
     signal.throwIfAborted()
     for (const update of revisionUpdates) {
       await runSearchDatabase(
@@ -426,6 +466,7 @@ class PersistentSearchIndex {
       'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)',
       ['epoch', this.epoch],
     )
+    await runSearchDatabase(database.db, 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)', ['schema', SEARCH_INDEX_SCHEMA])
   }
 
   private async open(
@@ -433,7 +474,7 @@ class PersistentSearchIndex {
     { Document, Sqlite, sqlite3 }: SearchDependencies,
     signal: AbortSignal,
   ): Promise<{ database: SearchStorage; index: FlexDocument } | null> {
-    const raw = new sqlite3.Database(databasePath)
+    const raw = await openSearchDatabase(sqlite3.Database, databasePath)
     let database: SearchStorage | null = null
     try {
       const metadata = await allSearchDatabase<{ value: string }>(
@@ -448,6 +489,7 @@ class PersistentSearchIndex {
       // FlexSearch native work is not cancellable. Drain it before closing
       // the connection; racing abort would let it issue SQL after close.
       await index.mount(database)
+      await drainSearchDatabase(raw)
       signal.throwIfAborted()
       return { database, index }
     } catch {
@@ -463,7 +505,7 @@ class PersistentSearchIndex {
     { Document, Sqlite, sqlite3 }: SearchDependencies,
     signal: AbortSignal,
   ): Promise<{ database: SearchStorage; index: FlexDocument }> {
-    const raw = new sqlite3.Database(databasePath)
+    const raw = await openSearchDatabase(sqlite3.Database, databasePath)
     let database: SearchStorage | null = null
     try {
       await runSearchDatabase(raw, 'CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)')
@@ -473,6 +515,7 @@ class PersistentSearchIndex {
       const index = createSearchIndex(Document)
       signal.throwIfAborted()
       await index.mount(database)
+      await drainSearchDatabase(raw)
       signal.throwIfAborted()
       return { database, index }
     } catch (error) {
@@ -4708,6 +4751,12 @@ export class NoteVaultRuntime extends Service {
   private replaceSearchIndex(): void {
     const previous = this.searchIndex
     this.searchIndex = null
+    if (previous !== null) {
+      const cleanup = previous.index.close()
+      this.searchIndexCleanup.add(cleanup)
+      void cleanup.finally(() => this.searchIndexCleanup.delete(cleanup))
+    }
+    const released = Promise.allSettled([...this.searchIndexCleanup])
     if (
       this.stateRoot !== null
       && this.currentState.active
@@ -4732,6 +4781,11 @@ export class NoteVaultRuntime extends Service {
           identity: identityKey,
           vaultId: state.id,
           list: async (signal) => {
+            // Rapid A -> B -> A switching must not reopen A's dirty database
+            // while the previous generation still owns native work on it.
+            await released
+            signal.throwIfAborted()
+            this.assertCapturedVault(state, root)
             const scan = await scanVaultTree(root, {
               maxDepth: this.treeConfig.maxDepth,
               maxEntries: MAX_SEARCH_INDEX_ENTRIES,
@@ -4765,11 +4819,6 @@ export class NoteVaultRuntime extends Service {
           },
         }),
       }
-    }
-    if (previous !== null) {
-      const cleanup = previous.index.close()
-      this.searchIndexCleanup.add(cleanup)
-      void cleanup.finally(() => this.searchIndexCleanup.delete(cleanup))
     }
   }
 

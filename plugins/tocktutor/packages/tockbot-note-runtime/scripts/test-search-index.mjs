@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process'
 const result = spawnSync(process.execPath, [
   '--test',
   '--test-isolation=none',
-  '--test-name-pattern=search index disposal|Keyword search reconciles|persistent FlexSearch SQLite',
+  '--test-name-pattern=search index (disposal|native|remount)|Keyword search reconciles|persistent FlexSearch SQLite',
   'tests/loader-composition.test.ts',
 ], {
   cwd: new URL('../', import.meta.url),

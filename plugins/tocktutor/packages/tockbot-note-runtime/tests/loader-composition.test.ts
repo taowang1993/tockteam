@@ -5079,6 +5079,198 @@ for (const stage of ['mount', 'commit'] as const) {
   })
 }
 
+test('search index remount waits for its prior native owner before reusing a vault', async t => {
+  const { Document } = createRequire(import.meta.url)('flexsearch') as typeof import('flexsearch')
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-index-remount-'))
+  const a = join(fixture, 'a')
+  const b = join(fixture, 'b')
+  await Promise.all([mkdir(a), mkdir(b)])
+  for (const [name, content] of [['Alpha', '#project target'], ['False', 'project plain'], ['Other', 'unrelated']] as const) {
+    await writeFile(join(a, `${name}.md`), content)
+  }
+  const held = Promise.withResolvers<void>()
+  const release = Promise.withResolvers<void>()
+  const remounted = Promise.withResolvers<void>()
+  const originalMount = Document.prototype.mount
+  const originalCommit = Document.prototype.commit
+  let first: (sqlite3.Database & { filename: string }) | undefined
+  let closed = false
+  let overlap = false
+  let holding = false
+  t.mock.method(Document.prototype, 'mount', async function (this: import('flexsearch').Document, storage: import('flexsearch').StorageInterface) {
+    const raw = (storage as import('flexsearch').StorageInterface & { db: sqlite3.Database & { filename: string } }).db
+    if (first === undefined) { first = raw; raw.once('close', () => { closed = true }) }
+    else if (raw.filename === first.filename) { overlap ||= !closed; remounted.resolve() }
+    await originalMount.call(this, storage)
+  })
+  t.mock.method(Document.prototype, 'commit', async function (this: import('flexsearch').Document) {
+    await originalCommit.call(this)
+    if (!holding) { holding = true; held.resolve(); await release.promise }
+  })
+  const loaded = await load(`stateRoot: ${JSON.stringify(join(fixture, 'state'))}\nvaultRoot: ${JSON.stringify(a)}`)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([held.promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('first index never committed')), 5_000) })])
+    clearTimeout(timer)
+    loaded.context.noteVault.activate(b, loaded.context.noteVault.state.generation)
+    loaded.context.noteVault.activate(a, loaded.context.noteVault.state.generation)
+    const state = loaded.context.noteVault.state
+    if (!state.active) assert.fail('vault A must be active')
+    const fallback = await loaded.context.noteVault.search({ mode: 'query', query: 'tag:project' },
+      { id: state.id, generation: state.generation }, new AbortController().signal)
+    assert.deepEqual(fallback.matches.map(match => match.path), ['Alpha.md'])
+    await Promise.race([remounted.promise, new Promise<void>(resolve => { timer = setTimeout(resolve, 100) })])
+    clearTimeout(timer)
+    assert.equal(overlap, false, 'replacement must not unlink or mount a database still owned by the prior generation')
+    release.resolve()
+    await Promise.race([remounted.promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('replacement never mounted')), 5_000) })])
+    assert.equal(closed, true)
+    assert.equal(overlap, false)
+  } finally {
+    clearTimeout(timer)
+    release.resolve()
+    await dispose(loaded.context, loaded.root)
+    await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
+
+for (const failure of ['open', 'lock', 'insert'] as const) {
+  test(`search index native ${failure} failure falls back, disposes, and rebuilds on reopen`, async t => {
+    const { Document } = createRequire(import.meta.url)('flexsearch') as typeof import('flexsearch')
+    const fixture = await mkdtemp(join(tmpdir(), 'note-vault-index-failure-'))
+    const vaultRoot = join(fixture, 'vault')
+    const stateRoot = join(fixture, 'state')
+    await mkdir(vaultRoot)
+    await writeFile(join(vaultRoot, 'Alpha.md'), '#project target\n')
+    await writeFile(join(vaultRoot, 'FalsePositive.md'), 'project plain text\n')
+    await writeFile(join(vaultRoot, 'Other.md'), 'unrelated\n')
+    const config = `stateRoot: ${JSON.stringify(stateRoot)}\nvaultRoot: ${JSON.stringify(vaultRoot)}`
+    const originalDatabase = sqlite3.Database
+    const originalMount = Document.prototype.mount
+    const originalCommit = Document.prototype.commit
+    let native: sqlite3.Database | undefined
+    let injected = false
+    let release: Promise<void> | undefined
+    let loaded: Awaited<ReturnType<typeof load>> | undefined
+    const failed = Promise.withResolvers<void>()
+    const bounded = <T>(operation: Promise<T>) => {
+      let timer: ReturnType<typeof setTimeout>
+      return Promise.race([operation, new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('native failure did not settle')), 5_000)
+      })]).finally(() => clearTimeout(timer))
+    }
+    if (failure === 'open') {
+      t.mock.method(sqlite3, 'Database', function (filename: string, ...args: unknown[]) {
+        if (!injected) { injected = true; filename = join(fixture, 'missing-parent', 'index.sqlite') }
+        const callback = args.at(-1)
+        if (typeof callback === 'function') args[args.length - 1] = function (this: unknown, error: Error | null) {
+          Reflect.apply(callback, this, [error])
+          if (error) failed.resolve()
+        }
+        return Reflect.construct(originalDatabase, [filename, ...args])
+      })
+    }
+    t.mock.method(Document.prototype, 'mount', async function (this: import('flexsearch').Document, storage: import('flexsearch').StorageInterface) {
+      native = (storage as import('flexsearch').StorageInterface & { db: sqlite3.Database }).db
+      assert.ok(native)
+      native.once('close', () => failed.resolve())
+      await originalMount.call(this, storage)
+    })
+    t.mock.method(Document.prototype, 'commit', async function (this: import('flexsearch').Document) {
+      if (!injected) {
+        assert.ok(native)
+        if (failure === 'insert') {
+          await new Promise<void>((resolve, reject) => native!.exec(
+            "CREATE TRIGGER reject_index BEFORE INSERT ON map_content BEGIN SELECT RAISE(ABORT, 'index insertion rejected'); END",
+            error => error ? reject(error) : resolve(),
+          ))
+        } else {
+          const locker = new originalDatabase((native as sqlite3.Database & { filename: string }).filename)
+          await new Promise<void>((resolve, reject) => locker.exec('BEGIN EXCLUSIVE', error => error ? reject(error) : resolve()))
+          native.configure('busyTimeout', 5)
+          release = new Promise<void>((resolve, reject) => {
+            setTimeout(() => locker.exec('COMMIT', error => locker.close(closeError => {
+              if (error || closeError) reject(error || closeError)
+              else resolve()
+            })), 50)
+          })
+        }
+        injected = true
+      }
+      await originalCommit.call(this)
+    })
+    try {
+      loaded = await load(config)
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      // Wait for the real failed native operation, not a simulated rejected promise.
+      const deadline = Date.now() + 5_000
+      while (!injected && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+      assert.equal(injected, true)
+      await release
+      await bounded(failed.promise)
+      const fallback = await loaded.context.noteVault.search({ mode: 'query', query: 'tag:project' }, expectedVault, new AbortController().signal)
+      assert.equal(fallback.scan.entries, 3, 'failed index must use the exact scanner')
+      assert.deepEqual(fallback.matches.map(match => match.path), ['Alpha.md'])
+      // Disposal must drain even if a callback-less FlexSearch SQL statement failed.
+      const first = loaded
+      loaded = undefined
+      await bounded(dispose(first.context, first.root))
+      if (native !== undefined) await assert.rejects(new Promise((resolve, reject) => {
+        native!.all('SELECT 1', (error, rows) => error ? reject(error) : resolve(rows))
+      }), /closed/u)
+      loaded = await load(config)
+      const verify = (query = 'tag:project', entries = 2) => bounded((async () => {
+        const state = loaded!.context.noteVault.state
+        if (!state.active) assert.fail('reopened vault must be active')
+        const deadline = Date.now() + 5_000
+        while (true) {
+          const result = await loaded!.context.noteVault.search({ mode: 'query', query },
+            { id: state.id, generation: state.generation }, new AbortController().signal)
+          assert.deepEqual(result.matches.map(match => match.path), ['Alpha.md'], 'partial index must never hide the real match')
+          if (result.scan.entries === entries) return
+          if (Date.now() >= deadline) assert.fail('index did not rebuild')
+          await new Promise(resolve => setTimeout(resolve, 20))
+        }
+      })())
+      await verify()
+      if (failure === 'insert') {
+        assert.ok(native)
+        const retired = Promise.withResolvers<void>()
+        native.once('close', () => retired.resolve())
+        // Reject only Alpha's map writes; register writes can still commit.
+        await new Promise<void>((resolve, reject) => native!.exec(
+          "CREATE TRIGGER reject_token BEFORE INSERT ON map_content WHEN NEW.id = (SELECT id FROM documents WHERE path = 'Alpha.md') BEGIN SELECT RAISE(ABORT, 'token rejected'); END",
+          error => error ? reject(error) : resolve(),
+        ))
+        const state = loaded.context.noteVault.state
+        if (!state.active) assert.fail('vault must be active')
+        const expectedVault = { id: state.id, generation: state.generation }
+        const signal = new AbortController().signal
+        const alpha = await loaded.context.noteVault.openDocument('Alpha.md', expectedVault, signal)
+        await loaded.context.noteVault.saveDocument({ path: 'Alpha.md', content: '#project #poison\n', expectedRevision: alpha.revision, expectedVault }, signal)
+        await bounded(retired.promise)
+        const fallback = await loaded.context.noteVault.search({ mode: 'query', query: 'tag:poison' }, expectedVault, signal)
+        assert.deepEqual(fallback.matches.map(match => match.path), ['Alpha.md'])
+        assert.equal(fallback.scan.entries, 3)
+        const other = await loaded.context.noteVault.openDocument('Other.md', expectedVault, signal)
+        await loaded.context.noteVault.saveDocument({ path: 'Other.md', content: 'unrelated change\n', expectedRevision: other.revision, expectedVault }, signal)
+        await verify('tag:poison', 1)
+        const current = loaded
+        loaded = undefined
+        await bounded(dispose(current.context, current.root))
+        loaded = await load(config)
+        await verify('tag:poison', 1)
+      }
+    } finally {
+      await release
+      if (loaded !== undefined) await bounded(dispose(loaded.context, loaded.root))
+      await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+    }
+  })
+}
+
 test('Keyword search reconciles state-owned indexed candidates through the exact verifier', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-indexed-search-'))
   const stateRoot = join(fixture, 'state')
