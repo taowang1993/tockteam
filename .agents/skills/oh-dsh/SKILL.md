@@ -18,7 +18,7 @@ Use this immutable baseline for the next update audit:
 | Peeled release commit | `c6fdd2705f70a077755ce64315ce5265c632f475` |
 | Previous audited target | `19262643092f801b5db9f70c0995acdfe813311e` (`v0.1.12`) |
 
-Interpret "audited target" as a selective review boundary, not a wholesale merge claim. TockTeam reviewed through `v0.2.0`, ported approved behavior, and documented rejected or deferred behavior. Consult `.beads/reports/oh-dsh-v0.2.0-final-verification.md` (evidence commit `f5912a4e`) for all six passing hosted jobs and installed evidence; keep the separately scoped RC.1 pinned-summary projection follow-up `tockteam-9lt.17` open.
+Interpret "audited target" as a selective review boundary, not a wholesale merge claim. TockTeam reviewed through `v0.2.0`, ported approved behavior, and documented rejected or deferred behavior. Consult `.beads/reports/oh-dsh-v0.2.0-final-verification.md` (evidence commit `f5912a4e`) for all six passing hosted jobs and installed evidence. Consult `.beads/reports/rc1-pinned-summary-verification.md` (evidence commit `4644dc75`) for the completed RC.1 projection follow-up `tockteam-9lt.17`, its real Web proof, and remaining independent test limits.
 
 Update this table only after you have reviewed every upstream change through a newer immutable release, recorded every disposition, landed and verified every approved port, and committed the resulting evidence. Keep the currently recorded release as the baseline when an audit or port is incomplete.
 
