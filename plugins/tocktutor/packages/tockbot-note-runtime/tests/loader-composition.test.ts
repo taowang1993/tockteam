@@ -5175,56 +5175,60 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     let pollStarted = 0
     let pollOutstanding = false
     let corruptCandidateOnce = false
+    const snapshot = () => t.diagnostic(inspect({
+      nativeError: native && Reflect.get(native, 'searchError'),
+      runtimeIndex: loaded && Reflect.get(loaded.context.noteVault, 'searchIndex'),
+      timeline, phases, pendingSql, lastReconcileError,
+      poll: { id: pollId, outstanding: pollOutstanding, age: Date.now() - pollStarted },
+    }, { depth: 5, maxArrayLength: 200, breakLength: Infinity }))
     const bounded = <T>(operation: Promise<T>) => {
       const timeoutError = new Error('native failure did not settle')
       let timer: ReturnType<typeof setTimeout>
       return Promise.race([operation, new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           timedOut = true
-          t.diagnostic(inspect({
-            nativeError: native && Reflect.get(native, 'searchError'),
-            runtimeIndex: loaded && Reflect.get(loaded.context.noteVault, 'searchIndex'),
-            timeline, phases, pendingSql, lastReconcileError,
-            poll: { id: pollId, outstanding: pollOutstanding, age: Date.now() - pollStarted },
-          }, { depth: 5, maxArrayLength: 200, breakLength: Infinity }))
+          snapshot()
           reject(timeoutError)
         }, 5_000)
       })]).finally(() => clearTimeout(timer))
     }
-    if (failure === 'open') {
-      t.mock.method(sqlite3, 'Database', function (filename: string, ...args: unknown[]) {
-        if (!injected) { injected = true; filename = join(fixture, 'missing-parent', 'index.sqlite') }
-        const callback = args.at(-1)
-        if (typeof callback === 'function') args[args.length - 1] = function (this: unknown, error: Error | null) {
-          Reflect.apply(callback, this, [error])
-          if (error) failed.resolve()
-        }
-        return Reflect.construct(originalDatabase, [filename, ...args])
-      })
-    }
+    t.mock.method(sqlite3, 'Database', function (filename: string, ...args: unknown[]) {
+      if (failure === 'open' && !injected) { injected = true; filename = join(fixture, 'missing-parent', 'index.sqlite') }
+      record('database/open-start', filename)
+      const callback = args.at(-1)
+      if (typeof callback === 'function') args[args.length - 1] = function (this: unknown, error: Error | null) {
+        record('database/open-end', { filename, error })
+        Reflect.apply(callback, this, [error])
+        if (failure === 'open' && error) failed.resolve()
+      }
+      const raw = Reflect.construct(originalDatabase, [filename, ...args]) as sqlite3.Database
+      // [DEBUG-bon-sql] Observe existing callbacks before the first SQL call, without adding handlers.
+      for (const method of ['run', 'all', 'exec', 'wait', 'close'] as const) {
+        const original = raw[method]
+        Reflect.set(raw, method, function (this: sqlite3.Database, ...parameters: unknown[]) {
+          const callback = parameters.at(-1)
+          if (typeof callback === 'function') {
+            const id = ++sqlId
+            const operation = { at: Date.now() - started, sql: typeof parameters[0] === 'string' ? parameters[0] : method, key: Array.isArray(parameters[1]) ? parameters[1][0] : null }
+            pendingSql.set(id, operation)
+            record('sql/start', { id, ...operation })
+            parameters[parameters.length - 1] = function (this: unknown, ...values: unknown[]) {
+              pendingSql.delete(id)
+              const duration = Date.now() - started - operation.at
+              maxSqlMs = Math.max(maxSqlMs, duration)
+              record('sql/end', { id, duration, error: values[0] })
+              return Reflect.apply(callback, this, values)
+            }
+          }
+          return Reflect.apply(original, this, parameters)
+        })
+      }
+      return raw
+    })
     t.mock.method(Document.prototype, 'mount', async function (this: import('flexsearch').Document, storage: import('flexsearch').StorageInterface) {
       native = (storage as import('flexsearch').StorageInterface & { db: sqlite3.Database }).db
       assert.ok(native)
       native.once('close', () => failed.resolve())
-      // [DEBUG-bon-sql] Observe only existing callbacks; leave callback-less SQL capture untouched.
-      const run = native.run
-      native.run = function (sql: string, ...args: unknown[]) {
-        const callback = args.at(-1)
-        if (typeof callback === 'function') {
-          const id = ++sqlId
-          const operation = { at: Date.now() - started, sql, key: Array.isArray(args[0]) ? args[0][0] : null }
-          pendingSql.set(id, operation)
-          record('sql/start', { id, ...operation })
-          args[args.length - 1] = function (this: unknown, ...values: unknown[]) {
-            pendingSql.delete(id)
-            const duration = Date.now() - started - operation.at
-            maxSqlMs = Math.max(maxSqlMs, duration)
-            record('sql/end', { id, duration, error: values[0] })
-            return Reflect.apply(callback, this, values)
-          }
-        }
-        return Reflect.apply(run, this, [sql, ...args])
-      }
       record('mount/start')
       await originalMount.call(this, storage)
       record('mount/end')
@@ -5268,6 +5272,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       // Wait for the real failed native operation, not a simulated rejected promise.
       const deadline = Date.now() + 5_000
       while (!injected && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+      if (!injected) { timedOut = true; snapshot() }
       assert.equal(injected, true)
       await release
       await bounded(failed.promise)
@@ -5411,7 +5416,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       await release
       if (loaded !== undefined) await bounded(dispose(loaded.context, loaded.root))
       if (timedOut) t.diagnostic(`[DEBUG-bon-settled] ${inspect({ phases, pendingSql, lastReconcileError }, { depth: 5, maxArrayLength: 200, breakLength: Infinity })}`)
-      if (process.env.TOCKTEAM_SEARCH_QUERY_LOAD === '1') t.diagnostic(`[DEBUG-bon-load] ${JSON.stringify({ maxSqlMs, totalMs: Date.now() - started, polls: pollId })}`)
+      if (process.env.TOCKTEAM_SEARCH_QUERY_LOAD !== undefined) t.diagnostic(`[DEBUG-bon-load] ${JSON.stringify({ maxSqlMs, totalMs: Date.now() - started, polls: pollId })}`)
       await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     }
   })
