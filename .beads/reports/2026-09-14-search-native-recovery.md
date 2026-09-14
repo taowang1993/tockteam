@@ -89,7 +89,13 @@ Approved bounded probe `34905513383` compared 128 alternating pairs of identical
 
 The paired workload completed in 916 ms; event-loop utilization was 5.6%. Owner PID 4488 exited and process-tree cleanup passed. The preceding debugger preflight also passed. Raw evidence: `/tmp/tockteam-bon-storage-windows.log`.
 
-This establishes a substantial sync-latency difference between these locations **on this runner**, not the cause of the earlier 1.6-second callback or the historical cancellation. It is a short filesystem probe on a fresh runner, not the complete SQLite workload on the failing runner. Using the runner-owned temporary folder is a candidate CI-only mitigation; it has not yet been applied or validated against the native gate.
+This establishes a substantial sync-latency difference between these locations **on this runner**, not the cause of the earlier 1.6-second callback or the historical cancellation. It is a short filesystem probe on a fresh runner, not the complete SQLite workload on the failing runner.
+
+With explicit user approval, `3e2b888b` changes Windows CI test placement to the runner-owned temporary folder and asserts the actual Node temporary path. Production data locations and all five-second gates remain unchanged. The manual diagnostic still defaults to the original OS temporary folder; an explicit input selects the runner folder and either one or thirty bounded native-gate runs.
+
+Approved single-run verification `34907590285` confirmed `D:\\a\\_temp`, passed all eight native tests with zero failures/cancellations, and verified owner process-tree cleanup. Full CI `34907592374` also passed all six jobs: Windows, both macOS architectures, Linux, runtime smoke, and Nix package smoke. Workflow syntax and the unchanged TockTutor build manifest were checked locally; configuration-only changes needed no additional unit test.
+
+This is a verified **CI test-placement mitigation**, not proof that the intermittent symptom is eliminated or the historical cancellation is explained. `tockteam-bon` remains open, and the default-location diagnostics are retained. Any future causal investigation should correlate filesystem/native timing on the actual failing runner rather than infer a production repair from green reruns.
 
 ### Native Stack Capture Preflight
 
