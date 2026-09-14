@@ -5154,7 +5154,6 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     let release: Promise<void> | undefined
     let loaded: Awaited<ReturnType<typeof load>> | undefined
     const failed = Promise.withResolvers<void>()
-    const sqlTrace: Array<[number, string]> = []
     const timeline: Array<{ at: number; event: string; detail: unknown }> = []
     const started = Date.now()
     const record = (event: string, detail: unknown = null) => {
@@ -5174,7 +5173,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
           t.diagnostic(inspect({
             nativeError: native && Reflect.get(native, 'searchError'),
             runtimeIndex: loaded && Reflect.get(loaded.context.noteVault, 'searchIndex'),
-            sqlTrace, timeline, lastReconcileError,
+            timeline, lastReconcileError,
             poll: { id: pollId, outstanding: pollOutstanding, age: Date.now() - pollStarted },
           }, { depth: 5, maxArrayLength: 200, breakLength: Infinity }))
           reject(timeoutError)
@@ -5195,12 +5194,10 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     t.mock.method(Document.prototype, 'mount', async function (this: import('flexsearch').Document, storage: import('flexsearch').StorageInterface) {
       native = (storage as import('flexsearch').StorageInterface & { db: sqlite3.Database }).db
       assert.ok(native)
-      native.on('trace', sql => {
-        sqlTrace.push([Date.now(), sql])
-        if (sqlTrace.length > 40) sqlTrace.shift()
-      })
       native.once('close', () => failed.resolve())
+      record('mount/start')
       await originalMount.call(this, storage)
+      record('mount/end')
     })
     t.mock.method(Document.prototype, 'commit', async function (this: import('flexsearch').Document) {
       let unlock: (() => void) | undefined
@@ -5230,7 +5227,8 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
         injected = true
       }
       // No clock race: retain the lock until the real commit has failed/settled.
-      try { await originalCommit.call(this) } finally { unlock?.() }
+      record('commit/start')
+      try { await originalCommit.call(this); record('commit/end') } finally { unlock?.() }
     })
     try {
       loaded = await load(config)
@@ -5255,7 +5253,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
         full: Reflect.get(index, 'fullReconcilePending'),
         paths: [...Reflect.get(index, 'pendingPaths')],
       })
-      t.mock.method(indexPrototype, 'reconcileNow', async function (this: object) {
+      t.mock.method(indexPrototype, 'reconcileNow', function (this: object) {
         record('reconcile/start', indexState(this))
         const options = Reflect.get(this, 'options')
         if (!observed.has(options)) {
@@ -5263,30 +5261,31 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
           const revisions = new Map<string, string>()
           const list = Reflect.get(options, 'list')
           const read = Reflect.get(options, 'read')
-          t.mock.method(options, 'list', async function (this: object, ...args: unknown[]) {
+          t.mock.method(options, 'list', function (this: object, ...args: unknown[]) {
             record('list/start')
-            const rows = await Reflect.apply(list, this, args) as Array<{ path: string; revision: string }> | null
-            revisions.clear()
-            for (const row of rows ?? []) revisions.set(row.path, row.revision)
-            record('list/end', rows)
-            return rows
+            const operation = Reflect.apply(list, this, args) as Promise<Array<{ path: string; revision: string }> | null>
+            void operation.then(rows => {
+              revisions.clear()
+              for (const row of rows ?? []) revisions.set(row.path, row.revision)
+              record('list/end', rows)
+            }, error => record('list/error', error))
+            return operation
           })
-          t.mock.method(options, 'read', async function (this: object, ...args: unknown[]) {
+          t.mock.method(options, 'read', function (this: object, ...args: unknown[]) {
             record('read/start', args[0])
-            const row = await Reflect.apply(read, this, args) as { path: string; revision: string } | null
-            record('read/end', { path: args[0], listed: revisions.get(String(args[0])), read: row?.revision })
-            return row
+            const operation = Reflect.apply(read, this, args) as Promise<{ path: string; revision: string } | null>
+            void operation.then(row => {
+              record('read/end', { path: args[0], listed: revisions.get(String(args[0])), read: row?.revision })
+            }, error => record('read/error', error))
+            return operation
           })
         }
-        try {
-          const result = await Reflect.apply(reconcileNow, this, [])
-          record('reconcile/end', indexState(this))
-          return result
-        } catch (error) {
+        const operation = Reflect.apply(reconcileNow, this, []) as Promise<void>
+        void operation.then(() => record('reconcile/end', indexState(this)), error => {
           lastReconcileError = error
           record('reconcile/error', error)
-          throw error
-        }
+        })
+        return operation
       })
       const invalidate = Reflect.get(indexPrototype, 'invalidate')
       t.mock.method(indexPrototype, 'invalidate', function (this: object, ...args: unknown[]) {
@@ -5295,17 +5294,18 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       })
       const runtimePrototype = Object.getPrototypeOf(loaded.context.noteVault)
       const candidates = Reflect.get(runtimePrototype, 'searchCandidates')
-      t.mock.method(runtimePrototype, 'searchCandidates', async function (this: object, ...args: unknown[]) {
+      t.mock.method(runtimePrototype, 'searchCandidates', function (this: object, ...args: unknown[]) {
         const poll = pollId
         record('candidates/start', poll)
-        const result = await Reflect.apply(candidates, this, args) as import('tockbot-note-vault/inspection').VaultSearchCandidateResult | null
-        record('candidates/end', { poll, result })
-        if (corruptCandidateOnce && result !== null) {
+        const operation = Reflect.apply(candidates, this, args) as Promise<import('tockbot-note-vault/inspection').VaultSearchCandidateResult | null>
+        void operation.then(result => record('candidates/end', { poll, result }), error => record('candidates/error', { poll, error }))
+        if (corruptCandidateOnce) return operation.then(result => {
+          if (result === null) return result
           corruptCandidateOnce = false
           record('control/corrupt-revision', poll)
-          return { ...result, entries: result.entries.map((entry: { revision: string }, i: number) => i === 0 ? { ...entry, revision: 'diagnostic-mismatch' } : entry) }
-        }
-        return result
+          return { ...result, entries: result.entries.map((entry, i) => i === 0 ? { ...entry, revision: 'diagnostic-mismatch' } : entry) }
+        })
+        return operation
       })
       // Disposal must drain even if a callback-less FlexSearch SQL statement failed.
       const first = loaded
