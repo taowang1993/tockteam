@@ -1,0 +1,35 @@
+name: Search Native Debugger Probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 3
+    steps:
+      - name: Inspect Installed Debuggers
+        shell: pwsh
+        run: |
+          $paths = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe",
+            "$env:ProgramFiles\LLVM\bin\lldb.exe"
+          )
+          $paths += @(Get-Command cdb.exe,lldb.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
+          $found = @($paths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -Unique)
+          if ($found.Count -eq 0) {
+            Write-Output 'No debugger candidates found; no tests or installations performed.'
+          }
+          foreach ($path in $found) {
+            $file = Get-Item -LiteralPath $path
+            $signature = Get-AuthenticodeSignature -LiteralPath $path
+            [pscustomobject]@{
+              Path = $path
+              Version = $file.VersionInfo.FileVersion
+              Signature = $signature.Status.ToString()
+              Signer = $signature.SignerCertificate.Subject
+            } | ConvertTo-Json -Compress
+          }
