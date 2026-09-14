@@ -199,7 +199,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/lib/index.js",
-      "sha256": "6988136f052def9eede083616e5b6ee48664aef9044c98448ff0e12ab1b4c953"
+      "sha256": "3b727a25e24128a2489df282cc21e3ddb07905181c439ff521f00f34a22c3721"
     },
     {
       "path": "packages/tockbot-note-runtime/package.json",
@@ -207,11 +207,15 @@
     },
     {
       "path": "packages/tockbot-note-runtime/scripts/test-search-index.mjs",
-      "sha256": "7bb1c0f60123999695fbe10e0f129dd30af96a30367537a0b14a5ea35648ae3d"
+      "sha256": "c0a037ca39e696a7a1b3bb6280dbab9fab909cbba041d54e3d5d45f77903afad"
+    },
+    {
+      "path": "packages/tockbot-note-runtime/scripts/trace-search-index.mjs",
+      "sha256": "81b721499de33d96e05ed1e329e153619f464bb35af5616843f1a540325561fc"
     },
     {
       "path": "packages/tockbot-note-runtime/src/index.ts",
-      "sha256": "bb9b37a7820aa95cf9883f004981f3edd93b17fbeab605c21d22d7ad77fdc483"
+      "sha256": "aa59827635b583b322339fbc0d995a685f2476e104996e2efbae3d402542b3ed"
     },
     {
       "path": "packages/tockbot-note-runtime/tsconfig.build.json",
