@@ -11,6 +11,9 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 3
     steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - name: Inspect Installed Debuggers
         shell: pwsh
         run: |
@@ -33,3 +36,17 @@ jobs:
               Signer = $signature.SignerCertificate.Subject
             } | ConvertTo-Json -Compress
           }
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Verify Non-Suspending Stack Capture
+        shell: pwsh
+        run: |
+          $debugger = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe"
+          $signature = Get-AuthenticodeSignature -LiteralPath $debugger
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') {
+            throw 'Expected a valid Microsoft-signed debugger; no installation or fallback permitted.'
+          }
+          $env:TOCKTEAM_NATIVE_DEBUGGER = $debugger
+          node scripts/probe-search-native-debugger.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
