@@ -78,6 +78,19 @@ Commands and calibration logs:
 
 Fresh read-only causal review agreed with this limited interpretation and rejected a speculative transactional-schema repair. Review artifact: `/Users/taowang/.pi/agent/sessions/--Users-taowang-projects-tockteam--/subagent-artifacts/outputs/e90c43fb-114c-4c15-b5d8-747c1fdb9b41/causal-review.md`.
 
+### Windows Temporary-Storage Comparison
+
+Approved bounded probe `34905513383` compared 128 alternating pairs of identical 4 KiB write/sync/close/remove operations in the default temporary folder and `RUNNER_TEMP`. These were different devices. No SQLite code or production settings were changed.
+
+| Location | Sync Median | Sync P95 | Sync Maximum |
+| --- | --- | --- | --- |
+| Default temporary folder on `C:` | 3.763 ms | 18.702 ms | 28.210 ms |
+| Runner temporary folder, `D:\\a\\_temp` | 0.134 ms | 0.189 ms | 1.173 ms |
+
+The paired workload completed in 916 ms; event-loop utilization was 5.6%. Owner PID 4488 exited and process-tree cleanup passed. The preceding debugger preflight also passed. Raw evidence: `/tmp/tockteam-bon-storage-windows.log`.
+
+This establishes a substantial sync-latency difference between these locations **on this runner**, not the cause of the earlier 1.6-second callback or the historical cancellation. It is a short filesystem probe on a fresh runner, not the complete SQLite workload on the failing runner. Using the runner-owned temporary folder is a candidate CI-only mitigation; it has not yet been applied or validated against the native gate.
+
 ### Native Stack Capture Preflight
 
 Debugger discovery `34900302460` found an existing Microsoft-signed CDB; no debugger installation was required. The first preflight correctly rejected an exit-zero/no-stack result caused by an incompatible detach option. Corrected preflight `34901443107` captured real thread stacks using non-suspending, noninvasive `-pvr`; the owned Node parent and blocked worker then continued, and process-tree cleanup passed.
