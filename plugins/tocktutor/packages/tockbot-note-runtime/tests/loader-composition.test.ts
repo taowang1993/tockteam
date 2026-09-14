@@ -5,7 +5,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import sqlite3 from 'sqlite3'
-import test from 'node:test'
+import test, { type TestContext } from 'node:test'
 import { pathToFileURL } from 'node:url'
 import { inspect } from 'node:util'
 import { Context } from '@deepseek-ai/cordis'
@@ -28,6 +28,24 @@ import NoteVaultRuntime, {
   type TockTeamDesktopVaultSelectionConsumeResult,
   type TockTeamDesktopVaultSelectionReleaseInput,
 } from '../src/index.ts'
+import { captureNativeStack } from './native-stack.ts'
+
+let nativeStackCaptured = false
+function recordNativeStack(t: TestContext): void {
+  const debuggerPath = process.env.TOCKTEAM_NATIVE_DEBUGGER
+  // Leave margin inside the native owner's existing 60-second process deadline.
+  if (nativeStackCaptured || !debuggerPath || process.platform !== 'win32' || process.uptime() >= 45) return
+  nativeStackCaptured = true
+  const started = Date.now()
+  try {
+    const result = captureNativeStack(debuggerPath)
+    t.diagnostic(`[DEBUG-bon-native-stack] ${JSON.stringify({ started, ended: Date.now(), ownerPid: process.pid, debuggerPid: result.pid, status: result.status, signal: result.signal, error: result.error?.message })}`)
+    t.diagnostic(result.stdout ?? '')
+    if (result.stderr) t.diagnostic(result.stderr)
+  } catch (error) {
+    t.diagnostic(`[DEBUG-bon-native-stack] Capture failed: ${String(error)}`)
+  }
+}
 
 const packageName = 'tockbot-note-runtime'
 const desktopClaim = (value: string) => value as TockTeamDesktopVaultSelectionClaim
@@ -5177,20 +5195,24 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     let pollStarted = 0
     let pollOutstanding = false
     let corruptCandidateOnce = false
-    const snapshot = () => t.diagnostic(inspect({
-      nativeError: native && Reflect.get(native, 'searchError'),
-      runtimeIndex: loaded && Reflect.get(loaded.context.noteVault, 'searchIndex'),
-      timeline, phases, pendingSql, lastReconcileError,
-      poll: { id: pollId, outstanding: pollOutstanding, age: Date.now() - pollStarted },
-    }, { depth: 5, maxArrayLength: 200, breakLength: Infinity }))
+    const snapshot = () => {
+      const runtime = loaded?.context.noteVault
+      t.diagnostic(inspect({
+        nativeError: native && Reflect.get(native, 'searchError'),
+        runtimeIndex: runtime && Reflect.get(runtime, 'searchIndex'),
+        timeline, phases, pendingSql, lastReconcileError,
+        poll: { id: pollId, outstanding: pollOutstanding, age: Date.now() - pollStarted },
+      }, { depth: 5, maxArrayLength: 200, breakLength: Infinity }))
+    }
     const bounded = <T>(operation: Promise<T>) => {
       const timeoutError = new Error('native failure did not settle')
       let timer: ReturnType<typeof setTimeout>
       return Promise.race([operation, new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           timedOut = true
-          snapshot()
           reject(timeoutError)
+          snapshot()
+          recordNativeStack(t)
         }, 5_000)
       })]).finally(() => clearTimeout(timer))
     }
@@ -5285,7 +5307,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       // Wait for the real failed native operation, not a simulated rejected promise.
       const deadline = Date.now() + 5_000
       while (!injected && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
-      if (!injected) { timedOut = true; snapshot() }
+      if (!injected) { timedOut = true; snapshot(); recordNativeStack(t) }
       assert.equal(injected, true)
       await release
       await bounded(failed.promise)
@@ -5427,6 +5449,19 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
         await verify('tag:poison', 1)
       }
     } finally {
+      if (timedOut && pollId > 0 && loaded !== undefined && process.env.TOCKTEAM_NATIVE_DEBUGGER) {
+        // The test has already failed. Observe eventual settlement briefly before aborting it.
+        const runtime = loaded.context.noteVault
+        const index = runtime && Reflect.get(runtime, 'searchIndex')?.index
+        let timer: ReturnType<typeof setTimeout> | undefined
+        try {
+          const outcome = await Promise.race([
+            index?.reconcileTask ? Promise.resolve(index.reconcileTask).then(() => 'settled', () => 'rejected') : Promise.resolve('no-task'),
+            new Promise<string>(resolve => { timer = setTimeout(() => resolve('still-pending'), 1_000) }),
+          ])
+          t.diagnostic(`[DEBUG-bon-before-abort] ${inspect({ outcome, ready: index?.ready, epoch: index?.epoch }, { depth: 2 })}`)
+        } finally { clearTimeout(timer) }
+      }
       await release
       if (loaded !== undefined) await bounded(dispose(loaded.context, loaded.root))
       if (timedOut) t.diagnostic(`[DEBUG-bon-settled] ${inspect({ phases, pendingSql, lastReconcileError }, { depth: 5, maxArrayLength: 200, breakLength: Infinity })}`)
@@ -5600,6 +5635,7 @@ test('Keyword search reconciles state-owned indexed candidates through the exact
         if (observedEntries === expectedEntries) return result
         if (Date.now() >= deadline) {
           t.diagnostic(`[DEBUG-bon-keyword] ${inspect({ index, lastError, timeline }, { depth: 5, maxArrayLength: 200, breakLength: Infinity })}`)
+          recordNativeStack(t)
           throw new Error(`timed out waiting for ${String(expectedEntries)} indexed candidates; observed ${String(observedEntries)}`)
         }
         await new Promise(resolve => setTimeout(resolve, 20))

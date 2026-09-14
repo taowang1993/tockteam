@@ -207,7 +207,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/scripts/test-search-index.mjs",
-      "sha256": "c0a037ca39e696a7a1b3bb6280dbab9fab909cbba041d54e3d5d45f77903afad"
+      "sha256": "6bc85431372877dc0c959c28c7e7c33411750d5e1fc4ee1b83cf02145c278c33"
     },
     {
       "path": "packages/tockbot-note-runtime/src/index.ts",

@@ -55,6 +55,14 @@ The pre-injection failure means verification-query traffic was not necessary for
 
 Latest local verification at `75f00838`: runtime 87/87 and package typecheck passed. Diagnostic callbacks preserve the original receiver, arguments, return values, and promises; no C++ SQL trace or additional native error handlers are installed. The manual workflow has returned to one verification query per poll.
 
+### Native Stack Capture Preflight
+
+Debugger discovery `34900302460` found an existing Microsoft-signed CDB; no debugger installation was required. The first preflight correctly rejected an exit-zero/no-stack result caused by an incompatible detach option. Corrected preflight `34901443107` captured real thread stacks using non-suspending, noninvasive `-pvr`; the owned Node parent and blocked worker then continued, and process-tree cleanup passed.
+
+Capture is enabled only in the manual diagnostic, after a failure has already been determined. It is limited to one capture per native owner, with a five-second debugger bound and margin inside the existing 60-second owner deadline. The gate now uses the existing process-tree cleanup helper so debugger descendants are included. No heap dump, shell command, or network symbol retrieval is requested.
+
+**Limit:** starting CDB and synchronously collecting output delays JavaScript callback delivery after the failure. Later SQL callback durations are therefore contaminated by capture time; native stacks are later samples, not simultaneous snapshots of the original timeout. A separate one-second post-failure observation can report eventual readiness before disposal, but cannot turn the failed test into a pass.
+
 ### Deterministic Retained-Epoch Control
 
 A fault-free local control held delivery of the successful schema-publication callback, requested full invalidation, and held the automatic retry at its next list operation. It reproduced the observed combination of a retained nonempty epoch, null published handles, false readiness, a pending task, and cleared pending flags. Search returned the correct match via a three-file scan. Releasing the list barrier, without another invalidation, restored two-entry indexed search within the unchanged five-second deadline.

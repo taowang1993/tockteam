@@ -20,6 +20,18 @@ jobs:
           node-version: 24
       - run: pnpm install --frozen-lockfile
       - run: pnpm -C plugins/tocktutor install --frozen-lockfile
+      - name: Verify Native Stack Capture
+        shell: pwsh
+        run: |
+          $debugger = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe"
+          $signature = Get-AuthenticodeSignature -LiteralPath $debugger
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') {
+            throw 'Expected a valid Microsoft-signed debugger; no installation or fallback permitted.'
+          }
+          $env:TOCKTEAM_NATIVE_DEBUGGER = $debugger
+          node scripts/probe-search-native-debugger.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "TOCKTEAM_NATIVE_DEBUGGER=$debugger" >> $env:GITHUB_ENV
       - name: Locate the Recovery Timeout
         env:
           TOCKTEAM_SEARCH_QUERY_LOAD: '0'
