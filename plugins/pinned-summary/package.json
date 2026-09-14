@@ -12,7 +12,9 @@
   },
   "dsh": {
     "client": {
-      "inject": [],
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
       "platform": "web",
       "immediately": true
     }

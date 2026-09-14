@@ -39,6 +39,11 @@ interface SessionsService {
   binding(id: string): SessionBinding | undefined
 }
 
+/** Read-only face of RC.1's target-owned conversation projection. */
+interface UiConversationService {
+  binding(id: string): { target(target: 'chat'): ObservableSnapshot<unknown> }
+}
+
 interface ClientContext {
   effect(effect: () => (() => void) | void, label?: string): void
   get(name: string): unknown
@@ -55,7 +60,7 @@ export interface PinnedSummary {
   toggle(): void
 }
 
-export const inject = ['locale', 'sessions']
+export const inject = ['locale', 'sessions', 'uiConversation']
 
 const OPEN_KEY = 'tockteam-desktop.pinned-summary.open'
 export const PINNED_SUMMARY_PANEL_ID = 'tockteam-pinned-summary'
@@ -110,8 +115,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function conversationNodes(snapshot: unknown): readonly unknown[] {
-  if (!isRecord(snapshot) || !Array.isArray(snapshot.nodes)) return []
-  return snapshot.nodes
+  if (!isRecord(snapshot) || !isRecord(snapshot.legacy) || !Array.isArray(snapshot.legacy.nodes)) return []
+  return snapshot.legacy.nodes
 }
 
 function readString(value: unknown): string | undefined {
@@ -175,9 +180,7 @@ function snapshotHasError(snapshot: unknown): boolean {
 export function summaryState(
   session: SessionListSummary | undefined,
   snapshot: unknown,
-  derived: SummaryRecord | undefined = snapshot === undefined
-    ? undefined
-    : latestSummary(conversationNodes(snapshot)),
+  derived?: SummaryRecord,
 ): SummaryState {
   if (session === undefined) return 'no-session'
   if (snapshot === undefined) return 'loading'
@@ -327,6 +330,7 @@ export function appendSummaryMarkdown(parent: HTMLElement, markdown: string): vo
 
 class PinnedSummaryService implements PinnedSummary {
   readonly #sessions: SessionsService
+  readonly #conversation: UiConversationService
   readonly #locale: LocaleService
   readonly #t: Translate<PinnedSummaryMessage>
   readonly #listeners = new Set<() => void>()
@@ -347,10 +351,12 @@ class PinnedSummaryService implements PinnedSummary {
   #feedback: HTMLElement | undefined
   #currentId: string | undefined
   #currentSession: ObservableSnapshot<unknown> | undefined
+  #currentChat: ObservableSnapshot<unknown> | undefined
   #currentText = ''
   #returnFocus: HTMLElement | null = null
   #unsubscribeList: (() => void) | undefined
   #unsubscribeSession: (() => void) | undefined
+  #unsubscribeChat: (() => void) | undefined
   #unsubscribeLocale: (() => void) | undefined
   readonly #handleDocumentKeyDown = (event: KeyboardEvent): void => {
     if (!this.#open || this.#panel === undefined || event.key !== 'Escape') return
@@ -362,10 +368,12 @@ class PinnedSummaryService implements PinnedSummary {
 
   constructor(
     sessions: SessionsService,
+    conversation: UiConversationService,
     locale: LocaleService,
     t: Translate<PinnedSummaryMessage>,
   ) {
     this.#sessions = sessions
+    this.#conversation = conversation
     this.#locale = locale
     this.#t = t
   }
@@ -480,9 +488,11 @@ class PinnedSummaryService implements PinnedSummary {
     }
     this.#unsubscribeList?.()
     this.#unsubscribeSession?.()
+    this.#unsubscribeChat?.()
     this.#unsubscribeLocale?.()
     this.#unsubscribeList = undefined
     this.#unsubscribeSession = undefined
+    this.#unsubscribeChat = undefined
     this.#unsubscribeLocale = undefined
     document.removeEventListener('keydown', this.#handleDocumentKeyDown, true)
     this.#unmountChrome?.()
@@ -502,6 +512,7 @@ class PinnedSummaryService implements PinnedSummary {
     this.#returnFocus = null
     this.#currentId = undefined
     this.#currentSession = undefined
+    this.#currentChat = undefined
     this.#currentText = ''
     this.#expanded = false
     this.#listeners.clear()
@@ -590,17 +601,25 @@ class PinnedSummaryService implements PinnedSummary {
     const currentSession = currentId === undefined
       ? undefined
       : this.#sessions.binding(currentId)?.session
-    if (currentId !== this.#currentId || currentSession !== this.#currentSession) {
+    const currentChat = currentId === undefined || currentSession === undefined
+      ? undefined
+      : this.#conversation.binding(currentId).target('chat')
+    if (currentId !== this.#currentId || currentSession !== this.#currentSession || currentChat !== this.#currentChat) {
       this.#unsubscribeSession?.()
+      this.#unsubscribeChat?.()
       this.#unsubscribeSession = undefined
+      this.#unsubscribeChat = undefined
       this.#currentId = currentId
       this.#currentSession = currentSession
+      this.#currentChat = currentChat
       this.#expanded = false
       this.#currentText = ''
       this.setFeedback()
       if (currentSession !== undefined) {
         this.#unsubscribeSession = currentSession.subscribe(() => { this.render() })
       }
+      // Subscribing lets DSH activate the target; no separate activation or state owner.
+      this.#unsubscribeChat = currentChat?.subscribe(() => { this.render() })
     }
     this.render()
   }
@@ -628,9 +647,11 @@ class PinnedSummaryService implements PinnedSummary {
     const text = this.#currentText
     const id = this.#currentId
     const session = this.#currentSession
+    const chat = this.#currentChat
     if (text === '') return
     const isCurrent = (): boolean => this.#currentId === id
       && this.#currentSession === session
+      && this.#currentChat === chat
       && this.#currentText === text
       && this.#panel !== undefined
       && this.#open
@@ -675,10 +696,9 @@ class PinnedSummaryService implements PinnedSummary {
       return
     }
 
-    const binding = this.#sessions.binding(id)
-    const snapshot = binding?.session.getSnapshot()
-    const derived = latestSummary(conversationNodes(snapshot))
-    const state: SummaryState = binding === undefined
+    const snapshot = this.#currentSession?.getSnapshot()
+    const derived = latestSummary(conversationNodes(this.#currentChat?.getSnapshot()))
+    const state: SummaryState = this.#currentSession === undefined
       ? 'unavailable'
       : summaryState(session, snapshot, derived)
     const stateLabel: Record<SummaryState, string> = {
@@ -758,6 +778,7 @@ export function apply(ctx: ClientContext): void {
   )
   const service = new PinnedSummaryService(
     ctx.get('sessions') as SessionsService,
+    ctx.get('uiConversation') as UiConversationService,
     locale,
     t,
   )

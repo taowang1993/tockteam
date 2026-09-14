@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import { inject } from '../plugins/pinned-summary/src/client.ts'
 
 const source = readFileSync(new URL('../plugins/pinned-summary/src/client.ts', import.meta.url), 'utf8')
 const sidebar = readFileSync(new URL('../plugins/sidebar/src/client/plugin.tsx', import.meta.url), 'utf8')
+
+test('pinned summary declares the RC.1 conversation owner in both loading layers', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../plugins/pinned-summary/package.json', import.meta.url), 'utf8'))
+  assert.ok(inject.includes('uiConversation'))
+  assert.ok(manifest.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-conversation'))
+})
 
 test('pinned summary reconciles a replaced binding under the same session ID', () => {
   assert.match(source, /#currentSession: ObservableSnapshot<unknown> \| undefined/u)

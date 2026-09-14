@@ -3,11 +3,13 @@ import { performance } from 'node:perf_hooks'
 import { test } from 'node:test'
 import {
   appendSummaryMarkdown,
+  apply,
   latestSummary,
   SUMMARY_PREVIEW_LIMIT,
   summaryState,
   truncateSummary,
   type SessionListSummary,
+  type PinnedSummary,
 } from '../plugins/pinned-summary/src/client.ts'
 
 class FakeTextNode {
@@ -18,17 +20,39 @@ class FakeTextNode {
   }
 }
 
-class FakeElement {
+class FakeElement extends EventTarget {
   readonly children: Array<FakeElement | FakeTextNode> = []
   readonly dataset: Record<string, string> = {}
   href = ''
   rel = ''
   target = ''
   #text = ''
+  id = ''
+  hidden = false
+  parent: FakeElement | undefined
+  readonly attributes = new Map<string, string>()
+  readonly classList = { add: (..._names: string[]) => {}, remove: (..._names: string[]) => {} }
+
+  setAttribute(name: string, value: string): void { this.attributes.set(name, value) }
+  getAttribute(name: string): string | null { return this.attributes.get(name) ?? null }
+  toggleAttribute(name: string, force: boolean): void {
+    if (force) this.setAttribute(name, '')
+    else this.attributes.delete(name)
+  }
+  replaceChildren(...children: Array<FakeElement | FakeTextNode>): void {
+    this.textContent = ''
+    this.append(...children)
+  }
+  appendChild(child: FakeElement): FakeElement { this.append(child); return child }
+  remove(): void {
+    if (this.parent) this.parent.children.splice(this.parent.children.indexOf(this), 1)
+  }
+  get childElementCount(): number { return this.children.length }
 
   readonly tagName: string
 
   constructor(tagName: string) {
+    super()
     this.tagName = tagName
   }
 
@@ -43,10 +67,18 @@ class FakeElement {
 
   append(...children: Array<FakeElement | FakeTextNode>): void {
     this.children.push(...children)
+    for (const child of children) if (child instanceof FakeElement) child.parent = this
   }
 }
 
-class FakeDocument {
+class FakeDocument extends EventTarget {
+  readonly documentElement = new FakeElement('html')
+  readonly body = new FakeElement('body')
+  readonly activeElement = null
+  getElementById(id: string): FakeElement | null {
+    return descendants(this.body).find(node => node.id === id) ?? null
+  }
+  createElementNS(_namespace: string, tagName: string): FakeElement { return this.createElement(tagName) }
   createElement(tagName: string): FakeElement {
     return new FakeElement(tagName)
   }
@@ -111,6 +143,90 @@ test('selects the latest usable compaction summary before assistant text blocks'
   assert.equal(latestSummary([{ kind: 'assistant', blocks: [] }]), undefined)
 })
 
+function observable<T>(initial: T) {
+  let value = initial
+  const listeners = new Set<() => void>()
+  return {
+    listeners,
+    getSnapshot: () => value,
+    subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+    set: (next: T) => { value = next; for (const listener of listeners) listener() },
+  }
+}
+
+test('mounted summary follows only the RC.1 chat target and releases replaced sources', t => {
+  const document = new FakeDocument()
+  const old = { document: globalThis.document, HTMLElement: globalThis.HTMLElement }
+  Object.assign(globalThis, { document, HTMLElement: FakeElement })
+  const cleanups: Array<() => void> = []
+  t.after(() => { for (const cleanup of cleanups.reverse()) cleanup(); Object.assign(globalThis, old) })
+  const list = observable<{ current?: string; byId: Record<string, SessionListSummary> }>({ current: 'session-1', byId: { 'session-1': session() } })
+  const firstSession = observable<unknown>(snapshot())
+  const firstChat = observable<unknown>(undefined)
+  let currentSession = firstSession
+  let currentChat = firstChat
+  let provided: PinnedSummary | undefined
+  const locale = observable({ active: 'en', revision: 1 })
+  apply({
+    get: name => ({
+      sessions: { list, binding: (id: string) => list.getSnapshot().byId[id] ? { session: currentSession } : undefined },
+      uiConversation: { binding: (id: string) => {
+        assert.ok(list.getSnapshot().byId[id], 'never bind an absent session')
+        return { target: (target: string) => { assert.equal(target, 'chat'); return currentChat } }
+      } },
+      locale: { ...locale, register: () => () => {}, bind: () => (key: string) => key },
+    })[name],
+    effect: effect => { const cleanup = effect(); if (cleanup) cleanups.push(cleanup) },
+    reflect: { provide: (_name, value) => { provided = value as PinnedSummary; return () => {} } },
+  })
+  assert.ok(provided)
+  const panel = document.getElementById('tockteam-pinned-summary')!
+  const content = document.getElementById('tockteam-pinned-summary-content')!
+  const chat = (text: string) => ({ legacy: { nodes: [{ kind: 'compaction', summary: text }] } })
+  firstChat.set(chat('RC.1 context'))
+  assert.equal(content.textContent, 'RC.1 context')
+  assert.equal(panel.getAttribute('data-state'), 'ready')
+  firstSession.set(snapshot({ nodes: [{ kind: 'compaction', summary: 'wrong session-owned nodes' }] }))
+  assert.equal(content.textContent, 'RC.1 context')
+  firstChat.set({ legacy: { nodes: [{ kind: 'assistant', blocks: [{ kind: 'text', text: 'final answer' }] }], partial: { text: 'not final' } } })
+  assert.equal(content.textContent, 'final answer')
+  for (const [fields, expected] of [
+    [{ queue: [{}] }, 'waiting'], [{ running: true }, 'running'],
+    [{ openState: 'cold' }, 'loading'], [{ promptError: {} }, 'error'], [{ blank: true }, 'blank'],
+  ] as const) {
+    firstSession.set(snapshot(fields))
+    assert.equal(panel.getAttribute('data-state'), expected)
+  }
+  firstSession.set(snapshot())
+  for (const value of [undefined, {}, { nodes: [{ kind: 'compaction', summary: 'wrong shape' }] }, { legacy: { nodes: [], partial: { text: 'not final' } } }]) {
+    firstChat.set(value)
+    assert.equal(panel.getAttribute('data-state'), 'unavailable')
+    assert.equal(content.textContent, 'summary.unavailable')
+  }
+  currentChat = observable<unknown>(chat('replacement chat'))
+  list.set({ ...list.getSnapshot() })
+  assert.equal(firstChat.listeners.size, 0)
+  assert.equal(currentChat.listeners.size, 1)
+  assert.equal(content.textContent, 'replacement chat')
+  currentSession = observable<unknown>(snapshot())
+  list.set({ ...list.getSnapshot() })
+  assert.equal(firstSession.listeners.size, 0)
+  assert.equal(currentSession.listeners.size, 1)
+  list.set({ current: 'session-2', byId: { 'session-2': session({ id: 'session-2' }) } })
+  assert.equal(currentChat.listeners.size, 1)
+  list.set({ byId: {} })
+  assert.equal(currentChat.listeners.size, 0)
+  assert.equal(currentSession.listeners.size, 0)
+  assert.equal(panel.getAttribute('data-state'), 'no-session')
+  assert.doesNotMatch(content.textContent, /replacement chat/)
+  list.set({ current: 'removed-session', byId: {} })
+  assert.equal(panel.getAttribute('data-state'), 'no-session')
+  list.set({ current: 'session-1', byId: { 'session-1': session() } })
+  for (const cleanup of cleanups.splice(0).reverse()) cleanup()
+  assert.equal(document.getElementById('tockteam-pinned-summary'), null)
+  for (const source of [list, locale, firstSession, firstChat, currentSession, currentChat]) assert.equal(source.listeners.size, 0)
+})
+
 test('bounds previews and keeps short text unchanged', () => {
   assert.equal(SUMMARY_PREVIEW_LIMIT, 480)
   assert.deepEqual(truncateSummary('  short summary  ', 32), {
@@ -140,12 +256,13 @@ test('maps verified DSH conversation fields to explicit lifecycle states', () =>
     { expected: 'waiting', session: session(), value: snapshot({ queue: [{ id: 'queued-1' }] }) },
     { expected: 'running', session: session({ running: true }), value: snapshot() },
     { expected: 'unavailable', session: session(), value: snapshot() },
-    { expected: 'ready', session: session(), value: snapshot({ nodes: [{ kind: 'compaction', summary: 'ready' }] }) },
+    { expected: 'unavailable', session: session(), value: snapshot({ nodes: [{ kind: 'compaction', summary: 'not a chat projection' }] }) },
   ] as const
 
   for (const scenario of cases) {
     assert.equal(summaryState(scenario.session, scenario.value), scenario.expected)
   }
+  assert.equal(summaryState(session(), snapshot(), { kind: 'context', text: 'ready' }), 'ready')
 })
 
 test('renders only the restricted rich-text subset and safe external links', () => {
