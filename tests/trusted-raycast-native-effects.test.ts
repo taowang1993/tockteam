@@ -413,6 +413,9 @@ agent.get('https://translate.google.com').intercept({ path: /^\\/translate_a\\/s
       manager!.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: view.revision, eventId: view.root.props.searchEventId, kind: 'searchChanged', value })
     }
     send('ab')
+    await waitRoot(root => root.children.some((child: any) => child.type === 'raycast-list' && child.props.searchText === 'ab'))
+    await wait(60)
+    if (!configuredArtifact) assert.equal(existsSync(requestsFile), false, 'no HTTP request starts before the debounce interval')
     send('abc')
     const finalRoot = await waitRoot(root => root.props.queryCurrent === true && JSON.stringify(root).includes('raycast-list-item') && root.children.some((child: any) => child.type === 'raycast-list' && child.props.searchText === 'abc'), 25000)
     assert.equal(finalRoot.root.props.queryCurrent, true)
