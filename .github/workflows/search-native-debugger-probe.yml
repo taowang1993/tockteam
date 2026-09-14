@@ -50,3 +50,5 @@ jobs:
           $env:TOCKTEAM_NATIVE_DEBUGGER = $debugger
           node scripts/probe-search-native-debugger.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Compare Temporary Storage
+        run: node scripts/probe-search-native-debugger.mjs --storage
