@@ -5383,7 +5383,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
   })
 }
 
-test('Keyword search reconciles state-owned indexed candidates through the exact verifier', async () => {
+test('Keyword search reconciles state-owned indexed candidates through the exact verifier', async t => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-indexed-search-'))
   const stateRoot = join(fixture, 'state')
   const vaultRoot = join(fixture, 'vault')
@@ -5401,6 +5401,38 @@ test('Keyword search reconciles state-owned indexed candidates through the exact
     if (!state.active) assert.fail('configured vault must be active')
     const expectedVault = { id: state.id, generation: state.generation }
     const signal = new AbortController().signal
+    // [DEBUG-bon-keyword] Distinguish a retired update from pending work or rejected candidates.
+    const timeline: unknown[] = []
+    let lastError: unknown
+    const record = (event: string, detail: unknown) => {
+      timeline.push({ at: Date.now(), event, detail })
+      if (timeline.length > 200) timeline.shift()
+    }
+    const index = Reflect.get(loaded.context.noteVault, 'searchIndex').index
+    const prototype = Object.getPrototypeOf(index)
+    const reconcileNow = Reflect.get(prototype, 'reconcileNow')
+    t.mock.method(prototype, 'reconcileNow', function (this: object) {
+      record('reconcile/start', { full: Reflect.get(this, 'fullReconcilePending'), paths: [...Reflect.get(this, 'pendingPaths')] })
+      const operation = Reflect.apply(reconcileNow, this, []) as Promise<void>
+      void operation.then(() => record('reconcile/end', { ready: Reflect.get(this, 'ready'), full: Reflect.get(this, 'fullReconcilePending'), paths: [...Reflect.get(this, 'pendingPaths')] }), error => {
+        lastError = error
+        record('reconcile/error', error)
+      })
+      return operation
+    })
+    const invalidate = Reflect.get(prototype, 'invalidate')
+    t.mock.method(prototype, 'invalidate', function (this: object, ...args: unknown[]) {
+      record('invalidate', args[0])
+      return Reflect.apply(invalidate, this, args)
+    })
+    const runtimePrototype = Object.getPrototypeOf(loaded.context.noteVault)
+    const candidates = Reflect.get(runtimePrototype, 'searchCandidates')
+    t.mock.method(runtimePrototype, 'searchCandidates', function (this: object, ...args: unknown[]) {
+      record('candidates/start', null)
+      const operation = Reflect.apply(candidates, this, args) as Promise<unknown>
+      void operation.then(result => record('candidates/end', result), error => record('candidates/error', error))
+      return operation
+    })
     const indexedSearch = async (expectedEntries: number) => {
       const deadline = Date.now() + 5_000
       let observedEntries = -1
@@ -5410,8 +5442,10 @@ test('Keyword search reconciles state-owned indexed candidates through the exact
           query: 'tag:project',
         }, expectedVault, signal)
         observedEntries = result.scan.entries
+        record('poll/end', { expectedEntries, observedEntries })
         if (observedEntries === expectedEntries) return result
         if (Date.now() >= deadline) {
+          t.diagnostic(`[DEBUG-bon-keyword] ${inspect({ index, lastError, timeline }, { depth: 5, maxArrayLength: 200, breakLength: Infinity })}`)
           throw new Error(`timed out waiting for ${String(expectedEntries)} indexed candidates; observed ${String(observedEntries)}`)
         }
         await new Promise(resolve => setTimeout(resolve, 20))
