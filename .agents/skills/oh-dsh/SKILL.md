@@ -14,11 +14,11 @@ Use this immutable baseline for the next update audit:
 | Field | Value |
 | --- | --- |
 | Repository | `https://github.com/hust-open-atom-club/oh-dsh.git` |
-| Last fully audited target | `v0.1.12` |
-| Peeled release commit | `19262643092f801b5db9f70c0995acdfe813311e` |
-| Earlier audit cutoff | `889258f4cdc7339f2eccbf446f0d4e46e59adaa4` (`v0.1.11-31-g889258f`) |
+| Last fully audited target | `v0.2.0` |
+| Peeled release commit | `c6fdd2705f70a077755ce64315ce5265c632f475` |
+| Previous audited target | `19262643092f801b5db9f70c0995acdfe813311e` (`v0.1.12`) |
 
-Interpret "audited target" as a selective review boundary, not a wholesale merge claim. TockTeam reviewed through `v0.1.12`, ported applicable behavior, and documented rejected or deferred behavior.
+Interpret "audited target" as a selective review boundary, not a wholesale merge claim. TockTeam reviewed through `v0.2.0`, ported approved behavior, and documented rejected or deferred behavior. Consult `.beads/reports/oh-dsh-v0.2.0-final-verification.md` (evidence commit `f5912a4e`) for all six passing hosted jobs and installed evidence; keep the separately scoped RC.1 pinned-summary projection follow-up `tockteam-9lt.17` open.
 
 Update this table only after you have reviewed every upstream change through a newer immutable release, recorded every disposition, landed and verified every approved port, and committed the resulting evidence. Keep the currently recorded release as the baseline when an audit or port is incomplete.
 
