@@ -375,7 +375,7 @@
     },
     {
       "path": "packages/tockteam-note-vault-tools/lib/index.js",
-      "sha256": "5b777e31e14adcaf69ba8eb7ab4720dd09483bd8572f1edd8f52be0d108605b9"
+      "sha256": "62c53d0ada0dd386b1fa06d0118f0c06670749b175891272cb5efd1fcb937adf"
     },
     {
       "path": "packages/tockteam-note-vault-tools/package.json",
@@ -383,7 +383,7 @@
     },
     {
       "path": "packages/tockteam-note-vault-tools/src/index.ts",
-      "sha256": "7f2a06eddb69984415bc4749a2d0f31b2e5a47c7943f1e27905527cc06beb740"
+      "sha256": "b784871651a375e6b0c65562547d2b8ee8788cc5d70392320c8f7105385d8825"
     },
     {
       "path": "packages/tockteam-note-vault-tools/tsconfig.build.json",

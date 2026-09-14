@@ -707,7 +707,8 @@ export function apply(context) {
         },
         isConcurrencySafe: () => true,
         async execute(args, exec) {
-            return withoutGeneration(await ctx.noteVault.search(args, activeVault(ctx), exec.signal));
+            const result = withoutGeneration(await ctx.noteVault.search(args, activeVault(ctx), exec.signal));
+            return { ...result, matches: result.matches.map(({ id: _id, revision: _revision, ...match }) => match) };
         },
     });
     ctx.tools.register({
@@ -734,7 +735,8 @@ export function apply(context) {
         },
         isConcurrencySafe: () => true,
         async execute(args, exec) {
-            return withoutGeneration(await ctx.noteVault.read(args, activeVault(ctx), exec.signal));
+            const { revision: _revision, ...result } = withoutGeneration(await ctx.noteVault.read(args, activeVault(ctx), exec.signal));
+            return result;
         },
     });
     ctx.tools.register({

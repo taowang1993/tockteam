@@ -216,6 +216,7 @@ class TestNoteVault extends Service {
     return {
       path: args.path,
       content: this.notesReadContent ?? `content:${args.path}`,
+      revision: 'file:runtime-only',
       generation: expectedVault.generation,
     }
   }
@@ -425,6 +426,28 @@ test('vault_search preserves its schema, result, rendering, and runtime call', a
       tool.output.render(args, result as never),
       [{ type: 'text', text: JSON.stringify(result, undefined, 2) }],
     )
+  } finally {
+    await loaded.context.fiber.dispose()
+  }
+})
+
+test('vault_search omits runtime-only match identity from its strict tool output', async () => {
+  const loaded = await load()
+  try {
+    const tool = loaded.tools.definitions.get('vault_search')
+    assert.ok(tool)
+    const match = { path: 'Result.md', kind: 'tag', line: 2, preview: '#project', operator: 'tag', provenance: 'body' } as const
+    loaded.noteVault.notesSearchResult = {
+      query: 'tag:project',
+      matches: [{ ...match, id: 'result:opaque', revision: 'file:opaque' }],
+      truncated: false, cursor: null, scan: { bytes: 8, entries: 2, files: 2 },
+      truncationReason: null, warnings: [], generation: 7,
+    }
+    const result = await tool.execute({ mode: 'query', query: 'tag:project' }, execution(new AbortController().signal))
+    const { generation: _generation, ...expected } = loaded.noteVault.notesSearchResult
+    assert.deepEqual(result, { ...expected, matches: [match] })
+    assert.deepEqual(tool.output.render({}, result as never), [{ type: 'text', text: JSON.stringify(result, undefined, 2) }])
+    assert.equal(loaded.noteVault.notesSearchResult.matches[0]!.revision, 'file:opaque', 'tool projection must not mutate runtime results')
   } finally {
     await loaded.context.fiber.dispose()
   }

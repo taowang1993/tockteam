@@ -779,11 +779,12 @@ export function apply(context: Context): void {
     },
     isConcurrencySafe: () => true,
     async execute(args, exec) {
-      return withoutGeneration(await ctx.noteVault.search(
+      const result = withoutGeneration(await ctx.noteVault.search(
         args as unknown as VaultSearchArgs,
         activeVault(ctx),
         exec.signal,
       ))
+      return { ...result, matches: result.matches.map(({ id: _id, revision: _revision, ...match }) => match) }
     },
   })
 
@@ -811,11 +812,12 @@ export function apply(context: Context): void {
     },
     isConcurrencySafe: () => true,
     async execute(args, exec) {
-      return withoutGeneration(await ctx.noteVault.read(
+      const { revision: _revision, ...result } = withoutGeneration(await ctx.noteVault.read(
         args as unknown as VaultReadArgs,
         activeVault(ctx),
         exec.signal,
       ))
+      return result
     },
   })
 
