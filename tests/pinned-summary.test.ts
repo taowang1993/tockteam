@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { getEventListeners } from 'node:events'
 import { performance } from 'node:perf_hooks'
 import { test } from 'node:test'
 import {
@@ -72,6 +73,10 @@ class FakeElement extends EventTarget {
 }
 
 class FakeDocument extends EventTarget {
+  // Normalize capture: Node's EventTarget removal does not honor the DOM boolean form.
+  override removeEventListener(type: string, callback: EventListenerOrEventListenerObject | null, options?: EventListenerOptions | boolean): void {
+    super.removeEventListener(type, callback, typeof options === 'boolean' ? { capture: options } : options)
+  }
   readonly documentElement = new FakeElement('html')
   readonly body = new FakeElement('body')
   readonly activeElement = null
@@ -154,10 +159,10 @@ function observable<T>(initial: T) {
   }
 }
 
-test('mounted summary follows only the RC.1 chat target and releases replaced sources', t => {
+test('mounted summary follows only the RC.1 chat target and releases replaced sources', async t => {
   const document = new FakeDocument()
-  const old = { document: globalThis.document, HTMLElement: globalThis.HTMLElement }
-  Object.assign(globalThis, { document, HTMLElement: FakeElement })
+  const old = { document: globalThis.document, HTMLElement: globalThis.HTMLElement, window: globalThis.window }
+  Object.assign(globalThis, { document, HTMLElement: FakeElement, window: { requestAnimationFrame: () => 0 } })
   const cleanups: Array<() => void> = []
   t.after(() => { for (const cleanup of cleanups.reverse()) cleanup(); Object.assign(globalThis, old) })
   const list = observable<{ current?: string; byId: Record<string, SessionListSummary> }>({ current: 'session-1', byId: { 'session-1': session() } })
@@ -203,8 +208,21 @@ test('mounted summary follows only the RC.1 chat target and releases replaced so
     assert.equal(panel.getAttribute('data-state'), 'unavailable')
     assert.equal(content.textContent, 'summary.unavailable')
   }
+  provided.setOpen(true)
+  firstChat.set(chat('replacement chat'))
+  const copied = Promise.withResolvers<void>()
+  const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => copied.promise } })
+  t.after(() => {
+    if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard)
+    else Reflect.deleteProperty(navigator, 'clipboard')
+  })
+  descendants(panel).find(node => 'tockteamSummaryCopy' in node.dataset)!.dispatchEvent(new Event('click'))
   currentChat = observable<unknown>(chat('replacement chat'))
   list.set({ ...list.getSnapshot() })
+  copied.resolve()
+  await copied.promise
+  assert.equal(descendants(panel).find(node => 'tockteamSummaryFeedback' in node.dataset)!.hidden, true, 'equal-text replacement must invalidate pending clipboard feedback')
   assert.equal(firstChat.listeners.size, 0)
   assert.equal(currentChat.listeners.size, 1)
   assert.equal(content.textContent, 'replacement chat')
@@ -212,8 +230,16 @@ test('mounted summary follows only the RC.1 chat target and releases replaced so
   list.set({ ...list.getSnapshot() })
   assert.equal(firstSession.listeners.size, 0)
   assert.equal(currentSession.listeners.size, 1)
+  const replacedSession = currentSession
+  const replacedChat = currentChat
+  currentSession = observable<unknown>(snapshot())
+  currentChat = observable<unknown>(chat('another session'))
   list.set({ current: 'session-2', byId: { 'session-2': session({ id: 'session-2' }) } })
   assert.equal(currentChat.listeners.size, 1)
+  assert.equal(replacedSession.listeners.size, 0)
+  assert.equal(replacedChat.listeners.size, 0)
+  replacedChat.set(chat('stale notification'))
+  assert.equal(content.textContent, 'another session')
   list.set({ byId: {} })
   assert.equal(currentChat.listeners.size, 0)
   assert.equal(currentSession.listeners.size, 0)
@@ -224,6 +250,7 @@ test('mounted summary follows only the RC.1 chat target and releases replaced so
   list.set({ current: 'session-1', byId: { 'session-1': session() } })
   for (const cleanup of cleanups.splice(0).reverse()) cleanup()
   assert.equal(document.getElementById('tockteam-pinned-summary'), null)
+  assert.equal(getEventListeners(document, 'keydown').length, 0)
   for (const source of [list, locale, firstSession, firstChat, currentSession, currentChat]) assert.equal(source.listeners.size, 0)
 })
 
