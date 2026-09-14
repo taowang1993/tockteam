@@ -5158,6 +5158,8 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     const phases: typeof timeline = []
     const pendingSql = new Map<number, { at: number; sql: string; key: unknown }>()
     let sqlId = 0
+    let connectionId = 0
+    let attemptId = 0
     let maxSqlMs = 0
     const started = Date.now()
     const record = (event: string, detail: unknown = null) => {
@@ -5194,22 +5196,23 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     }
     t.mock.method(sqlite3, 'Database', function (filename: string, ...args: unknown[]) {
       if (failure === 'open' && !injected) { injected = true; filename = join(fixture, 'missing-parent', 'index.sqlite') }
-      record('database/open-start', filename)
+      const connection = ++connectionId
+      record('database/open-start', { connection, filename })
       const callback = args.at(-1)
       if (typeof callback === 'function') args[args.length - 1] = function (this: unknown, error: Error | null) {
-        record('database/open-end', { filename, error })
+        record('database/open-end', { connection, filename, error })
         Reflect.apply(callback, this, [error])
         if (failure === 'open' && error) failed.resolve()
       }
       const raw = Reflect.construct(originalDatabase, [filename, ...args]) as sqlite3.Database
       // [DEBUG-bon-sql] Observe existing callbacks before the first SQL call, without adding handlers.
-      for (const method of ['run', 'all', 'exec', 'wait', 'close'] as const) {
+      for (const method of ['run', 'all', 'get', 'exec', 'wait', 'close'] as const) {
         const original = raw[method]
         Reflect.set(raw, method, function (this: sqlite3.Database, ...parameters: unknown[]) {
           const callback = parameters.at(-1)
           if (typeof callback === 'function') {
             const id = ++sqlId
-            const operation = { at: Date.now() - started, sql: typeof parameters[0] === 'string' ? parameters[0] : method, key: Array.isArray(parameters[1]) ? parameters[1][0] : null }
+            const operation = { connection, at: Date.now() - started, sql: typeof parameters[0] === 'string' ? parameters[0] : method, key: Array.isArray(parameters[1]) ? parameters[1][0] : null }
             pendingSql.set(id, operation)
             record('sql/start', { id, ...operation })
             parameters[parameters.length - 1] = function (this: unknown, ...values: unknown[]) {
@@ -5243,8 +5246,14 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
             error => error ? reject(error) : resolve(),
           ))
         } else {
+          const connection = ++connectionId
+          record('locker/open-and-begin-start', connection)
           const locker = new originalDatabase((native as sqlite3.Database & { filename: string }).filename)
-          await new Promise<void>((resolve, reject) => locker.exec('BEGIN EXCLUSIVE', error => error ? reject(error) : resolve()))
+          await new Promise<void>((resolve, reject) => locker.exec('BEGIN EXCLUSIVE', error => {
+            record('locker/begin-end', { connection, error })
+            if (error) reject(error)
+            else resolve()
+          }))
           native.configure('busyTimeout', 5)
           const exec = native.exec
           // Keep the real SQLite fault fast even when FlexSearch resets its timeout.
@@ -5252,10 +5261,14 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
             return exec.call(this, sql === 'PRAGMA busy_timeout = 5000' ? 'PRAGMA busy_timeout = 5' : sql, callback)
           }
           release = new Promise<void>((resolve, reject) => {
-            unlock = () => locker.exec('COMMIT', error => locker.close(closeError => {
-              if (error || closeError) reject(error || closeError)
-              else resolve()
-            }))
+            unlock = () => {
+              record('locker/release-start', connection)
+              locker.exec('COMMIT', error => locker.close(closeError => {
+                record('locker/release-end', { connection, error, closeError })
+                if (error || closeError) reject(error || closeError)
+                else resolve()
+              }))
+            }
           })
         }
         injected = true
@@ -5289,7 +5302,8 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
         paths: [...Reflect.get(index, 'pendingPaths')],
       })
       t.mock.method(indexPrototype, 'reconcileNow', function (this: object) {
-        record('reconcile/start', indexState(this))
+        const attempt = ++attemptId
+        record('reconcile/start', { attempt, ...indexState(this) })
         const options = Reflect.get(this, 'options')
         if (!observed.has(options)) {
           observed.add(options)
@@ -5316,9 +5330,9 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
           })
         }
         const operation = Reflect.apply(reconcileNow, this, []) as Promise<void>
-        void operation.then(() => record('reconcile/end', indexState(this)), error => {
+        void operation.then(() => record('reconcile/end', { attempt, ...indexState(this) }), error => {
           lastReconcileError = error
-          record('reconcile/error', error)
+          record('reconcile/error', { attempt, error })
         })
         return operation
       })
@@ -5421,6 +5435,107 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     }
   })
 }
+
+test('search index retained epoch does not imply publication during a full retry', async t => {
+  // Diagnostic control, not a reproduction of the intermittent Windows delay.
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-index-retry-'))
+  const vaultRoot = join(fixture, 'vault')
+  await mkdir(vaultRoot)
+  await writeFile(join(vaultRoot, 'Alpha.md'), '#project target\n')
+  await writeFile(join(vaultRoot, 'FalsePositive.md'), 'project plain text\n')
+  await writeFile(join(vaultRoot, 'Other.md'), 'unrelated\n')
+  const schemaReached = Promise.withResolvers<void>()
+  const listReached = Promise.withResolvers<void>()
+  const listRelease = Promise.withResolvers<void>()
+  let releaseSchema: (() => void) | undefined
+  let holdSchema = true
+  let closing = false
+  let loaded: Awaited<ReturnType<typeof load>> | undefined
+  const bounded = <T>(operation: Promise<T>) => {
+    let timer: ReturnType<typeof setTimeout>
+    return Promise.race([operation, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('retained-epoch control did not settle')), 5_000)
+    })]).finally(() => clearTimeout(timer))
+  }
+  const Database = sqlite3.Database
+  t.mock.method(sqlite3, 'Database', function (filename: string, ...args: unknown[]) {
+    const raw = Reflect.construct(Database, [filename, ...args]) as sqlite3.Database
+    const run = raw.run
+    raw.run = function (sql: string, ...parameters: unknown[]) {
+      const callback = parameters.at(-1)
+      if (holdSchema && sql === 'INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)' && Array.isArray(parameters[0]) && parameters[0][0] === 'schema' && typeof callback === 'function') {
+        holdSchema = false
+        parameters[parameters.length - 1] = function (this: unknown, ...values: unknown[]) {
+          if (values[0] || closing) return Reflect.apply(callback, this, values)
+          releaseSchema = () => {
+            releaseSchema = undefined
+            Reflect.apply(callback, this, values)
+          }
+          schemaReached.resolve()
+        }
+      }
+      return Reflect.apply(run, this, [sql, ...parameters])
+    }
+    return raw
+  })
+  try {
+    loaded = await load(`stateRoot: ${JSON.stringify(join(fixture, 'state'))}\nvaultRoot: ${JSON.stringify(vaultRoot)}`)
+    await bounded(schemaReached.promise)
+    const runtime = loaded.context.noteVault
+    const state = runtime.state
+    if (!state.active) assert.fail('vault must be active')
+    const index = Reflect.get(runtime, 'searchIndex').index
+    const epoch = Reflect.get(index, 'epoch')
+    assert.equal(typeof epoch, 'string')
+    assert.notEqual(epoch, '')
+    const options = Reflect.get(index, 'options')
+    const list = Reflect.get(options, 'list')
+    let holdList = true
+    t.mock.method(options, 'list', async function (this: object, ...args: unknown[]) {
+      if (holdList) {
+        holdList = false
+        listReached.resolve()
+        await listRelease.promise
+      }
+      return Reflect.apply(list, this, args)
+    })
+    // Deliberately exercise this private transition without watcher timing or new filesystem work.
+    Reflect.apply(Reflect.get(index, 'invalidate'), index, [])
+    releaseSchema!()
+    await bounded(listReached.promise)
+    assert.equal(Reflect.get(index, 'epoch'), epoch)
+    assert.equal(Reflect.get(index, 'database'), null)
+    assert.equal(Reflect.get(index, 'index'), null)
+    assert.equal(Reflect.get(index, 'ready'), false)
+    const pending = Reflect.get(index, 'reconcileTask') as Promise<void>
+    assert.ok(pending instanceof Promise)
+    let reconciled = false
+    void pending.then(() => { reconciled = true }, () => { reconciled = true })
+    assert.equal(Reflect.get(index, 'fullReconcilePending'), false)
+    assert.equal(Reflect.get(index, 'pendingPaths').size, 0)
+    const search = () => runtime.search({ mode: 'query', query: 'tag:project' },
+      { id: state.id, generation: state.generation }, new AbortController().signal)
+    const fallback = await bounded(search())
+    assert.equal(fallback.scan.entries, 3)
+    assert.deepEqual(fallback.matches.map(match => match.path), ['Alpha.md'])
+    assert.equal(reconciled, false, 'the retry must still be pending at the list barrier')
+    listRelease.resolve()
+    await bounded((async () => {
+      while (!closing) {
+        const result = await search()
+        assert.deepEqual(result.matches.map(match => match.path), ['Alpha.md'])
+        if (result.scan.entries === 2) return
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+    })())
+  } finally {
+    closing = true
+    releaseSchema?.()
+    listRelease.resolve()
+    if (loaded !== undefined) await bounded(dispose(loaded.context, loaded.root))
+    await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
 
 test('Keyword search reconciles state-owned indexed candidates through the exact verifier', async t => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-indexed-search-'))

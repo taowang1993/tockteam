@@ -51,9 +51,21 @@ Production recovery code remains unchanged; these experiments change tests and d
 
 The captured pending-reconciliation window rules out downstream candidate rejection for that window. A nonempty epoch suggested final metadata publication, but it does **not** conclusively identify the outstanding operation: an epoch can survive an earlier unpublished reconciliation. The original snapshot's poll traffic had displaced lifecycle events. Separate bounded phase history and pending-operation tracking now address that gap.
 
-The pre-injection failure means verification-query traffic was not necessary for that occurrence. It does not establish slow storage, a native deadlock, a lost invalidation, or a shared cause with the historical cancellation. No speculative production repair or timeout increase has been applied. A fresh read-only evidence review is in progress.
+The pre-injection failure means verification-query traffic was not necessary for that occurrence. It does not establish slow storage, a native deadlock, a lost invalidation, or a shared cause with the historical cancellation. No speculative production repair or timeout increase has been applied. The fresh read-only review identified missing `get` schema probes and an unobserved locker-open/BEGIN interval; those callback observations have now been added. Initial filesystem phases before activation remain a coverage limitation.
 
 Latest local verification at `75f00838`: runtime 87/87 and package typecheck passed. Diagnostic callbacks preserve the original receiver, arguments, return values, and promises; no C++ SQL trace or additional native error handlers are installed. The manual workflow has returned to one verification query per poll.
+
+### Deterministic Retained-Epoch Control
+
+A fault-free local control held delivery of the successful schema-publication callback, requested full invalidation, and held the automatic retry at its next list operation. It reproduced the observed combination of a retained nonempty epoch, null published handles, false readiness, a pending task, and cleared pending flags. Search returned the correct match via a three-file scan. Releasing the list barrier, without another invalidation, restored two-entry indexed search within the unchanged five-second deadline.
+
+This demonstrates that the snapshot does not uniquely identify a final metadata write. It is **not** a Windows reproduction or production repair. The focused control passed, followed by all 88 runtime tests and typecheck. Native probes now include connection/attempt identifiers; durations remain submission-to-callback latency, not measured SQLite execution time.
+
+Commands:
+
+- `pnpm -C plugins/tocktutor/packages/tockbot-note-runtime exec node --test --test-name-pattern='retained epoch' tests/loader-composition.test.ts`
+- `pnpm -C plugins/tocktutor/packages/tockbot-note-runtime test`
+- `pnpm -C plugins/tocktutor/packages/tockbot-note-runtime typecheck`
 
 Additional raw evidence:
 
