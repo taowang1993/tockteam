@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path'
 import sqlite3 from 'sqlite3'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
+import { inspect } from 'node:util'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
@@ -5153,11 +5154,19 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     let release: Promise<void> | undefined
     let loaded: Awaited<ReturnType<typeof load>> | undefined
     const failed = Promise.withResolvers<void>()
+    const sqlTrace: Array<[number, string]> = []
     const bounded = <T>(operation: Promise<T>) => {
       const timeoutError = new Error('native failure did not settle')
       let timer: ReturnType<typeof setTimeout>
       return Promise.race([operation, new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(timeoutError), 5_000)
+        timer = setTimeout(() => {
+          t.diagnostic(inspect({
+            nativeError: native && Reflect.get(native, 'searchError'),
+            runtimeIndex: loaded && Reflect.get(loaded.context.noteVault, 'searchIndex'),
+            sqlTrace,
+          }, { depth: 4, breakLength: Infinity }))
+          reject(timeoutError)
+        }, 5_000)
       })]).finally(() => clearTimeout(timer))
     }
     if (failure === 'open') {
@@ -5174,6 +5183,10 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     t.mock.method(Document.prototype, 'mount', async function (this: import('flexsearch').Document, storage: import('flexsearch').StorageInterface) {
       native = (storage as import('flexsearch').StorageInterface & { db: sqlite3.Database }).db
       assert.ok(native)
+      native.on('trace', sql => {
+        sqlTrace.push([Date.now(), sql])
+        if (sqlTrace.length > 40) sqlTrace.shift()
+      })
       native.once('close', () => failed.resolve())
       await originalMount.call(this, storage)
     })
