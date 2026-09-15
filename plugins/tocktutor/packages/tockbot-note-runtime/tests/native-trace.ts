@@ -1,16 +1,23 @@
-import { AsyncResource } from 'node:async_hooks'
+import { Console } from 'node:console'
 import { tmpdir } from 'node:os'
+import { Writable } from 'node:stream'
 
-// Async-resource init events supply markers on the trace's own clock. No
-// callback wrapping or runInAsyncScope: existing async context stays intact.
+// Console timers emit on the trace's own clock without enabling every Promise's
+// async-hook events. Discard this private console's text; never replace callbacks.
+const traceConsole = process.env.TOCKTEAM_NATIVE_TRACE_DIR ? new Console({
+  stdout: new Writable({ write(_chunk, _encoding, done) { done() } }),
+  colorMode: false,
+}) : undefined
+
 export function markNativeTrace(event: string, detail: unknown = null): void {
-  if (process.env.TOCKTEAM_NATIVE_TRACE_DIR) {
-    // Node writes resource names into trace JSON without escaping quotes.
-    new AsyncResource(`bon:${encodeURIComponent(JSON.stringify({ event, detail }))}`).emitDestroy()
+  if (traceConsole) {
+    const label = `bon:${encodeURIComponent(JSON.stringify({ event, detail }))}`
+    traceConsole.time(label)
+    traceConsole.timeEnd(label)
   }
 }
 
-if (process.env.TOCKTEAM_NATIVE_TRACE_DIR) {
+if (traceConsole) {
   markNativeTrace('owner/start', { node: process.version, pid: process.pid, temp: tmpdir(), pool: process.env.UV_THREADPOOL_SIZE ?? 'default' })
   const heartbeat = setInterval(() => markNativeTrace('heartbeat'), 20)
   heartbeat.unref()

@@ -11,7 +11,7 @@ const traceDirectory = process.env.TOCKTEAM_NATIVE_TRACE_DIR
 const control = process.env.TOCKTEAM_NATIVE_TRACE_CONTROL === '1'
 if (control && !traceDirectory) throw new Error('Threadpool control requires a trace directory')
 const traceArgs = traceDirectory ? [
-  '--trace-event-categories=node.threadpoolwork,node.async_hooks',
+  '--trace-event-categories=node.threadpoolwork,node.console',
   `--trace-event-file-pattern=${join(traceDirectory, 'trace.raw')}`,
 ] : []
 

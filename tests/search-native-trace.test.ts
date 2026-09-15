@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { finishNativeTrace, summarizeNativeTrace } from '../scripts/search-native-trace.mjs'
 
-const event = (ph, ts, id = '0xa', tid = 1) => ({ pid: 10, tid, ph, ts, id, name: 'node_api', cat: `node.threadpoolwork.${ph === ph.toUpperCase() ? 'sync' : 'async'}` })
-const work = (start, end, tid = 2) => [event('B', start, undefined, tid), event('E', end, undefined, tid)]
+const event = (ph: string, ts: number, id = '0xa', tid = 1) => ({ pid: 10, tid, ph, ts, id, name: 'node_api', cat: `node.threadpoolwork.${ph === ph.toUpperCase() ? 'sync' : 'async'}` })
+const work = (start: number, end: number, tid = 2) => [event('B', start, undefined, tid), event('E', end, undefined, tid)]
 
 test('native tracing separates an exclusive worker interval from dispatch delay', () => {
   const result = summarizeNativeTrace([event('b', 10), ...work(20, 30), event('e', 230)])
@@ -34,7 +34,7 @@ test('native tracing rejects missing, unmatched, or duplicate boundaries', () =>
 test('native tracing keeps cancelled or unobserved work unresolved', () => {
   const result = summarizeNativeTrace([event('b', 10), event('e', 40)])
   assert.equal(result.intervals.length, 0)
-  assert.equal(result.unresolved[0].reason, 'No Unique Worker Span')
+  assert.equal(result.unresolved[0]?.reason, 'No Unique Worker Span')
 })
 
 test('native tracing never associates work across different processes', () => {
@@ -45,8 +45,8 @@ test('native tracing never associates work across different processes', () => {
 test('trace evidence requires owner clock markers and preserves escaped marker details', () => {
   const directory = mkdtempSync(join(tmpdir(), 'trace-evidence-'))
   const raw = join(directory, 'trace.raw')
-  const marker = (name, ts, detail = null) => ({ pid: 10, ph: 'b', ts, name: `bon:${encodeURIComponent(JSON.stringify({ event: name, detail }))}` })
-  const events = [event('b', 10), ...work(20, 30), event('e', 40)]
+  const marker = (name: string, ts: number, detail: unknown = null) => ({ pid: 10, ph: 'b', ts, name: `time::bon:${encodeURIComponent(JSON.stringify({ event: name, detail }))}` })
+  const events: Array<Record<string, unknown>> = [event('b', 10), ...work(20, 30), event('e', 40)]
   try {
     writeFileSync(raw, JSON.stringify({ traceEvents: events }))
     assert.throws(() => finishNativeTrace(directory, 10), /owner-start/)
@@ -59,7 +59,7 @@ test('trace evidence requires owner clock markers and preserves escaped marker d
     events.push(marker('control/start', 5), marker('control/end', 45))
     writeFileSync(raw, JSON.stringify({ traceEvents: events }))
     assert.throws(() => finishNativeTrace(directory, 10, true), /delayed completion/)
-    events[5].ts = -1
+    events[5]!.ts = -1
     writeFileSync(raw, JSON.stringify({ traceEvents: events }))
     assert.throws(() => finishNativeTrace(directory, 10), /marker clock/)
     assert.equal(JSON.parse(readFileSync(join(directory, 'evidence.json'), 'utf8')).intervals, undefined)
