@@ -14698,7 +14698,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 306, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 312, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/activateVaultTarget",
@@ -14734,7 +14734,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 353, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 359, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closeAllPopOuts",
@@ -14770,7 +14770,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 473, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 479, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closePopOut",
@@ -14816,7 +14816,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 428, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 434, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/exportNote",
@@ -14872,7 +14872,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 543, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 549, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/moveVault",
@@ -14908,7 +14908,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_moveVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 697, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 703, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/openPopOut",
@@ -14954,7 +14954,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 396, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 402, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/printNote",
@@ -15000,7 +15000,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_printNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 510, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 516, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/removeVault",
@@ -15036,7 +15036,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_removeVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 730, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 736, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/renameVault",
@@ -15082,7 +15082,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_renameVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 671, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 677, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/requestMicrophone",
@@ -15118,7 +15118,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 599, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 605, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/revealEntry",
@@ -15164,7 +15164,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 622, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 628, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/revealVault",
@@ -15200,7 +15200,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 651, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 657, "column": 9 }
     }
   ]
 };
@@ -15209,7 +15209,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15224,7 +15224,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15528,24 +15528,27 @@ async function startAudioRecording(authorization, path, vault, current, request,
   const finish = (value) => {
     if (settled) return;
     settled = true;
+    chunks.length = 0;
     cleanup();
+    try {
+      if (recorder.state === "recording") recorder.stop();
+    } catch {
+    }
     resolve(value);
   };
   recorder.addEventListener("dataavailable", (event) => {
-    if (event === void 0 || event.data.size === 0 || settled) return;
+    if (event === void 0 || event.data.size === 0 || settled || cancelled) return;
     bytes += event.data.size;
-    if (bytes <= MAX_AUDIO_BYTES) chunks.push(event.data);
+    if (bytes > MAX_AUDIO_BYTES) finish({ status: "too-large" });
+    else chunks.push(event.data);
   });
   recorder.addEventListener("error", () => {
     finish({ status: "failed" });
   });
   recorder.addEventListener("stop", () => {
+    if (settled) return;
     if (cancelled) {
       finish({ status: "stale" });
-      return;
-    }
-    if (bytes > MAX_AUDIO_BYTES) {
-      finish({ status: "too-large" });
       return;
     }
     if (!sameRecordingOwner(path, vault, current())) {
@@ -15564,7 +15567,7 @@ async function startAudioRecording(authorization, path, vault, current, request,
     });
   });
   try {
-    recorder.start();
+    recorder.start(1e3);
   } catch (error51) {
     cleanup();
     throw error51;
@@ -15572,6 +15575,7 @@ async function startAudioRecording(authorization, path, vault, current, request,
   return {
     status: "recording",
     recording: {
+      completed,
       cancel() {
         cancelled = true;
         if (recorder.state === "recording") recorder.stop();
@@ -15877,7 +15881,7 @@ function TockTutorNativeActions(props) {
           return response;
         },
         navigator.mediaDevices,
-        (stream) => new MediaRecorder(stream),
+        (stream) => new MediaRecorder(stream, { mimeType: "audio/webm" }),
         void 0,
         void 0,
         signal
@@ -15893,29 +15897,37 @@ function TockTutorNativeActions(props) {
       activeRecording.current = started.recording;
       setRecording(true);
       setMessage("Recording Audio\u2026");
+      void finishRecording(started.recording, signal);
     } catch {
       if (!signal.aborted) setMessage("Audio recording could not start.");
     } finally {
       if (!signal.aborted) setBusy(null);
     }
   };
+  const finishRecording = async (currentRecording, signal) => {
+    const result = await currentRecording.completed;
+    if (signal.aborted || activeRecording.current !== currentRecording) return;
+    activeRecording.current = void 0;
+    setRecording(false);
+    setBusy("Stopping Recording");
+    try {
+      if (result.status === "recorded") {
+        const stored = await owner.current.storeAudio?.(result.fileName, result.dataBase64);
+        if (!signal.aborted) setMessage(stored === true ? "Audio recording added to the note." : "The audio recording could not be added safely.");
+      } else {
+        setMessage(result.status === "stale" ? "The note or vault changed. The recording was discarded." : result.status === "too-large" ? "The audio recording exceeded 25 MiB." : "Audio recording failed safely.");
+      }
+    } catch {
+      if (!signal.aborted) setMessage("The audio recording could not be added safely.");
+    } finally {
+      if (!signal.aborted) setBusy(null);
+    }
+  };
   const stopRecording = async () => {
-    const signal = lifetime.current?.signal;
-    const currentRecording = activeRecording.current;
-    if (signal === void 0 || currentRecording === void 0) return;
+    if (lifetime.current?.signal.aborted !== false || activeRecording.current === void 0) return;
     setBusy("Stopping Recording");
     setMessage("Stopping Recording\u2026");
-    const result = await currentRecording.stop();
-    if (activeRecording.current === currentRecording) activeRecording.current = void 0;
-    if (signal.aborted) return;
-    setRecording(false);
-    if (result.status === "recorded") {
-      const stored = await owner.current.storeAudio?.(result.fileName, result.dataBase64);
-      setMessage(stored === true ? "Audio recording added to the note." : "The audio recording could not be added safely.");
-    } else {
-      setMessage(result.status === "stale" ? "The note or vault changed. The recording was discarded." : result.status === "too-large" ? "The audio recording exceeded 25 MiB." : "Audio recording failed safely.");
-    }
-    setBusy(null);
+    await activeRecording.current.stop();
   };
   const button = (label, action, enabled = true) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
     Button,

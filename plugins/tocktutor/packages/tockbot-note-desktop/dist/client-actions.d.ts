@@ -50,18 +50,19 @@ export interface AudioMediaRecorder {
     addEventListener(type: 'dataavailable' | 'error' | 'stop', listener: (event?: {
         data: Blob;
     }) => void): void;
-    start(): void;
+    start(timeslice?: number): void;
     stop(): void;
 }
 export interface AudioRecording {
     cancel(): void;
-    stop(): Promise<{
+    readonly completed: Promise<{
         dataBase64: string;
         fileName: string;
         status: 'recorded';
     } | {
         status: 'failed' | 'stale' | 'too-large';
     }>;
+    stop(): AudioRecording['completed'];
 }
 /** Record only after Desktop grants the exact live note, then re-check it before returning bytes. */
 export declare function startAudioRecording(authorization: string, path: string, vault: VaultReference, current: () => Pick<TockTutorNativeActionsOwnerProps, 'activePath' | 'vault'>, request: (authorization: string, vault: VaultReference) => Promise<RemoteResult<NativeActionResult>>, mediaDevices: AudioMediaDevices, createRecorder: (stream: Awaited<ReturnType<AudioMediaDevices['getUserMedia']>>) => AudioMediaRecorder, now?: () => Date, readBlob?: (blob: Blob) => Promise<ArrayBuffer>, signal?: AbortSignal): Promise<{

@@ -208,24 +208,30 @@ export async function startAudioRecording(authorization, path, vault, current, r
         if (settled)
             return;
         settled = true;
+        chunks.length = 0;
         cleanup();
+        try {
+            if (recorder.state === 'recording')
+                recorder.stop();
+        }
+        catch { /* tracks are already stopped */ }
         resolve(value);
     };
     recorder.addEventListener('dataavailable', event => {
-        if (event === undefined || event.data.size === 0 || settled)
+        if (event === undefined || event.data.size === 0 || settled || cancelled)
             return;
         bytes += event.data.size;
-        if (bytes <= MAX_AUDIO_BYTES)
+        if (bytes > MAX_AUDIO_BYTES)
+            finish({ status: 'too-large' });
+        else
             chunks.push(event.data);
     });
     recorder.addEventListener('error', () => { finish({ status: 'failed' }); });
     recorder.addEventListener('stop', () => {
+        if (settled)
+            return;
         if (cancelled) {
             finish({ status: 'stale' });
-            return;
-        }
-        if (bytes > MAX_AUDIO_BYTES) {
-            finish({ status: 'too-large' });
             return;
         }
         if (!sameRecordingOwner(path, vault, current())) {
@@ -244,7 +250,7 @@ export async function startAudioRecording(authorization, path, vault, current, r
             .catch(() => { finish({ status: 'failed' }); });
     });
     try {
-        recorder.start();
+        recorder.start(1000);
     }
     catch (error) {
         cleanup();
@@ -253,6 +259,7 @@ export async function startAudioRecording(authorization, path, vault, current, r
     return {
         status: 'recording',
         recording: {
+            completed,
             cancel() {
                 cancelled = true;
                 if (recorder.state === 'recording')
@@ -544,7 +551,7 @@ export function TockTutorNativeActions(props) {
                 if (responseWasLost(response) && !signal.aborted)
                     response = await props.remote.tocktutorDesktop.requestMicrophone(token, expectedVault, signal);
                 return response;
-            }, navigator.mediaDevices, stream => new MediaRecorder(stream), undefined, undefined, signal);
+            }, navigator.mediaDevices, stream => new MediaRecorder(stream, { mimeType: 'audio/webm' }), undefined, undefined, signal);
             if (started.status !== 'recording') {
                 if (!signal.aborted)
                     setMessage(started.result.ok ? resultMessage(started.result.value) : 'Audio recording is unavailable.');
@@ -557,6 +564,7 @@ export function TockTutorNativeActions(props) {
             activeRecording.current = started.recording;
             setRecording(true);
             setMessage('Recording Audio…');
+            void finishRecording(started.recording, signal);
         }
         catch {
             if (!signal.aborted)
@@ -567,29 +575,40 @@ export function TockTutorNativeActions(props) {
                 setBusy(null);
         }
     };
+    const finishRecording = async (currentRecording, signal) => {
+        const result = await currentRecording.completed;
+        if (signal.aborted || activeRecording.current !== currentRecording)
+            return;
+        activeRecording.current = undefined;
+        setRecording(false);
+        setBusy('Stopping Recording');
+        try {
+            if (result.status === 'recorded') {
+                const stored = await owner.current.storeAudio?.(result.fileName, result.dataBase64);
+                if (!signal.aborted)
+                    setMessage(stored === true ? 'Audio recording added to the note.' : 'The audio recording could not be added safely.');
+            }
+            else {
+                setMessage(result.status === 'stale'
+                    ? 'The note or vault changed. The recording was discarded.'
+                    : result.status === 'too-large' ? 'The audio recording exceeded 25 MiB.' : 'Audio recording failed safely.');
+            }
+        }
+        catch {
+            if (!signal.aborted)
+                setMessage('The audio recording could not be added safely.');
+        }
+        finally {
+            if (!signal.aborted)
+                setBusy(null);
+        }
+    };
     const stopRecording = async () => {
-        const signal = lifetime.current?.signal;
-        const currentRecording = activeRecording.current;
-        if (signal === undefined || currentRecording === undefined)
+        if (lifetime.current?.signal.aborted !== false || activeRecording.current === undefined)
             return;
         setBusy('Stopping Recording');
         setMessage('Stopping Recording…');
-        const result = await currentRecording.stop();
-        if (activeRecording.current === currentRecording)
-            activeRecording.current = undefined;
-        if (signal.aborted)
-            return;
-        setRecording(false);
-        if (result.status === 'recorded') {
-            const stored = await owner.current.storeAudio?.(result.fileName, result.dataBase64);
-            setMessage(stored === true ? 'Audio recording added to the note.' : 'The audio recording could not be added safely.');
-        }
-        else {
-            setMessage(result.status === 'stale'
-                ? 'The note or vault changed. The recording was discarded.'
-                : result.status === 'too-large' ? 'The audio recording exceeded 25 MiB.' : 'Audio recording failed safely.');
-        }
-        setBusy(null);
+        await activeRecording.current.stop();
     };
     const button = (label, action, enabled = true) => (_jsx(Button, { unstyled: true, className: "min-h-9 cursor-pointer rounded-md border border-transparent bg-transparent px-2.5 py-[7px] text-left text-inherit enabled:hover:bg-[var(--tt-selected,color-mix(in_srgb,var(--tt-accent,#2457d6)_12%,transparent))] focus-visible:border-[var(--tt-accent,#2457d6)] focus-visible:bg-[var(--tt-selected,color-mix(in_srgb,var(--tt-accent,#2457d6)_12%,transparent))] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50", disabled: !enabled || busy !== null, onClick: () => { void action(); }, type: "button", children: busy === label ? `${label}…` : label }, label));
     return (_jsxs("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [_jsxs("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal))), hasNote), button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)), true), hasNote), button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal))), hasNote), button('Close All Pop-Outs', async () => {

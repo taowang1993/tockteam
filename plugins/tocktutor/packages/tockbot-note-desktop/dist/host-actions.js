@@ -34,7 +34,7 @@ var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, 
 };
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import { createNativeOwnerLifetime, MAX_PRINT_EXPORT_HTML_BYTES, } from '@tockteam/desktop/host';
-import { buildMarkdownExportDocument, collectEmbedTargets, resolveEmbedTargetPath, resolveNoteEmbedFragment, } from '@tockteam/tocktutor-workbench';
+import { buildMarkdownExportDocument, collectEmbedTargets, resolveEmbedGraph, } from '@tockteam/tocktutor-workbench';
 export const MAX_TRACKED_POPOUTS = 64;
 function assertVault(value) {
     if (typeof value !== 'object'
@@ -75,8 +75,8 @@ function assertVaultName(value) {
 function popOutKey(vault, path) {
     return `${vault.id}:${String(vault.generation)}:${path}`;
 }
-async function resolveExportEmbeds(runtime, source, expectedVault, signal) {
-    const targets = collectEmbedTargets(source);
+async function resolveExportEmbeds(runtime, source, sourcePath, expectedVault, signal) {
+    const targets = collectEmbedTargets(source, sourcePath);
     if (targets.length === 0)
         return [];
     const entries = [];
@@ -93,55 +93,59 @@ async function resolveExportEmbeds(runtime, source, expectedVault, signal) {
             throw new Error('The bounded embed tree scan did not complete.');
         cursor = page.cursor;
     }
-    const resolved = [];
     let aggregateBytes = 0;
-    for (const target of targets) {
-        const path = resolveEmbedTargetPath(entries, target.path);
-        if (path === null)
-            continue;
-        const entry = entries.find(candidate => candidate.path === path);
-        if (entry === undefined)
-            continue;
-        const projectedTarget = { ...target, path: entry.path };
-        if (target.kind === 'media') {
-            if (entry.kind !== 'attachment')
-                continue;
-            if (entry.mediaKind !== 'image') {
-                resolved.push({
-                    content: '',
-                    mimeType: entry.mediaKind === 'audio' ? 'audio/unknown' : entry.mediaKind === 'video' ? 'video/unknown' : 'application/pdf',
-                    target: projectedTarget,
-                });
-                continue;
-            }
-            const preview = await runtime.previewAttachment(entry.path, expectedVault, signal);
+    let documentMismatch = false;
+    const resolved = await resolveEmbedGraph({
+        entries,
+        source,
+        sourcePath,
+        signal,
+        isCurrent: () => runtime.state.active && runtime.state.id === expectedVault.id && runtime.state.generation === expectedVault.generation,
+        maxTotalBytes: 6_000_000,
+        maxMediaBytes: 8_000_000,
+        async readAttachment(path) {
+            const entry = entries.find(candidate => candidate.path === path);
+            if (entry?.kind !== 'attachment' || aggregateBytes >= 6_000_000)
+                throw new Error('Embed unavailable.');
+            if (entry.mediaKind !== 'image')
+                return {
+                    dataBase64: '',
+                    mimeType: entry.mediaKind === 'audio' ? 'audio/ogg' : entry.mediaKind === 'video' ? 'video/mp4' : 'application/pdf',
+                    path,
+                };
+            const preview = await runtime.previewAttachment(path, expectedVault, signal);
             assertCurrentVault(runtime, expectedVault);
-            if (preview.generation !== expectedVault.generation || preview.path !== entry.path || preview.data.byteLength > 1_500_000)
-                continue;
+            if (preview.generation !== expectedVault.generation || preview.path !== path || preview.data.byteLength > 1_500_000)
+                throw new Error('Embed unavailable.');
             aggregateBytes += preview.data.byteLength;
             if (aggregateBytes > 6_000_000)
-                break;
-            resolved.push({ content: Buffer.from(preview.data).toString('base64'), mimeType: preview.mimeType, target: projectedTarget });
-            continue;
-        }
-        if (entry.kind !== 'document')
-            continue;
-        const opened = await runtime.openDocument(entry.path, expectedVault, signal);
-        assertCurrentVault(runtime, expectedVault);
-        if (opened.generation !== expectedVault.generation || opened.path !== entry.path)
-            throw new Error('An embedded document changed during export.');
-        aggregateBytes += new TextEncoder().encode(opened.content).byteLength;
-        if (aggregateBytes > 6_000_000)
-            break;
-        const content = target.kind === 'note' ? resolveNoteEmbedFragment(opened.content, target.fragment) : opened.content;
-        if (content !== null)
-            resolved.push({ content, target: projectedTarget });
-    }
-    return resolved;
+                throw new Error('Embed budget exceeded.');
+            return { dataBase64: Buffer.from(preview.data).toString('base64'), mimeType: preview.mimeType, path };
+        },
+        async readDocument(path) {
+            if (!entries.some(entry => entry.path === path && entry.kind === 'document') || aggregateBytes >= 6_000_000)
+                throw new Error('Embed unavailable.');
+            const opened = await runtime.openDocument(path, expectedVault, signal);
+            assertCurrentVault(runtime, expectedVault);
+            if (opened.generation !== expectedVault.generation || opened.path !== path) {
+                documentMismatch = true;
+                throw new Error('An embedded document changed during export.');
+            }
+            aggregateBytes += new TextEncoder().encode(opened.content).byteLength;
+            if (aggregateBytes > 6_000_000)
+                throw new Error('Embed budget exceeded.');
+            return opened;
+        },
+    });
+    signal.throwIfAborted();
+    assertCurrentVault(runtime, expectedVault);
+    if (documentMismatch)
+        throw new Error('An embedded document changed during export.');
+    return resolved.embeds;
 }
 async function renderNote(runtime, path, content, expectedVault, signal) {
     const title = Array.from(path).slice(-128).join('');
-    const embeds = await resolveExportEmbeds(runtime, content, expectedVault, signal);
+    const embeds = await resolveExportEmbeds(runtime, content, path, expectedVault, signal);
     const html = buildMarkdownExportDocument({ embeds, markdown: content, title });
     if (new TextEncoder().encode(html).byteLength > MAX_PRINT_EXPORT_HTML_BYTES) {
         throw new TypeError('The active note is too large to print or export safely.');
