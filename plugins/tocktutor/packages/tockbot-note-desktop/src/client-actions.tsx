@@ -283,7 +283,7 @@ export interface AudioMediaRecorder {
   readonly mimeType: string
   readonly state: string
   addEventListener(type: 'dataavailable' | 'error' | 'stop', listener: (event?: { data: Blob }) => void): void
-  start(): void
+  start(timeslice?: number): void
   stop(): void
 }
 
@@ -373,22 +373,22 @@ export async function startAudioRecording(
   const finish = (value: Awaited<ReturnType<AudioRecording['stop']>>): void => {
     if (settled) return
     settled = true
+    chunks.length = 0
     cleanup()
+    try { if (recorder.state === 'recording') recorder.stop() } catch { /* tracks are already stopped */ }
     resolve(value)
   }
   recorder.addEventListener('dataavailable', event => {
-    if (event === undefined || event.data.size === 0 || settled) return
+    if (event === undefined || event.data.size === 0 || settled || cancelled) return
     bytes += event.data.size
-    if (bytes <= MAX_AUDIO_BYTES) chunks.push(event.data)
+    if (bytes > MAX_AUDIO_BYTES) finish({ status: 'too-large' })
+    else chunks.push(event.data)
   })
   recorder.addEventListener('error', () => { finish({ status: 'failed' }) })
   recorder.addEventListener('stop', () => {
+    if (settled) return
     if (cancelled) {
       finish({ status: 'stale' })
-      return
-    }
-    if (bytes > MAX_AUDIO_BYTES) {
-      finish({ status: 'too-large' })
       return
     }
     if (!sameRecordingOwner(path, vault, current())) {
@@ -407,7 +407,7 @@ export async function startAudioRecording(
       .catch(() => { finish({ status: 'failed' }) })
   })
   try {
-    recorder.start()
+    recorder.start(1000)
   } catch (error) {
     cleanup()
     throw error

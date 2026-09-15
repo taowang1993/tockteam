@@ -231,6 +231,39 @@ test('records authorized audio and returns a stale-safe Workbench attachment han
   assert.equal(stopped, true)
 })
 
+test('recording requests periodic chunks and stops immediately on overflow or error', async () => {
+  for (const failure of ['overflow', 'error'] as const) {
+    const listeners = new Map<string, (event?: { data: Blob }) => void>()
+    let stoppedTracks = 0
+    let timeslice: number | undefined
+    let conversions = 0
+    const recorder = {
+      mimeType: 'audio/webm',
+      state: 'inactive',
+      addEventListener(type: string, listener: (event?: { data: Blob }) => void) { listeners.set(type, listener) },
+      start(interval?: number) { timeslice = interval; this.state = 'recording' },
+      stop() { this.state = 'inactive'; listeners.get('stop')?.() },
+    }
+    const started = await startAudioRecording('authorization', 'Note.md', vault,
+      () => ({ activePath: 'Note.md', vault }),
+      async () => ({ ok: true, value: { status: 'granted' } }),
+      { async getUserMedia() { return { getTracks: () => [{ stop() { stoppedTracks += 1 } }] } } },
+      () => recorder, undefined,
+      async blob => { conversions += 1; return blob.arrayBuffer() })
+    if (started.status !== 'recording') assert.fail('recording must start')
+    assert.equal(timeslice, 1000)
+    listeners.get('dataavailable')?.({ data: new Blob(['first chunk']) })
+    if (failure === 'overflow') listeners.get('dataavailable')?.({ data: { size: 25 * 1024 * 1024 } as Blob })
+    else listeners.get('error')?.()
+    assert.equal(recorder.state, 'inactive')
+    assert.equal(stoppedTracks, 1)
+    listeners.get('dataavailable')?.({ data: new Blob(['late chunk']) })
+    listeners.get('stop')?.()
+    assert.deepEqual(await started.recording.stop(), { status: failure === 'overflow' ? 'too-large' : 'failed' })
+    assert.equal(conversions, 0)
+  }
+})
+
 test('unloading during media acquisition stops late tracks before recording starts', async () => {
   const controller = new AbortController()
   let stopped = false
