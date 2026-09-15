@@ -7,6 +7,10 @@ on:
         description: Use the runner-owned temporary folder instead of the operating-system default.
         type: boolean
         default: false
+      native_trace:
+        description: Capture native worker timing for one diagnostic run.
+        type: boolean
+        default: false
       iterations:
         description: Number of bounded native-gate runs.
         type: choice
@@ -36,7 +40,19 @@ jobs:
         run: |
           "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
           "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+      - name: Prepare Native Worker Trace
+        if: inputs.native_trace
+        env:
+          RECOVERY_ITERATIONS: ${{ inputs.iterations }}
+        run: |
+          node -e "const assert = require('node:assert/strict'); assert.equal(process.env.RECOVERY_ITERATIONS, '1'); const fs = require('node:fs'); const root = fs.mkdtempSync(require('node:path').join(process.env.RUNNER_TEMP, 'native-threadpool-')); fs.appendFileSync(process.env.GITHUB_ENV, 'TOCKTEAM_NATIVE_TRACE_DIR=' + root + '\n')"
+      - name: Verify Native Worker Timing
+        if: inputs.native_trace
+        env:
+          TOCKTEAM_NATIVE_TRACE_CONTROL: '1'
+        run: node plugins/tocktutor/packages/tockbot-note-runtime/scripts/test-search-index.mjs
       - name: Verify Native Stack Capture
+        if: ${{ !inputs.native_trace }}
         shell: pwsh
         run: |
           $debugger = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe"
@@ -65,3 +81,11 @@ jobs:
             node scripts/test-search-index.mjs
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+      - name: Upload Native Worker Evidence
+        if: ${{ always() && inputs.native_trace && env.TOCKTEAM_NATIVE_TRACE_DIR != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-worker-evidence
+          path: ${{ env.TOCKTEAM_NATIVE_TRACE_DIR }}/capture-*/evidence.json
+          if-no-files-found: warn
+          retention-days: 7

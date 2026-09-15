@@ -29,9 +29,11 @@ import NoteVaultRuntime, {
   type TockTeamDesktopVaultSelectionReleaseInput,
 } from '../src/index.ts'
 import { captureNativeStack } from './native-stack.ts'
+import { markNativeTrace } from './native-trace.ts'
 
 let nativeStackCaptured = false
 function recordNativeStack(t: TestContext): void {
+  if (process.env.TOCKTEAM_NATIVE_TRACE_DIR) return // Keep synchronous CDB out of this measured interval.
   const debuggerPath = process.env.TOCKTEAM_NATIVE_DEBUGGER
   // Leave margin inside the native owner's existing 60-second process deadline.
   if (nativeStackCaptured || !debuggerPath || process.platform !== 'win32' || process.uptime() >= 45) return
@@ -5285,6 +5287,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
     let maxSqlMs = 0
     const started = Date.now()
     const record = (event: string, detail: unknown = null) => {
+      markNativeTrace(`native/${failure}/${event}`, detail)
       const entry = { at: Date.now() - started, event, detail }
       timeline.push(entry)
       if (timeline.length > 200) timeline.shift()
@@ -5314,6 +5317,7 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       return Promise.race([operation, new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           timedOut = true
+          markNativeTrace(`native/${failure}/deadline`)
           reject(timeoutError)
           snapshot()
           recordNativeStack(t)
@@ -5404,14 +5408,16 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
       try { await originalCommit.call(this); record('commit/end') } finally { unlock?.() }
     })
     try {
+      record('setup/start')
       loaded = await load(config)
+      record('setup/loaded')
       const state = loaded.context.noteVault.state
       if (!state.active) assert.fail('configured vault must be active')
       const expectedVault = { id: state.id, generation: state.generation }
       // Wait for the real failed native operation, not a simulated rejected promise.
       const deadline = Date.now() + 5_000
       while (!injected && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
-      if (!injected) { timedOut = true; snapshot(); recordNativeStack(t) }
+      if (!injected) { timedOut = true; record('setup/deadline'); snapshot(); recordNativeStack(t) }
       assert.equal(injected, true)
       await release
       await bounded(failed.promise)
@@ -5567,7 +5573,11 @@ for (const failure of ['open', 'lock', 'insert'] as const) {
         } finally { clearTimeout(timer) }
       }
       await release
-      if (loaded !== undefined) await bounded(dispose(loaded.context, loaded.root))
+      if (loaded !== undefined) {
+        record('dispose/start')
+        await bounded(dispose(loaded.context, loaded.root))
+        record('dispose/end')
+      }
       if (timedOut) t.diagnostic(`[DEBUG-bon-settled] ${inspect({ phases, pendingSql, lastReconcileError }, { depth: 5, maxArrayLength: 200, breakLength: Infinity })}`)
       if (process.env.TOCKTEAM_SEARCH_QUERY_LOAD !== undefined) t.diagnostic(`[DEBUG-bon-load] ${JSON.stringify({ maxSqlMs, totalMs: Date.now() - started, polls: pollId })}`)
       await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
@@ -5698,6 +5708,7 @@ test('Keyword search reconciles state-owned indexed candidates through the exact
     const timeline: unknown[] = []
     let lastError: unknown
     const record = (event: string, detail: unknown) => {
+      markNativeTrace(`keyword/${event}`, detail)
       timeline.push({ at: Date.now(), event, detail })
       if (timeline.length > 200) timeline.shift()
     }
@@ -5822,7 +5833,9 @@ test('persistent FlexSearch SQLite indexes reopen outside the user vault', async
   await writeFile(join(vaultRoot, 'Other.md'), '# Other\nunrelated\n')
 
   let loaded: Awaited<ReturnType<typeof load>> | null = null
+  let verification = 0
   const verifyIndexedSearch = async () => {
+    markNativeTrace('persistent/verify/start', ++verification)
     if (loaded === null) assert.fail('runtime must be loaded')
     const state = loaded.context.noteVault.state
     if (!state.active) assert.fail('configured vault must be active')
@@ -5834,9 +5847,13 @@ test('persistent FlexSearch SQLite indexes reopen outside the user vault', async
       }, { id: state.id, generation: state.generation }, new AbortController().signal)
       if (result.scan.entries === 3) {
         assert.deepEqual(result.matches.map(match => match.path).sort(), ['Alias.md', 'Alpha.md'])
+        markNativeTrace('persistent/verify/end', verification)
         return
       }
-      if (Date.now() >= deadline) assert.fail('timed out waiting for persistent indexed candidates')
+      if (Date.now() >= deadline) {
+        markNativeTrace('persistent/verify/deadline', verification)
+        assert.fail('timed out waiting for persistent indexed candidates')
+      }
       await new Promise(resolve => setTimeout(resolve, 20))
     }
   }
