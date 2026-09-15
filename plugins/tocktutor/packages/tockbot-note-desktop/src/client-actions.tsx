@@ -289,10 +289,11 @@ export interface AudioMediaRecorder {
 
 export interface AudioRecording {
   cancel(): void
-  stop(): Promise<
+  readonly completed: Promise<
     | { dataBase64: string; fileName: string; status: 'recorded' }
     | { status: 'failed' | 'stale' | 'too-large' }
   >
+  stop(): AudioRecording['completed']
 }
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024
@@ -415,6 +416,7 @@ export async function startAudioRecording(
   return {
     status: 'recording',
     recording: {
+      completed,
       cancel() {
         cancelled = true
         if (recorder.state === 'recording') recorder.stop()
@@ -799,7 +801,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
           return response
         },
         navigator.mediaDevices,
-        stream => new MediaRecorder(stream as MediaStream) as unknown as AudioMediaRecorder,
+        stream => new MediaRecorder(stream as MediaStream, { mimeType: 'audio/webm' }) as unknown as AudioMediaRecorder,
         undefined,
         undefined,
         signal,
@@ -812,6 +814,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
       activeRecording.current = started.recording
       setRecording(true)
       setMessage('Recording Audio…')
+      void finishRecording(started.recording, signal)
     } catch {
       if (!signal.aborted) setMessage('Audio recording could not start.')
     } finally {
@@ -819,25 +822,33 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     }
   }
 
+  const finishRecording = async (currentRecording: AudioRecording, signal: AbortSignal): Promise<void> => {
+    const result = await currentRecording.completed
+    if (signal.aborted || activeRecording.current !== currentRecording) return
+    activeRecording.current = undefined
+    setRecording(false)
+    setBusy('Stopping Recording')
+    try {
+      if (result.status === 'recorded') {
+        const stored = await owner.current.storeAudio?.(result.fileName, result.dataBase64)
+        if (!signal.aborted) setMessage(stored === true ? 'Audio recording added to the note.' : 'The audio recording could not be added safely.')
+      } else {
+        setMessage(result.status === 'stale'
+          ? 'The note or vault changed. The recording was discarded.'
+          : result.status === 'too-large' ? 'The audio recording exceeded 25 MiB.' : 'Audio recording failed safely.')
+      }
+    } catch {
+      if (!signal.aborted) setMessage('The audio recording could not be added safely.')
+    } finally {
+      if (!signal.aborted) setBusy(null)
+    }
+  }
+
   const stopRecording = async (): Promise<void> => {
-    const signal = lifetime.current?.signal
-    const currentRecording = activeRecording.current
-    if (signal === undefined || currentRecording === undefined) return
+    if (lifetime.current?.signal.aborted !== false || activeRecording.current === undefined) return
     setBusy('Stopping Recording')
     setMessage('Stopping Recording…')
-    const result = await currentRecording.stop()
-    if (activeRecording.current === currentRecording) activeRecording.current = undefined
-    if (signal.aborted) return
-    setRecording(false)
-    if (result.status === 'recorded') {
-      const stored = await owner.current.storeAudio?.(result.fileName, result.dataBase64)
-      setMessage(stored === true ? 'Audio recording added to the note.' : 'The audio recording could not be added safely.')
-    } else {
-      setMessage(result.status === 'stale'
-        ? 'The note or vault changed. The recording was discarded.'
-        : result.status === 'too-large' ? 'The audio recording exceeded 25 MiB.' : 'Audio recording failed safely.')
-    }
-    setBusy(null)
+    await activeRecording.current.stop()
   }
 
   const button = (label: string, action: () => Promise<void>, enabled = true): ReactNode => (
