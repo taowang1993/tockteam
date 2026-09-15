@@ -74,6 +74,54 @@ test('rejects traversal, absolute, drive, NUL, dot, nested archive, and aliases'
   )
 })
 
+test('rejects local CRC and size disagreements, including directory headers', () => {
+  const file = Buffer.from(createDeterministicZip([{ bytes: new Uint8Array([1]), path: 'Note.md' }]))
+  for (const field of [14, 18, 22]) {
+    const changed = Buffer.from(file)
+    changed.writeUInt32LE(changed.readUInt32LE(field) + 1, field)
+    assert.throws(() => parseZip(changed, limits), ImportExportError, `local field ${field}`)
+  }
+  const directory = Buffer.from(replaceAll(createDeterministicZip([{ bytes: new Uint8Array(), path: 'FolderX' }]), 'FolderX', 'Folder/'))
+  const central = directory.readUInt32LE(directory.length - 6)
+  directory.writeUInt32LE((0o040700 << 16) >>> 0, central + 38)
+  assert.deepEqual(parseZip(directory, limits), [])
+  for (const field of [0, 6, 8, 14, 18, 22, 26]) {
+    const changed = Buffer.from(directory)
+    changed[field] = changed[field]! ^ 1
+    assert.throws(() => parseZip(changed, limits), ImportExportError, `directory field ${field}`)
+  }
+  const payloadDirectory = Buffer.from(replaceAll(file, 'Note.md', 'Folder/'))
+  payloadDirectory.writeUInt32LE((0o040700 << 16) >>> 0, payloadDirectory.readUInt32LE(payloadDirectory.length - 6) + 38)
+  assert.throws(() => parseZip(payloadDirectory, limits), ImportExportError)
+})
+
+test('validates signed and unsigned data descriptors without requiring final local sizes', () => {
+  const original = Buffer.from(createDeterministicZip([{ bytes: new Uint8Array([1]), path: 'Note.md' }]))
+  const central = original.readUInt32LE(original.length - 6)
+  for (const signed of [false, true]) {
+    const descriptor = Buffer.alloc(signed ? 16 : 12)
+    const offset = signed ? 4 : 0
+    if (signed) descriptor.writeUInt32LE(0x08074b50, 0)
+    original.copy(descriptor, offset, 14, 26)
+    const archive = Buffer.concat([original.subarray(0, central), descriptor, original.subarray(central)])
+    archive.writeUInt16LE(0x0808, 6)
+    archive.writeUInt16LE(0x0808, central + descriptor.length + 8)
+    archive.writeUInt32LE(central + descriptor.length, archive.length - 6)
+    archive.fill(0, 14, 26)
+    assert.equal(parseZip(archive, limits)[0]?.bytes[0], 1)
+    for (const field of [0, 4, 8]) {
+      const changed = Buffer.from(archive)
+      changed[central + offset + field] = changed[central + offset + field]! ^ 1
+      assert.throws(() => parseZip(changed, limits), ImportExportError)
+    }
+  }
+  const missing = Buffer.from(original)
+  missing.writeUInt16LE(0x0808, 6)
+  missing.writeUInt16LE(0x0808, central + 8)
+  missing.fill(0, 14, 26)
+  assert.throws(() => parseZip(missing, limits), ImportExportError)
+})
+
 test('rejects checksum changes, truncation, symlinks, and compression bombs', () => {
   const archive = createDeterministicZip([
     { bytes: new TextEncoder().encode('plain payload'), path: 'Note.md' },

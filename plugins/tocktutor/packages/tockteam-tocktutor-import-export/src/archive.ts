@@ -225,8 +225,8 @@ export function parseZip(
     checkpoint()
     const rawName = decodeName(entry.name, entry.flags)
     const directory = rawName.endsWith('/')
-    if (directory) continue
-    if (!options.allowNestedArchives && nestedArchive(entry.path)) return invalidArchive()
+    if (directory && (entry.uncompressedSize !== 0 || entry.crc !== 0)) return invalidArchive()
+    if (!directory && !options.allowNestedArchives && nestedArchive(entry.path)) return invalidArchive()
     totalBytes += entry.uncompressedSize
     totalCompressed += entry.compressedSize
     if (totalBytes > limits.maxTotalBytes) limitExceeded()
@@ -247,6 +247,19 @@ export function parseZip(
       || archive.subarray(entry.localOffset + 30, entry.localOffset + 30 + localNameLength).compare(entry.name) !== 0) {
       return invalidArchive()
     }
+    const hasDescriptor = (entry.flags & DATA_DESCRIPTOR_FLAG) !== 0
+    for (const [field, expected] of [[14, entry.crc], [18, entry.compressedSize], [22, entry.uncompressedSize]] as const) {
+      const actual = archive.readUInt32LE(entry.localOffset + field)
+      if (actual !== expected && !(hasDescriptor && actual === 0)) return invalidArchive()
+    }
+    if (hasDescriptor) {
+      const offsets = [dataEnd]
+      if (dataEnd + 4 <= centralOffset && archive.readUInt32LE(dataEnd) === 0x08074b50) offsets.push(dataEnd + 4)
+      if (!offsets.some(start => start + 12 <= centralOffset
+        && archive.readUInt32LE(start) === entry.crc
+        && archive.readUInt32LE(start + 4) === entry.compressedSize
+        && archive.readUInt32LE(start + 8) === entry.uncompressedSize)) return invalidArchive()
+    }
     const compressed = archive.subarray(dataOffset, dataEnd)
     let bytes: Buffer
     try {
@@ -258,7 +271,7 @@ export function parseZip(
     }
     if (bytes.byteLength !== entry.uncompressedSize || crc32(bytes) !== entry.crc) return invalidArchive()
     checkpoint()
-    output.push({ bytes: new Uint8Array(bytes), compressedSize: entry.compressedSize, path: entry.path })
+    if (!directory) output.push({ bytes: new Uint8Array(bytes), compressedSize: entry.compressedSize, path: entry.path })
   }
   if (totalBytes > 0 && totalBytes / Math.max(1, totalCompressed) > limits.maxCompressionRatio) {
     limitExceeded()
