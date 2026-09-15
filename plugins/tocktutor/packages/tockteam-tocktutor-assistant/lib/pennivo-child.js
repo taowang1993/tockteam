@@ -127,7 +127,8 @@ export class PennivoChildManager {
         this.onInstanceChange = options.onInstanceChange ?? (() => undefined);
     }
     active() {
-        return this.activeState === null ? null : childInfo(this.activeState);
+        const state = this.activeState;
+        return state === null || !state.ready || state.failed || state.stopping ? null : childInfo(state);
     }
     async ensure(nextBinding) {
         if (this.disposed)
@@ -143,9 +144,9 @@ export class PennivoChildManager {
                 throw error('DISPOSED');
             if (this.desiredBinding === null || !sameBinding(this.desiredBinding, requested))
                 throw error('CHILD_REPLACED');
-            const current = this.activeState;
+            const current = this.active();
             if (current !== null && sameBinding(current.binding, requested))
-                return childInfo(current);
+                return current;
             if (this.transition === null) {
                 const operation = this.replaceWith(requested);
                 const transition = operation.finally(() => {
@@ -154,7 +155,14 @@ export class PennivoChildManager {
                 });
                 this.transition = transition;
             }
-            await this.transition;
+            try {
+                await this.transition;
+            }
+            catch (cause) {
+                // A newer binding may still need to start after the superseded startup retires.
+                if (!(cause instanceof PennivoChildError) || cause.code !== 'CHILD_REPLACED')
+                    throw cause;
+            }
         }
     }
     async listTools(nextBinding) {
@@ -175,8 +183,6 @@ export class PennivoChildManager {
             await transition.catch(() => undefined);
     }
     async dispose() {
-        if (this.disposed)
-            return;
         this.disposed = true;
         this.desiredBinding = null;
         this.clearRestart();
@@ -240,11 +246,11 @@ export class PennivoChildManager {
                 stdoutBuffer: '',
                 lifetimeTimer,
                 onData,
+                ready: false,
                 failed: false,
                 stopping: false,
             };
             this.activeState = state;
-            this.publishInstance(instanceId);
             handle.stdout.setEncoding('utf8');
             handle.stdout.on('data', onData);
             void handle.done.then(() => this.onExit(state), () => this.onExit(state));
@@ -254,7 +260,12 @@ export class PennivoChildManager {
                 clientInfo: { name: 'tocktutor-assistant', version: '0.1.5' },
             });
             this.assertInitialized(initialized);
+            this.assertStartupCurrent(nextBinding);
+            if (state.failed || state.stopping)
+                throw error('CHILD_REPLACED');
             this.notify(state, 'notifications/initialized', {});
+            state.ready = true;
+            this.publishInstance(instanceId);
         }
         catch (cause) {
             if (state !== undefined) {
@@ -417,7 +428,7 @@ export class PennivoChildManager {
         this.restartTimer = setTimeout(() => {
             this.restartTimer = null;
             const desired = this.desiredBinding;
-            if (desired === null || this.disposed || this.transition !== null)
+            if (desired === null || this.disposed || this.transition !== null || this.activeState !== null)
                 return;
             const operation = this.replaceWith(desired);
             const transition = operation.finally(() => {
@@ -433,10 +444,9 @@ export class PennivoChildManager {
             return state.stopTask;
         state.stopping = true;
         const stopTask = (async () => {
-            if (this.activeState === state) {
-                this.activeState = null;
+            // Revoke use immediately, but retain ownership until whole-tree cleanup settles.
+            if (this.activeState === state)
                 this.publishInstance(null);
-            }
             clearTimeout(state.lifetimeTimer);
             state.handle.stdout?.off('data', state.onData);
             state.stdoutBuffer = '';
@@ -450,6 +460,8 @@ export class PennivoChildManager {
             await state.handle.done.catch(() => undefined);
             await state.handle.waitForExit().catch(() => false);
             await rm(state.scratch, { recursive: true, force: true });
+            if (this.activeState === state)
+                this.activeState = null;
         })();
         state.stopTask = stopTask;
         await stopTask;

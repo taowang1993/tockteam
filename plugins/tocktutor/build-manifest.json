@@ -503,15 +503,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/pennivo-child.d.ts.map",
-      "sha256": "82031aa4bd3771a0c83aaacaaa7ecfd15ce704a54ae5e2d39dd8a32c9e8b3d79"
+      "sha256": "ad375024a062d2ac4e474016ccab53981580fab543ae3e195c8b1f064b9aba84"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/pennivo-child.js",
-      "sha256": "47ab0413a37d5c6dac5cb91c69a3f461738115a7365d818d8335e3de0c754a6c"
+      "sha256": "49646e6581cc9b642cde9edbe7eb55bbaff6001ed21944f7f419118c1e0c48c5"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/pennivo-child.js.map",
-      "sha256": "96908bfe8f8ea8b6d2e6d9cb7febd8871a68a25e13b5bd27e84f1fa41ed21ffd"
+      "sha256": "ba4ecef6564c2cf58f315d4a563eb9b85388519fdb7dab8eeda5afd8241c4bc0"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/production-turns.d.ts",
@@ -647,15 +647,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/search-intelligence.d.ts.map",
-      "sha256": "8cb3737c9cef8e0416aca1be8498a0c3eddf89c08e68fc8ce576a8bab6b3c1f0"
+      "sha256": "8df31ce30194d383e6333553d33903ac99fab8f17255f28a9d16d5278c2ebd8c"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/search-intelligence.js",
-      "sha256": "32ac6c9b0f02a22f1d4b9360f922a082b1516a70463e7be2c4c9b3d0bcda4898"
+      "sha256": "9912cd3500aa0da56b39400120b925dc81eb9b6e06afaed0cd0fd3c85793e2bd"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/search-intelligence.js.map",
-      "sha256": "75911862bfcfb70cadcfe6b92b76b1a8734e4cff5c758e9d20007c4ee09d3233"
+      "sha256": "7f1ccd48d7854f3bf4e22100c3e3cde579e9de5382aa2eb0e5d3126c064acf22"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/text-turn.d.ts",
@@ -763,7 +763,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/pennivo-child.ts",
-      "sha256": "64c8c892b5528a60d2f31bbac028f9b602402c4f2c13b19b2a8a6a96fb2a2426"
+      "sha256": "03effdd5642013dcb87fff9022a68ade5d2b8fed9e510b7700d925c5e455cae5"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/production-turns.ts",
@@ -799,7 +799,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/search-intelligence.ts",
-      "sha256": "a87dddbf865f181baf754ebbd9409bd971260ab3aedba97fc75b686fb0700f67"
+      "sha256": "5b74dda77323410eab2f46499fcb2e65472f0fb39c926dfe882cc168c20a8638"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/text-turn.ts",
