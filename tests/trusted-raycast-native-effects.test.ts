@@ -407,20 +407,25 @@ agent.get('https://translate.google.com').intercept({ path: /^\\/translate_a\\/s
     }
     manager = new TrustedRaycastManager({ runtimeDir: join(work, 'trusted-raycast'), nodePath, onMessage: (_owner, message) => messages.push(message) })
     await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, autoInput: false } })
-    const { latestRoot, waitRoot } = projections(messages)
+    const { latestRoot, waitRoot, settle } = projections(messages)
+    // Drain startup patches so a stale initial projection cannot satisfy loading checks.
+    await settle()
     const send = (value: string) => {
       const view = latestRoot()
       manager!.send({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', revision: view.revision, eventId: view.root.props.searchEventId, kind: 'searchChanged', value })
     }
     send('ab')
-    await waitRoot(root => root.children.some((child: any) => child.type === 'raycast-list' && child.props.searchText === 'ab'))
+    const pending = await waitRoot(root => root.children.some((child: any) => child.type === 'raycast-list' && child.props.searchText === 'ab'))
+    // Query freshness is not completion: the current input still renders the source's loading view.
+    assert.equal(pending.root.props.queryCurrent, true)
+    const pendingList = pending.root.children.find((child: any) => child.type === 'raycast-list')
+    assert.ok(pendingList.children.some((child: any) => child.type === 'raycast-empty' && child.props.title === 'Translating...'), 'the current debounced query shows its loading view')
     await wait(60)
     if (!configuredArtifact) assert.equal(existsSync(requestsFile), false, 'no HTTP request starts before the debounce interval')
     send('abc')
     const finalRoot = await waitRoot(root => root.props.queryCurrent === true && JSON.stringify(root).includes('raycast-list-item') && root.children.some((child: any) => child.type === 'raycast-list' && child.props.searchText === 'abc'), 25000)
     assert.equal(finalRoot.root.props.queryCurrent, true)
     assert.ok(finalRoot.root.children.some((child: any) => child.type === 'raycast-list' && child.props.searchText === 'abc'), 'the debounced final query, not each keystroke, produces results')
-    assert.ok(messages.some((message: any) => message.root?.props.queryCurrent === false), 'intermediate loading projections remain honest')
     if (!configuredArtifact) {
       assert.ok(JSON.stringify(finalRoot.root).includes('translated abc'), 'the HTTP response reaches the unchanged rendered source')
       assert.deepEqual(JSON.parse(readFileSync(requestsFile, 'utf8')), ['abc', 'translated abc'], 'only the final query and its upstream reverse translation reach HTTP')
