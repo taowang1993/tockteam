@@ -231,7 +231,12 @@ export class PennivoChildManager {
         })
         this.transition = transition
       }
-      await this.transition
+      try {
+        await this.transition
+      } catch (cause) {
+        // A newer binding may still need to start after the superseded startup retires.
+        if (!(cause instanceof PennivoChildError) || cause.code !== 'CHILD_REPLACED') throw cause
+      }
     }
   }
 
@@ -252,7 +257,6 @@ export class PennivoChildManager {
   }
 
   async dispose(): Promise<void> {
-    if (this.disposed) return
     this.disposed = true
     this.desiredBinding = null
     this.clearRestart()
@@ -477,7 +481,7 @@ export class PennivoChildManager {
     this.restartTimer = setTimeout(() => {
       this.restartTimer = null
       const desired = this.desiredBinding
-      if (desired === null || this.disposed || this.transition !== null) return
+      if (desired === null || this.disposed || this.transition !== null || this.activeState !== null) return
       const operation = this.replaceWith(desired)
       const transition = operation.finally(() => {
         if (this.transition === transition) this.transition = null
@@ -491,10 +495,8 @@ export class PennivoChildManager {
     if (state.stopTask !== undefined) return state.stopTask
     state.stopping = true
     const stopTask = (async () => {
-      if (this.activeState === state) {
-        this.activeState = null
-        this.publishInstance(null)
-      }
+      // Revoke use immediately, but retain ownership until whole-tree cleanup settles.
+      if (this.activeState === state) this.publishInstance(null)
       clearTimeout(state.lifetimeTimer)
       state.handle.stdout?.off('data', state.onData)
       state.stdoutBuffer = ''
@@ -508,6 +510,7 @@ export class PennivoChildManager {
       await state.handle.done.catch(() => undefined)
       await state.handle.waitForExit().catch(() => false)
       await rm(state.scratch, { recursive: true, force: true })
+      if (this.activeState === state) this.activeState = null
     })()
     state.stopTask = stopTask
     await stopTask

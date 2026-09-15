@@ -31,6 +31,7 @@ class FakeHandle implements SubprocessHandle {
   readonly events: string[]
   respondToInitialize = true
   respondToTools = true
+  exitBarrier?: Promise<void>
   terminated = false
   private settled = false
   private readonly outcome = Promise.withResolvers<SubprocessOutcome>()
@@ -56,6 +57,8 @@ class FakeHandle implements SubprocessHandle {
   async waitForExit(): Promise<boolean> {
     this.events.push(`wait:${this.pid}`)
     await this.done
+    await this.exitBarrier
+    this.events.push(`exited:${this.pid}`)
     return true
   }
 
@@ -216,6 +219,90 @@ test('concurrent callers wait for initialization before publishing or listing to
   }
 })
 
+test('failed initialization rejects every waiter without publishing a ready instance', async () => {
+  const runtime = new FakeSubprocess()
+  runtime.respondToInitialize = false
+  const instances: Array<string | null> = []
+  const child = manager(runtime, { requestTimeoutMs: 1_000, onInstanceChange: (id: string | null) => instances.push(id) })
+  const starting = Promise.allSettled([child.ensure(binding)])
+  let concurrent: Promise<PromiseSettledResult<unknown>[]> | undefined
+  try {
+    await waitFor(() => runtime.handles[0]?.messages[0]?.method === 'initialize')
+    concurrent = Promise.allSettled([child.ensure(binding), child.listTools(binding)])
+    const handle = runtime.handles[0]!
+    handle.send({ jsonrpc: '2.0', id: handle.messages[0]!.id, result: {
+      protocolVersion: '2025-11-25', capabilities: {}, serverInfo: { name: 'fake-pennivo', version: '0.0.0' },
+    } })
+    for (const result of [...await starting, ...await concurrent]) {
+      assert.equal(result.status, 'rejected')
+      if (result.status === 'rejected') assert.equal(expectCode(result.reason, 'VERSION_MISMATCH'), true)
+    }
+    assert.deepEqual(handle.messages.map(message => message.method), ['initialize'])
+    assert.deepEqual(instances, [])
+    assert.equal(child.active(), null)
+    await assert.rejects(access(runtime.specs[0]!.cwd))
+  } finally {
+    await child.dispose()
+    await starting
+    await concurrent
+  }
+})
+
+test('a superseding binding waits for initialization retirement then starts its own child', async () => {
+  const runtime = new FakeSubprocess()
+  runtime.respondToInitialize = false
+  const child = manager(runtime, { requestTimeoutMs: 1_000 })
+  const starting = assert.rejects(child.ensure(binding), error => expectCode(error, 'CHILD_REPLACED'))
+  let replacement: Promise<PromiseSettledResult<unknown>[]> | undefined
+  try {
+    await waitFor(() => runtime.handles[0]?.messages[0]?.method === 'initialize')
+    const handle = runtime.handles[0]!
+    runtime.respondToInitialize = true
+    replacement = Promise.allSettled([child.ensure({ ...binding, vaultGeneration: 2 })])
+    handle.send({ jsonrpc: '2.0', id: handle.messages[0]!.id, result: {
+      protocolVersion: '2025-11-25', capabilities: {}, serverInfo: { name: 'fake-pennivo', version: '1.4.0' },
+    } })
+    await starting
+    assert.equal((await replacement)[0]!.status, 'fulfilled')
+    assert.equal(child.active()?.binding.vaultGeneration, 2)
+    assert.ok(runtime.events.indexOf('exited:100') < runtime.events.indexOf('spawn:101'))
+  } finally {
+    await child.dispose()
+    await starting
+    await replacement
+  }
+})
+
+for (const cause of ['protocol', 'crash'] as const) {
+  test(`replacement waits for ${cause} retirement and is not retired by the old restart timer`, async t => {
+    const runtime = new FakeSubprocess()
+    const child = manager(runtime, { restartDelayMs: 100 })
+    const retired = deferred<void>()
+    let replacement: ReturnType<PennivoChildManager['ensure']> | undefined
+    try {
+      await child.ensure(binding)
+      runtime.handles[0]!.exitBarrier = retired.promise
+      if (cause === 'protocol') runtime.handles[0]!.stdout.write('{not-json}\n')
+      else runtime.handles[0]!.crash()
+      await waitFor(() => runtime.events.includes('wait:100'))
+      t.mock.timers.enable({ apis: ['setTimeout'] })
+      replacement = child.ensure(binding)
+      retired.resolve()
+      const info = await replacement
+      assert.ok(runtime.events.indexOf('exited:100') < runtime.events.indexOf('spawn:101'))
+      await assert.rejects(access(runtime.specs[0]!.cwd))
+      t.mock.timers.tick(100)
+      await new Promise(resolve => setImmediate(resolve))
+      assert.equal(child.active()?.instanceId, info.instanceId, 'an old restart must not replace the ready child')
+      assert.equal(runtime.handles.length, 2)
+    } finally {
+      retired.resolve()
+      await replacement?.catch(() => undefined)
+      await child.dispose()
+    }
+  })
+}
+
 test('replaces only after old-tree quiescence and drops late old-child results', async () => {
   const runtime = new FakeSubprocess()
   const instances: Array<string | null> = []
@@ -254,6 +341,35 @@ test('malformed and oversized JSON-RPC fail closed and a later ensure restarts',
   assert.equal(runtime.handles[1]!.terminated, true)
   await child.dispose()
 })
+
+for (const action of ['stop', 'dispose'] as const) {
+  test(`${action} waits for a protocol-failed child to finish retiring`, async () => {
+    const runtime = new FakeSubprocess()
+    const child = manager(runtime, { maxRestarts: 0 })
+    const retired = deferred<void>()
+    let stopping: Promise<void> | undefined
+    try {
+      await child.ensure(binding)
+      runtime.handles[0]!.exitBarrier = retired.promise
+      runtime.handles[0]!.stdout.write('{not-json}\n')
+      await waitFor(() => runtime.events.includes('wait:100'))
+      let settled = false
+      stopping = Promise.all([child[action](), child[action]()]).then(() => { settled = true })
+      await new Promise(resolve => setImmediate(resolve))
+      assert.equal(settled, false, 'all callers must await whole-tree exit')
+      assert.equal(child.active(), null)
+      await access(runtime.specs[0]!.cwd)
+      retired.resolve()
+      await stopping
+      await assert.rejects(access(runtime.specs[0]!.cwd))
+      assert.equal(runtime.handles.length, 1)
+    } finally {
+      retired.resolve()
+      await stopping
+      await child.dispose()
+    }
+  })
+}
 
 test('bounds pending requests, timeout, crash restart, and complete disposal', async () => {
   const runtime = new FakeSubprocess()
