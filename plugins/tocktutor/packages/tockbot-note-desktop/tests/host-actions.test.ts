@@ -20,7 +20,7 @@ const identity = Object.freeze({
 type Call = { method: string; parameters: unknown[] }
 type VaultState = { active: false; generation: number } | { active: true; generation: number; id: string }
 
-async function loaded(): Promise<{
+async function loaded(documents: Record<string, string> = {}): Promise<{
   abortAfterClaim(controller: AbortController): void
   calls: Call[]
   context: Context
@@ -102,10 +102,10 @@ async function loaded(): Promise<{
         async openDocument(...parameters: unknown[]) {
           calls.push({ method: 'openDocument', parameters })
           const path = String(parameters[0])
-          const content = path === 'Folder/Embedded.md'
+          const content = documents[path] ?? (path === 'Folder/Embedded.md'
             ? '# Export\n![[Attachments/image.png]]\n![[Second.md#Part]]\n![[Board.canvas]]\n'
             : path === 'Second.md' ? '# Part\nSafe <script>alert(1)</script>\n# Next\n'
-              : path === 'Board.canvas' ? '{"nodes":[]}' : '# Exact & <source>\n'
+              : path === 'Board.canvas' ? '{"nodes":[]}' : '# Exact & <source>\n')
           return {
             content,
             digest: `sha256:${'c'.repeat(64)}`,
@@ -120,6 +120,7 @@ async function loaded(): Promise<{
             complete: true,
             cursor: null,
             entries: [
+              ...Object.keys(documents).map(path => ({ kind: 'document', path })),
               { createdAt: 1, kind: 'document', modifiedAt: 1, path: 'Folder/Embedded.md', revision: 'file:embedded', size: 80 },
               { createdAt: 1, kind: 'attachment', mediaKind: 'image', modifiedAt: 1, path: 'Attachments/image.png', revision: 'file:image', size: 3 },
               { createdAt: 1, kind: 'document', modifiedAt: 1, path: 'Second.md', revision: 'file:second', size: 64 },
@@ -593,6 +594,71 @@ test('recovers microphone and export results without repeating native effects', 
     ])
   } finally {
     await state.context.fiber.dispose()
+  }
+})
+
+test('native print and export resolve relative nested embeds with cycle and depth bounds', async () => {
+  const state = await loaded({
+    'Folder/Root.md': '# Root\n![[./Child.md#Include]]\n',
+    'Folder/Child.md': '# Include\nNested child\n![[./Deep.md]]\n# Exclude\nExcluded section\n',
+    'Folder/Deep.md': 'Deep proof\n![[../Attachments/image.png]]\n![[./Child.md#Include]]\n![[./Depth.md]]',
+    'Folder/Depth.md': 'Allowed intermediate depth\n![[./BeforeBeyond.md]]',
+    'Folder/BeforeBeyond.md': 'Last allowed depth\n![[./Beyond.md]]',
+    'Folder/Beyond.md': 'Beyond depth must not render',
+  })
+  try {
+    for (const format of ['print', 'html', 'pdf'] as const) {
+      const signal = new AbortController().signal
+      if (format === 'print') await state.gateway.printNote('nested-print', 'Folder/Root.md', vault, signal)
+      else await state.gateway.exportNote(`nested-${format}`, format, 'Folder/Root.md', vault, signal)
+    }
+    const requests = state.calls.filter(call => call.method === 'printExport.render')
+    assert.equal(requests.length, 3)
+    for (const request of requests) {
+      const { html } = request.parameters[0] as { html: string }
+      assert.match(html, /Nested child/u)
+      assert.match(html, /Deep proof/u)
+      assert.match(html, /data:image\/png;base64,AQID/u)
+      assert.match(html, /Last allowed depth/u)
+      assert.doesNotMatch(html, /Excluded section|Beyond depth must not render/u)
+      assert.ok(html.length < 20_000)
+    }
+    assert.equal(state.calls.filter(call => call.method === 'openDocument' && call.parameters[0] === 'Folder/Beyond.md').length, 0)
+  } finally {
+    await state.context.fiber.dispose()
+  }
+})
+
+test('nested export preserves the combined read budget', async () => {
+  const documents = Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`Part${i}.md`, 'x'.repeat(1_600_000)]))
+  const state = await loaded({ 'Root.md': Object.keys(documents).map(path => `![[${path}]]`).join('\n'), ...documents })
+  try {
+    await state.gateway.printNote('bounded-export', 'Root.md', vault, new AbortController().signal)
+    assert.equal(state.calls.filter(call => call.method === 'openDocument' && call.parameters[0] === 'Part4.md').length, 0)
+    const request = state.calls.find(call => call.method === 'printExport.render')!.parameters[0] as { html: string }
+    assert.ok(request.html.length < 6_000_000)
+  } finally { await state.context.fiber.dispose() }
+})
+
+test('nested export never renders after stale document replies, vault changes, or cancellation', async () => {
+  for (const failure of ['reply', 'vault', 'abort'] as const) {
+    const state = await loaded({ 'Root.md': '![[./Child.md]]', 'Child.md': 'Child' })
+    const controller = new AbortController()
+    const runtime = state.context.noteVault
+    const open = runtime.openDocument.bind(runtime)
+    runtime.openDocument = async (...args) => {
+      const result = await open(...args)
+      if (args[0] === 'Child.md') {
+        if (failure === 'reply') return { ...result, generation: vault.generation + 1 }
+        if (failure === 'vault') state.setState({ active: true, ...nextVault })
+        if (failure === 'abort') controller.abort()
+      }
+      return result
+    }
+    try {
+      await assert.rejects(state.gateway.printNote(`stale-${failure}`, 'Root.md', vault, controller.signal))
+      assert.equal(state.calls.some(call => call.method === 'printExport.render'), false)
+    } finally { await state.context.fiber.dispose() }
   }
 })
 
