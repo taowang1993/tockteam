@@ -1,7 +1,7 @@
 import type { LlmRuntime } from '@deepseek-ai/dsh-llm'
 import type { AssistantQuickAnswerCandidate, AssistantQuickAnswerRequest, AssistantQuickAnswerCitation, AssistantSearchIntelligenceResult } from './remote-types.ts'
 import type { VaultSearchMatch, VaultSearchResult } from 'tockbot-note-vault/inspection'
-import { assertSafeRelativePath, redactBoundaryText } from './context.ts'
+import { assertSafeRelativePath, buildAssistantPrompt, redactBoundaryText } from './context.ts'
 import { AssistantTextTurnRunner, type AssistantTurnBinding } from './text-turn.ts'
 
 const MAX_EXPANSION_OUTPUT = 16_384
@@ -200,18 +200,25 @@ export async function answerSearchQuery(
     }
   }
   if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding)) return { status: 'cancelled', answer: '', citations: [] }
-  if (excerpts.length === 0) return { status: 'no-evidence', answer: '', citations: [] }
-  const prompt = [
+  const admitted = new Map<string, AssistantQuickAnswerCandidate>()
+  let prompt = [
     'Return strict JSON only with exactly these keys: answer and citations.',
     'Answer the user question using only the note excerpts below. Keep the answer concise.',
     `citations must contain at most ${String(MAX_ANSWER_CITATIONS)} opaque candidate IDs supporting the answer; never emit paths or invent IDs.`,
     `User question: ${query}`,
-    ...excerpts.map(({ candidate, excerpt }) => `Candidate ${candidate.id}:\n${excerpt}`),
   ].join('\n\n')
+  for (const { candidate, excerpt } of excerpts) {
+    const next = `${prompt}\n\nCandidate ${candidate.id}:\n${excerpt}`
+    // Admit only complete blocks that survive the shared prompt boundary unchanged.
+    if (!buildAssistantPrompt({ message: next }).user.endsWith(next)) break
+    prompt = next
+    admitted.set(candidate.id, candidate)
+  }
+  if (admitted.size === 0) return { status: 'no-evidence', answer: '', citations: [] }
   const completion = await textTurn(llm, provider, model, prompt, binding, signal, isCurrent)
   if (completion.status === 'error') return { status: completion.code === 'ABORTED' || completion.code === 'STALE_CONTEXT' ? 'cancelled' : completion.code === 'PROVIDER_UNAVAILABLE' ? 'provider-unavailable' : 'error', answer: '', citations: [] }
   try {
-    const parsed = parseQuickAnswer(completion.text, new Map(excerpts.map(({ candidate }) => [candidate.id, candidate])))
+    const parsed = parseQuickAnswer(completion.text, admitted)
     if (signal.aborted || !searchBindingIsCurrent(isCurrent, binding)) return { status: 'cancelled', answer: '', citations: [] }
     if (parsed.answer === '' || parsed.citations.length === 0) return { status: 'no-evidence', answer: '', citations: [] }
     return { status: 'completed', ...parsed }

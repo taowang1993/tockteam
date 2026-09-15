@@ -11,11 +11,13 @@ test('accepts only bounded strict query expansion JSON', () => {
 })
 
 class ExpansionAdapter extends LlmAdapter {
+  readonly requests: GenerateOptions[] = []
   private readonly output: string
   constructor(output: string) { super(); this.output = output }
   override listModels(): Promise<readonly []> { return Promise.resolve([]) }
   override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> { return Promise.resolve({ provider, id: model, name: model }) }
-  override async *stream(_options: GenerateOptions): AsyncIterable<StreamChunk> {
+  override async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    this.requests.push(options)
     yield { type: 'text-delta', index: 0, text: this.output }
     yield { type: 'finish', reason: { kind: 'stop' } }
   }
@@ -122,6 +124,64 @@ test('answers from bounded excerpts and projects only captured citation metadata
     await context.fiber.dispose()
   }
 })
+
+for (const citedId of ['qa-1', 'qa-20']) {
+  test(`Quick Answer admits only complete provider-visible evidence (${citedId})`, async () => {
+    const context = new Context()
+    await context.plugin(LlmRuntime)
+    const adapter = new ExpansionAdapter(JSON.stringify({ answer: 'Use the evidence.', citations: [citedId] }))
+    context.llm.registerAdapter(['fake'], adapter)
+    const candidates = Array.from({ length: 20 }, (_, index) => ({
+      id: `qa-${index + 1}`, revision: 'revision:answer', path: `Note-${index + 1}.md`, line: 1, lineEnd: 1, preview: '',
+    }))
+    const documents = new Map(candidates.map(candidate => [candidate.path, `${'x'.repeat(1_980)} END-${candidate.id}`]))
+    try {
+      const result = await answerSearchQuery(context.llm, {
+        query: 'where', vaultGeneration: 4, candidates,
+      }, 'fake', 'model', async path => ({ path, content: documents.get(path)!, revision: 'revision:answer' }), new AbortController().signal)
+      const prompt = adapter.requests[0]!.messages[0]!.content.filter(block => block.type === 'text').map(block => block.text).join('')
+      assert.equal(prompt.includes('Candidate qa-20:'), false, 'late evidence does not fit the provider budget')
+      assert.equal(result.status, citedId === 'qa-20' ? 'invalid-output' : 'completed')
+      if (citedId === 'qa-20') assert.deepEqual(result.citations, [])
+      else assert.deepEqual(result.citations, [{ id: 'qa-1', path: 'Note-1.md', line: 1, lineEnd: 1 }])
+      assert.ok(prompt.length <= 8_000 + 'Current User Message:\n'.length)
+      for (const candidate of candidates) {
+        if (prompt.includes(`Candidate ${candidate.id}:`)) {
+          assert.ok(prompt.includes(`Candidate ${candidate.id}:\n${documents.get(candidate.path)!}`), 'no evidence block is cut mid-excerpt')
+        }
+      }
+    } finally {
+      await context.fiber.dispose()
+    }
+  })
+}
+
+for (const includeSafeCandidate of [false, true]) {
+  test(`Quick Answer excludes evidence changed by the prompt redactor (safe candidate: ${includeSafeCandidate})`, async () => {
+    const context = new Context()
+    await context.plugin(LlmRuntime)
+    const adapter = new ExpansionAdapter('{"answer":"Use the evidence.","citations":["qa-1"]}')
+    context.llm.registerAdapter(['fake'], adapter)
+    const metadata = { revision: 'revision:answer', path: 'Answer.md', line: 1, preview: '' }
+    try {
+      const result = await answerSearchQuery(context.llm, {
+        query: 'where', vaultGeneration: 4,
+        candidates: [...(includeSafeCandidate ? [{ ...metadata, id: 'qa-1' }] : []), { ...metadata, id: 'api_key:privatevalue' }],
+      }, 'fake', 'model', async path => ({ path, content: 'Evidence with Bearer privatevalue', revision: 'revision:answer' }), new AbortController().signal)
+      assert.equal(result.status, includeSafeCandidate ? 'completed' : 'no-evidence')
+      assert.equal(adapter.requests.length, includeSafeCandidate ? 1 : 0)
+      if (includeSafeCandidate) {
+        const prompt = JSON.stringify(adapter.requests[0]!.messages)
+        assert.ok(prompt.includes('Candidate qa-1:'))
+        assert.ok(prompt.includes('[REDACTED]'))
+        assert.equal(prompt.includes('Candidate api_key:'), false)
+        assert.equal(prompt.includes('privatevalue'), false)
+      } else assert.deepEqual(result.citations, [])
+    } finally {
+      await context.fiber.dispose()
+    }
+  })
+}
 
 test('rejects unknown and duplicate Quick Answer citations from the captured candidate map', async () => {
   const context = new Context()
