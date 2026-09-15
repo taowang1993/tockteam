@@ -766,9 +766,8 @@ test('Agent gateway authenticates and defers runtime-restarting applies', async 
       method: 'POST',
     })
     assert.equal(apply.status, 202)
-    const accepted = await apply.json() as { deferred: boolean }
+    const accepted = await apply.json() as { deferred: boolean; snapshot: typeof prepared.snapshot }
     assert.equal(accepted.deferred, true)
-    assert.equal(setup.manager.getSnapshot().preview?.pluginId, 'safe-demo')
 
     // The preview clears and the installed list commits in separate ticks on
     // slow runners; wait for both rather than just the preview.
@@ -779,6 +778,9 @@ test('Agent gateway authenticates and defers runtime-restarting applies', async 
     }
     assert.equal(setup.manager.getSnapshot().preview, null)
     assert.equal(setup.manager.getSnapshot().installed[0]?.pluginId, 'safe-demo')
+    // Apply may finish before the client reads the response. The acknowledgement
+    // must retain its accepted preview even after the live preview has cleared.
+    assert.equal(accepted.snapshot.preview?.pluginId, 'safe-demo')
   } finally {
     await gateway.close()
     setup.cleanup()
