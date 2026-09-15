@@ -100,6 +100,7 @@ interface ChildState {
   stdoutBuffer: string
   lifetimeTimer: ReturnType<typeof setTimeout>
   onData(chunk: Buffer | string): void
+  ready: boolean
   failed: boolean
   stopping: boolean
   stopTask?: Promise<void>
@@ -205,7 +206,8 @@ export class PennivoChildManager {
   }
 
   active(): PennivoChildInfo | null {
-    return this.activeState === null ? null : childInfo(this.activeState)
+    const state = this.activeState
+    return state === null || !state.ready || state.failed || state.stopping ? null : childInfo(state)
   }
 
   async ensure(nextBinding: PennivoBinding): Promise<PennivoChildInfo> {
@@ -220,8 +222,8 @@ export class PennivoChildManager {
     while (true) {
       if (this.disposed) throw error('DISPOSED')
       if (this.desiredBinding === null || !sameBinding(this.desiredBinding, requested)) throw error('CHILD_REPLACED')
-      const current = this.activeState
-      if (current !== null && sameBinding(current.binding, requested)) return childInfo(current)
+      const current = this.active()
+      if (current !== null && sameBinding(current.binding, requested)) return current
       if (this.transition === null) {
         const operation = this.replaceWith(requested)
         const transition = operation.finally(() => {
@@ -307,11 +309,11 @@ export class PennivoChildManager {
         stdoutBuffer: '',
         lifetimeTimer,
         onData,
+        ready: false,
         failed: false,
         stopping: false,
       }
       this.activeState = state
-      this.publishInstance(instanceId)
       handle.stdout.setEncoding('utf8')
       handle.stdout.on('data', onData)
       void handle.done.then(
@@ -324,7 +326,11 @@ export class PennivoChildManager {
         clientInfo: { name: 'tocktutor-assistant', version: '0.1.5' },
       })
       this.assertInitialized(initialized)
+      this.assertStartupCurrent(nextBinding)
+      if (state.failed || state.stopping) throw error('CHILD_REPLACED')
       this.notify(state, 'notifications/initialized', {})
+      state.ready = true
+      this.publishInstance(instanceId)
     } catch (cause) {
       if (state !== undefined) {
         await this.stopState(state, cause instanceof PennivoChildError ? cause.code : 'START_FAILED')

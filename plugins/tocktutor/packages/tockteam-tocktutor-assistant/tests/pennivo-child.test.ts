@@ -183,6 +183,39 @@ test('starts the pinned child in a scratch workspace with a restricted environme
   }
 })
 
+test('concurrent callers wait for initialization before publishing or listing tools', async () => {
+  const runtime = new FakeSubprocess()
+  runtime.respondToInitialize = false
+  const instances: Array<string | null> = []
+  const child = manager(runtime, { requestTimeoutMs: 1_000, onInstanceChange: (id: string | null) => instances.push(id) })
+  const starting = Promise.allSettled([child.ensure(binding)])
+  let concurrent: Promise<PromiseSettledResult<unknown>[]> | undefined
+  try {
+    await waitFor(() => runtime.handles[0]?.messages[0]?.method === 'initialize')
+    const handle = runtime.handles[0]!
+    let settled = false
+    concurrent = Promise.allSettled([child.ensure(binding), child.listTools(binding)]).then(results => { settled = true; return results })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(handle.messages.map(message => message.method), ['initialize'])
+    assert.equal(settled, false)
+    assert.equal(child.active(), null)
+    assert.deepEqual(instances, [])
+
+    handle.send({ jsonrpc: '2.0', id: handle.messages[0]!.id, result: {
+      protocolVersion: '2025-11-25', capabilities: {}, serverInfo: { name: 'fake-pennivo', version: '1.4.0' },
+    } })
+    assert.equal((await starting)[0]!.status, 'fulfilled')
+    assert.deepEqual((await concurrent).map(result => result.status), ['fulfilled', 'fulfilled'])
+    assert.deepEqual(handle.messages.map(message => message.method), ['initialize', 'notifications/initialized', 'tools/list'])
+    assert.deepEqual(instances, ['child-1'])
+    assert.equal(child.active()?.instanceId, 'child-1')
+  } finally {
+    await child.dispose()
+    await starting
+    await concurrent
+  }
+})
+
 test('replaces only after old-tree quiescence and drops late old-child results', async () => {
   const runtime = new FakeSubprocess()
   const instances: Array<string | null> = []
