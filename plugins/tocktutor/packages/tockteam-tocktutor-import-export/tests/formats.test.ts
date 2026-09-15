@@ -223,6 +223,26 @@ test('imports normal Bear Markdown and assets while surfacing unknown records', 
   assert.deepEqual(result.skipped, [{ label: 'notes/one/state.bin', reason: 'unsupported-record' }])
 })
 
+test('Bear attachments follow relocated, sanitized, and collision-resolved destinations', () => {
+  const source = '# Same\n![Photo](assets/sub/photo%20(1).jpg "Caption")\n[PDF](<./assets/file.pdf#page=2>)\n`![Code](assets/file.pdf)`\n```md\n![Code](assets/file.pdf)\n```\n![Remote](https://example.com/file.pdf)\n![Missing](assets/missing.jpg)\n![Unsafe](assets/no.svg)\n'
+  const result = planBear(createDeterministicZip([
+    { path: 'notes/a/text.md', bytes: encode(source) },
+    { path: 'notes/a/info.json', bytes: encode(JSON.stringify({ archived: true })) },
+    { path: 'notes/a/assets/sub/photo (1).jpg', bytes: new Uint8Array([1]) },
+    { path: 'notes/a/assets/file.pdf', bytes: new Uint8Array([2]) },
+    { path: 'notes/a/assets/no.svg', bytes: encode('<svg/>') },
+    { path: 'notes/b/text.md', bytes: encode('# Same\n![Photo](assets/file.pdf)\n') },
+    { path: 'notes/b/assets/file.pdf', bytes: new Uint8Array([3]) },
+  ]))
+  const first = text(result.files.find(file => file.destination === 'Imported/Bear/Archive/Same.md')!.bytes)
+  const second = text(result.files.find(file => file.destination === 'Imported/Bear/Same.md')!.bytes)
+  assert.ok(first.includes('![Photo](../Attachments/Same/sub-photo%20%281%29.jpg "Caption")'))
+  assert.ok(first.includes('[PDF](<../Attachments/Same/file.pdf#page=2>)'))
+  assert.ok(second.includes('![Photo](Attachments/Same/file-2.pdf)'))
+  for (const unchanged of ['`![Code](assets/file.pdf)`', '```md\n![Code](assets/file.pdf)\n```', '![Remote](https://example.com/file.pdf)', '![Missing](assets/missing.jpg)', '![Unsafe](assets/no.svg)']) assert.ok(first.includes(unchanged))
+  assert.equal(result.files.filter(file => file.kind === 'attachment').length, 3)
+})
+
 test('reads real Bear metadata and rewrites only resolvable note ID links', () => {
   const archive = createDeterministicZip([
     { path: 'notes/one/text.md', bytes: encode('# First\n[Second](bear://x-callback-url/open-note?id=ID-TWO)\n`bear://x-callback-url/open-note?id=ID-TWO`\n') },

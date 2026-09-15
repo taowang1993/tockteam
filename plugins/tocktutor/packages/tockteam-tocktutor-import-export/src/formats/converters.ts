@@ -894,9 +894,18 @@ function bearWikiTarget(destination: string): string {
   return destination.slice('Imported/Bear/'.length).replace(/\.md$/iu, '')
 }
 
-function rewriteBearLinks(markdown: string, targets: ReadonlyMap<string, string>): string {
+function rewriteBearLinks(markdown: string, targets: ReadonlyMap<string, string>, assets: ReadonlyMap<string, string>, sourcePath: string, destination: string): string {
   return transformBearMarkdown(markdown, text => {
-    const linked = text.replace(/\[([^\]]*)\]\(bear:\/\/x-callback-url\/open-note\?id=([A-Z0-9-]+)(?:&[^)]*)?\)/giu, (match, label: string, id: string) => {
+    const relocated = text.replace(/(!?\[[^\]\n]*\]\(\s*)(<[^>\n]+>|(?:[^\s()<>]+|\([^()\n]*\))+)(?=\s|\))/gu, (match, prefix: string, reference: string) => {
+      const angled = reference.startsWith('<')
+      const raw = angled ? reference.slice(1, -1) : reference
+      const source = relativeSource(sourcePath, raw)
+      const asset = source === null ? undefined : assets.get(source)
+      if (asset === undefined) return match
+      const target = markdownRelativePath(relativeOutput(destination, asset)).replaceAll('(', '%28').replaceAll(')', '%29') + relativeSuffix(raw)
+      return `${prefix}${angled ? `<${target}>` : target}`
+    })
+    const linked = relocated.replace(/\[([^\]]*)\]\(bear:\/\/x-callback-url\/open-note\?id=([A-Z0-9-]+)(?:&[^)]*)?\)/giu, (match, label: string, id: string) => {
       const target = targets.get(id.toLocaleUpperCase('en-US'))
       if (target === undefined) return match
       const alias = label.replace(/[|[\]]/gu, ' ').replace(/\s+/gu, ' ').trim() || target.split('/').at(-1) || target
@@ -916,6 +925,7 @@ export function planBear(bytes: Uint8Array): PlannedSourceResult {
   const output: PlannedFile[] = []
   const skipped: SkippedEntry[] = []
   const consumed = new Set<string>()
+  const assets = new Map<string, string>()
   const notes: Array<{ destination: string; entry: (typeof entries)[number]; metadata: BearMetadata; source: string; title: string }> = []
   for (const entry of entries) {
     if (!/(?:^|\/)text\.md$/iu.test(entry.path)) continue
@@ -942,7 +952,9 @@ export function planBear(bytes: Uint8Array): PlannedSourceResult {
         continue
       }
       const name = safeSegment(asset.path.slice(assetPrefix.length))
-      output.push({ bytes: asset.bytes, destination: uniqueDestination(`Imported/Bear/Attachments/${title}/${name}`, used), kind: 'attachment', sourceKey: asset.path })
+      const destination = uniqueDestination(`Imported/Bear/Attachments/${title}/${name}`, used)
+      assets.set(asset.path, destination)
+      output.push({ bytes: asset.bytes, destination, kind: 'attachment', sourceKey: asset.path })
     }
   }
   const idTargets = new Map<string, string>()
@@ -963,7 +975,7 @@ export function planBear(bytes: Uint8Array): PlannedSourceResult {
       ...(metadata.trashed ? [`trashed: ${metadata.trashedAt === undefined ? 'true' : yamlScalar(metadata.trashedAt)}`] : []),
       '---', '',
     ].join('\n')
-    output.push({ bytes: encoder.encode(`${frontmatter}${rewriteBearLinks(note.source.replace(/^\s*/u, ''), idTargets)}`), destination: note.destination, kind: 'document', sourceKey: note.entry.path })
+    output.push({ bytes: encoder.encode(`${frontmatter}${rewriteBearLinks(note.source.replace(/^\s*/u, ''), idTargets, assets, note.entry.path, note.destination)}`), destination: note.destination, kind: 'document', sourceKey: note.entry.path })
   }
   for (const entry of entries) if (!consumed.has(entry.path)) skipped.push({ label: entry.path, reason: 'unsupported-record' })
   return finalize(output, skipped, entries.length)
