@@ -97,6 +97,20 @@ Approved single-run verification `34907590285` confirmed `D:\\a\\_temp`, passed 
 
 This is a verified **CI test-placement mitigation**, not proof that the intermittent symptom is eliminated or the historical cancellation is explained. `tockteam-bon` remains open, and the default-location diagnostics are retained. Any future causal investigation should correlate filesystem/native timing on the actual failing runner rather than infer a production repair from green reruns.
 
+### Native Worker Timing Discriminator
+
+The next discriminator uses Node's existing `node.threadpoolwork` events rather than a new OS profiler. Installed sqlite3 creates N-API work; Node `v24.21.0` brackets the worker's execution separately from event-loop completion dispatch (`src/threadpoolwork-inl.h` and `src/node_api.cc`, official Node source). These boundaries do not distinguish SQLite mutex/lock waits, storage waits, computation, and OS descheduling inside native execution.
+
+Worker events have PID/TID but **no request ID**. Asynchronous request events have reusable pointer IDs. The diagnostic therefore attributes a worker only when an entire request window is exclusive and contains exactly one complete worker span. Overlap, cancellation/no unique span, missing boundaries, and invalid owner/clock evidence are not guessed away. A request can also wait inside the addon before N-API submission, and synchronous addon `wait()` has no worker span.
+
+SQL IDs, observed lifecycle phases, verification phases, and a 20 ms heartbeat are encoded as AsyncResource-init markers on the trace's own clock. No callback context is replaced. Initial calibration caught that unescaped quotes in resource names produce invalid Node trace JSON; URI encoding corrected this. The actual local SQLite control then measured 47 microseconds of worker execution and 200,933 microseconds until completion dispatch during its deliberately blocked main thread. This validates measurement separation, not the Windows cause.
+
+Local checks: seven parser/evidence checks, eight native-gate cases with tracing, all 91 runtime tests without tracing, and typecheck passed. The real local gate produced 1,047 uniquely associated requests and retained 313 as unresolved. Logs: `/tmp/tockteam-native-trace-unit.log`, `/tmp/tockteam-threadpool-control.log`, `/tmp/tockteam-threadpool-gate.log`, `/tmp/tockteam-native-trace-runtime.log`.
+
+The opt-in workflow is limited to **one** native-gate iteration after a successful timing control on the actual runner. It retains the five-second assertions and 60-second owner bound, monitors a 32 MiB raw-trace limit, skips synchronous CDB during the measured interval, verifies process-tree cleanup before analysis, and uploads only filtered `evidence.json` files. Trace markers and worker events are retained even when parsed evidence cannot be classified. Invalid/truncated JSON or oversized captures remain inconclusive rather than fabricated results.
+
+Independent read-only review `9922ac50` accepted the implementation with those limits; no issues were found. At this checkpoint the diagnostic is local, awaiting publication approval. A new capture can explain only a newly observed interval; it cannot reconstruct the historical cancelled process. A green or ambiguous result is a stop condition, not a reason to repeat another blind batch.
+
 ### Native Stack Capture Preflight
 
 Debugger discovery `34900302460` found an existing Microsoft-signed CDB; no debugger installation was required. The first preflight correctly rejected an exit-zero/no-stack result caused by an incompatible detach option. Corrected preflight `34901443107` captured real thread stacks using non-suspending, noninvasive `-pvr`; the owned Node parent and blocked worker then continued, and process-tree cleanup passed.
