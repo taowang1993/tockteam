@@ -896,7 +896,7 @@ function bearWikiTarget(destination: string): string {
 
 function rewriteBearLinks(markdown: string, targets: ReadonlyMap<string, string>, assets: ReadonlyMap<string, string>, sourcePath: string, destination: string): string {
   return transformBearMarkdown(markdown, text => {
-    const relocated = text.replace(/(!?\[[^\]\n]*\]\(\s*)(<[^>\n]+>|(?:[^\s()<>]+|\([^()\n]*\))+)(?=\s|\))/gu, (match, prefix: string, reference: string) => {
+    const relocated = text.replace(/(!?\[[^\]\n]*\]\(\s*)(<[^>\n]+>|(?:[^\s()<>]|\([^()\n]*\))+)(?=\s|\))/gu, (match, prefix: string, reference: string) => {
       const angled = reference.startsWith('<')
       const raw = angled ? reference.slice(1, -1) : reference
       const source = relativeSource(sourcePath, raw)

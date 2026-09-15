@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 
 import { projectBase } from '@tockteam/tocktutor-workbench'
@@ -241,6 +242,19 @@ test('Bear attachments follow relocated, sanitized, and collision-resolved desti
   assert.ok(second.includes('![Photo](Attachments/Same/file-2.pdf)'))
   for (const unchanged of ['`![Code](assets/file.pdf)`', '```md\n![Code](assets/file.pdf)\n```', '![Remote](https://example.com/file.pdf)', '![Missing](assets/missing.jpg)', '![Unsafe](assets/no.svg)']) assert.ok(first.includes(unchanged))
   assert.equal(result.files.filter(file => file.kind === 'attachment').length, 3)
+})
+
+test('Bear malformed link destinations cannot stall the Host parser', () => {
+  const script = `
+    import { planBear } from ${JSON.stringify(new URL('../src/formats/converters.ts', import.meta.url).href)};
+    import { createDeterministicZip } from ${JSON.stringify(new URL('../src/archive.ts', import.meta.url).href)};
+    const source = '# Bounded\\n[x](' + 'a'.repeat(30_000) + '<';
+    const result = planBear(createDeterministicZip([{ path: 'note/text.md', bytes: new TextEncoder().encode(source) }], 100));
+    if (!new TextDecoder().decode(result.files[0].bytes).includes(source)) process.exit(1);
+  `
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8', timeout: 3000 })
+  assert.equal(result.error, undefined, result.error?.message)
+  assert.equal(result.status, 0, result.stderr)
 })
 
 test('reads real Bear metadata and rewrites only resolvable note ID links', () => {
