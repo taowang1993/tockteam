@@ -1,13 +1,122 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { open } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
+import promises, { open } from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ensurePrivateDirectory } from '../src/launcher-persistence.ts'
+import { ensurePrivateDirectory, LauncherPersistenceRepository } from '../src/launcher-persistence.ts'
+import { MAX_LAUNCHER_SETTINGS_BYTES } from '../src/launcher-settings-contract.ts'
 import { readBoundedRegularFile } from '../src/trusted-raycast-bounded-file.ts'
 import { readTrustedRaycastFile } from '../src/trusted-raycast-artifact-admission.ts'
+
+for (const mode of ['replacement', 'growth'] as const) test(`settings imports keep file reads bounded and identity-bound during ${mode}`, async t => {
+  const root = fs.mkdtempSync(join(tmpdir(), 'launcher-settings-read-'))
+  const selected = join(root, 'selected.json')
+  const repository = await LauncherPersistenceRepository.open({ userDataPath: root })
+  fs.writeFileSync(selected, '{}')
+  const nativeOpen = promises.open
+  let bytesRead = 0
+  let opened: number | undefined
+  t.mock.method(promises, 'open', async (...args: Parameters<typeof nativeOpen>) => {
+    if (String(args[0]) === selected && mode === 'replacement') {
+      fs.renameSync(selected, join(root, 'original.json'))
+      fs.writeFileSync(selected, '{"general.language":"zh-CN"}')
+    }
+    const handle = await nativeOpen(...args)
+    if (String(args[0]) !== selected) return handle
+    opened = handle.fd
+    const nativeStat = handle.stat.bind(handle)
+    t.mock.method(handle, 'stat', async (...statArgs: Parameters<typeof handle.stat>) => {
+      const stat = await nativeStat(...statArgs)
+      if (mode === 'growth') fs.appendFileSync(selected, ' '.repeat(MAX_LAUNCHER_SETTINGS_BYTES * 2))
+      return stat
+    })
+    const nativeReadFile = handle.readFile.bind(handle)
+    t.mock.method(handle, 'readFile', async (...readArgs: Parameters<typeof handle.readFile>) => {
+      const result = await nativeReadFile(...readArgs)
+      bytesRead += Buffer.byteLength(result)
+      return result
+    })
+    const nativeRead = handle.read
+    t.mock.method(handle, 'read', async (...readArgs: any[]) => {
+      const result = await Reflect.apply(nativeRead, handle, readArgs)
+      bytesRead += result.bytesRead
+      return result
+    })
+    return handle
+  })
+  syncBuiltinESMExports()
+  try {
+    await assert.rejects(repository.importSettingsFromPath(selected), /changed|large|limit/)
+    assert.ok(bytesRead <= (mode === 'replacement' ? 0 : MAX_LAUNCHER_SETTINGS_BYTES + 1), `read ${bytesRead} bytes before rejection`)
+    assert.deepEqual(repository.snapshot().values, {})
+    assert.notEqual(opened, undefined)
+    assert.throws(() => fs.fstatSync(opened!), { code: 'EBADF' })
+  } finally {
+    t.mock.restoreAll(); syncBuiltinESMExports()
+    await repository.close()
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('settings imports accept the exact byte limit across short reads', async t => {
+  const root = fs.mkdtempSync(join(tmpdir(), 'launcher-settings-limit-'))
+  const selected = join(root, 'selected.json')
+  const repository = await LauncherPersistenceRepository.open({ userDataPath: root })
+  const contents = '{"general.language":"zh-CN"}'
+  fs.writeFileSync(selected, contents.padEnd(MAX_LAUNCHER_SETTINGS_BYTES, ' '))
+  const nativeOpen = promises.open
+  t.mock.method(promises, 'open', async (...args: Parameters<typeof nativeOpen>) => {
+    const handle = await nativeOpen(...args)
+    if (String(args[0]) === selected) {
+      const nativeRead = handle.read.bind(handle)
+      t.mock.method(handle, 'read', async (buffer: Buffer, offset: number, length: number, position: number) =>
+        await nativeRead(buffer, offset, Math.min(length, 1024), position))
+    }
+    return handle
+  })
+  syncBuiltinESMExports()
+  try {
+    await repository.importSettingsFromPath(selected)
+    assert.equal(repository.getSetting('general.language', ''), 'zh-CN')
+    fs.appendFileSync(selected, ' ')
+    await assert.rejects(repository.importSettingsFromPath(selected), /bounded regular file/)
+  } finally {
+    t.mock.restoreAll(); syncBuiltinESMExports()
+    await repository.close()
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+for (const operation of ['importSettingsFromPath', 'grantExternalSettingsFile'] as const) test(`${operation} rejects a FIFO swapped in during open without blocking`, { skip: process.platform === 'win32' }, async t => {
+  const root = fs.mkdtempSync(join(tmpdir(), 'launcher-settings-fifo-'))
+  const selected = join(root, 'selected.json')
+  const repository = await LauncherPersistenceRepository.open({ userDataPath: root })
+  fs.writeFileSync(selected, '{}')
+  const nativeOpen = promises.open
+  let nonblocking = false
+  t.mock.method(promises, 'open', async (...args: Parameters<typeof nativeOpen>) => {
+    if (String(args[0]) === selected) {
+      fs.renameSync(selected, join(root, 'original.json'))
+      execFileSync('/usr/bin/mkfifo', [selected])
+      nonblocking = typeof args[1] === 'number' && (args[1] & fs.constants.O_NONBLOCK) !== 0
+      // Keep the regression safe even if production loses its nonblocking flag.
+      args[1] = Number(args[1]) | fs.constants.O_NONBLOCK
+    }
+    return await nativeOpen(...args)
+  })
+  syncBuiltinESMExports()
+  try {
+    await assert.rejects(repository[operation](selected), /regular file|changed/)
+    assert.equal(nonblocking, true)
+  } finally {
+    t.mock.restoreAll(); syncBuiltinESMExports()
+    await repository.close()
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
 
 const readers = [
   { name: 'text', read: readBoundedRegularFile },

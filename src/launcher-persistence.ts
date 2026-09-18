@@ -29,6 +29,7 @@ import { isLauncherRuntimeSettingKey } from './launcher-setting-keys.ts'
 
 const NOFOLLOW = constants.O_NOFOLLOW
 const HAS_NOFOLLOW = typeof NOFOLLOW === 'number' && NOFOLLOW > 0
+const READ_FILE_FLAGS = constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0) | (constants.O_NONBLOCK ?? 0)
 const MAX_INDEX_ITEMS = 50_000
 const MAX_LOG_MESSAGE_LENGTH = 512
 const MAX_LOG_ENTRIES = MAX_LAUNCHER_LOG_ENTRIES
@@ -181,14 +182,25 @@ async function readBoundedRegularFile(filePath: string, maxBytes: number, expect
   const before = await lstat(filePath, { bigint: true })
   if (before.isSymbolicLink() || !before.isFile()) throw new Error('TockLauncher file is not a bounded regular file')
   let handle
-  const flags = constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0)
-  try { handle = await open(filePath, flags) }
+  try { handle = await open(filePath, READ_FILE_FLAGS) }
   catch (error) { throw new Error('TockLauncher file is unavailable', { cause: error }) }
   try {
     const stats = await handle.stat({ bigint: true })
     if (!stats.isFile() || stats.size > BigInt(maxBytes)) throw new Error('TockLauncher file is not a bounded regular file')
+    if (stats.dev !== before.dev || stats.ino !== before.ino) throw new Error('TockLauncher file changed while opening')
     if (expected !== undefined && !sameIdentity(stats, expected)) throw new Error('TockLauncher external settings file changed')
-    const text = await handle.readFile('utf8')
+    const chunks: Buffer[] = []
+    let total = 0
+    // A file may grow after stat; read at most the limit plus one overflow byte.
+    while (total <= maxBytes) {
+      const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total))
+      const { bytesRead } = await handle.read(chunk, 0, chunk.length, total)
+      if (bytesRead === 0) break
+      total += bytesRead
+      if (total > maxBytes) throw new Error('TockLauncher file is too large')
+      chunks.push(chunk.subarray(0, bytesRead))
+    }
+    const text = Buffer.concat(chunks, total).toString('utf8')
     if (Buffer.byteLength(text, 'utf8') > maxBytes) throw new Error('TockLauncher file is too large')
     const after = await lstat(filePath, { bigint: true })
     if (after.isSymbolicLink() || !sameIdentity(after, { dev: identityPart(before.dev)!, ino: identityPart(before.ino)! } as ExternalGrant)) throw new Error('TockLauncher file changed while reading')
@@ -827,7 +839,7 @@ export class LauncherPersistenceRepository {
     const selected = await lstat(absolute, { bigint: true })
     const selectedDev = identityPart(selected.dev); const selectedIno = identityPart(selected.ino)
     if (selected.isSymbolicLink() || !selected.isFile() || selectedDev === undefined || selectedIno === undefined) throw new Error('TockLauncher external settings path must be a regular file')
-    const handle = await open(absolute, constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0))
+    const handle = await open(absolute, READ_FILE_FLAGS)
     try {
       const opened = await handle.stat({ bigint: true })
       const dev = identityPart(opened.dev); const ino = identityPart(opened.ino)
