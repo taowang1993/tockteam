@@ -1,0 +1,42 @@
+{
+  "run": 35127983115,
+  "sourceCommit": "396b2844ed0e30b64c2e9e73b6e67e8c0ff95823",
+  "allThreeGatesAccepted": true,
+  "moduleHashesPerIndexGate": 11,
+  "ownerCases": 6,
+  "launcherCases": 13,
+  "indexCases": 6,
+  "clockCases": 3,
+  "blockedHostDeathRecovery": true,
+  "failedCreationCounts": {
+    "before": 212,
+    "after": 212
+  },
+  "clockMs": [
+    {
+      "mode": "progress",
+      "commit": 7266.7238,
+      "stall": null
+    },
+    {
+      "mode": "stall",
+      "commit": null,
+      "stall": 5048.073700000001
+    },
+    {
+      "mode": "tail",
+      "commit": null,
+      "stall": 5033.500699999999
+    }
+  ],
+  "host": 2596,
+  "child": 9040,
+  "contender": 8628,
+  "reopened": 6556,
+  "blockedToChildSignalMs": 157.59439999999813,
+  "hostTerminationToSignaledMs": 29,
+  "reopenReads": 0,
+  "allInventoriesEmpty": true,
+  "noEmergencyCleanup": true,
+  "allRootsRemoved": true
+}

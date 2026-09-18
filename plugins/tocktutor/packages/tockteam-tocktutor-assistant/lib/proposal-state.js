@@ -1,0 +1,66 @@
+import { Buffer } from 'node:buffer';
+import { z } from 'zod';
+import { defineDomain, } from '@deepseek-ai/dsh-storage-domain';
+import { ProposalQueue } from "./proposals.js";
+const MAX_QUEUE_BYTES = 8 * 1024 * 1024;
+export const MAX_PROPOSAL_STATE_BYTES = MAX_QUEUE_BYTES + 1_024;
+const EMPTY_QUEUE = '{"version":1,"proposals":[],"audits":[],"auditDropped":0}';
+const proposalStateSchema = z.object({
+    permissionEpoch: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    queue: z.string().max(MAX_QUEUE_BYTES),
+}).strict().refine(value => Buffer.byteLength(value.queue, 'utf8') <= MAX_QUEUE_BYTES, { message: 'assistant proposal queue exceeds its persisted byte bound' });
+export const assistantProposalStateSpec = defineDomain({
+    name: 'tocktutor_assistant',
+    version: 1,
+    global: {
+        schema: proposalStateSchema,
+        initial: { permissionEpoch: 0, queue: EMPTY_QUEUE },
+    },
+    tables: {},
+});
+export class AssistantProposalStateStore {
+    domain;
+    state;
+    queueOptions;
+    closed = false;
+    constructor(domain, state, queueOptions) {
+        this.domain = domain;
+        this.state = state;
+        this.queueOptions = queueOptions;
+    }
+    static async open(facility, queueOptions = {}) {
+        const domain = await facility.open(assistantProposalStateSpec);
+        try {
+            const state = domain.global.get();
+            ProposalQueue.hydrate(state.queue, queueOptions);
+            return new AssistantProposalStateStore(domain, state, queueOptions);
+        }
+        catch (error) {
+            await domain.close();
+            throw error;
+        }
+    }
+    load() {
+        return {
+            permissionEpoch: this.state.permissionEpoch,
+            queue: ProposalQueue.hydrate(this.state.queue, this.queueOptions),
+        };
+    }
+    save(queue, permissionEpoch) {
+        return this.saveSerialized(queue.serialize(), permissionEpoch);
+    }
+    async saveSerialized(queue, permissionEpoch) {
+        if (this.closed)
+            throw new Error('assistant proposal state store is closed');
+        const state = proposalStateSchema.parse({ permissionEpoch, queue });
+        await this.domain.global.set(state);
+        this.state = state;
+    }
+    async close() {
+        if (this.closed)
+            return;
+        this.closed = true;
+        await this.domain.close();
+    }
+}
+//# sourceMappingURL=proposal-state.js.map

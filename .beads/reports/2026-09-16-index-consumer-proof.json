@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "accepted": true,
+  "platform": "darwin",
+  "arch": "arm64",
+  "dsh": "0.1.2-rc.1",
+  "roots": [
+    {
+      "label": "pack-tockbot-note-vault",
+      "pid": 74280
+    },
+    {
+      "label": "pack-tockbot-note-runtime",
+      "pid": 74291
+    },
+    {
+      "label": "pack-tockteam-note-vault-tools",
+      "pid": 74311
+    },
+    {
+      "label": "install",
+      "pid": 74320
+    },
+    {
+      "label": "composition",
+      "pid": 74342
+    },
+    {
+      "label": "agent-0",
+      "pid": 74344
+    },
+    {
+      "label": "agent-1",
+      "pid": 74347
+    },
+    {
+      "label": "uninstall",
+      "pid": 74352
+    }
+  ],
+  "children": [
+    74345,
+    74350
+  ],
+  "packages": {
+    "tockbot-note-runtime-0.1.2.tgz": "c5eee28bf1e95c9079b0dca2ca3b28adf245270f68f3b550954814f827ba96d6",
+    "tockbot-note-vault-0.6.0.tgz": "e14e2c7016a61f86013b649964291026618f241e5efc9bb8b94c0c5debcc8169",
+    "tockteam-note-vault-tools-0.1.2.tgz": "1914d39ab5c89726fd5685cd290c62ed370841185c03476511efa3c61da2b892"
+  },
+  "modules": {
+    "index.js": "3b91c857e3bccd914ed7f6e36f56f87dbf116e6bc0012e64e2b80262e9c4baea",
+    "owned-process-windows.js": "bbbe9306d163386ee3d4c15488ea4df20309d1043fc0821891d068fb06dfe4f4",
+    "owned-process.js": "f76807b68a5d65450a179456d1096573badfaaa4fdcfb58fde3fb3fd649ade94",
+    "search-index-auth.js": "b7a42000f2fd709203e60baf92bf16d35b20eaedbf2e9a16e86d44f7c840369e",
+    "search-index-channel.js": "77cec1d7b61eef1f755f46b56b14352b1516807c3b718f38cfe1509c730705b6",
+    "search-index-child.js": "a734b78c17a6337fe8561a0a584a395a863eaefc8d44f1eeea25d791849b0a92",
+    "search-index-native.js": "64f9baf2eacdc3924c6dd5469f6c144b0ba64b0c7f06633c6086829cf586d7c8",
+    "search-index-ownership.js": "cabee43140f32c5f60576f53363eaea41c990494e6994a4acb4dacb32d84a4b4",
+    "search-index-process.js": "e3fb232cc6a448fb1c7dc446f28119fc52ac581ea4ded42154f1d812ca16a62c",
+    "search-index-progress.js": "c7e3d8c4b62728276ccce1119e098fced5cbea551dffb18bcdca87ff5206b0bd",
+    "search-index-protocol.js": "f068d4fe24b6bf24019307212fd16dcdb3bede3a9052e17d34494a76fb2d480a"
+  },
+  "calls": [
+    {
+      "attempt": 0,
+      "hostPid": 74344,
+      "childPid": 74345,
+      "tools": [
+        "vault_search",
+        "vault_read"
+      ],
+      "indexed": true,
+      "exactReceipt": true,
+      "stopped": true
+    },
+    {
+      "attempt": 1,
+      "hostPid": 74347,
+      "childPid": 74350,
+      "tools": [
+        "vault_search",
+        "vault_read"
+      ],
+      "indexed": true,
+      "exactReceipt": true,
+      "stopped": true
+    }
+  ],
+  "emergencyCleanup": false,
+  "credentialCopyRemoved": true,
+  "fixtureRemoved": true
+}

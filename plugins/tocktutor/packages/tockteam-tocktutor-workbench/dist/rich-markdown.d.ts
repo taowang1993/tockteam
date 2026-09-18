@@ -1,0 +1,39 @@
+export declare const MAX_RICH_MARKDOWN_BYTES = 2000000;
+export declare const MAX_RICH_MARKDOWN_BLOCKS = 20000;
+export declare const MAX_RICH_MARKDOWN_FOOTNOTES = 1000;
+export interface StaticMarkdownEmbed {
+    content: string;
+    depth?: number;
+    mimeType?: string;
+    parentPath?: string;
+    target: {
+        display: string | null;
+        fragment: string | null;
+        kind: 'base' | 'canvas' | 'media' | 'note';
+        path: string;
+        source: string;
+    };
+}
+export interface RenderMarkdownOptions {
+    /** External HTTP(S) media is inert by default; viewer mode emits a button for the isolated Web Viewer. */
+    externalEmbedMode?: 'inert' | 'viewer';
+    /** Hide only local embed markers that have already been resolved by the Host. */
+    resolvedEmbedSources?: readonly string[];
+    /** Render local embed markers from Host-approved content. */
+    resolvedEmbeds?: readonly StaticMarkdownEmbed[];
+    /** Internal parent path used while recursively rendering nested resolved embeds. */
+    resolvedEmbedParentPath?: string;
+    /** Internal traversal guard; flattened resolver branches can share parent paths. */
+    resolvedEmbedAncestors?: readonly string[];
+    strictLineBreaks?: boolean;
+}
+export interface BuildMarkdownExportDocumentOptions extends RenderMarkdownOptions {
+    embeds?: readonly StaticMarkdownEmbed[];
+    markdown: string;
+    title: string;
+}
+export declare function escapeMarkdownHtml(value: string): string;
+export declare function renderMarkdownHtml(markdown: string, options?: RenderMarkdownOptions): string;
+export declare function buildMarkdownSlides(markdown: string, options?: RenderMarkdownOptions): string[];
+export declare function buildMarkdownExportDocument(options: BuildMarkdownExportDocumentOptions): string;
+//# sourceMappingURL=rich-markdown.d.ts.map

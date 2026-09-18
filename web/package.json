@@ -1,0 +1,38 @@
+{
+  "name": "@tockteam/web",
+  "version": "0.1.5",
+  "description": "TockTeam Web: a packaged browser runtime with TockTeam plugin capabilities",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./dist/index.js"
+    },
+    "./client": "./dist/client.js",
+    "./cordis.patch.yml": "./dist/cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/index.js",
+    "dist/client.js",
+    "dist/client.js.map",
+    "dist/cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./dist/cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@tockteam/skins",
+        "@tockteam/pinned-summary",
+        "@tockteam/save-as-image",
+        "@tockteam/sidebar",
+        "@tockteam/panel-controls"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

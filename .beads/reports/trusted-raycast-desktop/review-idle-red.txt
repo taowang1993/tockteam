@@ -1,0 +1,29 @@
+✔ only authenticated live Host activation exposes capability and disconnect revokes it (29.131583ms)
+✖ Host activation remains live beyond fetch body timeout and disposal revokes it (305005.906583ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 305105.934792
+
+✖ failing tests:
+
+test at tests/trusted-raycast-activation.test.ts:30:1
+✖ Host activation remains live beyond fetch body timeout and disposal revokes it (305005.906583ms)
+  AssertionError [ERR_ASSERTION]: idle transport must retain capability
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/taowang/projects/worktrees/launcher/tests/trusted-raycast-activation.test.ts:36:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

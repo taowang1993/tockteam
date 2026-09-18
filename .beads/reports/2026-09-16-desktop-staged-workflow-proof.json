@@ -1,0 +1,152 @@
+{
+  "sourceCommit": "2067bf952bf354a2e5d66133603550ab1e82740c",
+  "scope": "macOS source Electron fixture workflow plus separate staged POSIX owner",
+  "durationMs": 11870,
+  "passed": true,
+  "cliVersion": "0.1.20",
+  "staged": {
+    "cleanup": {
+      "groupResidue": [],
+      "ownerPid": 58122
+    },
+    "entry": "/Users/taowang/projects/tockteam/.stage/dsh-runtime/node_modules/tockbot-note-runtime/lib/owned-process.js",
+    "entryRelative": "node_modules/tockbot-note-runtime/lib/owned-process.js",
+    "entrySha256": "d43d13553610b86406da75c1caba98c25e501330da8872af9dbd3412d96d593a",
+    "package": {
+      "name": "@deepseek-ai/dsh",
+      "version": "0.1.2-rc.1"
+    },
+    "platformBranch": "darwin",
+    "result": {
+      "code": 0,
+      "signal": null,
+      "stdoutBytes": 12,
+      "stderrBytes": 0
+    }
+  },
+  "playwright": {
+    "startup": {
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "dpr": 2,
+        "colorScheme": "dark",
+        "skin": null
+      },
+      "pageErrors": [],
+      "consoleMessages": []
+    },
+    "workflow": {
+      "accepted": {
+        "itemId": "workflow-accepted",
+        "invoke": {
+          "ok": true
+        },
+        "serializedLeaks": false,
+        "actionIdUsed": true
+      },
+      "cancellation": {
+        "invokeButton": true,
+        "cancelButton": true
+      },
+      "decline": {
+        "itemId": "workflow-decline",
+        "invoked": true
+      },
+      "finalGeometry": {
+        "width": 1512,
+        "height": 949,
+        "dpr": 2,
+        "colorScheme": "dark",
+        "skin": null
+      },
+      "pageErrors": [],
+      "console": {
+        "expectedWarnings": [],
+        "unexpectedWarnings": [],
+        "unexpectedErrors": []
+      },
+      "updates": [
+        {
+          "ok": true
+        },
+        {
+          "ok": true
+        },
+        {
+          "ok": true
+        }
+      ],
+      "replay": {
+        "rejected": true,
+        "response": {
+          "rejected": true
+        }
+      }
+    }
+  },
+  "effects": {
+    "accepted": 1,
+    "canceled": 1,
+    "confirmationAccepted": 4,
+    "confirmationCanceled": 1,
+    "confirmationDeclined": 1,
+    "declined": 1,
+    "forbiddenEffects": 0,
+    "marker": "tockteam-workflow-fixture-v1",
+    "order": [
+      "OpenFile",
+      "OpenUrl",
+      "OpenTerminal",
+      "ExecuteCommand"
+    ]
+  },
+  "checkpoints": {
+    "startup": {
+      "checkpoint": "playwright-inactive-startup",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    },
+    "final": {
+      "checkpoint": "playwright-inactive-workflow-complete",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    }
+  },
+  "cleanup": {
+    "errors": [],
+    "finalGroupResidue": [],
+    "processTreesGone": true,
+    "rootPid": 58128,
+    "playwrightDaemonPid": 58276,
+    "playwrightDetach": {
+      "session": "tockteam-desktop-check-playwright-58114",
+      "status": "detached"
+    },
+    "temporaryRootRemoved": true
+  },
+  "limitations": [
+    "Workflow effects were fixtures, not real command execution through Desktop.",
+    "No packaged or Windows Desktop acceptance.",
+    "Isolated ApplicationSearch provider emitted errors; workflow assertions passed.",
+    "Raw diagnostics retained privately in /tmp; runtime capability URLs omitted."
+  ]
+}

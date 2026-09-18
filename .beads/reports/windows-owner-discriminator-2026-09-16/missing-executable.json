@@ -1,0 +1,465 @@
+{
+  "passed": false,
+  "sourceCommit": "3bacfd55df2f14729456261818872d24c2225bde",
+  "platform": "win32",
+  "architecture": "x64",
+  "node": "v24.20.0",
+  "sdk": {
+    "architecture": "x64",
+    "pointerSize": 8,
+    "layouts": {
+      "STARTUPINFOEXW": {
+        "size": 112,
+        "lpAttributeList": 104
+      },
+      "STARTUPINFOW": {
+        "size": 104,
+        "cb": 0,
+        "dwFlags": 60,
+        "hStdInput": 80,
+        "hStdOutput": 88,
+        "hStdError": 96
+      },
+      "PROCESS_INFORMATION": {
+        "size": 24,
+        "hProcess": 0,
+        "hThread": 8,
+        "dwProcessId": 16,
+        "dwThreadId": 20
+      },
+      "JOBOBJECT_BASIC_ACCOUNTING_INFORMATION": {
+        "size": 48,
+        "ActiveProcesses": 40
+      },
+      "JOBOBJECT_EXTENDED_LIMIT_INFORMATION": {
+        "size": 144,
+        "BasicLimitInformation.LimitFlags": 16
+      }
+    },
+    "constants": {
+      "PROC_THREAD_ATTRIBUTE_JOB_LIST": 131085,
+      "PROC_THREAD_ATTRIBUTE_HANDLE_LIST": 131074,
+      "EXTENDED_STARTUPINFO_PRESENT": 524288,
+      "CREATE_UNICODE_ENVIRONMENT": 1024,
+      "CREATE_NO_WINDOW": 134217728,
+      "STARTF_USESTDHANDLES": 256,
+      "JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE": 8192,
+      "JobObjectBasicAccountingInformation": 1,
+      "JobObjectExtendedLimitInformation": 9,
+      "HANDLE_FLAG_INHERIT": 1,
+      "ERROR_INSUFFICIENT_BUFFER": 122,
+      "ERROR_BROKEN_PIPE": 109,
+      "WAIT_OBJECT_0": 0,
+      "WAIT_TIMEOUT": 258,
+      "WAIT_FAILED": 4294967295
+    }
+  },
+  "workerPid": 1868,
+  "initial": [
+    {
+      "ProcessId": 1868,
+      "ParentProcessId": 6552
+    }
+  ],
+  "result": {
+    "passed": false,
+    "moduleSha256": "5b9d9e21df55e4fea8ab67b3136a26b7cb3708eee9b985ad174f60e3de76c75f",
+    "arm": "missing-executable",
+    "completed": true,
+    "installedResolution": true,
+    "ownerCalls": 1,
+    "samples": [
+      {
+        "phase": "before",
+        "count": 187
+      },
+      {
+        "phase": "after-returned",
+        "count": 203
+      },
+      {
+        "phase": "after-rejected",
+        "count": 203
+      },
+      {
+        "phase": "after-microtask",
+        "count": 203
+      },
+      {
+        "phase": "after-immediate",
+        "count": 203
+      }
+    ],
+    "counts": {
+      "before": 187,
+      "after-returned": 203,
+      "after-rejected": 203,
+      "after-microtask": 203,
+      "after-immediate": 203
+    },
+    "ledger": {
+      "maxEntries": 128,
+      "entries": [
+        {
+          "operation": "address",
+          "pointer": "2123756154608",
+          "bytes": 4
+        },
+        {
+          "operation": "createJobObjectW",
+          "result": "732",
+          "handle": "732",
+          "acquired": true
+        },
+        {
+          "operation": "setInformationJobObject",
+          "handle": "732",
+          "class": 9,
+          "length": 144,
+          "result": 1
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756153936",
+          "bytes": 8
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756153952",
+          "bytes": 8
+        },
+        {
+          "operation": "createPipe",
+          "read": "2123756153936",
+          "write": "2123756153952",
+          "result": 1,
+          "acquired": true,
+          "readHandle": "740",
+          "writeHandle": "744"
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756153824",
+          "bytes": 8
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756154304",
+          "bytes": 8
+        },
+        {
+          "operation": "createPipe",
+          "read": "2123756153824",
+          "write": "2123756154304",
+          "result": 1,
+          "acquired": true,
+          "readHandle": "748",
+          "writeHandle": "756"
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756154672",
+          "bytes": 8
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756154208",
+          "bytes": 8
+        },
+        {
+          "operation": "createPipe",
+          "read": "2123756154672",
+          "write": "2123756154208",
+          "result": 1,
+          "acquired": true,
+          "readHandle": "764",
+          "writeHandle": "772"
+        },
+        {
+          "operation": "setHandleInformation",
+          "handle": "740",
+          "mask": 1,
+          "flags": 1,
+          "result": 1
+        },
+        {
+          "operation": "setHandleInformation",
+          "handle": "756",
+          "mask": 1,
+          "flags": 1,
+          "result": 1
+        },
+        {
+          "operation": "setHandleInformation",
+          "handle": "772",
+          "mask": 1,
+          "flags": 1,
+          "result": 1
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756153776",
+          "bytes": 8
+        },
+        {
+          "operation": "initializeProcThreadAttributeList",
+          "list": null,
+          "count": 2,
+          "flags": 0,
+          "size": "2123756153776",
+          "result": 0
+        },
+        {
+          "operation": "getLastError",
+          "result": 122
+        },
+        {
+          "operation": "address",
+          "pointer": "2123759262832",
+          "bytes": 72
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756153776",
+          "bytes": 8
+        },
+        {
+          "operation": "initializeProcThreadAttributeList",
+          "list": "2123759262832",
+          "count": 2,
+          "flags": 0,
+          "size": "2123756153776",
+          "result": 1
+        },
+        {
+          "operation": "address",
+          "pointer": "2123759262832",
+          "bytes": 72
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756154240",
+          "bytes": 8
+        },
+        {
+          "operation": "updateProcThreadAttribute",
+          "list": "2123759262832",
+          "attribute": 131085,
+          "value": "2123756154240",
+          "size": 8,
+          "result": 1
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756608064",
+          "bytes": 24
+        },
+        {
+          "operation": "updateProcThreadAttribute",
+          "list": "2123759262832",
+          "attribute": 131074,
+          "value": "2123756608064",
+          "size": 24,
+          "result": 1
+        },
+        {
+          "operation": "address",
+          "pointer": "2123755979088",
+          "bytes": 116
+        },
+        {
+          "operation": "address",
+          "pointer": "2123755979208",
+          "bytes": 162
+        },
+        {
+          "operation": "address",
+          "pointer": "2123344717888",
+          "bytes": 112
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756607872",
+          "bytes": 24
+        },
+        {
+          "operation": "createProcessW",
+          "application": "D:\\a\\_temp\\owned-windows-og2itQ\\missing-owned-process.exe",
+          "command": "2123755979088",
+          "processAttributes": null,
+          "threadAttributes": null,
+          "inherit": 1,
+          "flags": 134743040,
+          "environment": "2123755979208",
+          "cwd": "D:\\a\\_temp\\owned-windows-og2itQ",
+          "startup": "2123344717888",
+          "information": "2123756607872",
+          "result": 0,
+          "succeeded": false,
+          "processHandle": "0",
+          "threadHandle": "0",
+          "pid": 0
+        },
+        {
+          "operation": "getLastError",
+          "result": 2
+        },
+        {
+          "operation": "deleteProcThreadAttributeList",
+          "list": "2123759262832"
+        },
+        {
+          "operation": "closeHandle",
+          "handle": "772",
+          "result": 1
+        },
+        {
+          "operation": "closeHandle",
+          "handle": "764",
+          "result": 1
+        },
+        {
+          "operation": "closeHandle",
+          "handle": "756",
+          "result": 1
+        },
+        {
+          "operation": "closeHandle",
+          "handle": "748",
+          "result": 1
+        },
+        {
+          "operation": "closeHandle",
+          "handle": "744",
+          "result": 1
+        },
+        {
+          "operation": "closeHandle",
+          "handle": "740",
+          "result": 1
+        },
+        {
+          "operation": "closeHandle",
+          "handle": "732",
+          "result": 1
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756154000",
+          "bytes": 4
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756154464",
+          "bytes": 4
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756153760",
+          "bytes": 4
+        },
+        {
+          "operation": "address",
+          "pointer": "2123756154288",
+          "bytes": 4
+        }
+      ],
+      "addressMappings": [
+        {
+          "pointer": "2123756154608",
+          "bytes": 4
+        },
+        {
+          "pointer": "2123756153936",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123756153952",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123756153824",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123756154304",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123756154672",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123756154208",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123756153776",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123759262832",
+          "bytes": 72
+        },
+        {
+          "pointer": "2123756153776",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123759262832",
+          "bytes": 72
+        },
+        {
+          "pointer": "2123756154240",
+          "bytes": 8
+        },
+        {
+          "pointer": "2123756608064",
+          "bytes": 24
+        },
+        {
+          "pointer": "2123755979088",
+          "bytes": 116
+        },
+        {
+          "pointer": "2123755979208",
+          "bytes": 162
+        },
+        {
+          "pointer": "2123344717888",
+          "bytes": 112
+        },
+        {
+          "pointer": "2123756607872",
+          "bytes": 24
+        },
+        {
+          "pointer": "2123756154000",
+          "bytes": 4
+        },
+        {
+          "pointer": "2123756154464",
+          "bytes": 4
+        },
+        {
+          "pointer": "2123756153760",
+          "bytes": 4
+        },
+        {
+          "pointer": "2123756154288",
+          "bytes": 4
+        }
+      ],
+      "truncated": false,
+      "dropped": 0
+    },
+    "phase": "complete",
+    "failure": "failed creation must not leak Host handles\n\n203 !== 187\n",
+    "firstMismatch": "failed creation must not leak Host handles\n\n203 !== 187\n"
+  },
+  "emergencyCleanup": false,
+  "residue": [],
+  "temporaryRootRemoved": true,
+  "failure": "node:internal/modules/run_main:107\r\n    triggerUncaughtException(\r\n    ^\r\n\r\nAssertionError [ERR_ASSERTION]: failed creation must not leak Host handles\r\n\r\n203 !== 187\r\n\r\n    at sampleWindowsHandleCounts (file:///D:/a/tockteam/tockteam/scripts/owned-process-windows-proof.mjs:123:18)\r\n    at async runWindowsCreateDiagnostic (file:///D:/a/tockteam/tockteam/scripts/owned-process-windows-proof.mjs:186:21)\r\n    at async worker (file:///D:/a/tockteam/tockteam/scripts/owned-process-windows-proof.mjs:243:5)\r\n    at async file:///D:/a/tockteam/tockteam/scripts/owned-process-windows-proof.mjs:421:55 {\r\n  generatedMessage: false,\r\n  code: 'ERR_ASSERTION',\r\n  actual: 203,\r\n  expected: 187,\r\n  operator: 'strictEqual',\r\n  diff: 'simple'\r\n}\r\n\r\nNode.js v24.20.0\r\n\n\n1 !== 0\n",
+  "diagnostics": "node:internal/modules/run_main:107\r\n    triggerUncaughtException(\r\n    ^\r\n\r\nAssertionError [ERR_ASSERTION]: failed creation must not leak Host handles\r\n\r\n203 !== 187\r\n\r\n    at sampleWindowsHandleCounts (file:///D:/a/tockteam/tockteam/scripts/owned-process-windows-proof.mjs:123:18)\r\n    at async runWindowsCreateDiagnostic (file:///D:/a/tockteam/tockteam/scripts/owned-process-windows-proof.mjs:186:21)\r\n    at async worker (file:///D:/a/tockteam/tockteam/scripts/owned-process-windows-proof.mjs:243:5)\r\n    at async file:///D:/a/tockteam/tockteam/scripts/owned-process-windows-proof.mjs:421:55 {\r\n  generatedMessage: false,\r\n  code: 'ERR_ASSERTION',\r\n  actual: 203,\r\n  expected: 187,\r\n  operator: 'strictEqual',\r\n  diff: 'simple'\r\n}\r\n\r\nNode.js v24.20.0\r\n"
+}

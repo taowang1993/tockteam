@@ -1,0 +1,127 @@
+name: Windows Owned-Process Verification
+
+on:
+  push:
+    branches: [verify/windows-owned-process-20260916]
+    paths:
+      - .github/workflows/owned-process-windows-proof.yml
+      - scripts/owned-process-windows-*.mjs
+      - scripts/search-index-native-proof.mjs
+      - plugins/tocktutor/packages/tockbot-note-runtime/tests/search-index-native-clock-harness.mjs
+      - plugins/tocktutor/packages/tockbot-note-runtime/tests/search-index-native-clocks.test.ts
+      - plugins/tocktutor/packages/tockbot-note-runtime/tests/fixtures/index-clock-child.mjs
+      - scripts/owned-process-windows-sdk.cpp
+      - scripts/owned-process-windows-native.cpp
+      - plugins/tocktutor/packages/tockbot-note-runtime/src/owned-process*.ts
+      - plugins/tocktutor/packages/tockbot-note-runtime/src/search-index-*.ts
+      - src/launcher-workflow-process.ts
+      - tests/launcher-workflow-process.test.ts
+
+permissions:
+  contents: read
+
+jobs:
+  windows-owner:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          architecture: x64
+      - name: Prepare Isolated Evidence and Package Roots
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP ('windows-owner-proof-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $root | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $root 'pack'), (Join-Path $root 'installed'), (Join-Path $root 'evidence') | Out-Null
+          "OWNER_PROOF_ROOT=$root" >> $env:GITHUB_ENV
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+      - name: Install Root Build Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Runtime Build Dependencies
+        run: pnpm -C plugins/tocktutor install --frozen-lockfile
+      - name: Compile and Run the Read-Only SDK Probe
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or !$vs) { throw 'MSVC tools are unavailable; no installation or fallback permitted.' }
+          $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvars64.bat'
+          $source = Join-Path $env:GITHUB_WORKSPACE 'scripts\owned-process-windows-sdk.cpp'
+          Push-Location $env:OWNER_PROOF_ROOT
+          try {
+            & $env:COMSPEC /d /s /c "`"$vcvars`" >nul && cl /nologo /std:c++17 /EHsc /W4 /D_WIN32_WINNT=0x0A00 `"$source`" /Fe:owned-process-windows-sdk.exe"
+            if ($LASTEXITCODE -ne 0) { throw 'Windows SDK layout probe compilation failed.' }
+            $receipt = & .\owned-process-windows-sdk.exe
+            if ($LASTEXITCODE -ne 0) { throw 'Windows SDK layout probe execution failed.' }
+            $receipt | Set-Content -Encoding utf8NoBOM (Join-Path $env:OWNER_PROOF_ROOT 'evidence\sdk.json')
+          } finally { Pop-Location }
+      - name: Verify the Lifecycle Models
+        working-directory: plugins/tocktutor/packages/tockbot-note-runtime
+        run: node --test --test-timeout=30000 tests/owned-process-windows.test.ts tests/owned-process.test.ts
+      - name: Verify Launcher Workflow Models
+        run: node --test --test-timeout=30000 tests/launcher-workflow-process.test.ts tests/launcher-workflow.test.ts
+      - name: Build and Install Fresh Runtime Artifacts
+        shell: pwsh
+        run: |
+          pnpm -C plugins/tocktutor/packages/tockbot-note-vault pack --pack-destination "$env:OWNER_PROOF_ROOT\pack"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm -C plugins/tocktutor/packages/tockbot-note-runtime pack --pack-destination "$env:OWNER_PROOF_ROOT\pack"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $vault = (Get-ChildItem "$env:OWNER_PROOF_ROOT\pack\tockbot-note-vault-*.tgz").FullName.Replace('\','/')
+          $runtime = (Get-ChildItem "$env:OWNER_PROOF_ROOT\pack\tockbot-note-runtime-*.tgz").FullName.Replace('\','/')
+          @{ private = $true; type = 'module'; dependencies = @{ 'tockbot-note-runtime' = "file:$runtime"; 'tockbot-note-vault' = "file:$vault"; '@deepseek-ai/cordis' = '4.0.2'; '@deepseek-ai/dsh-typert-protocol' = '0.1.2-rc.1' } } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8NoBOM "$env:OWNER_PROOF_ROOT\installed\package.json"
+          "auto-install-peers=true`nnode-linker=isolated`nvirtual-store-dir=node_modules/.pnpm`nenable-global-virtual-store=false" | Set-Content -Encoding utf8NoBOM "$env:OWNER_PROOF_ROOT\installed\.npmrc"
+          "allowBuilds:`n  sqlite3: true`n  koffi: false`noverrides:`n  koffi: 3.1.6" | Set-Content -Encoding utf8NoBOM "$env:OWNER_PROOF_ROOT\installed\pnpm-workspace.yaml"
+          pnpm -C "$env:OWNER_PROOF_ROOT\installed" install --no-frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build the Launcher Workflow Harness
+        shell: pwsh
+        run: |
+          node --input-type=module -e "import {build} from 'esbuild'; import {join} from 'node:path'; await build({entryPoints:['src/launcher-workflow-process.ts'],outfile:join(process.env.OWNER_PROOF_ROOT,'installed','workflow-proof.mjs'),bundle:true,platform:'node',format:'esm',target:'node24'});"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Calibrated Native Lifecycle and Launcher Workflows
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          node scripts/owned-process-windows-proof.mjs "$env:OWNER_PROOF_ROOT\installed" "$env:OWNER_PROOF_ROOT\evidence\sdk.json" "$env:OWNER_PROOF_ROOT\evidence\proof.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Fresh Installed Native Index
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          node scripts/owned-process-windows-proof.mjs "$env:OWNER_PROOF_ROOT\installed" "$env:OWNER_PROOF_ROOT\evidence\sdk.json" "$env:OWNER_PROOF_ROOT\evidence\index.json" index
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Fresh Installed Native Clock and Host Recovery
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          node scripts/owned-process-windows-proof.mjs "$env:OWNER_PROOF_ROOT\installed" "$env:OWNER_PROOF_ROOT\evidence\sdk.json" "$env:OWNER_PROOF_ROOT\evidence\recovery.json" index-recovery
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload Allowlisted Evidence
+        if: ${{ always() && env.OWNER_PROOF_ROOT != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-owned-process-calibrated-evidence
+          path: |
+            ${{ env.OWNER_PROOF_ROOT }}/evidence/sdk.json
+            ${{ env.OWNER_PROOF_ROOT }}/evidence/proof.json
+            ${{ env.OWNER_PROOF_ROOT }}/evidence/index.json
+            ${{ env.OWNER_PROOF_ROOT }}/evidence/recovery.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Remove Owned Package and Evidence Roots
+        if: ${{ always() && env.OWNER_PROOF_ROOT != '' }}
+        shell: pwsh
+        run: |
+          Remove-Item -LiteralPath $env:OWNER_PROOF_ROOT -Recurse -Force
+          if (Test-Path -LiteralPath $env:OWNER_PROOF_ROOT) { throw 'Temporary verification root remains.' }

@@ -1,0 +1,13 @@
+✔ publishes one independently installable Host and browser-client bundle (1.661667ms)
+✔ generated Desktop test archive contains no macOS AppleDouble entries (47.828458ms)
+✔ binds the shared Desktop and runtime workspace identities without local artifact paths (0.722792ms)
+✔ allows compatible Desktop patches but rejects the next minor line (113.55275ms)
+✔ keeps the browser route free of Host-only authority imports (1.207084ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 217.46275

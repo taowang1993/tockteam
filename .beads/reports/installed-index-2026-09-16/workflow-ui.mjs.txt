@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict'
+import { readFile, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { parseLauncherWorkflows } from '/Users/taowang/projects/tockteam/src/launcher-workflow-contract.ts'
+const execute=promisify(execFile)
+export async function verify({page,context,canary,result,root,wait}) {
+ let launcher
+ for(const candidate of context.pages())if(await candidate.title()==='TockLauncher')launcher=candidate
+ assert.ok(launcher)
+ const receipt=join(root,'workflow-receipt.txt'),pidfile=join(root,'workflow-shell.pid')
+ const quote=value=>"'"+value.replaceAll("'","'\\''")+"'"
+ const command=`printf '%s' ${quote(canary)} > ${quote(receipt)}; printf '%s' "$$" > ${quote(pidfile)}; /bin/sleep 0.3; printf 'owned-proof'`
+ const definition={id:'installed-owned-proof',name:'Installed Ownership Proof',requiresConfirmation:false,actions:[{id:'receipt',handlerId:'ExecuteCommand',name:'Write Temporary Receipt',args:{command}}]}
+ parseLauncherWorkflows([definition],'macOS')
+ const changed=await page.evaluate(async definition=>{
+  const settings=window.dshDesktop.launcher.settings
+  const snapshot=await settings.getSnapshot(),enabled=snapshot.values['extensions.enabledExtensionIds']
+  const first=await settings.updateSetting('extensions.enabledExtensionIds',[...new Set([...(Array.isArray(enabled)?enabled:[]),'Workflow'])])
+  const second=await settings.updateSetting('extension[Workflow].workflows',[definition])
+  await window.dshDesktop.launcher.show();return[first,second]
+ },definition)
+ assert.ok(changed.every(row=>row.ok===true))
+ await launcher.locator('#launcher-search').evaluate((element,value)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(element,value);element.dispatchEvent(new Event('input',{bubbles:true}))},definition.name)
+ const row=launcher.locator('[data-result-id]').filter({hasText:definition.name}).first();await row.waitFor({state:'visible'})
+ await row.evaluate(element=>element.click())
+ const invoke=launcher.locator('#launcher-details button[aria-label^="Invoke workflow"]');await invoke.waitFor({state:'visible'})
+ await invoke.evaluate(element=>element.click())
+ // Explicit user permission is required before invoking this module. Only the
+ // already-owned app PID and its exact test confirmation sheet are addressed.
+ const approval=`tell application "System Events"
+set targetProcess to first application process whose unix id is ${result.appPid}
+repeat with w in windows of targetProcess
+repeat with s in sheets of w
+set labels to value of every static text of s
+set AppleScript's text item delimiters to " "
+set dialogText to labels as text
+if dialogText contains "Installed Ownership Proof" and dialogText contains "Write Temporary Receipt" then
+perform action "AXPress" of button "Continue" of s
+return "approved-owned-dialog"
+end if
+end repeat
+end repeat
+return "pending-owned-dialog"
+end tell`
+ const outcome=await wait(async()=>{const {stdout}=await execute('/usr/bin/osascript',['-e',approval],{timeout:3000,maxBuffer:8192});return stdout.trim()},value=>value==='approved-owned-dialog',10000)
+ assert.equal(outcome,'approved-owned-dialog')
+ await wait(()=>readFile(receipt,'utf8').catch(()=>''),value=>value===canary,10000)
+ await wait(()=>readFile(join(root,'index-user-data/logs/desktop.log'),'utf8').catch(()=>''),text=>/TockLauncher workflow accepted: actions=1 commands=1 .*stdoutBytes=11 stderrBytes=0/.test(text),15000)
+ await wait(()=>launcher.locator('[data-testid="tocklauncher-cancel-workflow"]').count(),count=>count===0,5000)
+ const pid=Number(await readFile(pidfile,'utf8'));assert.ok(Number.isSafeInteger(pid)&&pid>0)
+ assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});assert.throws(()=>process.kill(-pid,0),{code:'ESRCH'})
+ result.workflow={realUiInvocation:true,realNativeConfirmation:true,exactTemporaryReceipt:true,shellPid:pid,pidAndGroupGone:true}
+ await writeFile('/tmp/tockteam-installed-workflow-ui-aria.txt',await launcher.locator('body').ariaSnapshot(),{mode:0o600})
+}

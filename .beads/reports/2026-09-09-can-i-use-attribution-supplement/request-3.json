@@ -1,0 +1,22 @@
+{
+  "id": 3,
+  "url": "https://raw.githubusercontent.com/browserslist/caniuse-lite/59e2d41ee743d54efec1bb8ce067957b9766ca50/LICENSE",
+  "method": "GET",
+  "startedAt": "2026-09-09T23:03:46.222Z",
+  "redirectPolicy": "manual; each hop counts as another request",
+  "credentials": false,
+  "pending": false,
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain; charset=utf-8",
+    "content-length": "18651",
+    "etag": "\"b6eb4f1f8befffedb39b2e2f00b5e31d8ed87a3a5e74bdd2a8b644e3ec1bfec7\"",
+    "date": "Wed, 09 Sep 2026 23:03:46 GMT"
+  },
+  "body": "request-3.body",
+  "bytes": 18651,
+  "sha256": "fd3a263fe19ed8faa9068b43abaebafc02c77897b0c6fc09abc04bb592e5f16e",
+  "redirect": null,
+  "finishedAt": "2026-09-09T23:03:46.394Z",
+  "cumulativeBytes": 23760
+}

@@ -1,0 +1,166 @@
+name: Search Recovery Diagnostic
+
+on:
+  workflow_dispatch:
+    inputs:
+      historical_runner:
+        description: Run one pinned historical default-versus-none runner diagnostic only.
+        type: boolean
+        default: false
+      sqlite_paths:
+        description: Probe short and deep SQLite paths only; requires historical_runner.
+        type: boolean
+        default: false
+      runner_temp:
+        description: Use the runner-owned temporary folder instead of the operating-system default.
+        type: boolean
+        default: false
+      native_trace:
+        description: Capture native worker timing for one diagnostic run.
+        type: boolean
+        default: false
+      iterations:
+        description: Number of bounded native-gate runs.
+        type: choice
+        default: '30'
+        options: ['1', '30']
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    if: ${{ !inputs.historical_runner && !inputs.sqlite_paths }}
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C plugins/tocktutor install --frozen-lockfile
+      - name: Use the Runner-Owned Test Folder
+        if: inputs.runner_temp
+        shell: pwsh
+        run: |
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+      - name: Prepare Native Worker Trace
+        if: inputs.native_trace
+        env:
+          RECOVERY_ITERATIONS: ${{ inputs.iterations }}
+        run: |
+          node -e "const assert = require('node:assert/strict'); assert.equal(process.env.RECOVERY_ITERATIONS, '1'); const fs = require('node:fs'); const root = fs.mkdtempSync(require('node:path').join(process.env.RUNNER_TEMP, 'native-threadpool-')); fs.appendFileSync(process.env.GITHUB_ENV, 'TOCKTEAM_NATIVE_TRACE_DIR=' + root + '\n')"
+      - name: Verify Native Worker Timing
+        if: inputs.native_trace
+        env:
+          TOCKTEAM_NATIVE_TRACE_CONTROL: '1'
+        run: node plugins/tocktutor/packages/tockbot-note-runtime/scripts/test-search-index.mjs
+      - name: Verify Native Stack Capture
+        if: ${{ !inputs.native_trace }}
+        shell: pwsh
+        run: |
+          $debugger = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe"
+          $signature = Get-AuthenticodeSignature -LiteralPath $debugger
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') {
+            throw 'Expected a valid Microsoft-signed debugger; no installation or fallback permitted.'
+          }
+          $env:TOCKTEAM_NATIVE_DEBUGGER = $debugger
+          node scripts/probe-search-native-debugger.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "TOCKTEAM_NATIVE_DEBUGGER=$debugger" >> $env:GITHUB_ENV
+      - name: Locate the Recovery Timeout
+        env:
+          TOCKTEAM_SEARCH_QUERY_LOAD: '0'
+          RECOVERY_ITERATIONS: ${{ inputs.iterations }}
+          USE_RUNNER_TEMP: ${{ inputs.runner_temp }}
+        shell: pwsh
+        working-directory: plugins/tocktutor/packages/tockbot-note-runtime
+        run: |
+          node -e "const folder = require('node:os').tmpdir(); console.log('Native test temporary folder:', folder); if (process.env.USE_RUNNER_TEMP === 'true') require('node:assert/strict').equal(folder, process.env.RUNNER_TEMP)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $iterations = [int]$env:RECOVERY_ITERATIONS
+          if ($iterations -notin 1, 30) { throw 'Expected 1 or 30 iterations.' }
+          for ($i = 1; $i -le $iterations; $i++) {
+            Write-Output "Recovery iteration $i"
+            node scripts/test-search-index.mjs
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Upload Native Worker Evidence
+        if: ${{ always() && inputs.native_trace && env.TOCKTEAM_NATIVE_TRACE_DIR != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-worker-evidence
+          path: ${{ env.TOCKTEAM_NATIVE_TRACE_DIR }}/capture-*/evidence.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  historical-runner:
+    if: ${{ inputs.historical_runner && github.ref == 'refs/heads/verify/windows-owned-process-20260916' }}
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.20.0
+          architecture: x64
+      - name: Install External Supervisor Dependencies
+        shell: pwsh
+        run: |
+          pnpm install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm -C plugins/tocktutor install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify npm Configuration and Startup Evidence
+        timeout-minutes: 2
+        run: node --test --test-name-pattern="npm config files remain distinct|historical startup|historical SQLite" tests/historical-runner.test.ts
+      - name: Prepare Bounded Receipt Destination
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP ('historical-receipt-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $root | Out-Null
+          "HISTORICAL_RECEIPT_ROOT=$root" >> $env:GITHUB_ENV
+      - name: Calibrate Ownership Then Run the Selected Diagnostic
+        timeout-minutes: 11
+        shell: pwsh
+        env:
+          SQLITE_PATHS_ONLY: ${{ inputs.sqlite_paths }}
+        run: |
+          $pnpm = node -p "require('node:path').join(require('node:path').dirname(require.resolve('pnpm')), 'bin/pnpm.cjs')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $mode = @()
+          if ($env:SQLITE_PATHS_ONLY -eq 'true') { $mode = @('--sqlite-paths-only') }
+          node scripts/historical-runner.mjs --run @mode --pnpm "$pnpm" --output "$env:HISTORICAL_RECEIPT_ROOT/receipt.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload Only the Bounded Historical Receipt
+        if: ${{ always() && env.HISTORICAL_RECEIPT_ROOT != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: historical-runner-diagnostic
+          path: ${{ env.HISTORICAL_RECEIPT_ROOT }}/receipt.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Verify Fixture Cleanup and Remove Receipt Scratch
+        if: ${{ always() && env.HISTORICAL_RECEIPT_ROOT != '' }}
+        shell: pwsh
+        run: |
+          $file = Join-Path $env:HISTORICAL_RECEIPT_ROOT 'receipt.json'
+          if (!(Test-Path -LiteralPath $file)) { throw 'No final cleanup receipt; do not destroy uncertain evidence.' }
+          $receipt = Get-Content -Raw -LiteralPath $file | ConvertFrom-Json
+          if (!$receipt.rootRemoved -or $receipt.finalInventory.Count -ne 0 -or $receipt.emergencyCleanup) {
+            throw 'Cleanup is unverified; retain evidence. No automatic retry.'
+          }
+          Remove-Item -LiteralPath $env:HISTORICAL_RECEIPT_ROOT -Recurse -Force
+          if (Test-Path -LiteralPath $env:HISTORICAL_RECEIPT_ROOT) { throw 'Receipt scratch remains.' }

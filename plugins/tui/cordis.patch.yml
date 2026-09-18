@@ -1,0 +1,32 @@
+# TockTeam's downstream layer for the pinned dsh-TUI bundle. The upstream
+# renderer keeps its implementation, while these rows establish the shared
+# surface contract, install @tockteam/skins, and then mount the renderer.
+
+- id: cc-tui
+  disabled: true
+
+- id: dsh-tui
+  disabled: true
+
+- insert:
+  - id: tockteam-tui
+    name: '@tockteam/tui'
+
+  - id: tockteam-skins
+    name: '@tockteam/skins'
+
+  - id: tockteam-tui-renderer
+    name: '@deepseek-harness-tui/dsh-tui'
+    inject: [workspaceRegistry, agents, tuiWorkspaces, tuiScenes, tuiDialogs, tuiStatus, tuiShortcuts, tuiRenderers]
+    config:
+      sessionId: !!js process.env.DSH_TUI_RESUME_SESSION ?? process.env.TOCKTEAM_TUI_SESSION_ID ?? undefined
+      provider: !!js process.env.TOCKTEAM_TUI_PROVIDER ?? 'deepseek-official'
+      model: !!js process.env.TOCKTEAM_TUI_MODEL ?? undefined
+      cwd: !!js process.env.TOCKTEAM_TUI_CWD ?? process.cwd()
+      effort: !!js process.env.TOCKTEAM_TUI_EFFORT ?? 'max'
+      activity: !!js "process.env.TOCKTEAM_TUI_ACTIVITY !== '0'"
+      activityFrames: !!js process.env.TOCKTEAM_TUI_ACTIVITY_FRAMES ?? undefined
+      contextBar: !!js "process.env.TOCKTEAM_TUI_CONTEXT_BAR !== '0'"
+      fullscreen: !!js "process.env.TOCKTEAM_TUI_FULLSCREEN !== '0'"
+      lang: !!js process.env.TOCKTEAM_TUI_LANG ?? undefined
+      preset: !!js process.env.TOCKTEAM_TUI_PRESET ?? undefined

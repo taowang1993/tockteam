@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "vaultId": "fixture-vault",
+  "path": "Notes/Welcome.md",
+  "snapshotId": "2026-08-26T00-00-00-000Z-fixture",
+  "content": "# Welcome before edit\n",
+  "createdAt": 1787702400000
+}

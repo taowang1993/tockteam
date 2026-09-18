@@ -1,0 +1,315 @@
+{
+  "version": 1,
+  "supervisorPid": 1448,
+  "classification": "INCONCLUSIVE",
+  "scope": "WINDOWS_HISTORICAL_DIAGNOSTIC",
+  "node": "v24.20.0",
+  "architecture": "x64",
+  "threadpool": "default:4",
+  "osDefaultTempVolume": "C:",
+  "instrumentationPerturbsIOAndScheduling": true,
+  "control": {
+    "cleanupVerified": true,
+    "deadline": true,
+    "deadlineMs": 5000,
+    "rootPid": 6976,
+    "initialInventory": [
+      {
+        "ProcessId": 6976,
+        "ParentProcessId": 1448
+      },
+      {
+        "ProcessId": 8064,
+        "ParentProcessId": 6976
+      },
+      {
+        "ProcessId": 8648,
+        "ParentProcessId": 8064
+      }
+    ],
+    "failure": "absolute deadline",
+    "journal": [
+      {
+        "test": "control",
+        "phase": "test",
+        "state": "start",
+        "pid": 8064,
+        "elapsedMs": 6.4709999999999965
+      },
+      {
+        "test": "control",
+        "phase": "pending-descendant",
+        "state": "start",
+        "pid": 8064,
+        "elapsedMs": 6.806699999999999
+      },
+      {
+        "test": "control",
+        "phase": "pending-descendant",
+        "state": "start",
+        "pid": 8648,
+        "elapsedMs": 0.4690000000000012
+      }
+    ],
+    "finalInventory": [],
+    "status": "deadline",
+    "controlPassed": true
+  },
+  "arms": [
+    {
+      "arm": "default",
+      "args": [
+        "--test",
+        "--test-name-pattern=Keyword search reconciles|persistent FlexSearch SQLite",
+        "tests/loader-composition.test.ts"
+      ],
+      "reporterSha256": "ec687f1529d80d455d9e4bfde7abb1d392327f68214a30645b39fc695bd344e2",
+      "cleanupVerified": true,
+      "deadline": false,
+      "deadlineMs": 60000,
+      "rootPid": 7896,
+      "completion": {
+        "code": 1,
+        "signal": null,
+        "stdoutBytes": 789,
+        "stderrBytes": 0
+      },
+      "status": "failed",
+      "startupEvidence": {
+        "observed": [
+          "test-failure"
+        ],
+        "complete": true,
+        "scannedBytes": 1177,
+        "truncated": false
+      },
+      "evidenceIncomplete": true,
+      "interpretationLimit": "missing or invalid evidence; no historical attribution",
+      "finalInventory": []
+    },
+    {
+      "arm": "none",
+      "args": [
+        "--test",
+        "--test-isolation=none",
+        "--test-name-pattern=Keyword search reconciles|persistent FlexSearch SQLite",
+        "tests/loader-composition.test.ts"
+      ],
+      "reporterSha256": "ec687f1529d80d455d9e4bfde7abb1d392327f68214a30645b39fc695bd344e2",
+      "cleanupVerified": true,
+      "deadline": false,
+      "deadlineMs": 60000,
+      "rootPid": 7188,
+      "completion": {
+        "code": 1,
+        "signal": null,
+        "stdoutBytes": 786,
+        "stderrBytes": 0
+      },
+      "status": "failed",
+      "startupEvidence": {
+        "observed": [
+          "test-failure"
+        ],
+        "complete": true,
+        "scannedBytes": 1176,
+        "truncated": false
+      },
+      "evidenceIncomplete": true,
+      "interpretationLimit": "missing or invalid evidence; no historical attribution",
+      "finalInventory": []
+    }
+  ],
+  "rootRemoved": true,
+  "emergencyCleanup": false,
+  "nodeSha256": "5c976096e04e5c2c1f091938926234cc9fbebfe9787ddd149351b3b0ecc707b5",
+  "supervisorCommit": "c1bba2e3b485245834e3cfb51679089d9203dcd6",
+  "supervisorOwnerSha256": "12913a93795bb72408d2ed8c2789a911128913fbe908c2d24fa6121e17b47a28",
+  "supervisorWindowsOwnerSha256": "53ee0fc7b0862a8622212ca27ff49c3a4e267411ed16298202e27cf5721f7e19",
+  "supervisorKoffi": "3.1.6",
+  "pins": [
+    {
+      "path": ".",
+      "commit": "9a709fc995343debed13740065039302a86c21e1",
+      "tree": "8cad8eca84d72d5110807c04a65b302b212ae53e",
+      "archiveSha256": "6002b761db7cc9615ea56ddaadfb6280706c55e19da700b7f1374a337cce93db"
+    },
+    {
+      "path": "upstream/DSH-better-sidebar",
+      "commit": "9e1a03452794532cda1f6ac677b72579dff48dfc",
+      "tree": "763483f0ffb13722ab8de024fc2dd421b7dfa582",
+      "archiveSha256": "4cd7d736d2f5a4b9f05ea6305a3adcef38fb4dac5b65132dbc1b10d887f1ff36"
+    },
+    {
+      "path": "upstream/dsh-TUI",
+      "commit": "8f1444a2627fab01682e679a0e44de8989b66f77",
+      "tree": "189db21548112bbd99d22b79ea0d0496bdfc09a9",
+      "archiveSha256": "37434fcf2abbbd97c62a2d56ef07c5dbe6c256d7bc705596e694215c622e3d75"
+    },
+    {
+      "path": "upstream/dsh-TUI/dsh-auth",
+      "commit": "94fdf81e775e8d884af4dfb64a94b617c3751936",
+      "tree": "93ad64f9c017aa3651e80afe3d5613c93fbb7a44",
+      "archiveSha256": "aed2fd244c1c2ba552201aa1b2fccd65644b494d40e1b8b0e4baa5ed18685415"
+    },
+    {
+      "path": "upstream/dsh-TUI/dsh-ecosystem-spec",
+      "commit": "d28c267fe7fd775428ec2dccd65b0b7efd4dacee",
+      "tree": "0354a15da314e7a7aa44d97a47bb7b78a33048ef",
+      "archiveSha256": "c73d65856f00b1ed06c73f06f3fe14d13666258a3896ac3c6a16713f6d508e0a"
+    },
+    {
+      "path": "upstream/dsh-TUI/dsh-ecosystem-spec/vendor/dsh-std",
+      "commit": "614dfa1ac168db79fcf4577cf0ebb34e2e3b944b",
+      "tree": "8a84be12576128a3e5405a72607b9318dd85d775",
+      "archiveSha256": "45c79a6a3efa8dd6672b51ab865241f999d6f1e824e81813bf0da15a5ad36e5a"
+    },
+    {
+      "path": "upstream/dsh-TUI/vendor/dsh-std",
+      "commit": "614dfa1ac168db79fcf4577cf0ebb34e2e3b944b",
+      "tree": "8a84be12576128a3e5405a72607b9318dd85d775",
+      "archiveSha256": "45c79a6a3efa8dd6672b51ab865241f999d6f1e824e81813bf0da15a5ad36e5a"
+    }
+  ],
+  "originalHashes": {
+    "package.json": "c24d115fb2c5eb4b8a7c6e5f488f8654a3f8d2c2dd569a3d849219282e288def",
+    "pnpm-lock.yaml": "719d155a12ca3cbfb8b53ebee0723d11ec6f6a3b5ce73b35f7daf3c110723d5e",
+    "pnpm-workspace.yaml": "2f7a67108f26870a32ba0b77c7e34b49474f1a0b7a40e94343e48c2d9d441c04",
+    ".npmrc": "044c80074d63f2301f24fad70c6261e80984f9ed6035a9f94a34a15902364a0e",
+    "plugins/tocktutor/package.json": "27e9104eb38eb8da5545db4762c7ec1c0d9bc17821abdf8432c358fbad867265",
+    "plugins/tocktutor/pnpm-lock.yaml": "4128b5464d771992eaa159800cd83428c2fbe8094812ab83bf01d166da896500",
+    "plugins/tocktutor/pnpm-workspace.yaml": "c7eeee123e3fb6a36e133422bb17926ee7c5f0f0832efcdb698527f11278d3e0",
+    "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts": "c3a85b0d16870a20d9f884dbe390086fe5ff07611e6acd712b7d197a3b97cbc8",
+    "plugins/tocktutor/packages/tockbot-note-runtime/tests/loader-composition.test.ts": "d12cdfdbf0f1772c3d72623cde52cb01012a992cc79e699799de27dd69407130"
+  },
+  "installs": [
+    {
+      "directory": "source",
+      "args": [
+        "install",
+        "--frozen-lockfile"
+      ],
+      "cleanupVerified": true,
+      "deadline": false,
+      "deadlineMs": 240000,
+      "rootPid": 8136,
+      "completion": {
+        "code": 0,
+        "signal": null,
+        "stdoutBytes": 32645,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "directory": "source/plugins/tocktutor",
+      "args": [
+        "install",
+        "--frozen-lockfile"
+      ],
+      "cleanupVerified": true,
+      "deadline": false,
+      "deadlineMs": 240000,
+      "rootPid": 892,
+      "completion": {
+        "code": 0,
+        "signal": null,
+        "stdoutBytes": 4671,
+        "stderrBytes": 0
+      }
+    }
+  ],
+  "pnpmProbe": {
+    "operations": [
+      {
+        "name": "version",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 6068,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 8,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "store",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 5368,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 77,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "config",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 1144,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 91,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "globalPackages",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 6260,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 88,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "cache",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 2076,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 78,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "state",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 7904,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 78,
+          "stderrBytes": 0
+        }
+      }
+    ],
+    "cleanupVerified": true,
+    "effectivePaths": {
+      "store": "store/v11",
+      "config": "config/pnpm/config.yaml",
+      "globalPackages": "data/pnpm/global/v11",
+      "cache": "cache/pnpm",
+      "state": "state/pnpm"
+    }
+  },
+  "pnpm": "11.21.0",
+  "instrumentedTestSha256": "b797ac1647fa72d4ae8426e386aa274c4aa15b1239a3a3e511a6ef5d4062667f",
+  "failed": true,
+  "finalInventory": []
+}

@@ -1,0 +1,117 @@
+{
+  "name": "@tockteam/tocktutor-workbench",
+  "version": "0.1.7",
+  "description": "Host and browser-client TockTutor workbench for TockTeam Desktop",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "node": "./dist/client-api.js",
+      "browser": "./dist/client.js",
+      "default": "./dist/client.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./typert": {
+      "types": "./dist/typert.host.d.ts",
+      "default": "./dist/typert.host.js"
+    },
+    "./remote": {
+      "types": "./dist/typert.remote-client.d.ts",
+      "default": "./dist/typert.remote-client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "dist",
+    "package.json"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@tockteam/desktop"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "scripts": {
+    "build": "pnpm run generate:typert && tsc -p tsconfig.build.json && node scripts/build-client.mjs",
+    "generate:typert": "node scripts/generate-typert.mjs",
+    "test": "pnpm run build && node --test --test-concurrency=1 tests/*.test.ts && pnpm run test:component",
+    "test:component": "vitest run tests/*.test.tsx --environment jsdom",
+    "typecheck": "pnpm run generate:typert && tsc --noEmit",
+    "prepack": "pnpm run build"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-api-remotes": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.2-rc.1",
+    "@tockteam/desktop": ">=0.1.6 <0.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tockbot-note-runtime": "0.1.2"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/cordis-plugin-include": "1.0.7",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.3",
+    "@deepseek-ai/dsh-api-remotes": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-typert-generator": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.2-rc.1",
+    "@radix-ui/react-dialog": "1.1.23",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.2",
+    "@tockteam/desktop": "workspace:*",
+    "@tockteam/ui": "workspace:*",
+    "@types/node": "22.20.0",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "esbuild": "0.25.12",
+    "jsdom": "29.1.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tockbot-note-runtime": "workspace:0.1.2",
+    "tockbot-note-vault": "workspace:0.6.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.8"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@codemirror/commands": "6.10.3",
+    "@codemirror/lang-markdown": "6.5.0",
+    "@codemirror/language": "6.12.3",
+    "@codemirror/state": "6.6.0",
+    "@codemirror/view": "6.41.1",
+    "@milkdown/core": "7.20.0",
+    "@milkdown/plugin-history": "7.20.0",
+    "@milkdown/plugin-listener": "7.20.0",
+    "@milkdown/preset-commonmark": "7.20.0",
+    "@milkdown/preset-gfm": "7.20.0",
+    "@milkdown/prose": "7.20.0",
+    "@milkdown/react": "7.20.0",
+    "@milkdown/utils": "7.20.0",
+    "@tockteam/ui": "0.1.0",
+    "codemirror": "6.0.2",
+    "lucide-react": "0.473.0",
+    "zod": "4.4.3"
+  }
+}

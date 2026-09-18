@@ -1,0 +1,415 @@
+import assert from 'node:assert/strict'
+import { spawn, spawnSync } from 'node:child_process'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { createServer } from 'node:net'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { ensureWebProfile, WEB_PROFILE } from '../src/profile.ts'
+import { bundledRuntimePaths, runtimeSearchPath } from '../src/runtime-paths.ts'
+import { resolveProductVersion } from '../src/version.ts'
+import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
+import { stopChildProcess } from './process-cleanup.mjs'
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+/** Resolve the smoke resources root: `.stage`, an explicit dir, or the packaged release. */
+function resolveResources(candidate) {
+  if (candidate === 'release') {
+    const platform = resolveNodeDistributionPlatform()
+    const arch = process.env.DSH_DESKTOP_NODE_ARCH ?? process.arch
+    const release = join(
+      root,
+      'release',
+      `tockteam-web-${resolveProductVersion(root)}-${platform}-${arch}`,
+    )
+    assert.ok(
+      existsSync(join(release, 'dsh-runtime')),
+      `packaged tockteam-web release not found: ${release}`,
+    )
+    return release
+  }
+  return resolve(candidate)
+}
+
+const resources = resolveResources(process.argv[2] ?? join(root, '.stage'))
+const paths = bundledRuntimePaths(resources)
+const { cliEntry, nodeBinary } = paths
+const smokeRoot = mkdtempSync(join(tmpdir(), 'tockteam-web-smoke-'))
+const dshHome = join(smokeRoot, 'dsh-home')
+const webData = join(smokeRoot, 'web-data')
+const lines = []
+
+/** One boot entry of the DSH client graph. */
+function parseBootEntries(index) {
+  const marker = 'globalThis["__DSH_BOOT__"] = '
+  const start = index.indexOf(marker)
+  assert.notEqual(start, -1, 'DSH index did not contain a client boot graph')
+  const end = index.indexOf('</script>', start)
+  assert.notEqual(end, -1, 'DSH client boot graph script was not closed')
+  const graph = JSON.parse(index.slice(start + marker.length, end))
+  assert.equal(typeof graph.rev, 'string')
+  assert.ok(Array.isArray(graph.entries))
+  return graph.entries
+}
+
+/** Find a free loopback port for the smoke runtime. */
+async function freePort() {
+  const server = createServer()
+  await new Promise((resolveListen, rejectListen) => {
+    server.once('error', rejectListen)
+    server.listen(0, '127.0.0.1', resolveListen)
+  })
+  const address = server.address()
+  assert.ok(address !== null && typeof address === 'object')
+  const port = address.port
+  await new Promise(resolveClose => { server.close(resolveClose) })
+  return port
+}
+
+ensureWebProfile(dshHome)
+
+const runtimeEnvironment = {
+  ...process.env,
+  DSH_HOME: dshHome,
+  TOCKTEAM_WEB: '1',
+  TOCKTEAM_WEB_DATA: webData,
+  TOCKTEAM_WEB_PROFILE: WEB_PROFILE,
+  TOCKTEAM_WEB_VERSION: 'smoke',
+  PATH: runtimeSearchPath(paths),
+}
+
+// 1. The composed web profile tree mounts the web-capable TockTeam rows and
+// keeps the desktop-only rows out.
+const dump = spawnSync(nodeBinary, [cliEntry, '--profile', WEB_PROFILE, '--dump-config'], {
+  cwd: smokeRoot,
+  encoding: 'utf8',
+  env: runtimeEnvironment,
+})
+assert.equal(dump.status, 0, dump.stderr || dump.stdout)
+for (const row of [
+  'tockteam-web',
+  'tockteam-better-sidebar-runtime',
+  'tockteam-skins',
+  'tockteam-pinned-summary',
+  'tockteam-save-as-image',
+  'tockteam-sidebar',
+  'tockteam-panel-controls',
+]) {
+  assert.match(dump.stdout, new RegExp(`\\b${row}\\b`), `composed web profile is missing row ${row}`)
+}
+for (const row of ['tockteam-desktop', 'tockteam-plugin-marketplace']) {
+  assert.doesNotMatch(dump.stdout, new RegExp(`\\b${row}\\b`), `composed web profile must not mount desktop row ${row}`)
+}
+
+// 2. Boot the web profile and verify the served UI and client graph.
+const port = await freePort()
+const child = spawn(nodeBinary, [
+  cliEntry,
+  '--profile', WEB_PROFILE,
+  '--host', '127.0.0.1',
+  '--port', String(port),
+], {
+  cwd: smokeRoot,
+  env: runtimeEnvironment,
+  stdio: ['ignore', 'pipe', 'pipe'],
+})
+
+function lineReader(stream, resolveReady) {
+  let pending = ''
+  return chunk => {
+    pending += chunk.toString('utf8')
+    for (let newline = pending.indexOf('\n'); newline >= 0; newline = pending.indexOf('\n')) {
+      const line = pending.slice(0, newline).replace(/\r$/, '')
+      pending = pending.slice(newline + 1)
+      lines.push(`[${stream}] ${line.replace(/([?&]token=)[^\s)]+/gu, '$1<redacted>')}`)
+      const match = /^dsh web: (http:\/\/127\.0\.0\.1:\d+\/\?token=[^\s)]+)/u.exec(line)
+      if (match?.[1] !== undefined) resolveReady(new URL(match[1]))
+    }
+  }
+}
+
+let readySettled = false
+const ready = new Promise((resolve, reject) => {
+  const resolveOnce = value => {
+    if (readySettled) return
+    readySettled = true
+    resolve(value)
+  }
+  child.stdout.on('data', lineReader('stdout', resolveOnce))
+  child.stderr.on('data', lineReader('stderr', resolveOnce))
+  child.once('error', reject)
+  child.once('exit', (code, signal) => {
+    if (readySettled) return
+    reject(new Error(`runtime exited before readiness (code=${String(code)}, signal=${String(signal)})\n${lines.join('\n')}`))
+  })
+})
+
+const timeout = new Promise((_, reject) => {
+  setTimeout(() => reject(new Error(`runtime readiness timed out\n${lines.join('\n')}`)), 60_000).unref()
+})
+
+try {
+  const launchUrl = await Promise.race([ready, timeout])
+  const base = new URL('/', launchUrl)
+  assert.equal((await fetch(base)).status, 401)
+  const exchange = await fetch(launchUrl, { redirect: 'manual' })
+  assert.equal(exchange.status, 303)
+  assert.equal(exchange.headers.get('location'), '/')
+  const cookie = exchange.headers.get('set-cookie')?.split(';', 1)[0]
+  assert.ok(cookie, 'launch-token exchange did not issue a browser cookie')
+  const authenticatedFetch = (input, init = {}) => {
+    const headers = new Headers(init.headers)
+    headers.set('cookie', cookie)
+    return fetch(input, { ...init, headers })
+  }
+  const indexResponse = await authenticatedFetch(base)
+  const index = await indexResponse.text()
+  assert.equal(indexResponse.status, 200)
+  assert.match(index, /<div id="root"><\/div>/)
+
+  const settingsDescribeResponse = await authenticatedFetch(new URL('/api/settings/describe', base), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: 'web-smoke-settings-describe',
+      method: 'settings/describe',
+      payload: { args: {} },
+    }),
+  })
+  const settingsDescribe = await settingsDescribeResponse.json()
+  assert.equal(settingsDescribeResponse.status, 200)
+  assert.equal(settingsDescribe.result?.ok, true, JSON.stringify(settingsDescribe))
+  const settingsNamespaces = settingsDescribe.result.value.namespaces.map(entry => entry.ns)
+  assert.ok(settingsNamespaces.includes('agent-loop'))
+  assert.equal(settingsNamespaces.includes('agent-default-model'), false)
+
+  const blockedSettingsResponse = await authenticatedFetch(new URL('/api/settings/replace', base), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: 'web-smoke-settings-replace',
+      method: 'settings/replace',
+      payload: { args: { ns: 'agent-default-model', section: {} } },
+    }),
+  })
+  const blockedSettings = await blockedSettingsResponse.json()
+  assert.equal(blockedSettingsResponse.status, 200)
+  assert.equal(blockedSettings.result?.ok, false, JSON.stringify(blockedSettings))
+  assert.equal(blockedSettings.result.error.code, 'settings-not-exposed')
+
+  // The TockTeam web plugins enroll their browser entries in the client graph.
+  const bootEntries = parseBootEntries(index)
+  const loaded = []
+  for (const pluginId of [
+    '@tockteam/web',
+    '@tockteam/skins',
+    '@tockteam/pinned-summary',
+    '@tockteam/save-as-image',
+    '@tockteam/sidebar',
+    '@tockteam/panel-controls',
+  ]) {
+    const row = bootEntries.find(entry => entry.id === pluginId)
+    assert.ok(row, `${pluginId} Host entry did not activate in the DSH client graph`)
+    const manifest = JSON.parse(readFileSync(join(
+      resources,
+      'dsh-runtime',
+      'node_modules',
+      ...pluginId.split('/'),
+      'package.json',
+    ), 'utf8'))
+    assert.deepEqual(row.inject ?? [], manifest.dsh.client.inject ?? [])
+    assert.equal(row.immediately === true, manifest.dsh.client.immediately === true)
+    const bundleUrl = new URL(row.url, base)
+    const bundleResponse = await authenticatedFetch(bundleUrl)
+    const bundle = await bundleResponse.text()
+    assert.equal(
+      bundleResponse.status,
+      200,
+      `${pluginId} Client bundle returned ${String(bundleResponse.status)}`,
+    )
+    assert.ok(bundle.includes(pluginId), `${pluginId} client bundle did not enroll its module id`)
+    if (pluginId === '@tockteam/skins') {
+      assert.match(bundle, /text-foreground\{color:var\(--dsw-alias-label-primary\)\}/)
+      assert.doesNotMatch(bundle, /\*,:before,:after\{box-sizing:border-box/)
+    }
+    loaded.push({ bytes: bundle.length, id: pluginId })
+  }
+
+  // The host-only PTY runtime ships inside the web distribution.
+  assert.ok(existsSync(join(
+    resources,
+    'dsh-runtime',
+    'node_modules',
+    '@tockteam',
+    'better-sidebar-runtime',
+    'dist',
+    'index.js',
+  )), '@tockteam/better-sidebar-runtime Host bundle is missing')
+
+  // Electron-bound surfaces must stay out of the web client graph.
+  for (const pluginId of ['@tockteam/desktop', '@tockteam/plugin-marketplace']) {
+    assert.equal(
+      bootEntries.some(entry => entry.id === pluginId),
+      false,
+      `${pluginId} must not enroll in the TockTeam Web client graph`,
+    )
+  }
+
+  // The skins preferences server mounts on the web server.
+  const preferencesUrl = new URL('/tockteam/skins/preferences', base)
+  const initialResponse = await authenticatedFetch(preferencesUrl)
+  const initial = await initialResponse.json()
+  assert.equal(initialResponse.status, 200)
+  assert.equal(initial.activeId, null)
+  assert.equal(initial.fallbackTheme, 'system')
+  const saveResponse = await authenticatedFetch(preferencesUrl, {
+    method: 'PUT',
+    headers: {
+      'content-type': 'application/json',
+      origin: base.origin,
+    },
+    body: JSON.stringify({ activeId: 'tockteam-skin-porcelain', fallbackTheme: 'dark' }),
+  })
+  assert.equal(saveResponse.status, 200, await saveResponse.text())
+  const saved = await authenticatedFetch(preferencesUrl)
+  const persisted = await saved.json()
+  assert.equal(persisted.activeId, 'tockteam-skin-porcelain')
+  assert.equal(persisted.fallbackTheme, 'dark')
+
+  // The sidebar host serves the workspace Git API on the web server.
+  const git = (...args) => {
+    const result = spawnSync('git', args, {
+      cwd: smokeRoot,
+      encoding: 'utf8',
+    })
+    assert.equal(result.status, 0, result.stderr || result.stdout)
+    return result.stdout
+  }
+  git('init', '-b', 'main')
+  git('config', 'user.name', 'TockTeam Web Smoke')
+  git('config', 'user.email', 'tockteam-web-smoke@example.test')
+  writeFileSync(join(smokeRoot, 'web-smoke.txt'), 'before\n')
+  git('add', 'web-smoke.txt')
+  git('commit', '-m', 'web smoke baseline')
+  writeFileSync(join(smokeRoot, 'web-smoke.txt'), 'after\n')
+
+  const sessionResponse = await authenticatedFetch(new URL('/api/session/create', base), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: 'web-smoke-session',
+      method: 'session/create',
+      payload: { args: { request: { cwd: smokeRoot } } },
+    }),
+  })
+  const sessionEnvelope = await sessionResponse.json()
+  assert.equal(sessionResponse.status, 200)
+  assert.equal(sessionEnvelope.result?.ok, true, JSON.stringify(sessionEnvelope))
+  const sessionId = sessionEnvelope.result.value.sessionId
+
+  const workspaceFactsUrl = new URL('/tockteam/workspace', base)
+  workspaceFactsUrl.searchParams.set('cwd', smokeRoot)
+  workspaceFactsUrl.searchParams.set('sessionId', sessionId)
+  const workspaceFactsResponse = await authenticatedFetch(workspaceFactsUrl)
+  const workspaceFacts = await workspaceFactsResponse.json()
+  assert.equal(workspaceFactsResponse.status, 200)
+  assert.equal(workspaceFacts.kind, 'repository')
+  assert.equal(realpathSync(workspaceFacts.root), realpathSync(smokeRoot))
+
+  // The better-sidebar host serves session, Files, and Git through the same
+  // /sidebar API the desktop distribution uses.
+  const sidebarCall = async (method, payload) => {
+    const response = await authenticatedFetch(new URL(`/sidebar/api/${method}`, base), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const envelope = await response.json()
+    assert.equal(response.status, 200, JSON.stringify(envelope))
+    assert.equal(envelope.ok, true, JSON.stringify(envelope))
+    return envelope.value
+  }
+  const sidebarScope = { sessionId, cwd: smokeRoot }
+  const sessionCwd = await sidebarCall('session.cwd', sidebarScope)
+  assert.equal(sessionCwd.cwd, smokeRoot)
+  const workspaceTree = await sidebarCall('fs.tree', sidebarScope)
+  assert.equal(workspaceTree.path, smokeRoot)
+  const gitStatus = await sidebarCall('git.status', sidebarScope)
+  assert.equal(gitStatus.isRepo, true)
+  assert.ok(gitStatus.entries.some(entry => entry.path === 'web-smoke.txt'))
+  const gitBranches = await sidebarCall('git.branch', sidebarScope)
+  assert.equal(gitBranches.current, 'main')
+  const gitLog = await sidebarCall('git.log', {
+    ...sidebarScope,
+    count: 5,
+    skip: 0,
+  })
+  assert.equal(gitLog[0]?.subject, 'web smoke baseline')
+
+  // The PTY terminal host answers over the same websocket on the web server.
+  const terminalUrl = new URL('/sidebar/ws/terminal', base)
+  terminalUrl.protocol = 'ws:'
+  terminalUrl.searchParams.set('sessionId', sidebarScope.sessionId)
+  terminalUrl.searchParams.set('tab', 'smoke-terminal')
+  terminalUrl.searchParams.set('cwd', smokeRoot)
+  await new Promise((resolveTerminal, rejectTerminal) => {
+    const socket = new WebSocket(terminalUrl)
+    let output = ''
+    let settled = false
+    const terminalTimeout = setTimeout(() => {
+      finish(new Error(`terminal smoke timed out; output=${JSON.stringify(output)}`))
+    }, 10_000)
+    const finish = (error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(terminalTimeout)
+      socket.close()
+      if (error === undefined) resolveTerminal()
+      else rejectTerminal(error)
+    }
+    socket.addEventListener('open', () => {
+      socket.send(JSON.stringify({ type: 'resize', cols: 80, rows: 24 }))
+      // Split the marker so the echoed command line never contains it; only
+      // real execution produces `TOCKTEAM_WEB_TERMINAL_SMOKE`.
+      socket.send("printf '%s%s\\n' TOCKTEAM_WEB_TERMINAL_ SMOKE; exit\r")
+    })
+    socket.addEventListener('message', (event) => {
+      output += String(event.data)
+      if (output.includes('TOCKTEAM_WEB_TERMINAL_SMOKE')) {
+        socket.send(JSON.stringify({ type: 'close' }))
+        finish()
+      }
+    })
+    socket.addEventListener('error', () => { finish(new Error('terminal websocket connection failed')) })
+    socket.addEventListener('close', () => {
+      if (!settled) finish(new Error(`terminal websocket closed early; output=${JSON.stringify(output)}`))
+    })
+  })
+
+  console.log(`TockTeam Web profile ready: ${base.href}`)
+  console.log(`Web composition verified: ${dump.stdout.split('\n').length} dump lines`)
+  for (const plugin of loaded) {
+    console.log(
+      `Plugin compatible: ${plugin.id} (Host active, Client ${String(plugin.bytes)} bytes)`,
+    )
+  }
+  console.log('Settings API: namespace allowlist and write rejection verified')
+  console.log('Skins preferences API: ready, persistence verified')
+  console.log('Sidebar workspace Git API: ready, repository facts verified')
+  console.log('Better Sidebar Host API: ready, session/files/Git verified on the web surface')
+  console.log('Better Sidebar terminal PTY: ready, command execution verified on the web surface')
+} finally {
+  await stopChildProcess(child)
+  rmSync(smokeRoot, { recursive: true, force: true })
+}

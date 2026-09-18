@@ -1,0 +1,60 @@
+Trusted Raycast Electron root PID=39170 CDP=57243
+### Session `raycast-39169` created, attached to `http://127.0.0.1:57243`.
+Run commands with: playwright-cli -s=raycast-39169 <command>
+
+### Open tabs
+- 0: (current) [TockCoder](http://127.0.0.1:57255/tockcoder)
+- 1: [TockLauncher](file:///Users/taowang/projects/worktrees/launcher/dist/launcher.html)
+### Page
+- Page URL: http://127.0.0.1:57255/tockcoder
+- Page Title: TockCoder
+- Console: 0 errors, 1 warnings
+### Snapshot
+- [Snapshot](.playwright-cli/page-2026-09-06T17-17-59-067Z.yml)
+### Events
+- New console entries: .playwright-cli/console-2026-09-06T17-17-58-922Z.log#L1-L8
+
+### Result
+{"url":"file:///Users/taowang/projects/worktrees/launcher/dist/launcher.html","input":"TockTeam compatibility tracer: hello world","translations":"TockTeam 兼容性跟踪器：hello world\nTockTeam jiānróng xìng gēnzōng qì:Hello world\nTockTeam Compatibility Tracker: hello world","focused":true,"second":"早上好\nZǎoshang hǎo\nGood morning","closed":"RECENT\nT\nTranslate\nGoogle Translate · reviewed trusted extension\n⌘\n1\nCOMMANDS\nAccessibility\nSystem Setting\n⌘\n2\nAccounts\nSystem Setting\n⌘\n3\nAppearance\nSystem Setting\n⌘\n4\nApple ID\nSystem Setting\n⌘\n5\nBattery\nSystem Setting\n⌘\n6\nBluetooth\nSystem Setting\n⌘\n7\nBrowse TockTeam extensions\nTockLauncher Command\n⌘\n8\nCenter TockLauncher window\nTockLauncher Command\n⌘\n9\nDate & Time\nSystem Setting\nDisable hotkey\nTockLauncher Command\nDisplays\nSystem Setting\nDock\nSystem Setting\nEmpty Trash\nSystem Command\nFixture Control Panel\nControl Panel Item\nInternet Accounts\nSystem Setting\nKeyboard\nSystem Setting\nLocalization\nSystem Setting\nLock\nSystem Command\nLog Out\nSystem Command\nMouse\nSystem Setting\nNetwork\nSystem Setting\nNotifications\nSystem Setting\nOpen TockTeam settings\nTockLauncher Command\nPasswords\nSystem Setting\nPrinters & Scanners\nSystem Setting\nQuit TockTeam\nTockLauncher Command\nRescan extensions\nTockLauncher Command\nRestart\nSystem Command\nScreen Time\nSystem Setting\nSecurity\nSystem Setting\nShut Down\nSystem Command\nSiri & Spotlight\nSystem Setting\nSleep\nSystem Command\nSound\nSystem Setting\nSystem Settings\nSystem Setting\nT\nTockCoder\nOpen the TockTeam coding workspace\nT\nTockTutor\nOpen the TockTeam notes workspace\nToggle System Appearance\nSystem\nTouch ID & Password\nSystem Setting\nTrackpad\nSystem Setting\nWallet & Apple Pay\nSystem Setting\nWallpaper\nSystem Setting\nAPPLICATIONS\nTockTeam Fixture\nApplication"}
+### Ran Playwright code
+```js
+await (async page => {
+      const launcher = page.context().pages().find(p => p.url().endsWith('/launcher.html'));
+      if (!launcher) throw new Error('No real launcher');
+      await launcher.bringToFront();
+      await launcher.locator('#launcher-search').fill('Translate');
+      const command = launcher.getByRole('option').filter({ hasText: 'reviewed trusted extension' });
+      console.log(await launcher.locator('body').innerText());
+      await command.waitFor({ timeout: 15000 });
+      await command.click();
+      await launcher.locator('#launcher-search').press('Enter');
+      const input = launcher.locator('#trusted-raycast-search');
+      await input.waitFor({ timeout: 15000 });
+      if (await launcher.locator('#launcher-search-form').isVisible()) throw new Error('Catalog remained visible over command view');
+      if (!(await input.evaluate(el => document.activeElement === el))) throw new Error('Translate input not focused');
+      if (await launcher.evaluate(() => typeof window.require !== 'undefined' || typeof window.process !== 'undefined')) throw new Error('Renderer leaked Node');
+      await input.fill('TockTeam compatibility tracer: hello world');
+      await launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li').filter({ hasText: /[\u3400-\u9fff]/ }).first().waitFor({ timeout: 16000 });
+      const facts = { url: launcher.url(), input: await input.inputValue(), translations: await launcher.getByRole('list', { name: /Translations|翻译结果/ }).innerText(), focused: await input.evaluate(el => document.activeElement === el) };
+      await launcher.screenshot({ path: "/Users/taowang/projects/worktrees/launcher/.beads/reports/trusted-raycast-desktop/translation.png" });
+      await launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li').first().press('Enter');
+      await launcher.getByRole('alert').filter({ hasText: /not supported|暂不可用/ }).waitFor();
+      await input.fill('Good morning');
+      await launcher.getByRole('list', { name: /Translations|翻译结果/ }).locator('li').filter({ hasText: /早|上午/ }).first().waitFor({ timeout: 16000 });
+      const second = await launcher.getByRole('list', { name: /Translations|翻译结果/ }).innerText();
+      await input.press('Escape');
+      await input.waitFor({ state: 'detached' });
+      await launcher.locator('#launcher-search').fill('');
+      await launcher.getByRole('group', { name: 'Recent', exact: true }).waitFor();
+      const closed = await launcher.locator('#launcher-results').innerText();
+      await launcher.screenshot({ path: "/Users/taowang/projects/worktrees/launcher/.beads/reports/trusted-raycast-desktop/closed.png" });
+      return { ...facts, second, closed };
+    })(page);
+```
+
+Browser 'raycast-39169' detached
+
+
+Translate launch useCount=1 after two queries and view close
+trusted Raycast real Desktop/Playwright smoke passed
+Trusted Raycast Electron process group 39170 stopped

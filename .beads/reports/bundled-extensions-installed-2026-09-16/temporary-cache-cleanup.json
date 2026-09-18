@@ -1,0 +1,45 @@
+{
+  "removed": [
+    {
+      "ownerPid": 96209,
+      "cacheName": "bundled-installed-96207",
+      "removed": true
+    },
+    {
+      "ownerPid": 1720,
+      "cacheName": "bundled-installed-1717",
+      "removed": true
+    },
+    {
+      "ownerPid": 4419,
+      "cacheName": "bundled-installed-4417",
+      "removed": true
+    },
+    {
+      "ownerPid": 7315,
+      "cacheName": "bundled-installed-7313",
+      "removed": true
+    },
+    {
+      "ownerPid": 7922,
+      "cacheName": "bundled-installed-7920",
+      "removed": true
+    },
+    {
+      "ownerPid": 8664,
+      "cacheName": "bundled-installed-8662",
+      "removed": true
+    },
+    {
+      "ownerPid": 10958,
+      "cacheName": "bundled-installed-10956",
+      "removed": true
+    },
+    {
+      "ownerPid": 15476,
+      "cacheName": "bundled-installed-15474",
+      "removed": true
+    }
+  ],
+  "residue": []
+}

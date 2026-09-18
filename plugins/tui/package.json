@@ -1,0 +1,29 @@
+{
+  "name": "@tockteam/tui",
+  "version": "0.1.5",
+  "description": "TockTeam defaults and profile adapter for the upstream dsh-TUI renderer",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./cordis.patch.yml": "./dist/cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/index.js",
+    "dist/cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./dist/cordis.patch.yml"
+    }
+  },
+  "tockTeam": {
+    "upstream": {
+      "name": "dsh-TUI",
+      "package": "@deepseek-harness-tui/dsh-tui",
+      "repository": "https://github.com/ccch1mneyyy/dsh-TUI"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/rules.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Loading Project Rules"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/rules.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking Project Rules"
+          }
+        ]
+      }
+    ]
+  }
+}

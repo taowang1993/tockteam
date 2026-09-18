@@ -1,0 +1,40 @@
+✖ Windows proof inventory failure cannot bypass known-worker termination or final verification (0.52675ms)
+✖ Windows proof retains uncertain scratch roots and does not report an unavailable final inventory as empty (0.067167ms)
+✔ Windows proof clean completion needs no emergency termination (0.356167ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 1
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59.803333
+
+✖ failing tests:
+
+test at tests/owned-process-windows-proof.test.ts:6:1
+✖ Windows proof inventory failure cannot bypass known-worker termination or final verification (0.52675ms)
+  AssertionError [ERR_ASSERTION]: known worker termination must not depend on inventory
+      at TestContext.<anonymous> (file:///Users/taowang/projects/tockteam/tests/owned-process-windows-proof.test.ts:16:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/owned-process-windows-proof.test.ts:24:1
+✖ Windows proof retains uncertain scratch roots and does not report an unavailable final inventory as empty (0.067167ms)
+  Error: CIM unavailable
+      at snapshot (file:///Users/taowang/projects/tockteam/tests/owned-process-windows-proof.test.ts:27:35)
+      at cleanupWindowsProof (file:///Users/taowang/projects/tockteam/scripts/owned-process-windows-proof.mjs:143:27)
+      at TestContext.<anonymous> (file:///Users/taowang/projects/tockteam/tests/owned-process-windows-proof.test.ts:25:25)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)

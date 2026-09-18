@@ -1,0 +1,153 @@
+{
+  "run": 35179238712,
+  "attempt": 1,
+  "head": "d49426e44b4ee72ec821e8a8c020958ead569673",
+  "job": 105067619148,
+  "preflight": {
+    "npm": {
+      "pids": [
+        8564,
+        4348
+      ],
+      "cleanupVerified": true,
+      "distinctConfigs": true
+    },
+    "startup": {
+      "pids": [
+        8212,
+        1080,
+        7088,
+        2784,
+        5192,
+        7868,
+        9416,
+        1360,
+        9176,
+        7072,
+        3276,
+        8032,
+        8948,
+        10204,
+        6244,
+        7088
+      ],
+      "cleanupVerified": true,
+      "cases": 16,
+      "topologyVerified": true
+    }
+  },
+  "sourcePinsMatched": true,
+  "originalHashesMatched": true,
+  "instrumentedHistoricalTestUnchanged": true,
+  "ownerHashesMatched": true,
+  "reporterHashMatched": true,
+  "reporterSha256": "5d554b794645627efd8d1292c1653ac5558c90b804cf90976813798287f5e17c",
+  "configuredPnpmPathsMatched": true,
+  "installExitCodes": [
+    0,
+    0
+  ],
+  "declarationLocationsMatchedPriorVerifiedSource": true,
+  "controlPids": [
+    2576,
+    4012,
+    6092
+  ],
+  "installerPids": [
+    5660,
+    9952
+  ],
+  "armSummary": [
+    {
+      "mode": "default",
+      "pid": 8976,
+      "code": 1,
+      "deadline": false,
+      "evidenceIncomplete": true,
+      "cleanupVerified": true,
+      "startupEvidence": {
+        "observed": [
+          "test-failure"
+        ],
+        "failures": [
+          {
+            "test": "keyword",
+            "location": {
+              "line": 4995,
+              "column": 1
+            },
+            "type": "uncaughtException",
+            "code": "ERR_TEST_FAILURE",
+            "causeCode": "SQLITE_CANTOPEN"
+          },
+          {
+            "test": "persistent",
+            "location": {
+              "line": 5109,
+              "column": 1
+            },
+            "type": "uncaughtException",
+            "code": "ERR_TEST_FAILURE",
+            "causeCode": "SQLITE_CANTOPEN"
+          }
+        ],
+        "complete": true,
+        "scannedBytes": 1178,
+        "truncated": false,
+        "failuresTruncated": false
+      }
+    },
+    {
+      "mode": "none",
+      "pid": 6556,
+      "code": 1,
+      "deadline": false,
+      "evidenceIncomplete": true,
+      "cleanupVerified": true,
+      "startupEvidence": {
+        "observed": [
+          "test-failure"
+        ],
+        "failures": [
+          {
+            "test": "keyword",
+            "location": {
+              "line": 4995,
+              "column": 1
+            },
+            "type": "uncaughtException",
+            "code": "ERR_TEST_FAILURE",
+            "causeCode": "SQLITE_CANTOPEN"
+          },
+          {
+            "test": "persistent",
+            "location": {
+              "line": 5109,
+              "column": 1
+            },
+            "type": "uncaughtException",
+            "code": "ERR_TEST_FAILURE",
+            "causeCode": "SQLITE_CANTOPEN"
+          }
+        ],
+        "complete": true,
+        "scannedBytes": 1178,
+        "truncated": false,
+        "failuresTruncated": false
+      }
+    }
+  ],
+  "all11OwnedOperationsCleaned": true,
+  "rootRemoved": true,
+  "finalInventory": [],
+  "emergencyCleanup": false,
+  "classification": "INCONCLUSIVE",
+  "receiptSha256": "18eeb77ab82a7470263d1341695d839d40a5039a24f486a9bd332d51196f4fdf",
+  "limits": [
+    "SQLITE_CANTOPEN identifies the immediate error code, not why the database could not open.",
+    "No valid historical phase journal or loaded dependency identities.",
+    "Matching categories/codes do not establish parity or original historical stall causation.",
+    "Instrumented-source coordinates identify test declarations, not exception locations.",
+    "Full local historical replay gap retained under explicit user approval."
+  ]
+}

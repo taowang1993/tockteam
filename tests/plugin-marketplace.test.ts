@@ -1,0 +1,1690 @@
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, win32 } from 'node:path'
+import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
+import { parseMarketplaceCatalog } from '../plugins/plugin-marketplace/src/catalog.ts'
+import {
+  isProtectedMarketplacePlugin,
+  parseMarketplaceCommand,
+  type MarketplaceRepositoryStats,
+} from '../plugins/plugin-marketplace/src/protocol.ts'
+import type {
+  BundleBuildInput,
+  DshCommandInput,
+  MarketplaceAuthResult,
+  MarketplacePlatform,
+} from '../plugins/plugin-marketplace/src/host/platform.ts'
+import {
+  findGitHubCli,
+  parseGitHubRepositoryStats,
+  previewSandboxPolicy,
+  previewScriptCommand,
+  ProductionMarketplacePlatform,
+  withGitHubCredentials,
+} from '../plugins/plugin-marketplace/src/host/platform.ts'
+import {
+  PluginMarketplaceManager,
+  removeWithin,
+  type MarketplacePreviewRuntimeInput,
+  type MarketplaceRuntime,
+} from '../plugins/plugin-marketplace/src/host/transaction-manager.ts'
+import { startMarketplaceAgentGateway } from '../plugins/plugin-marketplace/src/host/agent-gateway.ts'
+
+const COMMIT = '0123456789abcdef0123456789abcdef01234567'
+const UPDATED_COMMIT = 'fedcba9876543210fedcba9876543210fedcba98'
+
+test('Marketplace cleanup removes Windows junctions without deleting their targets', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-marketplace-junction-'))
+  const previews = join(root, 'plugin-marketplace', 'previews')
+  const sandbox = join(previews, 'transaction', 'dsh', 'profiles', 'desktop', 'node_modules')
+  const external = join(root, 'bundled-runtime')
+  const junction = join(sandbox, 'packaged-runtime')
+  try {
+    mkdirSync(sandbox, { recursive: true })
+    mkdirSync(external, { recursive: true })
+    writeFileSync(join(external, 'bin.js'), 'runtime')
+    symlinkSync(
+      process.platform === 'win32' ? external : join('..', '..', '..', '..', '..', '..', '..', 'bundled-runtime'),
+      junction,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    )
+    const warnings: string[] = []
+    removeWithin(root, previews, message => { warnings.push(message) }, 'win32')
+    assert.deepEqual(warnings, [])
+    assert.equal(existsSync(junction), false)
+    assert.equal(existsSync(join(external, 'bin.js')), true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('Marketplace cleanup removes dangling Windows junctions and read-only entries', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-marketplace-dangling-'))
+  const previews = join(root, 'plugin-marketplace', 'previews')
+  const danglingTarget = join(root, 'missing-runtime')
+  const dangling = join(previews, 'dangling-runtime')
+  try {
+    mkdirSync(previews, { recursive: true })
+    writeFileSync(join(previews, 'read-only.pack'), 'pack', { mode: 0o400 })
+    if (process.platform === 'win32') {
+      mkdirSync(danglingTarget, { recursive: true })
+      symlinkSync(danglingTarget, dangling, 'junction')
+      rmSync(danglingTarget, { recursive: true, force: true })
+    } else {
+      symlinkSync(danglingTarget, dangling, 'dir')
+    }
+    const warnings: string[] = []
+    removeWithin(root, previews, message => { warnings.push(message) }, 'win32')
+    assert.deepEqual(warnings, [])
+    assert.equal(existsSync(previews), false)
+  } finally {
+    try { chmodSync(previews, 0o700) } catch { /* already removed */ }
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('the marketplace protects every in-box Desktop and TockTutor package and row', () => {
+  for (const packageName of [
+    '@tockteam/skins',
+    '@tockteam/pinned-summary',
+    '@tockteam/save-as-image',
+    '@tockteam/plugin-marketplace',
+    '@tockteam/note-vault-tools',
+    '@tockteam/tocktutor',
+    '@tockteam/tocktutor-assistant',
+    '@tockteam/tocktutor-import-export',
+    '@tockteam/tocktutor-workbench',
+    'tockbot-note-desktop',
+    'tockbot-note-runtime',
+    'tockbot-note-vault',
+    'tockbot-web-clip',
+  ]) assert.equal(isProtectedMarketplacePlugin('catalog-entry', undefined, packageName), true)
+
+  for (const pluginId of [
+    'note-vault-runtime',
+    'note-vault-tools',
+    'tockbot-note-desktop',
+    'tockteam-skins',
+    'save-as-image',
+    'tocktutor',
+    'tocktutor-assistant',
+    'tocktutor-import-export',
+    'tocktutor-workbench',
+    'web-clip',
+  ]) assert.equal(isProtectedMarketplacePlugin(pluginId), true)
+})
+
+function catalogDocument(): unknown {
+  return {
+    schema: 'dsh-external-hub/v0.1',
+    generated: '2026-08-10T17:17:56.572Z',
+    repos: [
+      {
+        name: 'bundle-demo',
+        repo: 'dsh-external/bundle-demo',
+        category: 'plugin',
+        description: 'Bundle demo',
+        bundle: true,
+        repository: false,
+        tags: ['web-ui'],
+        pushedAt: '2026-08-10T12:00:00Z',
+      },
+      {
+        name: 'safe-demo',
+        repo: 'omdsh-dev/safe-demo',
+        category: 'plugin',
+        description: 'Safe bundle demo',
+        bundle: true,
+        repository: false,
+        tags: ['safe'],
+      },
+      {
+        name: 'repository-demo',
+        repo: 'vlln/repository-demo',
+        category: 'skill',
+        note: 'Repository demo',
+        bundle: false,
+        repository: true,
+      },
+      {
+        name: 'hybrid-demo',
+        category: 'plugin',
+        bundle: true,
+        repository: true,
+      },
+      { name: 'legacy-demo', category: 'plugin', bundle: false, repository: false },
+      { name: 'hidden-demo', category: 'plugin', bundle: true, hide: true },
+      { name: 'tockteam-desktop', category: 'infra', bundle: true },
+      { name: '../escape', category: 'plugin', bundle: true },
+    ],
+  }
+}
+
+class FakePlatform implements MarketplacePlatform {
+  readonly builds: Array<{
+    checkout: string
+    sandboxRoot: string
+    scripts: string[]
+  }> = []
+  readonly commands: DshCommandInput[] = []
+  catalog: unknown = catalogDocument()
+  latestCommit = COMMIT
+  bundleName = '@example/bundle-demo'
+  bundleDescription = 'Bundle demo manifest'
+  repositoryStats: MarketplaceRepositoryStats | null = {
+    forks: 5,
+    language: 'TypeScript',
+    license: 'MIT License',
+    openIssues: 7,
+    stars: 42,
+    updatedAt: '2026-08-27T12:00:00Z',
+  }
+  readonly repositoryStatsLoads: string[] = []
+
+  async authStatus(): Promise<MarketplaceAuthResult> {
+    return { detail: 'test auth', status: 'ready' }
+  }
+
+  async buildBundle(input: BundleBuildInput): Promise<void> {
+    this.builds.push({
+      checkout: input.checkout,
+      sandboxRoot: input.sandboxRoot,
+      scripts: input.scripts,
+    })
+  }
+
+  async cloneRepository(_repository: string, _commit: string, target: string): Promise<void> {
+    mkdirSync(target, { recursive: true })
+  }
+
+  async loadCatalog(): Promise<unknown> {
+    return this.catalog
+  }
+
+  async loadRepositoryStats(repository: string): Promise<MarketplaceRepositoryStats | null> {
+    this.repositoryStatsLoads.push(repository)
+    return this.repositoryStats
+  }
+
+  async readRepositoryFile(repository: string, path: string): Promise<string | null> {
+    const pluginId = repository.split('/').at(-1) ?? repository
+    if (pluginId === 'bundle-demo' && path === 'package.json') {
+      return JSON.stringify({
+        name: this.bundleName,
+        description: this.bundleDescription,
+        dsh: { bundle: { patch: './cordis.patch.yml' } },
+        scripts: { prepare: 'node build.mjs', test: 'node test.mjs' },
+      })
+    }
+    if (pluginId === 'safe-demo' && path === 'package.json') {
+      return JSON.stringify({
+        name: '@example/safe-demo',
+        dsh: { bundle: { patch: './cordis.patch.yml' } },
+      })
+    }
+    if (pluginId === 'tockteam-desktop' && path === 'package.json') {
+      return JSON.stringify({
+        name: '@tockteam/desktop',
+        dsh: { bundle: { patch: './cordis.patch.yml' } },
+      })
+    }
+    if (pluginId === 'repository-demo' && path === '.dsh-plugin/package.json') {
+      return JSON.stringify({ name: '@example/repository-demo', scripts: { prepack: 'dsh-plugin-prepare' } })
+    }
+    return null
+  }
+
+  async resolveCommit(_repository: string): Promise<string> {
+    return this.latestCommit
+  }
+
+  async runDsh(input: DshCommandInput): Promise<void> {
+    this.commands.push(input)
+    const profile = join(input.dshHome, 'profiles', 'desktop', 'package.json')
+    const manifest = JSON.parse(readFileSync(profile, 'utf8'))
+    if (input.args.includes('add')) {
+      const checkout = input.args.at(-1) as string
+      const dependency = checkout.includes('safe-demo')
+        ? '@example/safe-demo'
+        : this.bundleName
+      manifest.dependencies[dependency] = `link:${checkout}`
+      if (!manifest.dsh.profile.bundles.includes(dependency)) {
+        manifest.dsh.profile.bundles.push(dependency)
+      }
+    } else if (input.args.includes('remove')) {
+      const dependency = input.args.at(-1) as string
+      delete manifest.dependencies[dependency]
+      manifest.dsh.profile.bundles = manifest.dsh.profile.bundles
+        .filter((entry: string) => entry !== dependency)
+    }
+    writeFileSync(profile, JSON.stringify(manifest, undefined, 2) + '\n')
+  }
+}
+
+class FakeRuntime implements MarketplaceRuntime {
+  liveStarts = 0
+  liveStops = 0
+  previewStarts: MarketplacePreviewRuntimeInput[] = []
+  previewStops = 0
+
+  async startLive(): Promise<void> { this.liveStarts += 1 }
+  async stopLive(): Promise<void> { this.liveStops += 1 }
+  async startPreview(input: MarketplacePreviewRuntimeInput): Promise<void> { this.previewStarts.push(input) }
+  async stopPreview(): Promise<void> { this.previewStops += 1 }
+}
+
+function fixture(): {
+  appDataPath: string
+  cleanup(): void
+  dshHome: string
+  manager: PluginMarketplaceManager
+  platform: FakePlatform
+  profileDir: string
+  runtime: FakeRuntime
+} {
+  const appDataPath = mkdtempSync(join(tmpdir(), 'tockteam-marketplace-'))
+  const dshHome = join(appDataPath, 'dsh')
+  const profileDir = join(dshHome, 'profiles', 'desktop')
+  mkdirSync(profileDir, { recursive: true })
+  writeFileSync(join(profileDir, 'package.json'), JSON.stringify({
+    name: 'desktop',
+    private: true,
+    dependencies: {},
+    dsh: { profile: { bundles: ['@tockteam/desktop'] } },
+  }, undefined, 2) + '\n')
+  writeFileSync(join(profileDir, 'cordis.patch.yml'), '[]\n')
+  writeFileSync(join(profileDir, 'pnpm-workspace.yaml'), 'packages:\n  - .\n')
+  const platform = new FakePlatform()
+  const runtime = new FakeRuntime()
+  const manager = new PluginMarketplaceManager({
+    appDataPath,
+    dshHome,
+    platform,
+    profile: 'desktop',
+    runtime,
+  })
+  return {
+    appDataPath,
+    cleanup: () => { rmSync(appDataPath, { recursive: true, force: true }) },
+    dshHome,
+    manager,
+    platform,
+    profileDir,
+    runtime,
+  }
+}
+
+test('GitHub repository metadata accepts bounded fields and rejects malformed counts', async () => {
+  assert.deepEqual(parseGitHubRepositoryStats({
+    forks_count: 5,
+    language: 'TypeScript',
+    license: { name: 'MIT License' },
+    open_issues_count: 7,
+    stargazers_count: 42,
+    updated_at: '2026-08-27T12:00:00Z',
+  }), {
+    forks: 5,
+    language: 'TypeScript',
+    license: 'MIT License',
+    openIssues: 7,
+    stars: 42,
+    updatedAt: '2026-08-27T12:00:00Z',
+  })
+  assert.equal(parseGitHubRepositoryStats({
+    forks_count: -1,
+    open_issues_count: 0,
+    stargazers_count: 0,
+  }), null)
+
+  const logs: string[] = []
+  const platform = new ProductionMarketplacePlatform({
+    cliEntry: '/unused/dsh.mjs',
+    cwd: '/unused',
+    env: {},
+    fetch: async () => new Response('{"stargazers_count":"many"}', { status: 200 }),
+    nodeBinary: process.execPath,
+    onLog: message => { logs.push(message) },
+    pnpmEntry: '/unused/pnpm.mjs',
+  })
+  assert.equal(await platform.loadRepositoryStats('example/plugin'), null)
+  assert.match(logs.join('\n'), /metadata unavailable/u)
+})
+
+test('repository metadata command validates its selected plugin', () => {
+  assert.deepEqual(parseMarketplaceCommand({
+    type: 'load-repository-stats',
+    pluginId: 'bundle-demo',
+  }), { type: 'load-repository-stats', pluginId: 'bundle-demo' })
+  assert.throws(() => parseMarketplaceCommand({
+    type: 'load-repository-stats',
+    pluginId: '',
+  }), /invalid marketplace repository stats command/u)
+})
+
+test('catalog parser keeps safe entries and labels unsupported managers', () => {
+  const catalog = parseMarketplaceCatalog(catalogDocument())
+  assert.equal(catalog.generatedAt, '2026-08-10T17:17:56.572Z')
+  assert.deepEqual(catalog.plugins.map(plugin => [plugin.id, plugin.mechanism]), [
+    ['bundle-demo', 'bundle'],
+    ['hybrid-demo', 'bundle'],
+    ['repository-demo', 'repository'],
+    ['safe-demo', 'bundle'],
+    ['tockteam-desktop', 'bundle'],
+    ['legacy-demo', 'unsupported'],
+  ])
+  assert.equal(
+    catalog.plugins.find(plugin => plugin.id === 'repository-demo')?.description,
+    'Repository demo',
+  )
+  assert.equal(
+    catalog.plugins.find(plugin => plugin.id === 'repository-demo')?.repository,
+    'vlln/repository-demo',
+  )
+  assert.equal(catalog.plugins[0]?.url, 'https://github.com/dsh-external/bundle-demo')
+})
+
+test('community and registry catalogs preserve repositories across owners', () => {
+  const community = parseMarketplaceCatalog({
+    _meta: { schema_version: '1.0', generated_at: '2026-08-14T00:00:00Z' },
+    plugins: [
+      { id: 'alpha-plugin', name: 'Alpha', repo: 'omdsh-dev/alpha-plugin', category: 'plugin', description: { en: 'Alpha plugin' } },
+      { id: 'beta-plugin', name: 'Beta', repo: 'vlln/beta-plugin', category: 'skill', description: { en: 'Beta plugin' } },
+    ],
+  })
+  assert.deepEqual(community.plugins.map(plugin => [plugin.id, plugin.repository, plugin.mechanism]), [
+    ['alpha-plugin', 'omdsh-dev/alpha-plugin', 'discover'],
+    ['beta-plugin', 'vlln/beta-plugin', 'discover'],
+  ])
+
+  const registry = parseMarketplaceCatalog({
+    schema: 'omdsh-registry/v1',
+    entries: [{
+      id: 'registry-plugin',
+      displayName: 'Registry plugin',
+      description: 'Registry plugin',
+      kind: 'plugin',
+      source: { repository: 'whyihaveyou/registry-plugin' },
+      install: { mode: 'repository-plugin' },
+      listing: { state: 'reviewed' },
+    }],
+  })
+  assert.equal(registry.plugins[0]?.repository, 'whyihaveyou/registry-plugin')
+  assert.equal(registry.plugins[0]?.mechanism, 'repository')
+})
+
+test('GitHub credentials use an app-owned config without command-line pairs', () => {
+  const appDataPath = mkdtempSync(join(tmpdir(), 'tockteam-git-config-'))
+  try {
+    const environment = withGitHubCredentials({
+      DSH_DESKTOP_APP_DATA: appDataPath,
+      GIT_CONFIG_COUNT: '1',
+      GIT_CONFIG_KEY_0: 'unsafe.key',
+      GIT_CONFIG_VALUE_0: 'unsafe value',
+    }, '/opt/homebrew/bin/gh')
+    assert.equal(environment.GIT_CONFIG_COUNT, undefined)
+    assert.equal(environment.GIT_CONFIG_KEY_0, undefined)
+    assert.equal(environment.GIT_CONFIG_VALUE_0, undefined)
+    assert.equal(
+      environment.GIT_CONFIG_GLOBAL,
+      join(appDataPath, 'plugin-marketplace', 'gitconfig'),
+    )
+    const config = readFileSync(environment.GIT_CONFIG_GLOBAL, 'utf8')
+    assert.match(config, /credential "https:\/\/github\.com"/)
+    assert.match(config, /helper = !"\/opt\/homebrew\/bin\/gh" auth git-credential/)
+    assert.doesNotMatch(config, /token|unsafe/i)
+  } finally {
+    rmSync(appDataPath, { recursive: true, force: true })
+  }
+})
+
+test('GitHub CLI discovery follows Windows PATH syntax and executable names', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-gh-path-'))
+  try {
+    const expected = win32.join(root, 'gh.exe')
+    assert.equal(findGitHubCli({
+      Path: `${root};C:\\Program Files\\GitHub CLI`,
+    }, 'win32', candidate => candidate === expected), expected)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('repository names containing 404 do not hide unrelated command failures', async () => {
+  const platform = new ProductionMarketplacePlatform({
+    cliEntry: '/unused/dsh.mjs',
+    cwd: tmpdir(),
+    env: { DSH_DESKTOP_GH_PATH: process.execPath, PATH: '' },
+    nodeBinary: process.execPath,
+    pnpmEntry: '/unused/pnpm.mjs',
+  })
+  await assert.rejects(
+    platform.readRepositoryFile('owner/404-tools', 'package.json', COMMIT),
+    /failed/u,
+  )
+})
+
+test('public catalogs load anonymously without GitHub CLI', async () => {
+  let requested = ''
+  const platform = new ProductionMarketplacePlatform({
+    cliEntry: '/unused/dsh.mjs',
+    cwd: tmpdir(),
+    env: {
+      TOCKTEAM_MARKETPLACE_CATALOG: 'public-owner/public-catalog/data/plugins.json',
+      PATH: '',
+    },
+    fetch: async (input): Promise<Response> => {
+      requested = String(input)
+      return new Response(JSON.stringify(catalogDocument()), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      })
+    },
+    nodeBinary: process.execPath,
+    pnpmEntry: '/unused/pnpm.mjs',
+  })
+
+  assert.notEqual((await platform.authStatus()).status, 'ready')
+  assert.deepEqual(await platform.loadCatalog(), catalogDocument())
+  assert.equal(
+    requested,
+    'https://api.github.com/repos/public-owner/public-catalog/contents/data/plugins.json',
+  )
+})
+
+test('catalogs over 1 MB load through GitHub CLI after anonymous rate limiting', {
+  skip: process.platform === 'win32' ? 'requires a POSIX executable fixture' : false,
+}, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-catalog-fallback-'))
+  try {
+    const catalog = { plugins: [], padding: 'x'.repeat(2_700_000) }
+    writeFileSync(join(root, 'catalog.json'), JSON.stringify(catalog))
+    const gh = join(root, 'gh')
+    writeFileSync(gh, [
+      `#!${process.execPath}`,
+      "const { readFileSync } = require('node:fs')",
+      "const args = process.argv.slice(2)",
+      "if (args[0] !== 'api' || args[1] !== 'repos/public-owner/public-catalog/contents/data/plugins.json') process.exit(1)",
+      // GitHub omits inline content for large files unless raw media is requested.
+      "const raw = args.includes('Accept: application/vnd.github.raw+json')",
+      "process.stdout.write(raw ? readFileSync(require('node:path').join(__dirname, 'catalog.json')) : '\\n')",
+    ].join('\n'), { mode: 0o700 })
+    const platform = new ProductionMarketplacePlatform({
+      cliEntry: '/unused/dsh.mjs',
+      cwd: root,
+      env: {
+        DSH_DESKTOP_GH_PATH: gh,
+        TOCKTEAM_MARKETPLACE_CATALOG: 'public-owner/public-catalog/data/plugins.json',
+      },
+      fetch: async () => new Response('API rate limit exceeded', { status: 403 }),
+      nodeBinary: process.execPath,
+      pnpmEntry: '/unused/pnpm.mjs',
+    })
+
+    assert.deepEqual(await platform.loadCatalog(), catalog)
+    writeFileSync(join(root, 'catalog.json'), '{')
+    await assert.rejects(platform.loadCatalog(), /failed to load marketplace catalog.*HTTP 403.*SyntaxError/u)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('production bundle build runs approved hooks in its own workspace', {
+  skip: process.platform !== 'darwin' || !existsSync('/usr/bin/sandbox-exec')
+    ? 'requires macOS Seatbelt'
+    : false,
+}, async () => {
+  const sandboxRoot = mkdtempSync(join(tmpdir(), 'tockteam-bundle-build-'))
+  const candidateProfile = join(sandboxRoot, 'dsh-home', 'profiles', 'desktop')
+  const checkout = join(sandboxRoot, 'bundle-builds', 'prepare-fixture')
+  const helper = join(checkout, 'packages', 'helper')
+  mkdirSync(helper, { recursive: true })
+  mkdirSync(candidateProfile, { recursive: true })
+  writeFileSync(join(candidateProfile, 'pnpm-workspace.yaml'), 'packages:\n  - .\n')
+  writeFileSync(join(candidateProfile, 'package.json'), JSON.stringify({
+    name: 'candidate-profile',
+    private: true,
+    scripts: { prepare: 'node profile-build.mjs' },
+  }))
+  writeFileSync(join(candidateProfile, 'profile-build.mjs'), [
+    "import { writeFileSync } from 'node:fs'",
+    "writeFileSync(new URL('./profile-built', import.meta.url), 'wrong project\\n')",
+    '',
+  ].join('\n'))
+  writeFileSync(join(checkout, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
+  writeFileSync(join(checkout, 'package.json'), JSON.stringify({
+    name: '@example/prepare-fixture',
+    dependencies: { '@example/workspace-helper': 'workspace:*' },
+    scripts: {
+      prepare: 'node build.mjs',
+      prepack: 'node prepack.mjs',
+      preprepack: 'node unexpected-prepack.mjs',
+    },
+    version: '1.0.0',
+  }))
+  writeFileSync(join(checkout, 'build.mjs'), [
+    "import value from '@example/workspace-helper'",
+    "import { mkdirSync, writeFileSync } from 'node:fs'",
+    "for (const key of ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_CONFIG_DIR', 'GIT_CONFIG_GLOBAL', 'SSH_AUTH_SOCK']) if (process.env[key]) throw new Error(`ambient authority leaked: ${key}`)",
+    "if (process.env.HOME !== process.env.DSH_DESKTOP_APP_DATA || process.env.USERPROFILE !== process.env.HOME) throw new Error('preview home escaped sandbox')",
+    "mkdirSync(new URL('./lib/', import.meta.url), { recursive: true })",
+    "writeFileSync(new URL('./lib/index.js', import.meta.url), `${value}\\n`)",
+    '',
+  ].join('\n'))
+  writeFileSync(join(checkout, 'prepack.mjs'), [
+    "import { writeFileSync } from 'node:fs'",
+    "writeFileSync(new URL('./prepacked', import.meta.url), 'prepacked\\n')",
+    '',
+  ].join('\n'))
+  writeFileSync(join(checkout, 'unexpected-prepack.mjs'), [
+    "import { writeFileSync } from 'node:fs'",
+    "writeFileSync(new URL('./unexpected-prepack', import.meta.url), 'unexpected\\n')",
+    '',
+  ].join('\n'))
+  writeFileSync(join(helper, 'package.json'), JSON.stringify({
+    name: '@example/workspace-helper',
+    exports: './index.mjs',
+    scripts: { prepare: 'node unexpected-prepare.mjs' },
+    version: '1.0.0',
+  }))
+  writeFileSync(join(helper, 'index.mjs'), "export default 'workspace-built'\n")
+  writeFileSync(join(helper, 'unexpected-prepare.mjs'), [
+    "import { writeFileSync } from 'node:fs'",
+    "writeFileSync(new URL('./unexpected-prepare', import.meta.url), 'unexpected\\n')",
+    '',
+  ].join('\n'))
+
+  try {
+    const platform = new ProductionMarketplacePlatform({
+      cliEntry: '/unused/dsh.mjs',
+      cwd: checkout,
+      env: {
+        ...process.env,
+        GH_CONFIG_DIR: '/user/gh',
+        GH_TOKEN: 'secret',
+        GITHUB_TOKEN: 'secret',
+        GIT_CONFIG_GLOBAL: '/user/gitconfig',
+        SSH_AUTH_SOCK: '/user/agent.sock',
+      },
+      nodeBinary: process.execPath,
+      pnpmEntry: fileURLToPath(new URL('../node_modules/pnpm/bin/pnpm.mjs', import.meta.url)),
+    })
+    await platform.buildBundle({
+      checkout,
+      sandboxRoot,
+      scripts: ['prepare', 'prepack'],
+    })
+    assert.equal(readFileSync(join(checkout, 'lib/index.js'), 'utf8'), 'workspace-built\n')
+    assert.equal(readFileSync(join(checkout, 'prepacked'), 'utf8'), 'prepacked\n')
+    assert.equal(existsSync(join(checkout, 'unexpected-prepack')), false)
+    assert.equal(existsSync(join(helper, 'unexpected-prepare')), false)
+    assert.equal(existsSync(join(candidateProfile, 'profile-built')), false)
+  } finally {
+    rmSync(sandboxRoot, { recursive: true, force: true })
+  }
+})
+
+test('preview sandbox denies host data and optional network access', {
+  skip: process.platform !== 'darwin' || !existsSync('/usr/bin/sandbox-exec')
+    ? 'requires macOS Seatbelt'
+    : false,
+}, () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-preview-policy-'))
+  const outside = mkdtempSync('/private/tmp/tockteam-preview-secret-')
+  const secret = join(outside, 'secret.txt')
+  const script = join(root, 'probe.mjs')
+  try {
+    writeFileSync(secret, 'host secret')
+    writeFileSync(script, [
+      "import { readFileSync, writeFileSync } from 'node:fs'",
+      `try { readFileSync(${JSON.stringify(secret)}); throw new Error('host data was readable') }`,
+      "catch (error) { if (error instanceof Error && error.message === 'host data was readable') throw error }",
+      "writeFileSync(new URL('./denied', import.meta.url), 'denied')",
+    ].join('\n'))
+    const policy = previewSandboxPolicy(root, {
+      network: false,
+      readRoots: [dirname(dirname(process.execPath))],
+    })
+    assert.doesNotMatch(policy, /allow network/u)
+    const result = spawnSync('/usr/bin/sandbox-exec', [
+      '-p', policy, process.execPath, script,
+    ], { encoding: 'utf8' })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(readFileSync(join(root, 'denied'), 'utf8'), 'denied')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(outside, { recursive: true, force: true })
+  }
+})
+
+test('scripted bundle previews fail closed without a write sandbox', () => {
+  for (const platform of ['linux', 'win32'] as const) {
+    assert.throws(() => previewScriptCommand({
+      nodeArguments: ['/preview/pnpm.mjs', 'install'],
+      nodeBinary: '/preview/node',
+      pathExists: () => false,
+      platform,
+      root: '/preview',
+    }), new RegExp(`unavailable on ${platform}`))
+  }
+  assert.throws(() => previewScriptCommand({
+    nodeArguments: ['/preview/pnpm.mjs', 'install'],
+    nodeBinary: '/preview/node',
+    pathExists: () => false,
+    platform: 'darwin',
+    root: '/preview',
+  }), /unavailable on darwin/)
+})
+
+test('repository metadata loads once per repository until the catalog refreshes', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    let snapshot = await setup.manager.dispatch({
+      type: 'load-repository-stats',
+      pluginId: 'bundle-demo',
+    })
+    assert.deepEqual(snapshot.catalog.find(plugin => plugin.id === 'bundle-demo')?.stats, setup.platform.repositoryStats)
+    await setup.manager.dispatch({ type: 'load-repository-stats', pluginId: 'bundle-demo' })
+    assert.deepEqual(setup.platform.repositoryStatsLoads, ['dsh-external/bundle-demo'])
+
+    setup.platform.repositoryStats = { ...setup.platform.repositoryStats!, stars: 43 }
+    await setup.manager.dispatch({ type: 'refresh' })
+    snapshot = await setup.manager.dispatch({
+      type: 'load-repository-stats',
+      pluginId: 'bundle-demo',
+    })
+    assert.equal(snapshot.catalog.find(plugin => plugin.id === 'bundle-demo')?.stats?.stars, 43)
+    assert.deepEqual(setup.platform.repositoryStatsLoads, [
+      'dsh-external/bundle-demo',
+      'dsh-external/bundle-demo',
+    ])
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('refresh keeps public catalogs available when GitHub CLI is unavailable', async () => {
+  const setup = fixture()
+  try {
+    setup.platform.authStatus = async (): Promise<MarketplaceAuthResult> => ({
+      detail: 'GitHub CLI is unavailable',
+      status: 'missing-cli',
+    })
+    const snapshot = await setup.manager.dispatch({ type: 'refresh' })
+    assert.equal(snapshot.auth.status, 'missing-cli')
+    assert.equal(snapshot.catalog.length, 6)
+    assert.equal(snapshot.error, null)
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('a client reconnect during apply does not leave a sticky busy error', async () => {
+  const setup = fixture()
+  try {
+    let release: (() => void) | undefined
+    const gate = new Promise<void>(resolve => { release = resolve })
+    setup.platform.loadCatalog = async (): Promise<unknown> => {
+      await gate
+      return catalogDocument()
+    }
+    const refresh = setup.manager.dispatch({ type: 'refresh' })
+    await new Promise(resolve => { setImmediate(resolve) })
+    const reconnect = await setup.manager.dispatch({ type: 'refresh' })
+    assert.equal(reconnect.busy, true)
+    assert.equal(reconnect.error, null)
+    release?.()
+    const settled = await refresh
+    assert.equal(settled.busy, false)
+    assert.equal(settled.error, null)
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('marketplace rejects concurrent mutations instead of acknowledging dropped work', async () => {
+  const setup = fixture()
+  try {
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    setup.platform.loadCatalog = async (): Promise<unknown> => {
+      await gate
+      return catalogDocument()
+    }
+    const refresh = setup.manager.dispatch({ type: 'refresh' })
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+    await assert.rejects(
+      setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' }),
+      /transaction is already in progress/u,
+    )
+    release()
+    await refresh
+    assert.equal(setup.manager.getSnapshot().preview, null)
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('Agent gateway authenticates and defers runtime-restarting applies', async () => {
+  const setup = fixture()
+  const gateway = await startMarketplaceAgentGateway(setup.manager, { deferMs: 5 })
+  try {
+    const unauthorized = await fetch(gateway.url, {
+      body: JSON.stringify({ type: 'snapshot' }),
+      method: 'POST',
+    })
+    assert.equal(unauthorized.status, 401)
+
+    await setup.manager.dispatch({ type: 'refresh' })
+    const prepare = await fetch(gateway.url, {
+      body: JSON.stringify({
+        type: 'dispatch',
+        command: { type: 'prepare', action: 'install', pluginId: 'safe-demo' },
+      }),
+      headers: { authorization: `Bearer ${gateway.token}` },
+      method: 'POST',
+    })
+    assert.equal(prepare.status, 200)
+    const prepared = await prepare.json() as { snapshot: { preview: { pluginId: string; transactionId: string } | null } }
+    assert.equal(prepared.snapshot.preview?.pluginId, 'safe-demo')
+
+    const apply = await fetch(gateway.url, {
+      body: JSON.stringify({
+        type: 'dispatch',
+        command: {
+          type: 'apply',
+          expectedTransactionId: prepared.snapshot.preview?.transactionId,
+        },
+      }),
+      headers: { authorization: `Bearer ${gateway.token}` },
+      method: 'POST',
+    })
+    assert.equal(apply.status, 202)
+    const accepted = await apply.json() as { deferred: boolean; snapshot: typeof prepared.snapshot }
+    assert.equal(accepted.deferred, true)
+
+    // The preview clears and the installed list commits in separate ticks on
+    // slow runners; wait for both rather than just the preview.
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const snapshot = setup.manager.getSnapshot()
+      if (snapshot.preview === null && snapshot.installed[0]?.pluginId === 'safe-demo') break
+      await new Promise(resolve => { setTimeout(resolve, 5) })
+    }
+    assert.equal(setup.manager.getSnapshot().preview, null)
+    assert.equal(setup.manager.getSnapshot().installed[0]?.pluginId, 'safe-demo')
+    // Apply may finish before the client reads the response. The acknowledgement
+    // must retain its accepted preview even after the live preview has cleared.
+    assert.equal(accepted.snapshot.preview?.pluginId, 'safe-demo')
+  } finally {
+    await gateway.close()
+    setup.cleanup()
+  }
+})
+
+test('Agent gateway close cancels deferred apply and prevents manager dispatch', async () => {
+  const setup = fixture()
+  const errors: unknown[] = []
+  const gateway = await startMarketplaceAgentGateway(setup.manager, {
+    deferMs: 40,
+    onError: error => { errors.push(error) },
+  })
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
+    const transactionId = setup.manager.getSnapshot().preview?.transactionId
+    assert.ok(transactionId)
+    const apply = await fetch(gateway.url, {
+      body: JSON.stringify({ type: 'dispatch', command: { type: 'apply', expectedTransactionId: transactionId } }),
+      headers: { authorization: `Bearer ${gateway.token}` },
+      method: 'POST',
+    })
+    assert.equal(apply.status, 202)
+    await gateway.close()
+    await new Promise(resolve => { setTimeout(resolve, 80) })
+    assert.equal(setup.manager.getSnapshot().preview?.transactionId, transactionId)
+    assert.deepEqual(errors, [])
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('Agent gateway binds deferred apply to the acknowledged preview', async () => {
+  const setup = fixture()
+  const errors: unknown[] = []
+  const gateway = await startMarketplaceAgentGateway(setup.manager, {
+    deferMs: 50,
+    onError: error => { errors.push(error) },
+  })
+  const dispatch = async (command: object) => await fetch(gateway.url, {
+    body: JSON.stringify({ type: 'dispatch', command }),
+    headers: { authorization: `Bearer ${gateway.token}` },
+    method: 'POST',
+  })
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
+    const acknowledged = setup.manager.getSnapshot().preview?.transactionId
+    assert.ok(acknowledged)
+    assert.equal((await dispatch({
+      type: 'apply',
+      expectedTransactionId: acknowledged,
+    })).status, 202)
+    assert.equal((await dispatch({ type: 'discard' })).status, 400)
+
+    await setup.manager.dispatch({ type: 'discard' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'safe-demo' })
+    assert.notEqual(setup.manager.getSnapshot().preview?.transactionId, acknowledged)
+    await new Promise(resolve => { setTimeout(resolve, 80) })
+
+    assert.equal(setup.manager.getSnapshot().installed.length, 0)
+    assert.notEqual(setup.manager.getSnapshot().preview, null)
+    assert.match(String(errors[0]), /preview changed before deferred apply/u)
+  } finally {
+    await gateway.close()
+    setup.cleanup()
+  }
+})
+
+test('marketplace is the leading Plugins settings tab', () => {
+  const client = readFileSync(new URL(
+    '../plugins/plugin-marketplace/src/client/plugin.tsx',
+    import.meta.url,
+  ), 'utf8')
+  const tailwind = readFileSync(new URL(
+    '../plugins/skins/src/client/tailwind.css',
+    import.meta.url,
+  ), 'utf8')
+  const messages = readFileSync(new URL(
+    '../plugins/plugin-marketplace/src/client/i18n.ts',
+    import.meta.url,
+  ), 'utf8')
+  assert.match(client, /export const inject = \['locale', 'slots'\]/)
+  assert.doesNotMatch(client, /data-tockteam-marketplace-nav/)
+  assert.doesNotMatch(client, /tockteam-plugin-marketplace-root/)
+  assert.doesNotMatch(tailwind, /tockteam-marketplace-shell/)
+  assert.match(client, /locale\.register\('tockteam\.plugin-marketplace'/)
+  assert.match(client, /\['installed', t\('installed'\)\]/)
+  assert.match(client, /\['available', t\('not-installed'\)\]/)
+  assert.match(client, /\['updates', t\('updates'\)\]/)
+  assert.match(client, /\['disabled', t\('disabled'\)\]/)
+  assert.match(client, /type: 'prepare'/)
+  assert.match(client, /type: 'preview',[\s\S]*confirmations,[\s\S]*expectedPlan:/)
+  assert.match(client, /type: 'apply', expectedTransactionId: preview\.transactionId/)
+  assert.match(client, /confirmations\.includes\(requirement\)/)
+  assert.match(client, /snapshot\.auth\.status !== 'ready' && snapshot\.catalog\.length === 0/)
+  assert.match(client, /source-review\.\$\{plan\.sourceReview\}/)
+  assert.match(client, /risk-level\.\$\{plan\.riskLevel\}/)
+  assert.match(messages, /installed: '已安装'/)
+  assert.match(messages, /'not-installed': '未安装'/)
+  assert.match(messages, /'accept-high-risk': '我了解/)
+  assert.match(messages, /'recovery-note': '应用时会原子替换/)
+  assert.match(client, /grid-cols-3 gap-\[5px\]/)
+  assert.match(client, /data-\[risk=high\]:bg-/)
+  assert.match(client, /info\.preview === null/)
+  assert.match(client, /const slots = ctx\.get\('slots'\) as SlotsService/)
+  assert.match(client, /slots\.inject\('settings\.plugins\.tab'/)
+  assert.match(client, /id: 'tockteam-plugin-marketplace'/)
+  assert.match(client, /order: -10/)
+  assert.match(client, /bg-surface text-foreground[^>]+data-tockteam-plugin-marketplace-settings=""/)
+  assert.match(client, /data-tockteam-plugin-marketplace-settings=""/)
+  assert.doesNotMatch(client, /hover:-translate-y-px/)
+  assert.match(client, /data-\[installed=true\]:text-success/)
+  assert.match(client, /data-\[unsupported=true\]:text-warning/)
+  assert.doesNotMatch(client, /data-\[installed=true\]:bg-\[#/)
+  assert.match(client, /aria-expanded=\{selected\}/)
+  assert.match(client, /aria-controls=\{selected \? detailsId : undefined\}/)
+  assert.match(client, /requestAnimationFrame\(\(\) => document\.querySelector<HTMLButtonElement>/)
+  assert.match(tailwind, /:has\(> \[role='tabpanel'\] \[data-tockteam-plugin-marketplace-settings\]\)/)
+  assert.doesNotMatch(client, /ctx\.slots/)
+})
+
+test('bundle preview remains isolated until apply and supports undo', async () => {
+  const setup = fixture()
+  try {
+    let snapshot = await setup.manager.dispatch({ type: 'refresh' })
+    assert.equal(snapshot.catalog.length, 6)
+    snapshot = await setup.manager.dispatch({ type: 'inspect', action: 'install', pluginId: 'bundle-demo' })
+    assert.deepEqual(snapshot.plan?.buildScripts, { prepare: 'node build.mjs' })
+
+    snapshot = await setup.manager.dispatch({ type: 'preview', allowBuildScripts: false })
+    assert.match(snapshot.error ?? '', /allow-build-scripts/)
+    assert.equal(snapshot.preview, null)
+
+    snapshot = await setup.manager.dispatch({ type: 'preview', allowBuildScripts: true })
+    assert.equal(snapshot.error, null)
+    assert.equal(snapshot.preview?.pluginId, 'bundle-demo')
+    assert.equal(setup.platform.builds.length, 1)
+    assert.deepEqual(setup.platform.builds[0]?.scripts, ['prepare'])
+    const build = setup.platform.builds[0]
+    assert.equal(
+      build?.checkout,
+      join(
+        build?.sandboxRoot ?? '',
+        'bundle-builds',
+        `bundle-demo-${COMMIT.slice(0, 12)}`,
+      ),
+    )
+    assert.equal(setup.runtime.previewStarts.length, 1)
+    const liveBefore = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'))
+    assert.deepEqual(liveBefore.dependencies, {})
+
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+    assert.equal(snapshot.preview, null)
+    assert.equal(snapshot.undoAvailable, true)
+    assert.equal(snapshot.installed[0]?.pluginId, 'bundle-demo')
+    const liveAfter = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'))
+    assert.match(
+      liveAfter.dependencies['@example/bundle-demo'],
+      /^link:\.tockteam\/sources\/bundle-demo-/,
+    )
+    assert.doesNotMatch(
+      liveAfter.dependencies['@example/bundle-demo'],
+      /plugin-marketplace\/previews/,
+    )
+    assert.equal(setup.platform.commands.length, 2)
+    assert.deepEqual(setup.platform.commands[1]?.args.slice(-2), ['install', '--ignore-scripts'])
+    assert.equal(setup.runtime.liveStops, 1)
+    assert.equal(setup.runtime.liveStarts, 1)
+
+    snapshot = await setup.manager.dispatch({ type: 'undo' })
+    assert.equal(snapshot.undoAvailable, false)
+    assert.deepEqual(snapshot.installed, [])
+    const restored = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'))
+    assert.deepEqual(restored.dependencies, {})
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('safe actions prepare an isolated candidate in one transaction', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    const snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'safe-demo',
+    })
+    assert.equal(snapshot.error, null)
+    assert.equal(snapshot.plan?.riskLevel, 'low')
+    assert.deepEqual(snapshot.plan?.requirements, [])
+    assert.equal(snapshot.plan?.sourceReview, 'first-use')
+    assert.match(snapshot.plan?.manifestHash ?? '', /^[0-9a-f]{64}$/)
+    assert.equal(snapshot.preview?.pluginId, 'safe-demo')
+    assert.equal(snapshot.lifecycle.candidate?.pluginId, 'safe-demo')
+    assert.equal(snapshot.lifecycle.current.profile, 'desktop')
+    assert.equal(snapshot.lifecycle.previous, null)
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('risky plans require explicit acknowledgements before preview', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    let snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'bundle-demo',
+    })
+    assert.equal(snapshot.preview, null)
+    assert.equal(snapshot.plan?.riskLevel, 'elevated')
+    assert.deepEqual(snapshot.plan?.riskReasons, ['install-scripts'])
+    assert.deepEqual(snapshot.plan?.requirements, ['allow-build-scripts'])
+
+    snapshot = await setup.manager.dispatch({
+      type: 'preview',
+      confirmations: [],
+    })
+    assert.match(snapshot.error ?? '', /allow-build-scripts/)
+    assert.equal(snapshot.preview, null)
+
+    snapshot = await setup.manager.dispatch({
+      type: 'preview',
+      confirmations: ['allow-build-scripts'],
+    })
+    assert.equal(snapshot.error, null)
+    assert.equal(snapshot.preview?.pluginId, 'bundle-demo')
+
+    await setup.manager.dispatch({ type: 'discard' })
+    snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'repository-demo',
+    })
+    assert.equal(snapshot.plan?.riskLevel, 'high')
+    assert.ok(snapshot.plan?.riskReasons.includes('trusted-host-code'))
+    assert.ok(snapshot.plan?.requirements.includes('accept-high-risk'))
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('TOFU locks survive uninstall and gate source identity changes', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'safe-demo',
+    })
+    let snapshot = await setup.manager.dispatch({ type: 'apply' })
+    assert.equal(snapshot.sourceLocks.length, 1)
+    assert.equal(snapshot.sourceLocks[0]?.pluginId, 'safe-demo')
+    assert.equal(snapshot.lifecycle.previous?.pluginId, 'safe-demo')
+
+    snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'uninstall',
+      pluginId: 'safe-demo',
+    })
+    assert.equal(snapshot.preview?.action, 'uninstall')
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+    assert.deepEqual(snapshot.installed, [])
+    assert.equal(snapshot.sourceLocks.length, 1)
+
+    await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'bundle-demo',
+    })
+    await setup.manager.dispatch({
+      type: 'preview',
+      confirmations: ['allow-build-scripts'],
+    })
+    await setup.manager.dispatch({ type: 'apply' })
+    await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'uninstall',
+      pluginId: 'bundle-demo',
+    })
+    await setup.manager.dispatch({ type: 'apply' })
+
+    setup.platform.bundleName = '@example/renamed-bundle'
+    setup.platform.latestCommit = UPDATED_COMMIT
+    snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'bundle-demo',
+    })
+    assert.equal(snapshot.plan?.sourceReview, 'changed')
+    assert.equal(snapshot.plan?.riskLevel, 'high')
+    assert.ok(snapshot.plan?.requirements.includes('accept-source-change'))
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('TOFU detects changed content at an already pinned commit', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'bundle-demo',
+    })
+    await setup.manager.dispatch({
+      type: 'preview',
+      confirmations: ['allow-build-scripts'],
+    })
+    await setup.manager.dispatch({ type: 'apply' })
+    await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'uninstall',
+      pluginId: 'bundle-demo',
+    })
+    await setup.manager.dispatch({ type: 'apply' })
+
+    setup.platform.bundleDescription = 'Tampered manifest at the same commit'
+    const snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'bundle-demo',
+    })
+    assert.match(snapshot.error ?? '', /changed content at pinned commit/)
+    assert.equal(snapshot.preview, null)
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('the marketplace refuses to modify protected desktop plugins', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    const snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'tockteam-desktop',
+    })
+    assert.match(snapshot.error ?? '', /protected by the desktop/)
+    assert.equal(snapshot.preview, null)
+    assert.equal(
+      snapshot.catalog.find(plugin => plugin.id === 'tockteam-desktop')?.protected,
+      true,
+    )
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('marketplace state fails closed on malformed receipts or source locks', () => {
+  const setup = fixture()
+  try {
+    const managed = join(setup.profileDir, '.tockteam')
+    mkdirSync(managed, { recursive: true })
+    writeFileSync(join(managed, 'marketplace.json'), JSON.stringify({
+      entries: [],
+      locks: [{ pluginId: 'missing-security-fields' }],
+      version: 2,
+    }))
+    assert.throws(() => setup.manager.getSnapshot(), /invalid marketplace source lock/u)
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('the marketplace protects legacy alias receipts by installed package name', async () => {
+  const setup = fixture()
+  try {
+    const managed = join(setup.profileDir, '.tockteam')
+    mkdirSync(managed, { recursive: true })
+    writeFileSync(join(managed, 'marketplace.json'), JSON.stringify({
+      entries: [{
+        installedAt: '2026-08-24T00:00:00Z',
+        mechanism: 'bundle',
+        packageName: '@tockteam/skins',
+        pluginId: 'legacy-skin-alias',
+        resolvedCommit: COMMIT,
+        source: 'github:example/legacy-skin-alias',
+      }],
+      locks: [],
+      version: 2,
+    }, undefined, 2) + '\n')
+
+    const snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'uninstall',
+      pluginId: 'legacy-skin-alias',
+    })
+    assert.match(snapshot.error ?? '', /protected by the desktop/u)
+    assert.equal(snapshot.preview, null)
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('the marketplace protects the upstream Better Sidebar alias', async () => {
+  const setup = fixture()
+  try {
+    setup.platform.catalog = {
+      schema: 'dsh-external-hub/v0.1',
+      generated: '2026-08-14T00:00:00Z',
+      repos: [{
+        name: 'dsh-better-sidebar',
+        repo: 'dsh-external/DSH-better-sidebar',
+        category: 'plugin',
+        description: 'Upstream sidebar already bundled by the desktop',
+        bundle: true,
+      }],
+    }
+    await setup.manager.dispatch({ type: 'refresh' })
+    const snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'dsh-better-sidebar',
+    })
+    assert.match(snapshot.error ?? '', /protected by the desktop/)
+    assert.equal(snapshot.preview, null)
+    assert.equal(snapshot.catalog[0]?.protected, true)
+    assert.equal(setup.platform.commands.length, 0)
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('protected uninstall, enable, and disable cannot mutate marketplace state', async () => {
+  for (const action of ['uninstall', 'enable', 'disable'] as const) {
+    const setup = fixture()
+    try {
+      const managed = join(setup.profileDir, '.tockteam')
+      const state = {
+        entries: [{
+          installedAt: '2026-08-24T00:00:00Z',
+          mechanism: 'bundle',
+          packageName: '@tockteam/desktop',
+          pluginId: 'tockteam-desktop',
+          resolvedCommit: COMMIT,
+          source: `github:dsh-external/tockteam-desktop#${COMMIT}`,
+        }],
+        locks: [],
+        version: 2,
+      }
+      mkdirSync(managed, { recursive: true })
+      writeFileSync(join(managed, 'marketplace.json'), JSON.stringify(state, undefined, 2) + '\n')
+      const manifest = {
+        name: 'desktop',
+        private: true,
+        dependencies: { '@tockteam/desktop': 'link:.tockteam/sources/desktop' },
+        dsh: { profile: { bundles: action === 'enable' ? [] : ['@tockteam/desktop'] } },
+      }
+      writeFileSync(join(setup.profileDir, 'package.json'), JSON.stringify(manifest, undefined, 2) + '\n')
+      const before = await setup.manager.dispatch({ type: 'refresh' })
+      const stateBefore = readFileSync(join(managed, 'marketplace.json'), 'utf8')
+      const manifestBefore = readFileSync(join(setup.profileDir, 'package.json'), 'utf8')
+
+      const after = await setup.manager.dispatch({
+        type: 'prepare',
+        action,
+        pluginId: 'tockteam-desktop',
+      })
+      assert.match(after.error ?? '', /protected by the desktop/u)
+      assert.equal(after.preview, null)
+      assert.deepEqual(after.installed, before.installed)
+      assert.deepEqual(after.sourceLocks, before.sourceLocks)
+      assert.deepEqual(after.lifecycle, before.lifecycle)
+      assert.equal(readFileSync(join(managed, 'marketplace.json'), 'utf8'), stateBefore)
+      assert.equal(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'), manifestBefore)
+      assert.deepEqual(setup.platform.commands, [])
+    } finally {
+      setup.cleanup()
+    }
+  }
+})
+
+test('manifest package names remain protected even when the catalog row is not', async () => {
+  const setup = fixture()
+  try {
+    const readRepositoryFile = setup.platform.readRepositoryFile.bind(setup.platform)
+    setup.platform.readRepositoryFile = async (repository: string, path: string, _commit?: string) => {
+      if (repository === 'omdsh-dev/safe-demo' && path === 'package.json') {
+        return JSON.stringify({
+          name: '@tockteam/skins',
+          dsh: { bundle: { patch: './cordis.patch.yml' } },
+        })
+      }
+      return await readRepositoryFile(repository, path)
+    }
+    const before = await setup.manager.dispatch({ type: 'refresh' })
+    const after = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'safe-demo',
+    })
+    assert.match(after.error ?? '', /protected by the desktop/u)
+    assert.equal(after.preview, null)
+    assert.deepEqual(after.installed, before.installed)
+    assert.deepEqual(after.lifecycle, before.lifecycle)
+    assert.deepEqual(setup.platform.commands, [])
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('empty and hidden catalogs expose no filtered marketplace rows', async () => {
+  const setup = fixture()
+  try {
+    setup.platform.catalog = {
+      schema: 'dsh-external-hub/v0.1',
+      generated: '2026-08-30T00:00:00Z',
+      repos: [
+        { name: 'hidden', category: 'plugin', bundle: true, hide: true },
+        { name: 'empty', category: 'plugin', bundle: true, empty: true },
+        { name: '../invalid', category: 'plugin', bundle: true },
+      ],
+    }
+    const snapshot = await setup.manager.dispatch({ type: 'refresh' })
+    assert.deepEqual(snapshot.catalog, [])
+    assert.equal(snapshot.error, null)
+    assert.equal(snapshot.lastAction, 'Loaded 0 catalog plugins.')
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('a rejected protected mutation leaves the manager ready for a safe transaction', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    let snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'uninstall',
+      pluginId: 'tockteam-desktop',
+    })
+    assert.match(snapshot.error ?? '', /protected by the desktop/u)
+    assert.equal(snapshot.preview, null)
+
+    snapshot = await setup.manager.dispatch({
+      type: 'prepare',
+      action: 'install',
+      pluginId: 'safe-demo',
+    })
+    assert.equal(snapshot.error, null)
+    assert.equal(snapshot.preview?.pluginId, 'safe-demo')
+    assert.equal(snapshot.preview?.action, 'install')
+    await setup.manager.dispatch({ type: 'discard' })
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('installed bundles keep enabled state and update through isolated previews', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({
+      type: 'inspect',
+      action: 'install',
+      pluginId: 'bundle-demo',
+    })
+    await setup.manager.dispatch({ type: 'preview', allowBuildScripts: true })
+    let snapshot = await setup.manager.dispatch({ type: 'apply' })
+    let plugin = snapshot.catalog.find(entry => entry.id === 'bundle-demo')
+    assert.equal(plugin?.installed, true)
+    assert.equal(plugin?.enabled, true)
+    assert.equal(plugin?.currentCommit, COMMIT)
+    assert.equal(plugin?.updateAvailable, false)
+
+    await setup.manager.dispatch({
+      type: 'inspect',
+      action: 'disable',
+      pluginId: 'bundle-demo',
+    })
+    await setup.manager.dispatch({ type: 'preview', confirmations: [] })
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+    plugin = snapshot.catalog.find(entry => entry.id === 'bundle-demo')
+    assert.equal(plugin?.installed, true)
+    assert.equal(plugin?.enabled, false)
+    let manifest = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'))
+    assert.equal(typeof manifest.dependencies['@example/bundle-demo'], 'string')
+    assert.ok(!manifest.dsh.profile.bundles.includes('@example/bundle-demo'))
+
+    await setup.manager.dispatch({
+      type: 'inspect',
+      action: 'enable',
+      pluginId: 'bundle-demo',
+    })
+    await setup.manager.dispatch({ type: 'preview', allowBuildScripts: false })
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+    plugin = snapshot.catalog.find(entry => entry.id === 'bundle-demo')
+    assert.equal(plugin?.enabled, true)
+
+    setup.platform.latestCommit = UPDATED_COMMIT
+    snapshot = await setup.manager.dispatch({ type: 'refresh' })
+    plugin = snapshot.catalog.find(entry => entry.id === 'bundle-demo')
+    assert.equal(plugin?.latestCommit, UPDATED_COMMIT)
+    assert.equal(plugin?.updateAvailable, true)
+
+    await setup.manager.dispatch({
+      type: 'inspect',
+      action: 'update',
+      pluginId: 'bundle-demo',
+    })
+    await setup.manager.dispatch({ type: 'preview', allowBuildScripts: true })
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+    plugin = snapshot.catalog.find(entry => entry.id === 'bundle-demo')
+    assert.equal(plugin?.currentCommit, UPDATED_COMMIT)
+    assert.equal(plugin?.updateAvailable, false)
+    manifest = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'))
+    assert.match(
+      manifest.dependencies['@example/bundle-demo'],
+      new RegExp(`bundle-demo-${UPDATED_COMMIT.slice(0, 12)}`),
+    )
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('repository preview can be discarded without changing the live patch', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    let snapshot = await setup.manager.dispatch({
+      type: 'inspect',
+      action: 'install',
+      pluginId: 'repository-demo',
+    })
+    assert.equal(snapshot.plan?.mechanism, 'repository')
+    snapshot = await setup.manager.dispatch({
+      type: 'preview',
+      confirmations: ['allow-build-scripts', 'accept-high-risk'],
+    })
+    assert.equal(snapshot.preview?.pluginId, 'repository-demo')
+    assert.equal(readFileSync(join(setup.profileDir, 'cordis.patch.yml'), 'utf8'), '[]\n')
+    const previewHome = setup.runtime.previewStarts[0]?.dshHome
+    assert.ok(previewHome)
+    const previewPatch = readFileSync(join(previewHome, 'profiles', 'desktop', 'cordis.patch.yml'), 'utf8')
+    assert.doesNotMatch(previewPatch, /^\[\]\s*\n- id:/m)
+    assert.match(previewPatch, /- id: repository-plugins/)
+    snapshot = await setup.manager.dispatch({ type: 'discard' })
+    assert.equal(snapshot.preview, null)
+    assert.deepEqual(snapshot.installed, [])
+    assert.equal(readFileSync(join(setup.profileDir, 'cordis.patch.yml'), 'utf8'), '[]\n')
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('repository plugins can be disabled without losing their install receipt', async () => {
+  const setup = fixture()
+  try {
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({
+      type: 'inspect',
+      action: 'install',
+      pluginId: 'repository-demo',
+    })
+    await setup.manager.dispatch({
+      type: 'preview',
+      confirmations: ['allow-build-scripts', 'accept-high-risk'],
+    })
+    let snapshot = await setup.manager.dispatch({ type: 'apply' })
+    let plugin = snapshot.catalog.find(entry => entry.id === 'repository-demo')
+    assert.equal(plugin?.installed, true)
+    assert.equal(plugin?.enabled, true)
+
+    await setup.manager.dispatch({
+      type: 'inspect',
+      action: 'disable',
+      pluginId: 'repository-demo',
+    })
+    await setup.manager.dispatch({ type: 'preview', allowBuildScripts: false })
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+    plugin = snapshot.catalog.find(entry => entry.id === 'repository-demo')
+    assert.equal(plugin?.installed, true)
+    assert.equal(plugin?.enabled, false)
+    assert.doesNotMatch(
+      readFileSync(join(setup.profileDir, 'cordis.patch.yml'), 'utf8'),
+      /github:vlln\/repository-demo/,
+    )
+
+    await setup.manager.dispatch({
+      type: 'inspect',
+      action: 'enable',
+      pluginId: 'repository-demo',
+    })
+    await setup.manager.dispatch({
+      type: 'preview',
+      confirmations: ['accept-high-risk'],
+    })
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+    plugin = snapshot.catalog.find(entry => entry.id === 'repository-demo')
+    assert.equal(plugin?.enabled, true)
+    assert.match(
+      readFileSync(join(setup.profileDir, 'cordis.patch.yml'), 'utf8'),
+      /github:vlln\/repository-demo/,
+    )
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('legacy dsh-external repository receipts remain manageable', async () => {
+  const setup = fixture()
+  try {
+    const source = `github:dsh-external/legacy-plugin#${COMMIT}&path:/.dsh-plugin`
+    mkdirSync(join(setup.profileDir, '.tockteam'), { recursive: true })
+    writeFileSync(join(setup.profileDir, '.tockteam', 'marketplace.json'), JSON.stringify({
+      version: 1,
+      entries: [{
+        installedAt: '2026-08-12T00:00:00Z',
+        mechanism: 'repository',
+        packageName: '@legacy/plugin',
+        pluginId: 'legacy-plugin',
+        resolvedCommit: COMMIT,
+        source,
+      }],
+    }))
+    writeFileSync(join(setup.profileDir, 'cordis.patch.yml'), [
+      '# >>> TockTeam-Desktop plugin marketplace',
+      '- id: repository-plugins',
+      '  config:',
+      '    repositories:',
+      `      - '${source}'`,
+      '# <<< TockTeam-Desktop plugin marketplace',
+      '',
+    ].join('\n'))
+
+    let snapshot = setup.manager.getSnapshot()
+    assert.equal(snapshot.installed[0]?.pluginId, 'legacy-plugin')
+    assert.equal(snapshot.installed[0]?.source, source)
+    snapshot = await setup.manager.dispatch({ type: 'prepare', action: 'disable', pluginId: 'legacy-plugin' })
+    assert.equal(snapshot.preview?.pluginId, 'legacy-plugin')
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+    assert.doesNotMatch(readFileSync(join(setup.profileDir, 'cordis.patch.yml'), 'utf8'), /legacy-plugin/)
+    snapshot = await setup.manager.dispatch({ type: 'prepare', action: 'enable', pluginId: 'legacy-plugin' })
+    assert.equal(snapshot.preview, null)
+    assert.ok(snapshot.plan?.requirements.includes('accept-high-risk'))
+    snapshot = await setup.manager.dispatch({ type: 'preview', confirmations: ['accept-high-risk'] })
+    assert.equal(snapshot.preview?.pluginId, 'legacy-plugin')
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('legacy receipts require confirmation before changing repository identity', async () => {
+  const setup = fixture()
+  try {
+    const source = `github:dsh-external/legacy-plugin#${COMMIT}&path:/.dsh-plugin`
+    mkdirSync(join(setup.profileDir, '.tockteam'), { recursive: true })
+    writeFileSync(join(setup.profileDir, '.tockteam', 'marketplace.json'), JSON.stringify({
+      version: 1,
+      entries: [{
+        installedAt: '2026-08-12T00:00:00Z',
+        mechanism: 'repository',
+        packageName: '@legacy/plugin',
+        pluginId: 'legacy-plugin',
+        resolvedCommit: COMMIT,
+        source,
+      }],
+    }))
+    writeFileSync(join(setup.profileDir, 'cordis.patch.yml'), [
+      '# >>> TockTeam-Desktop plugin marketplace',
+      '- id: repository-plugins',
+      '  config:',
+      '    repositories:',
+      `      - '${source}'`,
+      '# <<< TockTeam-Desktop plugin marketplace',
+      '',
+    ].join('\n'))
+    setup.platform.latestCommit = UPDATED_COMMIT
+    setup.platform.readRepositoryFile = async (_repository, path): Promise<string | null> =>
+      path === '.dsh-plugin/package.json'
+        ? JSON.stringify({ name: '@legacy/plugin' })
+        : null
+    const repositoryCatalog = (repository: string): unknown => ({
+      schema: 'omdsh-registry/v1',
+      entries: [{
+        id: 'legacy-plugin',
+        displayName: 'Legacy plugin',
+        description: 'Legacy plugin',
+        kind: 'plugin',
+        source: { repository },
+        install: { mode: 'repository-plugin' },
+        listing: { state: 'reviewed' },
+      }],
+    })
+
+    setup.platform.loadCatalog = async (): Promise<unknown> => repositoryCatalog('dsh-external/legacy-plugin')
+    await setup.manager.dispatch({ type: 'refresh' })
+    let snapshot = await setup.manager.dispatch({ type: 'inspect', action: 'update', pluginId: 'legacy-plugin' })
+    assert.equal(snapshot.plan?.sourceReview, 'matched')
+    assert.ok(!snapshot.plan?.requirements.includes('accept-source-change'))
+
+    setup.platform.loadCatalog = async (): Promise<unknown> => repositoryCatalog('vlln/legacy-plugin')
+    await setup.manager.dispatch({ type: 'refresh' })
+    snapshot = await setup.manager.dispatch({ type: 'inspect', action: 'update', pluginId: 'legacy-plugin' })
+    assert.equal(snapshot.plan?.sourceReview, 'changed')
+    assert.ok(snapshot.plan?.requirements.includes('accept-source-change'))
+  } finally {
+    setup.cleanup()
+  }
+})
+
+test('discover updates remove an old bundle before switching to a repository plugin', async () => {
+  const setup = fixture()
+  try {
+    let repositoryMode = false
+    setup.platform.bundleName = '@example/changing-plugin'
+    setup.platform.loadCatalog = async (): Promise<unknown> => ({
+      _meta: { schema_version: '1.0', generated_at: '2026-08-14T00:00:00Z' },
+      plugins: [{
+        id: 'changing-plugin',
+        name: 'Changing plugin',
+        repo: 'omdsh-dev/changing-plugin',
+        category: 'plugin',
+        description: { en: 'Changing plugin' },
+      }],
+    })
+    setup.platform.readRepositoryFile = async (_repository, path): Promise<string | null> => {
+      if (!repositoryMode && path === 'package.json') {
+        return JSON.stringify({
+          name: '@example/changing-plugin',
+          dsh: { bundle: { patch: './cordis.patch.yml' } },
+        })
+      }
+      if (repositoryMode && path === '.dsh-plugin/package.json') {
+        return JSON.stringify({ name: '@example/changing-plugin' })
+      }
+      return null
+    }
+
+    await setup.manager.dispatch({ type: 'refresh' })
+    await setup.manager.dispatch({ type: 'prepare', action: 'install', pluginId: 'changing-plugin' })
+    let snapshot = await setup.manager.dispatch({ type: 'apply' })
+    assert.equal(snapshot.installed[0]?.mechanism, 'bundle')
+    let manifest = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'))
+    assert.equal(typeof manifest.dependencies['@example/changing-plugin'], 'string')
+
+    repositoryMode = true
+    setup.platform.latestCommit = UPDATED_COMMIT
+    await setup.manager.dispatch({ type: 'refresh' })
+    snapshot = await setup.manager.dispatch({ type: 'inspect', action: 'update', pluginId: 'changing-plugin' })
+    assert.equal(snapshot.plan?.mechanism, 'repository')
+    assert.ok(snapshot.plan?.requirements.includes('accept-source-change'))
+    await setup.manager.dispatch({
+      type: 'preview',
+      confirmations: ['accept-high-risk', 'accept-source-change'],
+    })
+    snapshot = await setup.manager.dispatch({ type: 'apply' })
+
+    assert.equal(snapshot.installed[0]?.mechanism, 'repository')
+    manifest = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8'))
+    assert.equal(manifest.dependencies['@example/changing-plugin'], undefined)
+    assert.ok(!manifest.dsh.profile.bundles.includes('@example/changing-plugin'))
+    assert.match(
+      readFileSync(join(setup.profileDir, 'cordis.patch.yml'), 'utf8'),
+      /github:omdsh-dev\/changing-plugin/,
+    )
+    assert.ok(setup.platform.commands.some(command =>
+      command.args.join(' ') === 'plugin --profile desktop remove @example/changing-plugin'))
+  } finally {
+    setup.cleanup()
+  }
+})

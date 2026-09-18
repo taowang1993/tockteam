@@ -1,0 +1,85 @@
+{
+  "sourceCommit": "d445cb05ab88a305fe320c12cff1f53f1563414d",
+  "applicationFixCommit": "14986cde",
+  "platform": "darwin-arm64",
+  "issue": "tockteam-9s8",
+  "rootCause": {
+    "persistentDshCookies": 61,
+    "cookieHeaderBytes": 13847,
+    "rootHttpStatus": 200,
+    "bootstrapHttpStatus": 200,
+    "applicationBatchHttpStatus": 431,
+    "explanation": "Cookies are scoped to the localhost hostname, but DSH gives each runtime port its own 30-day cookie. Accumulated cookies plus the combined plugin URL exceed the HTTP header limit."
+  },
+  "verification": {
+    "command": "/opt/homebrew/opt/node@24/bin/node scripts/runtime-browser-cookies-electron-proof.mts",
+    "result": "passed",
+    "staleCookies": 61,
+    "profilesAndCredentialsUnchanged": true,
+    "checkpoints": [
+      {
+        "checkpoint": "seed",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      },
+      {
+        "checkpoint": "verify",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      }
+    ],
+    "processes": [
+      {
+        "phase": "seed",
+        "rootPid": 54141
+      },
+      {
+        "phase": "seed",
+        "processGroupStopped": 54141
+      },
+      {
+        "phase": "verify",
+        "rootPid": 54266
+      },
+      {
+        "phase": "verify",
+        "processGroupStopped": 54266
+      }
+    ],
+    "temporaryProfileRemoved": true,
+    "unitRegression": {
+      "tests": 409,
+      "passed": 402,
+      "skipped": 7,
+      "failed": 0
+    },
+    "typecheck": "passed",
+    "build": "passed",
+    "diffCheck": "passed"
+  },
+  "scope": {
+    "liveUserDataModified": false,
+    "cleanupOccursOnNextStartup": true,
+    "currentMainAndPreviewCookiesPreserved": true,
+    "otherCookieNamespacesUntouched": true,
+    "installedGateNowRequiresBrowserClientMount": true,
+    "installedPackageGateRerun": false,
+    "publicRelease": false
+  },
+  "logs": {
+    "baselineNative": "/tmp/launcher-cookie-persisted-red.log",
+    "finalNative": "/tmp/launcher-cookie-persisted-final.log",
+    "httpReproduction": "/tmp/launcher-startup-cookie-red.log",
+    "regression": "/tmp/launcher-cookie-final-regression.log"
+  }
+}

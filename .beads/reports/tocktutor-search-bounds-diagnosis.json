@@ -1,0 +1,64 @@
+{
+  "issue": "tockteam-1s5.8.1",
+  "sourceCommit": "6cde8400407150436caaebef5ff95e731617c3a3",
+  "scope": "Headless source-component diagnosis; not packaged Desktop verification",
+  "result": "Original Desktop containment failure not reproduced; cause remains unknown",
+  "productionChanges": false,
+  "containmentRelaxed": false,
+  "desktopLaunched": false,
+  "screenshotsCreatedOrPublished": false,
+  "measurements": [
+    {
+      "cssViewport": [1512, 949], "deviceScaleFactor": 2,
+      "panelLTRB": [920, 204.5, 1220, 949],
+      "clientHeight": 743, "scrollHeight": 753, "wheelScrollTop": [0, 10, 0]
+    },
+    {
+      "cssViewport": [1512, 600], "deviceScaleFactor": 2,
+      "openingMode": "Resized after opening; not a cold-open proof",
+      "panelLTRB": [920, 74, 1220, 600],
+      "clientHeight": 524, "scrollHeight": 753, "wheelScrollTop": [0, 229, 0]
+    }
+  ],
+  "theme": {"colorScheme": "dark", "skinId": null, "paletteParityCertified": false},
+  "browserVersion": "Chromium 153.0.8010.12",
+  "experiments": "Shell class, staged DSH base/vendor CSS, motion, settling and captured synthetic fixture replay retained strict containment. They do not reproduce the full Electron composition.",
+  "separateFailures": "Cold-height and immediate-Escape attempts dismissed the parent dialog. These are not the reported bounds failure; final 600px verification uses resize-after-opening.",
+  "diagnosticChange": "A new disposable capture copy logs exact bounds before assertion and persists expanded viewport/CSS/scroll measurements outside screenshot staging. No original capture script was changed or launched.",
+  "diagnosticScript": "/tmp/tocktutor-bounds-diagnosis/capture-diagnostic.mjs",
+  "diagnosticScriptSha256": "af201c965d498feef50605428f795bd810cfa3c1686e8711314f2ba1cdf19b3e",
+  "collectorSha256": "b672823609a8f7f45d5da62eaf2c0b85d006ed8b1bbbeecedf12db21e2cc9b93",
+  "checks": {
+    "loggingRegression": "RED exit 1, GREEN exit 0; parent reran GREEN",
+    "schema": "2 valid and 6 rejection fixtures passed",
+    "safety": "6 SecurityAgent, 10 cleanup, 2 bounded-process cases passed; parent reran",
+    "transactionalPublication": "15 cases passed; parent reran",
+    "workbenchRouteControls": "39/39 passed",
+    "processCleanupAndGallery": "15/15 passed",
+    "generatedManifest": "Passed",
+    "headlessFinal949Command": "BASE_DSH=1 SHELL=desktop MOTION=no-preference REPLAY=1 RUN=final-949 node /tmp/tocktutor-bounds-diagnosis/check.mjs",
+    "headlessFinal600Command": "BASE_DSH=1 SHELL=desktop MOTION=no-preference REPLAY=1 HEIGHT=600 RUN=final-600 node /tmp/tocktutor-bounds-diagnosis/check.mjs",
+    "parentLoggingCommand": "node /tmp/tocktutor-bounds-diagnosis/capture-logging.test.mjs",
+    "parentCleanupCommand": "node /tmp/tocktutor-bounds-diagnosis/postflight.mjs",
+    "broadGates": "Not rerun: no production or generated code changed"
+  },
+  "cleanup": "All 13 headless run roots/groups/observed descendants absent, temporary profiles removed, servers stopped; independently rechecked by parent. No unrelated tree signaled.",
+  "preservedEvidence": {
+    "searchPngSha256": "844e58c8f011df3c0f28805ff088e6623ab57fb33b46ec989602ce3e4b097835",
+    "utilityProofSha256": "1e4306cd9651d81d57b8ad577a47836ef181707df3ef69c9166812facbebe5f5",
+    "status": "Unchanged historical Pre-Fix evidence; no new PNG geometry certification"
+  },
+  "review": {
+    "workflow": "cef7993f-a235-4bd9-8141-031596633fb1",
+    "run": "e4e2ec3d-9c21-4b97-b905-ccabcee05fda",
+    "verdict": "OK with notes for bounded diagnosis and logging only",
+    "referencesApplied": ["simplification", "security and hardening", "performance"],
+    "outputDirectory": "/Users/taowang/.pi/agent/sessions/--Users-taowang-projects-worktrees-tutor--/subagent-artifacts/outputs/cef7993f-a235-4bd9-8141-031596633fb1"
+  },
+  "rawArtifacts": "/tmp/tocktutor-bounds-diagnosis; disposable files may be removed by system cleanup",
+  "remaining": [
+    "Original Desktop numeric bounds and cause require further evidence; fresh launch permission required",
+    "Final packaged screenshot remains unverified",
+    "Provider verification, parent opener-focus defect and Go preflight remain separate open items"
+  ]
+}

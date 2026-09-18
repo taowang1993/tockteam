@@ -1,0 +1,2505 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-26",
+  "sources": {
+    "tockbotCommit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+    "tockbotReference": {
+      "path": "/Users/max/projects/tockbot/.agents/reference/tocktutor.md",
+      "sha256": "85dab58ff094e66517798e13b46010ce20aaefe8110e72ea63f1f265c15a8165"
+    },
+    "obsidianChecklist": {
+      "path": "/Users/max/projects/resources/.tutor/obsidian.md",
+      "sha256": "cdc5466f6cb56bab100622b7ccf8fe37c112f7031efb004a1908fb998bd49479",
+      "declaredRows": 123,
+      "observedRows": 122,
+      "observedChecked": 88,
+      "observedUnchecked": 34,
+      "observedNotNeeded": 5,
+      "discrepancy": "The canonical checklist prose declares 123 rows, but 122 checkbox rows are present at the pinned source revision. The ledger preserves every observed row and records the mismatch instead of inventing a capability."
+    }
+  },
+  "fixtures": {
+    "manifest": "plugins/tocktutor/parity/fixtures/manifest.json",
+    "root": "plugins/tocktutor/parity/fixtures"
+  },
+  "statuses": [
+    "proven",
+    "partial",
+    "gap",
+    "excluded"
+  ],
+  "rows": [
+    {
+      "id": "obsidian-001",
+      "title": "Local Vaults",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 71,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.6",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/host-read.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-002",
+      "title": "Markdown Notes",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 73,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-003",
+      "title": "Accepted File Formats",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 75,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.18",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-004",
+      "title": "File Explorer",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 77,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-005",
+      "title": "Manual Backup And Restore",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 79,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-006",
+      "title": "Obsidian Configuration Folder Compatibility",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 102,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-007",
+      "title": "Symbolic Links And Junctions",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 104,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-runtime/tests/loader-composition.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-008",
+      "title": "Mobile TockTutor App Parity",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 106,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-009",
+      "title": "Cross-Device Sync",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 108,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-010",
+      "title": "Sandbox / Demo Vault",
+      "section": "Core Notes And Vaults",
+      "sourceLine": 110,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.6",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/host-read.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-011",
+      "title": "Preview And Source Modes",
+      "section": "Editing And Markdown",
+      "sourceLine": 115,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.3",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-012",
+      "title": "Basic Markdown Syntax",
+      "section": "Editing And Markdown",
+      "sourceLine": 117,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.3",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-013",
+      "title": "Advanced Markdown Parity",
+      "section": "Editing And Markdown",
+      "sourceLine": 119,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-014",
+      "title": "Callouts",
+      "section": "Editing And Markdown",
+      "sourceLine": 165,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.3",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-015",
+      "title": "Properties / YAML Frontmatter",
+      "section": "Editing And Markdown",
+      "sourceLine": 167,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.12",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-016",
+      "title": "Tags",
+      "section": "Editing And Markdown",
+      "sourceLine": 169,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.11",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-017",
+      "title": "Attachments",
+      "section": "Editing And Markdown",
+      "sourceLine": 171,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.18",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-018",
+      "title": "File Embeds",
+      "section": "Editing And Markdown",
+      "sourceLine": 173,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.23",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-019",
+      "title": "HTML Content In Notes",
+      "section": "Editing And Markdown",
+      "sourceLine": 179,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.4",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-020",
+      "title": "Folding",
+      "section": "Editing And Markdown",
+      "sourceLine": 181,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-021",
+      "title": "Multiple Cursors",
+      "section": "Editing And Markdown",
+      "sourceLine": 183,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-022",
+      "title": "Core Editing Shortcuts",
+      "section": "Editing And Markdown",
+      "sourceLine": 185,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-023",
+      "title": "Strict Line Breaks Setting",
+      "section": "Editing And Markdown",
+      "sourceLine": 187,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.4",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-024",
+      "title": "Internal Links",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 192,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-025",
+      "title": "Aliases",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 194,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-026",
+      "title": "Backlinks And Unlinked Mentions",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 196,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-027",
+      "title": "Outgoing Links",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 198,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-028",
+      "title": "Outline",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 200,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-029",
+      "title": "Footnotes View",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 202,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-030",
+      "title": "Graph View And Local Graph",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 204,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.14",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-031",
+      "title": "Page Preview",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 206,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-032",
+      "title": "Quick Switcher / Go to File",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 208,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-033",
+      "title": "Note Navigation History",
+      "section": "Linking, Navigation, And Graphs",
+      "sourceLine": 210,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-034",
+      "title": "Vault Search",
+      "section": "Search",
+      "sourceLine": 215,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-035",
+      "title": "Search Operators",
+      "section": "Search",
+      "sourceLine": 217,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-036",
+      "title": "Embedded Search Query Blocks",
+      "section": "Search",
+      "sourceLine": 219,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-037",
+      "title": "Search Bookmarks",
+      "section": "Search",
+      "sourceLine": 221,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.13",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-038",
+      "title": "Audio Recorder",
+      "section": "Core Plugins",
+      "sourceLine": 226,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.18",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-039",
+      "title": "Backlinks",
+      "section": "Core Plugins",
+      "sourceLine": 228,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-040",
+      "title": "Bases Full Parity",
+      "section": "Core Plugins",
+      "sourceLine": 230,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-041",
+      "title": "Bookmarks",
+      "section": "Core Plugins",
+      "sourceLine": 245,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.13",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-042",
+      "title": "Canvas Editing",
+      "section": "Core Plugins",
+      "sourceLine": 247,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.19",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/canvas.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/canvas-base.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-043",
+      "title": "Command Palette",
+      "section": "Core Plugins",
+      "sourceLine": 271,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-044",
+      "title": "Daily Notes",
+      "section": "Core Plugins",
+      "sourceLine": 273,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.15",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-045",
+      "title": "File Explorer",
+      "section": "Core Plugins",
+      "sourceLine": 275,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-046",
+      "title": "File Recovery",
+      "section": "Core Plugins",
+      "sourceLine": 277,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.7",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/host-recovery-transport.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-047",
+      "title": "Footnotes View",
+      "section": "Core Plugins",
+      "sourceLine": 279,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-048",
+      "title": "Format Converter",
+      "section": "Core Plugins",
+      "sourceLine": 281,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.17",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-049",
+      "title": "Graph View",
+      "section": "Core Plugins",
+      "sourceLine": 283,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.14",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-050",
+      "title": "Note Composer Full Parity",
+      "section": "Core Plugins",
+      "sourceLine": 291,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.17",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-051",
+      "title": "Outgoing Links",
+      "section": "Core Plugins",
+      "sourceLine": 293,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-052",
+      "title": "Outline",
+      "section": "Core Plugins",
+      "sourceLine": 295,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-053",
+      "title": "Page Preview",
+      "section": "Core Plugins",
+      "sourceLine": 296,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.10",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-054",
+      "title": "Properties View",
+      "section": "Core Plugins",
+      "sourceLine": 298,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.12",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-055",
+      "title": "Publish",
+      "section": "Core Plugins",
+      "sourceLine": 300,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-056",
+      "title": "Quick Switcher",
+      "section": "Core Plugins",
+      "sourceLine": 302,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-057",
+      "title": "Random Note",
+      "section": "Core Plugins",
+      "sourceLine": 304,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.11",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-058",
+      "title": "Search",
+      "section": "Core Plugins",
+      "sourceLine": 305,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.9",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-059",
+      "title": "Slash Commands",
+      "section": "Core Plugins",
+      "sourceLine": 306,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.5",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-060",
+      "title": "Slides",
+      "section": "Core Plugins",
+      "sourceLine": 307,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.4",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/markdown.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-061",
+      "title": "Sync",
+      "section": "Core Plugins",
+      "sourceLine": 308,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-062",
+      "title": "Tags View",
+      "section": "Core Plugins",
+      "sourceLine": 309,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.11",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-063",
+      "title": "Templates",
+      "section": "Core Plugins",
+      "sourceLine": 310,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.15",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-064",
+      "title": "Unique Note Creator",
+      "section": "Core Plugins",
+      "sourceLine": 312,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.15",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-065",
+      "title": "Web Viewer",
+      "section": "Core Plugins",
+      "sourceLine": 314,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-web-clip + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.24",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx",
+        "plugins/tocktutor/packages/tockbot-web-clip/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/runtime-adapter.test.ts",
+        ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer.png",
+        ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
+        ".beads/reports/tocktutor-utility-proof.json"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-066",
+      "title": "Word Count",
+      "section": "Core Plugins",
+      "sourceLine": 316,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor",
+      "issueId": "tockteam-3t5.27",
+      "evidence": [
+        ".agents/references/tocktutor.md"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-067",
+      "title": "Workspaces",
+      "section": "Core Plugins",
+      "sourceLine": 317,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.8",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-068",
+      "title": "Open `.base` Files",
+      "section": "Bases",
+      "sourceLine": 324,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.22",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-069",
+      "title": "Create, Insert, And Embed Bases",
+      "section": "Bases",
+      "sourceLine": 326,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.23",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/markdown.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-070",
+      "title": "Lightweight Base Views",
+      "section": "Bases",
+      "sourceLine": 328,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.22",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-071",
+      "title": "Bases Toolbar, Results, And Table Interaction Full Parity",
+      "section": "Bases",
+      "sourceLine": 330,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-072",
+      "title": "Bases Syntax Full Parity",
+      "section": "Bases",
+      "sourceLine": 345,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-073",
+      "title": "Bases Formula And Function Full Parity",
+      "section": "Bases",
+      "sourceLine": 379,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.21",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/base.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/canvas-base.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-074",
+      "title": "Import Markdown",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 748,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-075",
+      "title": "Import HTML",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 750,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-076",
+      "title": "Import CSV Files",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 752,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-077",
+      "title": "Import Textbundle Files",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 754,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-078",
+      "title": "Import Zettelkasten Notes",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 756,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-079",
+      "title": "Import From Apple Journal",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 758,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-080",
+      "title": "Import From Apple Notes",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 760,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-081",
+      "title": "Import From Bear",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 762,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-082",
+      "title": "Import From Craft",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 764,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-083",
+      "title": "Import From Evernote",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 766,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-084",
+      "title": "Import From Google Keep",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 768,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-085",
+      "title": "Import From Microsoft OneNote",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 770,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-086",
+      "title": "Import From Notion",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 772,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": "tockteam-3t5.25",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-087",
+      "title": "Import From Roam Research",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 774,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-import-export",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-088",
+      "title": "Obsidian Importer Plugin Workflow",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 776,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-089",
+      "title": "Clip Web Pages",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 778,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-web-clip",
+      "issueId": null,
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/review.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-090",
+      "title": "Browser Web Clipper Extension",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 780,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-091",
+      "title": "Web Clipper Filters, Logic, Interpreter, Reader, Templates, And Variables",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 782,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-092",
+      "title": "Web Clipper Highlighter Extension",
+      "section": "Import, Export, Capture, And Clipping",
+      "sourceLine": 784,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-093",
+      "title": "Sidebar",
+      "section": "User Interface And Settings",
+      "sourceLine": 789,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-094",
+      "title": "Status Bar",
+      "section": "User Interface And Settings",
+      "sourceLine": 795,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.2",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/session.test.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-095",
+      "title": "Ribbon Full Parity",
+      "section": "User Interface And Settings",
+      "sourceLine": 797,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-096",
+      "title": "Drag And Drop",
+      "section": "User Interface And Settings",
+      "sourceLine": 800,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "tockbot-note-runtime + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.18",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-097",
+      "title": "Tabs Full Parity",
+      "section": "User Interface And Settings",
+      "sourceLine": 802,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-098",
+      "title": "Pop-Out Windows",
+      "section": "User Interface And Settings",
+      "sourceLine": 807,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-099",
+      "title": "Appearance Themes",
+      "section": "User Interface And Settings",
+      "sourceLine": 810,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-100",
+      "title": "CSS Snippets",
+      "section": "User Interface And Settings",
+      "sourceLine": 812,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.8",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-101",
+      "title": "Custom Hotkeys Settings",
+      "section": "User Interface And Settings",
+      "sourceLine": 814,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.8",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-102",
+      "title": "Language Settings",
+      "section": "User Interface And Settings",
+      "sourceLine": 816,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor-workbench",
+      "issueId": "tockteam-3t5.8",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/session.ts"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-103",
+      "title": "Obsidian-Style Settings Surface",
+      "section": "User Interface And Settings",
+      "sourceLine": 818,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-104",
+      "title": "Workspace Layouts",
+      "section": "User Interface And Settings",
+      "sourceLine": 821,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-105",
+      "title": "Community Plugins",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 827,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-106",
+      "title": "Developer Plugin API",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 829,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-107",
+      "title": "Obsidian URI",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 831,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-108",
+      "title": "Obsidian CLI",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 836,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-109",
+      "title": "Obsidian Headless",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 838,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-110",
+      "title": "Early Access / Insider Builds",
+      "section": "Extensibility And Platform Integration",
+      "sourceLine": 840,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor",
+      "issueId": "tockteam-3t5.27",
+      "evidence": [
+        ".agents/references/tocktutor.md"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-111",
+      "title": "Obsidian Sync Service",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 845,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-112",
+      "title": "Shared Vault Collaboration",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 847,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-113",
+      "title": "Headless Sync",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 849,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-114",
+      "title": "Obsidian Publish Service",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 851,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-115",
+      "title": "Publish Customization, Domains, SEO, Analytics, And Permalinks",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 853,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-116",
+      "title": "Publish Collaboration / Headless Publish / Media Files",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 855,
+      "sourceChecked": false,
+      "scope": "excluded",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Outside the local-first Desktop MVP boundary; reversal requires a new dated scope contract."
+    },
+    {
+      "id": "obsidian-117",
+      "title": "Team Deployment And Commercial Licensing",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 857,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-118",
+      "title": "Team Publishing / Syncing / Security",
+      "section": "Add-On Services And Team Features",
+      "sourceLine": 859,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-119",
+      "title": "Obsidian Account And 2FA",
+      "section": "Account, Payment, And Support Docs",
+      "sourceLine": 866,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-120",
+      "title": "Licenses And Payments",
+      "section": "Account, Payment, And Support Docs",
+      "sourceLine": 868,
+      "sourceChecked": false,
+      "scope": "not-needed",
+      "status": "excluded",
+      "owner": "none",
+      "issueId": null,
+      "evidence": [
+        "/Users/max/projects/tockbot/.agents/reference/tocktutor.md#known-divergences-and-non-goals"
+      ],
+      "disposition": "Permanently descoped by the 2026-08-18 product decision."
+    },
+    {
+      "id": "obsidian-121",
+      "title": "Help And Support Surface",
+      "section": "Account, Payment, And Support Docs",
+      "sourceLine": 870,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor",
+      "issueId": "tockteam-3t5.27",
+      "evidence": [
+        ".agents/references/tocktutor.md"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    },
+    {
+      "id": "obsidian-122",
+      "title": "About / Website / Credits / Code of Conduct",
+      "section": "Account, Payment, And Support Docs",
+      "sourceLine": 872,
+      "sourceChecked": true,
+      "scope": "included",
+      "status": "proven",
+      "owner": "@tockteam/tocktutor",
+      "issueId": "tockteam-3t5.27",
+      "evidence": [
+        ".agents/references/tocktutor.md"
+      ],
+      "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
+    }
+  ],
+  "additionalCapabilities": [
+    {
+      "id": "capture-organization",
+      "title": "Highlights and reviewed Inbox organization",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-3t5.16",
+      "owner": "@tockteam/tocktutor-workbench",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/review-panel.ts"
+      ],
+      "children": [
+        "agent-staged-write-tools"
+      ],
+      "disposition": "The bounded aggregate and every listed residual child are implemented and verified through focused, packaged, and real-consumer evidence."
+    },
+    {
+      "id": "assistant",
+      "title": "Inline assistant selected-text context, bounded reads, reviewed writes, and continuation",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-3t5.28",
+      "owner": "@tockteam/tocktutor-assistant + @tockteam/tocktutor-workbench",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/loader-composition.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/assistant-panel.test.tsx"
+      ],
+      "children": [
+        "agent-note-read-tools",
+        "agent-staged-write-tools"
+      ],
+      "disposition": "The bounded aggregate and every listed residual child are implemented and verified through focused, packaged, and real-consumer evidence."
+    },
+    {
+      "id": "native-dispatch",
+      "title": "Trusted Desktop menu, protocol, pop-out, reveal, microphone, print, and export integration",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-3t5.26",
+      "owner": "tockbot-note-desktop + TockTeam Desktop",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-note-desktop/tests/host-actions.test.ts",
+        "tests/desktop-print-export-owner.test.ts"
+      ],
+      "children": [
+        "protocol-vault-routing",
+        "protocol-pane-clipboard-callbacks"
+      ],
+      "disposition": "The bounded aggregate and every listed residual child are implemented and verified through focused, packaged, and real-consumer evidence."
+    },
+    {
+      "id": "canvas-edges",
+      "title": "JSON Canvas edge creation, selection, editing, reconnection, and rollback",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-3t5.20",
+      "owner": "@tockteam/tocktutor-workbench",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/canvas.ts"
+      ],
+      "disposition": "The existing bounded capability is complete within the scoped TockTeam contract; no residual child is claimed by this aggregate."
+    },
+    {
+      "id": "web-viewer-integration",
+      "title": "Web Viewer tab reordering, shared bookmarks, Reader settings, and settings-backed clipping",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-3t5.24",
+      "owner": "tockbot-web-clip + @tockteam/tocktutor-workbench",
+      "evidence": [
+        "plugins/tocktutor/packages/tockbot-web-clip/src/client.tsx",
+        "plugins/tocktutor/packages/tockbot-web-clip/src/index.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/fetch.test.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/runtime-adapter.test.ts",
+        ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer.png",
+        ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
+        ".beads/reports/tocktutor-utility-proof.json"
+      ],
+      "children": [
+        "render-safe-raw-html",
+        "render-external-embeds"
+      ],
+      "disposition": "The bounded aggregate and every listed residual child are implemented and verified through focused, packaged, and real-consumer evidence."
+    },
+    {
+      "id": "compatibility-state",
+      "title": "Copied Tockbot vault and local-state compatibility",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-3t5.25",
+      "owner": "@tockteam/tocktutor-import-export",
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/engine.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-import-export/tests/formats.test.ts"
+      ],
+      "disposition": "The existing bounded capability is complete within the scoped TockTeam contract; no residual child is claimed by this aggregate."
+    }
+  ],
+  "claims": {
+    "scope": "bounded Tockbot residual compatibility",
+    "exhaustive": false,
+    "text": "This ledger reports the scoped TockTeam parity contract and residual Tockbot behaviors; it does not claim exhaustive Tockbot or Obsidian parity."
+  },
+  "visualEvidence": {
+    "capturedAt": "2026-09-08",
+    "gallery": ".agents/uiux/tocktutor/tocktutor.html",
+    "captureCount": 50,
+    "referenceVersion": "Obsidian 1.13.7",
+    "viewport": {
+      "css": { "width": 1512, "height": 949, "deviceScaleFactor": 2 },
+      "pixels": { "width": 3024, "height": 1898 }
+    },
+    "genuineComparisons": [
+      { "surface": "Note Actions", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-note-actions.png" },
+      { "surface": "New Note", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-new-note.png" },
+      { "surface": "Attachments and Embeds (Reading state)", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-reading-view.png" },
+      { "surface": "Web Viewer", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-web-viewer.png" }
+    ],
+    "closestComparisons": [
+      { "surface": "Note Tools", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-note-tools.png", "reason": "Obsidian command palette actions are not a unified Note Tools panel." },
+      { "surface": "Workspaces and Panes", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-workspaces-panes.png", "reason": "Obsidian Outline and pane context are not one-to-one workspace groups.", "comparability": "approximate" },
+      { "surface": "Attachments Utility Panel", "reference": ".agents/uiux/tocktutor/screenshots/obsidian-attachments-embeds.png", "reason": "Obsidian has no captured utility panel; the retained folder capture is an explicit closest/additional reference only.", "comparability": "approximate" }
+    ],
+    "notApplicable": ["Assistant", "Reviews"],
+    "noFocusGate": {
+      "backgroundLaunch": "open -g",
+      "cdpActionsOnlyForRecapturedSurfaces": true,
+      "nativeRecaptureBlockers": ["Note Actions: the renderer DOM click did not expose the overflow menu; no OS-level click was used under the gate."]
+    }
+  },
+  "residualCapabilities": [
+    {
+      "id": "editor-source-codemirror",
+      "title": "CodeMirror Source editor substrate",
+      "area": "editor",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.2",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesSourceEditor.tsx"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesSourceEditor.test.tsx"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/source-editor-runtime.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-adapters.test.tsx"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron /tocktutor Source mode: open, edit, select, save, switch tabs, and restart without source normalization.",
+      "disposition": "Proven: the packaged Source surface uses the source-preserving CodeMirror adapter and survives save, tab, and restart flows."
+    },
+    {
+      "id": "editor-source-fidelity",
+      "title": "Source selection and editing extensions",
+      "area": "editor",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.3",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesSourceEditingShortcuts.ts",
+          "apps/web/src/components/notes/NotesSourceLineEditing.ts",
+          "apps/web/src/components/notes/NotesSourceTasks.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditingShortcuts.test.ts",
+          "apps/web/src/components/notes/NotesSourceLineEditing.test.ts",
+          "apps/web/src/components/notes/NotesSourceTasks.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/editor-commands.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/source-task-widgets.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-commands.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Source mode: exercise multiple cursors, rectangular selection, line edits, no-format paste, folds, task/comment decorations, and source recovery.",
+      "disposition": "Proven: bounded source commands, selections, task/comment decorations, folds, and exact-source recovery are covered by focused and packaged checks."
+    },
+    {
+      "id": "editor-live-preview-milkdown",
+      "title": "Milkdown Live Preview editor substrate",
+      "area": "editor",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.4",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesEditor.tsx"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditor.test.tsx"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor-runtime.tsx",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-adapters.test.tsx"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron /tocktutor Live Preview: edit, undo/redo, switch tabs, restore workspace state, and dispose the editor during route changes.",
+      "disposition": "Proven: the packaged Live Preview surface uses one lifecycle-owned Milkdown editor while protected Markdown remains exact."
+    },
+    {
+      "id": "editor-live-preview-blocks",
+      "title": "Live Preview block interaction parity",
+      "area": "editor",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.5",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesEditorTasks.ts",
+          "apps/web/src/components/notes/NotesEditorCallouts.ts",
+          "apps/web/src/components/notes/NotesEditorFolding.ts",
+          "apps/web/src/components/notes/NotesEditorComments.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditorTasks.test.ts",
+          "apps/web/src/components/notes/NotesEditorCallouts.test.ts",
+          "apps/web/src/components/notes/NotesEditorFolding.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-chrome.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-adapters.test.tsx"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Live Preview: toggle tasks, callout types/folds, comments, heading/list folds, properties, hard breaks, and line commands with keyboard and pointer.",
+      "disposition": "Proven: task, callout, comment, property, fold, hard-break, and line interactions preserve authored source."
+    },
+    {
+      "id": "editor-live-preview-tables-commands",
+      "title": "Live Preview tables and command routing",
+      "area": "editor",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.14",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesEditorTables.ts",
+          "apps/web/src/components/notes/NotesCommandPalette.tsx"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditorTables.test.ts",
+          "apps/web/src/components/notes/NotesCommandPalette.test.tsx"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/editor-commands.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-commands.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-adapters.test.tsx"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Live Preview: navigate and mutate GFM tables, use formatting/slash commands, preview links, drag/drop content, and preserve undo history.",
+      "disposition": "Proven: table, formatting, slash, link, template, paste, and drop commands route through the existing editor owner."
+    },
+    {
+      "id": "embed-recursive-resolution",
+      "title": "Bounded recursive note, media, Canvas, and Base resolution",
+      "area": "embeds",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.6",
+      "owner": "@tockteam/tocktutor-workbench + tockbot-note-runtime",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/UseNotesEmbedExportContext.ts",
+          "apps/web/src/components/notes/NotesNoteEmbeds.ts",
+          "apps/web/src/components/notes/NotesMediaEmbeds.ts",
+          "apps/web/src/components/notes/NotesCanvasEmbeds.ts",
+          "apps/web/src/components/notes/NotesBaseEmbeds.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesEditorNoteEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesMediaEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesCanvasEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesBaseEmbeds.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/embeds.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/embeds.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron fixture vault: resolve exact-path and unambiguous basename targets recursively to depth three while rejecting cycles, traversal, ambiguity, and stale generations.",
+      "disposition": "Proven: one cancellable resolver handles note, media, Canvas, and Base targets to depth three with cycle, ambiguity, budget, and stale-result guards."
+    },
+    {
+      "id": "embed-reading-slides-export",
+      "title": "Local embed presentation in Reading, Slides, and export",
+      "area": "embeds",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.7",
+      "owner": "@tockteam/tocktutor-workbench + TockTeam Desktop",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesReadingView.tsx",
+          "apps/web/src/components/notes/NotesSlides.tsx",
+          "apps/web/src/components/notes/NotesExportHtml.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesReadingView.test.tsx",
+          "apps/web/src/components/notes/NotesSlides.test.tsx",
+          "apps/web/src/components/notes/NotesExportHtml.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/rich-markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/rich-markdown.test.ts",
+        "tests/desktop-print-export-owner.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Reading and Slides: render nested note/Canvas/Base and local image/audio/video/PDF fixtures, then inspect inert HTML/PDF output and cleanup.",
+      "disposition": "Proven: Reading, Slides, and inert export consume bounded resolved embeds; static audio, video, and PDF remain labeled metadata."
+    },
+    {
+      "id": "embed-editor-widgets",
+      "title": "Selection-aware Source and Live Preview embed widgets",
+      "area": "embeds",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.15",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesSourceMediaEmbeds.ts",
+          "apps/web/src/components/notes/NotesSourceCanvasEmbeds.ts",
+          "apps/web/src/components/notes/NotesSourceBaseEmbeds.ts",
+          "apps/web/src/components/notes/NotesEditorNoteEmbeds.ts",
+          "apps/web/src/components/notes/NotesEditorBaseEmbeds.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesSourceMediaEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesSourceCanvasEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesSourceBaseEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesEditorNoteEmbeds.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/source-embed-widgets.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-embed-widgets.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/editor-adapters.test.tsx"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Source and Live Preview: activate nested media, note, Canvas, Base, Mermaid, and math widgets, then select/click to restore exact authored source.",
+      "disposition": "Proven: Source and Live Preview widgets are target-stable and reveal exact authored source by pointer or keyboard without recreating the editor."
+    },
+    {
+      "id": "render-safe-raw-html",
+      "title": "Bounded sanitized raw HTML subset",
+      "area": "rendering",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.8",
+      "owner": "@tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesExportHtml.ts"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesExportHtml.test.ts",
+          "apps/web/src/components/notes/NotesHtmlAfterFencedCode.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/rich-markdown.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/rich-markdown.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-workbench test",
+      "realConsumerCheck": "Packaged Electron Reading and export: render allowed static text/table tags and prove scripts, handlers, unsafe URLs, frames, styles, forms, and malformed markup stay inert.",
+      "disposition": "Proven: allowed static text and table HTML renders while scripts, handlers, unsafe URLs, active resources, malformed markup, and exhausted budgets stay inert."
+    },
+    {
+      "id": "render-external-embeds",
+      "title": "Credential-free external image and web embeds",
+      "area": "rendering",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.16",
+      "owner": "@tockteam/tocktutor-workbench + tockbot-web-clip + TockTeam Desktop",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/src/components/notes/NotesExternalEmbeds.ts",
+          "apps/web/src/components/notes/NotesWebViewerDialog.tsx"
+        ],
+        "tests": [
+          "apps/web/src/components/notes/NotesExternalEmbeds.test.ts",
+          "apps/web/src/components/notes/NotesWebViewerDialog.test.tsx"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/external-embeds.ts",
+        "plugins/tocktutor/packages/tockbot-web-clip/tests/viewer.test.ts",
+        "tests/web-clip-frame.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter tockbot-web-clip test",
+      "realConsumerCheck": "Packaged Electron live embed flow: load only validated credential-free external image/YouTube/Twitter/X/HTTP(S) content in the isolated viewer and inspect blocked private/credential URLs.",
+      "disposition": "Proven: validated live external content routes through the isolated no-referrer viewer; static output retains the documented no-network divergence."
+    },
+    {
+      "id": "protocol-vault-routing",
+      "title": "Trusted named-vault and cross-vault protocol routing",
+      "area": "protocol",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.9",
+      "owner": "TockTeam Desktop + tockbot-note-desktop + tockbot-note-runtime",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/electron/notes-uri.ts",
+          "apps/web/electron/notes-vault-activation.ts"
+        ],
+        "tests": [
+          "apps/web/electron/__tests__/notes-uri.test.ts",
+          "apps/web/electron/__tests__/notes-vault.test.ts"
+        ]
+      },
+      "evidence": [
+        "src/desktop-native-policy.ts",
+        "src/main.ts",
+        "tests/desktop-dispatch-owner.test.ts"
+      ],
+      "focusedCommand": "node --test tests/desktop-dispatch-owner.test.ts tests/desktop-dispatch-channel.test.ts",
+      "realConsumerCheck": "Packaged Electron: issue overlapping choose-vault, named/recent-vault, shorthand, and absolute-path requests against copied vaults and verify canonical identity, dirty-save gating, and latest-request-wins.",
+      "disposition": "Proven: trusted Desktop resolves current, named, recent, and absolute selectors to opaque vault identity before browser delivery."
+    },
+    {
+      "id": "protocol-pane-clipboard-callbacks",
+      "title": "Protocol pane, clipboard, mutation, and callback behavior",
+      "area": "protocol",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.10",
+      "owner": "TockTeam Desktop + tockbot-note-desktop + @tockteam/tocktutor-workbench",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "apps/web/electron/notes-uri.ts",
+          "apps/web/electron/notes-popout-windows.ts",
+          "apps/web/src/components/notes/NotesPane.tsx"
+        ],
+        "tests": [
+          "apps/web/electron/__tests__/notes-uri.test.ts",
+          "apps/web/electron/__tests__/notes-popout.test.ts",
+          "apps/web/src/components/notes/NotesPane.pop-out.test.tsx"
+        ]
+      },
+      "evidence": [
+        "src/desktop-dispatch-owner.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx",
+        "tests/desktop-dispatch-owner.test.ts",
+        "plugins/tocktutor/packages/tockbot-note-desktop/tests/client-actions.test.ts"
+      ],
+      "focusedCommand": "node --test tests/desktop-dispatch-owner.test.ts tests/desktop-caller-bridge.test.ts",
+      "realConsumerCheck": "Packaged Electron: exercise tab/split/window panes, clipboard content, append/prepend/overwrite, heading/block jumps, and x-success/x-error callbacks with exact completion.",
+      "disposition": "Proven: tab, split, window, mutation, clipboard, jump, and exact callback delivery use the existing dispatch, dirty-save, and pop-out owners."
+    },
+    {
+      "id": "agent-note-read-tools",
+      "title": "TockDriver-compatible note search and read tools",
+      "area": "agent",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.11",
+      "owner": "@tockteam/note-vault-tools + @tockteam/tocktutor-assistant",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "packages/agent-service/src/notes.ts"
+        ],
+        "tests": [
+          "packages/agent-service/__tests__/notes.test.ts",
+          "apps/web/src/components/notes/NotesAgentWritePolling.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-note-vault-tools/src/index.ts",
+        "plugins/tocktutor/packages/tockteam-note-vault-tools/tests/note-vault-tools.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/note-vault-tools test",
+      "realConsumerCheck": "Disposable DSH headless model task: invoke notes_search and notes_read against a non-guessable fixture, return exact bounded canonical JSON, then verify cancellation and vault replacement fail closed.",
+      "disposition": "Proven: notes_search and notes_read are strict generation-bound aliases over the active runtime and returned a non-guessable fixture through a real DSH model consumer."
+    },
+    {
+      "id": "agent-staged-write-tools",
+      "title": "TockDriver-compatible staged write and organize-capture tools",
+      "area": "agent",
+      "scope": "included",
+      "status": "proven",
+      "issueId": "tockteam-tc9.12",
+      "owner": "@tockteam/tocktutor-assistant + tockbot-note-runtime",
+      "oracle": {
+        "commit": "af214b2d1a5df8ca23bf99fad9f0408a07c2e4ba",
+        "source": [
+          "packages/agent-service/src/notes.ts"
+        ],
+        "tests": [
+          "packages/agent-service/__tests__/notes-write.test.ts",
+          "packages/agent-service/__tests__/notes.test.ts"
+        ]
+      },
+      "evidence": [
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/write-tool-registration.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/write-tool-registration.test.ts",
+        "plugins/tocktutor/packages/tockteam-tocktutor-assistant/tests/settings-context.test.ts"
+      ],
+      "focusedCommand": "pnpm -C plugins/tocktutor --filter @tockteam/tocktutor-assistant test",
+      "realConsumerCheck": "Disposable packaged Desktop model flow: stage create/update and organize-capture proposals, review/approve or reject them, and verify no mutation before approval plus restart recovery.",
+      "disposition": "Proven: notes_stage_write and notes_organize_capture persist redacted proposals through the shared queue and cannot mutate before explicit approval."
+    }
+  ],
+  "retainedDivergences": [
+    {
+      "id": "static-export-network-content",
+      "title": "Static HTML/PDF export of network-backed content",
+      "kind": "security",
+      "scope": "excluded",
+      "status": "excluded",
+      "issueId": null,
+      "owner": "none",
+      "oracleSources": [
+        "apps/web/src/components/notes/NotesExternalEmbeds.ts",
+        "apps/web/src/components/notes/NotesExportHtml.ts"
+      ],
+      "oracleTests": [
+        "apps/web/src/components/notes/NotesExportHtml.test.ts"
+      ],
+      "evidence": [
+        "src/desktop-print-export-owner.ts",
+        "tests/desktop-print-export-owner.test.ts"
+      ],
+      "focusedCommand": "node --test tests/desktop-print-export-owner.test.ts",
+      "realConsumerCheck": "Packaged Electron HTML/PDF export with external image, YouTube, Twitter/X, and HTTP(S) fixtures; inspect that saved output contains no active remote resource.",
+      "securityRationale": "Saved HTML/PDF is an inert artifact and must not disclose export activity or create a network authority. Live external content belongs behind the isolated Web Viewer boundary.",
+      "disposition": "Retained security divergence from Tockbot export behavior; live Reading/Slides support does not authorize static output to fetch remote content."
+    },
+    {
+      "id": "static-export-active-media",
+      "title": "Static HTML/PDF export of audio, video, and PDF resources",
+      "kind": "security",
+      "scope": "excluded",
+      "status": "excluded",
+      "issueId": null,
+      "owner": "none",
+      "oracleSources": [
+        "apps/web/src/components/notes/NotesMediaEmbeds.ts",
+        "apps/web/src/components/notes/NotesExportHtml.ts"
+      ],
+      "oracleTests": [
+        "apps/web/src/components/notes/NotesMediaEmbeds.test.ts",
+        "apps/web/src/components/notes/NotesExportHtml.test.ts"
+      ],
+      "evidence": [
+        "src/desktop-print-export-owner.ts",
+        "tests/desktop-print-export-owner.test.ts"
+      ],
+      "focusedCommand": "node --test tests/desktop-print-export-owner.test.ts",
+      "realConsumerCheck": "Packaged Electron HTML/PDF export with local audio/video/PDF fixtures; inspect that output retains labeled metadata rather than active media resource elements.",
+      "securityRationale": "The Desktop static exporter accepts only bounded data-image resources. Keeping audio, video, and PDF as metadata avoids widening the saved artifact resource surface.",
+      "disposition": "Retained security divergence from Tockbot export behavior; interactive local media remains available only in live views or the in-app preview owner."
+    }
+  ]
+}

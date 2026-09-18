@@ -1,0 +1,94 @@
+import { TOCKTUTOR_ROUTE_SLOT, } from '@tockteam/desktop/client';
+import workbenchRemote from '@tockteam/tocktutor-workbench/remote';
+import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from "./assistant-panel.js";
+import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT } from "./native-actions.js";
+import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
+import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from "./web-viewer-panel.js";
+import { TockTutorRoute, waitForTockTutorRouteFlushes, } from "./route.js";
+/** Browser Loader identity for the native TockTutor workbench. */
+export const name = '@tockteam/tocktutor-workbench';
+export const inject = ['remote', 'slots'];
+async function disposeRouteBeforeRemote(routeFiber, disposeRemote) {
+    await routeFiber.dispose();
+    await waitForTockTutorRouteFlushes();
+    await disposeRemote();
+}
+/** Mount strict transport first, then contribute one lifecycle-owned Desktop route. */
+export async function apply(ctx) {
+    const disposeRemote = await ctx.remote.$mount(workbenchRemote);
+    const routeFiber = ctx.inject(['remote', 'remote.tocktutorWorkbench', 'slots'], child => {
+        const mountedRemote = child.remote;
+        const remote = {
+            $on: mountedRemote.$on.bind(mountedRemote),
+            get tocktutorAssistant() {
+                return child.get('remote.tocktutorAssistant');
+            },
+            tocktutorWorkbench: mountedRemote.tocktutorWorkbench,
+        };
+        const slots = child.slots;
+        return slots.inject(TOCKTUTOR_ROUTE_SLOT, () => slots.register({
+            children: {
+                [TOCKTUTOR_ASSISTANT_PANEL_SLOT]: { kind: 'single', scope: 'root' },
+                [TOCKTUTOR_NATIVE_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
+                [TOCKTUTOR_REVIEW_PANEL_SLOT]: { kind: 'list', scope: 'root' },
+                [TOCKTUTOR_VAULT_ACTIONS_SLOT]: { kind: 'list', scope: 'root' },
+                [TOCKTUTOR_WEB_VIEWER_PANEL_SLOT]: { kind: 'single', scope: 'root' },
+            },
+            inject: () => ({ remote }),
+            name: TOCKTUTOR_ROUTE_SLOT,
+            registrant: name,
+        }, TockTutorRoute));
+    });
+    try {
+        await routeFiber;
+    }
+    catch (error) {
+        await disposeRouteBeforeRemote(routeFiber, disposeRemote);
+        throw error;
+    }
+    let disposal = null;
+    return () => {
+        if (disposal === null) {
+            disposal = disposeRouteBeforeRemote(routeFiber, disposeRemote);
+            void disposal.catch(() => undefined);
+        }
+        return disposal;
+    };
+}
+export * from "./assistant-panel.js";
+export * from "./base-edit.js";
+export * from "./base-executable-view.js";
+export * from "./base-parser.js";
+export * from "./base-query.js";
+export * from "./base-spreadsheet.js";
+export * from "./base-view-model.js";
+export * from "./base-view-provenance.js";
+export * from "./canvas-board.js";
+export * from "./canvas-change.js";
+export * from "./canvas-edges.js";
+export * from "./canvas-geometry.js";
+export * from "./canvas-identity.js";
+export * from "./canvas-links.js";
+export * from "./canvas-nodes.js";
+export * from "./canvas-provenance.js";
+export * from "./canvas.js";
+export * from "./live-preview.js";
+export * from "./rich-markdown.js";
+export * from "./editor-commands.js";
+export * from "./settings.js";
+export * from "./properties.js";
+export * from "./bookmarks.js";
+export * from "./graph.js";
+export * from "./capture.js";
+export * from "./organize.js";
+export * from "./composer.js";
+export * from "./attachments.js";
+export * from "./embeds.js";
+export * from "./external-embeds.js";
+export * from "./web-viewer-panel.js";
+export * from "./native-actions.js";
+export * from "./review-panel.js";
+export * from "./route.js";
+export * from "./types.js";
+export * from "./vault-events.js";
+//# sourceMappingURL=client-api.js.map

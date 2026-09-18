@@ -1,0 +1,97 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { test } from 'node:test'
+import { previewRuntimeBaseEnvironment } from '../plugins/plugin-marketplace/src/host/platform.ts'
+import {
+  DESKTOP_AUTHORITY_ENVIRONMENT_KEYS,
+  applyWebClipFixtureEnvironment,
+  scrubDesktopAuthorityEnvironment,
+  WEB_CLIP_FIXTURE_ENVIRONMENT_KEY,
+} from '../src/desktop-runtime-environment.ts'
+
+const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+const marketplacePlatform = readFileSync(
+  new URL('../plugins/plugin-marketplace/src/host/platform.ts', import.meta.url),
+  'utf8',
+)
+
+test('preview base environment withholds ambient Git, GitHub, SSH, and user-home authority', () => {
+  const preview = previewRuntimeBaseEnvironment({
+    GH_TOKEN: 'secret',
+    GITHUB_TOKEN: 'secret',
+    GH_CONFIG_DIR: '/user/gh',
+    GIT_CONFIG_GLOBAL: '/user/gitconfig',
+    GIT_CONFIG_COUNT: '1',
+    GIT_CONFIG_KEY_0: 'credential.helper',
+    GIT_CONFIG_VALUE_0: 'steal',
+    HOME: '/user',
+    LANG: 'en_US.UTF-8',
+    SSH_AUTH_SOCK: '/user/agent.sock',
+  }, '/preview-home')
+
+  assert.deepEqual(preview, {
+    HOME: '/preview-home',
+    LANG: 'en_US.UTF-8',
+    USERPROFILE: '/preview-home',
+    XDG_CACHE_HOME: join('/preview-home', '.cache'),
+    XDG_CONFIG_HOME: join('/preview-home', '.config'),
+  })
+})
+
+test('preview and live Runtime environments never inherit native or marketplace authority', () => {
+  const environment: NodeJS.ProcessEnv = {
+    SAFE_VALUE: 'kept',
+    DSH_MARKETPLACE_AGENT_URL: 'http://inherited',
+    DSH_MARKETPLACE_AGENT_TOKEN: 'inherited-token',
+  }
+  for (const key of DESKTOP_AUTHORITY_ENVIRONMENT_KEYS) environment[key] = `inherited-${key}`
+
+  scrubDesktopAuthorityEnvironment(environment, [
+    'DSH_MARKETPLACE_AGENT_URL',
+    'DSH_MARKETPLACE_AGENT_TOKEN',
+  ])
+
+  assert.equal(environment.SAFE_VALUE, 'kept')
+  for (const key of DESKTOP_AUTHORITY_ENVIRONMENT_KEYS) assert.equal(environment[key], undefined)
+  assert.equal(environment.DSH_MARKETPLACE_AGENT_URL, undefined)
+  assert.equal(environment.DSH_MARKETPLACE_AGENT_TOKEN, undefined)
+})
+
+test('forwards the Web Clip fixture only to the ordinary unpackaged Desktop runtime', () => {
+  const resolve = (appIsPackaged: boolean, preview: boolean, fixtureUrl: string | undefined) => {
+    const environment: NodeJS.ProcessEnv = {
+      SAFE_VALUE: 'kept',
+      [WEB_CLIP_FIXTURE_ENVIRONMENT_KEY]: 'inherited-fixture',
+    }
+    applyWebClipFixtureEnvironment(environment, { appIsPackaged, fixtureUrl, preview })
+    return environment
+  }
+
+  assert.equal(resolve(false, false, 'http://127.0.0.1.nip.io:1234/tockteam-web-clip-fixture')[WEB_CLIP_FIXTURE_ENVIRONMENT_KEY], 'http://127.0.0.1.nip.io:1234/tockteam-web-clip-fixture')
+  assert.equal(resolve(false, true, 'http://127.0.0.1.nip.io:1234/tockteam-web-clip-fixture')[WEB_CLIP_FIXTURE_ENVIRONMENT_KEY], undefined)
+  assert.equal(resolve(true, false, 'http://127.0.0.1.nip.io:1234/tockteam-web-clip-fixture')[WEB_CLIP_FIXTURE_ENVIRONMENT_KEY], undefined)
+  assert.equal(resolve(false, false, undefined)[WEB_CLIP_FIXTURE_ENVIRONMENT_KEY], undefined)
+})
+
+test('main gates the Web Clip fixture variable out of packaged and preview runtime environments', () => {
+  assert.match(main, /const webClipFixtureUrl = !app\.isPackaged \? process\.env\.TOCKTEAM_WEB_CLIP_FIXTURE_URL : undefined/u)
+  assert.match(main, /applyWebClipFixtureEnvironment\(environment, \{[\s\S]*?appIsPackaged: app\.isPackaged[\s\S]*?preview: overrides\.preview !== undefined/u)
+  assert.match(main, /env: runtimeEnvironment\(paths\)/u)
+  assert.match(main, /runtimeEnvironment\(paths, \{[\s\S]*?preview,[\s\S]*?\}\)/u)
+})
+
+test('packaged Desktop preserves the standard user-data override for disposable profile proof', () => {
+  assert.match(main, /if \(!app\.commandLine\.hasSwitch\('user-data-dir'\)\) \{\s*app\.setPath\('userData'/u)
+})
+
+test('Runtime environment scrubs inherited authority before selecting owned live channels', () => {
+  const scrub = main.indexOf('scrubDesktopAuthorityEnvironment(environment')
+  const reveal = main.indexOf("const reveal = overrides.preview === undefined")
+  assert.ok(scrub > 0)
+  assert.ok(reveal > scrub)
+  assert.match(main, /scrubDesktopAuthorityEnvironment\(environment, \[MARKETPLACE_AGENT_URL_ENV, MARKETPLACE_AGENT_TOKEN_ENV\]\)/u)
+  assert.match(main, /return overrides\.preview === undefined\s+\? withGitHubCredentials[\s\S]*?: environment/u)
+  assert.match(main, /overrides\.preview === undefined\s+\? process\.env\s+: previewRuntimeBaseEnvironment/u)
+  assert.equal((marketplacePlatform.match(/\.\.\.previewRuntimeBaseEnvironment\(this\.#options\.env, input\.sandboxRoot\)/g) ?? []).length, 2)
+})

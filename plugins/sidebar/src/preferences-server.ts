@@ -1,0 +1,153 @@
+import { randomBytes } from 'node:crypto'
+import { link, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { dirname, join } from 'node:path'
+import { isTrustedBrowserRequest, webRuntimeTrustedHosts } from '../../shared/request-trust.ts'
+import {
+  DEFAULT_SIDEBAR_PREFERENCES,
+  parseSidebarPreferences,
+  SIDEBAR_PREFERENCES_API_PATH,
+  type DesktopSidebarPreferences,
+} from './sidebar-preferences.ts'
+
+const LEGACY_SIDEBAR_PREFERENCES_FILE = 'desktop-sidebar.json'
+
+export interface SidebarDesktopCapability {
+  appDataPath: string
+}
+
+export interface SidebarPreferencesHostContext {
+  get(name: string): unknown
+  webServer: {
+    register(route: {
+      kind: 'exact'
+      path: string
+      handler: (
+        request: IncomingMessage,
+        response: ServerResponse,
+      ) => void | Promise<void>
+    }): () => void
+  }
+  logger: { warn(message: string): void }
+}
+
+async function readSidebarPreferences(
+  path: string,
+): Promise<DesktopSidebarPreferences> {
+  const value = parseSidebarPreferences(
+    JSON.parse(await readFile(path, 'utf8')) as unknown,
+  )
+  if (value === undefined) throw new Error('sidebar preferences are invalid')
+  return value
+}
+
+function sendJson(response: ServerResponse, status: number, value: unknown): void {
+  response.writeHead(status, {
+    'cache-control': 'no-store',
+    'content-type': 'application/json; charset=utf-8',
+  })
+  response.end(JSON.stringify(value))
+}
+
+async function readJson(request: IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    size += buffer.length
+    if (size > 256 * 1024) throw new Error('sidebar preferences are too large')
+    chunks.push(buffer)
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+}
+
+export async function loadSidebarPreferences(
+  path: string,
+): Promise<DesktopSidebarPreferences> {
+  try {
+    return await readSidebarPreferences(path)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  }
+  // Migrate once from the pre-rename durable file; the legacy file stays so
+  // the migration is idempotent across restarts and concurrent hosts.
+  const legacy = join(dirname(path), LEGACY_SIDEBAR_PREFERENCES_FILE)
+  try {
+    const migrated = await readSidebarPreferences(legacy)
+    await mkdir(dirname(path), { recursive: true })
+    const temporary = `${path}.migrate-${randomBytes(6).toString('hex')}`
+    await writeFile(temporary, `${JSON.stringify(migrated, undefined, 2)}\n`, { mode: 0o600 })
+    try {
+      await link(temporary, path)
+      return migrated
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      return await readSidebarPreferences(path)
+    } finally {
+      await unlink(temporary).catch(() => undefined)
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  }
+  return DEFAULT_SIDEBAR_PREFERENCES
+}
+
+export async function saveSidebarPreferences(
+  path: string,
+  preferences: DesktopSidebarPreferences,
+): Promise<void> {
+  await mkdir(dirname(path), { recursive: true })
+  const temporary = `${path}.next-${randomBytes(6).toString('hex')}`
+  await writeFile(temporary, `${JSON.stringify(preferences, undefined, 2)}\n`, {
+    mode: 0o600,
+  })
+  try {
+    await rename(temporary, path)
+  } catch (error) {
+    await unlink(temporary).catch(() => {})
+    throw error
+  }
+}
+
+export function mountSidebarPreferences(
+  ctx: SidebarPreferencesHostContext,
+  desktop: SidebarDesktopCapability,
+): () => void {
+  if (desktop.appDataPath.length === 0) {
+    throw new Error('sidebar: application data path is unavailable')
+  }
+  const path = join(desktop.appDataPath, 'sidebar.json')
+  const trustedHosts = webRuntimeTrustedHosts(ctx)
+  return ctx.webServer.register({
+    kind: 'exact',
+    path: SIDEBAR_PREFERENCES_API_PATH,
+    handler: async (request, response) => {
+      try {
+        if (request.method === 'GET') {
+          sendJson(response, 200, await loadSidebarPreferences(path))
+          return
+        }
+        if (request.method === 'PUT') {
+          if (!isTrustedBrowserRequest(request, trustedHosts)) {
+            sendJson(response, 403, { error: 'untrusted sidebar origin' })
+            return
+          }
+          const value = parseSidebarPreferences(await readJson(request))
+          if (value === undefined) {
+            sendJson(response, 400, { error: 'invalid sidebar preferences' })
+            return
+          }
+          await saveSidebarPreferences(path, value)
+          sendJson(response, 200, value)
+          return
+        }
+        response.writeHead(405, { allow: 'GET, PUT' })
+        response.end()
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        ctx.logger.warn(`[sidebar] ${message}`)
+        sendJson(response, 500, { error: message })
+      }
+    },
+  })
+}

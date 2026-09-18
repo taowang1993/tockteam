@@ -1,0 +1,317 @@
+// @ts-nocheck -- Milkdown 7.20's extensionless declarations are incompatible with the pinned NodeNext analyzer.
+import { Plugin, PluginKey } from '@milkdown/prose/state'
+import { Decoration, DecorationSet } from '@milkdown/prose/view'
+import { classifyExternalEmbed } from './external-embeds.ts'
+
+interface FoldRegion {
+  bodyFrom: number
+  bodyTo: number
+  from: number
+  to: number
+}
+
+interface ChromeState { folded: ReadonlySet<number> }
+const chromeKey = new PluginKey<ChromeState>('tocktutorLivePreviewChrome')
+
+function foldRegions(doc): FoldRegion[] {
+  const regions: FoldRegion[] = []
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'list_item') return
+    let offset = 0
+    let sawText = false
+    node.forEach(child => {
+      const childPos = pos + 1 + offset
+      if (child.isTextblock) sawText = true
+      else if (sawText && (child.type.name === 'bullet_list' || child.type.name === 'ordered_list')) {
+        regions.push({ bodyFrom: childPos, bodyTo: childPos + child.nodeSize, from: pos, to: pos + node.nodeSize })
+      }
+      offset += child.nodeSize
+    })
+  })
+  return regions
+}
+
+function widgetButton(region: FoldRegion, folded: boolean): HTMLButtonElement {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'tocktutor-live-fold mr-1 inline-flex size-5 items-center justify-center rounded border-0 bg-transparent text-[var(--tt-muted)]'
+  button.dataset.foldFrom = String(region.from)
+  button.setAttribute('aria-expanded', String(!folded))
+  button.setAttribute('aria-label', `${folded ? 'Expand' : 'Collapse'} List`)
+  button.textContent = folded ? '›' : '⌄'
+  return button
+}
+
+function staticWidget(kind: 'base' | 'math' | 'mermaid', content: string, from: number, to: number): HTMLElement {
+  const widget = document.createElement('span')
+  widget.className = 'tocktutor-live-static-widget inline-flex max-w-full flex-col gap-1 rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] p-2 align-top text-[var(--tt-text)]'
+  widget.dataset.embedFrom = String(from)
+  widget.dataset.embedTo = String(to)
+  widget.dataset.embedKind = kind
+  widget.setAttribute('aria-label', `${kind === 'base' ? 'Base' : kind === 'mermaid' ? 'Mermaid Diagram' : 'Math'} Preview`)
+  widget.tabIndex = 0
+  const label = document.createElement('strong')
+  label.className = 'text-xs'
+  label.textContent = kind === 'base' ? 'Base' : kind === 'mermaid' ? 'Mermaid Diagram' : 'Math'
+  const preview = document.createElement('pre')
+  preview.className = 'm-0 max-h-48 max-w-full overflow-auto whitespace-pre-wrap text-xs'
+  preview.textContent = content
+  widget.append(label, preview)
+  return widget
+}
+
+function calloutFoldButton(pos: number, index: number, collapsed: boolean, title: string): HTMLButtonElement {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'tocktutor-live-callout-fold mr-1 inline-flex size-5 items-center justify-center rounded border-0 bg-transparent text-[var(--tt-muted)]'
+  button.dataset.calloutFoldPos = String(pos)
+  button.dataset.calloutIndex = String(index)
+  button.setAttribute('aria-expanded', String(!collapsed))
+  button.setAttribute('aria-label', collapsed ? 'Expand Callout' : 'Collapse Callout')
+  button.textContent = collapsed ? `› ${title}` : '⌄'
+  return button
+}
+
+function taskCheckbox(pos: number, index: number, checked: boolean): HTMLInputElement {
+  const input = document.createElement('input')
+  input.type = 'checkbox'
+  input.className = 'tocktutor-live-task mr-2 size-3.5 accent-[var(--dsw-specific-markdown-accent)] align-middle'
+  input.checked = checked
+  input.dataset.taskPos = String(pos)
+  input.dataset.taskIndex = String(index)
+  input.setAttribute('aria-label', checked ? 'Mark Task as Incomplete' : 'Mark Task as Complete')
+  input.tabIndex = 0
+  return input
+}
+
+function decorations(state, folded: ReadonlySet<number>): DecorationSet {
+  const values = []
+  const regions = foldRegions(state.doc)
+  for (const region of regions) {
+    values.push(Decoration.widget(region.from + 1, () => widgetButton(region, folded.has(region.from)), { side: -1 }))
+    if (!folded.has(region.from)) continue
+    state.doc.nodesBetween(region.bodyFrom, region.bodyTo, (node, pos) => {
+      if (pos >= region.bodyFrom && pos + node.nodeSize <= region.bodyTo) {
+        values.push(Decoration.node(pos, pos + node.nodeSize, { class: 'hidden' }))
+        return false
+      }
+      return true
+    })
+  }
+  let commentOpen = false
+  let calloutIndex = 0
+  let taskIndex = 0
+  state.doc.descendants((node, pos) => {
+    if (node.type.name === 'code_block') {
+      const language = String(node.attrs.language ?? node.attrs.lang ?? '').toLocaleLowerCase()
+      if ((language === 'base' || language === 'mermaid') && !(state.selection.from <= pos + node.nodeSize && state.selection.to >= pos)) {
+        values.push(
+          Decoration.node(pos, pos + node.nodeSize, { class: 'hidden' }),
+          Decoration.widget(pos, () => staticWidget(language, node.textContent, pos, pos + node.nodeSize), { side: -1 }),
+        )
+      }
+      return false
+    }
+    if (node.type.name === 'blockquote' && /^\[![A-Za-z][\w-]*\][+-]?/u.test(node.textContent)) {
+      values.push(Decoration.node(pos, pos + node.nodeSize, {
+        class: 'tocktutor-live-callout rounded border-l-4 border-[var(--tt-accent)] bg-[var(--tt-selected)] px-3 py-2',
+      }))
+      const index = calloutIndex
+      calloutIndex += 1
+      const marker = node.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u)
+      if (marker !== null) {
+        const collapsed = marker[1] === '-'
+        const firstLine = node.firstChild?.textBetween(0, node.firstChild.content.size, '\n', '\n').split('\n')[0] ?? ''
+        const title = firstLine.replace(/^\[![A-Za-z][\w-]*\][+-]?\s*/u, '').trim() || 'Callout'
+        values.push(Decoration.widget(pos, () => calloutFoldButton(pos, index, collapsed, title), { side: -1 }))
+        if (collapsed) values.push(Decoration.node(pos, pos + node.nodeSize, { class: 'hidden' }))
+      }
+    }
+    if (node.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
+      const index = taskIndex
+      taskIndex += 1
+      values.push(Decoration.widget(pos + 1, () => taskCheckbox(pos, index, Boolean(node.attrs.checked)), { side: -1 }))
+    }
+    if (!node.isText || !node.text || node.marks.some(mark => mark.type.name === 'code')) return
+    for (const match of node.text.matchAll(/\[\[([^\]|\n]{1,2000})(?:\|([^\]\n]{1,2000}))?\]\]/gu)) {
+      const from = pos + (match.index ?? 0)
+      const to = from + match[0].length
+      if (state.selection.from <= to && state.selection.to >= from) continue
+      const label = match[2] ?? match[1]
+      const labelFrom = match[2] === undefined ? from + 2 : from + match[0].indexOf('|') + 1
+      const labelTo = labelFrom + label.length
+      values.push(
+        Decoration.inline(from, labelFrom, { class: 'tocktutor-live-link-markup hidden' }),
+        Decoration.inline(labelFrom, labelTo, { class: 'tocktutor-live-internal-link' }),
+        Decoration.inline(labelTo, to, { class: 'tocktutor-live-link-markup hidden' }),
+      )
+    }
+    for (const match of node.text.matchAll(/==([^=\n]{1,20000})==/gu)) {
+      const from = pos + (match.index ?? 0)
+      const to = from + match[0].length
+      if (state.selection.from <= to && state.selection.to >= from) continue
+      values.push(
+        Decoration.inline(from, from + 2, { class: 'tocktutor-live-highlight-markup hidden' }),
+        Decoration.inline(from + 2, to - 2, { class: 'tocktutor-live-highlight' }),
+        Decoration.inline(to - 2, to, { class: 'tocktutor-live-highlight-markup hidden' }),
+      )
+    }
+    for (const match of node.text.matchAll(/\$\$(.{1,20000})\$\$/gu)) {
+      const from = pos + (match.index ?? 0)
+      const to = from + match[0].length
+      if (state.selection.from <= to && state.selection.to >= from) continue
+      values.push(
+        Decoration.inline(from, to, { class: 'hidden' }),
+        Decoration.widget(from, () => staticWidget('math', match[1]!, from, to), { side: -1 }),
+      )
+    }
+    let cursor = 0
+    if (commentOpen) {
+      const close = node.text.indexOf('%%')
+      if (close < 0) {
+        values.push(Decoration.inline(pos, pos + node.text.length, { class: 'tocktutor-live-comment text-[var(--tt-muted)]' }))
+        return
+      }
+      values.push(Decoration.inline(pos, pos + close + 2, { class: 'tocktutor-live-comment text-[var(--tt-muted)]' }))
+      commentOpen = false
+      cursor = close + 2
+    }
+    while (cursor < node.text.length) {
+      const open = node.text.indexOf('%%', cursor)
+      if (open < 0) break
+      const close = node.text.indexOf('%%', open + 2)
+      if (close < 0) {
+        values.push(Decoration.inline(pos + open, pos + node.text.length, { class: 'tocktutor-live-comment text-[var(--tt-muted)]' }))
+        commentOpen = true
+        break
+      }
+      values.push(Decoration.inline(pos + open, pos + close + 2, { class: 'tocktutor-live-comment text-[var(--tt-muted)]' }))
+      cursor = close + 2
+    }
+  })
+  return DecorationSet.create(state.doc, values)
+}
+
+export function buildLivePreviewChromePlugin(options: {
+  isProtected(): boolean
+  onOpenExternalUrl(): ((url: string) => void) | undefined
+  onToggleCallout(index: number): void
+  onToggleTask(index: number): void
+}): Plugin<ChromeState> {
+  const activatesControl = event => event.type !== 'keydown' || event.key === 'Enter' || event.key === ' '
+  const toggleTaskControl = (view, event): boolean => {
+    const task = event.target instanceof Element ? event.target.closest<HTMLInputElement>('[data-task-pos]') : null
+    if (task === null || !activatesControl(event)) return false
+    event.preventDefault()
+    const pos = Number(task.dataset.taskPos)
+    const index = Number(task.dataset.taskIndex)
+    if (options.isProtected()) {
+      if (Number.isSafeInteger(index) && index >= 0) options.onToggleTask(index)
+      return true
+    }
+    const node = Number.isSafeInteger(pos) ? view.state.doc.nodeAt(pos) : null
+    if (node?.type.name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) {
+      view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: !node.attrs.checked }))
+    }
+    return true
+  }
+  const toggleCalloutControl = (view, event): boolean => {
+    const callout = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-callout-fold-pos]') : null
+    if (callout === null || !activatesControl(event)) return false
+    event.preventDefault()
+    const pos = Number(callout.dataset.calloutFoldPos)
+    const index = Number(callout.dataset.calloutIndex)
+    if (options.isProtected()) {
+      if (Number.isSafeInteger(index) && index >= 0) options.onToggleCallout(index)
+      return true
+    }
+    const node = Number.isSafeInteger(pos) ? view.state.doc.nodeAt(pos) : null
+    const marker = node?.textContent.match(/^\[![A-Za-z][\w-]*\]([+-])/u)
+    if (node?.type.name === 'blockquote' && marker !== null && marker !== undefined) {
+      const from = pos + 1 + marker[0].length
+      view.dispatch(view.state.tr.insertText(marker[1] === '-' ? '+' : '-', from, from + 1))
+    }
+    return true
+  }
+  const toggleFoldControl = (view, event): boolean => {
+    const fold = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-fold-from]') : null
+    if (fold === null || !activatesControl(event)) return false
+    event.preventDefault()
+    const from = Number(fold.dataset.foldFrom)
+    if (Number.isSafeInteger(from)) view.dispatch(view.state.tr.setMeta(chromeKey, { toggle: from }))
+    return true
+  }
+  return new Plugin<ChromeState>({
+    key: chromeKey,
+    state: {
+      init: () => ({ folded: new Set() }),
+      apply(transaction, value) {
+        if (transaction.docChanged) return { folded: new Set() }
+        const toggle = transaction.getMeta(chromeKey) as { toggle?: unknown } | undefined
+        if (!Number.isSafeInteger(toggle?.toggle)) return value
+        const folded = new Set(value.folded)
+        if (folded.has(toggle!.toggle as number)) folded.delete(toggle!.toggle as number)
+        else folded.add(toggle!.toggle as number)
+        return { folded }
+      },
+    },
+    props: {
+      decorations: state => decorations(state, chromeKey.getState(state)?.folded ?? new Set()),
+      nodeViews: {
+        image(node) {
+          const src = typeof node.attrs.src === 'string' ? node.attrs.src : ''
+          const external = classifyExternalEmbed(src)
+          if (external === null) {
+            const dom = document.createElement('span')
+            dom.className = 'tocktutor-live-image-inert text-[var(--tt-muted)]'
+            dom.textContent = `Image: ${String(node.attrs.alt ?? src)}`
+            return { dom }
+          }
+          const dom = document.createElement('button')
+          dom.type = 'button'
+          dom.className = 'tocktutor-live-external-image rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-[var(--tt-text)]'
+          dom.dataset.externalUrl = external.viewerUrl
+          dom.textContent = `External Image: ${String(node.attrs.alt ?? external.sourceUrl)}`
+          return { dom }
+        },
+      },
+      handleDOMEvents: {
+        beforeinput(_view, event) {
+          if (!options.isProtected()) return false
+          event.preventDefault()
+          return true
+        },
+        paste(_view, event) {
+          if (!options.isProtected()) return false
+          event.preventDefault()
+          return true
+        },
+        drop(_view, event) {
+          if (!options.isProtected()) return false
+          event.preventDefault()
+          return true
+        },
+        keydown(view, event) {
+          if (toggleTaskControl(view, event) || toggleCalloutControl(view, event) || toggleFoldControl(view, event)) return true
+          if (!options.isProtected()) return false
+          const mutates = event.key.length === 1 && !event.metaKey && !event.ctrlKey
+            || ['Backspace', 'Delete', 'Enter', 'Tab'].includes(event.key)
+          if (!mutates) return false
+          event.preventDefault()
+          return true
+        },
+        click(_view, event) {
+          const target = event.target instanceof Element ? event.target : null
+          const externalUrl = target?.closest<HTMLElement>('[data-external-url]')?.dataset.externalUrl
+          if (externalUrl === undefined) return false
+          event.preventDefault()
+          options.onOpenExternalUrl()?.(externalUrl)
+          return true
+        },
+        mousedown(view, event) {
+          return toggleCalloutControl(view, event) || toggleTaskControl(view, event) || toggleFoldControl(view, event)
+        },
+      },
+    },
+  })
+}

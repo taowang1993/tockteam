@@ -1,0 +1,60 @@
+{
+  "run": {
+    "conclusion": "cancelled",
+    "created_at": "2026-09-12T09:04:17Z",
+    "head_sha": "9a709fc995343debed13740065039302a86c21e1",
+    "html_url": "https://github.com/taowang1993/tockteam/actions/runs/34684879638",
+    "id": 34684879638,
+    "run_attempt": 1,
+    "status": "completed",
+    "updated_at": "2026-09-12T09:34:34Z"
+  },
+  "job": 103530029108,
+  "executedMerge": {
+    "parents": [
+      "d5927ae3d3868de6fc199c79bb4fa9d88f17c92e",
+      "9a709fc995343debed13740065039302a86c21e1"
+    ],
+    "sha": "b2872cbcde7efcfd2f291f0ed871d820370f6461",
+    "tree": "8cad8eca84d72d5110807c04a65b302b212ae53e"
+  },
+  "prHeadTree": "8cad8eca84d72d5110807c04a65b302b212ae53e",
+  "identicalTrackedTrees": true,
+  "comparison": {
+    "ahead_by": 1,
+    "behind_by": 0,
+    "files": [],
+    "status": "ahead",
+    "total_commits": 1
+  },
+  "sourceBlobs": {
+    "src/index.ts": "fa93bf3ee946547a1b9864a3f747b551754b9c5b",
+    "tests/loader-composition.test.ts": "e09a16a347f714dac12baac485e6b3ab314c175f"
+  },
+  "originalJobLogSha256": "61363ff0f4db7d4929436a3a61ec25438d0473f42cd189a94d4c3ad1f500b7b7",
+  "excerptLineRanges": [
+    [
+      99,
+      118
+    ],
+    [
+      203,
+      205
+    ],
+    [
+      248,
+      250
+    ],
+    [
+      547,
+      577
+    ]
+  ],
+  "excerptNormalization": "LF line endings; original line numbers prefixed",
+  "originalCommand": "node --test --test-name-pattern=\"Keyword search reconciles|persistent FlexSearch SQLite\" tests/loader-composition.test.ts",
+  "historicalReplayCommit": "0a19b9abeae80aa4543ad63ee3d2e2233c90c4b7",
+  "historicalReplayIsolatedFiles": false,
+  "firstReportedFailure": "2026-09-12T09:07:03.3410300Z",
+  "interruption": "2026-09-12T09:34:26.2500949Z",
+  "silentIntervalMilliseconds": 1642909
+}

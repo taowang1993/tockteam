@@ -1,0 +1,228 @@
+import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
+import { PassThrough } from 'node:stream'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import test from 'node:test'
+import {
+  resolveTrustedWorkflowWindowsExecutable,
+  resolveWorkflowCommandInvocation,
+  runBoundedWorkflowCommand,
+} from '../src/launcher-workflow-process.ts'
+
+function childProcess() {
+  const child = new EventEmitter() as EventEmitter & {
+    kill: (signal?: NodeJS.Signals) => boolean
+    pid: number
+    stderr: PassThrough
+    stdout: PassThrough
+  }
+  child.kill = () => { queueMicrotask(() => child.emit('close', null, 'SIGKILL')); return true }
+  child.pid = 4242
+  child.stderr = new PassThrough()
+  child.stdout = new PassThrough()
+  return child
+}
+
+test('Workflow command maps text to fixed shell executable and argv', () => {
+  assert.deepEqual(resolveWorkflowCommandInvocation('macOS', "printf '%s' ok", '/Users/max'), {
+    args: ['-lc', "printf '%s' ok"], cwd: '/Users/max', executable: '/bin/sh',
+  })
+  assert.deepEqual(resolveWorkflowCommandInvocation('Linux', 'printf ok', '/home/max'), {
+    args: ['-lc', 'printf ok'], cwd: '/home/max', executable: '/bin/sh',
+  })
+  assert.deepEqual(resolveWorkflowCommandInvocation('Windows', 'echo ok & whoami', 'C:\\Users\\max'), {
+    args: ['/D', '/S', '/C', 'echo ok & whoami'], cwd: 'C:\\Users\\max', executable: 'C:\\Windows\\System32\\cmd.exe',
+  })
+  assert.throws(() => resolveWorkflowCommandInvocation('macOS', 'echo ok\nwhoami', '/Users/max'), /command/i)
+})
+
+test('Workflow process uses shell:false, scrubbed environment, fixed cwd, and counts output only', async () => {
+  const child = childProcess()
+  let received: unknown
+  const signal = new AbortController().signal
+  const pending = runBoundedWorkflowCommand({
+    command: 'printf secret-token', platform: 'macOS', signal, workingDirectory: '/Users/max',
+  }, {
+    environment: { AGENT_SERVICE_TOKEN: 'secret', CODEX_API_KEY: 'secret', LANG: 'en_US.UTF-8', PATH: '/untrusted' },
+    spawnProcess: (executable, args, options) => { received = { executable, args, options }; return child },
+  })
+  child.stdout.end('secret-token')
+  child.stderr.end('warning')
+  child.emit('close', 0, null)
+  await assert.doesNotReject(pending)
+  assert.deepEqual(await pending, { stdoutBytes: 12, stderrBytes: 7 })
+  assert.deepEqual(received, {
+    executable: '/bin/sh', args: ['-lc', 'printf secret-token'], options: {
+      cwd: '/Users/max', detached: true, env: { HOME: '/Users/max', LANG: 'en_US.UTF-8', PATH: '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin' }, shell: false, signal,
+      stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+    },
+  })
+  assert.doesNotMatch(JSON.stringify(await pending), /secret-token/u)
+})
+
+test('POSIX shell exit drains its process group before publishing success or failure', async () => {
+  for (const code of [0, 1]) {
+    const child = childProcess()
+    const kills: unknown[] = []
+    let finished = false
+    const pending = runBoundedWorkflowCommand({ command: 'sleep 30 &', platform: 'Linux', signal: new AbortController().signal, workingDirectory: '/tmp' }, {
+      spawnProcess: () => child,
+      killProcess: (pid, signal) => { kills.push([pid, signal]) },
+    })
+    void pending.then(() => { finished = true }, () => { finished = true })
+    child.emit('exit', code, null)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(kills, [[-child.pid, 'SIGKILL']])
+    assert.equal(finished, false)
+    child.emit('close', code, null)
+    if (code === 0) await assert.doesNotReject(pending)
+    else await assert.rejects(pending, /failed/u)
+  }
+})
+
+test('cancellation or late output overflow during normal-exit draining cannot become success', async () => {
+  for (const cancel of [true, false]) {
+    const child = childProcess()
+    const controller = new AbortController()
+    const pending = runBoundedWorkflowCommand({ command: 'echo ok', platform: 'Linux', signal: controller.signal, workingDirectory: '/tmp' }, {
+      spawnProcess: () => child, killProcess: () => {}, maxOutputBytes: 1,
+    })
+    child.emit('exit', 0, null)
+    if (cancel) controller.abort()
+    else child.stdout.write('too much')
+    child.emit('close', 0, null)
+    await assert.rejects(pending, cancel ? /cancelled/u : /output limit/u)
+  }
+})
+
+test('Workflow process terminates on cancellation, timeout, and output overflow', async () => {
+  for (const kind of ['cancel', 'timeout', 'overflow'] as const) {
+    const child = childProcess()
+    const controller = new AbortController()
+    const pending = runBoundedWorkflowCommand({ command: 'sleep 60', platform: 'Linux', signal: controller.signal, workingDirectory: '/home/max' }, {
+      maxOutputBytes: 8, spawnProcess: () => child, timeoutMs: kind === 'timeout' ? 1 : 10_000,
+    })
+    if (kind === 'cancel') controller.abort(new Error('cancelled'))
+    if (kind === 'overflow') child.stdout.write('123456789')
+    await assert.rejects(pending, kind === 'overflow' ? /output limit/i : /cancel|timed out/i)
+  }
+})
+
+test('Windows workflow uses the owned shell with verbatim quoting and awaits verified cleanup', async () => {
+  const completion = Promise.withResolvers<{ code: number; signal: null; stdoutBytes: number; stderrBytes: number }>()
+  const cleanup = Promise.withResolvers<void>()
+  let received: any, settled = false
+  const pending = runBoundedWorkflowCommand({ command: '"C:\\Program Files\\tool.exe" "a b"', platform: 'Windows', signal: new AbortController().signal, workingDirectory: 'C:\\work' }, {
+    environment: { SystemRoot: 'C:\\Windows', PATH: 'bad', SECRET: 'must not inherit' },
+    captureWindowsExecutable: async target => ({ canonicalPath: target, identity: { dev: '1', ino: '2' } }),
+    spawnProcess: () => assert.fail('Windows must not use a plain spawn'),
+    spawnOwnedProcess: async options => { received = options; return { pid: 42, completion: completion.promise, terminate: () => cleanup.promise } },
+  })
+  void pending.then(() => { settled = true }, () => { settled = true })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.ok(received, 'the verified owner must be selected')
+  assert.equal(received.executable, 'C:\\Windows\\System32\\cmd.exe')
+  assert.deepEqual(received.args, ['/D', '/S', '/C', '""C:\\Program Files\\tool.exe" "a b""'])
+  assert.equal(received.windowsVerbatimArguments, true)
+  assert.equal(received.cwd, 'C:\\work'); assert.equal(received.maxOutputBytes, 65536)
+  assert.deepEqual(received.env, { ComSpec: 'C:\\Windows\\System32\\cmd.exe', PATH: 'C:\\Windows\\System32;C:\\Windows', PATHEXT: '.COM;.EXE;.BAT;.CMD', SystemRoot: 'C:\\Windows', USERPROFILE: 'C:\\work' })
+  completion.resolve({ code: 0, signal: null, stdoutBytes: 4, stderrBytes: 2 })
+  await new Promise(resolve => setImmediate(resolve)); assert.equal(settled, false)
+  cleanup.resolve()
+  assert.deepEqual(await pending, { stdoutBytes: 4, stderrBytes: 2 })
+})
+
+test('Windows workflow cancellation, timeout, overflow and cleanup uncertainty cannot report success', async () => {
+  for (const kind of ['cancel', 'timeout', 'overflow', 'cleanup', 'exit-code', 'late-cancel'] as const) {
+    const completion = Promise.withResolvers<{ code: number; signal: null; stdoutBytes: number; stderrBytes: number }>()
+    const cleanup = Promise.withResolvers<void>()
+    const controller = new AbortController()
+    let settled = false
+    const pending = runBoundedWorkflowCommand({ command: 'echo ok', platform: 'Windows', signal: controller.signal, workingDirectory: 'C:\\work' }, {
+      captureWindowsExecutable: async target => ({ canonicalPath: target, identity: { dev: '1', ino: '2' } }),
+      timeoutMs: kind === 'timeout' ? 10 : 10000,
+      spawnOwnedProcess: async options => {
+        options.signal.addEventListener('abort', () => completion.reject(new Error('Owned process cancelled')), { once: true })
+        return { pid: 42, completion: completion.promise, terminate: () => cleanup.promise }
+      },
+    })
+    void pending.then(() => { settled = true }, () => { settled = true })
+    await new Promise(resolve => setImmediate(resolve))
+    if (kind === 'cancel') controller.abort()
+    else if (kind === 'overflow') completion.reject(new Error('Owned process output limit exceeded'))
+    else if (kind !== 'timeout') completion.resolve({ code: kind === 'exit-code' ? 1 : 0, signal: null, stdoutBytes: 0, stderrBytes: 0 })
+    if (kind === 'timeout') await new Promise(resolve => setTimeout(resolve, 20))
+    await new Promise(resolve => setImmediate(resolve)); assert.equal(settled, false)
+    if (kind === 'late-cancel') controller.abort()
+    if (kind === 'cleanup') { controller.abort(); cleanup.reject(new Error('uncertain native release')) }
+    else cleanup.resolve()
+    await assert.rejects(pending, kind === 'timeout' ? /timed out/ : kind === 'overflow' ? /output limit/ : kind === 'cleanup' ? /cleanup failed/ : kind === 'exit-code' ? /command failed/ : /cancelled/)
+  }
+})
+
+test('Windows workflow never loads an owner outside its staged runtime', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'workflow-owner-resolution-'))
+  try {
+    const runtimeRoot = join(directory, 'runtime'), outside = join(directory, 'outside')
+    await mkdir(join(runtimeRoot, 'node_modules'), { recursive: true }); await mkdir(outside)
+    await writeFile(join(outside, 'package.json'), JSON.stringify({ name: 'tockbot-note-runtime', type: 'module', exports: { './owned-process': './index.mjs' } }))
+    await writeFile(join(outside, 'index.mjs'), 'export async function spawnOwnedProcess(){return {pid:42,completion:Promise.resolve({code:0,signal:null,stdoutBytes:0,stderrBytes:0}),terminate:async()=>{}}}')
+    await symlink(outside, join(runtimeRoot, 'node_modules', 'tockbot-note-runtime'), process.platform === 'win32' ? 'junction' : 'dir')
+    await assert.rejects(runBoundedWorkflowCommand({ command: 'echo ok', platform: 'Windows', signal: new AbortController().signal, workingDirectory: 'C:\\work' }, {
+      runtimeRoot, captureWindowsExecutable: async target => ({ canonicalPath: target, identity: { dev: '1', ino: '2' } }),
+    }), /could not start/)
+  } finally { await rm(directory, { recursive: true, force: true }) }
+})
+
+test('Workflow post-spawn errors terminate and wait for the child close event', async () => {
+  const child = childProcess()
+  let killed = 0
+  let groupKilled = 0
+  child.kill = () => { killed += 1; return true }
+  const pending = runBoundedWorkflowCommand({ command: 'false', platform: 'Linux', signal: new AbortController().signal, workingDirectory: '/home/max' }, {
+    killProcess: () => { groupKilled += 1 },
+    spawnProcess: () => child,
+  })
+  child.emit('error', new Error('post-spawn error'))
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(killed > 0 || groupKilled > 0, true)
+  child.emit('close', 1, null)
+  await assert.rejects(pending, /could not start|failed/u)
+})
+
+test('Workflow Windows process resolves every finite launcher system binary by identity', async () => {
+  for (const executable of ['cmd.exe', 'control.exe', 'powershell.exe', 'rundll32.exe', 'shutdown.exe', 'taskkill.exe'] as const) {
+    const trusted = await resolveTrustedWorkflowWindowsExecutable(executable, { SystemRoot: 'C:\\Windows' }, async target => ({ canonicalPath: target, identity: { dev: '1', ino: '2' } }))
+    assert.equal(trusted.executable, executable === 'powershell.exe'
+      ? 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
+      : `C:\\Windows\\System32\\${executable}`)
+  }
+})
+
+test('Workflow Windows process rejects non-canonical system binaries before spawn', async () => {
+  await assert.rejects(
+    resolveTrustedWorkflowWindowsExecutable('cmd.exe', { SystemRoot: 'C:\\Windows' }, async target => ({ canonicalPath: `${target}\\..\\evil.exe`, identity: { dev: '1', ino: '2' } })),
+    /unavailable/u,
+  )
+})
+
+test('Workflow process kill failure has a bounded rejection and never reports clean completion', async () => {
+  const child = childProcess()
+  child.kill = () => { throw new Error('kill failed') }
+  const pending = runBoundedWorkflowCommand({ command: 'printf x', platform: 'Linux', signal: new AbortController().signal, workingDirectory: '/home/max' }, {
+    killProcess: () => { throw new Error('group kill failed') }, maxOutputBytes: 1, spawnProcess: () => child,
+  })
+  child.stdout.write('xx')
+  await assert.rejects(pending, /output limit/u)
+})
+
+test('Workflow process closes abort race after spawn/listener registration', async () => {
+  const child = childProcess()
+  const controller = new AbortController()
+  const pending = runBoundedWorkflowCommand({ command: 'sleep 60', platform: 'Linux', signal: controller.signal, workingDirectory: '/home/max' }, {
+    spawnProcess: () => { controller.abort(new Error('cancelled')); return child },
+  })
+  await assert.rejects(pending, /cancel/i)
+})

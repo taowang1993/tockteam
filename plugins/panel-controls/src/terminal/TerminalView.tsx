@@ -1,0 +1,142 @@
+import { FitAddon } from '@xterm/addon-fit'
+import { Terminal } from '@xterm/xterm'
+import { useEffect, useRef } from 'react'
+import type { TerminalTabStatus } from './panel-store.ts'
+import { TerminalSocket } from './terminal-socket.ts'
+import { resolveTerminalTheme } from './terminal-theme.ts'
+import type { Translate } from '../../../shared/i18n.ts'
+import type { TerminalMessage } from './i18n.ts'
+
+export interface TerminalViewProps {
+  sessionId: string
+  tabId: string
+  cwd?: string | null
+  fontFamily: string
+  fontSize: number
+  onReady(cwd: string): void
+  onStatus(status: TerminalTabStatus, exitCode?: number | null): void
+  disposeMode(): 'close' | 'park'
+  t: Translate<TerminalMessage>
+}
+
+/** One xterm attachment to a session-scoped Better Sidebar PTY. */
+export function TerminalView(props: TerminalViewProps): JSX.Element {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const terminalRef = useRef<Terminal | null>(null)
+  const fitAddonRef = useRef<FitAddon | null>(null)
+  const cwdRef = useRef(props.cwd)
+  const fontFamilyRef = useRef(props.fontFamily)
+  const fontSizeRef = useRef(props.fontSize)
+  const onReadyRef = useRef(props.onReady)
+  const onStatusRef = useRef(props.onStatus)
+  const disposeModeRef = useRef(props.disposeMode)
+  const tRef = useRef(props.t)
+  useEffect(() => {
+    cwdRef.current = props.cwd
+    fontFamilyRef.current = props.fontFamily
+    fontSizeRef.current = props.fontSize
+    onReadyRef.current = props.onReady
+    onStatusRef.current = props.onStatus
+    disposeModeRef.current = props.disposeMode
+    tRef.current = props.t
+  }, [props.cwd, props.disposeMode, props.fontFamily, props.fontSize, props.onReady, props.onStatus, props.t])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (container === null) return
+    const terminal = new Terminal({
+      cursorBlink: true,
+      fontFamily: fontFamilyRef.current,
+      fontSize: fontSizeRef.current,
+      scrollback: 5000,
+      theme: resolveTerminalTheme(),
+    })
+    const fitAddon = new FitAddon()
+    terminalRef.current = terminal
+    fitAddonRef.current = fitAddon
+    terminal.loadAddon(fitAddon)
+    terminal.open(container)
+
+    const themeObserver = new MutationObserver(() => {
+      terminal.options.theme = resolveTerminalTheme()
+    })
+    themeObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-ds-dark-theme', 'style', 'class'],
+    })
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    })
+
+    const socket = new TerminalSocket()
+    let exited = false
+    const markExited = (code: number | null): void => {
+      if (exited) return
+      exited = true
+      onStatusRef.current('exited', code)
+      terminal.write(`\r\n\x1b[90m[${tRef.current('terminal.process-exited', {
+        code: code ?? tRef.current('terminal.unknown'),
+      })}]\x1b[0m\r\n`)
+    }
+    const requestedCwd = cwdRef.current?.trim()
+    socket.connect(terminal.cols, terminal.rows, {
+      onOutput: data => { terminal.write(data) },
+      onReady: cwd => {
+        onStatusRef.current('ready')
+        onReadyRef.current(cwd)
+      },
+      onExit: markExited,
+      onError: message => {
+        if (!exited) onStatusRef.current('error')
+        terminal.write(`\r\n\x1b[31m[${tRef.current('terminal.error', { message })}]\x1b[0m\r\n`)
+      },
+    }, {
+      sessionId: props.sessionId,
+      tabId: props.tabId,
+      ...(requestedCwd ? { cwd: requestedCwd } : {}),
+    })
+
+    const inputSubscription = terminal.onData(data => { socket.sendInput(data) })
+    const resizeSubscription = terminal.onResize(({ cols, rows }) => { socket.sendResize(cols, rows) })
+    const fit = (): void => {
+      if (container.clientWidth === 0 || container.clientHeight === 0) return
+      try {
+        fitAddon.fit()
+      } catch {
+        // A hidden session or collapsed dock will be fitted when visible again.
+      }
+    }
+    fit()
+    const resizeObserver = new ResizeObserver(fit)
+    resizeObserver.observe(container)
+    terminal.focus()
+
+    return () => {
+      resizeObserver.disconnect()
+      themeObserver.disconnect()
+      inputSubscription.dispose()
+      resizeSubscription.dispose()
+      socket.close(disposeModeRef.current())
+      if (terminalRef.current === terminal) terminalRef.current = null
+      if (fitAddonRef.current === fitAddon) fitAddonRef.current = null
+      terminal.dispose()
+    }
+  // CWD initializes a tab; later session metadata must not replace its live PTY.
+  }, [props.sessionId, props.tabId])
+
+  useEffect(() => {
+    const terminal = terminalRef.current
+    const fitAddon = fitAddonRef.current
+    if (terminal === null || fitAddon === null) return
+    terminal.options.fontFamily = props.fontFamily
+    terminal.options.fontSize = props.fontSize
+    try {
+      fitAddon.fit()
+    } catch {
+      // ResizeObserver retries when the dock becomes measurable.
+    }
+  }, [props.fontFamily, props.fontSize])
+
+  return <div ref={containerRef} className="h-full min-h-0 w-full min-w-0 flex-1 overflow-hidden box-border bg-surface px-3 py-[9px] [&_.xterm]:h-full [&_.xterm]:bg-surface [&_.xterm-viewport]:!bg-surface" data-terminal-view={props.tabId} />
+}

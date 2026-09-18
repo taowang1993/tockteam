@@ -1,0 +1,27 @@
+✔ installed proof resolves Playwright from the package inventory, not the global root (1.241417ms)
+✔ installed proof separates verified UI errors from expected connection teardown (0.713167ms)
+✔ installed first-use proof fails closed when not packaged (0.067ms)
+✔ installed first-use proof fails closed when packaged smoke gate missing (0.037834ms)
+✔ installed first-use proof fails closed when inactive flag missing (0.041042ms)
+✔ installed first-use proof fails closed when effect denial missing (0.031833ms)
+✔ installed first-use proof fails closed when inherited IPC missing (0.029667ms)
+✔ installed first-use proof fails closed when nonce missing (0.037959ms)
+✔ installed first-use proof fails closed when nonce malformed (0.049375ms)
+✔ ordinary packaged and development modes remain unchanged (0.086333ms)
+✔ dedicated flag cannot silently fall through to ordinary smoke (0.04825ms)
+✔ installed first-use harness is inactive, authenticated, direct, and first-use-only (2.906084ms)
+✔ first-use cleanup failure preserves the disposable root (0.081542ms)
+✔ detached descendant identity remains residue until owned cleanup (0.085417ms)
+✔ the installed-app gate exercises all bundled commands and restart persistence (0.489125ms)
+✔ Can I Use ships its admitted artifact and surviving legal inventory without touching other extensions (587.948417ms)
+✔ google-translate installed proof accepts the actual renderer and rejects failed shells (53.113417ms)
+✔ kaomoji-search installed proof accepts the actual renderer and rejects failed shells (14.150625ms)
+✔ can-i-use installed proof accepts the actual renderer and rejects failed shells (13.9485ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 673.25025

@@ -1,0 +1,157 @@
+{
+  "passed": true,
+  "sourceCommit": "396b2844ed0e30b64c2e9e73b6e67e8c0ff95823",
+  "platform": "win32",
+  "architecture": "x64",
+  "node": "v24.20.0",
+  "sdk": {
+    "architecture": "x64",
+    "pointerSize": 8,
+    "completionPort": {
+      "associationSize": 16,
+      "keyOffset": 0,
+      "portOffset": 8,
+      "accountingTotalOffset": 36,
+      "associationClass": 7,
+      "newProcess": 6,
+      "synchronize": 1048576
+    },
+    "layouts": {
+      "STARTUPINFOEXW": {
+        "size": 112,
+        "lpAttributeList": 104
+      },
+      "STARTUPINFOW": {
+        "size": 104,
+        "cb": 0,
+        "dwFlags": 60,
+        "hStdInput": 80,
+        "hStdOutput": 88,
+        "hStdError": 96
+      },
+      "PROCESS_INFORMATION": {
+        "size": 24,
+        "hProcess": 0,
+        "hThread": 8,
+        "dwProcessId": 16,
+        "dwThreadId": 20
+      },
+      "JOBOBJECT_BASIC_ACCOUNTING_INFORMATION": {
+        "size": 48,
+        "ActiveProcesses": 40
+      },
+      "JOBOBJECT_EXTENDED_LIMIT_INFORMATION": {
+        "size": 144,
+        "BasicLimitInformation.LimitFlags": 16
+      }
+    },
+    "constants": {
+      "PROC_THREAD_ATTRIBUTE_JOB_LIST": 131085,
+      "PROC_THREAD_ATTRIBUTE_HANDLE_LIST": 131074,
+      "EXTENDED_STARTUPINFO_PRESENT": 524288,
+      "CREATE_UNICODE_ENVIRONMENT": 1024,
+      "CREATE_NO_WINDOW": 134217728,
+      "STARTF_USESTDHANDLES": 256,
+      "JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE": 8192,
+      "JobObjectBasicAccountingInformation": 1,
+      "JobObjectExtendedLimitInformation": 9,
+      "HANDLE_FLAG_INHERIT": 1,
+      "ERROR_INSUFFICIENT_BUFFER": 122,
+      "ERROR_BROKEN_PIPE": 109,
+      "WAIT_OBJECT_0": 0,
+      "WAIT_TIMEOUT": 258,
+      "WAIT_FAILED": 4294967295
+    }
+  },
+  "workerPid": 6384,
+  "initial": [
+    {
+      "ProcessId": 6384,
+      "ParentProcessId": 2308
+    }
+  ],
+  "result": {
+    "passed": true,
+    "moduleSha256": "bbbe9306d163386ee3d4c15488ea4df20309d1043fc0821891d068fb06dfe4f4",
+    "publicModuleSha256": "f76807b68a5d65450a179456d1096573badfaaa4fdcfb58fde3fb3fd649ade94",
+    "koffiVersion": "3.1.6",
+    "installedResolution": true,
+    "cases": [
+      {
+        "name": "public-runtime",
+        "passed": true
+      },
+      {
+        "name": "paged-unicode-incremental",
+        "passed": true
+      },
+      {
+        "name": "lease-contention-reopen",
+        "passed": true
+      },
+      {
+        "name": "lease-first-creation",
+        "passed": true
+      },
+      {
+        "name": "prepared-launch-cancellation",
+        "passed": true
+      },
+      {
+        "name": "held-native-callback",
+        "passed": true
+      }
+    ],
+    "phase": "complete",
+    "failure": null,
+    "indexModules": {
+      "index.js": "3b91c857e3bccd914ed7f6e36f56f87dbf116e6bc0012e64e2b80262e9c4baea",
+      "owned-process-windows.js": "bbbe9306d163386ee3d4c15488ea4df20309d1043fc0821891d068fb06dfe4f4",
+      "owned-process.js": "f76807b68a5d65450a179456d1096573badfaaa4fdcfb58fde3fb3fd649ade94",
+      "search-index-auth.js": "b7a42000f2fd709203e60baf92bf16d35b20eaedbf2e9a16e86d44f7c840369e",
+      "search-index-channel.js": "77cec1d7b61eef1f755f46b56b14352b1516807c3b718f38cfe1509c730705b6",
+      "search-index-child.js": "a734b78c17a6337fe8561a0a584a395a863eaefc8d44f1eeea25d791849b0a92",
+      "search-index-native.js": "64f9baf2eacdc3924c6dd5469f6c144b0ba64b0c7f06633c6086829cf586d7c8",
+      "search-index-ownership.js": "cabee43140f32c5f60576f53363eaea41c990494e6994a4acb4dacb32d84a4b4",
+      "search-index-process.js": "e3fb232cc6a448fb1c7dc446f28119fc52ac581ea4ded42154f1d812ca16a62c",
+      "search-index-progress.js": "c7e3d8c4b62728276ccce1119e098fced5cbea551dffb18bcdca87ff5206b0bd",
+      "search-index-protocol.js": "f068d4fe24b6bf24019307212fd16dcdb3bede3a9052e17d34494a76fb2d480a"
+    },
+    "stoppedPids": [
+      8292,
+      3096,
+      7572,
+      9096,
+      3204,
+      6928,
+      8832,
+      8976
+    ],
+    "publicRuntime": {
+      "hostPid": 6384,
+      "childPid": 8292,
+      "scanned": 2,
+      "matches": [
+        "Alpha.md"
+      ]
+    },
+    "lease": {
+      "contenderCode": "SQLITE_BUSY",
+      "racingCodes": [
+        null,
+        "SQLITE_BUSY"
+      ]
+    },
+    "nativeStall": {
+      "childPid": 8976,
+      "successfulCallbackWithheld": true,
+      "hostResponsive": true,
+      "stoppedAfterMarkerMs": 5018.1196
+    }
+  },
+  "emergencyCleanup": false,
+  "residue": [],
+  "temporaryRootRemoved": true,
+  "failure": null,
+  "diagnostics": null
+}

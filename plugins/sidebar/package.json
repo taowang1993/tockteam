@@ -1,0 +1,42 @@
+{
+  "name": "@tockteam/sidebar",
+  "version": "0.1.5",
+  "description": "Extensible TockTeam side panel with workspace and desktop tools",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./client": "./dist/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-input-trigger",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@tockteam/panel-controls",
+        "@tockteam/pinned-summary"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "files": [
+    "dist/index.js",
+    "dist/client.js",
+    "dist/client.js.map"
+  ],
+  "devDependencies": {
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "dependencies": {
+    "@tockteam/ui": "workspace:*",
+    "lucide-react": "0.473.0"
+  }
+}

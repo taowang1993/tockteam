@@ -1,0 +1,273 @@
+import assert from 'node:assert/strict'
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  writeFile,
+} from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { test } from 'node:test'
+import { replaceMacBundle } from '../scripts/install-mac.mjs'
+
+async function makeBundle(path: string, marker: string): Promise<void> {
+  await mkdir(join(path, 'Contents', 'MacOS'), { recursive: true })
+  await mkdir(join(
+    path,
+    'Contents',
+    'Frameworks',
+    'Electron Framework.framework',
+  ), { recursive: true })
+  await mkdir(join(path, 'Contents', 'Resources'), { recursive: true })
+  await writeFile(join(path, 'Contents', 'MacOS', 'TockTeam Desktop'), marker)
+  await writeFile(join(
+    path,
+    'Contents',
+    'Frameworks',
+    'Electron Framework.framework',
+    'Electron Framework',
+  ), marker)
+  await writeFile(join(path, 'Contents', 'Resources', 'app.asar'), marker)
+}
+
+test('local mac install never exposes a partially copied app bundle', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-'))
+  const source = join(root, 'source.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  const backups = join(root, 'Trash')
+  await makeBundle(source, 'new')
+  await makeBundle(destination, 'old')
+
+  const result = await replaceMacBundle({
+    source,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => {
+      assert.notEqual(pending, destination)
+      assert.equal(
+        await readFile(join(
+          destination,
+          'Contents',
+          'Frameworks',
+          'Electron Framework.framework',
+          'Electron Framework',
+        ), 'utf8'),
+        'old',
+      )
+      await cp(from, pending, { recursive: true })
+    },
+    validateBundle: (path: string) => makeBundleValidation(path),
+  })
+
+  assert.equal(
+    await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'new',
+  )
+  assert.equal(
+    await readFile(join(result.backup!, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'old',
+  )
+})
+
+test('local mac install rejects concurrent replacement without touching the winner', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-concurrent-'))
+  const firstSource = join(root, 'first.app')
+  const secondSource = join(root, 'second.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  const backups = join(root, 'Trash')
+  await makeBundle(firstSource, 'first')
+  await makeBundle(secondSource, 'second')
+  await makeBundle(destination, 'old')
+  let release!: () => void
+  const blocked = new Promise<void>(resolve => { release = resolve })
+  let copying!: () => void
+  const started = new Promise<void>(resolve => { copying = resolve })
+  const first = replaceMacBundle({
+    source: firstSource,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => {
+      copying()
+      await blocked
+      await cp(from, pending, { recursive: true })
+    },
+    validateBundle: makeBundleValidation,
+  })
+  await started
+  await assert.rejects(replaceMacBundle({
+    source: secondSource,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: makeBundleValidation,
+  }), /install is already in progress/u)
+  release()
+  await first
+  assert.equal(await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'), 'first')
+})
+
+test('stale lock recovery does not remove another recovery claim', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-recovery-race-'))
+  const source = join(root, 'source.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  const lock = join(root, 'Applications', '.TockTeam Desktop.app.install.lock')
+  await makeBundle(source, 'new')
+  await mkdir(join(lock, '.recovery'), { recursive: true })
+  const owner = JSON.stringify({ createdAt: Date.now(), pid: 2_147_483_647 })
+  await writeFile(join(lock, 'owner.json'), owner)
+
+  await assert.rejects(replaceMacBundle({
+    source,
+    destination,
+    backupDirectory: join(root, 'Trash'),
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: makeBundleValidation,
+  }), /install is already in progress/u)
+  assert.equal(await readFile(join(lock, 'owner.json'), 'utf8'), owner)
+})
+
+test('local mac install recovers a lock left by a dead installer', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-stale-lock-'))
+  const source = join(root, 'source.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  const lock = join(root, 'Applications', '.TockTeam Desktop.app.install.lock')
+  await makeBundle(source, 'new')
+  await mkdir(lock, { recursive: true })
+  await writeFile(join(lock, 'owner.json'), JSON.stringify({ createdAt: Date.now(), pid: 2_147_483_647 }))
+  await replaceMacBundle({
+    source,
+    destination,
+    backupDirectory: join(root, 'Trash'),
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: makeBundleValidation,
+  })
+  assert.equal(await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'), 'new')
+})
+
+test('local mac install retries after staged validation failure without touching the installed app', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-retry-'))
+  const source = join(root, 'source.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  const backups = join(root, 'Trash')
+  await makeBundle(source, 'new')
+  await makeBundle(destination, 'old')
+  let corrupt = true
+
+  await assert.rejects(replaceMacBundle({
+    source,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => {
+      await cp(from, pending, { recursive: true })
+      if (corrupt) await writeFile(join(pending, 'Contents', 'Resources', 'app.asar'), 'corrupt')
+    },
+    validateBundle: makeBundleValidation,
+  }))
+  assert.equal(
+    await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'old',
+  )
+
+  corrupt = false
+  const result = await replaceMacBundle({
+    source,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: makeBundleValidation,
+  })
+  assert.equal(
+    await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'new',
+  )
+  assert.ok(result.backup)
+  assert.equal(
+    await readFile(join(result.backup!, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'old',
+  )
+})
+
+test('repeated local mac replacements preserve distinct backups', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-backups-'))
+  const firstSource = join(root, 'first.app')
+  const secondSource = join(root, 'second.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  const backups = join(root, 'Trash')
+  await makeBundle(firstSource, 'first')
+  await makeBundle(secondSource, 'second')
+  await makeBundle(destination, 'old')
+
+  const first = await replaceMacBundle({
+    source: firstSource,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: makeBundleValidation,
+  })
+  const second = await replaceMacBundle({
+    source: secondSource,
+    destination,
+    backupDirectory: backups,
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: makeBundleValidation,
+  })
+
+  assert.ok(first.backup)
+  assert.ok(second.backup)
+  assert.notEqual(first.backup, second.backup)
+  assert.equal(
+    await readFile(join(first.backup!, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'old',
+  )
+  assert.equal(
+    await readFile(join(second.backup!, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'first',
+  )
+  assert.equal(
+    await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'second',
+  )
+})
+
+test('local mac install restores the previous app when final validation fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-install-rollback-'))
+  const source = join(root, 'source.app')
+  const destination = join(root, 'Applications', 'TockTeam Desktop.app')
+  await makeBundle(source, 'new')
+  await makeBundle(destination, 'old')
+
+  await assert.rejects(replaceMacBundle({
+    source,
+    destination,
+    backupDirectory: join(root, 'Trash'),
+    copyBundle: async (from: string, pending: string) => { await cp(from, pending, { recursive: true }) },
+    validateBundle: async (path: string) => {
+      await makeBundleValidation(path)
+      if (path === destination
+        && await readFile(join(path, 'Contents', 'Resources', 'app.asar'), 'utf8') === 'new') {
+        throw new Error('final validation failed')
+      }
+    },
+  }), /final validation failed/u)
+
+  assert.equal(
+    await readFile(join(destination, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+    'old',
+  )
+})
+
+async function makeBundleValidation(path: string): Promise<void> {
+  const values = await Promise.all([
+    readFile(join(path, 'Contents', 'MacOS', 'TockTeam Desktop'), 'utf8'),
+    readFile(join(
+      path,
+      'Contents',
+      'Frameworks',
+      'Electron Framework.framework',
+      'Electron Framework',
+    ), 'utf8'),
+    readFile(join(path, 'Contents', 'Resources', 'app.asar'), 'utf8'),
+  ])
+  assert.equal(new Set(values).size, 1)
+}

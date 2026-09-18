@@ -1,0 +1,16 @@
+{
+  "name": "@tockteam/tocktutor-workspace",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@deepseek-ai/dsh-app-boot": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-modules": "0.1.2-rc.1"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run build",
+    "pretest": "pnpm run validate:parity && node ../../scripts/prepare-tocktutor-desktop-artifact.mjs",
+    "test": "pnpm -r --workspace-concurrency=1 --filter='!@tockteam/tocktutor-workspace' --if-present run test",
+    "typecheck": "pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run typecheck",
+    "validate:parity": "node parity/validate.mjs"
+  }
+}

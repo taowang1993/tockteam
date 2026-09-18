@@ -1,0 +1,51 @@
+{
+  "run": 35169998523,
+  "attempt": 1,
+  "head": "3aee66cbc7246579a7f0a6b6f14154b9f3d905d8",
+  "job": 105039416422,
+  "npmPreflight": {
+    "pids": [
+      6204,
+      6468
+    ],
+    "cleanupVerified": true,
+    "distinctConfigs": true
+  },
+  "sourcePinsMatched": true,
+  "originalHashesMatched": true,
+  "ownerHashesMatched": true,
+  "configuredPnpmPathsMatched": true,
+  "installExitCodes": [
+    0,
+    0
+  ],
+  "armSummary": [
+    {
+      "mode": "default",
+      "pid": 8852,
+      "code": 1,
+      "deadline": false,
+      "evidenceIncomplete": true,
+      "cleanupVerified": true
+    },
+    {
+      "mode": "none",
+      "pid": 6224,
+      "code": 1,
+      "deadline": false,
+      "evidenceIncomplete": true,
+      "cleanupVerified": true
+    }
+  ],
+  "all11OwnedOperationsCleaned": true,
+  "rootRemoved": true,
+  "finalInventory": [],
+  "emergencyCleanup": false,
+  "classification": "INCONCLUSIVE",
+  "receiptSha256": "9af9a42c7d0d2f903b74154bcd480b354daa7740fe34194e08c13f3b973a4d04",
+  "limits": [
+    "No valid historical journal/dependency identities; no causal attribution.",
+    "Post-stop inventories, not live native-call attribution.",
+    "Full local fixture gate blocked; user expressly approved Windows with that gap."
+  ]
+}

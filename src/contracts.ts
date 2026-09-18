@@ -1,0 +1,145 @@
+import type { PluginMarketplaceBridge } from '../plugins/plugin-marketplace/src/protocol.ts'
+import type {
+  DesktopAppUpdateActionResult,
+  DesktopAppUpdateState,
+} from './desktop-app-update.ts'
+import type { DesktopLauncherState } from './launcher-window-contract.ts'
+import type { LauncherThemeSource } from './launcher-theme.ts'
+import type { LauncherLocale } from './launcher-contract.ts'
+import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
+import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
+
+export type { DesktopLauncherState } from './launcher-window-contract.ts'
+import type {
+  DesktopCallerOperation,
+  DesktopQuickAction,
+  TockTutorBrowserProtocolRequest,
+} from './host-contract.ts'
+
+/** Commands sent from Electron's native chrome to the DSH client plugin. */
+export type DesktopCommand =
+  | { type: 'focus-composer' }
+  | { type: 'new-session' }
+  | { type: 'open-paths'; paths: string[] }
+  | { section?: 'tocklauncher'; type: 'show-settings' }
+  | { type: 'toggle-bottom-panel' }
+  | { type: 'toggle-panel-maximized' }
+  | { type: 'toggle-pinned-summary' }
+  | { type: 'toggle-side-panel' }
+  | { type: 'toggle-workspace-panel' }
+  | { type: 'open-browser' }
+  | { type: 'open-files' }
+  | { type: 'open-review' }
+  | { type: 'open-side-chat' }
+  | { type: 'open-trajectory' }
+  | { type: 'toggle-sidebar' }
+
+/** Public facts exposed by the isolated Electron preload. */
+export interface DesktopInfo {
+  appDataPath: string
+  dshHome: string
+  platform: NodeJS.Platform
+  preview: { pluginId: string; transactionId: string } | null
+  profile: string
+  version: string
+}
+
+/** Runtime diagnostics shown by the bundled bottom-panel plugin. */
+export interface DesktopRuntimeSnapshot {
+  bundledPlugins: string[]
+  logTail: string[]
+  profile: string
+  runtimeUrl: string | null
+  status: 'ready' | 'restarting' | 'stopped'
+}
+
+export interface WebClipBlockedNavigation {
+  frameId: number
+  url: string
+}
+
+export type TockTutorDesktopDispatchEvent = {
+  action: DesktopQuickAction
+  deliveryId: string
+  kind: 'quick-action'
+  operationId: string
+} | {
+  deliveryId: string
+  kind: 'protocol'
+  operationId: string
+  request: TockTutorBrowserProtocolRequest
+}
+
+export interface TockTutorDesktopDispatchCompletionRequest {
+  deliveryId: string
+  operationId: string
+  status: 'handled' | 'failed' | 'stale'
+}
+
+export interface TockTutorDesktopCallerBridge {
+  authorize(
+    operation: DesktopCallerOperation,
+    expectedVault?: Readonly<{ generation: number; id: string }>,
+  ): Promise<{ authorization: string }>
+  cancelDispatch(): Promise<void>
+  completeDispatch(request: TockTutorDesktopDispatchCompletionRequest): Promise<'handled' | 'stale' | 'unavailable'>
+  nextDispatch(): Promise<TockTutorDesktopDispatchEvent | null>
+}
+
+export type LauncherSettingsOperationResult = Readonly<{ canceled?: boolean; ok: true }>
+
+export interface DesktopLauncherSettingsBridge {
+  exportSettings(): Promise<LauncherSettingsOperationResult>
+  getSnapshot(): Promise<LauncherSettingsSnapshot>
+  importSettings(): Promise<LauncherSettingsOperationResult>
+  resetSettings(): Promise<LauncherSettingsOperationResult>
+  revokeCustomBrowser(): Promise<LauncherSettingsOperationResult>
+  revokeExternalSettings(): Promise<LauncherSettingsOperationResult>
+  selectCustomBrowser(): Promise<LauncherSettingsOperationResult>
+  selectExternalSettings(): Promise<LauncherSettingsOperationResult>
+  updateSetting(key: string, value: unknown): Promise<LauncherSettingsOperationResult>
+}
+
+export interface DesktopLauncherBridge {
+  getState(): Promise<DesktopLauncherState>
+  show(): Promise<DesktopLauncherState>
+  settings: DesktopLauncherSettingsBridge
+}
+
+export interface DesktopAppUpdateBridge {
+  getState(): Promise<DesktopAppUpdateState>
+  check(): Promise<DesktopAppUpdateActionResult>
+  download(): Promise<DesktopAppUpdateActionResult>
+  install(): Promise<DesktopAppUpdateActionResult>
+  onStateChange(listener: (state: DesktopAppUpdateState) => void): () => void
+}
+
+export interface DesktopLaunchOnStartBridge {
+  get(): Promise<boolean>
+  set(enabled: boolean): Promise<boolean>
+}
+
+export interface WebClipDesktopBridge {
+  authorizeDocument(frameId: number, html: string): Promise<string>
+  onNavigationBlocked(listener: (navigation: WebClipBlockedNavigation) => void): () => void
+}
+
+/** Browser-safe desktop bridge made available through contextBridge. */
+export interface DesktopBridge {
+  chooseWorkspace(): Promise<string[]>
+  launcher: DesktopLauncherBridge
+  appUpdate: DesktopAppUpdateBridge
+  launchOnStart: DesktopLaunchOnStartBridge
+  getInfo(): Promise<DesktopInfo>
+  getRuntimeSnapshot(): Promise<DesktopRuntimeSnapshot>
+  onCommand(listener: (command: DesktopCommand) => void): () => void
+  onRoute(listener: (route: LauncherWorkbenchRoute) => void): () => void
+  syncLauncherLocale(locale: LauncherLocale): Promise<void>
+  syncLauncherTheme(source: LauncherThemeSource): Promise<void>
+  syncWorkbenchDestination(destination: TockTeamDestination): Promise<void>
+  openExternal(url: string): Promise<void>
+  setTockTutorActive(active: boolean): Promise<void>
+  pluginMarketplace: PluginMarketplaceBridge
+  tockTutor: TockTutorDesktopCallerBridge
+  webClip: WebClipDesktopBridge
+}

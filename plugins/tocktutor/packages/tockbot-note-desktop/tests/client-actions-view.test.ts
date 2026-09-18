@@ -1,0 +1,96 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@tockteam/ui/dropdown-menu'
+import {
+  TockTutorNativeActions,
+  TockTutorVaultActions,
+  type DesktopActionRemote,
+  type DesktopCallerBridge,
+} from '../dist/client-actions.js'
+
+const bridge = Object.freeze({}) as DesktopCallerBridge
+const remote = Object.freeze({}) as DesktopActionRemote
+const vault = Object.freeze({ generation: 7, id: `vault:${'a'.repeat(64)}` })
+
+test('renders keyboard-native actions with bounded availability and polite status', () => {
+  Object.defineProperty(globalThis, 'MediaRecorder', { configurable: true, value: class {}, writable: true })
+  const active = renderToStaticMarkup(createElement(TockTutorNativeActions, {
+    activePath: 'Folder/Note.md',
+    bridge,
+    handleDispatch: async () => 'handled' as const,
+    remote,
+    storeAudio: async () => true,
+    vault,
+  }))
+  assert.match(active, /aria-label="Desktop Note Actions"/u)
+  assert.match(active, /role="group"/u)
+  assert.match(active, /data-slot="alert"[^>]*role="status"[^>]*aria-live="polite">Ready\.<\/div>/u)
+  for (const label of [
+    'Reveal Entry',
+    'Open Pop-Out',
+    'Close Pop-Out',
+    'Close All Pop-Outs',
+    'Request Microphone',
+    'Start Recording',
+    'Print Note',
+    'Export HTML',
+    'Export PDF',
+  ]) assert.match(active, new RegExp(`>${label}<\\/button>`, 'u'))
+  assert.doesNotMatch(active, /<button[^>]* disabled=""/u)
+
+  const inactive = renderToStaticMarkup(createElement(TockTutorNativeActions, {
+    activePath: null,
+    bridge,
+    handleDispatch: async () => 'handled' as const,
+    remote,
+    vault: null,
+  }))
+  assert.doesNotMatch(inactive, /Choose Vault/u)
+  assert.equal([...inactive.matchAll(/<button[^>]*disabled=""/gu)].length, 9)
+})
+
+test('renders the vault folder picker as a dedicated action', () => {
+  const html = renderToStaticMarkup(createElement(TockTutorVaultActions, {
+    beginRename() {},
+    bridge,
+    close() {},
+    closeMenu() {},
+    placement: 'actions',
+    remote,
+    renderMenuItem() { return null },
+    vault,
+    vaultName: 'Research Vault',
+  }))
+  assert.match(html, /<button[^>]*aria-label="Open Folder as Vault"/u)
+  assert.match(html, />Open<\/button>/u)
+})
+
+test('renders the Obsidian-compatible native vault menu actions', () => {
+  const html = renderToStaticMarkup(createElement(
+    DropdownMenu,
+    null,
+    createElement(DropdownMenuContent, { forceMount: true, portalled: false }, createElement(TockTutorVaultActions, {
+      beginRename() {},
+      bridge,
+      close() {},
+      closeMenu() {},
+      placement: 'menu',
+      remote,
+      renderMenuItem(item) {
+        return createElement(DropdownMenuItem, {
+          disabled: item.disabled === true,
+          onSelect: item.select,
+        }, item.label)
+      },
+      vault,
+      vaultName: 'Research Vault',
+    })),
+  ))
+  assert.match(html, /Rename Vault\.\.\./u)
+  assert.match(html, /Move Vault\.\.\./u)
+  assert.match(html, /Reveal Vault in Finder/u)
+  assert.match(html, /Remove from List/u)
+  assert.doesNotMatch(html, /Open Folder as Vault/u)
+})

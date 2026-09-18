@@ -1,0 +1,129 @@
+import fs from 'node:fs'
+import { syncBuiltinESMExports } from 'node:module'
+import { dirname } from 'node:path'
+
+const mode = process.env.TOCKTEAM_HOOK_MODE
+const foreign = process.env.TOCKTEAM_HOOK_FOREIGN ?? 'foreign-occupant'
+let attacked = false
+
+const original = {
+  appendFileSync: fs.appendFileSync.bind(fs),
+  linkSync: fs.linkSync.bind(fs),
+  mkdirSync: fs.mkdirSync.bind(fs),
+  open: fs.promises.open.bind(fs.promises),
+  opendir: fs.promises.opendir.bind(fs.promises),
+  readFileSync: fs.readFileSync.bind(fs),
+  realpathSync: fs.realpathSync.bind(fs),
+  renameSync: fs.renameSync.bind(fs),
+  rmdirSync: fs.rmdirSync.bind(fs),
+  symlinkSync: fs.symlinkSync.bind(fs),
+  truncateSync: fs.truncateSync.bind(fs),
+  writeFileSync: fs.writeFileSync.bind(fs),
+}
+
+const samePath = (left, right) => {
+  try {
+    return original.realpathSync(left).toLowerCase() === original.realpathSync(right).toLowerCase()
+  } catch {
+    return String(left).toLowerCase() === String(right).toLowerCase()
+  }
+}
+
+if (mode === 'link-source-swap' || mode === 'link-destination-occupy') {
+  fs.linkSync = (source, destination) => {
+    if (!attacked) {
+      attacked = true
+      if (mode === 'link-source-swap') {
+        original.renameSync(source, `${String(source)}-recorded-owner`)
+        original.writeFileSync(source, foreign, { mode: 0o600 })
+      } else {
+        original.writeFileSync(destination, foreign, { mode: 0o600 })
+      }
+    }
+    return original.linkSync(source, destination)
+  }
+}
+
+if (mode === 'startup-stage-swap' || mode === 'startup-journal-open-swap' || mode === 'startup-resolved-stage-open-swap' || mode === 'startup-residue-ancestor-swap' || mode === 'startup-journal-growth' || mode === 'startup-journal-same-size' || mode === 'startup-journal-shrink') {
+  fs.promises.open = async (path, ...args) => {
+    const stage = process.env.TOCKTEAM_HOOK_STAGE
+    if (mode === 'startup-stage-swap' && !attacked && stage !== undefined && String(path).includes('destination-') && String(path).endsWith('.json')) {
+      attacked = true
+      original.renameSync(stage, `${stage}-recorded-owner`)
+      original.writeFileSync(stage, foreign, { mode: 0o600 })
+    }
+    if (mode === 'startup-residue-ancestor-swap' && !attacked && stage !== undefined && samePath(path, stage)) {
+      attacked = true
+      const root = dirname(stage)
+      const moved = `${root}-recorded-owner`
+      original.renameSync(root, moved)
+      original.symlinkSync(moved, root, 'dir')
+    }
+    const handle = await original.open(path, ...args)
+    if ((mode === 'startup-journal-growth' || mode === 'startup-journal-same-size' || mode === 'startup-journal-shrink') && !attacked && String(path).includes('destination-') && String(path).endsWith('.json')) {
+      const read = handle.read.bind(handle)
+      handle.read = async (...readArgs) => {
+        if (!attacked) {
+          attacked = true
+          if (mode === 'startup-journal-growth') original.appendFileSync(path, ' '.repeat(128 * 1024))
+          else if (mode === 'startup-journal-shrink') original.truncateSync(path, Math.floor(original.readFileSync(path).length / 2))
+          else original.writeFileSync(path, original.readFileSync(path))
+        }
+        return await read(...readArgs)
+      }
+    }
+    if (mode === 'startup-resolved-stage-open-swap' && !attacked && stage !== undefined && samePath(path, stage)) {
+      attacked = true
+      original.renameSync(stage, `${stage}-recorded-owner`)
+      original.writeFileSync(stage, foreign, { mode: 0o600 })
+    }
+    if (mode === 'startup-journal-open-swap' && !attacked && String(path).includes('destination-') && String(path).endsWith('.json')) {
+      attacked = true
+      original.renameSync(path, `${String(path)}-recorded-owner`)
+      original.writeFileSync(path, foreign, { mode: 0o600 })
+    }
+    return handle
+  }
+}
+
+if (mode === 'startup-recovery-root-opendir-swap') {
+  fs.promises.opendir = async (target, ...args) => {
+    if (!attacked && fs.readdirSync(target).some(name => name.startsWith('destination-'))) {
+      attacked = true
+      const moved = `${String(target)}-opendir-moved`
+      original.renameSync(target, moved)
+      original.mkdirSync(target, { mode: 0o700 })
+      const directory = await original.opendir(target, ...args)
+      const iterator = directory[Symbol.asyncIterator]()
+      return {
+        [Symbol.asyncIterator]() {
+          return {
+            async next() {
+              const result = await iterator.next()
+              if (result.done) {
+                original.rmdirSync(target)
+                original.renameSync(moved, target)
+              }
+              return result
+            },
+          }
+        },
+      }
+    }
+    return await original.opendir(target, ...args)
+  }
+}
+
+if (mode === 'forbid-destructive') {
+  const forbidden = name => () => { throw new Error(`forbidden managed path operation: ${name}`) }
+  fs.unlinkSync = forbidden('unlinkSync')
+  fs.rmSync = forbidden('rmSync')
+  fs.rmdirSync = forbidden('rmdirSync')
+  fs.renameSync = forbidden('renameSync')
+  fs.promises.unlink = forbidden('unlink')
+  fs.promises.rm = forbidden('rm')
+  fs.promises.rmdir = forbidden('rmdir')
+  fs.promises.rename = forbidden('rename')
+}
+
+syncBuiltinESMExports()

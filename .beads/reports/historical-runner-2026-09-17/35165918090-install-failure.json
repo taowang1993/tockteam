@@ -1,0 +1,12 @@
+{
+  "runId": 35165918090,
+  "attempt": 1,
+  "jobId": 105026852501,
+  "phase": "historical root frozen installation",
+  "workspace": "upstream/dsh-TUI",
+  "lifecycle": "node scripts/prepare-guard.mjs && npm run compile",
+  "error": "double-loading config \"<owned>/empty.npmrc\" as \"global\", previously loaded as \"user\"",
+  "source": "failed-step log, npm configuration loader / npm-prefix.js",
+  "sanitization": "Absolute owned fixture path replaced; raw logs and environment omitted.",
+  "historicalArmsExecuted": 0
+}

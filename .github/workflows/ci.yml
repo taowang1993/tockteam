@@ -1,0 +1,202 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Core checks (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-15
+            node_architecture: arm64
+          - name: macOS x64
+            os: macos-15-intel
+            node_architecture: x64
+          - name: Linux x64
+            os: ubuntu-24.04
+            node_architecture: x64
+          - name: Windows x64
+            os: windows-2025
+            node_architecture: x64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: recursive
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          architecture: ${{ matrix.node_architecture }}
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            plugins/tocktutor/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Use the Runner-Owned Windows Test Folder
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+
+      - name: Verify the Windows Test Folder
+        if: runner.os == 'Windows'
+        run: |
+          node -e "require('node:assert/strict').equal(require('node:os').tmpdir(), process.env.RUNNER_TEMP); console.log('Windows test temporary folder:', require('node:os').tmpdir())"
+
+      - name: Load the native TockTutor search index dependency
+        run: |
+          pnpm -C plugins/tocktutor install --frozen-lockfile
+          pnpm -C plugins/tocktutor/packages/tockbot-note-runtime run test:search-index
+
+      - name: Type check
+        run: pnpm run typecheck
+
+      - name: Run Windows portability tests
+        if: runner.os == 'Windows'
+        run: node --test --test-timeout=30000 tests/desktop-native-caller-abort.test.ts tests/desktop-picker-*.test.ts
+
+      - name: Run tests with root-suite coverage
+        if: matrix.name == 'Linux x64'
+        timeout-minutes: 5
+        run: pnpm run test:coverage
+
+      - name: Run tests
+        if: matrix.name != 'Linux x64'
+        timeout-minutes: 5
+        run: pnpm test
+
+      - name: Upload root-suite coverage
+        if: matrix.name == 'Linux x64'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: root-suite-coverage
+          path: coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build
+        run: pnpm run build
+
+  nix:
+    name: Nix package smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: recursive
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@b67ad2f0e8376a0bc947db191e4484285b6f5b56
+
+      - name: Evaluate the flake
+        run: nix flake check --no-build
+
+      - name: Build canonical packages and compatibility aliases
+        run: |
+          nix build --print-build-logs --out-link result-full .#tockteam
+          nix build --print-build-logs --out-link result-web .#tockteam-web
+          nix build --print-build-logs --out-link result-tui .#tockteam-tui
+          nix build --print-build-logs --no-link \
+            .#tockteam-desktop \
+            .#tockteam-pinned \
+            .#tockteam-desktop-pinned \
+            .#tockteam-web-pinned \
+            .#tockteam-tui-pinned
+
+      - name: Smoke packaged launchers
+        run: |
+          ./result-full/bin/tockteam --help
+          ./result-web/bin/tockteam web --help
+          ./result-tui/bin/tockteam tui --help
+
+      - name: Smoke the packaged Web profile
+        run: nix develop -c node scripts/smoke-web.mjs "$PWD/result-web"
+
+  runtime:
+    name: Runtime smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: recursive
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            plugins/tocktutor/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Build the pinned runtime
+        run: pnpm run build && pnpm run build:dsh
+
+      - name: Check the TockTutor plugin workspace
+        run: |
+          pnpm -C plugins/tocktutor install --frozen-lockfile
+          pnpm run typecheck:tocktutor
+          pnpm run test:tocktutor
+          pnpm run build:tocktutor
+
+      - name: Stage the pinned runtime
+        run: pnpm run stage:dsh
+
+      - name: Smoke the web profile
+        run: pnpm run smoke:web
+
+      - name: Smoke the desktop profile
+        run: xvfb-run -a pnpm run smoke:runtime

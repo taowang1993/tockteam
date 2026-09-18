@@ -1,0 +1,58 @@
+name: Search Index Diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows Native Pool ${{ matrix.pool }}
+    runs-on: windows-2025
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        pool: ['1', '4']
+    env:
+      UV_THREADPOOL_SIZE: ${{ matrix.pool }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.20.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C plugins/tocktutor install --frozen-lockfile
+      - name: Reproduce Historical Cold Startup
+        continue-on-error: true
+        shell: pwsh
+        working-directory: plugins/tocktutor/packages/tockbot-note-runtime
+        run: |
+          try {
+            git show 9a709fc995343debed13740065039302a86c21e1:plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts | Set-Content -Encoding utf8 src/index.ts
+            git show 9a709fc995343debed13740065039302a86c21e1:plugins/tocktutor/packages/tockbot-note-runtime/tests/loader-composition.test.ts | Set-Content -Encoding utf8 tests/loader-composition.test.ts
+            for ($i = 1; $i -le 50; $i++) {
+              Write-Output "Historical cold iteration $i"
+              node -e "const r=require('node:child_process').spawnSync(process.execPath,['--test','--test-isolation=none','--test-name-pattern=Keyword search reconciles|persistent FlexSearch SQLite','tests/loader-composition.test.ts'],{stdio:'inherit',timeout:60000,killSignal:'SIGKILL'});if(r.error)console.error(r.error);process.exitCode=r.status??1"
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
+          } finally {
+            git restore -- src/index.ts tests/loader-composition.test.ts
+          }
+      - name: Trace Repeated Native Startup and Reopen
+        shell: pwsh
+        working-directory: plugins/tocktutor/packages/tockbot-note-runtime
+        run: |
+          $preload = node -e "console.log(require('node:url').pathToFileURL(require('node:path').resolve('scripts/trace-search-index.mjs')).href)"
+          $env:NODE_OPTIONS = "--import=$preload"
+          for ($i = 1; $i -le 10; $i++) {
+            Write-Output "Native iteration $i"
+            node scripts/test-search-index.mjs
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }

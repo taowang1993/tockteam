@@ -1,0 +1,1 @@
+Selected-text autoInput used the dev selection fixture; clipboard equality tokens matched before and after.

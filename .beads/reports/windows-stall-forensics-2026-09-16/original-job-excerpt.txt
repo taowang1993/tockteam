@@ -1,0 +1,57 @@
+99: 2026-09-12T09:04:43.3405124Z ##[group]Checking out the ref
+100: 2026-09-12T09:04:43.3413366Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force refs/remotes/pull/7/merge
+101: 2026-09-12T09:04:43.9821093Z Note: switching to 'refs/remotes/pull/7/merge'.
+102: 2026-09-12T09:04:43.9821541Z 
+103: 2026-09-12T09:04:43.9821916Z You are in 'detached HEAD' state. You can look around, make experimental
+104: 2026-09-12T09:04:43.9822719Z changes and commit them, and you can discard any commits you make in this
+105: 2026-09-12T09:04:43.9823487Z state without impacting any branches by switching back to a branch.
+106: 2026-09-12T09:04:43.9824744Z 
+107: 2026-09-12T09:04:43.9825123Z If you want to create a new branch to retain commits you create, you may
+108: 2026-09-12T09:04:43.9825908Z do so (now or later) by using -c with the switch command. Example:
+109: 2026-09-12T09:04:43.9826337Z 
+110: 2026-09-12T09:04:43.9826516Z   git switch -c <new-branch-name>
+111: 2026-09-12T09:04:43.9826819Z 
+112: 2026-09-12T09:04:43.9826981Z Or undo this operation with:
+113: 2026-09-12T09:04:43.9827255Z 
+114: 2026-09-12T09:04:43.9827387Z   git switch -
+115: 2026-09-12T09:04:43.9827589Z 
+116: 2026-09-12T09:04:43.9827949Z Turn off this advice by setting config variable advice.detachedHead to false
+117: 2026-09-12T09:04:43.9828943Z 
+118: 2026-09-12T09:04:43.9829581Z HEAD is now at b2872cbc Merge 9a709fc995343debed13740065039302a86c21e1 into d5927ae3d3868de6fc199c79bb4fa9d88f17c92e
+203: 2026-09-12T09:04:58.5926272Z ##[endgroup]
+204: 2026-09-12T09:04:58.6286843Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+205: 2026-09-12T09:04:58.6546470Z b2872cbcde7efcfd2f291f0ed871d820370f6461
+248: 2026-09-12T09:05:07.8388238Z node: v24.20.0
+249: 2026-09-12T09:05:07.8388495Z npm: 11.19.0
+250: 2026-09-12T09:05:07.8388696Z yarn: 1.22.22
+547: 2026-09-12T09:06:46.0198592Z $ node --test --test-name-pattern="Keyword search reconciles|persistent FlexSearch SQLite" tests/loader-composition.test.ts
+548: 2026-09-12T09:07:03.3410300Z ✖ Keyword search reconciles state-owned indexed candidates through the exact verifier (16994.4646ms)
+549: 2026-09-12T09:34:26.2485350Z 
+550: 2026-09-12T09:34:26.2500949Z Interrupted while running:
+551: 2026-09-12T09:34:26.2501791Z 
+552: 2026-09-12T09:34:26.2516396Z ⚠ tests\loader-composition.test.ts (tests\loader-composition.test.ts:1:1)
+553: 2026-09-12T09:34:26.2519250Z ✖ tests\loader-composition.test.ts (1660162.023ms)
+554: 2026-09-12T09:34:26.2522091Z ℹ tests 2
+555: 2026-09-12T09:34:26.2522768Z ℹ suites 0
+556: 2026-09-12T09:34:26.2523404Z ℹ pass 0
+557: 2026-09-12T09:34:26.2524101Z ℹ fail 1
+558: 2026-09-12T09:34:26.2524776Z ℹ cancelled 1
+559: 2026-09-12T09:34:26.2526111Z ℹ skipped 0
+560: 2026-09-12T09:34:26.2526824Z ℹ todo 0
+561: 2026-09-12T09:34:26.2528174Z ℹ duration_ms 1660170.6356
+562: 2026-09-12T09:34:26.2540190Z 
+563: 2026-09-12T09:34:26.2540991Z ✖ failing tests:
+564: 2026-09-12T09:34:26.2541535Z 
+565: 2026-09-12T09:34:26.2542091Z test at tests\loader-composition.test.ts:4972:1
+566: 2026-09-12T09:34:26.2543756Z ✖ Keyword search reconciles state-owned indexed candidates through the exact verifier (16994.4646ms)
+567: 2026-09-12T09:34:26.2547271Z   Error: timed out waiting for 2 indexed candidates; observed 3
+568: 2026-09-12T09:34:26.2549041Z       at indexedSearch (file:///D:/a/tockteam/tockteam/plugins/tocktutor/packages/tockbot-note-runtime/tests/loader-composition.test.ts:5001:17)
+569: 2026-09-12T09:34:26.2551369Z       at async TestContext.<anonymous> (file:///D:/a/tockteam/tockteam/plugins/tocktutor/packages/tockbot-note-runtime/tests/loader-composition.test.ts:5007:19)
+570: 2026-09-12T09:34:26.2553028Z       at async Test.run (node:internal/test_runner/test:1404:7)
+571: 2026-09-12T09:34:26.2557225Z       at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+572: 2026-09-12T09:34:26.2558147Z 
+573: 2026-09-12T09:34:26.2558692Z test at tests\loader-composition.test.ts:1:1
+574: 2026-09-12T09:34:26.2560026Z ✖ tests\loader-composition.test.ts (1660162.023ms)
+575: 2026-09-12T09:34:26.2561261Z   'Promise resolution is still pending but the event loop has already resolved'
+576: 2026-09-12T09:34:26.2680251Z Terminate batch job (Y/N)? 
+577: 2026-09-12T09:34:26.3382837Z ##[error]The operation was canceled.

@@ -1,0 +1,930 @@
+{
+  "version": 1,
+  "supervisorPid": 19385,
+  "classification": "INCONCLUSIVE",
+  "scope": "LOCAL_POSIX_CALIBRATION_NOT_WINDOWS_ACCEPTANCE",
+  "node": "v24.20.0",
+  "architecture": "arm64",
+  "threadpool": "default:4",
+  "osDefaultTempVolume": "local",
+  "instrumentationPerturbsIOAndScheduling": true,
+  "control": {
+    "cleanupVerified": true,
+    "deadline": true,
+    "deadlineMs": 5000,
+    "rootPid": 19396,
+    "processGroup": 19396,
+    "initialInventory": [
+      {
+        "ProcessId": 19396,
+        "ParentProcessId": 19385
+      },
+      {
+        "ProcessId": 19399,
+        "ParentProcessId": 19396
+      },
+      {
+        "ProcessId": 19400,
+        "ParentProcessId": 19399
+      }
+    ],
+    "failure": "absolute deadline",
+    "journal": [
+      {
+        "test": "control",
+        "phase": "test",
+        "state": "start",
+        "pid": 19399,
+        "elapsedMs": 2.022500000000001
+      },
+      {
+        "test": "control",
+        "phase": "pending-descendant",
+        "state": "start",
+        "pid": 19399,
+        "elapsedMs": 2.177624999999999
+      },
+      {
+        "test": "control",
+        "phase": "pending-descendant",
+        "state": "start",
+        "pid": 19400,
+        "elapsedMs": 0.12579099999999954
+      }
+    ],
+    "finalInventory": [],
+    "status": "deadline",
+    "controlPassed": true
+  },
+  "arms": [
+    {
+      "arm": "default",
+      "args": [
+        "--test",
+        "--test-name-pattern=Keyword search reconciles|persistent FlexSearch SQLite",
+        "tests/loader-composition.test.ts"
+      ],
+      "cleanupVerified": true,
+      "deadline": false,
+      "deadlineMs": 60000,
+      "rootPid": 20834,
+      "processGroup": 20834,
+      "completion": {
+        "code": 0,
+        "signal": null,
+        "stdoutBytes": 303,
+        "stderrBytes": 0
+      },
+      "status": "passed",
+      "journal": [
+        {
+          "test": "keyword",
+          "phase": "test",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 7.2062499999999545
+        },
+        {
+          "test": "keyword",
+          "phase": "load",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 11.392916999999954
+        },
+        {
+          "test": "keyword",
+          "phase": "load",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 30.264250000000004
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 30.548374999999965
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 71.00366699999995
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 100.53891699999997
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 126.15300000000002
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 134.49008400000002
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 160.93154200000004
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 175.04341699999998
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 227.33058399999993
+        },
+        {
+          "test": "keyword",
+          "phase": "dispose",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 227.38883399999997
+        },
+        {
+          "test": "keyword",
+          "phase": "dispose",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 229.06541700000002
+        },
+        {
+          "test": "keyword",
+          "phase": "cleanup",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 229.12420899999995
+        },
+        {
+          "test": "keyword",
+          "phase": "cleanup",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 230.78666699999997
+        },
+        {
+          "test": "keyword",
+          "phase": "test",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 230.83841699999994
+        },
+        {
+          "test": "persistent",
+          "phase": "test",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 231.34725000000003
+        },
+        {
+          "test": "persistent",
+          "phase": "load",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 233.01245900000004
+        },
+        {
+          "test": "persistent",
+          "phase": "load",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 239.98933399999999
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 240.10479199999997
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 265.93120899999997
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 265.983834
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 266.72249999999997
+        },
+        {
+          "test": "persistent",
+          "phase": "reopen-1",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 266.77033399999993
+        },
+        {
+          "test": "persistent",
+          "phase": "reopen-1",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 272.91949999999997
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 272.97137499999997
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 299.42833399999995
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 299.7133749999999
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 300.44670899999994
+        },
+        {
+          "test": "persistent",
+          "phase": "schema-mutation",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 300.488292
+        },
+        {
+          "test": "persistent",
+          "phase": "schema-mutation",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 301.089875
+        },
+        {
+          "test": "persistent",
+          "phase": "reopen-2",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 301.115375
+        },
+        {
+          "test": "persistent",
+          "phase": "reopen-2",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 306.79475
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 306.832084
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 332.337
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 332.450292
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 333.14191700000003
+        },
+        {
+          "test": "persistent",
+          "phase": "cleanup",
+          "state": "start",
+          "pid": 20835,
+          "elapsedMs": 333.179709
+        },
+        {
+          "test": "persistent",
+          "phase": "cleanup",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 334.171375
+        },
+        {
+          "test": "persistent",
+          "phase": "test",
+          "state": "end",
+          "pid": 20835,
+          "elapsedMs": 334.209792
+        }
+      ],
+      "dependencies": {
+        "pid": 20835,
+        "node": "v24.20.0",
+        "architecture": "arm64",
+        "threadpool": "default:4",
+        "available": true,
+        "unavailable": [],
+        "packages": [
+          {
+            "name": "sqlite3",
+            "version": "5.1.7",
+            "entry": "plugins/tocktutor/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/lib/sqlite3.js",
+            "sha256": "8d6b400ae7f69a80d0cdd37a968d7b9a913661fa53475e5b8de49dda21684973"
+          },
+          {
+            "name": "flexsearch",
+            "version": "0.8.212",
+            "entry": "plugins/tocktutor/node_modules/.pnpm/flexsearch@0.8.212/node_modules/flexsearch/dist/flexsearch.bundle.min.js",
+            "sha256": "62e33d2d18493ebd341e5692df6e0c7fc74a24bf038f2770f903f6da19525003"
+          },
+          {
+            "name": "tockbot-note-runtime",
+            "version": "0.1.2",
+            "entry": "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+            "sha256": "c3a85b0d16870a20d9f884dbe390086fe5ff07611e6acd712b7d197a3b97cbc8"
+          }
+        ],
+        "native": {
+          "path": "plugins/tocktutor/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/build/Release/node_sqlite3.node",
+          "sha256": "e476b3077cee91f9e8a679e7d8303fb6e5e0c5815c25aa06033159ae533857c6"
+        }
+      },
+      "finalInventory": []
+    },
+    {
+      "arm": "none",
+      "args": [
+        "--test",
+        "--test-isolation=none",
+        "--test-name-pattern=Keyword search reconciles|persistent FlexSearch SQLite",
+        "tests/loader-composition.test.ts"
+      ],
+      "cleanupVerified": true,
+      "deadline": false,
+      "deadlineMs": 60000,
+      "rootPid": 20837,
+      "processGroup": 20837,
+      "completion": {
+        "code": 0,
+        "signal": null,
+        "stdoutBytes": 304,
+        "stderrBytes": 0
+      },
+      "status": "passed",
+      "journal": [
+        {
+          "test": "keyword",
+          "phase": "test",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 2.021624999999993
+        },
+        {
+          "test": "keyword",
+          "phase": "load",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 4.202333000000003
+        },
+        {
+          "test": "keyword",
+          "phase": "load",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 14.499291000000007
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 14.680583000000006
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 49.443041
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 78.206041
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 104.112291
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 112.13691599999999
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 140.739958
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 154.953833
+        },
+        {
+          "test": "keyword",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 205.29891600000002
+        },
+        {
+          "test": "keyword",
+          "phase": "dispose",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 205.36225000000002
+        },
+        {
+          "test": "keyword",
+          "phase": "dispose",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 206.98841599999997
+        },
+        {
+          "test": "keyword",
+          "phase": "cleanup",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 207.04170799999997
+        },
+        {
+          "test": "keyword",
+          "phase": "cleanup",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 208.59533299999998
+        },
+        {
+          "test": "keyword",
+          "phase": "test",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 208.643416
+        },
+        {
+          "test": "persistent",
+          "phase": "test",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 209.428541
+        },
+        {
+          "test": "persistent",
+          "phase": "load",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 210.14687499999997
+        },
+        {
+          "test": "persistent",
+          "phase": "load",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 217.49095799999998
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 217.59499999999997
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 243.01133299999998
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 243.05729100000002
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 243.789916
+        },
+        {
+          "test": "persistent",
+          "phase": "reopen-1",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 243.82879099999997
+        },
+        {
+          "test": "persistent",
+          "phase": "reopen-1",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 252.569458
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 252.61124999999998
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 278.950375
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 279.206958
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 279.892333
+        },
+        {
+          "test": "persistent",
+          "phase": "schema-mutation",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 279.931166
+        },
+        {
+          "test": "persistent",
+          "phase": "schema-mutation",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 280.532833
+        },
+        {
+          "test": "persistent",
+          "phase": "reopen-2",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 280.559666
+        },
+        {
+          "test": "persistent",
+          "phase": "reopen-2",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 286.500041
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 286.549958
+        },
+        {
+          "test": "persistent",
+          "phase": "indexed-readiness",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 310.819166
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 310.947208
+        },
+        {
+          "test": "persistent",
+          "phase": "dispose",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 312.243791
+        },
+        {
+          "test": "persistent",
+          "phase": "cleanup",
+          "state": "start",
+          "pid": 20837,
+          "elapsedMs": 312.28875
+        },
+        {
+          "test": "persistent",
+          "phase": "cleanup",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 313.105666
+        },
+        {
+          "test": "persistent",
+          "phase": "test",
+          "state": "end",
+          "pid": 20837,
+          "elapsedMs": 313.15075
+        }
+      ],
+      "dependencies": {
+        "pid": 20837,
+        "node": "v24.20.0",
+        "architecture": "arm64",
+        "threadpool": "default:4",
+        "available": true,
+        "unavailable": [],
+        "packages": [
+          {
+            "name": "sqlite3",
+            "version": "5.1.7",
+            "entry": "plugins/tocktutor/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/lib/sqlite3.js",
+            "sha256": "8d6b400ae7f69a80d0cdd37a968d7b9a913661fa53475e5b8de49dda21684973"
+          },
+          {
+            "name": "flexsearch",
+            "version": "0.8.212",
+            "entry": "plugins/tocktutor/node_modules/.pnpm/flexsearch@0.8.212/node_modules/flexsearch/dist/flexsearch.bundle.min.js",
+            "sha256": "62e33d2d18493ebd341e5692df6e0c7fc74a24bf038f2770f903f6da19525003"
+          },
+          {
+            "name": "tockbot-note-runtime",
+            "version": "0.1.2",
+            "entry": "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts",
+            "sha256": "c3a85b0d16870a20d9f884dbe390086fe5ff07611e6acd712b7d197a3b97cbc8"
+          }
+        ],
+        "native": {
+          "path": "plugins/tocktutor/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/build/Release/node_sqlite3.node",
+          "sha256": "e476b3077cee91f9e8a679e7d8303fb6e5e0c5815c25aa06033159ae533857c6"
+        }
+      },
+      "finalInventory": []
+    }
+  ],
+  "rootRemoved": true,
+  "emergencyCleanup": false,
+  "nodeSha256": "9d050fd455b56426e25d4d603c7c501cbb2630348e836cf221dcce748e90588a",
+  "supervisorCommit": "559d2886d6e9ec33c53fb4722c67acdd4a483de3",
+  "supervisorOwnerSha256": "12913a93795bb72408d2ed8c2789a911128913fbe908c2d24fa6121e17b47a28",
+  "supervisorWindowsOwnerSha256": "53ee0fc7b0862a8622212ca27ff49c3a4e267411ed16298202e27cf5721f7e19",
+  "pins": [
+    {
+      "path": ".",
+      "commit": "9a709fc995343debed13740065039302a86c21e1",
+      "tree": "8cad8eca84d72d5110807c04a65b302b212ae53e",
+      "archiveSha256": "6002b761db7cc9615ea56ddaadfb6280706c55e19da700b7f1374a337cce93db"
+    },
+    {
+      "path": "upstream/DSH-better-sidebar",
+      "commit": "9e1a03452794532cda1f6ac677b72579dff48dfc",
+      "tree": "763483f0ffb13722ab8de024fc2dd421b7dfa582",
+      "archiveSha256": "d8856faf7d8f3f72a93430ba100282ab58b6f97be2e59307a74dabe777814398"
+    },
+    {
+      "path": "upstream/dsh-TUI",
+      "commit": "8f1444a2627fab01682e679a0e44de8989b66f77",
+      "tree": "189db21548112bbd99d22b79ea0d0496bdfc09a9",
+      "archiveSha256": "37434fcf2abbbd97c62a2d56ef07c5dbe6c256d7bc705596e694215c622e3d75"
+    },
+    {
+      "path": "upstream/dsh-TUI/dsh-auth",
+      "commit": "94fdf81e775e8d884af4dfb64a94b617c3751936",
+      "tree": "93ad64f9c017aa3651e80afe3d5613c93fbb7a44",
+      "archiveSha256": "80aecb26edbd44946c9b369dcebad9d616040ad17dbaf08e07580ee8441842ca"
+    },
+    {
+      "path": "upstream/dsh-TUI/dsh-ecosystem-spec",
+      "commit": "d28c267fe7fd775428ec2dccd65b0b7efd4dacee",
+      "tree": "0354a15da314e7a7aa44d97a47bb7b78a33048ef",
+      "archiveSha256": "2166d0a080922f3679083dd5a844b31582390664909220db2d3998ac25c371c6"
+    },
+    {
+      "path": "upstream/dsh-TUI/dsh-ecosystem-spec/vendor/dsh-std",
+      "commit": "614dfa1ac168db79fcf4577cf0ebb34e2e3b944b",
+      "tree": "8a84be12576128a3e5405a72607b9318dd85d775",
+      "archiveSha256": "7450a9dc4737edfd157ee5aafeb00f87cd0895d7a2e42d62b5e0a84a3ae1ba2b"
+    },
+    {
+      "path": "upstream/dsh-TUI/vendor/dsh-std",
+      "commit": "614dfa1ac168db79fcf4577cf0ebb34e2e3b944b",
+      "tree": "8a84be12576128a3e5405a72607b9318dd85d775",
+      "archiveSha256": "7450a9dc4737edfd157ee5aafeb00f87cd0895d7a2e42d62b5e0a84a3ae1ba2b"
+    }
+  ],
+  "originalHashes": {
+    "package.json": "c24d115fb2c5eb4b8a7c6e5f488f8654a3f8d2c2dd569a3d849219282e288def",
+    "pnpm-lock.yaml": "719d155a12ca3cbfb8b53ebee0723d11ec6f6a3b5ce73b35f7daf3c110723d5e",
+    "pnpm-workspace.yaml": "2f7a67108f26870a32ba0b77c7e34b49474f1a0b7a40e94343e48c2d9d441c04",
+    ".npmrc": "044c80074d63f2301f24fad70c6261e80984f9ed6035a9f94a34a15902364a0e",
+    "plugins/tocktutor/package.json": "27e9104eb38eb8da5545db4762c7ec1c0d9bc17821abdf8432c358fbad867265",
+    "plugins/tocktutor/pnpm-lock.yaml": "4128b5464d771992eaa159800cd83428c2fbe8094812ab83bf01d166da896500",
+    "plugins/tocktutor/pnpm-workspace.yaml": "c7eeee123e3fb6a36e133422bb17926ee7c5f0f0832efcdb698527f11278d3e0",
+    "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts": "c3a85b0d16870a20d9f884dbe390086fe5ff07611e6acd712b7d197a3b97cbc8",
+    "plugins/tocktutor/packages/tockbot-note-runtime/tests/loader-composition.test.ts": "d12cdfdbf0f1772c3d72623cde52cb01012a992cc79e699799de27dd69407130"
+  },
+  "installs": [
+    {
+      "directory": "source",
+      "args": [
+        "install",
+        "--frozen-lockfile"
+      ],
+      "cleanupVerified": true,
+      "deadline": false,
+      "deadlineMs": 240000,
+      "rootPid": 19725,
+      "processGroup": 19725,
+      "completion": {
+        "code": 0,
+        "signal": null,
+        "stdoutBytes": 23462,
+        "stderrBytes": 0
+      }
+    },
+    {
+      "directory": "source/plugins/tocktutor",
+      "args": [
+        "install",
+        "--frozen-lockfile"
+      ],
+      "cleanupVerified": true,
+      "deadline": false,
+      "deadlineMs": 240000,
+      "rootPid": 20714,
+      "processGroup": 20714,
+      "completion": {
+        "code": 0,
+        "signal": null,
+        "stdoutBytes": 2016,
+        "stderrBytes": 0
+      }
+    }
+  ],
+  "pnpmProbe": {
+    "operations": [
+      {
+        "name": "version",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 19713,
+        "processGroup": 19713,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 8,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "store",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 19715,
+        "processGroup": 19715,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 94,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "config",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 19717,
+        "processGroup": 19717,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 108,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "globalPackages",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 19719,
+        "processGroup": 19719,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 105,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "cache",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 19721,
+        "processGroup": 19721,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 95,
+          "stderrBytes": 0
+        }
+      },
+      {
+        "name": "state",
+        "cleanupVerified": true,
+        "deadline": false,
+        "deadlineMs": 10000,
+        "rootPid": 19723,
+        "processGroup": 19723,
+        "completion": {
+          "code": 0,
+          "signal": null,
+          "stdoutBytes": 95,
+          "stderrBytes": 0
+        }
+      }
+    ],
+    "cleanupVerified": true,
+    "effectivePaths": {
+      "store": "store/v11",
+      "config": "config/pnpm/config.yaml",
+      "globalPackages": "data/pnpm/global/v11",
+      "cache": "cache/pnpm",
+      "state": "state/pnpm"
+    }
+  },
+  "pnpm": "11.21.0",
+  "instrumentedTestSha256": "b797ac1647fa72d4ae8426e386aa274c4aa15b1239a3a3e511a6ef5d4062667f",
+  "finalInventory": []
+}

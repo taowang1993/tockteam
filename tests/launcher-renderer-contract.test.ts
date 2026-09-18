@@ -1,0 +1,173 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { test } from 'node:test'
+import {
+  LAUNCHER_COMPOSITION,
+  launcherShortcutMatches,
+  launcherShortcutAriaLabel,
+  launcherShortcutLabel,
+  launcherEffectiveScrollBehavior,
+  normalizeLauncherLocale,
+  parseLauncherSurfaceSettings,
+  type LauncherSurfaceSettings,
+} from '../src/launcher-contract.ts'
+import { launcherSettingDisposition } from '../src/launcher-settings-model.ts'
+
+const launcherSource = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
+const launcherHtml = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf8')
+const launcherStyles = readFileSync(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
+
+test('surface projection has bounded locale, appearance, interaction, and provider status facts', () => {
+  const projection = parseLauncherSurfaceSettings({
+    doubleClickBehavior: 'invokeSearchResultItem',
+    dragAndDropEnabled: false,
+    fuzziness: 0.5,
+    history: [],
+    historyEnabled: true,
+    historyLimit: 10,
+    hideWindowOn: ['blur', 'afterInvocation'],
+    locale: 'zh-CN',
+    maxSearchResultItems: 50,
+    placeholder: '搜索 TockTeam',
+    preserveUserInput: true,
+    providerStatuses: LAUNCHER_COMPOSITION.extensionIds.map(extensionId => ({ extensionId, state: 'ready' as const })),
+    searchBarAppearance: 'auto',
+    searchBarSize: 'large',
+    searchEngineId: 'fuzzysort',
+    searchResultLayout: 'compact',
+    scrollBehavior: 'smooth',
+    showSearchIcon: true,
+    singleClickBehavior: 'selectSearchResultItem',
+  })
+  assert.equal(projection.locale, 'zh-CN')
+  assert.deepEqual(projection.hideWindowOn, ['blur', 'afterInvocation'])
+  assert.equal(projection.providerStatuses.at(-1)?.extensionId, 'Workflow')
+  assert.equal(Object.isFrozen(projection.providerStatuses), true)
+  assert.equal(Object.isFrozen(projection), true)
+  assert.throws(() => parseLauncherSurfaceSettings({
+    doubleClickBehavior: 'invokeSearchResultItem', dragAndDropEnabled: false, fuzziness: 0.5, history: [], historyEnabled: true, historyLimit: 10,
+    locale: 'en-US', maxSearchResultItems: 50, placeholder: 'Search', preserveUserInput: true, providerStatuses: [{ extensionId: 'Workflow', state: 'ready', messageKey: 'unavailable' }],
+    searchBarAppearance: 'auto', searchBarSize: 'large', searchEngineId: 'fuzzysort', searchResultLayout: 'compact', scrollBehavior: 'smooth', showSearchIcon: true, singleClickBehavior: 'selectSearchResultItem',
+  }), /provider status/u)
+  assert.equal(normalizeLauncherLocale('fr-FR'), 'en-US')
+})
+
+test('launcher surface defaults match the Tockbot search chrome', () => {
+  const projection = parseLauncherSurfaceSettings({
+    fuzziness: 0.5,
+    history: [],
+    historyEnabled: false,
+    historyLimit: 10,
+    maxSearchResultItems: 50,
+    searchEngineId: 'fuzzysort',
+  })
+  assert.equal(projection.placeholder, 'Type here...')
+  assert.equal(projection.showSearchIcon, false)
+  assert.deepEqual(projection.hideWindowOn, ['blur', 'afterInvocation', 'escapePressed'])
+})
+
+test('launcher shortcut matching requires exact modifiers and supports finite provider shortcuts', () => {
+  assert.equal(launcherShortcutMatches({ key: 'o', metaKey: true, ctrlKey: false, altKey: false, shiftKey: false }, 'Cmd+O', 'macOS'), true)
+  assert.equal(launcherShortcutMatches({ key: 'o', metaKey: true, ctrlKey: false, altKey: true, shiftKey: false }, 'Cmd+O', 'macOS'), false)
+  assert.equal(launcherShortcutMatches({ key: 'Enter', metaKey: false, ctrlKey: false, altKey: false, shiftKey: true }, 'Shift+Enter', 'Windows'), true)
+  assert.equal(launcherShortcutMatches({ key: 'Enter', metaKey: false, ctrlKey: true, altKey: false, shiftKey: true }, 'Shift+Enter', 'Windows'), false)
+  assert.equal(launcherShortcutLabel('Cmd+O', 'macOS'), 'Cmd+O')
+  assert.equal(launcherShortcutAriaLabel('Cmd+O'), 'Meta+O')
+  assert.equal(launcherShortcutAriaLabel('Ctrl+O'), 'Control+O')
+  assert.equal(launcherShortcutAriaLabel('Shift+Enter'), 'Shift+Enter')
+})
+
+test('the launcher capture boundary preserves IME defaults before root and nested tool handlers', () => {
+  assert.match(launcherSource, /root\.addEventListener\('keydown', event => \{\s*if \(event\.isComposing \|\| event\.keyCode === 229\) event\.stopImmediatePropagation\(\)\s*\}, \{ capture: true \}\)/u)
+})
+
+test('reopening clears a revoked trusted command instead of focusing its stale view', () => {
+  const focus = launcherSource.slice(launcherSource.indexOf('focusSearchHandler = ():', launcherSource.indexOf('async function bootstrap')), launcherSource.indexOf('const rememberSearch ='))
+  assert.match(focus, /if \(trustedView \|\| trustedOpening \|\| trustedInvocation \|\| firstUseView\) \{ closeLocalTool\(\); return \}/u)
+  assert.doesNotMatch(focus, /trustedView\.focus/u)
+})
+
+test('theme changes refresh an active trusted view without rerunning root search', () => {
+  assert.match(launcherSource, /if \(trustedView !== undefined\) \{ trustedView\.refreshTheme\(\); return \}/u)
+  const close = launcherSource.slice(launcherSource.indexOf('const closeLocalTool ='), launcherSource.indexOf('const hideLauncherControls ='))
+  assert.match(close, /trustedView\.dispose\(\);\s*trustedView = undefined\b/u)
+  const ready = launcherSource.slice(launcherSource.indexOf("if (message.type === 'ready')"), launcherSource.indexOf('trustedView?.update(message)'))
+  assert.match(ready, /if \(!trustedOpening\) \{ closeTrusted\(\); return \}/u)
+  assert.ok(ready.indexOf('if (!trustedOpening)') < ready.indexOf('firstUseView?.dispose()'), 'reject unowned readiness before disposing approval')
+  assert.ok(ready.indexOf('firstUseView?.dispose()') < ready.indexOf('trustedView?.dispose()'), 'dispose approval before replacing the command')
+  assert.ok(ready.indexOf('trustedView?.dispose()') < ready.indexOf('trustedView = createTrustedRaycastView('), 'dispose the old command before its replacement')
+})
+
+test('programmatic launcher scrolling is instant when reduced motion is active', () => {
+  assert.equal(launcherEffectiveScrollBehavior('smooth', true), 'instant')
+  assert.equal(launcherEffectiveScrollBehavior('smooth', false), 'smooth')
+})
+
+test('root command UI uses one shared Raycast-like visual recipe', () => {
+  for (const name of ['surface', 'header', 'search', 'list', 'footer', 'footer-identity', 'menu']) {
+    assert.match(launcherHtml, new RegExp(`launcher-command-${name}`, 'u'))
+    assert.match(launcherStyles, new RegExp(`@utility launcher-command-${name}`, 'u'))
+  }
+  for (const name of ['group-title', 'row', 'row-icon', 'footer-action', 'menu', 'menu-item']) {
+    assert.match(launcherSource, new RegExp(`launcher-command-${name}`, 'u'))
+    assert.match(launcherStyles, new RegExp(`@utility launcher-command-${name}`, 'u'))
+  }
+})
+
+test('launcher renderer consumes only finite main-owned result sections', () => {
+  assert.match(launcherSource, /currentSections = \[\.\.\.response\.sections\]/u)
+  assert.match(launcherSource, /section\.id === 'commands'/u)
+  assert.match(launcherSource, /section\.id === 'applications'/u)
+  assert.doesNotMatch(launcherSource, /pinnedCount/u)
+})
+
+test('launcher sections keep localized accessible headings and keyboard traversal order', () => {
+  assert.match(launcherSource, /applications: 'Applications'/u)
+  assert.match(launcherSource, /applications: '应用程序'/u)
+  assert.match(launcherSource, /const heading = document\.createElement\('h2'\)/u)
+  assert.match(launcherSource, /group\.setAttribute\('aria-labelledby', heading\.id\)/u)
+  assert.match(launcherSource, /else if \(event\.key === 'Home' \|\| event\.key === 'End'\)/u)
+  assert.match(launcherSource, /const item = currentItems\[Number\(event\.key\) - 1\]/u)
+})
+
+test('launcher renderer guards hidden tool focus from result shortcuts', () => {
+  assert.match(launcherSource, /eventInsideTool && event\.key !== 'Escape'/u)
+})
+
+test('launcher menus expose normalized shortcuts and focusable empty history', () => {
+  assert.match(launcherSource, /actionAriaShortcut\(action, true\)/u)
+  assert.match(launcherSource, /empty\.tabIndex = 0/u)
+  assert.match(launcherSource, /historyOpen = false[\s\S]{0,160}historyPanel\.hidden = true/u)
+})
+
+test('disabled providers do not crowd a visible provider failure', () => {
+  assert.match(launcherSource, /filter\(provider => provider\.state !== 'ready' && provider\.state !== 'disabled'\)/u)
+})
+
+test('document pointer dismissal preserves tool menu pointer activation', () => {
+  assert.match(launcherSource, /const insideToolMenu = target instanceof Element[\s\S]{0,240}target\.closest\('\[role="menu"\], \[aria-haspopup="menu"\]'\) !== null/u)
+  assert.match(launcherSource, /if \(activeLocalTool !== undefined && !insideToolMenu\) \{[\s\S]{0,120}tockteam-launcher-close-tool-menu/u)
+})
+
+test('action-menu activation closes the history menu', () => {
+  assert.match(launcherSource, /if \(!actionMenuOpen\) \{[\s\S]{0,240}historyOpen = false/u)
+  assert.match(launcherSource, /historyPanel\.hidden = true[\s\S]{0,120}historyToggle\.setAttribute\('aria-expanded', 'false'\)/u)
+})
+
+test('long result and action labels retain an inspection affordance', () => {
+  assert.match(launcherSource, /button\.title = item\.name/u)
+  assert.match(launcherSource, /actionButton\.title = action\.description/u)
+})
+
+test('every catalog row has an explicit renderer disposition', () => {
+  assert.equal(launcherSettingDisposition('general.browser.useDefaultWebBrowser', 'Windows'), 'platform-disabled')
+  assert.equal(launcherSettingDisposition('general.browser.useDefaultWebBrowser', 'macOS'), 'effective')
+  for (const platform of ['macOS', 'Windows', 'Linux'] as const) {
+    for (const key of ['appearance.searchBarSize', 'general.language', 'window.vibrancy', 'favorites']) {
+      assert.ok(['effective', 'platform-disabled', 'status-only', 'internal'].includes(launcherSettingDisposition(key, platform)), `${platform}:${key}`)
+    }
+  }
+})
+
+const _surfaceTypeCheck: LauncherSurfaceSettings | undefined = undefined
+void _surfaceTypeCheck

@@ -1,0 +1,44 @@
+{
+  "geometry": {
+    "width": 1512,
+    "height": 949,
+    "scale": 2,
+    "colorScheme": "dark",
+    "skin": null,
+    "route": "/tocktutor",
+    "source": "%%  # Comment heading%%# Heading%%"
+  },
+  "errors": [],
+  "externalResourceRequests": [],
+  "verified": [
+    "empty comment Source rendering",
+    "inert unresolved images",
+    "complete default clip destination",
+    "proposals refresh on turn completion"
+  ],
+  "scope": "isolated production components with mocked Host/session boundaries; not full native flows",
+  "screenshot": {
+    "file": "audit-components.png",
+    "width": 3024,
+    "height": 1898,
+    "label": "Component Behavior — Not Canonical Product Parity"
+  },
+  "cleanup": {
+    "tracked": [
+      4723,
+      4724,
+      4730,
+      4731,
+      4732,
+      4734,
+      4735,
+      4736,
+      4737
+    ],
+    "live": []
+  },
+  "harness": "/tmp/tocktutor-audit-ui.coz3QI",
+  "command": "playwright-cli -s=tutor-audit run-code --filename=check.js",
+  "browser": "Headless Microsoft Edge",
+  "foreground": false
+}

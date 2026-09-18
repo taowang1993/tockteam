@@ -1,0 +1,82 @@
+{
+  "run": 35181547745,
+  "attempt": 1,
+  "head": "64b5201ba6b0ad27c078199f9ea5579a7b64a74b",
+  "job": 105074576455,
+  "preflight": {
+    "npm": {
+      "pids": [
+        8904,
+        6032
+      ],
+      "cleanupVerified": true,
+      "distinctConfigs": true
+    },
+    "sqlite": {
+      "sqlitePathPid": 740,
+      "rejectedReusePid": 6928,
+      "cleanupVerified": true,
+      "cases": 5,
+      "nativeSha256": "f806f89dc41dde00ca7124dc1e649bdc9b08ff2eff5c891b764f3e5aefa9548c"
+    },
+    "startup": {
+      "pids": [
+        5552,
+        1200,
+        7708,
+        8808,
+        2488,
+        3260,
+        9108,
+        3528,
+        1684,
+        1176,
+        3940,
+        9020,
+        2508,
+        5428,
+        5124,
+        8180
+      ],
+      "cleanupVerified": true,
+      "cases": 16,
+      "topologyVerified": true
+    },
+    "tests": 7,
+    "passed": 7,
+    "skipped": 0
+  },
+  "sourcePinsMatched": true,
+  "preInstallOriginalHashesMatched": true,
+  "ownerHashesMatched": true,
+  "configuredPnpmPathsMatched": true,
+  "controlPids": [
+    5048,
+    7684,
+    1720
+  ],
+  "installer": {
+    "rootPid": 6236,
+    "absoluteDeadlineMs": 240000,
+    "deadlineReached": true,
+    "cleanupVerified": true,
+    "retainedPnpmErrorCodes": []
+  },
+  "historicalPathProbeStarted": false,
+  "historicalTestsExecuted": false,
+  "pathLengthComparisonAvailable": false,
+  "all8OwnedDiagnosticOperationsCleaned": true,
+  "rootRemoved": true,
+  "finalInventory": [],
+  "emergencyCleanup": false,
+  "classification": "INCONCLUSIVE",
+  "receiptSha256": "000c74d789b95f2d91682605d018935d80f69e038ac34ebdc66292375071780c",
+  "limits": [
+    "First frozen historical install exceeded its unchanged four-minute deadline; underlying cause unestablished.",
+    "Historical SQLite path probe and second frozen install were never reached.",
+    "Preflight used the current checkout installation, not the frozen historical installation.",
+    "Preflight assertions establish missing-parent native error, successful short writes, and Node filesystem controls, but deep SQLite outcomes and actual lengths were not retained.",
+    "No deep-path outcome, historical path-limit cause, original stall cause, or historical acceptance is inferred.",
+    "Full local frozen historical replay remains unverified; no automatic retry authorized."
+  ]
+}

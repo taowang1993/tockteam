@@ -1,0 +1,24 @@
+- insert:
+    - id: note-vault-runtime
+      name: tockbot-note-runtime
+      config:
+        vaultRoot: null
+
+    - id: note-vault-tools
+      name: '@tockteam/note-vault-tools'
+
+    - id: tocktutor-workbench
+      name: '@tockteam/tocktutor-workbench'
+
+    - id: tockbot-note-desktop
+      name: tockbot-note-desktop
+
+    - id: tocktutor-assistant
+      name: '@tockteam/tocktutor-assistant'
+      config: {}
+
+    - id: tocktutor-import-export
+      name: '@tockteam/tocktutor-import-export'
+
+    - id: web-clip
+      name: tockbot-web-clip

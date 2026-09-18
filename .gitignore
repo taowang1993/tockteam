@@ -1,0 +1,24 @@
+node_modules/
+dist/
+!plugins/tocktutor/packages/*/dist/
+!plugins/tocktutor/packages/*/dist/**
+plugins/tocktutor/packages/*/*.tgz
+/*.tgz
+.stage/
+.cache/
+/.local/
+release/
+coverage/
+tmp/
+.clawpatch/
+*.log
+.DS_Store
+.direnv/
+result
+result-*
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/

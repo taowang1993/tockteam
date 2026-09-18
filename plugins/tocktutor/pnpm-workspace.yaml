@@ -1,0 +1,22 @@
+packages:
+  - packages/*
+  - ../ui
+
+# Published DSH packages declare part of their runtime graph as peers.
+autoInstallPeers: true
+linkWorkspacePackages: true
+
+allowBuilds:
+  '@deepseek-ai/dsh-subprocess-local': true
+  esbuild: true
+  koffi: false
+  node-pty: true
+  sqlite3: true
+
+overrides:
+  # Shared @tockteam/ui source crosses the root/nested workspace boundary.
+  # Resolve every nested React peer to the root UI package's pinned instance.
+  react: link:../../node_modules/.pnpm/react@18.3.1/node_modules/react
+  '@deepseek-ai/cordis-plugin-group': 1.0.1
+  '@tockteam/desktop': link:../..
+  vite: 6.4.3

@@ -1,0 +1,291 @@
+{
+  "name": "@tockteam/desktop",
+  "productName": "TockTeam Desktop",
+  "version": "0.1.14",
+  "description": "TockTeam: installable Desktop, Web, and TUI surfaces over its DSH runtime",
+  "homepage": "https://github.com/taowang1993/tockteam",
+  "author": "dsh-external",
+  "desktopName": "tockteam-desktop.desktop",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "dist/main.js",
+  "bin": {
+    "tockteam": "bin/tockteam"
+  },
+  "exports": {
+    ".": {
+      "default": "./dist/plugin.js"
+    },
+    "./client": {
+      "types": "./client.d.ts",
+      "node": "./dist/client-api.js",
+      "browser": "./dist/client-api.js",
+      "default": "./dist/client.js"
+    },
+    "./host": {
+      "types": "./host.d.ts",
+      "browser": null,
+      "node": "./dist/host.js",
+      "default": "./dist/host.js"
+    },
+    "./cordis.patch.yml": "./dist/cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/plugin.js",
+    "dist/launcher.html",
+    "dist/launcher.js",
+    "dist/launcher.js.map",
+    "dist/launcher.css",
+    "dist/launcher-preload.cjs",
+    "dist/launcher-preload.cjs.map",
+    "dist/launcher-assets/**",
+    "dist/trusted-raycast/**",
+    "dist/trusted-raycast-kaomoji/**",
+    "dist/trusted-raycast-can-i-use/**",
+    "dist/client.js",
+    "dist/client.js.map",
+    "dist/client-api.js",
+    "client.d.ts",
+    "dist/host.js",
+    "host.d.ts",
+    "dist/cordis.patch.yml",
+    "plugins/tocktutor/README.md",
+    "plugins/tocktutor/packages/*/package.json",
+    "plugins/tocktutor/packages/*/cordis.patch.yml",
+    "plugins/tocktutor/packages/*/lib/**",
+    "plugins/tocktutor/packages/*/dist/**",
+    "plugins/tocktutor/packages/tockbot-note-vault/index.js",
+    "plugins/tocktutor/packages/tockbot-note-vault/inspection.js",
+    "plugins/tocktutor/packages/tockbot-note-vault/inspection.d.ts",
+    "plugins/tocktutor/packages/tockbot-note-vault/LICENSE",
+    "plugins/tocktutor/packages/tockbot-note-vault/README.md",
+    "plugins/tocktutor/packages/tockteam-tocktutor-assistant/PENNIVO_PROVENANCE.md",
+    "plugins/tocktutor/packages/tockteam-tocktutor-assistant/THIRD_PARTY_NOTICES",
+    "plugins/tocktutor/packages/tockteam-tocktutor-import-export/README.md",
+    "dist/tockteam.js",
+    "bin/tockteam",
+    "bin/tockteam.cmd"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./dist/cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings-general",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@tockteam/panel-controls",
+        "@tockteam/pinned-summary",
+        "@tockteam/save-as-image",
+        "@tockteam/sidebar",
+        "@tockteam/plugin-marketplace"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test:ueli-package-feasibility": "node --test tests/ueli-package-feasibility.test.ts",
+    "test:trusted-raycast-artifact": "node --test tests/trusted-raycast-artifact-admission.test.ts",
+    "trace:trusted-raycast": "node scripts/trusted-raycast-tracer.mjs",
+    "test:launcher:electron": "pnpm run build:tocktutor && pnpm run build && node scripts/stage-dsh.mjs --quick && node scripts/launcher-electron-smoke.mjs",
+    "test:launcher:packaged": "node scripts/launcher-packaged-smoke.mjs --tockteam-launcher-packaged-smoke",
+    "test:launcher:installed": "node scripts/launcher-installed-smoke.mjs --tockteam-launcher-installed-smoke",
+    "audit:installed-evidence": "node scripts/ueli/installed-evidence.mjs",
+    "audit:ueli-package-feasibility": "node scripts/ueli/check-package-feasibility.mjs",
+    "build:tocktutor": "pnpm -C plugins/tocktutor run build && node scripts/tocktutor-build-manifest.mjs --write",
+    "build:dsh": "node scripts/build-dsh.mjs",
+    "stage:dsh": "node scripts/stage-dsh.mjs",
+    "pack:desktop": "node scripts/pack-desktop.mjs",
+    "check:plugins": "node scripts/smoke-runtime.mjs",
+    "smoke:runtime": "node scripts/smoke-runtime.mjs",
+    "smoke:app": "node scripts/smoke-runtime.mjs \"release/mac-arm64/TockTeam Desktop.app/Contents/Resources\"",
+    "smoke:app:linux": "node scripts/smoke-runtime.mjs \"release/linux-unpacked/resources\"",
+    "smoke:web": "node scripts/smoke-web.mjs",
+    "smoke:web:package": "node scripts/smoke-web.mjs release",
+    "install:mac": "node scripts/install-mac.mjs",
+    "install:tocktutor": "node scripts/install-tocktutor.mjs",
+    "tockteam": "pnpm run build && pnpm run stage:dsh && node dist/tockteam.js",
+    "web": "pnpm run build && pnpm run stage:dsh && node dist/web.js",
+    "tui": "pnpm run build && pnpm run stage:dsh && node dist/tockteam.js tui",
+    "dev:desktop": "pnpm run start",
+    "start": "pnpm run build && node scripts/stage-dsh.mjs --quick && node scripts/electron-runtime.mjs && electron .",
+    "start:fresh": "pnpm run build && pnpm run stage:dsh && node scripts/electron-runtime.mjs && electron .",
+    "test": "node --test tests/*.test.ts",
+    "test:coverage": "node -e \"require('node:fs').mkdirSync('coverage', { recursive: true })\" && node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-include=\"plugins/**/*.ts\" --test-coverage-include=\"scripts/**/*.mjs\" --test-coverage-include=\"scripts/**/*.ts\" --test-coverage-exclude=\"tests/**\" --test-coverage-exclude=\"**/node_modules/**\" --test-coverage-exclude=\"**/dist/**\" --test-coverage-exclude=\"**/vendor/**\" --test-coverage-exclude=\"upstream/**\" --test-coverage-exclude=\"**/release/**\" --test-coverage-exclude=\"**/.stage/**\" --test-coverage-exclude=\"plugins/tocktutor/**\" --test-coverage-exclude=\"scripts/**/*tocktutor*.mjs\" --test-reporter lcov --test-reporter-destination coverage/lcov.info --test-reporter spec --test-reporter-destination stdout \"tests/*.test.ts\"",
+    "test:tocktutor": "pnpm -C plugins/tocktutor run test",
+    "typecheck": "tsc --noEmit",
+    "typecheck:tocktutor": "pnpm -C plugins/tocktutor run typecheck",
+    "dist:mac": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-mac.mjs",
+    "dist:mac:x64": "node scripts/check-mac-architecture.mjs x64 && pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-mac.mjs x64",
+    "dist:mac:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-mac.mjs",
+    "dist:linux": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-linux.mjs",
+    "dist:linux:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-linux.mjs",
+    "dist:win": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-windows.mjs",
+    "dist:win:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-windows.mjs",
+    "dist:web": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-web.mjs",
+    "dist:web:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-web.mjs",
+    "dist:tui": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-tui.mjs",
+    "dist:tui:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-tui.mjs"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/cordis-plugin-include": "1.0.7",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.3",
+    "@deepseek-ai/dsh-client-store": "0.1.2-rc.1",
+    "@pennivo/mcp-server": "1.4.0",
+    "@tockteam/note-vault-tools": "file:plugins/tocktutor/packages/tockteam-note-vault-tools",
+    "@tockteam/tocktutor-workbench": "file:plugins/tocktutor/packages/tockteam-tocktutor-workbench",
+    "@tockteam/ui": "workspace:*",
+    "@types/color": "4.2.1",
+    "@types/node": "^24.10.0",
+    "@types/react": "~18.3.31",
+    "electron": "42.3.0",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.12",
+    "lucide": "0.473.0",
+    "lucide-react": "0.473.0",
+    "pnpm": "11.21.0",
+    "tockbot-note-runtime": "file:plugins/tocktutor/packages/tockbot-note-runtime",
+    "tockbot-note-vault": "file:plugins/tocktutor/packages/tockbot-note-vault",
+    "tsdown": "0.22.2",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "build": {
+    "appId": "ai.deepseek.tockteam-desktop",
+    "productName": "TockTeam Desktop",
+    "asar": true,
+    "asarUnpack": [
+      "dist/trusted-raycast/**",
+      "dist/trusted-raycast-kaomoji/**",
+      "dist/trusted-raycast-can-i-use/**"
+    ],
+    "afterPack": "scripts/after-pack.cjs",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/main.js",
+      "dist/preload.cjs",
+      "dist/launcher.html",
+      "dist/launcher.js",
+      "dist/launcher.js.map",
+      "dist/launcher.css",
+      "dist/launcher-preload.cjs",
+      "dist/launcher-preload.cjs.map",
+      "dist/launcher-assets/**",
+      "dist/trusted-raycast/**",
+      "dist/trusted-raycast-kaomoji/**",
+      "dist/trusted-raycast-can-i-use/**",
+      "dist/splash.html",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".stage",
+        "to": ".",
+        "filter": [
+          "dsh-runtime/**/*",
+          "node-runtime/**/*"
+        ]
+      },
+      {
+        "from": "assets/icons/512x512.png",
+        "to": "tockteam-desktop.png"
+      },
+      {
+        "from": "dist/tockteam.js",
+        "to": "lib/tockteam/cli.js"
+      },
+      {
+        "from": "dist/release-package.json",
+        "to": "lib/tockteam/package.json"
+      },
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "tockteam",
+          "tockteam.cmd"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/TockTeam-Desktop.icns",
+      "identity": null,
+      "darkModeSupport": true,
+      "minimumSystemVersion": "12.0.0",
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "TockTeam uses Apple Events only when a TockTeam tool needs to interact with a Mac app.",
+        "NSDesktopFolderUsageDescription": "TockTeam needs access to workspaces you select on the Desktop.",
+        "NSDocumentsFolderUsageDescription": "TockTeam needs access to workspaces you select in Documents.",
+        "NSDownloadsFolderUsageDescription": "TockTeam needs access to workspaces you select in Downloads."
+      }
+    },
+    "linux": {
+      "category": "Development",
+      "icon": "assets/icons",
+      "maintainer": "dsh-external",
+      "executableName": "tockteam-desktop",
+      "syncDesktopName": true,
+      "synopsis": "An extensible TockTeam desktop workbench",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "win": {
+      "target": [
+        "dir"
+      ],
+      "icon": "assets/icons/512x512.png"
+    },
+    "dmg": {
+      "title": "TockTeam ${version}",
+      "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 140,
+          "y": 185,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 185,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "artifactName": "TockTeam-Desktop-${version}-${arch}.${ext}"
+  },
+  "dependencies": {
+    "color": "4.2.3",
+    "electron-updater": "6.8.3",
+    "fast-xml-parser": "5.7.0",
+    "fuse.js": "7.1.0",
+    "fuzzysort": "3.1.0",
+    "mathjs": "15.2.0",
+    "uuid": "14.0.0"
+  }
+}

@@ -1,0 +1,327 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { Context } from '@deepseek-ai/cordis'
+import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
+import {
+  TockTutorRoute,
+  trackTockTutorRouteFlush,
+  waitForTockTutorRouteFlushes,
+} from '../dist/route.js'
+
+function injectedFiber(
+  context: unknown,
+  callback: (context: unknown) => unknown,
+): PromiseLike<void> & { dispose(): Promise<void> } {
+  let dispose: unknown
+  const settled = Promise.resolve().then(() => { dispose = callback(context) })
+  return Object.assign(settled.then(() => undefined), {
+    async dispose() {
+      await settled.catch(() => undefined)
+      if (typeof dispose === 'function') await dispose()
+    },
+  })
+}
+
+test('client contribution mounts Remote and the exact lifecycle-owned route seat', async () => {
+  const client = await import('../dist/client-api.js')
+  const mounted: TypertRemoteContribution[] = []
+  const injected: string[] = []
+  const registered: Array<{ options: { name: string }; component: unknown }> = []
+  const disposed: string[] = []
+  let declaration: (() => () => void) | undefined
+  let assistantRemote: { searchIntelligence(this: unknown): Promise<string> } | undefined
+  let onReceiver: unknown
+  const workbenchRemote = {
+    search(this: unknown) {
+      assert.equal(this, workbenchRemote)
+      return Promise.resolve('local-result')
+    },
+  }
+  const context = {
+    get(name: string) {
+      assert.equal(name, 'remote.tocktutorAssistant')
+      return assistantRemote
+    },
+    inject(deps: string[], callback: (child: unknown) => unknown) {
+      assert.deepEqual(deps, ['remote', 'remote.tocktutorWorkbench', 'slots'])
+      return injectedFiber(context, callback)
+    },
+    remote: {
+      $on(this: unknown) {
+        onReceiver = this
+        return () => {}
+      },
+      async $mount(contribution: TypertRemoteContribution) {
+        mounted.push(contribution)
+        return async () => { disposed.push('remote') }
+      },
+      tocktutorWorkbench: workbenchRemote,
+    },
+    slots: {
+      inject(name: string, callback: () => () => void) {
+        injected.push(name)
+        declaration = callback
+        return () => { disposed.push('inject') }
+      },
+      register(options: { name: string }, component: unknown) {
+        registered.push({ options, component })
+        return () => { disposed.push('route') }
+      },
+    },
+  }
+
+  const dispose = await client.apply(context as never)
+  assert.equal(mounted.length, 1)
+  assert.deepEqual(injected, ['tockteam.tocktutor.route'])
+  assert.ok(declaration)
+  const disposeRoute = declaration()
+  assert.equal(registered.length, 1)
+  assert.equal(registered[0]?.options.name, 'tockteam.tocktutor.route')
+  assert.equal(registered[0]?.component, TockTutorRoute)
+  const options = registered[0]?.options as {
+    children?: Record<string, { kind: string; scope: string }>
+    inject?: () => { remote: unknown }
+    registrant?: string
+  }
+  assert.deepEqual(options.children, {
+    'tockteam.tocktutor.workbench.assistant': { kind: 'single', scope: 'root' },
+    'tockteam.tocktutor.workbench.native-actions': { kind: 'list', scope: 'root' },
+    'tockteam.tocktutor.workbench.review': { kind: 'list', scope: 'root' },
+    'tockteam.tocktutor.workbench.vault-actions': { kind: 'list', scope: 'root' },
+    'tockteam.tocktutor.workbench.web-viewer': { kind: 'single', scope: 'root' },
+  })
+  assert.equal(options.registrant, '@tockteam/tocktutor-workbench')
+  const routeRemote = options.inject?.().remote as {
+    $mount?: unknown
+    $on?: (event: string, listener: () => void) => () => void
+    tocktutorAssistant?: { searchIntelligence(this: unknown): Promise<string> }
+    tocktutorWorkbench?: { search(this: unknown): Promise<string> }
+  }
+  assert.notEqual(routeRemote, context.remote)
+  assert.equal(routeRemote.tocktutorWorkbench, context.remote.tocktutorWorkbench)
+  assert.equal(typeof routeRemote.$on, 'function')
+  routeRemote.$on!('test', () => {})
+  assert.equal(onReceiver, context.remote)
+  assert.equal(routeRemote.$mount, undefined)
+  const readAssistant = (): typeof routeRemote.tocktutorAssistant => routeRemote.tocktutorAssistant
+  assert.equal(readAssistant(), undefined)
+  const assistant = {
+    searchIntelligence(this: unknown) {
+      assert.equal(this, assistant)
+      return Promise.resolve('assistant-result')
+    },
+  }
+  assistantRemote = assistant
+  assert.equal(readAssistant(), assistant)
+  assert.equal(await readAssistant()!.searchIntelligence(), 'assistant-result')
+  assistantRemote = undefined
+  assert.equal(readAssistant(), undefined)
+  assert.equal(await routeRemote.tocktutorWorkbench!.search(), 'local-result')
+  disposeRoute()
+  await dispose()
+  assert.deepEqual(disposed, ['route', 'inject', 'remote'])
+})
+
+test('client disposal waits for tracked route flushes before disposing Remote', async () => {
+  const client = await import('../dist/client-api.js')
+  const events: string[] = []
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  trackTockTutorRouteFlush(pending.then(() => { events.push('flush') }))
+  const context = {
+    inject(_deps: string[], callback: (child: unknown) => unknown) {
+      return Object.assign(Promise.resolve().then(() => callback(context)), {
+        async dispose() { events.push('route') },
+      })
+    },
+    remote: {
+      $on() { return () => {} },
+      async $mount() {
+        return async () => {
+          events.push('remote')
+          assert.deepEqual(events, ['route', 'flush', 'remote'])
+        }
+      },
+      tocktutorWorkbench: {},
+    },
+    slots: {
+      inject(_name: string, declaration: () => () => void) {
+        declaration()
+        return () => {}
+      },
+      register() { return () => {} },
+    },
+  }
+  const dispose = await client.apply(context as never)
+  const disposing = dispose()
+  await Promise.resolve()
+  assert.deepEqual(events, ['route'])
+  release()
+  await disposing
+  assert.deepEqual(events, ['route', 'flush', 'remote'])
+})
+
+test('route flush waiting rejects and retains a transport that never settles', async () => {
+  let release!: () => void
+  trackTockTutorRouteFlush(new Promise<void>(resolve => { release = resolve }))
+  const started = Date.now()
+  await assert.rejects(waitForTockTutorRouteFlushes(1), /timed out/u)
+  assert.ok(Date.now() - started < 250)
+  release()
+  await waitForTockTutorRouteFlushes()
+})
+
+test('route flush waiting observes a rejection that settled before the waiter', async () => {
+  const failure = new Error('quick route flush failure')
+  trackTockTutorRouteFlush(Promise.reject(failure))
+  await Promise.resolve()
+  await assert.rejects(waitForTockTutorRouteFlushes(), error => error === failure)
+})
+
+test('client disposal surfaces final flush failure without disposing Remote', async () => {
+  const client = await import('../dist/client-api.js')
+  const failure = new Error('final draft could not be saved')
+  trackTockTutorRouteFlush(Promise.reject(failure))
+  const events: string[] = []
+  let remoteDisposed = 0
+  const context = {
+    inject(_deps: string[], callback: (child: unknown) => unknown) {
+      return Object.assign(Promise.resolve().then(() => callback(context)), {
+        async dispose() { events.push('route') },
+      })
+    },
+    remote: {
+      $on() { return () => {} },
+      async $mount() {
+        return async () => { remoteDisposed += 1; events.push('remote') }
+      },
+      tocktutorWorkbench: {},
+    },
+    slots: {
+      inject(_name: string, declaration: () => () => void) {
+        declaration()
+        return () => {}
+      },
+      register() { return () => {} },
+    },
+  }
+  const dispose = await client.apply(context as never)
+  await assert.rejects(dispose(), error => error === failure)
+  assert.deepEqual(events, ['route'])
+  assert.equal(remoteDisposed, 0)
+  await assert.rejects(dispose(), error => error === failure)
+  assert.equal(remoteDisposed, 0)
+})
+
+test('keeps the route inside a literal Remote namespace child across loss and reload', async () => {
+  const client = await import('../dist/client-api.js')
+  const ctx = new Context()
+  const namespace = { marker: 'tocktutor-workbench' }
+  const cleanup: string[] = []
+  const registrations: Array<{
+    active: boolean
+    options: { inject(): { remote: { tocktutorWorkbench: unknown } } }
+  }> = []
+  let removeNamespace: (() => void) | undefined
+  const provideNamespace = (): void => {
+    removeNamespace = ctx.reflect.provide('remote.tocktutorWorkbench', namespace)
+  }
+  ctx.reflect.provide('remote', {
+    get tocktutorWorkbench() { return ctx.get('remote.tocktutorWorkbench') },
+    $on() { return () => {} },
+    async $mount() {
+      provideNamespace()
+      return async () => {
+        removeNamespace?.()
+        cleanup.push('remote')
+      }
+    },
+  })
+  ctx.reflect.provide('slots', {
+    inject(_name: string, declaration: () => () => void) {
+      const dispose = declaration()
+      return () => {
+        dispose()
+        cleanup.push('inject')
+      }
+    },
+    register(options: { inject(): { remote: { tocktutorWorkbench: unknown } } }) {
+      const registration = { active: true, options }
+      registrations.push(registration)
+      return () => {
+        registration.active = false
+        cleanup.push('route')
+      }
+    },
+  })
+
+  const fiber = ctx.plugin(client as never, undefined as never)
+  await fiber
+  assert.equal(registrations.length, 1)
+  assert.equal(registrations[0]?.active, true)
+  assert.equal(registrations[0]?.options.inject().remote.tocktutorWorkbench, namespace)
+
+  removeNamespace?.()
+  for (let index = 0; index < 12; index += 1) await Promise.resolve()
+  assert.equal(registrations[0]?.active, false)
+
+  provideNamespace()
+  for (let index = 0; index < 12; index += 1) await Promise.resolve()
+  assert.equal(registrations.length, 2)
+  assert.equal(registrations[1]?.active, true)
+  assert.equal(registrations[1]?.options.inject().remote.tocktutorWorkbench, namespace)
+
+  await fiber.dispose()
+  assert.equal(registrations[1]?.active, false)
+  assert.deepEqual(cleanup.slice(-3), ['route', 'inject', 'remote'])
+  await ctx.fiber.dispose()
+})
+
+test('Web and TUI lifecycles without the Desktop route declaration mount no workbench slots', async () => {
+  const client = await import('../dist/client-api.js')
+  let registered = 0
+  let remoteDisposed = 0
+  let injectDisposed = 0
+  const context = {
+    inject(_deps: string[], callback: (child: unknown) => unknown) {
+      return injectedFiber(context, callback)
+    },
+    remote: {
+      $on() { return () => {} },
+      async $mount() { return async () => { remoteDisposed += 1 } },
+      tocktutorWorkbench: {},
+    },
+    slots: {
+      inject() { return () => { injectDisposed += 1 } },
+      register() {
+        registered += 1
+        return () => {}
+      },
+    },
+  }
+  const dispose = await client.apply(context as never)
+  assert.equal(registered, 0)
+  await dispose()
+  assert.deepEqual({ injectDisposed, remoteDisposed }, { injectDisposed: 1, remoteDisposed: 1 })
+})
+
+test('route registration failure withdraws the already-mounted Remote contribution', async () => {
+  const client = await import('../dist/client-api.js')
+  const failure = new Error('route seat unavailable')
+  let remoteDisposed = 0
+  const context = {
+    inject(_deps: string[], callback: (child: unknown) => unknown) {
+      return injectedFiber(context, callback)
+    },
+    remote: {
+      $on() { return () => {} },
+      async $mount() { return async () => { remoteDisposed += 1 } },
+      tocktutorWorkbench: {},
+    },
+    slots: {
+      inject() { throw failure },
+    },
+  }
+  await assert.rejects(client.apply(context as never), error => error === failure)
+  assert.equal(remoteDisposed, 1)
+})

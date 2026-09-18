@@ -1,0 +1,358 @@
+{
+  "result": {
+    "passed": true,
+    "checkpoints": [
+      {
+        "checkpoint": "launcher-ready",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      },
+      {
+        "checkpoint": "interaction",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      },
+      {
+        "checkpoint": "interaction",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      },
+      {
+        "checkpoint": "interaction",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      },
+      {
+        "checkpoint": "interaction",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      },
+      {
+        "checkpoint": "interaction",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      },
+      {
+        "checkpoint": "interaction",
+        "focusedWindowCount": 0,
+        "windows": [
+          {
+            "focused": false,
+            "id": 2
+          },
+          {
+            "focused": false,
+            "id": 1
+          }
+        ]
+      }
+    ],
+    "legacyUnchanged": true,
+    "liveProfilesUnchanged": true,
+    "externalBrowserOpened": false,
+    "artifact": "0e23b06703ad85e91f9c6793c5de689204e9fe3bdb0fed3106a1324406bf3858",
+    "identity": {
+      "artifactSha256": "0e23b06703ad85e91f9c6793c5de689204e9fe3bdb0fed3106a1324406bf3858",
+      "childSha256": "22445e6e5310d8bb12359b4d4967e111bb49ea71c2c757381862bcfc3e6d85f6",
+      "command": "index",
+      "extensionId": "can-i-use",
+      "projectionSha256": "99cfea55d2cf3a868750feca9b40d75d68bc943b549b1927298eaf2bc8c2510c",
+      "react": "19.0.0",
+      "reconciler": "0.31.0",
+      "resolutionSha256": "e9364a2ccfed1c9f28aba641b755e412e81281c72267128438b752ea63e89b47",
+      "metadataSha256": "0a0ecd7f9bb049be6738ba2ef452be96dccaad77cfc55d468414f580a6051cae"
+    }
+  },
+  "checkpoints": [
+    {
+      "checkpoint": "launcher-ready",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    },
+    {
+      "checkpoint": "interaction",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    },
+    {
+      "checkpoint": "interaction",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    },
+    {
+      "checkpoint": "interaction",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    },
+    {
+      "checkpoint": "interaction",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    },
+    {
+      "checkpoint": "interaction",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    },
+    {
+      "checkpoint": "interaction",
+      "focusedWindowCount": 0,
+      "windows": [
+        {
+          "focused": false,
+          "id": 2
+        },
+        {
+          "focused": false,
+          "id": 1
+        }
+      ]
+    }
+  ],
+  "focusEvents": [],
+  "rootPid": 3062,
+  "observedPids": [
+    3062,
+    3064,
+    3065,
+    3066,
+    3067,
+    3094,
+    3101,
+    3102,
+    3104,
+    3105,
+    3136,
+    3150,
+    3154,
+    3155,
+    3156,
+    3157,
+    3160,
+    3161,
+    3163,
+    3164,
+    3165,
+    3166,
+    3168,
+    3198,
+    3199,
+    3200,
+    3201,
+    3202,
+    3203,
+    3204,
+    3205,
+    3206,
+    3272,
+    3273,
+    3274,
+    3275,
+    3276,
+    3277,
+    3278,
+    3295,
+    3299,
+    3300,
+    3310,
+    3311,
+    3312,
+    3313,
+    3314,
+    3315,
+    3330,
+    3331,
+    3405,
+    3406,
+    3407,
+    3408,
+    3409,
+    3474,
+    3475,
+    3476,
+    3477,
+    3478,
+    3479,
+    3480,
+    3481,
+    3482,
+    3517,
+    3577,
+    3579,
+    3581,
+    3608,
+    3609,
+    3610,
+    3611,
+    3613,
+    3682,
+    3684,
+    3687,
+    3750,
+    3822,
+    3854,
+    3859,
+    3869,
+    3870,
+    3871,
+    3872,
+    3899,
+    3905,
+    3910,
+    3911,
+    3912,
+    3913,
+    3914,
+    3915,
+    3916,
+    3917,
+    3944,
+    3950,
+    3951,
+    3952,
+    3953,
+    3980,
+    3986,
+    3989,
+    3990,
+    3991,
+    3992,
+    3993,
+    3994,
+    3995,
+    4022,
+    4028,
+    4031,
+    4034,
+    4035,
+    4036,
+    4037,
+    4038,
+    4051,
+    4078,
+    4079,
+    4080,
+    4082,
+    4083,
+    4085,
+    4087,
+    4088,
+    4090,
+    4091,
+    4094,
+    4095,
+    4096,
+    4097,
+    4162
+  ],
+  "allOwnedProcessesGone": true,
+  "cleanupErrors": []
+}

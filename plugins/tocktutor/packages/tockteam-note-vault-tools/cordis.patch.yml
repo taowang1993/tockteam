@@ -1,0 +1,3 @@
+- insert:
+    - id: note-vault-tools
+      name: '@tockteam/note-vault-tools'

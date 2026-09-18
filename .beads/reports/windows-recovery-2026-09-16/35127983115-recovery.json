@@ -1,0 +1,394 @@
+{
+  "passed": true,
+  "sourceCommit": "396b2844ed0e30b64c2e9e73b6e67e8c0ff95823",
+  "platform": "win32",
+  "architecture": "x64",
+  "node": "v24.20.0",
+  "sdk": {
+    "architecture": "x64",
+    "pointerSize": 8,
+    "completionPort": {
+      "associationSize": 16,
+      "keyOffset": 0,
+      "portOffset": 8,
+      "accountingTotalOffset": 36,
+      "associationClass": 7,
+      "newProcess": 6,
+      "synchronize": 1048576
+    },
+    "layouts": {
+      "STARTUPINFOEXW": {
+        "size": 112,
+        "lpAttributeList": 104
+      },
+      "STARTUPINFOW": {
+        "size": 104,
+        "cb": 0,
+        "dwFlags": 60,
+        "hStdInput": 80,
+        "hStdOutput": 88,
+        "hStdError": 96
+      },
+      "PROCESS_INFORMATION": {
+        "size": 24,
+        "hProcess": 0,
+        "hThread": 8,
+        "dwProcessId": 16,
+        "dwThreadId": 20
+      },
+      "JOBOBJECT_BASIC_ACCOUNTING_INFORMATION": {
+        "size": 48,
+        "ActiveProcesses": 40
+      },
+      "JOBOBJECT_EXTENDED_LIMIT_INFORMATION": {
+        "size": 144,
+        "BasicLimitInformation.LimitFlags": 16
+      }
+    },
+    "constants": {
+      "PROC_THREAD_ATTRIBUTE_JOB_LIST": 131085,
+      "PROC_THREAD_ATTRIBUTE_HANDLE_LIST": 131074,
+      "EXTENDED_STARTUPINFO_PRESENT": 524288,
+      "CREATE_UNICODE_ENVIRONMENT": 1024,
+      "CREATE_NO_WINDOW": 134217728,
+      "STARTF_USESTDHANDLES": 256,
+      "JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE": 8192,
+      "JobObjectBasicAccountingInformation": 1,
+      "JobObjectExtendedLimitInformation": 9,
+      "HANDLE_FLAG_INHERIT": 1,
+      "ERROR_INSUFFICIENT_BUFFER": 122,
+      "ERROR_BROKEN_PIPE": 109,
+      "WAIT_OBJECT_0": 0,
+      "WAIT_TIMEOUT": 258,
+      "WAIT_FAILED": 4294967295
+    }
+  },
+  "workerPid": 1396,
+  "initial": [
+    {
+      "ProcessId": 1396,
+      "ParentProcessId": 7736
+    }
+  ],
+  "result": {
+    "passed": true,
+    "moduleSha256": "bbbe9306d163386ee3d4c15488ea4df20309d1043fc0821891d068fb06dfe4f4",
+    "publicModuleSha256": "f76807b68a5d65450a179456d1096573badfaaa4fdcfb58fde3fb3fd649ade94",
+    "koffiVersion": "3.1.6",
+    "installedResolution": true,
+    "clockCases": [
+      {
+        "mode": "progress",
+        "passed": true,
+        "pid": 6356,
+        "operation": 17,
+        "callbacks": 7,
+        "commitMs": 7266.7238,
+        "stallAfterOwnProgressMs": null,
+        "ownProgressOffsetsMs": [
+          0.8104000000000156,
+          1.4779000000000337,
+          1816.7482,
+          2718.2756,
+          3630.4956,
+          5439.1274,
+          6353.9133,
+          7259.8592,
+          7261.5167,
+          7261.6821,
+          7261.973,
+          7262.6625,
+          7262.8452,
+          7263.0066,
+          7263.2741000000005,
+          7263.5167,
+          7263.6868,
+          7263.8489,
+          7264.0787,
+          7264.2567,
+          7264.4487,
+          7264.616300000001,
+          7264.7342,
+          7264.9359,
+          7265.2972,
+          7266.168900000001,
+          7266.6053
+        ],
+        "otherNativeCompletions": 9,
+        "childInvalidations": 0,
+        "lateFollowOnVerified": true,
+        "closeMs": 11.304700000000594,
+        "stopped": true,
+        "fixture": {
+          "rows": 176,
+          "counts": {
+            "event": 118,
+            "commit-start": 1,
+            "continuation": 30,
+            "native": 7,
+            "other-start": 1,
+            "other-native": 9,
+            "delivery": 6,
+            "commit-resolved": 1,
+            "late-delivery": 1,
+            "late-follow-on": 1,
+            "late-complete": 1
+          },
+          "operationIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23
+          ],
+          "last": "event"
+        }
+      },
+      {
+        "mode": "stall",
+        "passed": true,
+        "pid": 1448,
+        "operation": 17,
+        "callbacks": 6,
+        "commitMs": null,
+        "stallAfterOwnProgressMs": 5048.073700000001,
+        "ownProgressOffsetsMs": [
+          0.7403999999987718,
+          0.9372000000003027,
+          1818.3221999999987
+        ],
+        "otherNativeCompletions": 7,
+        "childInvalidations": 27,
+        "lateFollowOnVerified": false,
+        "closeMs": 9.664499999998952,
+        "stopped": true,
+        "fixture": {
+          "rows": 121,
+          "counts": {
+            "event": 75,
+            "commit-start": 1,
+            "continuation": 3,
+            "native": 6,
+            "other-start": 1,
+            "invalidation": 27,
+            "other-native": 7,
+            "delivery": 1
+          },
+          "operationIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "last": "invalidation"
+        }
+      },
+      {
+        "mode": "tail",
+        "passed": true,
+        "pid": 8480,
+        "operation": 17,
+        "callbacks": 1,
+        "commitMs": null,
+        "stallAfterOwnProgressMs": 5033.500699999999,
+        "ownProgressOffsetsMs": [
+          0.9284999999999854,
+          1.5865000000012515,
+          1.8258999999998196,
+          2.2030000000013388,
+          2.3849000000009255,
+          2.557300000000396,
+          2.797599999999875,
+          3.0829000000012456,
+          3.8388000000013562,
+          4.958599999999933,
+          5.139400000000023,
+          5.4297999999998865,
+          6.1776000000008935,
+          6.366700000000492,
+          6.697500000000218,
+          6.904900000001362,
+          7.126200000000608,
+          7.255600000000413,
+          7.406100000000151,
+          7.561200000000099,
+          7.722999999999956,
+          7.872400000000198,
+          8.022800000000643,
+          8.17489999999998,
+          8.328199999999924,
+          8.556900000001406,
+          9.431000000000495,
+          10.039600000000064
+        ],
+        "otherNativeCompletions": 0,
+        "childInvalidations": 0,
+        "lateFollowOnVerified": false,
+        "closeMs": 14.473999999998341,
+        "stopped": true,
+        "fixture": {
+          "rows": 123,
+          "counts": {
+            "event": 91,
+            "commit-start": 1,
+            "continuation": 28,
+            "commit-resolved": 1,
+            "native": 1,
+            "drain-held": 1
+          },
+          "operationIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ],
+          "last": "drain-held"
+        }
+      }
+    ],
+    "recovery": {
+      "passed": true,
+      "phase": "complete",
+      "hostPid": 2596,
+      "hostExecPath": "D:\\a\\_temp\\owned-windows-0WArMm\\owned node.exe",
+      "childPid": 9040,
+      "observerHandleFlags": {
+        "host": 0,
+        "child": 0
+      },
+      "hostInitialWait": 258,
+      "childInitialWait": 258,
+      "childExecPath": "D:\\a\\_temp\\owned-windows-0WArMm\\owned node.exe",
+      "blockedAt": 1789579652904,
+      "mainIdentityBefore": {
+        "dev": "1995562750",
+        "ino": "3096224743910687"
+      },
+      "mainBytesBeforeSha256": "26fc1f2c34b2dee027ba06baf27ae4b8aac45c24eae817062c02c51a890328fd",
+      "mainBytesBeforeLength": 81920,
+      "contenderWait": 0,
+      "contenderClosed": true,
+      "contenderReads": 0,
+      "contenderSql": "PRAGMA journal_mode",
+      "contenderPid": 8628,
+      "mainAfterContenderSha256": "26fc1f2c34b2dee027ba06baf27ae4b8aac45c24eae817062c02c51a890328fd",
+      "terminateAt": 1789579653033,
+      "hostPreTerminateWait": 258,
+      "childPreTerminateWait": 258,
+      "terminateResult": 1,
+      "hostTerminated": true,
+      "blockExpired": false,
+      "blockDurationMs": 60000,
+      "blockedToChildSignalMs": 157.59439999999813,
+      "hostWaitReceipt": {
+        "label": "nested Host",
+        "initialWait": 258,
+        "finalWait": 0,
+        "waitValues": [
+          258,
+          0
+        ],
+        "polls": 2,
+        "startedAt": 1789579653033,
+        "signaledAt": 1789579653062
+      },
+      "childWaitReceipt": {
+        "label": "nested index child",
+        "initialWait": 0,
+        "finalWait": 0,
+        "waitValues": [
+          0
+        ],
+        "polls": 1,
+        "startedAt": 1789579653062,
+        "signaledAt": 1789579653062
+      },
+      "mainIdentityAfter": {
+        "dev": "1995562750",
+        "ino": "3096224743910687"
+      },
+      "mainBytesAfterSha256": "26fc1f2c34b2dee027ba06baf27ae4b8aac45c24eae817062c02c51a890328fd",
+      "mainBytesAfterLength": 81920,
+      "mainUnchanged": true,
+      "identityUnchanged": true,
+      "hostWait": 0,
+      "childWait": 0,
+      "contenderBusyCode": "SQLITE_BUSY",
+      "reopenedPid": 6556,
+      "reopenReads": 0,
+      "reopenedIdentity": {
+        "dev": "1995562750",
+        "ino": "3096224743910687"
+      },
+      "reopenedAlphaPath": "Alpha.md",
+      "reopenedWait": 0,
+      "reopenedClosed": true,
+      "emergencyCleanup": false
+    },
+    "phase": "complete",
+    "failure": null,
+    "indexModules": {
+      "index.js": "3b91c857e3bccd914ed7f6e36f56f87dbf116e6bc0012e64e2b80262e9c4baea",
+      "owned-process-windows.js": "bbbe9306d163386ee3d4c15488ea4df20309d1043fc0821891d068fb06dfe4f4",
+      "owned-process.js": "f76807b68a5d65450a179456d1096573badfaaa4fdcfb58fde3fb3fd649ade94",
+      "search-index-auth.js": "b7a42000f2fd709203e60baf92bf16d35b20eaedbf2e9a16e86d44f7c840369e",
+      "search-index-channel.js": "77cec1d7b61eef1f755f46b56b14352b1516807c3b718f38cfe1509c730705b6",
+      "search-index-child.js": "a734b78c17a6337fe8561a0a584a395a863eaefc8d44f1eeea25d791849b0a92",
+      "search-index-native.js": "64f9baf2eacdc3924c6dd5469f6c144b0ba64b0c7f06633c6086829cf586d7c8",
+      "search-index-ownership.js": "cabee43140f32c5f60576f53363eaea41c990494e6994a4acb4dacb32d84a4b4",
+      "search-index-process.js": "e3fb232cc6a448fb1c7dc446f28119fc52ac581ea4ded42154f1d812ca16a62c",
+      "search-index-progress.js": "c7e3d8c4b62728276ccce1119e098fced5cbea551dffb18bcdca87ff5206b0bd",
+      "search-index-protocol.js": "f068d4fe24b6bf24019307212fd16dcdb3bede3a9052e17d34494a76fb2d480a"
+    }
+  },
+  "emergencyCleanup": false,
+  "residue": [],
+  "temporaryRootRemoved": true,
+  "failure": null,
+  "diagnostics": null
+}

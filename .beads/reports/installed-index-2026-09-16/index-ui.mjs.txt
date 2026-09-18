@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict'
+import {writeFile,readFile} from 'node:fs/promises'
+import {join} from 'node:path'
+export async function verify({page,tag,canary,result,root,rows,wait}) {
+ try {
+  await page.evaluate(()=>{history.pushState(null,'','/tocktutor');dispatchEvent(new PopStateEvent('popstate'))})
+  const open=page.getByRole('button',{name:'Search Notes',exact:true});await open.waitFor({state:'visible'})
+  await open.evaluate(element=>element.click())
+  const input=page.getByRole('combobox',{name:'Search Notes Query',exact:true});await input.waitFor({state:'visible'})
+  await input.evaluate((element,value)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(element,value);element.dispatchEvent(new Event('input',{bubbles:true}));element.dispatchEvent(new Event('change',{bubbles:true}))},`tag:${tag}`)
+  await wait(rows,records=>records.some(row=>row.name==='search'&&row.result.scan?.entries===2&&row.result.matches?.length===1),20000)
+  const dialog=page.getByRole('dialog',{name:'Search Notes',exact:true})
+  await wait(()=>dialog.innerText(),text=>text.includes('1 note')&&text.includes('Result'))
+  assert.equal(await dialog.getByText('FalsePositive',{exact:true}).count(),0)
+  result.searchVisible=true
+  await writeFile('/tmp/tockteam-installed-index-search-aria.txt',await dialog.ariaSnapshot(),{mode:0o600})
+  const choice=dialog.getByRole('option').first()
+  if(await choice.count())await choice.evaluate(element=>element.click())
+  else await dialog.getByText('Result',{exact:true}).first().evaluate(element=>element.click())
+  await wait(()=>page.locator('body').innerText(),text=>text.includes(canary),20000)
+  result.exactDocumentVisible=true
+  result.geometry=await page.evaluate(()=>({width:innerWidth,height:innerHeight,dpr:devicePixelRatio,colorScheme:document.documentElement.style.colorScheme,skin:document.documentElement.dataset.tockteamSkin??null,route:location.pathname}))
+  assert.deepEqual({...result.geometry,route:undefined},{width:1512,height:949,dpr:2,colorScheme:'dark',skin:null,route:undefined})
+  const shot=join(root,'installed-index.png');await page.screenshot({path:shot})
+  const png=await readFile(shot);assert.equal(png.readUInt32BE(16),3024);assert.equal(png.readUInt32BE(20),1898)
+  result.screenshot={file:'installed-index.png',width:3024,height:1898,mode:'dark',skin:null}
+ } finally {await writeFile('/tmp/tockteam-installed-index-ui-aria.txt',await page.locator('body').ariaSnapshot(),{mode:0o600})}
+}

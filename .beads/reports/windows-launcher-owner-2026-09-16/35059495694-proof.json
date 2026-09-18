@@ -1,0 +1,1924 @@
+{
+  "passed": true,
+  "sourceCommit": "7cf344b8ab8764480d2b8e8a0a7124e87f78a7bc",
+  "platform": "win32",
+  "architecture": "x64",
+  "node": "v24.20.0",
+  "sdk": {
+    "architecture": "x64",
+    "pointerSize": 8,
+    "completionPort": {
+      "associationSize": 16,
+      "keyOffset": 0,
+      "portOffset": 8,
+      "accountingTotalOffset": 36,
+      "associationClass": 7,
+      "newProcess": 6,
+      "synchronize": 1048576
+    },
+    "layouts": {
+      "STARTUPINFOEXW": {
+        "size": 112,
+        "lpAttributeList": 104
+      },
+      "STARTUPINFOW": {
+        "size": 104,
+        "cb": 0,
+        "dwFlags": 60,
+        "hStdInput": 80,
+        "hStdOutput": 88,
+        "hStdError": 96
+      },
+      "PROCESS_INFORMATION": {
+        "size": 24,
+        "hProcess": 0,
+        "hThread": 8,
+        "dwProcessId": 16,
+        "dwThreadId": 20
+      },
+      "JOBOBJECT_BASIC_ACCOUNTING_INFORMATION": {
+        "size": 48,
+        "ActiveProcesses": 40
+      },
+      "JOBOBJECT_EXTENDED_LIMIT_INFORMATION": {
+        "size": 144,
+        "BasicLimitInformation.LimitFlags": 16
+      }
+    },
+    "constants": {
+      "PROC_THREAD_ATTRIBUTE_JOB_LIST": 131085,
+      "PROC_THREAD_ATTRIBUTE_HANDLE_LIST": 131074,
+      "EXTENDED_STARTUPINFO_PRESENT": 524288,
+      "CREATE_UNICODE_ENVIRONMENT": 1024,
+      "CREATE_NO_WINDOW": 134217728,
+      "STARTF_USESTDHANDLES": 256,
+      "JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE": 8192,
+      "JobObjectBasicAccountingInformation": 1,
+      "JobObjectExtendedLimitInformation": 9,
+      "HANDLE_FLAG_INHERIT": 1,
+      "ERROR_INSUFFICIENT_BUFFER": 122,
+      "ERROR_BROKEN_PIPE": 109,
+      "WAIT_OBJECT_0": 0,
+      "WAIT_TIMEOUT": 258,
+      "WAIT_FAILED": 4294967295
+    }
+  },
+  "workerPid": 2548,
+  "initial": [
+    {
+      "ProcessId": 2548,
+      "ParentProcessId": 3280
+    }
+  ],
+  "shellInventory": [
+    {
+      "ProcessId": 2548,
+      "ParentProcessId": 3280
+    },
+    {
+      "ProcessId": 7932,
+      "ParentProcessId": 2548
+    },
+    {
+      "ProcessId": 2480,
+      "ParentProcessId": 7932
+    },
+    {
+      "ProcessId": 2320,
+      "ParentProcessId": 2480
+    }
+  ],
+  "result": {
+    "passed": true,
+    "moduleSha256": "9395fbbc98f8319a7fd32e54875543bc69312e199348cb0c99134b3fa1dadcfc",
+    "publicModuleSha256": "d43d13553610b86406da75c1caba98c25e501330da8872af9dbd3412d96d593a",
+    "installedResolution": true,
+    "cases": [
+      {
+        "name": "Unicode Arguments, Explicit Environment, Stdin EOF, Output Counts",
+        "passed": true,
+        "rootPid": 7296
+      },
+      {
+        "name": "normal-exit",
+        "passed": true,
+        "exactJobMembership": true,
+        "jobNotInheritable": true,
+        "rootPid": 7948,
+        "descendantPid": 7808,
+        "retainedHandlesSignaled": true
+      },
+      {
+        "name": "cancel",
+        "passed": true,
+        "exactJobMembership": true,
+        "jobNotInheritable": true,
+        "rootPid": 5980,
+        "descendantPid": 6784,
+        "retainedHandlesSignaled": true
+      },
+      {
+        "name": "overflow",
+        "passed": true,
+        "exactJobMembership": true,
+        "jobNotInheritable": true,
+        "rootPid": 7584,
+        "descendantPid": 1884,
+        "retainedHandlesSignaled": true
+      },
+      {
+        "name": "Abrupt Host Death",
+        "passed": true,
+        "rootPid": 2416,
+        "descendantPid": 2556,
+        "retainedHandlesSignaled": true
+      },
+      {
+        "name": "Failed Creation Releases Handles",
+        "passed": true,
+        "handlesBefore": 212,
+        "handlesAfter": 212
+      }
+    ],
+    "phase": "complete",
+    "failure": null,
+    "calibration": {
+      "ledger": {
+        "maxEntries": 128,
+        "entries": [
+          {
+            "operation": "createJobObjectW",
+            "result": "720",
+            "handle": "720",
+            "acquired": true
+          },
+          {
+            "operation": "setInformationJobObject",
+            "handle": "720",
+            "class": 9,
+            "length": 144,
+            "result": 1
+          },
+          {
+            "operation": "createIoCompletionPort",
+            "result": "724",
+            "handle": "724",
+            "acquired": true
+          },
+          {
+            "operation": "setInformationJobObject",
+            "handle": "720",
+            "class": 7,
+            "length": 16,
+            "result": 1,
+            "completionKey": "720",
+            "completionPort": "724"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402128",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111401968",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111402128",
+            "write": "2298111401968",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "732",
+            "writeHandle": "736"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402080",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402160",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111402080",
+            "write": "2298111402160",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "740",
+            "writeHandle": "744"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402208",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402064",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111402208",
+            "write": "2298111402064",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "748",
+            "writeHandle": "756"
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "732",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "744",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "756",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402464",
+            "bytes": 8
+          },
+          {
+            "operation": "initializeProcThreadAttributeList",
+            "list": null,
+            "count": 2,
+            "flags": 0,
+            "size": "2298111402464",
+            "result": 0
+          },
+          {
+            "operation": "getLastError",
+            "result": 122
+          },
+          {
+            "operation": "address",
+            "pointer": "2299061238592",
+            "bytes": 72
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402464",
+            "bytes": 8
+          },
+          {
+            "operation": "initializeProcThreadAttributeList",
+            "list": "2299061238592",
+            "count": 2,
+            "flags": 0,
+            "size": "2298111402464",
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2299061238592",
+            "bytes": 72
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111401984",
+            "bytes": 8
+          },
+          {
+            "operation": "updateProcThreadAttribute",
+            "list": "2299061238592",
+            "attribute": 131085,
+            "value": "2298111401984",
+            "size": 8,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2298110653072",
+            "bytes": 24
+          },
+          {
+            "operation": "updateProcThreadAttribute",
+            "list": "2299061238592",
+            "attribute": 131074,
+            "value": "2298110653072",
+            "size": 24,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060264048",
+            "bytes": 96
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060264144",
+            "bytes": 162
+          },
+          {
+            "operation": "address",
+            "pointer": "2298110792784",
+            "bytes": 112
+          },
+          {
+            "operation": "address",
+            "pointer": "2298110653424",
+            "bytes": 24
+          },
+          {
+            "operation": "createProcessW",
+            "application": "D:\\a\\_temp\\owned-windows-iE4YoU\\nonexistent.exe",
+            "command": "2299060264048",
+            "processAttributes": null,
+            "threadAttributes": null,
+            "inherit": 1,
+            "flags": 134743040,
+            "environment": "2299060264144",
+            "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU",
+            "startup": "2298110792784",
+            "information": "2298110653424",
+            "result": 0,
+            "succeeded": false,
+            "processHandle": "0",
+            "threadHandle": "0",
+            "pid": 0
+          },
+          {
+            "operation": "getLastError",
+            "result": 2
+          },
+          {
+            "operation": "deleteProcThreadAttributeList",
+            "list": "2299061238592"
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "756",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "748",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "744",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "740",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "736",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "732",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "724",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "720",
+            "result": 1
+          }
+        ],
+        "addressMappings": [
+          {
+            "pointer": "2298111402128",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111401968",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402080",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402160",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402208",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402064",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402464",
+            "bytes": 8
+          },
+          {
+            "pointer": "2299061238592",
+            "bytes": 72
+          },
+          {
+            "pointer": "2298111402464",
+            "bytes": 8
+          },
+          {
+            "pointer": "2299061238592",
+            "bytes": 72
+          },
+          {
+            "pointer": "2298111401984",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298110653072",
+            "bytes": 24
+          },
+          {
+            "pointer": "2299060264048",
+            "bytes": 96
+          },
+          {
+            "pointer": "2299060264144",
+            "bytes": 162
+          },
+          {
+            "pointer": "2298110792784",
+            "bytes": 112
+          },
+          {
+            "pointer": "2298110653424",
+            "bytes": 24
+          }
+        ],
+        "truncated": false,
+        "dropped": 0
+      },
+      "counts": {
+        "before": 187,
+        "beforeCreate": 196,
+        "afterCreate": 211,
+        "afterCleanup": 203
+      },
+      "failures": [],
+      "passed": true,
+      "createError": 2
+    },
+    "failedCreation": {
+      "ledger": {
+        "maxEntries": 128,
+        "entries": [
+          {
+            "operation": "createJobObjectW",
+            "result": "724",
+            "handle": "724",
+            "acquired": true
+          },
+          {
+            "operation": "setInformationJobObject",
+            "handle": "724",
+            "class": 9,
+            "length": 144,
+            "result": 1
+          },
+          {
+            "operation": "createIoCompletionPort",
+            "result": "736",
+            "handle": "736",
+            "acquired": true
+          },
+          {
+            "operation": "setInformationJobObject",
+            "handle": "724",
+            "class": 7,
+            "length": 16,
+            "result": 1,
+            "completionKey": "724",
+            "completionPort": "736"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402800",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402816",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111402800",
+            "write": "2298111402816",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "860",
+            "writeHandle": "828"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402832",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402976",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111402832",
+            "write": "2298111402976",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "856",
+            "writeHandle": "748"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402992",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111403072",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111402992",
+            "write": "2298111403072",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "744",
+            "writeHandle": "172"
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "860",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "748",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "172",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111403008",
+            "bytes": 8
+          },
+          {
+            "operation": "initializeProcThreadAttributeList",
+            "list": null,
+            "count": 2,
+            "flags": 0,
+            "size": "2298111403008",
+            "result": 0
+          },
+          {
+            "operation": "getLastError",
+            "result": 122
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060614624",
+            "bytes": 72
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111403008",
+            "bytes": 8
+          },
+          {
+            "operation": "initializeProcThreadAttributeList",
+            "list": "2299060614624",
+            "count": 2,
+            "flags": 0,
+            "size": "2298111403008",
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060614624",
+            "bytes": 72
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111403088",
+            "bytes": 8
+          },
+          {
+            "operation": "updateProcThreadAttribute",
+            "list": "2299060614624",
+            "attribute": 131085,
+            "value": "2298111403088",
+            "size": 8,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060617024",
+            "bytes": 24
+          },
+          {
+            "operation": "updateProcThreadAttribute",
+            "list": "2299060614624",
+            "attribute": 131074,
+            "value": "2299060617024",
+            "size": 24,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060322576",
+            "bytes": 96
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060322672",
+            "bytes": 162
+          },
+          {
+            "operation": "address",
+            "pointer": "2298110799952",
+            "bytes": 112
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060616672",
+            "bytes": 24
+          },
+          {
+            "operation": "createProcessW",
+            "application": "D:\\a\\_temp\\owned-windows-iE4YoU\\nonexistent.exe",
+            "command": "2299060322576",
+            "processAttributes": null,
+            "threadAttributes": null,
+            "inherit": 1,
+            "flags": 134743040,
+            "environment": "2299060322672",
+            "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU",
+            "startup": "2298110799952",
+            "information": "2299060616672",
+            "result": 0,
+            "succeeded": false,
+            "processHandle": "0",
+            "threadHandle": "0",
+            "pid": 0
+          },
+          {
+            "operation": "getLastError",
+            "result": 2
+          },
+          {
+            "operation": "deleteProcThreadAttributeList",
+            "list": "2299060614624"
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "172",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "744",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "748",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "856",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "828",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "860",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "736",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "724",
+            "result": 1
+          }
+        ],
+        "addressMappings": [
+          {
+            "pointer": "2298111402800",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402816",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402832",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402976",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402992",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111403072",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111403008",
+            "bytes": 8
+          },
+          {
+            "pointer": "2299060614624",
+            "bytes": 72
+          },
+          {
+            "pointer": "2298111403008",
+            "bytes": 8
+          },
+          {
+            "pointer": "2299060614624",
+            "bytes": 72
+          },
+          {
+            "pointer": "2298111403088",
+            "bytes": 8
+          },
+          {
+            "pointer": "2299060617024",
+            "bytes": 24
+          },
+          {
+            "pointer": "2299060322576",
+            "bytes": 96
+          },
+          {
+            "pointer": "2299060322672",
+            "bytes": 162
+          },
+          {
+            "pointer": "2298110799952",
+            "bytes": 112
+          },
+          {
+            "pointer": "2299060616672",
+            "bytes": 24
+          }
+        ],
+        "truncated": false,
+        "dropped": 0
+      },
+      "before": 212,
+      "after": 212
+    },
+    "sensitivity": {
+      "ledger": {
+        "maxEntries": 128,
+        "entries": [
+          {
+            "operation": "createJobObjectW",
+            "result": "724",
+            "handle": "724",
+            "acquired": true
+          },
+          {
+            "operation": "setInformationJobObject",
+            "handle": "724",
+            "class": 9,
+            "length": 144,
+            "result": 1
+          },
+          {
+            "operation": "createIoCompletionPort",
+            "result": "736",
+            "handle": "736",
+            "acquired": true
+          },
+          {
+            "operation": "setInformationJobObject",
+            "handle": "724",
+            "class": 7,
+            "length": 16,
+            "result": 1,
+            "completionKey": "724",
+            "completionPort": "736"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111403216",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111403200",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111403216",
+            "write": "2298111403200",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "860",
+            "writeHandle": "828"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111403232",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111403248",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111403232",
+            "write": "2298111403248",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "856",
+            "writeHandle": "748"
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402256",
+            "bytes": 8
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111402448",
+            "bytes": 8
+          },
+          {
+            "operation": "createPipe",
+            "read": "2298111402256",
+            "write": "2298111402448",
+            "result": 1,
+            "acquired": true,
+            "readHandle": "744",
+            "writeHandle": "172"
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "860",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "748",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "setHandleInformation",
+            "handle": "172",
+            "mask": 1,
+            "flags": 1,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111401664",
+            "bytes": 8
+          },
+          {
+            "operation": "initializeProcThreadAttributeList",
+            "list": null,
+            "count": 2,
+            "flags": 0,
+            "size": "2298111401664",
+            "result": 0
+          },
+          {
+            "operation": "getLastError",
+            "result": 122
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060344496",
+            "bytes": 72
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111401664",
+            "bytes": 8
+          },
+          {
+            "operation": "initializeProcThreadAttributeList",
+            "list": "2299060344496",
+            "count": 2,
+            "flags": 0,
+            "size": "2298111401664",
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060344496",
+            "bytes": 72
+          },
+          {
+            "operation": "address",
+            "pointer": "2298111401536",
+            "bytes": 8
+          },
+          {
+            "operation": "updateProcThreadAttribute",
+            "list": "2299060344496",
+            "attribute": 131085,
+            "value": "2298111401536",
+            "size": 8,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060347376",
+            "bytes": 24
+          },
+          {
+            "operation": "updateProcThreadAttribute",
+            "list": "2299060344496",
+            "attribute": 131074,
+            "value": "2299060347376",
+            "size": 24,
+            "result": 1
+          },
+          {
+            "operation": "address",
+            "pointer": "2299061365424",
+            "bytes": 96
+          },
+          {
+            "operation": "address",
+            "pointer": "2299061365520",
+            "bytes": 162
+          },
+          {
+            "operation": "address",
+            "pointer": "2298110794960",
+            "bytes": 112
+          },
+          {
+            "operation": "address",
+            "pointer": "2299060347280",
+            "bytes": 24
+          },
+          {
+            "operation": "createProcessW",
+            "application": "D:\\a\\_temp\\owned-windows-iE4YoU\\nonexistent.exe",
+            "command": "2299061365424",
+            "processAttributes": null,
+            "threadAttributes": null,
+            "inherit": 1,
+            "flags": 134743040,
+            "environment": "2299061365520",
+            "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU",
+            "startup": "2298110794960",
+            "information": "2299060347280",
+            "result": 0,
+            "succeeded": false,
+            "processHandle": "0",
+            "threadHandle": "0",
+            "pid": 0
+          },
+          {
+            "operation": "getLastError",
+            "result": 2
+          },
+          {
+            "operation": "deleteProcThreadAttributeList",
+            "list": "2299060344496"
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "744",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "748",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "856",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "828",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "860",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "736",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "724",
+            "result": 1
+          },
+          {
+            "operation": "closeHandle",
+            "handle": "172",
+            "result": 1
+          }
+        ],
+        "addressMappings": [
+          {
+            "pointer": "2298111403216",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111403200",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111403232",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111403248",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402256",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111402448",
+            "bytes": 8
+          },
+          {
+            "pointer": "2298111401664",
+            "bytes": 8
+          },
+          {
+            "pointer": "2299060344496",
+            "bytes": 72
+          },
+          {
+            "pointer": "2298111401664",
+            "bytes": 8
+          },
+          {
+            "pointer": "2299060344496",
+            "bytes": 72
+          },
+          {
+            "pointer": "2298111401536",
+            "bytes": 8
+          },
+          {
+            "pointer": "2299060347376",
+            "bytes": 24
+          },
+          {
+            "pointer": "2299061365424",
+            "bytes": 96
+          },
+          {
+            "pointer": "2299061365520",
+            "bytes": 162
+          },
+          {
+            "pointer": "2298110794960",
+            "bytes": 112
+          },
+          {
+            "pointer": "2299060347280",
+            "bytes": 24
+          }
+        ],
+        "truncated": false,
+        "dropped": 0
+      },
+      "counts": {
+        "before": 212,
+        "withheld": 213,
+        "afterRecovery": 212
+      },
+      "passed": true,
+      "failures": [],
+      "suppressedHandle": "172",
+      "actualClosesBeforeCleanup": [
+        {
+          "handle": "744",
+          "result": 1
+        },
+        {
+          "handle": "748",
+          "result": 1
+        },
+        {
+          "handle": "856",
+          "result": 1
+        },
+        {
+          "handle": "828",
+          "result": 1
+        },
+        {
+          "handle": "860",
+          "result": 1
+        },
+        {
+          "handle": "736",
+          "result": 1
+        },
+        {
+          "handle": "724",
+          "result": 1
+        }
+      ],
+      "expectedEqualityFailure": "failed creation must not leak Host handles\n\n213 !== 212\n",
+      "releaseResult": 1
+    },
+    "counts": {
+      "before": 212,
+      "after": 212
+    },
+    "workflowModuleSha256": "a85f113229b783ab3375b32204db7616b8ba48df402e89c0adb4f8364fb92eac",
+    "workflows": [
+      {
+        "mode": "arguments",
+        "attempt": 0,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 7932,
+        "rootPid": 2480,
+        "descendantPid": 2320,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow arguments-0",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 7932,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 2480,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 2320,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 7932,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 2480,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 2320,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "normal-exit",
+        "attempt": 1,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 8324,
+        "rootPid": 8300,
+        "descendantPid": 4512,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow normal-exit-1",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 8324,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 8300,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 4512,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 8324,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 8300,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 4512,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "normal-exit",
+        "attempt": 2,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 2140,
+        "rootPid": 3680,
+        "descendantPid": 10156,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow normal-exit-2",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 2140,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 3680,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 10156,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 2140,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 3680,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 10156,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "normal-exit",
+        "attempt": 3,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 2928,
+        "rootPid": 8864,
+        "descendantPid": 10088,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow normal-exit-3",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 2928,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 8864,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 10088,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 2928,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 8864,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 10088,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "normal-exit",
+        "attempt": 4,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 1312,
+        "rootPid": 3376,
+        "descendantPid": 3148,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow normal-exit-4",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 1312,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 3376,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 3148,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 1312,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 3376,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 3148,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "normal-exit",
+        "attempt": 5,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 9464,
+        "rootPid": 7304,
+        "descendantPid": 5276,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow normal-exit-5",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 9464,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 7304,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 5276,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 9464,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 7304,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 5276,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "normal-exit",
+        "attempt": 6,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 5700,
+        "rootPid": 6084,
+        "descendantPid": 1796,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow normal-exit-6",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 5700,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 6084,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 1796,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 5700,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 6084,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 1796,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "normal-exit",
+        "attempt": 7,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 7664,
+        "rootPid": 7080,
+        "descendantPid": 9948,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow normal-exit-7",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 7664,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 7080,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 9948,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 7664,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 7080,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 9948,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "normal-exit",
+        "attempt": 8,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 1740,
+        "rootPid": 1648,
+        "descendantPid": 5636,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow normal-exit-8",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 1740,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 1648,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 5636,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 1740,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 1648,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 5636,
+            "waitResult": 258
+          }
+        ],
+        "result": {
+          "stdoutBytes": 5,
+          "stderrBytes": 5
+        },
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "cancel",
+        "attempt": 9,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 4732,
+        "rootPid": 4020,
+        "descendantPid": 5924,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow cancel-9",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 4732,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 4020,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 5924,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 4732,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 4020,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 5924,
+            "waitResult": 258
+          }
+        ],
+        "operationError": "Workflow command cancelled",
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "timeout",
+        "attempt": 10,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 4404,
+        "rootPid": 5164,
+        "descendantPid": 6876,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow timeout-10",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 4404,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 5164,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 6876,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 4404,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 5164,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 6876,
+            "waitResult": 258
+          }
+        ],
+        "operationError": "Workflow command timed out",
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "overflow",
+        "attempt": 11,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 5464,
+        "rootPid": 1536,
+        "descendantPid": 5136,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow overflow-11",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 5464,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 1536,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 5136,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 5464,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 1536,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 5136,
+            "waitResult": 258
+          }
+        ],
+        "operationError": "Workflow command output limit exceeded",
+        "retainedHandlesSignaled": true
+      },
+      {
+        "mode": "exit-code",
+        "attempt": 12,
+        "passed": true,
+        "publicInstalledOwner": true,
+        "cmdPid": 8884,
+        "rootPid": 5156,
+        "descendantPid": 9896,
+        "args": [
+          "a b",
+          "中文",
+          "",
+          "literal&value"
+        ],
+        "cwd": "D:\\a\\_temp\\owned-windows-iE4YoU\\workflow exit-code-12",
+        "leak": null,
+        "waitResults": [
+          {
+            "role": "cmd",
+            "pid": 8884,
+            "waitResult": 0
+          },
+          {
+            "role": "node",
+            "pid": 5156,
+            "waitResult": 0
+          },
+          {
+            "role": "descendant",
+            "pid": 9896,
+            "waitResult": 0
+          }
+        ],
+        "beforeWaitResults": [
+          {
+            "role": "cmd",
+            "pid": 8884,
+            "waitResult": 258
+          },
+          {
+            "role": "node",
+            "pid": 5156,
+            "waitResult": 258
+          },
+          {
+            "role": "descendant",
+            "pid": 9896,
+            "waitResult": 258
+          }
+        ],
+        "operationError": "Workflow command failed",
+        "retainedHandlesSignaled": true
+      }
+    ]
+  },
+  "emergencyCleanup": false,
+  "residue": [],
+  "temporaryRootRemoved": true,
+  "failure": null,
+  "diagnostics": null
+}

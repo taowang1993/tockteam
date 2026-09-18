@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id":"path-traversal","kind":"path","input":"../outside.md","expected":"denied"},
+    {"id":"absolute-path","kind":"path","input":"/tmp/outside.md","expected":"denied"},
+    {"id":"credential-url","kind":"url","input":"https://user:secret@example.com/","expected":"inert"},
+    {"id":"canvas-duplicate-node","kind":"canvas","fixture":"duplicate-node-id","expected":"denied"},
+    {"id":"base-dynamic-eval","kind":"base","input":"eval(\"1 + 1\")","expected":"unsupported"},
+    {"id":"symlink-escape","kind":"filesystem","fixture":"generated-symlink-to-outside","expected":"denied"},
+    {"id":"stable-read-replacement","kind":"filesystem","fixture":"replace-between-open-and-read","expected":"changed"},
+    {"id":"oversized-document","kind":"filesystem","fixture":"generated-over-2MiB-file","expected":"too-large"},
+    {"id":"invalid-utf8","kind":"filesystem","fixture":"generated-invalid-utf8","expected":"denied"}
+  ]
+}

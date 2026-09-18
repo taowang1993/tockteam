@@ -1,0 +1,180 @@
+{
+  "conclusion": "failure",
+  "databaseId": 35090732736,
+  "headSha": "50255ef49d1f8effc525222cf5a190a350d4f32b",
+  "jobs": [
+    {
+      "completedAt": "2026-09-16T11:33:28Z",
+      "conclusion": "failure",
+      "databaseId": 104776151906,
+      "name": "windows-owner",
+      "startedAt": "2026-09-16T11:31:04Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-09-16T11:31:07Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-09-16T11:31:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:31:35Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "number": 2,
+          "startedAt": "2026-09-16T11:31:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:31:38Z",
+          "conclusion": "success",
+          "name": "Run pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa",
+          "number": 3,
+          "startedAt": "2026-09-16T11:31:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:31:44Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+          "number": 4,
+          "startedAt": "2026-09-16T11:31:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:31:45Z",
+          "conclusion": "success",
+          "name": "Prepare Isolated Evidence and Package Roots",
+          "number": 5,
+          "startedAt": "2026-09-16T11:31:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:32:53Z",
+          "conclusion": "success",
+          "name": "Install Root Build Dependencies",
+          "number": 6,
+          "startedAt": "2026-09-16T11:31:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:01Z",
+          "conclusion": "success",
+          "name": "Install Runtime Build Dependencies",
+          "number": 7,
+          "startedAt": "2026-09-16T11:32:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:13Z",
+          "conclusion": "success",
+          "name": "Compile and Run the Read-Only SDK Probe",
+          "number": 8,
+          "startedAt": "2026-09-16T11:33:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:14Z",
+          "conclusion": "success",
+          "name": "Verify the Lifecycle Models",
+          "number": 9,
+          "startedAt": "2026-09-16T11:33:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:15Z",
+          "conclusion": "success",
+          "name": "Verify Launcher Workflow Models",
+          "number": 10,
+          "startedAt": "2026-09-16T11:33:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:22Z",
+          "conclusion": "failure",
+          "name": "Build and Install Fresh Runtime Artifacts",
+          "number": 11,
+          "startedAt": "2026-09-16T11:33:15Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:22Z",
+          "conclusion": "skipped",
+          "name": "Build the Launcher Workflow Harness",
+          "number": 12,
+          "startedAt": "2026-09-16T11:33:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:22Z",
+          "conclusion": "skipped",
+          "name": "Verify Calibrated Native Lifecycle and Launcher Workflows",
+          "number": 13,
+          "startedAt": "2026-09-16T11:33:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:22Z",
+          "conclusion": "skipped",
+          "name": "Verify Fresh Installed Native Index",
+          "number": 14,
+          "startedAt": "2026-09-16T11:33:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:23Z",
+          "conclusion": "success",
+          "name": "Upload Allowlisted Evidence",
+          "number": 15,
+          "startedAt": "2026-09-16T11:33:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:23Z",
+          "conclusion": "success",
+          "name": "Remove Owned Package and Evidence Roots",
+          "number": 16,
+          "startedAt": "2026-09-16T11:33:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:23Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+          "number": 30,
+          "startedAt": "2026-09-16T11:33:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:24Z",
+          "conclusion": "success",
+          "name": "Post Run pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa",
+          "number": 31,
+          "startedAt": "2026-09-16T11:33:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:27Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "number": 32,
+          "startedAt": "2026-09-16T11:33:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-09-16T11:33:27Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 33,
+          "startedAt": "2026-09-16T11:33:27Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/taowang1993/tockteam/actions/runs/35090732736/job/104776151906"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/taowang1993/tockteam/actions/runs/35090732736"
+}
