@@ -107,11 +107,14 @@ commit `ed39e301`; run `33301125258` refreshed those historical reports at commi
 `455db8ca`. Hosted run `33342761994` passed Linux Debian/AppImage at commit
 `63a72645`, including controlled validation failure and recovery using the
 preserved prior Debian package from run `33301125258`. Those reports were
-later removed and the runtime changed. Fresh installed reports now cover source
-commit `1138bb3`: local macOS arm64 unsigned/internal
-ad-hoc evidence and hosted run `33951487579` for Windows x64 and Linux x64.
+later removed and the runtime changed. The repository recreation retired those
+hosted runs. Fresh checked-in reports in
+`.beads/reports/release-verification-2026-09-18/` cover source commit `a6326d27`,
+version `0.1.14`, from hosted run
+[`35339263744`](https://github.com/taowang1993/tockteam/actions/runs/35339263744):
+macOS arm64 unsigned/internal ad-hoc evidence, Windows x64, and Linux x64.
 The checked-in Linux report proves controlled validation failure and recovery
-through the preserved Debian package from run `33301125258`; the historical
+through the preserved Debian package from baseline run `35337301769`; the historical
 Linux package rollback row was workflow-required. The current Windows report
 records Windows Control Panel unavailable and elevation
 confirmation-required but uninvoked. The smoke requires exact
@@ -119,7 +122,8 @@ identity/version/resources, renderer security, lifecycle, and cleanup reports
 before promotion. Vendor results are explicitly bounded no-follow scans, not
 global source-absence proof. No workflow configuration alone counts as a
 passing run or publication claim. Signing, notarization, and public distribution
-remain unproven.
+remain unproven. Trusted Raycast compatibility invocation remains macOS-only;
+Windows/Linux reports do not claim execution of those commands.
 
 ## Security boundaries
 
