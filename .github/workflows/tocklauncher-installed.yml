@@ -4,17 +4,74 @@ on:
   workflow_dispatch:
     inputs:
       linux_prior_run_id:
-        description: Successful prior installed-evidence run containing the preserved compatible deb
-        required: true
-        default: "33301125258"
+        description: Successful prior installed-evidence run containing the preserved compatible deb (required except when bootstrapping)
+        required: false
+        type: string
+      bootstrap_linux_prior:
+        description: Build a replacement Linux baseline only; does not prove rollback or complete release verification
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   actions: read
   contents: read
 
 jobs:
+  macos-arm64:
+    name: macOS arm64 installed TockLauncher evidence
+    if: ${{ !inputs.bootstrap_linux_prior }}
+    runs-on: macos-15
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: recursive
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          architecture: arm64
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Package Gates and Installed Smoke
+        env:
+          TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT: ${{ runner.temp }}/tockteam.noindex
+          TOCKTEAM_INSTALLED_SMOKE_REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+          TOCKTEAM_INSTALLED_SMOKE_DIAGNOSTICS: ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
+        run: |
+          pnpm test:ueli-package-feasibility
+          pnpm audit:ueli-package-feasibility
+          pnpm test:launcher:installed
+          node scripts/check-installed-report.mjs "$TOCKTEAM_INSTALLED_SMOKE_REPORT"
+
+      - name: Upload macOS Evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tocklauncher-installed-macos-arm64-${{ github.run_id }}
+          compression-level: 0
+          path: |
+            ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+            ${{ runner.temp }}/tockteam-installed-launcher-diagnostics-${{ github.run_id }}.json
+          if-no-files-found: error
+
   windows-x64:
     name: Windows x64 installed portable archive (tar.gz) TockLauncher evidence
+    if: ${{ !inputs.bootstrap_linux_prior }}
     runs-on: windows-latest
     timeout-minutes: 180
     steps:
@@ -102,6 +159,19 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
+      - name: Validate Baseline Selection
+        shell: bash
+        env:
+          BOOTSTRAP_PRIOR: ${{ inputs.bootstrap_linux_prior }}
+          PRIOR_RUN_ID: ${{ inputs.linux_prior_run_id }}
+        run: |
+          set -euo pipefail
+          if [ "$BOOTSTRAP_PRIOR" = true ]; then
+            test -z "$PRIOR_RUN_ID"
+          else
+            [[ "$PRIOR_RUN_ID" =~ ^[0-9]+$ ]]
+          fi
+
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -141,13 +211,16 @@ jobs:
 
       - name: Download the preserved prior Linux package
         id: prior-deb
+        if: ${{ !inputs.bootstrap_linux_prior }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          PRIOR_RUN_ID: ${{ inputs.linux_prior_run_id }}
           PRIOR_DIR: ${{ runner.temp }}/tockteam-linux-prior-${{ inputs.linux_prior_run_id }}
         run: |
           set -euo pipefail
-          gh run download "${{ inputs.linux_prior_run_id }}" --repo "${{ github.repository }}" --name "tocklauncher-installed-linux-x64-${{ inputs.linux_prior_run_id }}" --dir "$PRIOR_DIR"
+          test "$(gh run view "$PRIOR_RUN_ID" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)" = success
+          gh run download "$PRIOR_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "tocklauncher-installed-linux-x64-$PRIOR_RUN_ID" --dir "$PRIOR_DIR"
           mapfile -d '' prior_debs < <(find "$PRIOR_DIR" -type f -name '*.deb' -print0)
           test "${#prior_debs[@]}" -eq 1
           printf 'path=%s\n' "${prior_debs[0]}" >> "$GITHUB_OUTPUT"
@@ -190,6 +263,25 @@ jobs:
           REPORT_OUTCOME: ${{ steps.report-check.outcome }}
         run: |
           printf '{\n  "ueliGates": "%s",\n  "installedSmoke": "%s",\n  "reportCheck": "%s"\n}\n' "$UELI_OUTCOME" "$SMOKE_OUTCOME" "$REPORT_OUTCOME" > "$GATE_LOG"
+
+      - name: Verify Rollback Proof or Explicit Baseline-Only Result
+        shell: bash
+        env:
+          BOOTSTRAP_PRIOR: ${{ inputs.bootstrap_linux_prior }}
+          REPORT: ${{ runner.temp }}/tockteam-installed-launcher-smoke-${{ github.run_id }}.json
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const rollback = JSON.parse(readFileSync(process.env.REPORT, 'utf8')).installed.deb.rollback;
+          if (process.env.BOOTSTRAP_PRIOR === 'true') {
+            assert.equal(rollback.state, 'workflow-required');
+            console.log('Baseline only: rollback remains unverified until a full run uses this package.');
+          } else {
+            assert.equal(rollback.validationFailureRecovered, true);
+            assert.equal(rollback.mechanism, 'reinstall-preserved-prior-deb');
+          }
+          JS
 
       - name: Capture Linux kernel crash diagnostics
         if: always() && steps.installed-smoke.outcome == 'failure'

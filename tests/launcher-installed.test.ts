@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
+import { spawnSync } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, readlink, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -887,6 +888,31 @@ test('installed report validation requires complete platform lifecycle evidence'
   assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, package: { ...macPackage, vendorScan: undefined } } }, { ...expected, platform: 'darwin' }).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, provider: undefined } }, { ...expected, platform: 'darwin' }).failures.length > 0)
   assert.ok(inspectInstalledReport({ ...macReport, installed: { ...macReport.installed, reinstallSettings: { ...macReport.installed.reinstallSettings, package: { ...macPackage, version: '0.0.0' } } } }, { ...expected, platform: 'darwin' }).failures.length > 0)
+})
+
+test('installed evidence can explicitly bootstrap a missing Linux baseline without claiming rollback proof', () => {
+  assert.match(installedWorkflow, /bootstrap_linux_prior:[\s\S]*type: boolean[\s\S]*default: false/u)
+  assert.doesNotMatch(installedWorkflow, /default: "33301125258"/u)
+  assert.match(installedWorkflow, /if \[ "\$BOOTSTRAP_PRIOR" = true \]; then[\s\S]*test -z "\$PRIOR_RUN_ID"[\s\S]*\[\[ "\$PRIOR_RUN_ID" =~ \^\[0-9\]\+\$ \]\]/u)
+  assert.match(installedWorkflow, /id: prior-deb\s+if: \$\{\{ !inputs\.bootstrap_linux_prior \}\}/u)
+  assert.match(installedWorkflow, /gh run download "\$PRIOR_RUN_ID"/u)
+  assert.match(installedWorkflow, /rollback\.validationFailureRecovered, true/u)
+  assert.match(installedWorkflow, /rollback\.state, 'workflow-required'/u)
+  assert.match(installedWorkflow, /macos-arm64:[\s\S]*runs-on: macos-15/u)
+  assert.match(installedWorkflow, /TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT:.*\.noindex/u)
+})
+
+test('Linux baseline selection rejects missing, conflicting, and injected run IDs', { skip: process.platform === 'win32' }, () => {
+  const block = installedWorkflow.split('      - name: Validate Baseline Selection')[1]!.split('      - name: Check out repository')[0]!
+  const shell = block.split('        run: |\n')[1]!.split('\n').map(line => line.replace(/^          /u, '')).join('\n')
+  for (const [bootstrap, prior, expected] of [
+    ['false', '', false], ['false', '123', true], ['true', '', true],
+    ['true', '123', false], ['false', '$(exit 0)', false],
+  ] as const) {
+    const result = spawnSync('bash', ['-c', shell], { env: { ...process.env, BOOTSTRAP_PRIOR: bootstrap, PRIOR_RUN_ID: prior } })
+    assert.ifError(result.error)
+    assert.equal(result.status === 0, expected, JSON.stringify({ bootstrap, prior }))
+  }
 })
 
 test('release and platform workflows retain ordered package and installed gates', () => {

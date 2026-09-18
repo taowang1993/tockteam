@@ -186,6 +186,9 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
   const text = String(workflow ?? '').replace(/\r\n?/gu, '\n')
   failure(failures, /workflow_dispatch:[\s\S]*linux_prior_run_id:/u.test(text), 'installed evidence workflow must require a preserved Linux prior-package run')
   failure(failures, !/pull_request:/u.test(text), 'installed evidence workflow must not run on every pull request')
+  failure(failures, /bootstrap_linux_prior:[\s\S]*type: boolean[\s\S]*default: false/u.test(text), 'Linux baseline bootstrap must be explicit and default off')
+  failure(failures, /rollback\.validationFailureRecovered, true/u.test(text) && /rollback\.state, 'workflow-required'/u.test(text), 'full installed verification must require rollback proof; bootstrap must remain unverified')
+  failure(failures, /macos-arm64:[\s\S]*runs-on: macos-15/u.test(text), 'installed evidence workflow must include macOS arm64')
   failure(failures, /runs-on: windows-latest/u.test(text), 'installed evidence workflow must include Windows x64')
   failure(failures, /runs-on: ubuntu-24\.04/u.test(text), 'installed evidence workflow must include Linux x64')
   failure(failures, /pnpm test:launcher:installed/u.test(text), 'installed evidence workflow must execute installed smoke')
@@ -237,7 +240,8 @@ export function inspectInstalledEvidenceWorkflow(workflow) {
     failure(failures, JSON.stringify(diagnosticsPathLines) === JSON.stringify(expectedDiagnosticsPaths), `${job} must upload exact failure diagnostics paths`)
     failure(failures, /if:\s*always\(\)\s*&&\s*steps\.installed-smoke\.outcome == 'failure'/u.test(diagnosticsSection), `${job} must upload failure diagnostics only after installed smoke fails`)
     if (job === 'linux-x64') {
-      failure(failures, /gh run download "\$\{\{ inputs\.linux_prior_run_id \}\}"[\s\S]*TOCKTEAM_LINUX_ROLLBACK_DEB:\s*\$\{\{ steps\.prior-deb\.outputs\.path \}\}/u.test(section), `${job} must download and pass the preserved prior deb to the installed smoke`)
+      failure(failures, /gh run download "\$PRIOR_RUN_ID"[\s\S]*TOCKTEAM_LINUX_ROLLBACK_DEB:\s*\$\{\{ steps\.prior-deb\.outputs\.path \}\}/u.test(section), `${job} must download and pass the preserved prior deb to the installed smoke`)
+      failure(failures, /if \[ "\$BOOTSTRAP_PRIOR" = true \]; then[\s\S]*test -z "\$PRIOR_RUN_ID"[\s\S]*\[\[ "\$PRIOR_RUN_ID" =~ \^\[0-9\]\+\$ \]\]/u.test(section), `${job} must reject a missing prior run unless explicitly bootstrapping`)
       const kernelDiagnosticsPath = '${{ runner.temp }}/tockteam-installed-kernel-diagnostics-${{ github.run_id }}.txt'
       failure(failures, /original_core_pattern="\$\(\/usr\/sbin\/sysctl -n kernel\.core_pattern\)"[\s\S]*trap restore_core_pattern EXIT[\s\S]*\/usr\/bin\/sudo -n \/usr\/sbin\/sysctl -q -w kernel\.core_pattern=\/tmp\/tockteam-core[\s\S]*ulimit -c 0[\s\S]*pnpm test:launcher:installed/u.test(section), `${job} must disable piped and file core dumps before installed smoke, then restore the runner core pattern`)
       failure(failures, section.includes(kernelDiagnosticsPath), `${job} must write kernel diagnostics to the exact run path`)
