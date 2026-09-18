@@ -642,7 +642,7 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
       await audit('failed')
       throw new Error('TockLauncher Workflow action failed')
     } finally {
-      if (currentActions.get(record.argument) === known) currentActions.delete(record.argument)
+      // The action store consumes public IDs; the catalog remains reusable until invalidation.
       active.delete(record.actionId)
       activeControllers.delete(controller)
       finish()
