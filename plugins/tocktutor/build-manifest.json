@@ -199,7 +199,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/lib/index.js",
-      "sha256": "3b91c857e3bccd914ed7f6e36f56f87dbf116e6bc0012e64e2b80262e9c4baea"
+      "sha256": "f930fa37757823e18cc70c2eee14b1ad6acd69a2958fe2693d86bc2a6ef45d52"
     },
     {
       "path": "packages/tockbot-note-runtime/lib/owned-process-windows.d.ts",
@@ -291,7 +291,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/src/index.ts",
-      "sha256": "7de6509ed320dd247b884dd158c13ca4ac7978e9173932444cdcaeb342f0cf0d"
+      "sha256": "d29bdfb54365bc25d29f3684d1a6b55a37c466fd4a79fcd50681ab5b195d7f39"
     },
     {
       "path": "packages/tockbot-note-runtime/src/owned-process-windows.ts",

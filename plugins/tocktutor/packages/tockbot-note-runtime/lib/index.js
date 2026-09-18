@@ -3431,6 +3431,9 @@ export class NoteVaultRuntime extends Service {
                             };
                         }
                         catch (error) {
+                            // A watcher can request a deleted file or a file removed after inventory.
+                            if (error.code === 'ENOENT')
+                                return null;
                             if (error instanceof NoteVaultError
                                 && ['invalid-path', 'not-found', 'unsupported-type'].includes(error.code))
                                 return null;
