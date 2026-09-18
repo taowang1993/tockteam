@@ -123,6 +123,27 @@ test('Host inventory and bounded reads report real filesystem completion, not wa
   } finally { held.resolve(); await context.fiber.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
+test('documents deleted after inventory are absent candidates, not index failures', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'index-runtime-deleted-'))
+  const vault = join(root, 'vault'); await mkdir(join(vault, 'folder'), { recursive: true })
+  await writeFile(join(vault, 'Alpha.md'), '#alpha')
+  await writeFile(join(vault, 'folder', 'Beta.md'), '#beta')
+  let options: SearchIndexProcessOptions | undefined
+  factory(t, value => { options = value; return idle() })
+  const context = await mount(vault, join(root, 'state'))
+  try {
+    const controller = new AbortController()
+    assert.equal((await options!.list(controller.signal, () => {}))?.length, 2)
+    await rm(join(vault, 'Alpha.md'))
+    await rm(join(vault, 'folder'), { recursive: true })
+    for (const path of ['Alpha.md', 'folder/Beta.md']) {
+      assert.equal(await options!.read(path, controller.signal, () => {}), null)
+    }
+    controller.abort()
+    await assert.rejects(options!.read('Alpha.md', controller.signal, () => {}), { name: 'AbortError' })
+  } finally { await context.fiber.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
 test('an empty directory advances the Host filesystem progress clock', async t => {
   const root = await mkdtemp(join(tmpdir(), 'index-runtime-empty-'))
   const vault = join(root, 'vault'); await mkdir(vault)

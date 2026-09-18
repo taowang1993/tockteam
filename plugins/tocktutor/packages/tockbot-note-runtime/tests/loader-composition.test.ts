@@ -5170,6 +5170,9 @@ test('in-process search index remount waits for its prior native owner before re
 
 test('in-process search index schema callback latency preserves fallback and eventual readiness', async t => {
   useInProcessIndex(t)
+  // Measure only native schema callbacks. Delayed OS notifications for fixture
+  // creation can legitimately invalidate a ready index during the final search.
+  t.mock.method(NoteVaultRuntime.prototype as unknown as { openWatcher(): null }, 'openWatcher', () => null)
   // Successful schema callback latencies from Windows run 34903097899's insert
   // case (no CDB capture in that case). This tests sufficiency, not I/O causality.
   const schedule: Array<[string, number]> = [
@@ -5260,13 +5263,6 @@ test('in-process search index schema callback latency preserves fallback and eve
         assert.equal(await withinDeadline(setup), true, 'setup eventually settles without intervention')
       }
       const indexed = await search()
-      if (indexed.scan.entries !== 2) t.diagnostic(inspect({
-        ready: Reflect.get(index, 'ready'), pending: Reflect.get(index, 'pendingPaths'),
-        full: Reflect.get(index, 'fullReconcilePending'), task: Reflect.get(index, 'reconcileTask'),
-        failure: Reflect.get(runtime, 'searchIndexDiagnostic'),
-        native: Reflect.get(index, 'database')?.db?.searchError,
-        candidates: await index.search({ directory: '', groups: [[{ field: 'tag', value: 'project' }]], limit: 1000 }, new AbortController().signal),
-      }, { depth: 4 }))
       assert.equal(indexed.scan.entries, 2)
       assert.deepEqual(indexed.matches.map(match => match.path), ['Alpha.md'])
       assert.deepEqual(completed, schedule.map(([prefix]) => prefix))
@@ -5743,7 +5739,6 @@ test('Keyword search reconciles state-owned indexed candidates through the exact
         observedEntries = result.scan.entries
         if (observedEntries === expectedEntries) return result
         if (Date.now() >= deadline) {
-          t.diagnostic(inspect({ index: Reflect.get(loaded.context.noteVault, 'searchIndex'), failure: Reflect.get(loaded.context.noteVault, 'searchIndexDiagnostic') }, { depth: 4 }))
           throw new Error(`timed out waiting for ${String(expectedEntries)} indexed candidates; observed ${String(observedEntries)}`)
         }
         await new Promise(resolve => setTimeout(resolve, 20))

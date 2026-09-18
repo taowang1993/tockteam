@@ -4458,6 +4458,8 @@ export class NoteVaultRuntime extends Service {
                 revision: document.revision,
               }
             } catch (error) {
+              // A watcher can request a deleted file or a file removed after inventory.
+              if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
               if (
                 error instanceof NoteVaultError
                 && ['invalid-path', 'not-found', 'unsupported-type'].includes(error.code)
