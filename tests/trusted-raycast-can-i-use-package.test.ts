@@ -11,6 +11,8 @@ import { admitTrustedRaycastArtifact, readTrustedRaycastBuildIdentity } from '..
 import { TrustedRaycastTrustStore } from '../src/trusted-raycast-trust.ts'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 import { trustedRaycastDataPaths } from '../src/trusted-raycast-paths.ts'
+// @ts-expect-error First-party installed proof.
+import { runCanIUseInstalledSmoke } from '../scripts/trusted-raycast-can-i-use-installed-proof.mjs'
 
 test('the installed-app gate exercises all bundled commands and restart persistence', () => {
   const installed = readFileSync('scripts/launcher-installed-smoke.mjs', 'utf8')
@@ -26,6 +28,20 @@ test('the installed-app gate exercises all bundled commands and restart persiste
   assert.match(bundled, /warmReopen/u)
   assert.match(restart, /assertBundledTrust[\s\S]*expectedEnabled/u)
   assert.match(restart, /trusted-raycast:setup:kaomoji-search/u)
+})
+
+test('installed Can I Use proof records unsupported platforms without claiming execution', async () => {
+  const platform = Object.getOwnPropertyDescriptor(process, 'platform')!
+  const unexpected = () => { throw new Error('Unsupported command proof must not drive the renderer') }
+  try {
+    for (const value of ['linux', 'win32']) {
+      Object.defineProperty(process, 'platform', { ...platform, value })
+      assert.equal(new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage: unexpected }).availableFor('can-i-use'), false)
+      assert.deepEqual(await runCanIUseInstalledSmoke({ evaluate: unexpected }, '/unused', { waitFor: unexpected, clickExactText: unexpected }), {
+        verified: false, reason: 'Trusted compatibility invocation is macOS-only',
+      })
+    }
+  } finally { Object.defineProperty(process, 'platform', platform) }
 })
 
 test('Can I Use ships its admitted artifact and surviving legal inventory without touching other extensions', { skip: process.platform === 'win32', timeout: 30000 }, async () => {
