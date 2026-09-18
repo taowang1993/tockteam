@@ -323,7 +323,7 @@ export function formatDiagnosticError(value) {
     const rawMessage = isError ? String(current.message ?? '') : diagnosticValue(current, messageLimit)
     const message = rawMessage.length > messageLimit ? `[truncated to tail]\n${rawMessage.slice(-messageLimit)}` : rawMessage
     append(`${label}: ${name}: ${message}\n`)
-    if (isError && depth === 0) {
+    if (isError) {
       const stack = diagnosticValue(current.stack, DIAGNOSTIC_ERROR_STACK_MAX_BYTES)
       if (stack !== 'undefined' && stack !== '') append(`${label}.stack:\n${stack}\n`)
     }

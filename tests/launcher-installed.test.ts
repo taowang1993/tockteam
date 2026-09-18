@@ -304,6 +304,7 @@ test('failed installed smoke diagnostics are bounded and retain nested assertion
   try {
     const path = join(rootPath, 'diagnostics.json')
     const cause = new Error('root launch cause')
+    cause.stack = 'Error: root launch cause\n    at failingRendererStep (proof.mjs:42:7)'
     const aggregate = new AggregateError([
       new Error('renderer assertion failed'),
       new Error('cleanup process remained'),
@@ -323,6 +324,7 @@ test('failed installed smoke diagnostics are bounded and retain nested assertion
     assert.match(diagnostics.errorTail, /renderer assertion failed/u)
     assert.match(diagnostics.errorTail, /cleanup process remained/u)
     assert.match(diagnostics.errorTail, /root launch cause/u)
+    assert.match(diagnostics.errorTail, /failingRendererStep \(proof\.mjs:42:7\)/u)
     assert.match(diagnostics.errorTail, /diagnostic cycle/u)
     assert.ok(diagnostics.errorTail.length <= 16_000)
     assert.equal(diagnostics.passed, undefined)
