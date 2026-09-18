@@ -95,7 +95,7 @@ let
     pnpmDeps = pkgs.fetchPnpmDeps {
       inherit pname version src;
       fetcherVersion = 4;
-      hash = "sha256-keI385j7ZQBf7s/QxtW1YDSgibTGEHA4FnBgvvMSHa4=";
+      hash = "sha256-MGVjgDE8IvgU+kLEVvo9I2V8evrhAtgKXmKtJv9szF0=";
     };
 
     nativeBuildInputs = [

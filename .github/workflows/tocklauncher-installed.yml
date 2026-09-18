@@ -192,6 +192,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Reclaim Disposable Runner Disk
+        shell: bash
+        run: |
+          # Only unused SDKs on this fresh GitHub-hosted runner; not project data.
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h /
+
       - name: Install Electron display dependencies
         shell: bash
         run: |

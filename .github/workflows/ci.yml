@@ -123,6 +123,12 @@ jobs:
           fetch-tags: true
           submodules: recursive
 
+      - name: Reclaim Disposable Runner Disk
+        run: |
+          # Nix builds several complete distributions on this disposable runner.
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h /
+
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@b67ad2f0e8376a0bc947db191e4484285b6f5b56
 

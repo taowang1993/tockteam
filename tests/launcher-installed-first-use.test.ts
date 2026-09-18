@@ -1,13 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { resolveLauncherProofMode } from '../src/launcher-proof-mode.ts'
 import { findFocusProofResidue } from '../scripts/trusted-raycast-focus-proof-client.ts'
 // @ts-expect-error JavaScript harness helper is directly exercised here.
 import { createInstalledBrowserErrorProof, installedPlaywrightPackagePath, shouldRemoveInstalledSmokeRoot } from '../scripts/launcher-installed-smoke.mjs'
 
 test('installed proof resolves Playwright from the package inventory, not the global root', () => {
-  assert.equal(installedPlaywrightPackagePath([{ path: '/global/v11', dependencies: { '@playwright/cli': { path: '/global/v11/hash/node_modules/@playwright/cli' } } }]), '/global/v11/hash/node_modules/@playwright/cli/package.json')
+  assert.equal(installedPlaywrightPackagePath([{ path: '/global/v11', dependencies: { '@playwright/cli': { path: '/global/v11/hash/node_modules/@playwright/cli' } } }]), join('/global/v11/hash/node_modules/@playwright/cli', 'package.json'))
   assert.throws(() => installedPlaywrightPackagePath([{ path: '/global/v11' }]), /one installed Playwright/u)
   assert.throws(() => installedPlaywrightPackagePath([{ dependencies: { '@playwright/cli': { path: 'relative' } } }]), /absolute/u)
   assert.throws(() => installedPlaywrightPackagePath([{ dependencies: { '@playwright/cli': { path: '/one' } } }, { dependencies: { '@playwright/cli': { path: '/two' } } }]), /one installed Playwright/u)

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { gunzipSync } from 'node:zlib'
 import { chmod, copyFile, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve } from 'node:path'
@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import test from 'node:test'
 import { encodeWindowsInvocation } from '../plugins/tocktutor/packages/tockbot-note-runtime/src/owned-process-windows.ts'
 // @ts-expect-error JavaScript diagnostic helper.
-import { HISTORICAL_COMMIT, HISTORICAL_TEST, JOURNAL_SOURCE, historicalArgs, instrumentHistoricalTest, parseJournal, classifyPair } from '../scripts/historical-runner-fixture.mjs'
+import { HISTORICAL_TEST, JOURNAL_SOURCE, historicalArgs, instrumentHistoricalTest, parseJournal, classifyPair } from '../scripts/historical-runner-fixture.mjs'
 // @ts-expect-error JavaScript diagnostic helper.
 import { buildHistoricalEnvironment, probeHistoricalPnpm, executeOwned, assertPassingArm, validateDependencies, runHistoricalDiagnostic, runArm, runSqlitePathProbe, METADATA_SOURCE } from '../scripts/historical-runner.mjs'
 
@@ -17,7 +17,9 @@ import startupReporter, { parseStartupEvidence, STARTUP_EVIDENCE_BYTES } from '.
 // @ts-expect-error JavaScript diagnostic probe.
 import { sqlitePathLayout, validateSqlitePathEvidence } from '../scripts/historical-sqlite-path-probe.mjs'
 
-const original = execFileSync('git', ['show', `${HISTORICAL_COMMIT}:${HISTORICAL_TEST}`], { encoding: 'utf8' })
+// Exact historical source, still authenticated by HISTORICAL_TEST_SHA256 in
+// instrumentHistoricalTest. Unit tests must also work in fresh/shallow clones.
+const original = gunzipSync(await readFile(new URL('./fixtures/historical-loader-composition.ts.gz', import.meta.url))).toString('utf8')
 
 test('historical runner pins exact source and changes only runner isolation between arms', () => {
   assert.throws(() => instrumentHistoricalTest(original + '\n'), /source hash/)
