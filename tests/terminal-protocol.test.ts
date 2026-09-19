@@ -19,6 +19,12 @@ test('Better Sidebar adapter frames session exits without changing agent termina
   const adapted = adaptBetterSidebarHost(source)
   assert.doesNotMatch(adapted, /launchExternal|'open\.external'/u)
   assert.match(adapted, /control\.type === 'park'/u)
+  const externalStart = source.indexOf('    // External open for the file tree')
+  const sideChatStart = source.indexOf('    // Side Chat:', externalStart)
+  const terminalStart = source.indexOf('const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24')
+  assert.ok(adapted.includes(source.slice(sideChatStart, terminalStart)),
+    'removing external-open must preserve the following host routes byte-for-byte')
+  assert.doesNotMatch(adapted, /External open for the file tree/u)
   const gitSource = readFileSync(new URL('../upstream/DSH-better-sidebar/src/git.ts', import.meta.url), 'utf8')
   assert.match(gitSource, /windowsHide: true/u)
   assert.equal((adapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)

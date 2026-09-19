@@ -15,14 +15,15 @@ function decodeGitPath(value: string): string {
   const quoted = value.startsWith('"') && value.endsWith('"')
   if (!quoted) return value
   const source = value.slice(1, -1)
-  const chunks: Buffer[] = []
+  const bytes: number[] = []
+  const encoder = new TextEncoder()
   let text = ''
   const escapes: Record<string, string> = {
     a: '\u0007', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\u000b',
     '"': '"', '\\': '\\',
   }
   const flush = (): void => {
-    if (text !== '') chunks.push(Buffer.from(text))
+    for (const byte of encoder.encode(text)) bytes.push(byte)
     text = ''
   }
   for (let index = 0; index < source.length; index += 1) {
@@ -39,7 +40,7 @@ function decodeGitPath(value: string): string {
     const octal = /^[0-7]{1,3}/u.exec(source.slice(index + 1))?.[0]
     if (octal !== undefined) {
       flush()
-      chunks.push(Buffer.from([Number.parseInt(octal, 8)]))
+      bytes.push(Number.parseInt(octal, 8))
       index += octal.length
       continue
     }
@@ -47,13 +48,11 @@ function decodeGitPath(value: string): string {
     index += 1
   }
   flush()
-  return Buffer.concat(chunks).toString('utf8')
+  return new TextDecoder().decode(new Uint8Array(bytes))
 }
 
 function headerPaths(line: string): { oldPath: string; path: string } | null {
-  const quoted = /^diff --git ("(?:\\.|[^"])*") ("(?:\\.|[^"])*")$/u.exec(line)
-  const plain = /^diff --git (a\/.+) (b\/.+)$/u.exec(line)
-  const match = quoted ?? plain
+  const match = /^diff --git ("(?:\\.|[^"])*"|a\/.+) ("(?:\\.|[^"])*"|b\/.+)$/u.exec(line)
   if (match?.[1] === undefined || match[2] === undefined) return null
   const oldPath = decodeGitPath(match[1])
   const path = decodeGitPath(match[2])
@@ -133,6 +132,24 @@ export function parseGitReviewDiff(output: string): GitReviewFile[] {
     }
     if (current === null) continue
 
+    const hunk = hunkStart(rawLine)
+    if (hunk !== null) {
+      current.oldCursor = hunk.oldStart
+      current.newCursor = hunk.newStart
+      inHunk = true
+      continue
+    }
+    if (inHunk) {
+      if (rawLine.startsWith('+')) {
+        addLine(current, 'addition', rawLine.slice(1))
+      } else if (rawLine.startsWith('-')) {
+        addLine(current, 'deletion', rawLine.slice(1))
+      } else if (rawLine.startsWith(' ')) {
+        addLine(current, 'context', rawLine.slice(1))
+      }
+      continue
+    }
+
     const status = fileStatus(rawLine)
     if (status !== null) {
       current.status = status
@@ -156,24 +173,6 @@ export function parseGitReviewDiff(output: string): GitReviewFile[] {
         current.path = path.startsWith('b/') ? path.slice(2) : path
       }
       continue
-    }
-
-    const hunk = hunkStart(rawLine)
-    if (hunk !== null) {
-      current.oldCursor = hunk.oldStart
-      current.newCursor = hunk.newStart
-      inHunk = true
-      continue
-    }
-    if (!inHunk || rawLine.startsWith('\\ No newline at end of file')) {
-      continue
-    }
-    if (rawLine.startsWith('+') && !rawLine.startsWith('+++')) {
-      addLine(current, 'addition', rawLine.slice(1))
-    } else if (rawLine.startsWith('-') && !rawLine.startsWith('---')) {
-      addLine(current, 'deletion', rawLine.slice(1))
-    } else if (rawLine.startsWith(' ')) {
-      addLine(current, 'context', rawLine.slice(1))
     }
   }
   finish()

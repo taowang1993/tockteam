@@ -19,8 +19,8 @@ export function adaptBetterSidebarHost(source) {
   if (!adapted.includes(EXTERNAL_OPEN_IMPORT) || externalStart < 0 || externalEnd < 0) {
     throw new Error('Better Sidebar external-open seam changed upstream')
   }
-  adapted = adapted.replace(EXTERNAL_OPEN_IMPORT, '')
-  adapted = adapted.slice(0, externalStart) + adapted.slice(externalEnd)
+  adapted = (adapted.slice(0, externalStart) + adapted.slice(externalEnd))
+    .replace(EXTERNAL_OPEN_IMPORT, '')
 
   const start = adapted.indexOf(SESSION_TERMINAL_ANCHOR)
   const end = adapted.indexOf(SESSION_TERMINAL_END, start)
