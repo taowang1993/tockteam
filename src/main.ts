@@ -3727,7 +3727,10 @@ function initializeLauncherTray(): void {
   launcherTrayOwner = new SingleOwnedTray(() => {
     const icon = windowIconPath()
     if (icon === undefined) throw new Error('TockTeam tray icon is unavailable')
-    const tray = new Tray(icon)
+    // macOS uses the image's logical width for its menu-bar slot, not the bar height.
+    const tray = new Tray(process.platform === 'darwin'
+      ? nativeImage.createFromPath(icon).resize({ width: 18, height: 18 })
+      : icon)
     try {
       tray.setToolTip(PRODUCT_NAME)
       tray.setContextMenu(Menu.buildFromTemplate([
