@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 
+import { Context } from '@deepseek-ai/cordis'
 import { TockTeamDesktopGrantError, type NativeOperationIdentity } from '@tockteam/desktop/host'
+import NoteVaultRuntime from 'tockbot-note-runtime'
+import { createDeterministicZip } from '../src/archive.ts'
 import { createBackupArchive } from '../src/backup.ts'
 import { ImportExportError, sha256 } from '../src/core.ts'
 import {
@@ -211,6 +217,55 @@ test('import checks destination collisions across ordinary runtime cursor pages'
     await service.dispose()
   }
 })
+
+for (const format of ['markdown-folder', 'markdown-zip', 'restore-backup'] as const) {
+  test(`${format} preserves reviewed UTF-8 BOM bytes when creating documents`, async t => {
+    const picker = new FakePicker()
+    const root = await mkdtemp(join(tmpdir(), 'tocktutor-import-bom-'))
+    const context = new Context()
+    let service: ReviewedOperationEngine | undefined
+    const content = '\uFEFFA'
+    const bytes = encode(content)
+    if (format === 'restore-backup') {
+      picker.backup = createBackupArchive({
+        createdAt: 1_000,
+        entries: [{ bytes, kind: 'document', path: 'A.md', revision: 'file-a' }],
+        vault,
+      })
+    } else if (format === 'markdown-zip') {
+      picker.backup = createDeterministicZip([{ bytes, path: 'A.md' }])
+    } else {
+      const read = picker.readSource.bind(picker)
+      t.mock.method(picker, 'readSource', async (request: { entryId: string; offset: number }) => {
+        const result = await read(request) as { bytes: Uint8Array }
+        return request.entryId === 'a' ? { ...result, bytes } : result
+      })
+    }
+    try {
+      await context.plugin(NoteVaultRuntime, { ...NoteVaultRuntime.Config(), stateRoot: null, vaultRoot: root })
+      const runtime = context.noteVault
+      const state = runtime.state
+      assert.ok(state.active)
+      service = new ReviewedOperationEngine({ now: () => 1_000, picker, randomToken: () => 'secret-bom', runtime })
+      const preview = await service.inspect({
+        format,
+        identity: { ...identity, vaultId: state.id, vaultGeneration: state.generation },
+      }, AbortSignal.timeout(5_000))
+      assert.equal(preview.items.find(item => item.destination === 'A.md')?.digest, sha256(bytes))
+      const binding = { operationId: preview.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+      await service.approve(binding)
+      const result = await service.commit(binding, AbortSignal.timeout(5_000))
+      assert.equal(result.status, 'committed')
+      assert.deepEqual(new Uint8Array(await readFile(join(root, 'A.md'))), bytes)
+      assert.equal(result.committed.find(item => item.destination === 'A.md')?.digest, sha256(bytes))
+      assert.equal(result.recovery.status, 'not-needed')
+    } finally {
+      await service?.dispose()
+      await context.fiber.dispose()
+      await rm(root, { force: true, recursive: true })
+    }
+  })
+}
 
 test('reviews and exclusively restores passive backup bytes while preserving existing config', async () => {
   const picker = new FakePicker()
