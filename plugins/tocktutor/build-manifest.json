@@ -959,15 +959,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/archive.d.ts.map",
-      "sha256": "3bce29c27abb4503dec13e0723225d63f4abb98f37589657fc7990ac4a11ff52"
+      "sha256": "ed0aa0c2a964fd3d7d86171caec4dbe0c77b835873d2a5a0bb459ae74d0dbf0e"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/archive.js",
-      "sha256": "9c6d39f7893ce60c76a8f8f528416543807a741fb97bb4e0d6cfc96853963a44"
+      "sha256": "4f94d1a9545cd8c27b9f16c774fcee458e4df12b4cae3a7ef781c0362e4ba096"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/archive.js.map",
-      "sha256": "7d6a3ef5b73577e793658bd1d091fc27fcd89483298d03afd8ad672fcc8de340"
+      "sha256": "207c53b527055cf5f746b96ed74c398dc8859e152e10f2f2bc70e0d34c38fdd6"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/backup-engine.d.ts",
@@ -1059,11 +1059,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/engine.js",
-      "sha256": "e4cdca3ccd7e6fb97499000c1b08a0fb6275b10a148816d46e42c29af8e87507"
+      "sha256": "6a1fd232a158fe6bece097268c103741f3704f3b36c13f40f92b4bd1cd09d9be"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/engine.js.map",
-      "sha256": "3fe68c653356becc9a81d977d2ed906065f55abf04a896c5b7064e9369571ef7"
+      "sha256": "9f36cbf43f61a67c0ee2be5fffecd8352ab9eefa3d0cd1f577bde2976d6c5829"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/dist/formats/converters.d.ts",
@@ -1179,7 +1179,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/src/archive.ts",
-      "sha256": "189fbaf009c7524c2f1a4d062bc7ac026758ce2f05fea0bdff1fd4b75080b400"
+      "sha256": "2fb2591983ae83142b60bc5a1c27b076818d66e7f828ae5bef6b9133940220c5"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/src/backup-engine.ts",
@@ -1203,7 +1203,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/src/engine.ts",
-      "sha256": "578df449da19519379a0af3b727935f16dd78143350505f3f76c6f143da5d836"
+      "sha256": "890c8ec490f1da74b71d8d1edb6ddb63b2680a9cb5adb823b71e92b7058e5495"
     },
     {
       "path": "packages/tockteam-tocktutor-import-export/src/formats/converters.ts",

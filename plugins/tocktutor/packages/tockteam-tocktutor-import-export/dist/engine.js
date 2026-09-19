@@ -500,7 +500,7 @@ export class ReviewedOperationEngine {
                     combined.throwIfAborted();
                     const result = file.kind === 'document'
                         ? await this.options.runtime.createDocument({
-                            content: new TextDecoder('utf-8', { fatal: true }).decode(file.bytes),
+                            content: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(file.bytes),
                             expectedVault: vault,
                             path: file.destination,
                         }, combined)
