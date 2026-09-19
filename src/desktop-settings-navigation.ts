@@ -21,8 +21,8 @@ export function deferSettingsOpen(args: Readonly<{
       return
     }
     const button = args.findButton()
-    if (args.isTockCoder() && !args.isTockTutorActive() && button?.disabled !== true) {
-      button?.click()
+    if (args.isTockCoder() && !args.isTockTutorActive() && button !== undefined && button.disabled !== true) {
+      button.click()
       args.onOpened?.()
       return
     }

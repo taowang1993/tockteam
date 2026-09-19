@@ -123,6 +123,44 @@ test('desktop sidebar restores sessions and deduplicates registered tabs', async
   assert.equal(sidebar.getSnapshot().tabs[0]?.type, 'file')
 })
 
+test('sidebar startup restores the latest session, not the session that began loading', async () => {
+  const storage = new MemorySidebarStorage()
+  const pending = Promise.withResolvers<DesktopSidebarPreferences>()
+  storage.load = () => pending.promise
+  const sidebar = new DesktopSidebarService(storage)
+  sidebar.setSession('first')
+  const starting = sidebar.start()
+  sidebar.setSession('second')
+  pending.resolve({
+    ...storage.value,
+    sessions: {
+      first: { activeId: 'first-file', lastUsed: 1, tabs: [{ id: 'first-file', type: 'file', title: 'First' }] },
+      second: { activeId: 'second-file', lastUsed: 2, tabs: [{ id: 'second-file', type: 'file', title: 'Second' }] },
+    },
+  })
+  await starting
+  assert.equal(sidebar.getSnapshot().sessionId, 'second')
+  assert.equal(sidebar.getSnapshot().activeId, 'second-file')
+  sidebar.patchTab('second-file', { title: 'Updated' })
+  await sidebar.settle()
+  assert.equal(storage.value.sessions.second?.tabs[0]?.title, 'Updated')
+  assert.equal(storage.value.sessions.first?.tabs[0]?.title, 'First')
+})
+
+test('sidebar startup does not publish after disposal', async () => {
+  for (const fails of [false, true]) {
+    const pending = Promise.withResolvers<DesktopSidebarPreferences>()
+    const sidebar = new DesktopSidebarService({ load: () => pending.promise, save: async () => {} })
+    const starting = sidebar.start()
+    sidebar.dispose()
+    const before = sidebar.getSnapshot()
+    if (fails) pending.reject(new Error('unavailable'))
+    else pending.resolve(DEFAULT_SIDEBAR_PREFERENCES)
+    await starting
+    assert.equal(sidebar.getSnapshot(), before)
+  }
+})
+
 test('desktop sidebar matches viewers by priority, sniffing, and enablement', async () => {
   const sidebar = new DesktopSidebarService(new MemorySidebarStorage())
   await sidebar.start()
