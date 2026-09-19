@@ -4,6 +4,7 @@ import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, 
 import {
   ArrowRight,
   History as HistoryIcon,
+  Notebook,
   Search,
   Star,
   StarOff,
@@ -719,6 +720,7 @@ async function bootstrap(): Promise<void> {
       : undefined
     const packagedAsset = item.imageKey === undefined
       ? undefined
+      : item.imageKey === 'tockcoder' ? './launcher-assets/tockteam-logo.svg'
       : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey) ?? trustedRaycastAssetUrl(item.imageKey)
     const imageUrl = isLauncherImageUrl(item.imageUrl) ? item.imageUrl : localAsset ?? packagedAsset
     const marker = imageUrl === undefined ? document.createElement('span') : document.createElement('img')
@@ -734,7 +736,8 @@ async function bootstrap(): Promise<void> {
         fallback.textContent = item.name.slice(0, 1).toLocaleUpperCase()
         marker.replaceWith(fallback)
       }
-    } else marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
+    } else if (item.imageKey === 'tocktutor') marker.append(icon(Notebook))
+    else marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
     return marker
   }
 
