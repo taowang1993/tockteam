@@ -74,6 +74,11 @@
   @media (max-width: 600px) { max-width: 42vw; padding-inline: 6px; }
 }
 
+/* Reserve the pinned shell's content scrollbar space across long and short settings pages. */
+[role='dialog'] > nav:has([data-tocklauncher-navigation]) + div > div:last-child {
+  scrollbar-gutter: stable;
+}
+
 @utility launcher-settings-nav-row {
   box-sizing: border-box;
   display: flex;

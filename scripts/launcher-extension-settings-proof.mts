@@ -234,6 +234,27 @@ try {
     const row = await page.locator('button[data-extension-id="google-translate"]').boundingBox(); check(row.height >= 30 && row.height <= 40, 'compact sidebar rows');
     const open = async id => { await page.locator('button[data-extension-id="' + id + '"]').click(); await page.locator('[data-extension-heading]').waitFor(); };
     const back = async () => { await page.locator('[data-tocklauncher-navigation]').getByRole('button', { name: 'General', exact: true }).click(); };
+    const contentGeometry = () => page.evaluate(() => {
+      const settings = document.querySelector('[data-testid="tocklauncher-settings"]');
+      let scroll = settings.parentElement;
+      while (scroll && getComputedStyle(scroll).overflowY !== 'auto') scroll = scroll.parentElement;
+      if (!scroll) throw Error('settings must retain a scroll owner');
+      const top = scroll.scrollTop; scroll.scrollTop = scroll.scrollHeight; const canScroll = scroll.scrollTop > 0; scroll.scrollTop = top;
+      return { overflowing: scroll.scrollHeight > scroll.clientHeight, canScroll, layout: { headingX: document.querySelector('[data-extension-heading]').getBoundingClientRect().x, boxes: [document.querySelector('[role="dialog"] > nav'), scroll, settings].map(node => { const { x, width } = node.getBoundingClientRect(); return { x, width, clientWidth: node.clientWidth }; }) } };
+    });
+    const contentLayouts = [];
+    for (const mode of ['dark', 'light']) {
+      await page.evaluate(mode => window.proof.theme(mode), mode);
+      await open('google-translate'); await page.getByRole('button', { name: 'Save Preferences', exact: true }).waitFor();
+      const translate = await contentGeometry(); check(translate.overflowing && translate.canScroll, 'Google Translate needs usable vertical scrolling');
+      await open('kaomoji-search'); await page.getByRole('combobox', { name: 'Display Mode', exact: true }).waitFor();
+      const kaomoji = await contentGeometry(); check(!kaomoji.overflowing && !kaomoji.canScroll, 'Kaomoji Search fits without scrolling');
+      check(JSON.stringify(translate.layout) === JSON.stringify(kaomoji.layout), 'switching long/short settings pages must not shift content: ' + JSON.stringify({ mode, translate, kaomoji }));
+      await open('google-translate');
+      const returned = await contentGeometry(); check(JSON.stringify(returned) === JSON.stringify(translate), 'returning to Google Translate keeps geometry and scrolling');
+      contentLayouts.push({ mode, translate, kaomoji, returned });
+    }
+    await page.evaluate(() => window.proof.theme('dark'));
     const controlAppearance = [];
     await open('google-translate');
     for (const theme of [{ id: 'dark', colorScheme: 'dark' }, { id: 'light', colorScheme: 'light' }, ...await page.evaluate(() => window.proof.skins)]) {
@@ -316,7 +337,7 @@ try {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false }); await page.evaluate(() => window.proof.theme('dark'));
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Discard and Leave', exact: true }).click(); await page.waitForFunction(() => window.proof.closed === 1);
     await page.reload(); await page.getByRole('button', { name: 'Settings', exact: true }).click(); await page.getByRole('button', { name: 'TockLauncher', exact: true }).click(); await page.getByRole('button', { name: 'Extensions', exact: true }).click(); await open('Calculator'); check(await precision.inputValue() === '6', 'accepted value survives reopen');
-    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, controlAppearance, menuMotion, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
+    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, contentLayouts, controlAppearance, menuMotion, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
   }`)
   const proof = JSON.parse(result.split('### Result\n')[1]!.split('\n###')[0]!)
   await writeFile(join(evidence, 'translate-dark.png'), Buffer.from(proof.screenshot, 'base64')); delete proof.screenshot
