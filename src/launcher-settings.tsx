@@ -15,7 +15,7 @@ import { useLauncherDirtyState } from './launcher-settings-dirty.ts'
 import { LauncherTrustedExtensionSettings } from './launcher-trusted-extension-settings.tsx'
 import { TRUSTED_RAYCAST_EXTENSION_IDS } from './trusted-raycast-descriptors.ts'
 import { LauncherExtensionSettings } from './launcher-extension-settings.tsx'
-import { launcherExtensionPages } from './launcher-extension-settings.ts'
+import { launcherExtensionPages, launcherSettingsPlatform } from './launcher-extension-settings.ts'
 import { createLauncherSettingsNavigation, LauncherSettingsSidebar, type LauncherSettingsNavigation } from './launcher-settings-navigation.tsx'
 import { LauncherLocalSettings } from './launcher-local-settings.tsx'
 import { LauncherDiscoverySettings } from './launcher-discovery-settings.tsx'
@@ -264,8 +264,7 @@ function LauncherSettingsContents({ locale, navigation }: SettingsSectionProps):
   const state = useMemo(() => snapshot ? readPersistedLauncherState(snapshot, LAUNCHER_COMPOSITION.extensionIds) : null, [snapshot])
   const [fuzzinessDraft, setFuzzinessDraft] = useLauncherDraft(state?.preferences.fuzziness ?? 0.5)
   const enabled = useMemo(() => new Set(state?.enabledExtensionIds ?? []), [state?.enabledExtensionIds])
-  const rendererIsLinux = typeof navigator !== 'undefined' && !/Macintosh|Mac OS|Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`)
-  const rendererPlatform = rendererIsLinux ? 'Linux' as const : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' as const : 'macOS' as const
+  const rendererPlatform = launcherSettingsPlatform()
 
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings || writeQueue === null) return Promise.resolve(false)

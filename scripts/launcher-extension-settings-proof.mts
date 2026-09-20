@@ -104,15 +104,16 @@ void (async () => { await app.whenReady();
 const repository = await LauncherPersistenceRepository.open({ userDataPath: join(evidence, 'profile'), secureStorageAvailable: false });
 const preferencePath = id => join(evidence, id + '.json');
 const trustState = { active: true, installed: true, enabled: false, candidateAvailable: true, candidateDigest: '', digest: 'a'.repeat(64), digestApproved: true, hasPrevious: false, previewed: true, recovery: '', staged: false };
+let installationFixture = 'all';
 const extensionSettings = createTrustedRaycastSettings({
   read: id => id === 'google-translate' ? loadTrustedRaycastPreferences(preferencePath(id)) : id === 'kaomoji-search' ? loadKaomojiPreferenceState(preferencePath(id)).values : loadTrustedRaycastCanIUsePreferences(preferencePath(id)),
   write: (id, values) => id === 'google-translate' ? saveTrustedRaycastPreferences(preferencePath(id), values) : id === 'kaomoji-search' ? saveKaomojiPreferences(preferencePath(id), values) : saveTrustedRaycastCanIUsePreferences(preferencePath(id), values, { canonicalTargets: CAN_I_USE_SETTINGS_TARGETS }),
-  trust: () => trustState,
+  trust: id => { if (installationFixture === 'error' && id === 'kaomoji-search') throw Error('fixture read failed'); return { ...trustState, installed: installationFixture !== 'none' && (installationFixture !== 'missing' || id !== 'kaomoji-search') }; },
   setEnabled: async (_id, enabled) => { trustState.enabled = enabled; },
 });
 const files = new Map([['/settings-shell.js', 'settings-shell.js'], ['/fixture.js', 'fixture.js'], ['/react.js', 'react.js'], ['/react-dom.js', 'react-dom.js'], ['/react-dom-client.js', 'react-dom-client.js'], ['/jsx-runtime.js', 'jsx-runtime.js']]);
 const html = '<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src \\'self\\'; script-src \\'self\\' \\'unsafe-inline\\'; style-src \\'self\\' \\'unsafe-inline\\'; img-src \\'self\\' data:; font-src \\'self\\' data:"><link rel="stylesheet" href="/style.css"><script type="importmap">'+JSON.stringify({ imports: { react: '/react.js', 'react-dom': '/react-dom.js', 'react-dom/client': '/react-dom-client.js', 'react/jsx-runtime': '/jsx-runtime.js' } })+'</script></head><body class="bg-surface text-foreground" style="margin:0;overflow:hidden"><div id="root" style="padding:2px;box-sizing:border-box"></div><script type="module" src="/fixture.js"></script></body></html>';
-const server = createServer((request, response) => { const file = files.get(request.url); response.setHeader('Content-Type', file ? 'text/javascript' : request.url === '/style.css' ? 'text/css' : 'text/html'); response.end(file ? readFileSync(join(evidence, file)) : request.url === '/style.css' ? readFileSync(join(evidence, 'style.css')) : html); });
+const server = createServer((request, response) => { if (request.method === 'POST' && ['/fixture/extensions/all', '/fixture/extensions/missing', '/fixture/extensions/none', '/fixture/extensions/error'].includes(request.url)) { installationFixture = request.url.split('/').pop(); response.writeHead(204); response.end(); return; } const file = files.get(request.url); response.setHeader('Content-Type', file ? 'text/javascript' : request.url === '/style.css' ? 'text/css' : 'text/html'); response.end(file ? readFileSync(join(evidence, file)) : request.url === '/style.css' ? readFileSync(join(evidence, 'style.css')) : html); });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = 'http://127.0.0.1:' + server.address().port;
 const window = new BrowserWindow({ show: false, width: 1512, height: 949, useContentSize: true, webPreferences: { offscreen: true, contextIsolation: true, sandbox: true, nodeIntegration: false, preload: '${root}/dist/preload.cjs' } });
@@ -164,6 +165,8 @@ try {
     await page.getByRole('button', { name: 'TockLauncher', exact: true }).click();
     check(await page.locator('nav button[aria-expanded]').count() > 0, 'TockLauncher must be a sidebar disclosure');
     await page.locator('[data-testid="tocklauncher-settings"]').waitFor();
+    check(await page.getByRole('button', { name: 'Built-In Tools', exact: true }).getAttribute('aria-expanded') === 'false', 'built-in tools start collapsed');
+    check(await page.locator('button[data-extension-id="WindowsControlPanel"]').count() === 0, 'Windows-only tools are absent on macOS');
     // The pinned theme supplies space-consuming 8px scrollbars, including on overlay-scrollbar hosts.
     const sidebarGeometry = () => page.evaluate(async () => {
       const nav = document.querySelector('[role="dialog"] > nav');
@@ -174,26 +177,39 @@ try {
     for (const mode of ['dark', 'light']) {
       await page.evaluate(mode => window.proof.theme(mode), mode);
       const collapsed = await sidebarGeometry(); check(!collapsed.overflowing, 'collapsed sidebar fits');
-      await page.getByRole('button', { name: 'Extensions', exact: true }).click();
-      const expanded = await sidebarGeometry(); check(expanded.overflowing, 'expanded sidebar needs a scrollbar');
-      check(JSON.stringify(collapsed.layout) === JSON.stringify(expanded.layout), 'Extensions expansion must not shift layout: ' + JSON.stringify({ mode, collapsed, expanded }));
-      await page.getByRole('searchbox', { name: 'Search Extensions' }).fill('precision');
+      await page.getByRole('button', { name: 'Built-In Tools', exact: true }).click();
+      const expanded = await sidebarGeometry(); check(expanded.overflowing, 'expanded built-in tools need a scrollbar');
+      check(JSON.stringify(collapsed.layout) === JSON.stringify(expanded.layout), 'Built-In Tools expansion must not shift layout: ' + JSON.stringify({ mode, collapsed, expanded }));
+      await page.getByRole('searchbox', { name: 'Search Built-In Tools' }).fill('precision');
       const filtered = await sidebarGeometry(); check(!filtered.overflowing, 'filtered sidebar fits');
       check(JSON.stringify(collapsed.layout) === JSON.stringify(filtered.layout), 'filtering must not shift layout');
-      await page.getByRole('searchbox', { name: 'Search Extensions' }).fill('');
-      await page.getByRole('button', { name: 'Extensions', exact: true }).click();
+      await page.getByRole('searchbox', { name: 'Search Built-In Tools' }).fill('');
+      await page.getByRole('button', { name: 'Built-In Tools', exact: true }).click();
       check(JSON.stringify(collapsed) === JSON.stringify(await sidebarGeometry()), 'collapsing must not shift layout');
       sidebarLayouts.push({ mode, collapsed, expanded, filtered });
     }
     await page.evaluate(() => window.proof.theme('dark'));
     await page.getByRole('button', { name: 'Extensions', exact: true }).click();
     await page.getByRole('searchbox', { name: 'Search Extensions' }).waitFor();
-    const pages = await page.evaluate(() => window.proof.pages);
-    check(await page.locator('button[data-extension-id]').count() === 27, 'all 27 extensions');
+    await page.locator('button[data-extension-id="google-translate"]').waitFor();
+    const pages = await page.evaluate(() => window.proof.pages.filter(item => item.id !== 'WindowsControlPanel'));
     const sidebar = page.locator('[data-tocklauncher-navigation]');
+    check(await sidebar.locator('button[data-extension-id]:visible').count() === 3, 'only three installed extensions are initially visible');
+    check(!(await page.evaluate(async () => (await window.dshDesktop.launcher.settings.getExtension('google-translate')).state.enabled)), 'disabled installed extensions remain visible');
+    const installedStates = [];
+    for (const [fixture, count] of [['missing', 2], ['none', 0], ['error', 2], ['all', 3]]) {
+      await page.evaluate(async fixture => { await fetch('/fixture/extensions/' + fixture, { method: 'POST' }); if (fixture !== 'all') window.dispatchEvent(new Event('focus')); }, fixture);
+      if (fixture === 'all') { await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click(); await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click(); }
+      await page.waitForFunction(count => document.querySelectorAll('[data-tocklauncher-navigation] [id$="-extensions"] button[data-extension-id]').length === count, count);
+      if (fixture === 'none') await page.getByText('No installed extensions.', { exact: true }).waitFor();
+      if (fixture === 'error') await page.getByText('Extension settings are unavailable.', { exact: true }).waitFor();
+      installedStates.push({ fixture, count });
+    }
+    await page.getByRole('button', { name: 'Built-In Tools', exact: true }).click();
+    check(await page.locator('button[data-extension-id]').count() === 26, '23 supported built-ins plus three installed extensions');
     check(await page.locator('[data-testid="tocklauncher-settings"] nav').count() === 0, 'no duplicate in-page navigation');
     const menuMotion = [];
-    for (const name of ['TockLauncher', 'Extensions']) {
+    for (const name of ['TockLauncher', 'Extensions', 'Built-In Tools']) {
       await sidebarGeometry();
       const toggle = sidebar.getByRole('button', { name, exact: true });
       const fullMenuHeight = await toggle.evaluate(button => document.getElementById(button.getAttribute('aria-controls')).getBoundingClientRect().height);
@@ -217,7 +233,7 @@ try {
         menuMotion.push(sample);
       };
       await toggle.focus(); await page.keyboard.press('Space'); await sampleMenuMotion(false);
-      check(await sidebar.getByRole('button', { name: 'Google Translate', exact: true }).count() === 0, 'closed menu descendants leave the accessibility tree');
+      check(await sidebar.getByRole('button', { name: name === 'Built-In Tools' ? 'Calculator' : 'Google Translate', exact: true }).count() === 0, 'closed menu descendants leave the accessibility tree');
       await page.keyboard.press('Space'); await sampleMenuMotion(true);
       // Reverse an in-flight close rather than forcing it to finish first.
       await page.keyboard.press('Space');
@@ -229,10 +245,10 @@ try {
       await page.emulateMedia({ reducedMotion: 'no-preference' });
     }
     await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click(); await sidebarGeometry();
-    check(await page.locator('button[data-extension-id]:visible').count() === 0, 'Extensions collapses independently');
+    check(await page.locator('button[data-extension-id]:visible').count() === 23, 'Extensions collapses independently of Built-In Tools');
     await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
     const row = await page.locator('button[data-extension-id="google-translate"]').boundingBox(); check(row.height >= 30 && row.height <= 40, 'compact sidebar rows');
-    const open = async id => { await page.locator('button[data-extension-id="' + id + '"]').click(); await page.locator('[data-extension-heading]').waitFor(); };
+    const open = async id => { const group = pages.find(item => item.id === id).editor === 'compatibility' ? 'extensions' : 'builtins'; const toggle = sidebar.locator('button[aria-controls$="-' + group + '"]'); if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click(); await page.locator('button[data-extension-id="' + id + '"]').click(); await page.locator('[data-extension-heading]').waitFor(); };
     const back = async () => { await page.locator('[data-tocklauncher-navigation]').getByRole('button', { name: 'General', exact: true }).click(); };
     const contentGeometry = () => page.evaluate(() => {
       const settings = document.querySelector('[data-testid="tocklauncher-settings"]');
@@ -284,11 +300,20 @@ try {
     }
     await page.evaluate(() => window.proof.theme('dark')); await back();
     for (const item of pages) { await open(item.id); check(await page.locator('[data-testid="tocklauncher-extension-detail"]').getAttribute('data-extension-id') === item.id, item.id); if (item.editor === 'compatibility') await page.getByRole('button', { name: 'Save Preferences', exact: true }).waitFor(); await back(); }
-    await page.getByRole('searchbox').fill('precision'); check(await page.locator('button[data-extension-id]:visible').count() === 1, 'field search');
-    await page.getByRole('searchbox').press('Tab'); await page.keyboard.press('Enter'); const precision = page.getByRole('spinbutton', { name: 'Calculator Precision', exact: true }); await precision.waitFor(); await precision.fill('4'); await precision.blur();
+    await page.getByRole('searchbox', { name: 'Search Built-In Tools' }).fill('no-such-tool');
+    await sidebar.getByRole('button', { name: 'Built-In Tools', exact: true }).click();
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('tockteam-launcher-settings-destination', { detail: 'Calculator' })));
+    await page.getByRole('spinbutton', { name: 'Calculator Precision', exact: true }).waitFor();
+    check(await page.getByRole('searchbox', { name: 'Search Built-In Tools' }).inputValue() === '', 'built-in deep links reveal the selected tool and clear its search');
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('tockteam-launcher-settings-destination', { detail: 'WindowsControlPanel' })));
+    await page.getByText('This extension is unavailable on this platform. Saved settings are preserved.', { exact: true }).waitFor();
+    check(await sidebar.locator('button[data-extension-id="WindowsControlPanel"]').count() === 0, 'unsupported legacy deep links do not reintroduce sidebar entries');
+    await back();
+    await page.getByRole('searchbox', { name: 'Search Built-In Tools' }).fill('precision'); check(await sidebar.locator('[id$="-builtins"] button[data-extension-id]').count() === 1, 'field search');
+    await page.getByRole('searchbox', { name: 'Search Built-In Tools' }).press('Tab'); await page.keyboard.press('Enter'); const precision = page.getByRole('spinbutton', { name: 'Calculator Precision', exact: true }); await precision.waitFor(); await precision.fill('4'); await precision.blur();
     await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getSnapshot()).values['extension[Calculator].precision'] === 4);
     await back(); check(await page.locator('[data-tocklauncher-navigation] [aria-current="page"]').innerText() === 'General', 'General is selected in the sidebar');
-    await page.getByRole('searchbox').fill(''); await open('Calculator'); await precision.fill('13'); await precision.blur();
+    await page.getByRole('searchbox', { name: 'Search Built-In Tools' }).fill(''); await open('Calculator'); await precision.fill('13'); await precision.blur();
     await page.getByText('TockLauncher settings could not be saved.', { exact: true }).waitFor(); await back(); await open('Calculator'); check(await precision.inputValue() === '13', 'failed draft survives navigation');
     await page.getByRole('button', { name: 'Models', exact: true }).click(); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Keep Editing' }).click(); check(await precision.inputValue() === '13', 'leaving TockLauncher protects drafts');
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Keep Editing' }).click(); check(await precision.inputValue() === '13', 'cancel discard retains input');
@@ -312,6 +337,7 @@ try {
     await page.getByRole('button', { name: 'Save Preferences', exact: true }).click(); await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getExtension('google-translate')).values.lang1 === 'de');
     await page.getByRole('status').filter({ hasText: 'Saved. Changes apply the next time you open this extension.' }).waitFor();
     await page.getByText('Advanced', { exact: true }).click();
+    await sidebar.getByRole('button', { name: 'Built-In Tools', exact: true }).click(); await sidebarGeometry();
     await page.evaluate(() => { document.querySelector('[data-testid="tocklauncher-settings"]').scrollIntoView({ block: 'start' }); document.querySelector('[role="dialog"] > nav').scrollTop = 0; });
     await page.mouse.move(1450, 20);
     check(await page.locator('[data-extension-heading]').isVisible(), 'dedicated page has its own title');
@@ -323,10 +349,13 @@ try {
     await back(); await open('DeeplTranslator'); check(await page.getByRole('textbox', { name: 'DeepL API Key', exact: true }).count() === 0 || await page.locator('#tocklauncher-deepl-key').isDisabled(), 'unavailable secure storage blocks writes');
     await back(); await open('SystemCommands'); check(await page.getByText('This extension has no additional settings.', { exact: true }).isVisible(), 'no-options page');
     await back(); await open('Workflow'); await page.getByRole('button', { name: 'Add Workflow', exact: true }).click(); await back(); await open('Workflow'); check(await page.getByRole('textbox', { name: 'Workflow Name', exact: true }).isVisible(), 'workflow draft still mounted');
+    await page.getByRole('searchbox', { name: 'Search Extensions' }).fill('no-such-extension');
+    await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('tockteam-launcher-settings-destination', { detail: 'google-translate' }))); await page.getByRole('combobox', { name: 'Primary Language', exact: true }).waitFor();
+    check(await page.getByRole('searchbox', { name: 'Search Extensions' }).inputValue() === '', 'extension deep links reveal the selected extension and clear its search');
     const geometry = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scale: devicePixelRatio, colorScheme: document.documentElement.style.colorScheme, skin: document.documentElement.dataset.tockteamSkin ?? null })); check(geometry.width === 1512 && geometry.height === 949 && geometry.scale === 2 && geometry.colorScheme === 'dark' && geometry.skin === null, JSON.stringify(geometry));
     await page.evaluate(() => window.proof.locale.setLocale('zh')); await page.getByRole('combobox', { name: '主要语言', exact: true }).waitFor();
-    await page.getByRole('searchbox').fill('计算器'); check(await page.locator('button[data-extension-id]:visible').count() === 1, 'Chinese name search'); await page.getByRole('searchbox').fill(''); await open('google-translate');
+    await page.getByRole('searchbox', { name: '搜索内置工具' }).fill('计算器'); check(await sidebar.locator('[id$="-builtins"] button[data-extension-id]').count() === 1, 'Chinese name search'); await page.getByRole('searchbox', { name: '搜索内置工具' }).fill(''); await open('google-translate');
     await page.evaluate(() => window.proof.locale.setLocale('en'));
     await sidebar.getByRole('button', { name: 'Google Translate', exact: true }).waitFor();
     const skins = await page.evaluate(() => window.proof.skins.map(skin => skin.id));
@@ -337,7 +366,19 @@ try {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false }); await page.evaluate(() => window.proof.theme('dark'));
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Discard and Leave', exact: true }).click(); await page.waitForFunction(() => window.proof.closed === 1);
     await page.reload(); await page.getByRole('button', { name: 'Settings', exact: true }).click(); await page.getByRole('button', { name: 'TockLauncher', exact: true }).click(); await page.getByRole('button', { name: 'Extensions', exact: true }).click(); await open('Calculator'); check(await precision.inputValue() === '6', 'accepted value survives reopen');
-    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, contentLayouts, controlAppearance, menuMotion, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
+    const originalAgent = await page.evaluate(() => ({ userAgent: navigator.userAgent, platform: navigator.platform }));
+    const platformVisibility = [];
+    for (const [platform, userAgent, expectedBuiltins] of [['Win32', 'Mozilla/5.0 (Windows NT 10.0)', 24], ['Linux x86_64', 'Mozilla/5.0 (X11; Linux x86_64)', 18]]) {
+      await cdp.send('Network.setUserAgentOverride', { platform, userAgent });
+      await page.reload(); await page.getByRole('button', { name: 'Settings', exact: true }).click(); await page.getByRole('button', { name: 'TockLauncher', exact: true }).click();
+      const builtins = await sidebar.locator('[id$="-builtins"] button[data-extension-id]').count();
+      check(builtins === expectedBuiltins, 'platform-supported built-ins: ' + platform);
+      check(await sidebar.locator('[id$="-extensions"] button[data-extension-id]').count() === 0, 'macOS-only extensions hidden: ' + platform);
+      check(await sidebar.locator('button[data-extension-id="WindowsControlPanel"]').count() === (platform === 'Win32' ? 1 : 0), 'Windows Control Panel only on Windows');
+      platformVisibility.push({ platform, builtins });
+    }
+    await cdp.send('Network.setUserAgentOverride', originalAgent); await page.reload();
+    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, contentLayouts, controlAppearance, menuMotion, installedStates, platformVisibility, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
   }`)
   const proof = JSON.parse(result.split('### Result\n')[1]!.split('\n###')[0]!)
   await writeFile(join(evidence, 'translate-dark.png'), Buffer.from(proof.screenshot, 'base64')); delete proof.screenshot

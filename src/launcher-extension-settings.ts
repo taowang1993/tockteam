@@ -45,9 +45,19 @@ export const launcherExtensionPages = Object.freeze([...LAUNCHER_COMPOSITION.ext
 }))
 export type LauncherExtensionPage = typeof launcherExtensionPages[number]
 
-export function findLauncherExtensionPages(query: string, translate: (label: string) => string = label => label): readonly LauncherExtensionPage[] {
+export function launcherSettingsPlatform(source: Pick<Navigator, 'platform' | 'userAgent'> = navigator): 'Linux' | 'macOS' | 'Windows' {
+  const agent = `${source.platform} ${source.userAgent}`
+  return /Windows/iu.test(agent) ? 'Windows' : /Macintosh|Mac OS/iu.test(agent) ? 'macOS' : 'Linux'
+}
+
+export function findLauncherExtensionPages(query: string, translate: (label: string) => string = label => label, availability?: Readonly<{
+  platform: 'Linux' | 'macOS' | 'Windows'; installedExtensionIds: readonly string[]
+}>): readonly LauncherExtensionPage[] {
   const terms = query.trim().toLocaleLowerCase().split(/\s+/u)
+  const installed = new Set(availability?.installedExtensionIds)
   return launcherExtensionPages.filter(page => {
+    if (availability && (!launcherExtensionSupported(page.id, availability.platform)
+      || (page.editor === 'compatibility' && !installed.has(page.id)))) return false
     const search = [...page.searchLabels, ...page.searchLabels.map(label => translate(label))].join(' ').toLocaleLowerCase()
     return terms.every(term => search.includes(term))
   })

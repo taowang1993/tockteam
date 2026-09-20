@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { LAUNCHER_COMPOSITION } from '../src/launcher-contract.ts'
 import { TRUSTED_RAYCAST_EXTENSION_IDS } from '../src/trusted-raycast-descriptors.ts'
 import { LAUNCHER_SETTINGS_CATALOG } from '../src/launcher-setting-catalog.ts'
-import { launcherExtensionPages, isLauncherExtensionId, launcherExtensionSupported, findLauncherExtensionPages, launcherExtensionSettingOwner } from '../src/launcher-extension-settings.ts'
+import { launcherExtensionPages, isLauncherExtensionId, launcherExtensionSupported, findLauncherExtensionPages, launcherExtensionSettingOwner, launcherSettingsPlatform } from '../src/launcher-extension-settings.ts'
 
 test('every admitted extension has one settings destination, including no-options providers', () => {
   assert.deepEqual(launcherExtensionPages.map(page => page.id).sort(), [...LAUNCHER_COMPOSITION.extensionIds, ...TRUSTED_RAYCAST_EXTENSION_IDS].sort())
@@ -29,6 +29,21 @@ test('search finds translated names and field labels without losing English sear
   assert.deepEqual(findLauncherExtensionPages('precision', translate).map(page => page.id), ['Calculator'])
 })
 
+test('sidebar shows only installed extensions and platform-supported built-in tools', () => {
+  const mac = findLauncherExtensionPages('', undefined, { platform: 'macOS', installedExtensionIds: ['google-translate'] })
+  assert.equal(mac.some(page => page.id === 'WindowsControlPanel'), false)
+  assert.deepEqual(mac.filter(page => page.editor === 'compatibility').map(page => page.id), ['google-translate'])
+  assert.equal(mac.filter(page => page.editor !== 'compatibility').length, 23)
+  assert.equal(findLauncherExtensionPages('proxy', undefined, { platform: 'macOS', installedExtensionIds: [] }).length, 0)
+  for (const platform of ['Linux', 'Windows'] as const) {
+    const pages = findLauncherExtensionPages('', undefined, { platform, installedExtensionIds: TRUSTED_RAYCAST_EXTENSION_IDS })
+    assert.equal(pages.some(page => page.editor === 'compatibility'), false)
+    assert.ok(pages.every(page => launcherExtensionSupported(page.id, platform)))
+    assert.equal(pages.some(page => page.id === 'WindowsControlPanel'), platform === 'Windows')
+  }
+  assert.equal(launcherExtensionPages.length, 27, 'hidden destinations and their saved settings remain registered')
+})
+
 test('inert settings choices match the admitted artifact and pinned data bytes', () => {
   execFileSync(process.execPath, ['scripts/trusted-raycast-settings-catalog.mjs', '--check'], { timeout: 15000 })
 })
@@ -41,6 +56,14 @@ test('every reviewed extension setting has exactly one finite page owner', () =>
       assert.equal(launcherExtensionPages.filter(page => page.settingKeys.includes(key)).length, 1, key)
     } else assert.equal(owner, undefined, key)
   }
+})
+
+test('sidebar and page use the same renderer platform detection', () => {
+  for (const [platform, userAgent, expected] of [
+    ['MacIntel', 'Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'macOS'],
+    ['Win32', 'Mozilla/5.0 (Windows NT 10.0)', 'Windows'],
+    ['Linux x86_64', 'Mozilla/5.0 (X11; Linux x86_64)', 'Linux'],
+  ]) assert.equal(launcherSettingsPlatform({ platform: platform!, userAgent: userAgent! }), expected)
 })
 
 test('unavailable providers retain destinations but do not claim platform support', () => {
