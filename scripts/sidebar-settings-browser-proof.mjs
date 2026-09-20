@@ -116,7 +116,29 @@ try {
     check(facts.switches.every(s=>s.width===32 && Math.abs(s.height-18.4)<0.1 && s.thumb===16 && !/[1-9][0-9.]*px/.test(s.shadow)),'original shadcn radix-nova switch geometry, without custom thumb shadows: '+JSON.stringify(facts.switches));
     check(facts.switches.every(s=>s.left>=1 && s.right>=1 && Math.abs((s.state==='checked'?s.right:s.left)-1)<0.1),'switch thumbs align inside tracks in both states: '+JSON.stringify(facts.switches));
     check(facts.rowHeights.every(height=>height>=52),'settings rows need breathing room');
+    const motion = [];
+    const checkMotion = async control => {
+      await page.emulateMedia({reducedMotion:'no-preference'});
+      for (const checked of [true,false]) {
+        await control.click();
+        const sample = await control.evaluate(el => {
+          const thumb = el.firstElementChild;
+          const animation = thumb.getAnimations().find(a=>a.transitionProperty==='translate');
+          if (!animation) return null;
+          animation.pause();
+          const duration = animation.effect.getTiming().duration;
+          const positions = [0,duration/2,duration].map(time=>{animation.currentTime=time;return thumb.getBoundingClientRect().left-el.getBoundingClientRect().left});
+          animation.finish();
+          return {size:el.dataset.size,checked:el.getAttribute('aria-checked')==='true',duration,positions};
+        });
+        check(sample && sample.duration===200,'thumb slides over 200ms: '+JSON.stringify(sample));
+        const [start,middle,end] = sample.positions;
+        check(sample.checked===checked && (checked?start<middle && middle<end:start>middle && middle>end),'thumb interpolates in both directions');
+        motion.push(sample);
+      }
+    };
     const open = page.getByRole('switch',{name:/Open at Launch/});
+    await checkMotion(open);
     await open.focus(); await open.press('Space'); check(await open.isChecked(),'keyboard toggle');
     await page.waitForFunction(()=>document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).boxShadow.includes('3px'));
     const focus = await open.evaluate(el=>getComputedStyle(el).boxShadow);
@@ -134,6 +156,10 @@ try {
     await page.evaluate(()=>window.proof.failSave=false); await page.getByRole('button',{name:'Reset',exact:true}).click(); await page.getByRole('alert').waitFor({state:'detached'});
     await page.emulateMedia({reducedMotion:'reduce'});
     check(await open.evaluate(el=>getComputedStyle(el).transitionProperty==='none' && getComputedStyle(el.firstElementChild).transitionProperty==='none'),'reduced motion');
+    for (const checked of [true,false]) {
+      await open.click();
+      check(await open.evaluate((el,checked)=>el.getAttribute('aria-checked')===String(checked) && el.firstElementChild.getAnimations().length===0,checked),'reduced-motion toggles instantly');
+    }
     await page.evaluate(()=>window.scrollTo(0,0));
     await page.screenshot({path:${JSON.stringify(join(evidence, 'side-panel-dark.png'))}});
     await page.evaluate(()=>{document.documentElement.style.colorScheme='light';document.body.removeAttribute('data-ds-dark-theme')});
@@ -159,12 +185,13 @@ try {
     await small.waitFor();
     const smallGeometry = await page.getByRole('switch').evaluateAll(elements=>elements.map(el=>{const track=el.getBoundingClientRect(),thumb=el.firstElementChild.getBoundingClientRect();return {width:track.width,height:track.height,thumb:thumb.width,left:thumb.left-track.left,right:track.right-thumb.right}}));
     check(smallGeometry.every(s=>s.width===24 && s.height===14 && s.thumb===12 && s.left>=1 && s.right>=1),'upstream small switch geometry');
+    await checkMotion(small);
     check(await small.evaluate(el=>el===window.proof.switchRef.current),'React 18 ref forwarding');
     await small.focus(); await small.press('Space'); check(await small.isChecked(),'small switch keyboard toggle');
     check(await page.getByRole('switch',{name:'Small Disabled'}).isDisabled(),'disabled small switch');
     check(await page.getByRole('switch',{name:'Small Invalid'}).evaluate(el=>getComputedStyle(el).boxShadow.includes('3px')),'invalid switch has an error ring');
     check(errors.length===0,JSON.stringify(errors));
-    return {facts,focus,themes,smallGeometry,errors,keyboard:true,label:true,save:true,disabled:true,rollback:true,reset:true,narrow:true};
+    return {facts,focus,themes,smallGeometry,motion,errors,keyboard:true,label:true,save:true,disabled:true,rollback:true,reset:true,narrow:true};
   }`)
   await writeFile(join(evidence, 'result.txt'), output)
   for (const name of ['side-panel-dark.png', 'side-panel-light.png']) {
