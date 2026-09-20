@@ -78,7 +78,8 @@ test('Can I Use opens preferences with the current Host-owned action handle', as
 
 test('Can I Use sends the full browser-target draft before keyboard submission', async () => {
   const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
-  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const window = Object.assign(new EventTarget(), { requestAnimationFrame() {} })
+  const document = { defaultView: window, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
   const root = createTrustedRaycastCanIUsePreferenceForm({ defaultQuery: 'chrome 100', showReleaseDate: true, showPartialSupport: false, briefMode: false, path: '', environment: 'production' }, { defaultQuery: 'query', showReleaseDate: 'date', showPartialSupport: 'partial', briefMode: 'brief' }, 'save')
   view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, root })
@@ -88,7 +89,7 @@ test('Can I Use sends the full browser-target draft before keyboard submission',
   assert.equal(sent.at(-1)?.value, query.value, 'do not silently truncate to the legacy 128-character field limit')
   assert.equal(sent.at(-1)?.eventId, 'query')
   const submit = new Event('keydown', { cancelable: true }); Object.assign(submit, { key: 'Enter', metaKey: true })
-  view.element.dispatchEvent(submit); await flush()
+  window.dispatchEvent(submit); await flush()
   assert.equal(sent.at(-1)?.eventId, 'save')
   assert.equal(sent.at(-1)?.kind, 'action')
   view.dispose()
@@ -553,7 +554,9 @@ test('language set dropdown change sends a bounded fieldChanged event', async ()
 test('first-run preferences use the Raycast-like centered hierarchy and keyboard submit', async () => {
   const nodes: Element[] = []
   const sent: TrustedRaycastViewEvent[] = []
+  const window = Object.assign(new EventTarget(), { requestAnimationFrame() {} })
   const document = {
+    defaultView: window,
     createElement() { const node = new Element(); nodes.push(node); return node },
     createElementNS() { const node = new Element(); nodes.push(node); return node },
   } as unknown as Document
@@ -607,7 +610,7 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.ok(keycaps.every(node => node.className.includes('box-border') && node.className.includes('size-5') && node.className.includes('text-sm') && node.className.includes('justify-center')), 'setup keycaps are smaller while their glyphs are larger and centered')
   assert.ok(keycaps.every(node => node.className.includes('border-[var(--dsw-alias-border-l2,CanvasText)]')), 'setup keycaps remain distinct without changing the theme')
   const submit = Object.assign(new Event('keydown'), { key: 'Enter', isComposing: false, keyCode: 13, metaKey: true, ctrlKey: false, altKey: false, shiftKey: false })
-  view.element.dispatchEvent(submit)
+  window.dispatchEvent(submit)
   await flush()
   assert.equal(sent.at(-1)?.kind, 'action')
   assert.equal(sent.at(-1)?.eventId, 'continue')

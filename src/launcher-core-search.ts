@@ -284,7 +284,10 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   ): Promise<LauncherCoreSearchResult> => {
     const searchToken = Object.freeze({})
     latestSearchToken = searchToken
-    if (!indexLoaded) await rescan()
+    if (!indexLoaded) {
+      await rescan()
+      if (!indexLoaded || latestSearchToken !== searchToken) throw new Error('TockLauncher search was superseded')
+    }
 
     const searchGeneration = indexGeneration
     const available = indexedItems.filter(({ id }) => !excluded.has(id))
@@ -412,6 +415,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
       })
       excluded.add(record.argument)
       favorites.delete(record.argument)
+      favoriteOrder.splice(0, favoriteOrder.length, ...nextFavorites)
     })
     return true
   }

@@ -2,12 +2,12 @@
 audience: agent
 canonical: .agents/references/tocklauncher.md
 owner: TockTeam
-last_reviewed: 2026-09-12
+last_reviewed: 2026-09-19
 ---
 
 # TockLauncher
 
-_Last reviewed: 2026-09-12_
+_Last reviewed: 2026-09-19_
 
 TockLauncher is TockTeam Desktop's native keystroke launcher. It selectively ports the reviewed Ueli `v9.29.0` behavior while keeping the Electron lifecycle, renderer, persistence, security boundary, platform effects, and product routing under TockTeam ownership.
 
@@ -138,7 +138,7 @@ The settings shortcut opens the canonical workbench settings page. There is no s
 
 | Family | Extensions | Behavior |
 | --- | --- | --- |
-| Local transformations | Base64 Conversion, Calculator, Color Converter, Password Generator, Quick Formatter, Rowland Text Editor, UUID / GUID Generator | Pure transformations; copy effects remain main-owned. Calculator validates normalized mathjs syntax against finite node/function sets before evaluation, rejecting assignments, indirect/evaluator calls, and collection algebra; bounded collections are display-only. |
+| Local transformations | Base64 Conversion, Calculator, Color Converter, Password Generator, Quick Formatter, Rowland Text Editor, UUID / GUID Generator | Pure transformations; copy effects remain main-owned. Calculator validates normalized mathjs syntax against finite node/function sets before evaluation, rejecting assignments, indirect/evaluator calls, and collection algebra; bounded collections are display-only, and allocation limits account for outer arrays even when an inner dimension is zero. Ranges validate parsed numeric endpoints and count the inclusive, tolerance-aware progression before evaluation, rejecting non-advancing floating-point steps and more than 10,000 items. Decimal-place precision applies to signed values and full scientific-notation values, including unit magnitudes, before display and copying. |
 | Discovery | Application Search, Browser Bookmarks, JetBrains Toolbox, Visual Studio Code | Bounded platform scans, identity capture, SQLite workers, packaged/native icons, and immediate action revalidation. |
 | File search | File Search, Simple File Search | macOS `mdfind`, an allowlisted Windows Everything executable, and home-contained bounded directory scans. |
 | Network | Currency Conversion, Custom Web Search, DeepL Translator, Web Search | Fixed provider requests, browser search actions, bounded bodies/responses, cancellation, deadlines, and main-owned secrets. |
@@ -197,7 +197,7 @@ Windows shortcut elevation is scan-bound and confirmation-gated. Only a bounded 
 
 ## Search and Action Authorization
 
-`createLauncherCoreSearch()` supports `fuzzysort` and `Fuse.js`, bounded fuzziness and result counts, alphabetical empty-search behavior, instant providers, favorites, exclusions, history, rescan status, and isolated provider failures. Whitespace-only queries follow empty-search behavior.
+`createLauncherCoreSearch()` supports `fuzzysort` and `Fuse.js`, bounded fuzziness and result counts, alphabetical empty-search behavior, instant providers, favorites, exclusions, history, rescan status, and isolated provider failures. Whitespace-only queries follow empty-search behavior. A cancelled or superseded initial scan cannot publish the inert cached index. Excluding an item removes it from both favorite membership and ordering before later favorite writes.
 
 `LauncherActionStore` is the execution boundary:
 
@@ -288,7 +288,7 @@ Persistence rules:
 
 Node has no portable descriptor-relative compare-and-replace primitive. External publication is therefore not an atomic replacement with uninterrupted destination availability: displacement plus no-overwrite publication preserves conflicting versions rather than claiming a race-free save. Keep this confined to the user-selected file in its user-writable parent; never widen it to privileged/shared-directory mutation.
 
-Preferences for all three compatibility features are validated and saved through main. Translate/Kaomoji cached state is different: the trusted child writes a main-selected state path through `useCachedState`. Kaomoji has a bounded validated state loader; legacy Translate cached-state reads are not covered by the repository's blanket bounded-storage guarantee.
+Preferences for all three compatibility features are validated and saved through main. Translate/Kaomoji cached state is different: the trusted child writes a main-selected state path through `useCachedState`. Both use bounded regular-file reads and validated atomic writes. Translate uses its dedicated compatibility module, a 512 KiB serialized limit, and at most 128 saved language sets validated against the pinned language catalog; invalid cached files are ignored without being rewritten on load.
 
 ## Lifecycle
 

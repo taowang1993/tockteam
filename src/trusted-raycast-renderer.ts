@@ -528,6 +528,14 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       button.addEventListener('click', () => invoke(action)); (preferenceSetup ? footerActions : formArea).append(button)
     }
   }
+  // Setup is a window-level command: clicking blank space or replacing fields can leave focus on body.
+  const onPreferenceShortcut = (event: KeyboardEvent): void => {
+    if (!element.isConnected || !preferenceSetup || event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.repeat) return
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
+      event.preventDefault(); invoke(submitAction)
+    }
+  }
+  document.defaultView?.addEventListener('keydown', onPreferenceShortcut)
   element.addEventListener('keydown', event => {
     // Do not cancel native IME behavior; stop Escape before the owning launcher closes this view.
     if (event.isComposing || event.keyCode === 229) { event.stopPropagation(); return }
@@ -555,7 +563,6 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && (target === input || target === row?.item) && !event.metaKey && !event.ctrlKey && !event.altKey && rows.length) {
       event.preventDefault(); selected = (selected + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length; syncPrimaryFooter(); rows[selected]!.item.focus(); return
     }
-    if (preferenceSetup && event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) { event.preventDefault(); invoke(submitAction); return }
     if (event.key === 'Enter' && (event.target === input || event.target === row?.item) && !event.altKey && !event.shiftKey) { event.preventDefault(); invoke(row?.actions[event.metaKey || event.ctrlKey ? 1 : 0]); return }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && actionOwner) { event.preventDefault(); actionOwner.menu.open = !actionOwner.menu.open; if (actionOwner.menu.open) actionOwner.buttons.find(button => !button.disabled)?.focus(); else actionOwner.item.focus(); return }
     for (const action of actionOwner?.actions ?? []) {
@@ -578,7 +585,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   })
   const focus = (): void => { if (firstFormControl && !formArea.hidden) firstFormControl.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus(); else rows[selected]?.item.focus() }
   return {
-    dispose() { current = undefined; navigationPending = undefined; themeImages = [] },
+    dispose() { document.defaultView?.removeEventListener('keydown', onPreferenceShortcut); current = undefined; navigationPending = undefined; themeImages = [] },
     element,
     focus,
     refreshTheme,
