@@ -29,17 +29,10 @@ export function installedCommandReady(document, extensionId) {
   return rows.length === 64 && rows.every(visible) && visible(status) && status.textContent.includes(expected)
 }
 
-/** Dismiss only the intentional selected-text denial by using empty manual input. */
+/** Require a healthy command without dismissing startup errors to make it pass. */
 export async function waitForInstalledCommand(launcher, waitFor, extensionId) {
   const ready = `(${installedCommandReady.toString()})(document, ${JSON.stringify(extensionId)})`
   const wait = expression => waitFor(() => launcher.evaluate(expression), value => value === true, 15000)
-  if (extensionId === 'google-translate') {
-    const expectedDenial = `document.querySelector('section[aria-label="Google Translate"] [role="alert"]')?.textContent === 'Selected Text Unavailable: Selected text is disabled in the bounded visual proof. Manual input is available.'`
-    await wait(`(${ready}) || (${expectedDenial})`)
-    if (!await launcher.evaluate(ready)) {
-      assert.equal(await launcher.evaluate(`(() => { const input = document.querySelector('section[aria-label="Google Translate"] #trusted-raycast-search'); if (!(input instanceof HTMLInputElement) || input.disabled || !input.getClientRects().length) return false; input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); return true })()`), true, 'Google manual input is not available after the expected selected-text denial')
-    }
-  }
   await wait(ready)
 }
 

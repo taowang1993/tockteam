@@ -227,6 +227,9 @@ test('bundled artifact: first command shows required preferences, saves them in 
     await wait(250)
     assert.equal(manager.active, true, 'an unavailable selected-text lookup must not corrupt the child protocol')
     assert.equal(messages.some(message => message.type === 'error'), false)
+    assert.deepEqual(messages.filter(message => message.type === 'toast' && message.style === 'failure'), [], 'no selection leaves the real Translate command ready for manual input without an error banner')
+    assert.equal(view.latestRoot().root.props.searchText ?? '', '')
+    assert.equal(view.latestRoot().root.props.searchable, true)
     assert.deepEqual(saved, [{ langFrom: 'auto', lang1: 'en', lang2: 'zh-CN', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }])
   } finally { await manager.close(); rmSync(work, { recursive: true, force: true }) }
 })

@@ -136,11 +136,8 @@ export async function savePreferenceValues(next: Readonly<Record<string, boolean
   preferences = { ...next }
 }
 export async function getSelectedText(): Promise<string> {
-  try { return await compatibility.selection() } catch (error) {
-    // Honest visible status: the source falls back to manual input and only logs the error.
-    compatibility.toast({ style: 'failure', title: 'Selected Text Unavailable', message: error instanceof Error ? error.message.slice(0, 256) : 'Selected text is unavailable' })
-    throw error
-  }
+  // The source handles optional auto-input failures and keeps manual input available.
+  return compatibility.selection()
 }
 export async function closeMainWindow(): Promise<void> { return unsupported('closeMainWindow') }
 export async function popToRoot(): Promise<void> { return unsupported('popToRoot') }
