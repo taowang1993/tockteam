@@ -1,0 +1,1623 @@
+{
+  "baseline": "8cf6099b",
+  "runtimePin": "0.1.2-rc.1",
+  "screenshots": {
+    "css": [
+      1512,
+      949
+    ],
+    "scale": 2,
+    "pixels": [
+      3024,
+      1898
+    ]
+  },
+  "web": {
+    "evidence": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/settings-web-audit-E3wXMd",
+    "rootPid": 33548,
+    "runtimePid": 33549,
+    "screenshots": [
+      "agent-presets-dark.png",
+      "agent-presets-light.png",
+      "general-dark.png",
+      "general-light.png",
+      "models-dark.png",
+      "models-light.png",
+      "plugin-list-dark.png",
+      "plugin-list-light.png",
+      "plugins-dark.png",
+      "plugins-light.png",
+      "side-panel-dark.png",
+      "side-panel-light.png"
+    ],
+    "errors": [],
+    "cleanupResidue": [],
+    "sections": [
+      {
+        "name": "General",
+        "theme": "dark",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "PermissionChoose the default permission mode for new sessionsWorkspace",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 867.78125,
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "0px"
+        },
+        "headings": [],
+        "inputs": []
+      },
+      {
+        "name": "Models",
+        "theme": "dark",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "ModelsEnter your API keys to use models from the following providers.D",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 355,
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "0px"
+        },
+        "headings": [
+          {
+            "text": "Models",
+            "tag": "H2",
+            "font": "16px",
+            "weight": "500",
+            "line": "24px",
+            "width": 564,
+            "height": 24,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          }
+        ],
+        "inputs": [
+          {
+            "text": "API key",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 532,
+            "height": 32,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(35, 35, 36)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Base URL",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 532,
+            "height": 32,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(35, 35, 36)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Model ID 1",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 259,
+            "height": 32,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(35, 35, 36)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Display name 1",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 185,
+            "height": 32,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(35, 35, 36)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Model ID 2",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 259,
+            "height": 32,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(35, 35, 36)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Display name 2",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 185,
+            "height": 32,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(35, 35, 36)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Model ID 3",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 259,
+            "height": 32,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(35, 35, 36)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Display name 3",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 185,
+            "height": 32,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(35, 35, 36)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          }
+        ]
+      },
+      {
+        "name": "Plugins",
+        "theme": "dark",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "PluginsConfigure and inspect the plugins installed in this deployment.",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 1190,
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "0px"
+        },
+        "headings": [
+          {
+            "text": "Plugins",
+            "tag": "H2",
+            "font": "18px",
+            "weight": "600",
+            "line": "normal",
+            "width": 564,
+            "height": 21,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          }
+        ],
+        "inputs": [
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(53, 54, 56)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(53, 54, 56)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(53, 54, 56)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(53, 54, 56)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(53, 54, 56)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgb(53, 54, 56)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          }
+        ]
+      },
+      {
+        "name": "Agent Presets",
+        "theme": "dark",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "Agent PresetsA preset is the plugin composition one session's agent ru",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 630.125,
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "0px"
+        },
+        "headings": [
+          {
+            "text": "Agent Presets",
+            "tag": "H2",
+            "font": "18px",
+            "weight": "600",
+            "line": "normal",
+            "width": 564,
+            "height": 21,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          },
+          {
+            "text": "Built-in",
+            "tag": "H3",
+            "font": "12px",
+            "weight": "600",
+            "line": "normal",
+            "width": 564,
+            "height": 15,
+            "color": "rgb(173, 178, 184)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          },
+          {
+            "text": "Custom",
+            "tag": "H3",
+            "font": "12px",
+            "weight": "600",
+            "line": "normal",
+            "width": 564,
+            "height": 15,
+            "color": "rgb(173, 178, 184)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          }
+        ],
+        "inputs": []
+      },
+      {
+        "name": "Side Panel",
+        "theme": "dark",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "Side PanelChoose which tools and file previews are available in the de",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 1188,
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "8px 0px 24px"
+        },
+        "headings": [
+          {
+            "text": "Agent Access",
+            "tag": "H4",
+            "font": "14px",
+            "weight": "700",
+            "line": "20px",
+            "width": 564,
+            "height": 20,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          },
+          {
+            "text": "Tools",
+            "tag": "H4",
+            "font": "14px",
+            "weight": "700",
+            "line": "20px",
+            "width": 564,
+            "height": 20,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          },
+          {
+            "text": "File Previews",
+            "tag": "H4",
+            "font": "14px",
+            "weight": "700",
+            "line": "20px",
+            "width": 564,
+            "height": 20,
+            "color": "rgb(249, 250, 251)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          }
+        ],
+        "inputs": [
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13.3333px",
+            "weight": "400",
+            "line": "normal",
+            "width": 210,
+            "height": 16,
+            "color": "rgb(255, 255, 255)",
+            "bg": "rgb(59, 59, 59)",
+            "margin": "2px",
+            "padding": "0px"
+          }
+        ]
+      },
+      {
+        "name": "General",
+        "theme": "light",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "PermissionChoose the default permission mode for new sessionsWorkspace",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 867.78125,
+          "color": "rgb(15, 17, 21)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "0px"
+        },
+        "headings": [],
+        "inputs": []
+      },
+      {
+        "name": "Models",
+        "theme": "light",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "ModelsEnter your API keys to use models from the following providers.D",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 355,
+          "color": "rgb(15, 17, 21)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "0px"
+        },
+        "headings": [
+          {
+            "text": "Models",
+            "tag": "H2",
+            "font": "16px",
+            "weight": "500",
+            "line": "24px",
+            "width": 564,
+            "height": 24,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          }
+        ],
+        "inputs": [
+          {
+            "text": "API key",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 532,
+            "height": 32,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Base URL",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 532,
+            "height": 32,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Model ID 1",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 259,
+            "height": 32,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Display name 1",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 185,
+            "height": 32,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Model ID 2",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 259,
+            "height": 32,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Display name 2",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 185,
+            "height": 32,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Model ID 3",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 259,
+            "height": 32,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          },
+          {
+            "text": "Display name 3",
+            "tag": "INPUT",
+            "font": "14px",
+            "weight": "400",
+            "line": "22px",
+            "width": 185,
+            "height": 32,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 10px"
+          }
+        ]
+      },
+      {
+        "name": "Plugins",
+        "theme": "light",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "PluginsConfigure and inspect the plugins installed in this deployment.",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 1190,
+          "color": "rgb(15, 17, 21)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "0px"
+        },
+        "headings": [
+          {
+            "text": "Plugins",
+            "tag": "H2",
+            "font": "18px",
+            "weight": "600",
+            "line": "normal",
+            "width": 564,
+            "height": 21,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          }
+        ],
+        "inputs": [
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          },
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13px",
+            "weight": "400",
+            "line": "19.5px",
+            "width": 530,
+            "height": 36,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "0px",
+            "padding": "0px 12px"
+          }
+        ]
+      },
+      {
+        "name": "Agent Presets",
+        "theme": "light",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "Agent PresetsA preset is the plugin composition one session's agent ru",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 630.125,
+          "color": "rgb(15, 17, 21)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "0px"
+        },
+        "headings": [
+          {
+            "text": "Agent Presets",
+            "tag": "H2",
+            "font": "18px",
+            "weight": "600",
+            "line": "normal",
+            "width": 564,
+            "height": 21,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          },
+          {
+            "text": "Built-in",
+            "tag": "H3",
+            "font": "12px",
+            "weight": "600",
+            "line": "normal",
+            "width": 564,
+            "height": 15,
+            "color": "rgb(129, 133, 140)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          },
+          {
+            "text": "Custom",
+            "tag": "H3",
+            "font": "12px",
+            "weight": "600",
+            "line": "normal",
+            "width": 564,
+            "height": 15,
+            "color": "rgb(129, 133, 140)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          }
+        ],
+        "inputs": []
+      },
+      {
+        "name": "Side Panel",
+        "theme": "light",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": null,
+        "route": "/",
+        "root": {
+          "text": "Side PanelChoose which tools and file previews are available in the de",
+          "tag": "DIV",
+          "font": "14px",
+          "weight": "400",
+          "line": "normal",
+          "width": 564,
+          "height": 1188,
+          "color": "rgb(15, 17, 21)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "margin": "0px",
+          "padding": "8px 0px 24px"
+        },
+        "headings": [
+          {
+            "text": "Agent Access",
+            "tag": "H4",
+            "font": "14px",
+            "weight": "700",
+            "line": "20px",
+            "width": 564,
+            "height": 20,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          },
+          {
+            "text": "Tools",
+            "tag": "H4",
+            "font": "14px",
+            "weight": "700",
+            "line": "20px",
+            "width": 564,
+            "height": 20,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          },
+          {
+            "text": "File Previews",
+            "tag": "H4",
+            "font": "14px",
+            "weight": "700",
+            "line": "20px",
+            "width": 564,
+            "height": 20,
+            "color": "rgb(15, 17, 21)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "margin": "0px",
+            "padding": "0px"
+          }
+        ],
+        "inputs": [
+          {
+            "text": "",
+            "tag": "INPUT",
+            "font": "13.3333px",
+            "weight": "400",
+            "line": "normal",
+            "width": 210,
+            "height": 16,
+            "color": "rgb(16, 16, 16)",
+            "bg": "rgb(255, 255, 255)",
+            "margin": "2px",
+            "padding": "0px"
+          }
+        ]
+      }
+    ],
+    "pluginListThemes": [
+      "dark",
+      "light"
+    ],
+    "narrow": [
+      {
+        "name": "General",
+        "viewport": 600,
+        "documentWidth": 600,
+        "sectionWidth": 316,
+        "contentWidth": 316
+      },
+      {
+        "name": "Models",
+        "viewport": 600,
+        "documentWidth": 600,
+        "sectionWidth": 316,
+        "contentWidth": 316
+      },
+      {
+        "name": "Plugins",
+        "viewport": 600,
+        "documentWidth": 600,
+        "sectionWidth": 316,
+        "contentWidth": 316
+      },
+      {
+        "name": "Agent Presets",
+        "viewport": 600,
+        "documentWidth": 600,
+        "sectionWidth": 316,
+        "contentWidth": 324
+      },
+      {
+        "name": "Side Panel",
+        "viewport": 600,
+        "documentWidth": 600,
+        "sectionWidth": 316,
+        "contentWidth": 327
+      }
+    ],
+    "skins": [
+      {
+        "mode": "dark",
+        "id": "tockteam-skin-deep-current",
+        "check": [
+          {
+            "color": "rgb(6, 21, 29)",
+            "bg": "rgb(73, 200, 235)"
+          }
+        ]
+      },
+      {
+        "mode": "dark",
+        "id": "tockteam-skin-jade-circuit",
+        "check": [
+          {
+            "color": "rgb(7, 26, 22)",
+            "bg": "rgb(82, 214, 160)"
+          }
+        ]
+      },
+      {
+        "mode": "light",
+        "id": "tockteam-skin-porcelain",
+        "check": [
+          {
+            "color": "rgb(247, 251, 250)",
+            "bg": "rgb(45, 119, 115)"
+          }
+        ]
+      },
+      {
+        "mode": "dark",
+        "id": "tockteam-skin-ember-dusk",
+        "check": [
+          {
+            "color": "rgb(35, 21, 29)",
+            "bg": "rgb(255, 146, 117)"
+          }
+        ]
+      }
+    ]
+  },
+  "fixture": {
+    "evidence": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/settings-fixture-audit-8MIf3S",
+    "screenshots": [
+      "assistant-dark.png",
+      "launcher-appearance-dark.png",
+      "launcher-dark.png",
+      "marketplace-dark-system-light.png"
+    ],
+    "rootPid": 31469,
+    "cleanupResidue": [],
+    "facts": {
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "mode": "dark",
+      "skin": null,
+      "route": "/",
+      "sections": [
+        {
+          "title": "Search and History",
+          "height": 968.0625,
+          "headings": [
+            "Search and History",
+            "Search Engine"
+          ],
+          "fields": [
+            "Search Engine",
+            "Fuzziness (0.5)",
+            "Maximum Results",
+            "Search History",
+            "History Limit",
+            "Saved Searches",
+            "Automatic Rescan",
+            "Rescan Interval in Seconds"
+          ]
+        },
+        {
+          "title": "Appearance and Input",
+          "height": 485.0625,
+          "headings": [
+            "Appearance and Input",
+            "Appearance and Input"
+          ],
+          "fields": [
+            "Search Bar Appearance",
+            "Search Bar Placeholder Text",
+            "Search Bar Size",
+            "Search Result List Layout",
+            "Show Search Icon"
+          ]
+        },
+        {
+          "title": "Desktop Lifecycle",
+          "height": 849.0625,
+          "headings": [
+            "Desktop Lifecycle",
+            "Window Behavior"
+          ],
+          "fields": [
+            "Appearance Source",
+            "Launch on Start",
+            "Show TockLauncher on Startup",
+            "Keep TockLauncher Always on Top",
+            "Show on All Workspaces",
+            "Show Tray Icon",
+            "Show Dock Icon",
+            "Hide Window On",
+            "Scroll Behavior"
+          ]
+        },
+        {
+          "title": "Keyboard and Mouse",
+          "height": 407.0625,
+          "headings": [
+            "Keyboard and Mouse",
+            "Keyboard and Mouse"
+          ],
+          "fields": [
+            "Double Click Behavior",
+            "Single Click Behavior",
+            "Drag and Drop"
+          ]
+        },
+        {
+          "title": "Browser and Shortcuts",
+          "height": 627.0625,
+          "headings": [
+            "Browser and Shortcuts",
+            "Browser and Shortcuts"
+          ],
+          "fields": [
+            "Use Default Web Browser",
+            "Enabled",
+            "Preserve User Input",
+            "Custom Browser Grant",
+            "Global Shortcut",
+            "Language"
+          ]
+        },
+        {
+          "title": "Extensions",
+          "height": 664.53125,
+          "headings": [
+            "Extensions"
+          ],
+          "fields": [
+            "Appearance Switcher",
+            "Application Search",
+            "Base64 Conversion",
+            "Browser Bookmarks",
+            "Calculator",
+            "Color Converter",
+            "Currency Conversion",
+            "Custom Web Search",
+            "DeepL Translator",
+            "File Search",
+            "JetBrains Toolbox",
+            "Password Generator",
+            "Quick Formatter",
+            "Rowland Text Editor",
+            "Simple File Search",
+            "System Commands",
+            "System Settings",
+            "Terminal Launcher",
+            "Ueli Commands",
+            "UUID Generator",
+            "VS Code",
+            "Web Search",
+            "Windows Control Panel",
+            "Workflow"
+          ]
+        },
+        {
+          "title": "Local Transformation Extensions",
+          "height": 591.0625,
+          "headings": [
+            "Local Transformation Extensions",
+            "Local Transformation Extensions"
+          ],
+          "fields": [
+            "Encode/Decode Prefix",
+            "Encode Prefix",
+            "Decode Prefix",
+            "Precision",
+            "Decimal Separator",
+            "Argument Separator",
+            "HEX",
+            "HSL",
+            "RGB",
+            "Command",
+            "Quantity",
+            "Password Length",
+            "Password Symbols",
+            "Include Uppercase Characters",
+            "Include Lowercase Characters",
+            "Include Numbers",
+            "Include Symbols",
+            "Begin with a Letter",
+            "No Similar Characters",
+            "No Duplicate Characters",
+            "No Sequential Characters",
+            "Command",
+            "Enable Stack Trace",
+            "Enable JSON",
+            "Enable XML",
+            "Enable Deep Formatting",
+            "Row Separator",
+            "Column Separator",
+            "UUID Version",
+            "Number of UUIDs",
+            "Strict Validation",
+            "UUID Uppercase",
+            "UUID Hyphens",
+            "UUID Braces",
+            "UUID Quotes",
+            "UUID Search Result Formats"
+          ]
+        },
+        {
+          "title": "Discovery Providers",
+          "height": 832.0625,
+          "headings": [
+            "Discovery Providers",
+            "Application, Bookmark, and IDE Discovery"
+          ],
+          "fields": [
+            "Include Windows Store Apps",
+            "macOS Application Folders",
+            "Linux Application Folders",
+            "Windows Application Folders",
+            "Windows File Extensions",
+            "macOS Search Filter",
+            "Browsers",
+            "Search Result Style",
+            "Icon Type",
+            "Prefix",
+            "Command Template",
+            "Show Path"
+          ]
+        },
+        {
+          "title": "File Search",
+          "height": 503.0625,
+          "headings": [
+            "File Search",
+            "File Search"
+          ],
+          "fields": [
+            "Maximum File Search Results",
+            "Windows Everything CLI Path"
+          ]
+        },
+        {
+          "title": "Terminal Launcher",
+          "height": 372.53125,
+          "headings": [
+            "Terminal Launcher"
+          ],
+          "fields": []
+        },
+        {
+          "title": "Workflows",
+          "height": 335.75,
+          "headings": [
+            "Workflows"
+          ],
+          "fields": []
+        },
+        {
+          "title": "Network Extensions",
+          "height": 1188.0625,
+          "headings": [
+            "Network Extensions",
+            "Network Extensions"
+          ],
+          "fields": [
+            "Currencies",
+            "Default Target Currency",
+            "Custom Search Engines",
+            "DeepL Source Language",
+            "DeepL Target Language",
+            "Web Search Provider",
+            "Web Search Locale",
+            "Show Instant Web Search Result",
+            "DeepL API Key"
+          ]
+        },
+        {
+          "title": "Storage and Privacy",
+          "height": 740.53125,
+          "headings": [
+            "Storage and Privacy"
+          ],
+          "fields": [
+            "Settings Source",
+            "External Write Capability",
+            "Recovery",
+            "Secure Storage",
+            "Settings Files",
+            "Custom Browser",
+            "Reset TockLauncher Settings"
+          ]
+        },
+        {
+          "title": "Security",
+          "height": 291.53125,
+          "headings": [
+            "Security"
+          ],
+          "fields": [
+            "DeepL API Key"
+          ]
+        },
+        {
+          "title": "Updates",
+          "height": 267.53125,
+          "headings": [
+            "Updates"
+          ],
+          "fields": [
+            "Update Status",
+            "Update Actions"
+          ]
+        },
+        {
+          "title": "About and Contract",
+          "height": 1073.0625,
+          "headings": [
+            "About and Contract",
+            "Compatibility Ownership"
+          ],
+          "fields": [
+            "Catalog Coverage",
+            "Appearance Ownership",
+            "Browser Grant",
+            "Diagnostics"
+          ]
+        }
+      ],
+      "fields": [
+        {
+          "height": 91,
+          "label": "14px",
+          "description": {
+            "font": "12px",
+            "margin": "12px 0px"
+          },
+          "inputs": [
+            {
+              "tag": "SELECT",
+              "type": "select-one",
+              "height": 28,
+              "padding": "2px 32px 2px 10px"
+            }
+          ]
+        },
+        {
+          "height": 91,
+          "label": "14px",
+          "description": {
+            "font": "12px",
+            "margin": "12px 0px"
+          },
+          "inputs": [
+            {
+              "tag": "INPUT",
+              "type": "range",
+              "height": 42,
+              "padding": "4px 10px"
+            }
+          ]
+        },
+        {
+          "height": 91,
+          "label": "14px",
+          "description": {
+            "font": "12px",
+            "margin": "12px 0px"
+          },
+          "inputs": [
+            {
+              "tag": "INPUT",
+              "type": "number",
+              "height": 42,
+              "padding": "4px 10px"
+            }
+          ]
+        },
+        {
+          "height": 91,
+          "label": "14px",
+          "description": {
+            "font": "12px",
+            "margin": "12px 0px"
+          },
+          "inputs": []
+        },
+        {
+          "height": 91,
+          "label": "14px",
+          "description": {
+            "font": "12px",
+            "margin": "12px 0px"
+          },
+          "inputs": [
+            {
+              "tag": "INPUT",
+              "type": "number",
+              "height": 42,
+              "padding": "4px 10px"
+            }
+          ]
+        },
+        {
+          "height": 91,
+          "label": "14px",
+          "description": {
+            "font": "12px",
+            "margin": "12px 0px"
+          },
+          "inputs": []
+        }
+      ]
+    },
+    "labelToggles": false,
+    "expanded": {
+      "scrollHeight": 12690,
+      "controls": 126
+    },
+    "narrow": [
+      {
+        "viewport": 600,
+        "scrollWidth": 600,
+        "collapsedLabels": [
+          {
+            "text": "Settings Files",
+            "width": 40.609375
+          }
+        ]
+      },
+      {
+        "viewport": 375,
+        "scrollWidth": 375,
+        "collapsedLabels": [
+          {
+            "text": "Hide Window On",
+            "width": 1.203125
+          },
+          {
+            "text": "HEX",
+            "width": 47.65625
+          },
+          {
+            "text": "HSL",
+            "width": 47.671875
+          },
+          {
+            "text": "RGB",
+            "width": 47.65625
+          },
+          {
+            "text": "DeepL API Key",
+            "width": 29.78125
+          },
+          {
+            "text": "Update Actions",
+            "width": 55.171875
+          }
+        ]
+      }
+    ],
+    "primitiveThemes": [
+      {
+        "id": "dark",
+        "controls": [
+          {
+            "text": "Default Action",
+            "bg": "rgb(249, 250, 251)",
+            "color": "rgb(249, 250, 251)",
+            "padding": "1px 10px",
+            "icon": null
+          },
+          {
+            "text": "",
+            "bg": "rgb(249, 250, 251)",
+            "color": "rgb(249, 250, 251)",
+            "padding": "1px 6px",
+            "icon": "rgb(249, 250, 251)"
+          }
+        ]
+      },
+      {
+        "id": "light",
+        "controls": [
+          {
+            "text": "Default Action",
+            "bg": "rgb(15, 17, 21)",
+            "color": "rgb(15, 17, 21)",
+            "padding": "1px 10px",
+            "icon": null
+          },
+          {
+            "text": "",
+            "bg": "rgb(15, 17, 21)",
+            "color": "rgb(15, 17, 21)",
+            "padding": "1px 6px",
+            "icon": "rgb(15, 17, 21)"
+          }
+        ]
+      },
+      {
+        "id": "tockteam-skin-deep-current",
+        "controls": [
+          {
+            "text": "Default Action",
+            "bg": "rgb(73, 200, 235)",
+            "color": "rgb(6, 21, 29)",
+            "padding": "1px 10px",
+            "icon": null
+          },
+          {
+            "text": "",
+            "bg": "rgb(73, 200, 235)",
+            "color": "rgb(6, 21, 29)",
+            "padding": "1px 6px",
+            "icon": "rgb(6, 21, 29)"
+          }
+        ]
+      },
+      {
+        "id": "tockteam-skin-jade-circuit",
+        "controls": [
+          {
+            "text": "Default Action",
+            "bg": "rgb(82, 214, 160)",
+            "color": "rgb(7, 26, 22)",
+            "padding": "1px 10px",
+            "icon": null
+          },
+          {
+            "text": "",
+            "bg": "rgb(82, 214, 160)",
+            "color": "rgb(7, 26, 22)",
+            "padding": "1px 6px",
+            "icon": "rgb(7, 26, 22)"
+          }
+        ]
+      },
+      {
+        "id": "tockteam-skin-porcelain",
+        "controls": [
+          {
+            "text": "Default Action",
+            "bg": "rgb(45, 119, 115)",
+            "color": "rgb(247, 251, 250)",
+            "padding": "1px 10px",
+            "icon": null
+          },
+          {
+            "text": "",
+            "bg": "rgb(45, 119, 115)",
+            "color": "rgb(247, 251, 250)",
+            "padding": "1px 6px",
+            "icon": "rgb(247, 251, 250)"
+          }
+        ]
+      },
+      {
+        "id": "tockteam-skin-ember-dusk",
+        "controls": [
+          {
+            "text": "Default Action",
+            "bg": "rgb(255, 146, 117)",
+            "color": "rgb(35, 21, 29)",
+            "padding": "1px 10px",
+            "icon": null
+          },
+          {
+            "text": "",
+            "bg": "rgb(255, 146, 117)",
+            "color": "rgb(35, 21, 29)",
+            "padding": "1px 6px",
+            "icon": "rgb(35, 21, 29)"
+          }
+        ]
+      }
+    ],
+    "assistant": {
+      "bg": "rgb(255, 255, 255)",
+      "color": "rgb(249, 250, 251)",
+      "ttPanel": "",
+      "parent": "DIV",
+      "inputs": [
+        {
+          "text": "Current Note",
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Provider",
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "Model",
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "Read OnlyPropose Writes",
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "OffOn DemandAutomatic",
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "Save Settings",
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgb(79, 70, 229)"
+        },
+        {
+          "text": "Previous",
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "Next",
+          "color": "rgb(249, 250, 251)",
+          "bg": "rgb(255, 255, 255)"
+        }
+      ]
+    },
+    "marketFocus": {
+      "focusVisible": true,
+      "outline": "rgb(153, 200, 255) solid 0px",
+      "shadow": "none",
+      "parentOutline": "rgb(249, 250, 251) none 3px",
+      "parentShadow": "none"
+    },
+    "marketplace": [
+      {
+        "system": "dark",
+        "app": "dark",
+        "bg": "rgb(24, 39, 68)",
+        "color": "rgb(169, 196, 255)"
+      },
+      {
+        "system": "light",
+        "app": "dark",
+        "bg": "rgb(242, 246, 255)",
+        "color": "rgb(36, 79, 158)"
+      }
+    ],
+    "errors": []
+  }
+}
