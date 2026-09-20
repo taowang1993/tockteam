@@ -236,6 +236,22 @@ DeepL keys stay encrypted and main-owned. They never enter renderer snapshots, l
 
 ## Settings and Persistence
 
+### Per-Extension Settings
+
+Open **Settings → TockLauncher → Extensions → <Extension>**. The searchable directory contains every built-in identity in `LAUNCHER_COMPOSITION` and all three reviewed compatibility descriptors (27 destinations at this baseline). Search accepts names and setting labels; the directory and forms are localized in English and Chinese. **General Settings** retains shared search, appearance, lifecycle, browser, storage and update controls; provider editors and DeepL's write-only key belong to their individual extension pages.
+
+**Extension Settings** in a launcher's result action menu or active compatibility-command header opens that exact canonical page. Ctrl/Cmd+, still opens TockLauncher settings. Navigation accepts only finite identities; it grants no command, filesystem or installation authority. Unavailable and no-options extensions keep their destinations and saved compatibility values.
+
+Editors stay mounted while moving between extensions or General Settings. Rejected text/JSON, workflow and folder drafts remain editable; Escape or leaving Settings offers **Keep Editing** or **Discard and Leave** when changes remain unsaved. A pending write is not an accepted snapshot. Existing storage/import/export/reset scope is unchanged and does not include the separate compatibility preference files.
+
+Google Translate exposes **Languages**, **Behavior** and **Network**. **Advanced → Proxy Override** accepts only an explicit HTTP/HTTPS URL without credentials; **Use System Proxy** clears it. Detected system proxies never enter settings snapshots. Legacy private overrides are redacted and retained unless explicitly cleared or replaced. Language defaults do not reset saved language sets. Kaomoji exposes **Display Mode** and **Primary Action**. Can I Use exposes display preferences and pinned exact **Browser Targets**, not automatic/workspace selectors.
+
+Compatibility reads and writes use the workbench-guarded `getExtension`, `updateExtension` and `setExtensionEnabled` methods. Main selects the existing stores. Opening a page neither starts a child nor installs/enables an artifact. Enablement remains an explicit operation over approved installed trust state. Canonical and command-inline writers share serialized, opaque revision-fenced updates; conflicts preserve drafts and **Refresh Settings** merges unchanged fields before another save. Changing enablement never acknowledges a newer preference revision. Preference changes take effect on the next command invocation.
+
+`src/launcher-extension-settings.ts` is an inert finite presentation/ownership catalog, not a plugin loader or form engine. `scripts/trusted-raycast-settings-catalog.mjs --check` verifies language and browser-target choices against admitted pinned data. Run `node scripts/launcher-extension-settings-proof.mts` after the build/runtime staging for hidden Electron component, real preload/IPC, isolated persistence, draft recovery, locale/theme/layout and next-invocation proofs. It never takes foreground control and cleans its full process trees.
+
+### Storage Ownership
+
 The generated catalog contains 100 reviewed settings rows plus two internal keys (`favorites` and `searchEngine.excludedItems`), for 102 runtime keys. `launcher-setting-keys.ts` and `launcher-settings-contract.ts` accept only these keys and typed, bounded values. `launcher-settings-model.ts` distinguishes editable, status-only, and internal values: compatibility hotkey spelling, automatic-rescan/interval, language, and theme rows are not independent runtime controls. Lifecycle/custom-browser controls disable inapplicable platforms; discovery folder fields remain editable compatibility data even for another platform.
 
 DSH ThemeService owns appearance. Main projects `{ mode, skinId, revision }`; the isolated launcher uses reviewed skin tokens or built-in light/dark tokens and ignores older revisions. Canonical locale is projected separately as English or Chinese. Stored Ueli theme/language fields do not override those services.

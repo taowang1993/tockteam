@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 
-Status: Planned; implementation not started or authorized by this request.
+Status: Implemented and verified. See [verification report](../reports/2026-09-20-launcher-extension-settings.md). The remaining text preserves the original planning record; Beads owns current implementation status.
 
 Beads epic: `tockteam-u104`
 
