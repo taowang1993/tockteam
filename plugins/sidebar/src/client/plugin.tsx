@@ -5,6 +5,7 @@ import { Empty } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Slider } from '@tockteam/ui/slider'
 import { Switch } from '@tockteam/ui/switch'
 import { Textarea } from '@tockteam/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
@@ -1919,7 +1920,7 @@ function SidebarSettingsRow({
     void runtime.update({ [key]: enabled })
   }
   return (
-    <div className="tockteam-sidebar-settings box-border grid w-full min-w-0 gap-6 pr-3 pt-0 pb-6 pl-0 text-foreground [&_*]:box-border [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:flex-wrap [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:min-w-0 [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:min-w-0 [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row]:min-h-14 [&_.tockteam-sidebar-settings-row]:py-2 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:min-w-0 [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:flex-wrap [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-sm [&_strong]:font-medium [&_p]:m-0 [&_p]:text-xs [&_p]:leading-[18px] [&_p]:text-muted-foreground [&_small]:m-0 [&_small]:text-xs [&_small]:leading-[18px] [&_small]:text-muted-foreground [&>section]:grid [&>section]:min-w-0 [&>section]:gap-3 [&>section>h3]:m-0 [&>section>h3]:text-base [&>section>h3]:font-semibold [&_input[type='range']]:w-[min(210px,100%)] [&_input[type='range']]:accent-primary [overflow-wrap:anywhere]">
+    <div className="tockteam-sidebar-settings box-border grid w-full min-w-0 gap-6 pr-3 pt-0 pb-6 pl-0 text-foreground [&_*]:box-border [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:flex-wrap [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:min-w-0 [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:min-w-0 [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row]:min-h-14 [&_.tockteam-sidebar-settings-row]:py-2 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:min-w-0 [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:flex-wrap [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-sm [&_strong]:font-medium [&_p]:m-0 [&_p]:text-xs [&_p]:leading-[18px] [&_p]:text-muted-foreground [&_small]:m-0 [&_small]:text-xs [&_small]:leading-[18px] [&_small]:text-muted-foreground [&>section]:grid [&>section]:min-w-0 [&>section]:gap-3 [&>section>h3]:m-0 [&>section>h3]:text-base [&>section>h3]:font-semibold [overflow-wrap:anywhere]">
       <div className="tockteam-sidebar-settings-heading">
         <div>
           <h2 className="m-0 text-lg font-semibold leading-6">{t('settings.title')}</h2>
@@ -1937,20 +1938,23 @@ function SidebarSettingsRow({
           onCheckedChange={setOpenByDefault}
         />
       </Label>
-      <Label unstyled className="tockteam-sidebar-settings-size">
+      <div className="tockteam-sidebar-settings-size">
         <span>
           <strong>{t('settings.width')}</strong>
           <small>{t('settings.width-value', { width: state.width })}</small>
         </span>
-        <Input unstyled
-          type="range"
-          min={SIDEBAR_MIN_WIDTH}
-          max={SIDEBAR_MAX_WIDTH}
-          step="10"
-          value={state.width}
-          onChange={event => { setWidth(Number(event.currentTarget.value)) }}
-        />
-      </Label>
+        <div className="w-52 max-w-full">
+          <Slider
+            aria-label={t('settings.width')}
+            aria-valuetext={t('settings.width-value', { width: state.width })}
+            min={SIDEBAR_MIN_WIDTH}
+            max={SIDEBAR_MAX_WIDTH}
+            step={10}
+            value={[state.width]}
+            onValueChange={([width]) => { setWidth(width!) }}
+          />
+        </div>
+      </div>
       <section>
         <h3>{t('settings.runtime')}</h3>
         <p>{t('settings.runtime-description')}</p>

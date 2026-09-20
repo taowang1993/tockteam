@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tock
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Slider } from '@tockteam/ui/slider'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@tockteam/ui/accordion'
 import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
 import { LauncherLocalSettings } from './launcher-local-settings.tsx'
@@ -395,7 +397,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
           </NativeSelect>
         </Field>
         <Field title={`${launcherFixedText('Fuzziness')} (${fuzzinessDraft.toFixed(1)})`} description="Higher values broaden fuzzy matching.">
-          <Input aria-label={launcherFixedText('Search Fuzziness')} className="w-full max-w-xs min-w-0" type="range" min="0" max="1" step="0.1" disabled={busy} value={fuzzinessDraft} onChange={event => { setFuzzinessDraft(Number(event.target.value)) }} onBlur={() => { void save('searchEngine.fuzziness', fuzzinessDraft) }} />
+          <Slider aria-label={launcherFixedText('Search Fuzziness')} className="w-52 max-w-full" min={0} max={1} step={0.1} disabled={busy} value={[fuzzinessDraft]} onValueChange={([value]) => { setFuzzinessDraft(value!) }} onValueCommit={([value]) => { void save('searchEngine.fuzziness', value!) }} />
         </Field>
         <Field title="Maximum Results" description="Keep result lists concise while retaining pinned items.">
           <Input aria-label={launcherFixedText('Maximum Results')} className="w-24" type="number" min="1" max="200" disabled={busy} value={state.preferences.maxSearchResultItems} onChange={event => { const value = Math.min(200, Math.max(1, Number(event.target.value) || 50)); void save('searchEngine.maxResultLength', value) }} />
@@ -409,7 +411,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Field title="Saved Searches" description="Clear persisted history without changing provider settings.">
           <Button aria-label={launcherFixedText('Clear Search History')} size="sm" variant="outline" disabled={busy || state.history.length === 0} onClick={clearHistory}><Trash2 aria-hidden="true" />{launcherFixedText('Clear History')}</Button>
         </Field>
-        <details className="min-w-0 rounded-md border border-border/60 px-3 py-2"><summary className="cursor-pointer text-sm font-medium">{launcherFixedText('Recent Search Entries')}</summary>{state.history.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">{launcherFixedText('No Recent Searches')}</p> : <ul className="mt-2 max-h-32 min-w-0 list-disc overflow-auto pl-5 text-xs text-muted-foreground">{state.history.map(query => <li key={query} className="min-w-0 break-words" title={query}>{query}</li>)}</ul>}</details>
+        <Accordion type="multiple"><AccordionItem value="history"><AccordionTrigger>{launcherFixedText('Recent Search Entries')}</AccordionTrigger><AccordionContent forceMount>{state.history.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">{launcherFixedText('No Recent Searches')}</p> : <ul className="mt-2 max-h-32 min-w-0 list-disc overflow-auto pl-5 text-xs text-muted-foreground">{state.history.map(query => <li key={query} className="min-w-0 break-words" title={query}>{query}</li>)}</ul>}</AccordionContent></AccordionItem></Accordion>
         <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="search" snapshot={snapshot} />
       </SectionCard>
 

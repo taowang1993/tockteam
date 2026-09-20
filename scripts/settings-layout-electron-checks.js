@@ -17,6 +17,22 @@ async page => {
   for (const name of names) {
     await dialog.locator('nav').getByRole('button', { name, exact: true }).click();
     await page.waitForTimeout(400);
+    if (name === 'General') {
+      const original = dialog.getByRole('radio', { name: 'Original', exact: true });
+      check(await original.count() === 1, 'skin choices use a single-selection shadcn group');
+      if (await original.count()) {
+        await original.focus(); await original.press('ArrowRight');
+        await page.waitForTimeout(100);
+        const next = dialog.getByRole('radio', { name: 'Deep Current', exact: true });
+        check(await next.evaluate(e => document.activeElement === e), 'skin chooser supports arrow-key focus');
+        await next.press('Space');
+        await page.waitForFunction(() => document.body.dataset.tockteamSkin === 'tockteam-skin-deep-current');
+        await original.click();
+        await page.waitForFunction(() => !document.body.dataset.tockteamSkin && document.documentElement.style.colorScheme === 'dark');
+        await original.click();
+        check(await original.isChecked(), 'clicking the selected skin does not clear selection');
+      }
+    }
     const tabs = await dialog.getByRole('tab').allTextContents();
     for (const tab of tabs.length ? tabs : [null]) {
       if (tab) {

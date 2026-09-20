@@ -11,6 +11,8 @@
   },
   "exports": {
     ".": { "types": "./src/index.ts", "browser": "./src/index.ts", "node": "./lib/index.js", "default": "./src/index.ts" },
+    "./accordion": { "types": "./src/accordion.tsx", "browser": "./src/accordion.tsx", "node": "./lib/index.js", "default": "./src/accordion.tsx" },
+    "./slider": { "types": "./src/slider.tsx", "browser": "./src/slider.tsx", "node": "./lib/index.js", "default": "./src/slider.tsx" },
     "./alert": { "types": "./src/alert.tsx", "browser": "./src/alert.tsx", "node": "./lib/index.js", "default": "./src/alert.tsx" },
     "./alert-dialog": { "types": "./src/alert-dialog.tsx", "browser": "./src/alert-dialog.tsx", "node": "./lib/index.js", "default": "./src/alert-dialog.tsx" },
     "./badge": { "types": "./src/badge.tsx", "browser": "./src/badge.tsx", "node": "./lib/index.js", "default": "./src/badge.tsx" },
@@ -47,11 +49,13 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
+    "@radix-ui/react-accordion": "1.2.20",
     "@radix-ui/react-alert-dialog": "1.1.23",
     "@radix-ui/react-checkbox": "1.3.11",
     "@radix-ui/react-dialog": "1.1.23",
     "@radix-ui/react-dropdown-menu": "2.1.24",
     "@radix-ui/react-popover": "1.1.23",
+    "@radix-ui/react-slider": "1.4.7",
     "@radix-ui/react-switch": "1.3.7",
     "@radix-ui/react-toggle": "1.1.18",
     "@radix-ui/react-toggle-group": "1.1.19",

@@ -1,4 +1,4 @@
-import { Button } from '@tockteam/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@tockteam/ui/toggle-group'
 import { defineStore } from '@deepseek-ai/dsh-client-store'
 import { Check } from 'lucide-react'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
@@ -99,19 +99,15 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
         <div className="text-sm font-medium leading-[22px] text-foreground">{t('skins.title')}</div>
         <div className="text-xs leading-[18px] text-subtle-foreground">{t('skins.description')}</div>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] gap-[9px] max-[720px]:grid-cols-2">
+      <ToggleGroup unstyled type="single" aria-label={t('skins.title')} value={activeId || 'original'} disabled={!ready} onValueChange={value => { if (value) setSkin(value === 'original' ? null : value) }} className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] gap-[9px] max-[720px]:grid-cols-2">
         {OPTIONS.map(option => {
           const selected = activeId === (option.id ?? '')
           return (
-            <Button unstyled
+            <ToggleGroupItem unstyled
               key={option.id ?? 'default'}
-              type="button"
-              className="relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-0 text-left font-[inherit] text-foreground transition-[border-color,box-shadow,transform] duration-[120ms] ease-in-out hover:-translate-y-px hover:border-border-strong disabled:cursor-wait disabled:opacity-[.58] disabled:transform-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand data-[selected=true]:border-brand data-[selected=true]:shadow-[0_0_0_1px_var(--dsw-alias-brand-primary)] motion-reduce:transition-none"
-              data-selected={selected}
+              value={option.id ?? 'original'}
+              className="relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-0 text-left font-[inherit] text-foreground transition-[border-color,box-shadow,transform] duration-[120ms] ease-in-out hover:-translate-y-px hover:border-border-strong disabled:cursor-wait disabled:opacity-[.58] disabled:transform-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand data-[state=on]:border-brand data-[state=on]:shadow-[0_0_0_1px_var(--dsw-alias-brand-primary)] motion-reduce:transition-none"
               aria-label={t(option.label)}
-              aria-pressed={selected}
-              disabled={!ready}
-              onClick={() => { setSkin(option.id) }}
             >
               <span
                 className="block aspect-video w-full border-b border-[var(--dsw-alias-border-l1)] bg-cover bg-center"
@@ -127,10 +123,10 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
                   <span className="grid size-[18px] place-items-center rounded-full bg-brand text-brand-foreground [&_svg]:size-3 [&_svg]:stroke-[2.5]" title={t('skins.selected')}><Check aria-hidden="true" /></span>
                 )}
               </span>
-            </Button>
+            </ToggleGroupItem>
           )
         })}
-      </div>
+      </ToggleGroup>
     </div>
   )
 }

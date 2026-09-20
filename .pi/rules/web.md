@@ -144,7 +144,8 @@ Use the existing primitive whose semantics fit:
 
 | Need | Shared component |
 | --- | --- |
-| Actions and form controls | `Button`, `Input`, `Textarea`, `NativeSelect`, `Checkbox`, `Switch` |
+| Actions and form controls | `Button`, `Input`, `Textarea`, `NativeSelect`, `Checkbox`, `Switch`, `Slider` |
+| Expandable settings groups | `Accordion` with `AccordionItem`, `AccordionTrigger`, and `AccordionContent` |
 | Form structure and validation | `Field`, `FieldSet`, `FieldError` |
 | Short exclusive choices | `ToggleGroup` |
 | Modal task or destructive confirmation | `Dialog` or `AlertDialog` |
@@ -180,6 +181,7 @@ Rules:
 - One component owns each section title and description. Embedded section bodies must not repeat their enclosing card header. Use cards only where they clarify grouping; keep inherited flat settings layouts intact.
 - Associate a single control with its visible label and helper text. Compound rows use named groups and individually named controls, not a label that toggles an arbitrary child. Preserve existing error-description IDs.
 - Give labels a readable minimum measure and let control groups wrap below them when space runs out. Constrain controls and preset grids to the available container width. Check descendant overflow, not only document overflow, and reserve space for expanded switch/checkbox hit targets.
+- Expandable settings groups use `Accordion type="multiple"`; keep their content mounted with `forceMount` so invalid or unsaved drafts survive collapse. The shared content hides closed controls from keyboard navigation. Slider names and help belong on the focusable thumb; use `onValueChange` for draft/live updates and `onValueCommit` for persisted changes.
 - Use the shared default switch for ordinary settings rows; use `size="sm"` only for an explicitly compact surface. Keep its round corners, contrast, expanded hit area, and reduced-motion behavior.
 
 ### Controls

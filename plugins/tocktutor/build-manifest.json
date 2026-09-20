@@ -563,11 +563,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client-bundle.js",
-      "sha256": "9e0068f8988196c1d74fa0148f89338ddda9690d6e16082063b9a478bb0eb677"
+      "sha256": "6107dfcba9cf1ce734fa0a54f9dad566525244993a78a304d59344089e71731a"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client-bundle.js.map",
-      "sha256": "6ebe761bd642ad9c3f42f8eacadce0b5c26da505653aab8a53a18616acd7c35c"
+      "sha256": "2b66b23b88988f50197fdb230be3bc1fd9ae8746106c3199269e0f834fe3b12e"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/client.d.ts",
@@ -2875,7 +2875,7 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "b6ca0d8a48cc74d4403b2a493fb2798fb78b7c0777fe00f7919fbdfbfb54b358"
+      "sha256": "f78f50f43c65de352f5aa984dc3e545f859d87a04f920b62c7d1804254d107c3"
     },
     {
       "path": "pnpm-workspace.yaml",
