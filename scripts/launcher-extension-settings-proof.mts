@@ -46,7 +46,6 @@ import * as jsxRuntime from 'react/jsx-runtime';
 import { Settings, Database, SlidersHorizontal, X } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import { apply } from '${root}/src/launcher-settings.tsx';
-import { launcherOriginalThemeTokens } from '${root}/src/launcher-theme.ts';
 import { launcherExtensionPages } from '${root}/src/launcher-extension-settings.ts';
 import { TOCKTEAM_SKINS } from '${root}/plugins/skins/src/skins.ts';
 let state = { active: 'en', revision: 0 };
@@ -70,12 +69,13 @@ function Shell() { React.useSyncExternalStore(locale.subscribe, locale.getSnapsh
 const render = () => renderRoot.render(React.createElement(Shell));
 function theme(mode, skin = null) {
   document.documentElement.removeAttribute('style'); delete document.documentElement.dataset.tockteamSkin;
-  for (const [key, value] of Object.entries(launcherOriginalThemeTokens(mode))) document.documentElement.style.setProperty(key, value);
+  for (const key of [...document.body.style]) if (key.startsWith('--dsw-')) document.body.style.removeProperty(key);
+  document.body.toggleAttribute('data-ds-dark-theme', mode === 'dark');
   document.documentElement.style.colorScheme = mode;
   document.documentElement.style.setProperty('--tockteam-titlebar-height', '0px');
   document.documentElement.style.setProperty('--tockteam-rail-width', '0px');
   document.documentElement.style.setProperty('--tockteam-primary-sidebar-width', '280px');
-  if (skin) { for (const [key, value] of Object.entries(skin.tokens)) document.documentElement.style.setProperty(key, value); document.documentElement.dataset.tockteamSkin = skin.id; }
+  if (skin) { for (const [key, value] of Object.entries(skin.tokens)) document.body.style.setProperty(key, value); document.documentElement.dataset.tockteamSkin = skin.id; }
 }
 document.documentElement.classList.add('tockteam-desktop-shell');
 document.documentElement.dataset.tockteamSettingsPage = 'true';
@@ -129,7 +129,11 @@ app.on('before-quit', () => { server.closeAllConnections(); server.close(); });
 })().catch(error => { console.error(error); app.exit(1); });
 `
 try {
-  await writeFile(join(evidence, 'style.css'), (await Promise.all(assets.filter(file => file.endsWith('.css')).map(file => readFile(join(assetsRoot, file), 'utf8')))).join('\n') + '\n' + await buildTailwindCss(root))
+  // Settings uses the pinned DSH theme sheets, not the isolated launcher's palette.
+  const themeBundle = await readFile(join(root, '.stage/dsh-runtime/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-client-ui-theme/lib/client.js'), 'utf8')
+  const themeSheets = [...themeBundle.matchAll(/var (?:base|corner_shape|design_platform|scrollbar|gradient_shadow_text|shiki)_css_default = ("(?:\\.|[^"\\])*");/gu)].map(match => JSON.parse(match[1]!))
+  assert.equal(themeSheets.length, 6, 'all pinned theme stylesheets found')
+  await writeFile(join(evidence, 'style.css'), (await Promise.all(assets.filter(file => file.endsWith('.css')).map(file => readFile(join(assetsRoot, file), 'utf8')))).join('\n') + '\n' + themeSheets.join('\n') + '\n' + await buildTailwindCss(root))
   await writeFile(join(evidence, 'settings-shell.js'), await readFile(join(root, '.stage/dsh-runtime/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-client-ui-settings-general/lib/client.js')))
   await mkdir(join(evidence, 'profile'))
   await writeFile(join(evidence, 'profile/skins.json'), JSON.stringify({ activeId: null, fallbackTheme: 'dark' }))
@@ -160,8 +164,7 @@ try {
     await page.getByRole('button', { name: 'TockLauncher', exact: true }).click();
     check(await page.locator('nav button[aria-expanded]').count() > 0, 'TockLauncher must be a sidebar disclosure');
     await page.locator('[data-testid="tocklauncher-settings"]').waitFor();
-    // Force space-consuming scrollbars even on hosts configured to use overlays.
-    const scrollbarStyle = await page.addStyleTag({ content: '[role="dialog"] > nav::-webkit-scrollbar { width: 15px; }' });
+    // The pinned theme supplies space-consuming 8px scrollbars, including on overlay-scrollbar hosts.
     const sidebarGeometry = () => page.evaluate(() => {
       const nav = document.querySelector('[role="dialog"] > nav');
       return { overflowing: nav.scrollHeight > nav.clientHeight, layout: [nav, nav.querySelector('button'), document.querySelector('[data-tocklauncher-navigation] button[aria-controls$="-extensions"]'), document.querySelector('[data-testid="tocklauncher-settings"]')].map(node => { const { x, width } = node.getBoundingClientRect(); return { x, width, clientWidth: node.clientWidth }; }) };
@@ -181,7 +184,7 @@ try {
       check(JSON.stringify(collapsed) === JSON.stringify(await sidebarGeometry()), 'collapsing must not shift layout');
       sidebarLayouts.push({ mode, collapsed, expanded, filtered });
     }
-    await scrollbarStyle.evaluate(node => node.remove()); await page.evaluate(() => window.proof.theme('dark'));
+    await page.evaluate(() => window.proof.theme('dark'));
     await page.getByRole('button', { name: 'Extensions', exact: true }).click();
     await page.getByRole('searchbox', { name: 'Search Extensions' }).waitFor();
     const pages = await page.evaluate(() => window.proof.pages);
@@ -196,6 +199,34 @@ try {
     const row = await page.locator('button[data-extension-id="google-translate"]').boundingBox(); check(row.height >= 30 && row.height <= 40, 'compact sidebar rows');
     const open = async id => { await page.locator('button[data-extension-id="' + id + '"]').click(); await page.locator('[data-extension-heading]').waitFor(); };
     const back = async () => { await page.locator('[data-tocklauncher-navigation]').getByRole('button', { name: 'General', exact: true }).click(); };
+    const controlAppearance = [];
+    await open('google-translate');
+    for (const theme of [{ id: 'dark', colorScheme: 'dark' }, { id: 'light', colorScheme: 'light' }, ...await page.evaluate(() => window.proof.skins)]) {
+      await page.evaluate(theme => window.proof.theme(theme.colorScheme, theme.tokens ? theme : null), theme);
+      const save = page.getByRole('button', { name: 'Save Preferences', exact: true }); await save.waitFor();
+      const colors = await save.evaluate(async node => {
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); node.getAnimations().forEach(animation => animation.finish());
+        const style = getComputedStyle(node);
+        const luminance = color => { const [r, g, b] = color.match(/[\\d.]+/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return r * 0.2126 + g * 0.7152 + b * 0.0722; };
+        const foreground = luminance(style.color); const background = luminance(style.backgroundColor);
+        return { foreground: style.color, background: style.backgroundColor, contrast: (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05) };
+      });
+      check(colors.contrast >= 4.5, 'Save Preferences text contrast: ' + JSON.stringify({ theme: theme.id, ...colors }));
+      const search = page.getByRole('searchbox', { name: 'Search Extensions' });
+      const searchStyle = () => search.evaluate(async node => {
+        await new Promise(resolve => requestAnimationFrame(resolve)); node.getAnimations().forEach(animation => animation.finish());
+        const style = getComputedStyle(node); return { focused: document.activeElement === node, border: style.borderColor, shadow: style.boxShadow, outline: style.outlineStyle };
+      });
+      await page.getByRole('button', { name: 'Extensions', exact: true }).focus(); const resting = await searchStyle();
+      await page.keyboard.press('Tab'); const keyboard = await searchStyle();
+      check(keyboard.focused && keyboard.border !== resting.border, 'search keeps a visible keyboard focus cue');
+      check(!/[1-9][\\d.]*px/.test(keyboard.shadow) && keyboard.outline === 'none', 'search focus has no outer ring: ' + JSON.stringify(keyboard));
+      await search.blur(); await search.click(); const pointer = await searchStyle();
+      check(pointer.focused && !/[1-9][\\d.]*px/.test(pointer.shadow) && pointer.outline === 'none', 'pointer focus has no outer ring');
+      await search.blur();
+      controlAppearance.push({ theme: theme.id, ...colors, search: { resting, keyboard, pointer } });
+    }
+    await page.evaluate(() => window.proof.theme('dark')); await back();
     for (const item of pages) { await open(item.id); check(await page.locator('[data-testid="tocklauncher-extension-detail"]').getAttribute('data-extension-id') === item.id, item.id); if (item.editor === 'compatibility') await page.getByRole('button', { name: 'Save Preferences', exact: true }).waitFor(); await back(); }
     await page.getByRole('searchbox').fill('precision'); check(await page.locator('button[data-extension-id]:visible').count() === 1, 'field search');
     await page.getByRole('searchbox').press('Tab'); await page.keyboard.press('Enter'); const precision = page.getByRole('spinbutton', { name: 'Calculator Precision', exact: true }); await precision.waitFor(); await precision.fill('4'); await precision.blur();
@@ -215,6 +246,7 @@ try {
     await page.getByText('Advanced', { exact: true }).click(); const proxy = page.getByRole('textbox', { name: 'Proxy Override', exact: true }); await proxy.fill('http://127.0.0.1:58309'); await proxy.blur();
     await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getExtension('google-translate')).values.proxy === 'http://127.0.0.1:58309');
     await page.getByRole('button', { name: 'Use System Proxy', exact: true }).click(); await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getExtension('google-translate')).values.proxy === '');
+    await page.locator('[data-testid="tocklauncher-preferences-google-translate"] button[data-variant="default"]:enabled').waitFor();
     await page.evaluate(async () => { const before = await window.dshDesktop.launcher.settings.getExtension('google-translate'); await window.dshDesktop.launcher.settings.updateExtension({ extensionId: before.extensionId, revision: before.revision, patch: { lang2: 'fr' } }); });
     await page.getByRole('switch', { name: 'Enable google-translate', exact: true }).click(); await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getExtension('google-translate')).state.enabled);
     await page.getByRole('combobox', { name: 'Primary Language', exact: true }).selectOption('de'); await page.getByText('Settings changed elsewhere. Refresh, review your edits, and save again.', { exact: true }).waitFor();
@@ -248,7 +280,7 @@ try {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false }); await page.evaluate(() => window.proof.theme('dark'));
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Discard and Leave', exact: true }).click(); await page.waitForFunction(() => window.proof.closed === 1);
     await page.reload(); await page.getByRole('button', { name: 'Settings', exact: true }).click(); await page.getByRole('button', { name: 'TockLauncher', exact: true }).click(); await page.getByRole('button', { name: 'Extensions', exact: true }).click(); await open('Calculator'); check(await precision.inputValue() === '6', 'accepted value survives reopen');
-    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
+    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, controlAppearance, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
   }`)
   const proof = JSON.parse(result.split('### Result\n')[1]!.split('\n###')[0]!)
   await writeFile(join(evidence, 'translate-dark.png'), Buffer.from(proof.screenshot, 'base64')); delete proof.screenshot

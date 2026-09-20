@@ -75,7 +75,7 @@ export function LauncherSettingsSidebar({ navigation, locale }: Readonly<{ navig
         <Button unstyled className="launcher-settings-nav-row" aria-expanded={extensionsOpen} aria-controls={`${id}-extensions`} onClick={() => setExtensionsOpen(!extensionsOpen)}><Blocks aria-hidden="true" /><span>{fixed('Extensions')}</span>{extensionsOpen ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</Button>
         <div id={`${id}-extensions`} hidden={!extensionsOpen}>
           <div className="flex min-w-0 flex-col gap-1 pl-3">
-            <Input className="my-1 h-8 min-w-0" type="search" aria-label={fixed('Search Extensions')} placeholder={fixed('Search Extensions')} value={query} maxLength={256} onChange={event => setQuery(event.target.value)} />
+            <Input className="my-1 h-8 min-w-0 focus-visible:ring-0!" type="search" aria-label={fixed('Search Extensions')} placeholder={fixed('Search Extensions')} value={query} maxLength={256} onChange={event => setQuery(event.target.value)} />
             {ordered.map(page => {
               const Icon = page.id === 'google-translate' ? Languages : page.id === 'can-i-use' ? Braces : page.id === 'kaomoji-search' ? Smile : Puzzle
               return <Button unstyled key={page.id} className="launcher-settings-nav-row" data-extension-id={page.id} title={fixed(page.label)} aria-current={active && selected === page.id ? 'page' : undefined} onClick={() => choose(page.id)}><Icon aria-hidden="true" /><span>{fixed(page.label)}</span></Button>
