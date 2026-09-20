@@ -63,7 +63,7 @@ Use this precedence when sources disagree:
 | TockTutor workbench and assistant                           | `plugins/tocktutor/packages/*/src/`; Desktop only today      |
 | TUI rendering                                               | Pinned `dsh-TUI`; outside this document                      |
 
-Web must not emulate Electron authority. The current `web/cordis.patch.yml` composes the Web identity, Better Sidebar runtime, skins, pinned summary, sidebar, and panel controls; it intentionally omits the Desktop bridge, TockLauncher, marketplace, and TockTutor. Gate optional UI on the actual surface or service instead of fabricating `window.dshDesktop` behavior.
+Web must not emulate Electron authority. The current `web/cordis.patch.yml` composes the Web identity, Better Sidebar runtime, skins, pinned summary, Save as Image, sidebar, and panel controls; it intentionally omits the Desktop bridge, TockLauncher, marketplace, and TockTutor. Gate optional UI on the actual surface or service instead of fabricating `window.dshDesktop` behavior.
 
 ## 2. Theme and Color
 
@@ -71,7 +71,7 @@ Web must not emulate Electron authority. The current `web/cordis.patch.yml` comp
 
 - `plugins/skins/src/skins.ts` defines the official Deep Current, Jade Circuit, Porcelain, and Ember Dusk skins.
 - The injected DSH ThemeService applies the active theme.
-- `plugins/skins/src/client/skin-dom.ts` owns only `data-tockteam-skin` and optional skin atmosphere CSS.
+- `plugins/skins/src/client/skin-dom.ts` owns `data-tockteam-skin` on `body` and optional skin atmosphere CSS; the document's `color-scheme` is owned by ThemeService.
 - `plugins/skins/src/tui-adapter.ts` projects the same catalog into TUI semantic colors; it is not a second palette.
 
 ### Semantic Tokens
@@ -101,6 +101,10 @@ Combine them with utilities such as `bg-surface`, `bg-popover`, `text-foreground
 Raw colors are allowed only when they are intrinsic data or a documented boundary: skin catalog values and previews, terminal ANSI fallbacks, product marks, syntax/diff data, or a pinned upstream compatibility seam. Existing raw values are not automatically reusable tokens.
 
 Every change must remain legible in the built-in light and dark themes and all four TockTeam skins. Do not assume a white background or a purple accent.
+
+- Verify foreground/fill pairs, not token names: `brand-primary-invert` is not a contrasting foreground in the pinned built-in themes. Shared `primary-foreground` and `brand-foreground` use `--dsw-alias-label-primary-inverted`. Measure at least 4.5:1 for ordinary text and 3:1 for essential control marks, including selected/checked states.
+- Application appearance can differ from system appearance. Bare Tailwind `dark:` follows the system media query in this integration; use semantic colors for application UI instead. Verify dark-app/light-system and light-app/dark-system cases.
+- Feature-local aliases and ancestor focus rules do not inherit across a body portal. Define portaled surface aliases directly from body-visible DSH tokens, and give the portal its own focus treatment. Do not globalize feature aliases or use hardcoded palette fallbacks to hide a missing scope.
 
 ## 3. Typography and Copy
 
@@ -169,10 +173,19 @@ Rules:
 - Register injected styles, slots, listeners, and DOM effects through Cordis lifecycle ownership so unload removes them.
 - Do not edit `upstream/*` for TockTeam styling. Use the existing downstream adapter or bundle layer.
 
+### Settings Composition
+
+- Full first-party settings pages use an 18px semibold `h2`; sections use 16px semibold `h3`; row labels use 14px medium text, and helper copy uses 12px text with an 18px line height. Nested headings follow the semantic order. This is a settings recipe, not a new global typography system; pinned DSH pages and compact popovers retain documented local hierarchies.
+- One component owns each section title and description. Embedded section bodies must not repeat their enclosing card header. Use cards only where they clarify grouping; keep inherited flat settings layouts intact.
+- Associate a single control with its visible label and helper text. Compound rows use named groups and individually named controls, not a label that toggles an arbitrary child. Preserve existing error-description IDs.
+- Give labels a readable minimum measure and let control groups wrap below them when space runs out. Constrain controls and preset grids to the available container width. Check descendant overflow, not only document overflow, and reserve space for expanded switch/checkbox hit targets.
+- Use the shared default switch for ordinary settings rows; use `size="sm"` only for an explicitly compact surface. Keep its round corners, contrast, expanded hit area, and reduced-motion behavior.
+
 ### Controls
 
 - Use `<button>` for actions and `<a>` for navigation.
 - Form controls need visible labels or `aria-label`.
+- Tailwind Preflight is deliberately not imported. Shared primitives own required box sizing, margins, padding, native appearance, and font treatment without globally resetting DSH. A declared `h-8` must render 32px including borders/padding; field descriptions must not retain native paragraph margins. Range inputs retain native slider behavior and must not inherit text-input borders or padding.
 - Keep disabled, loading, selected, hover, active, and focus-visible states distinct.
 - Use concise action labels. Destructive actions need confirmation or a recoverable transaction.
 - Do not block paste or browser zoom.
@@ -209,7 +222,7 @@ Treat these as compatibility metrics, not a general spacing scale.
 
 - Motion must explain state, continuity, or spatial origin. Frequent controls should feel immediate.
 - Prefer `transform` and `opacity`. List transitioned properties instead of using unbounded `transition: all`.
-- Existing shell transitions generally use roughly 120–180ms for local state and longer, explicitly scoped transitions for large TockTutor panels.
+- Existing shell transitions generally use roughly 120–180ms for local state; the shared switch intentionally uses a 200ms eased translate/color transition. Large TockTutor panels have longer scoped transitions. These are component choices, not one universal duration.
 - Opening and closing behavior must remain interruptible and must not leave hidden content interactive.
 - Honor `prefers-reduced-motion: reduce` by removing nonessential transitions and animation.
 - Do not animate layout continuously during pointer resizing.
@@ -271,7 +284,11 @@ pnpm test
 pnpm run build
 ```
 
-For TockTeam Web launcher, profile, or bundle changes, also run `pnpm run smoke:web`. Use `playwright-cli` for browser-visible flows and the established Electron verification path for Desktop-only flows. Check keyboard focus, Escape and outside dismissal, focus restoration, reduced motion, narrow layouts, long content, and every affected theme. Stop every browser server, Electron app, and child process started for verification. Do not add screenshot baselines or visual tooling unless the repository needs repeatable regression evidence.
+Rendered verification uses **Electron only**, controlled through app-scoped Playwright/CDP. Do not open standalone browser pages or a system browser for tests. Use hidden/isolated Electron windows, a temporary user-data directory, and `--use-mock-keychain`; preserve `HOME` and never touch the user's Keychain. Any exception requires explicit user approval. Web launcher/profile/bundle changes may additionally use non-browser HTTP checks with automatic opening disabled.
+
+Run `node scripts/settings-design-electron-proof.mjs` for the settings regression checks. Its component fixtures use actual pinned DSH theme CSS, not a synthetic palette that masks missing tokens, native margins, or global corner rules. It is not a substitute for a real Desktop flow when IPC or composition changes.
+
+Verify actual geometry and contrast, keyboard focus, Escape and outside dismissal, focus restoration, reduced motion, narrow containers, long content, loading/error/selected states, and every affected theme/skin. Confirm screenshots are 1512 × 949 CSS pixels at 2× (3024 × 1898 PNG pixels); record route/content/mode and runtime errors. Stop the entire Electron/runtime process tree in `finally` and verify no owned descendants remain. Publish only explicitly allowlisted screenshots transactionally; do not refresh baselines merely to make a failing visual check pass.
 
 ## 11. Do and Don't
 
