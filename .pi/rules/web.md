@@ -175,7 +175,8 @@ Rules:
 
 ### Settings Composition
 
-- Full first-party settings pages use an 18px semibold `h2`; sections use 16px semibold `h3`; row labels use 14px medium text, and helper copy uses 12px text with an 18px line height. Nested headings follow the semantic order. This is a settings recipe, not a new global typography system; pinned DSH pages and compact popovers retain documented local hierarchies.
+- Full settings pages use an 18px semibold `h2` with a 24px line height; sections use 16px semibold `h3`; row labels use 14px medium text, and helper copy uses 12px text with an 18px line height. Nested headings follow the semantic order. This is a settings recipe, not a new global typography system; compact popovers retain their local hierarchies. Pinned DSH page-title compatibility rules stay revision-bound.
+- The settings shell owns the page inset. Page roots must not add top/left padding or auto-centering that moves their title away from sibling pages. Verify actual title coordinates across every settings page with `node scripts/settings-layout-electron-proof.mjs`; component-only captures cannot catch offsets introduced by the real shell.
 - One component owns each section title and description. Embedded section bodies must not repeat their enclosing card header. Use cards only where they clarify grouping; keep inherited flat settings layouts intact.
 - Associate a single control with its visible label and helper text. Compound rows use named groups and individually named controls, not a label that toggles an arbitrary child. Preserve existing error-description IDs.
 - Give labels a readable minimum measure and let control groups wrap below them when space runs out. Constrain controls and preset grids to the available container width. Check descendant overflow, not only document overflow, and reserve space for expanded switch/checkbox hit targets.

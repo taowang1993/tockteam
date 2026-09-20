@@ -38,14 +38,14 @@ interface SkinRowProps {
 
 interface SlotsService {
   inject(name: string, register: () => unknown): void
-  register(options: {
+  register<Props>(options: {
     id: string
-    inject(actions: BoundSkinActions): { setSkin(id: string | null): void }
+    inject?(actions: BoundSkinActions): { setSkin(id: string | null): void }
     locale: string
     name: string
     order: number
-    store: unknown
-  }, component: (props: SkinRowProps) => JSX.Element): unknown
+    store?: unknown
+  }, component: (props: Props) => JSX.Element): unknown
 }
 
 interface ClientContext {
@@ -230,6 +230,16 @@ export function apply(ctx: ClientContext): void {
       void removeService?.()
     }
   }, 'tockteam-skins: controller')
+
+  // The pinned General section has no heading; use its own localized nav label.
+  slots.inject('settings.general.item', () => slots.register({
+    name: 'settings.general.item',
+    id: 'tockteam-general-heading',
+    order: -100,
+    locale: 'settings',
+  }, ({ t }: { t: (key: 'general.nav') => string }) => (
+    <h2 className="m-0 mb-3 text-lg font-semibold leading-6 text-foreground">{t('general.nav')}</h2>
+  )))
 
   slots.inject('settings.general.item', () => slots.register({
     name: 'settings.general.item',

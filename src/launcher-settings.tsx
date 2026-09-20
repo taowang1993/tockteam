@@ -378,10 +378,10 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-5 px-1 py-4" data-testid="tocklauncher-settings">
+    <div className="flex w-full min-w-0 flex-col gap-5" data-testid="tocklauncher-settings">
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="m-0 text-lg font-semibold text-foreground">{t('title')}</h2>
+          <h2 className="m-0 text-lg font-semibold leading-6 text-foreground">{t('title')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t('description')}</p>
         </div>
         <Badge variant="secondary">{t('badge')}</Badge>
