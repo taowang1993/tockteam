@@ -191,9 +191,40 @@ try {
     check(await page.locator('button[data-extension-id]').count() === 27, 'all 27 extensions');
     const sidebar = page.locator('[data-tocklauncher-navigation]');
     check(await page.locator('[data-testid="tocklauncher-settings"] nav').count() === 0, 'no duplicate in-page navigation');
-    await sidebar.getByRole('button', { name: 'TockLauncher', exact: true }).focus(); await page.keyboard.press('Space');
+    const launcherToggle = sidebar.getByRole('button', { name: 'TockLauncher', exact: true });
+    const fullMenuHeight = await launcherToggle.evaluate(button => document.getElementById(button.getAttribute('aria-controls')).getBoundingClientRect().height);
+    const menuMotion = [];
+    const sampleMenuMotion = async (expanded, reduced = false) => {
+      const sample = await launcherToggle.evaluate(async (button, reduced) => {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const menu = document.getElementById(button.getAttribute('aria-controls')); const arrow = button.lastElementChild;
+        const animations = [...menu.getAnimations(), ...arrow.getAnimations()];
+        const read = () => ({ height: menu.getBoundingClientRect().height, rotation: getComputedStyle(arrow).rotate, visibility: getComputedStyle(menu).visibility });
+        const durations = animations.map(animation => Number(animation.effect.getTiming().duration));
+        for (const animation of animations) { animation.pause(); animation.currentTime = Number(animation.effect.getTiming().duration) / 2; }
+        const middle = read();
+        if (menu.inert) { menu.querySelector('button').focus(); if (menu.contains(document.activeElement)) throw Error('collapsed menu must not receive focus'); }
+        for (const animation of animations) animation.finish();
+        return { expanded: button.getAttribute('aria-expanded') === 'true', inert: menu.inert, hidden: menu.getAttribute('aria-hidden'), durations, middle, end: read(), reduced };
+      }, reduced);
+      check(sample.expanded === expanded && sample.inert !== expanded, 'menu state and keyboard access agree: ' + JSON.stringify({ expectedExpanded: expanded, ...sample }));
+      check(reduced ? sample.durations.length === 0 : sample.durations.length >= 2 && sample.durations.every(ms => ms > 0 && ms <= 240), 'menu and arrow animate promptly in both directions unless motion is reduced: ' + JSON.stringify(sample));
+      if (!reduced) check(sample.middle.height > 0 && sample.middle.height < fullMenuHeight && sample.middle.rotation !== sample.end.rotation, 'menu and arrow have intermediate frames');
+      check(expanded ? sample.end.height > 0 && sample.end.visibility === 'visible' : sample.end.height === 0 && sample.end.visibility === 'hidden' && sample.hidden === 'true', 'disclosure settles to the requested state');
+      menuMotion.push(sample);
+    };
+    await launcherToggle.focus(); await page.keyboard.press('Space'); await sampleMenuMotion(false);
     check(!(await sidebar.getByRole('button', { name: 'Extensions', exact: true }).isVisible()), 'parent collapses from keyboard');
-    await page.keyboard.press('Space'); await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
+    await page.keyboard.press('Space'); await sampleMenuMotion(true);
+    // Reverse an in-flight close rather than forcing it to finish first.
+    await page.keyboard.press('Space');
+    await launcherToggle.evaluate(button => { const menu = document.getElementById(button.getAttribute('aria-controls')); for (const animation of [...menu.getAnimations(), ...button.lastElementChild.getAnimations()]) { animation.pause(); animation.currentTime = Number(animation.effect.getTiming().duration) / 2; } });
+    await page.keyboard.press('Space'); await sampleMenuMotion(true);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await launcherToggle.click(); await sampleMenuMotion(false, true);
+    await launcherToggle.click(); await sampleMenuMotion(true, true);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
     check(await page.locator('button[data-extension-id]:visible').count() === 0, 'Extensions collapses independently');
     await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
     const row = await page.locator('button[data-extension-id="google-translate"]').boundingBox(); check(row.height >= 30 && row.height <= 40, 'compact sidebar rows');
@@ -237,6 +268,7 @@ try {
     await page.getByRole('button', { name: 'Models', exact: true }).click(); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Keep Editing' }).click(); check(await precision.inputValue() === '13', 'leaving TockLauncher protects drafts');
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Keep Editing' }).click(); check(await precision.inputValue() === '13', 'cancel discard retains input');
     await precision.fill('6'); await precision.blur(); await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getSnapshot()).values['extension[Calculator].precision'] === 6);
+    await page.getByText('Saved.', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Models', exact: true }).click(); await page.getByRole('heading', { name: 'Models', exact: true }).waitFor();
     await open('Calculator'); check(await precision.inputValue() === '6', 'sidebar activates launcher from another section');
     await back(); await open('UuidGenerator'); const formats = page.getByRole('textbox', { name: 'UUID Search Result Formats', exact: true }); await formats.fill('{bad'); await formats.blur(); await back(); await open('UuidGenerator'); check(await formats.inputValue() === '{bad', 'invalid JSON survives navigation');
@@ -280,7 +312,7 @@ try {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false }); await page.evaluate(() => window.proof.theme('dark'));
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Discard and Leave', exact: true }).click(); await page.waitForFunction(() => window.proof.closed === 1);
     await page.reload(); await page.getByRole('button', { name: 'Settings', exact: true }).click(); await page.getByRole('button', { name: 'TockLauncher', exact: true }).click(); await page.getByRole('button', { name: 'Extensions', exact: true }).click(); await open('Calculator'); check(await precision.inputValue() === '6', 'accepted value survives reopen');
-    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, controlAppearance, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
+    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, controlAppearance, menuMotion, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
   }`)
   const proof = JSON.parse(result.split('### Result\n')[1]!.split('\n###')[0]!)
   await writeFile(join(evidence, 'translate-dark.png'), Buffer.from(proof.screenshot, 'base64')); delete proof.screenshot

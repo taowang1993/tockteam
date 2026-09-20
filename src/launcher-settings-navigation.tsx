@@ -66,11 +66,11 @@ export function LauncherSettingsSidebar({ navigation, locale }: Readonly<{ navig
   const matches = findLauncherExtensionPages(query, fixed)
   const ordered = [...matches.filter(page => page.editor === 'compatibility'), ...matches.filter(page => page.editor !== 'compatibility')]
   return <><span ref={anchor} hidden />{host && createPortal(<>
-    <Button unstyled className="launcher-settings-nav-row" aria-expanded={expanded} aria-controls={`${id}-pages`} onClick={() => { setExpanded(!active || !expanded); if (!active) choose('general') }}>
-      <Zap aria-hidden="true" /><span>TockLauncher</span>{expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+    <Button unstyled className="launcher-settings-nav-row group" aria-expanded={expanded} aria-controls={`${id}-pages`} onClick={() => { setExpanded(!active || !expanded); if (!active) choose('general') }}>
+      <Zap aria-hidden="true" /><span>TockLauncher</span><ChevronRight aria-hidden="true" className="transition-transform duration-200 ease-out group-aria-expanded:rotate-90 motion-reduce:transition-none" />
     </Button>
-    <div id={`${id}-pages`} hidden={!expanded}>
-      <div className="pl-3">
+    <div id={`${id}-pages`} aria-hidden={!expanded} ref={node => { if (node) node.inert = !expanded }} className="grid grid-rows-[1fr] transition-[grid-template-rows,opacity,visibility] duration-200 ease-out aria-hidden:grid-rows-[0fr] aria-hidden:invisible aria-hidden:opacity-0 motion-reduce:transition-none">
+      <div className="min-h-0 overflow-hidden pl-3">
         <Button unstyled className="launcher-settings-nav-row" aria-current={active && selected === 'general' ? 'page' : undefined} onClick={() => choose('general')}><Settings2 aria-hidden="true" /><span>{fixed('General')}</span></Button>
         <Button unstyled className="launcher-settings-nav-row" aria-expanded={extensionsOpen} aria-controls={`${id}-extensions`} onClick={() => setExtensionsOpen(!extensionsOpen)}><Blocks aria-hidden="true" /><span>{fixed('Extensions')}</span>{extensionsOpen ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</Button>
         <div id={`${id}-extensions`} hidden={!extensionsOpen}>
