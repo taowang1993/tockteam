@@ -257,8 +257,9 @@ function showSettingsAfterRoute(section?: 'tocklauncher', extensionId?: Launcher
   const selectLauncherSection = (): void => {
     let attempts = 0
     const attempt = (): void => {
-      const section = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')]
-        .find(button => button.textContent?.trim() === 'TockLauncher')
+      const section = document.querySelector<HTMLButtonElement>('[data-tocklauncher-settings-trigger]')
+        ?? [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')]
+          .find(button => button.textContent?.trim() === 'TockLauncher')
       if (section !== undefined) {
         section.click()
         let destinationAttempts = 0

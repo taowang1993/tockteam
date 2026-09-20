@@ -124,6 +124,7 @@ const FIXED_ZH: Readonly<Record<string, string>> = Object.freeze({
   'Keep Editing': '继续编辑',
   'Discard and Leave': '放弃并退出',
   'Search Extensions': '搜索扩展',
+  'General': '通用',
   'General Settings': '通用设置',
   'TockLauncher Settings': 'TockLauncher 设置',
   'Back to Extensions': '返回扩展',

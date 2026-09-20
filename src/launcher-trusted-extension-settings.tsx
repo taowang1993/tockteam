@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { Badge } from '@tockteam/ui/badge'
 import { Button } from '@tockteam/ui/button'
 import { Input } from '@tockteam/ui/input'
+import { FieldGroup } from '@tockteam/ui/field'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
 import { Switch } from '@tockteam/ui/switch'
 import { useLauncherDirtyState } from './launcher-settings-dirty.ts'
@@ -84,18 +85,21 @@ export function LauncherTrustedExtensionSettings({ id, active, settings }: Reado
   return <div hidden={!active} data-testid={`tocklauncher-preferences-${id}`}>
     <div className="flex flex-col gap-4">
       <Field title="Enabled" description="Opening settings does not install or start this extension.">
+        {(!state.enabled || state.recovery || !state.active || !state.installed) && <Badge variant="secondary">{fixed(state.recovery ? 'Recovery Required' : !state.active ? 'Unavailable' : !state.installed ? 'Not Installed' : 'Disabled')}</Badge>}
         <Switch aria-label={`${fixed('Enable')} ${id}`} disabled={busy || !state.active || !state.installed || !state.digestApproved || state.recovery !== ''} checked={state.enabled} onCheckedChange={checked => {
           setBusy(true); setError('')
           void settings.setExtensionEnabled(id, checked).then(next => { if (alive.current) setSnapshot(previous => previous ? { ...previous, state: next.state } : next) }).catch(() => setError(fixed('Extension enablement could not be changed.'))).finally(() => { if (alive.current) setBusy(false) })
         }} />
       </Field>
-      <Badge variant="secondary" className="self-start">{fixed(state.recovery ? 'Recovery Required' : !state.active ? 'Unavailable' : !state.installed ? 'Not Installed' : state.enabled ? 'Enabled' : 'Disabled')}</Badge>
       {(!state.installed || !state.digestApproved || state.recovery !== '') && <Alert role="note"><ShieldCheck aria-hidden="true" /><AlertTitle>{fixed('Explicit Setup Required')}</AlertTitle><AlertDescription>{fixed('Use Extensions in TockLauncher to review, approve, or recover this extension. Preferences can be saved before setup.')}</AlertDescription></Alert>}
-      <p className="text-sm text-muted-foreground">{fixed('Changes apply the next time you open this extension.')}</p>
-      {id === 'google-translate' && <p className="text-sm text-muted-foreground">{fixed('Language defaults do not replace your saved language sets.')}</p>}
-      {id === 'can-i-use' && <p className="text-sm text-muted-foreground">{fixed('Use exact browser versions, such as chrome 100, firefox 100. Automatic queries and workspace configuration are unavailable.')}</p>}
+      <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+        <p className="m-0">{fixed('Changes apply the next time you open this extension.')}</p>
+        {id === 'google-translate' && <p className="m-0">{fixed('Language defaults do not replace your saved language sets.')}</p>}
+        {id === 'can-i-use' && <p className="m-0">{fixed('Use exact browser versions, such as chrome 100, firefox 100. Automatic queries and workspace configuration are unavailable.')}</p>}
+      </div>
       {groups.map(group => <section key={group.title} aria-label={group.title ? fixed(group.title) : undefined}>
-        {group.title && <h3 className="text-sm font-semibold">{fixed(group.title)}</h3>}
+        {group.title && <h2 className="m-0 mb-2 text-sm font-semibold">{fixed(group.title)}</h2>}
+        <FieldGroup className="box-border gap-0 rounded-xl bg-surface-muted px-4">
         {group.fields.map(field => <Field key={field.key} title={field.label}>
           {field.kind === 'toggle' ? <Switch aria-label={fixed(field.label)} disabled={busy} checked={draft[field.key] === true} onCheckedChange={value => update(field.key, value, true)} />
             : field.kind === 'text' ? <Input aria-label={fixed(field.label)} aria-invalid={Boolean(error)} maxLength={4096} className="w-full max-w-sm" disabled={busy} value={String(draft[field.key] ?? '')} onChange={event => update(field.key, event.target.value, false)} onBlur={() => { if (draft[field.key] !== snapshot.values[field.key]) void save(draft) }} />
@@ -103,16 +107,19 @@ export function LauncherTrustedExtensionSettings({ id, active, settings }: Reado
               {(field.kind === 'language' ? Object.entries(TRANSLATE_SETTINGS_LANGUAGES) : field.choices ?? []).map(([value, label]) => <NativeSelectOption key={value} value={value}>{fixed(label)}</NativeSelectOption>)}
             </NativeSelect>}
         </Field>)}
+        </FieldGroup>
       </section>)}
       {id === 'google-translate' && <section aria-label={fixed('Network')}>
-        <h3 className="text-sm font-semibold">{fixed('Network')}</h3>
-        <p className="mt-1 text-sm text-muted-foreground">{fixed(snapshot.proxyRedacted ? 'A private proxy override is stored. Leave the field unchanged to keep it, or choose Use System Proxy to clear it.' : draft.proxy ? 'A manual proxy override is configured.' : 'Uses the system proxy automatically.')}</p>
+        <h2 className="m-0 mb-2 text-sm font-semibold">{fixed('Network')}</h2>
+        <div className="rounded-xl bg-surface-muted p-4">
+        <p className="m-0 text-sm text-muted-foreground">{fixed(snapshot.proxyRedacted ? 'A private proxy override is stored. Leave the field unchanged to keep it, or choose Use System Proxy to clear it.' : draft.proxy ? 'A manual proxy override is configured.' : 'Uses the system proxy automatically.')}</p>
         <details className="mt-3"><summary className="cursor-pointer text-sm font-medium">{fixed('Advanced')}</summary>
           <Field title="Proxy Override" description="Use an HTTP or HTTPS URL without credentials. Leave empty to use the system proxy.">
             <Input aria-label={fixed('Proxy Override')} aria-invalid={Boolean(error)} type="url" maxLength={2048} autoComplete="off" disabled={busy} value={String(draft.proxy ?? '')} onChange={event => update('proxy', event.target.value, false)} onBlur={() => { if (draft.proxy !== snapshot.values.proxy) void save(draft) }} />
           </Field>
           <Button size="sm" variant="outline" disabled={busy} onClick={() => { const next = { ...draft, proxy: '' }; setDraft(next); void save(next, true) }}>{fixed('Use System Proxy')}</Button>
         </details>
+        </div>
       </section>}
       {id === 'can-i-use' && <details><summary className="cursor-pointer text-sm font-medium">{fixed('Supported Browser Targets')}</summary><p className="mt-2 max-h-40 overflow-auto text-xs text-muted-foreground">{CAN_I_USE_SETTINGS_TARGETS.join(', ')}</p></details>}
       <div className="flex flex-wrap gap-2">
@@ -123,7 +130,7 @@ export function LauncherTrustedExtensionSettings({ id, active, settings }: Reado
         }}>{fixed('Refresh Settings')}</Button>
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <p role="status" className="text-sm text-muted-foreground">{status}</p>
+      <p role="status" className="m-0 text-sm text-muted-foreground">{status}</p>
     </div>
   </div>
 }

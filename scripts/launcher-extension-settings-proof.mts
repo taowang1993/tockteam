@@ -42,6 +42,8 @@ const cli = async (...args: string[]) => {
 }
 const browser = `
 import React from 'react';
+import * as jsxRuntime from 'react/jsx-runtime';
+import { Settings, Database, SlidersHorizontal, X } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import { apply } from '${root}/src/launcher-settings.tsx';
 import { launcherOriginalThemeTokens } from '${root}/src/launcher-theme.ts';
@@ -53,19 +55,33 @@ const locale = { bind: namespace => key => messages.get(namespace)?.[state.activ
   setLocale: active => { state = { active, revision: state.revision + 1 }; for (const listener of listeners) listener(); },
   register: (namespace, value) => { messages.set(namespace, value); return () => messages.delete(namespace); },
   subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener); } };
-let Component; const cleanups = [];
-apply({ effect: callback => cleanups.push(callback()), get: name => name === 'locale' ? locale : { inject: (_, callback) => callback(), register: (_, component) => { Component = component; return () => {}; } } });
+const entries = []; const cleanups = [];
+const slots = { inject: (_, callback) => callback(), register: (options, component) => { const entry = { options, component }; entries.push(entry); return () => entries.splice(entries.indexOf(entry), 1); } };
+let native;
+window.__ModuleLoader__ = { load: ({ factory }) => { native = factory(name => ({ react: React, 'react/jsx-runtime': jsxRuntime, '@deepseek-ai/dsh-client-ui-slots': { resolveSlotLabel: label => typeof label === 'function' ? label() : label }, '@deepseek-ai/dsh-client-store': {}, '@deepseek-ai/dsh-client-ui-primitives': { IconSettingsOutline16: Settings, IconSettingsOutline14: Settings, IconDataOutline16: Database, IconAgentPresetOutline16: Settings, IconPersonalizationOutline16: SlidersHorizontal, IconCloseOutline16: X, ConnectionIndicator: () => null } })[name]); } };
+const shellUrl = '/settings-shell.js'; await import(shellUrl);
+const ctx = { effect: callback => cleanups.push(callback()), get: name => name === 'locale' ? locale : name === 'slots' ? slots : { reconnect() {} }, locale, slots, remote: { $host: { isLoopback: false } } };
+native.apply(ctx); apply(ctx);
+for (const [id, label] of [['models', 'Models'], ['plugins', 'Plugins'], ['agent-presets', 'Agent Presets'], ['side-panel', 'Side Panel']]) slots.register({ name: 'settings.section', id, label, order: entries.length }, () => React.createElement('h1', {}, label));
 const renderRoot = createRoot(document.getElementById('root'));
-let closed = 0;
-const render = () => renderRoot.render(React.createElement(Component, { locale, close: () => { closed++; } }));
+const Root = entries.find(entry => entry.options.name === 'sidebar.settings').component;
+const renderSlot = (name, props, filter) => entries.filter(entry => entry.options.name === name && (!filter || entry.options.id === filter.only)).map(entry => React.createElement(entry.component, { ...props, renderSlot, key: entry.options.id ?? name, t: locale.bind(entry.options.locale) }));
+function Shell() { React.useSyncExternalStore(locale.subscribe, locale.getSnapshot); return React.createElement(Root, { wide: true, reconnect() {}, useConnectionState: select => select('connected'), useSessions: select => select({ phase: 'loading' }), useOnboardingSteps: select => select([]), useSections: select => select(entries.filter(entry => entry.options.name === 'settings.section').map(({ options }) => ({ ...options, label: typeof options.label === 'function' ? options.label() : options.label })).sort((a, b) => a.order - b.order)), renderSlot, t: locale.bind('settings') }); }
+const render = () => renderRoot.render(React.createElement(Shell));
 function theme(mode, skin = null) {
   document.documentElement.removeAttribute('style'); delete document.documentElement.dataset.tockteamSkin;
   for (const [key, value] of Object.entries(launcherOriginalThemeTokens(mode))) document.documentElement.style.setProperty(key, value);
   document.documentElement.style.colorScheme = mode;
+  document.documentElement.style.setProperty('--tockteam-titlebar-height', '0px');
+  document.documentElement.style.setProperty('--tockteam-rail-width', '0px');
+  document.documentElement.style.setProperty('--tockteam-primary-sidebar-width', '280px');
   if (skin) { for (const [key, value] of Object.entries(skin.tokens)) document.documentElement.style.setProperty(key, value); document.documentElement.dataset.tockteamSkin = skin.id; }
 }
+document.documentElement.classList.add('tockteam-desktop-shell');
+document.documentElement.dataset.tockteamSettingsPage = 'true';
+new MutationObserver(() => { const panel = document.querySelector('[role="dialog"][aria-modal="true"]'); if (!panel || panel.dataset.tockteamSettingsPageSurface) return; panel.dataset.tockteamSettingsPageSurface = 'true'; panel.parentElement.dataset.tockteamSettingsPageShell = 'true'; const mask = panel.previousElementSibling; if (mask) mask.dataset.tockteamSettingsPageMask = 'true'; }).observe(document.getElementById('root'), { childList: true, subtree: true });
 theme('dark'); render();
-window.proof = { pages: launcherExtensionPages, locale, theme, skins: TOCKTEAM_SKINS, get closed() { return closed; }, reopen() { renderRoot.unmount(); location.reload(); } };
+window.proof = { pages: launcherExtensionPages, locale, theme, skins: TOCKTEAM_SKINS, get closed() { return document.querySelector('[role="dialog"]') === null ? 1 : 0; }, reopen() { renderRoot.unmount(); location.reload(); } };
 `
 const electronMain = `
 import { app, BrowserWindow, ipcMain } from 'electron';
@@ -94,8 +110,8 @@ const extensionSettings = createTrustedRaycastSettings({
   trust: () => trustState,
   setEnabled: async (_id, enabled) => { trustState.enabled = enabled; },
 });
-const files = new Map([['/fixture.js', 'fixture.js'], ['/react.js', 'react.js'], ['/react-dom.js', 'react-dom.js'], ['/react-dom-client.js', 'react-dom-client.js'], ['/jsx-runtime.js', 'jsx-runtime.js']]);
-const html = '<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src \\'self\\'; script-src \\'self\\' \\'unsafe-inline\\'; style-src \\'self\\' \\'unsafe-inline\\'; img-src \\'self\\' data:; font-src \\'self\\' data:"><link rel="stylesheet" href="/style.css"><script type="importmap">'+JSON.stringify({ imports: { react: '/react.js', 'react-dom': '/react-dom.js', 'react-dom/client': '/react-dom-client.js', 'react/jsx-runtime': '/jsx-runtime.js' } })+'</script></head><body class="bg-surface text-foreground"><main role="dialog" aria-label="Settings" style="max-width:960px;margin:auto;padding:24px"><div id="root"></div></main><script type="module" src="/fixture.js"></script></body></html>';
+const files = new Map([['/settings-shell.js', 'settings-shell.js'], ['/fixture.js', 'fixture.js'], ['/react.js', 'react.js'], ['/react-dom.js', 'react-dom.js'], ['/react-dom-client.js', 'react-dom-client.js'], ['/jsx-runtime.js', 'jsx-runtime.js']]);
+const html = '<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src \\'self\\'; script-src \\'self\\' \\'unsafe-inline\\'; style-src \\'self\\' \\'unsafe-inline\\'; img-src \\'self\\' data:; font-src \\'self\\' data:"><link rel="stylesheet" href="/style.css"><script type="importmap">'+JSON.stringify({ imports: { react: '/react.js', 'react-dom': '/react-dom.js', 'react-dom/client': '/react-dom-client.js', 'react/jsx-runtime': '/jsx-runtime.js' } })+'</script></head><body class="bg-surface text-foreground" style="margin:0;overflow:hidden"><div id="root" style="padding:2px;box-sizing:border-box"></div><script type="module" src="/fixture.js"></script></body></html>';
 const server = createServer((request, response) => { const file = files.get(request.url); response.setHeader('Content-Type', file ? 'text/javascript' : request.url === '/style.css' ? 'text/css' : 'text/html'); response.end(file ? readFileSync(join(evidence, file)) : request.url === '/style.css' ? readFileSync(join(evidence, 'style.css')) : html); });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = 'http://127.0.0.1:' + server.address().port;
@@ -114,6 +130,7 @@ app.on('before-quit', () => { server.closeAllConnections(); server.close(); });
 `
 try {
   await writeFile(join(evidence, 'style.css'), (await Promise.all(assets.filter(file => file.endsWith('.css')).map(file => readFile(join(assetsRoot, file), 'utf8')))).join('\n') + '\n' + await buildTailwindCss(root))
+  await writeFile(join(evidence, 'settings-shell.js'), await readFile(join(root, '.stage/dsh-runtime/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-client-ui-settings-general/lib/client.js')))
   await mkdir(join(evidence, 'profile'))
   await writeFile(join(evidence, 'profile/skins.json'), JSON.stringify({ activeId: null, fallbackTheme: 'dark' }))
   await build({ stdin: { contents: browser, resolveDir: root, loader: 'tsx' }, outfile: join(evidence, 'fixture.js'), bundle: true, format: 'esm', platform: 'browser', jsx: 'automatic', external: ['react', 'react/*', 'react-dom', 'react-dom/*'], logLevel: 'silent' })
@@ -139,20 +156,35 @@ try {
     const check = (value, message) => { if (!value) throw Error(message); };
     const errors = []; page.on('pageerror', error => errors.push(error.message)); page.on('console', entry => { if (entry.type() === 'error' || entry.type() === 'warning') errors.push(entry.text()); });
     const cdp = await page.context().newCDPSession(page); await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false });
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'TockLauncher', exact: true }).click();
+    check(await page.locator('nav button[aria-expanded]').count() > 0, 'TockLauncher must be a sidebar disclosure');
+    await page.getByRole('button', { name: 'Extensions', exact: true }).click();
     await page.getByRole('searchbox', { name: 'Search Extensions' }).waitFor();
     const pages = await page.evaluate(() => window.proof.pages);
     check(await page.locator('button[data-extension-id]').count() === 27, 'all 27 extensions');
+    const sidebar = page.locator('[data-tocklauncher-navigation]');
+    check(await page.locator('[data-testid="tocklauncher-settings"] nav').count() === 0, 'no duplicate in-page navigation');
+    await sidebar.getByRole('button', { name: 'TockLauncher', exact: true }).focus(); await page.keyboard.press('Space');
+    check(!(await sidebar.getByRole('button', { name: 'Extensions', exact: true }).isVisible()), 'parent collapses from keyboard');
+    await page.keyboard.press('Space'); await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
+    check(await page.locator('button[data-extension-id]:visible').count() === 0, 'Extensions collapses independently');
+    await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
+    const row = await page.locator('button[data-extension-id="google-translate"]').boundingBox(); check(row.height >= 30 && row.height <= 40, 'compact sidebar rows');
     const open = async id => { await page.locator('button[data-extension-id="' + id + '"]').click(); await page.locator('[data-extension-heading]').waitFor(); };
-    const back = async () => { await page.getByRole('button', { name: 'Back to Extensions', exact: true }).click(); };
+    const back = async () => { await page.locator('[data-tocklauncher-navigation]').getByRole('button', { name: 'General', exact: true }).click(); };
     for (const item of pages) { await open(item.id); check(await page.locator('[data-testid="tocklauncher-extension-detail"]').getAttribute('data-extension-id') === item.id, item.id); if (item.editor === 'compatibility') await page.getByRole('button', { name: 'Save Preferences', exact: true }).waitFor(); await back(); }
     await page.getByRole('searchbox').fill('precision'); check(await page.locator('button[data-extension-id]:visible').count() === 1, 'field search');
     await page.getByRole('searchbox').press('Tab'); await page.keyboard.press('Enter'); const precision = page.getByRole('spinbutton', { name: 'Calculator Precision', exact: true }); await precision.waitFor(); await precision.fill('4'); await precision.blur();
     await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getSnapshot()).values['extension[Calculator].precision'] === 4);
-    await back(); await page.waitForFunction(() => document.activeElement.dataset.extensionId === 'Calculator');
+    await back(); check(await page.locator('[data-tocklauncher-navigation] [aria-current="page"]').innerText() === 'General', 'General is selected in the sidebar');
     await page.getByRole('searchbox').fill(''); await open('Calculator'); await precision.fill('13'); await precision.blur();
     await page.getByText('TockLauncher settings could not be saved.', { exact: true }).waitFor(); await back(); await open('Calculator'); check(await precision.inputValue() === '13', 'failed draft survives navigation');
+    await page.getByRole('button', { name: 'Models', exact: true }).click(); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Keep Editing' }).click(); check(await precision.inputValue() === '13', 'leaving TockLauncher protects drafts');
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Keep Editing' }).click(); check(await precision.inputValue() === '13', 'cancel discard retains input');
     await precision.fill('6'); await precision.blur(); await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getSnapshot()).values['extension[Calculator].precision'] === 6);
+    await page.getByRole('button', { name: 'Models', exact: true }).click(); await page.getByRole('heading', { name: 'Models', exact: true }).waitFor();
+    await open('Calculator'); check(await precision.inputValue() === '6', 'sidebar activates launcher from another section');
     await back(); await open('UuidGenerator'); const formats = page.getByRole('textbox', { name: 'UUID Search Result Formats', exact: true }); await formats.fill('{bad'); await formats.blur(); await back(); await open('UuidGenerator'); check(await formats.inputValue() === '{bad', 'invalid JSON survives navigation');
     await formats.fill('[]'); await formats.blur(); await page.waitForFunction(async () => JSON.stringify((await window.dshDesktop.launcher.settings.getSnapshot()).values['extension[UuidGenerator].searchResultFormats']) === '[]');
     await back(); await open('google-translate'); await page.getByRole('combobox', { name: 'Primary Language', exact: true }).selectOption('zh-CN');
@@ -167,8 +199,10 @@ try {
     check(await page.getByRole('combobox', { name: 'Primary Language', exact: true }).inputValue() === 'de', 'refresh preserves own edit'); check(await page.getByRole('combobox', { name: 'Secondary Language', exact: true }).inputValue() === 'fr', 'refresh merges external edit');
     await page.getByRole('button', { name: 'Save Preferences', exact: true }).click(); await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getExtension('google-translate')).values.lang1 === 'de');
     await page.getByRole('status').filter({ hasText: 'Saved. Changes apply the next time you open this extension.' }).waitFor();
-    await page.evaluate(() => scrollTo(0, 0));
-    const capture = await page.evaluate(() => ({ route: location.pathname, extensionId: document.querySelector('[data-testid="tocklauncher-extension-detail"]').dataset.extensionId, mode: 'Hidden Electron Component Harness', saved: document.body.innerText.includes('Saved. Changes apply'), scrollY, colorScheme: document.documentElement.style.colorScheme, skin: document.documentElement.dataset.tockteamSkin ?? null }));
+    await page.evaluate(() => { document.querySelector('[data-testid="tocklauncher-settings"]').scrollIntoView({ block: 'start' }); document.querySelector('[role="dialog"] > nav').scrollTop = 0; });
+    await page.mouse.move(1450, 20);
+    check(await page.locator('[data-extension-heading]').isVisible(), 'dedicated page has its own title');
+    const capture = await page.evaluate(() => ({ layout: [...document.querySelectorAll('html, body, [role="dialog"], [role="dialog"] > nav, [data-testid="tocklauncher-settings"]')].map(node => ({ tag: node.tagName, width: node.clientWidth, scrollWidth: node.scrollWidth })), route: location.pathname, extensionId: document.querySelector('[data-testid="tocklauncher-extension-detail"]').dataset.extensionId, mode: 'Hidden Electron with Pinned DSH Settings Shell', saved: document.body.innerText.includes('Saved. Changes apply'), scrollY, colorScheme: document.documentElement.style.colorScheme, skin: document.documentElement.dataset.tockteamSkin ?? null }));
     const screenshot = (await cdp.send('Page.captureScreenshot', { format: 'png' })).data;
     await back(); await open('kaomoji-search'); await page.getByRole('combobox', { name: 'Display Mode', exact: true }).selectOption('grid'); await page.waitForFunction(async () => (await window.dshDesktop.launcher.settings.getExtension('kaomoji-search')).values.displayMode === 'grid');
     await back(); await open('can-i-use'); const targets = page.getByRole('textbox', { name: 'Browser Targets', exact: true }); await targets.fill('defaults'); await targets.blur(); await page.getByRole('alert').filter({ hasText: 'These settings are invalid' }).waitFor(); check(await targets.inputValue() === 'defaults', 'invalid target draft preserved');
@@ -179,8 +213,9 @@ try {
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('tockteam-launcher-settings-destination', { detail: 'google-translate' }))); await page.getByRole('combobox', { name: 'Primary Language', exact: true }).waitFor();
     const geometry = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scale: devicePixelRatio, colorScheme: document.documentElement.style.colorScheme, skin: document.documentElement.dataset.tockteamSkin ?? null })); check(geometry.width === 1512 && geometry.height === 949 && geometry.scale === 2 && geometry.colorScheme === 'dark' && geometry.skin === null, JSON.stringify(geometry));
     await page.evaluate(() => window.proof.locale.setLocale('zh')); await page.getByRole('combobox', { name: '主要语言', exact: true }).waitFor();
-    await page.getByRole('button', { name: '返回扩展', exact: true }).click(); await page.getByRole('searchbox').fill('计算器'); check(await page.locator('button[data-extension-id]:visible').count() === 1, 'Chinese name search'); await page.getByRole('searchbox').fill(''); await open('google-translate');
+    await page.getByRole('searchbox').fill('计算器'); check(await page.locator('button[data-extension-id]:visible').count() === 1, 'Chinese name search'); await page.getByRole('searchbox').fill(''); await open('google-translate');
     await page.evaluate(() => window.proof.locale.setLocale('en'));
+    await sidebar.getByRole('button', { name: 'Google Translate', exact: true }).waitFor();
     const skins = await page.evaluate(() => window.proof.skins.map(skin => skin.id));
     for (const id of skins) { await page.evaluate(id => { const skin = window.proof.skins.find(skin => skin.id === id); window.proof.theme(skin.colorScheme, skin); }, id); check(await page.getByRole('combobox', { name: 'Primary Language', exact: true }).isVisible(), 'skin ' + id); }
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 480, height: 800, deviceScaleFactor: 2, mobile: false });
@@ -188,7 +223,7 @@ try {
     await page.evaluate(() => window.proof.theme('light')); check(await page.getByRole('combobox', { name: 'Primary Language', exact: true }).isVisible(), 'light theme');
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false }); await page.evaluate(() => window.proof.theme('dark'));
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Discard and Leave', exact: true }).click(); await page.waitForFunction(() => window.proof.closed === 1);
-    await page.reload(); await page.getByRole('searchbox', { name: 'Search Extensions' }).waitFor(); await open('Calculator'); check(await precision.inputValue() === '6', 'accepted value survives reopen');
+    await page.reload(); await page.getByRole('button', { name: 'Settings', exact: true }).click(); await page.getByRole('button', { name: 'TockLauncher', exact: true }).click(); await page.getByRole('button', { name: 'Extensions', exact: true }).click(); await open('Calculator'); check(await precision.inputValue() === '6', 'accepted value survives reopen');
     check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
   }`)
   const proof = JSON.parse(result.split('### Result\n')[1]!.split('\n###')[0]!)
@@ -227,6 +262,9 @@ try {
   await writeFile(join(evidence, 'proof.json'), JSON.stringify(proof, null, 2))
   const png = await readFile(join(evidence, 'translate-dark.png')); assert.equal(png.readUInt32BE(16), 3024); assert.equal(png.readUInt32BE(20), 1898)
   console.log(JSON.stringify(proof, null, 2))
+} catch (error) {
+  await cli('screenshot', '--filename=' + join(evidence, 'failure.png')).catch(() => undefined)
+  throw error
 } finally {
   await observe(); await cli('close').catch(() => undefined)
   if (child?.pid) { try { process.kill(-child.pid, 'SIGTERM') } catch {} }

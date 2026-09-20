@@ -20,7 +20,7 @@ export function LauncherSettingsDraftBoundary({ children, close }: Readonly<{ ch
       if (dialog && dialog !== root.current?.closest('[role="dialog"]') && !root.current?.contains(dialog)) return
       const escape = event instanceof KeyboardEvent && event.key === 'Escape'
       if (event instanceof KeyboardEvent && !escape) return
-      if (!escape && root.current?.contains(target)) return
+      if (!escape && (root.current?.contains(target) || target?.closest('[data-tocklauncher-navigation], [data-tocklauncher-settings-trigger]'))) return
       event.preventDefault(); event.stopImmediatePropagation()
       const trigger = !escape ? target?.closest<HTMLElement>('button, a') : undefined
       action.current = trigger ? () => trigger.click() : close

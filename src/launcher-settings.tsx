@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Check, Database, Globe2, KeyRound, Keyboard, Palette, RefreshCw, RotateCcw, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@tockteam/ui/alert-dialog'
@@ -15,7 +15,8 @@ import { useLauncherDirtyState } from './launcher-settings-dirty.ts'
 import { LauncherTrustedExtensionSettings } from './launcher-trusted-extension-settings.tsx'
 import { TRUSTED_RAYCAST_EXTENSION_IDS } from './trusted-raycast-descriptors.ts'
 import { LauncherExtensionSettings } from './launcher-extension-settings.tsx'
-import { isLauncherExtensionId, launcherExtensionPages, type LauncherExtensionId } from './launcher-extension-settings.ts'
+import { launcherExtensionPages } from './launcher-extension-settings.ts'
+import { createLauncherSettingsNavigation, LauncherSettingsSidebar, type LauncherSettingsNavigation } from './launcher-settings-navigation.tsx'
 import { LauncherLocalSettings } from './launcher-local-settings.tsx'
 import { LauncherDiscoverySettings } from './launcher-discovery-settings.tsx'
 import { LauncherFileSearchSettings, type LauncherSimpleFileSearchDraft } from './launcher-file-search-settings.tsx'
@@ -94,6 +95,7 @@ const MESSAGES = {
 interface SettingsSectionProps {
   close: () => void
   locale: LocaleService
+  navigation: LauncherSettingsNavigation
 }
 
 interface SettingsSlots {
@@ -171,25 +173,18 @@ function LauncherSettingsPage(props: SettingsSectionProps): ReactNode {
   return <LauncherSettingsDraftBoundary close={props.close}><LauncherSettingsContents {...props} /></LauncherSettingsDraftBoundary>
 }
 
-function LauncherSettingsContents({ locale }: SettingsSectionProps): ReactNode {
+function LauncherSettingsContents({ locale, navigation }: SettingsSectionProps): ReactNode {
   const translate = useTranslate(locale, locale.bind('tockteam.launcher'))
   const t = (key: keyof typeof MESSAGES.en): string => translate(key)
   document.documentElement.lang = localeTag(locale)
   const bridge = window.dshDesktop
   const settings = bridge?.launcher.settings
-  const [showGlobal, setShowGlobal] = useState(false)
-  const [selectedExtension, setSelectedExtension] = useState<LauncherExtensionId>()
+  const destination = useSyncExternalStore(navigation.subscribe, navigation.getSnapshot)
+  const showGlobal = destination === 'general'
+  const selectedExtension = showGlobal ? undefined : destination
   const selectedPage = launcherExtensionPages.find(page => page.id === selectedExtension)
-  useEffect(() => {
-    const selectDestination = (event: Event): void => {
-      const id: unknown = (event as CustomEvent).detail
-      setShowGlobal(false)
-      setSelectedExtension(isLauncherExtensionId(id) ? id : undefined)
-      requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-extension-heading]')?.focus())
-    }
-    window.addEventListener('tockteam-launcher-settings-destination', selectDestination)
-    return () => window.removeEventListener('tockteam-launcher-settings-destination', selectDestination)
-  }, [])
+  const pageRoot = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => { pageRoot.current?.scrollIntoView({ block: 'start' }) }, [destination])
   const [snapshot, setSnapshot] = useState<LauncherSettingsSnapshot | null>(null)
   const [workflowSnapshotRevision, setWorkflowSnapshotRevision] = useState(0)
   const workflowSnapshotValue = useRef<string | undefined>(undefined)
@@ -351,21 +346,13 @@ function LauncherSettingsContents({ locale }: SettingsSectionProps): ReactNode {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-5 px-1 py-4" data-testid="tocklauncher-settings">
-      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-lg font-semibold text-foreground">{t('title')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t('description')}</p>
-        </div>
-        <Badge variant="secondary">{t('badge')}</Badge>
+    <div ref={pageRoot} className="mx-auto box-border flex w-full max-w-4xl min-w-0 flex-col gap-5 px-1 py-4" data-testid="tocklauncher-settings">
+      <div hidden={!showGlobal}>
+        <p className="m-0 mb-2 text-xs text-muted-foreground">TockLauncher</p>
+        <h1 className="m-0 text-lg font-semibold text-foreground">{launcherFixedText('General')}</h1>
       </div>
-
-      <nav aria-label={launcherFixedText('TockLauncher Settings')} className="flex gap-2">
-        <Button variant={showGlobal ? 'ghost' : 'secondary'} aria-pressed={!showGlobal} onClick={() => setShowGlobal(false)}>{t('sectionExtensions')}</Button>
-        <Button variant={showGlobal ? 'secondary' : 'ghost'} aria-pressed={showGlobal} onClick={() => setShowGlobal(true)}>{launcherFixedText('General Settings')}</Button>
-      </nav>
       <div hidden={showGlobal}>
-        <LauncherExtensionSettings selected={selectedExtension} onSelect={setSelectedExtension} enabled={enabled} onEnable={setExtension} busy={busy} platform={rendererPlatform} />
+        <LauncherExtensionSettings selected={selectedExtension} enabled={enabled} onEnable={setExtension} busy={busy} platform={rendererPlatform} />
       </div>
       {TRUSTED_RAYCAST_EXTENSION_IDS.map(id => <LauncherTrustedExtensionSettings key={id} id={id} active={!showGlobal && selectedExtension === id} settings={settings} />)}
       <div hidden={!showGlobal}><div className="flex flex-col gap-5">
@@ -536,6 +523,7 @@ export function apply(ctx: Readonly<{
   const locale = ctx.get('locale') as LocaleService
   const slots = ctx.get('slots') as SettingsSlots
   const translate = locale.bind('tockteam.launcher')
+  const navigation = createLauncherSettingsNavigation()
   ctx.effect(() => {
     const removeLocale = locale.register('tockteam.launcher', MESSAGES)
     const removeSlot = slots.inject('settings.section', () => slots.register({
@@ -544,8 +532,12 @@ export function apply(ctx: Readonly<{
       locale: 'tockteam.launcher',
       name: 'settings.section',
       order: 60,
-    }, props => <LauncherSettingsPage {...props} locale={locale} />)) as (() => void) | undefined
+    }, props => <LauncherSettingsPage {...props} locale={locale} navigation={navigation} />)) as (() => void) | undefined
+    const removeNavigation = slots.inject('settings.action', () => slots.register({
+      id: 'tocklauncher-navigation', label: () => translate('title'), locale: 'tockteam.launcher', name: 'settings.action', order: 60,
+    }, () => <LauncherSettingsSidebar locale={locale} navigation={navigation} />)) as (() => void) | undefined
     return () => {
+      removeNavigation?.()
       removeSlot?.()
       removeLocale?.()
     }
