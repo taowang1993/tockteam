@@ -159,6 +159,29 @@ try {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'TockLauncher', exact: true }).click();
     check(await page.locator('nav button[aria-expanded]').count() > 0, 'TockLauncher must be a sidebar disclosure');
+    await page.locator('[data-testid="tocklauncher-settings"]').waitFor();
+    // Force space-consuming scrollbars even on hosts configured to use overlays.
+    const scrollbarStyle = await page.addStyleTag({ content: '[role="dialog"] > nav::-webkit-scrollbar { width: 15px; }' });
+    const sidebarGeometry = () => page.evaluate(() => {
+      const nav = document.querySelector('[role="dialog"] > nav');
+      return { overflowing: nav.scrollHeight > nav.clientHeight, layout: [nav, nav.querySelector('button'), document.querySelector('[data-tocklauncher-navigation] button[aria-controls$="-extensions"]'), document.querySelector('[data-testid="tocklauncher-settings"]')].map(node => { const { x, width } = node.getBoundingClientRect(); return { x, width, clientWidth: node.clientWidth }; }) };
+    });
+    const sidebarLayouts = [];
+    for (const mode of ['dark', 'light']) {
+      await page.evaluate(mode => window.proof.theme(mode), mode);
+      const collapsed = await sidebarGeometry(); check(!collapsed.overflowing, 'collapsed sidebar fits');
+      await page.getByRole('button', { name: 'Extensions', exact: true }).click();
+      const expanded = await sidebarGeometry(); check(expanded.overflowing, 'expanded sidebar needs a scrollbar');
+      check(JSON.stringify(collapsed.layout) === JSON.stringify(expanded.layout), 'Extensions expansion must not shift layout: ' + JSON.stringify({ mode, collapsed, expanded }));
+      await page.getByRole('searchbox', { name: 'Search Extensions' }).fill('precision');
+      const filtered = await sidebarGeometry(); check(!filtered.overflowing, 'filtered sidebar fits');
+      check(JSON.stringify(collapsed.layout) === JSON.stringify(filtered.layout), 'filtering must not shift layout');
+      await page.getByRole('searchbox', { name: 'Search Extensions' }).fill('');
+      await page.getByRole('button', { name: 'Extensions', exact: true }).click();
+      check(JSON.stringify(collapsed) === JSON.stringify(await sidebarGeometry()), 'collapsing must not shift layout');
+      sidebarLayouts.push({ mode, collapsed, expanded, filtered });
+    }
+    await scrollbarStyle.evaluate(node => node.remove()); await page.evaluate(() => window.proof.theme('dark'));
     await page.getByRole('button', { name: 'Extensions', exact: true }).click();
     await page.getByRole('searchbox', { name: 'Search Extensions' }).waitFor();
     const pages = await page.evaluate(() => window.proof.pages);
@@ -225,7 +248,7 @@ try {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false }); await page.evaluate(() => window.proof.theme('dark'));
     await page.keyboard.press('Escape'); await page.getByRole('alertdialog').waitFor(); await page.getByRole('button', { name: 'Discard and Leave', exact: true }).click(); await page.waitForFunction(() => window.proof.closed === 1);
     await page.reload(); await page.getByRole('button', { name: 'Settings', exact: true }).click(); await page.getByRole('button', { name: 'TockLauncher', exact: true }).click(); await page.getByRole('button', { name: 'Extensions', exact: true }).click(); await open('Calculator'); check(await precision.inputValue() === '6', 'accepted value survives reopen');
-    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
+    check(errors.length === 0, JSON.stringify(errors)); return { screenshot, capture, sidebarLayouts, pages: pages.map(item => item.id), geometry, skins, errors, ipc: true, isolatedPersistence: true, draftRecovery: true, localization: true, narrowLayout: true };
   }`)
   const proof = JSON.parse(result.split('### Result\n')[1]!.split('\n###')[0]!)
   await writeFile(join(evidence, 'translate-dark.png'), Buffer.from(proof.screenshot, 'base64')); delete proof.screenshot

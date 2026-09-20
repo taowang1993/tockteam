@@ -68,6 +68,7 @@
 [data-tocklauncher-settings-trigger] { display: none !important; }
 [role='dialog'] > nav:has([data-tocklauncher-navigation]) {
   overflow-y: auto;
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   padding-bottom: 16px;
   @media (max-width: 600px) { max-width: 42vw; padding-inline: 6px; }
