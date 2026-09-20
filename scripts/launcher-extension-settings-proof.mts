@@ -165,8 +165,9 @@ try {
     check(await page.locator('nav button[aria-expanded]').count() > 0, 'TockLauncher must be a sidebar disclosure');
     await page.locator('[data-testid="tocklauncher-settings"]').waitFor();
     // The pinned theme supplies space-consuming 8px scrollbars, including on overlay-scrollbar hosts.
-    const sidebarGeometry = () => page.evaluate(() => {
+    const sidebarGeometry = () => page.evaluate(async () => {
       const nav = document.querySelector('[role="dialog"] > nav');
+      await Promise.all(nav.getAnimations({ subtree: true }).map(animation => animation.finished));
       return { overflowing: nav.scrollHeight > nav.clientHeight, layout: [nav, nav.querySelector('button'), document.querySelector('[data-tocklauncher-navigation] button[aria-controls$="-extensions"]'), document.querySelector('[data-testid="tocklauncher-settings"]')].map(node => { const { x, width } = node.getBoundingClientRect(); return { x, width, clientWidth: node.clientWidth }; }) };
     });
     const sidebarLayouts = [];
@@ -191,40 +192,43 @@ try {
     check(await page.locator('button[data-extension-id]').count() === 27, 'all 27 extensions');
     const sidebar = page.locator('[data-tocklauncher-navigation]');
     check(await page.locator('[data-testid="tocklauncher-settings"] nav').count() === 0, 'no duplicate in-page navigation');
-    const launcherToggle = sidebar.getByRole('button', { name: 'TockLauncher', exact: true });
-    const fullMenuHeight = await launcherToggle.evaluate(button => document.getElementById(button.getAttribute('aria-controls')).getBoundingClientRect().height);
     const menuMotion = [];
-    const sampleMenuMotion = async (expanded, reduced = false) => {
-      const sample = await launcherToggle.evaluate(async (button, reduced) => {
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        const menu = document.getElementById(button.getAttribute('aria-controls')); const arrow = button.lastElementChild;
-        const animations = [...menu.getAnimations(), ...arrow.getAnimations()];
-        const read = () => ({ height: menu.getBoundingClientRect().height, rotation: getComputedStyle(arrow).rotate, visibility: getComputedStyle(menu).visibility });
-        const durations = animations.map(animation => Number(animation.effect.getTiming().duration));
-        for (const animation of animations) { animation.pause(); animation.currentTime = Number(animation.effect.getTiming().duration) / 2; }
-        const middle = read();
-        if (menu.inert) { menu.querySelector('button').focus(); if (menu.contains(document.activeElement)) throw Error('collapsed menu must not receive focus'); }
-        for (const animation of animations) animation.finish();
-        return { expanded: button.getAttribute('aria-expanded') === 'true', inert: menu.inert, hidden: menu.getAttribute('aria-hidden'), durations, middle, end: read(), reduced };
-      }, reduced);
-      check(sample.expanded === expanded && sample.inert !== expanded, 'menu state and keyboard access agree: ' + JSON.stringify({ expectedExpanded: expanded, ...sample }));
-      check(reduced ? sample.durations.length === 0 : sample.durations.length >= 2 && sample.durations.every(ms => ms > 0 && ms <= 240), 'menu and arrow animate promptly in both directions unless motion is reduced: ' + JSON.stringify(sample));
-      if (!reduced) check(sample.middle.height > 0 && sample.middle.height < fullMenuHeight && sample.middle.rotation !== sample.end.rotation, 'menu and arrow have intermediate frames');
-      check(expanded ? sample.end.height > 0 && sample.end.visibility === 'visible' : sample.end.height === 0 && sample.end.visibility === 'hidden' && sample.hidden === 'true', 'disclosure settles to the requested state');
-      menuMotion.push(sample);
-    };
-    await launcherToggle.focus(); await page.keyboard.press('Space'); await sampleMenuMotion(false);
-    check(!(await sidebar.getByRole('button', { name: 'Extensions', exact: true }).isVisible()), 'parent collapses from keyboard');
-    await page.keyboard.press('Space'); await sampleMenuMotion(true);
-    // Reverse an in-flight close rather than forcing it to finish first.
-    await page.keyboard.press('Space');
-    await launcherToggle.evaluate(button => { const menu = document.getElementById(button.getAttribute('aria-controls')); for (const animation of [...menu.getAnimations(), ...button.lastElementChild.getAnimations()]) { animation.pause(); animation.currentTime = Number(animation.effect.getTiming().duration) / 2; } });
-    await page.keyboard.press('Space'); await sampleMenuMotion(true);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await launcherToggle.click(); await sampleMenuMotion(false, true);
-    await launcherToggle.click(); await sampleMenuMotion(true, true);
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
+    for (const name of ['TockLauncher', 'Extensions']) {
+      await sidebarGeometry();
+      const toggle = sidebar.getByRole('button', { name, exact: true });
+      const fullMenuHeight = await toggle.evaluate(button => document.getElementById(button.getAttribute('aria-controls')).getBoundingClientRect().height);
+      const sampleMenuMotion = async (expanded, reduced = false) => {
+        const sample = await toggle.evaluate(async (button, reduced) => {
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          const menu = document.getElementById(button.getAttribute('aria-controls')); const arrow = button.lastElementChild;
+          const animations = [...menu.getAnimations(), ...arrow.getAnimations()];
+          const read = () => ({ height: menu.getBoundingClientRect().height, rotation: getComputedStyle(arrow).rotate, visibility: getComputedStyle(menu).visibility });
+          const durations = animations.map(animation => Number(animation.effect.getTiming().duration));
+          for (const animation of animations) { animation.pause(); animation.currentTime = Number(animation.effect.getTiming().duration) / 2; }
+          const middle = read();
+          if (menu.inert) { menu.querySelector('button').focus(); if (menu.contains(document.activeElement)) throw Error('collapsed menu must not receive focus'); }
+          for (const animation of animations) animation.finish();
+          return { label: button.textContent.trim(), expanded: button.getAttribute('aria-expanded') === 'true', inert: menu.inert, hidden: menu.getAttribute('aria-hidden'), durations, middle, end: read(), reduced };
+        }, reduced);
+        check(reduced ? sample.durations.length === 0 : sample.durations.length >= 2 && sample.durations.every(ms => ms > 0 && ms <= 240), 'menu and arrow animate promptly in both directions unless motion is reduced: ' + JSON.stringify(sample));
+        check(sample.expanded === expanded && sample.inert !== expanded, 'menu state and keyboard access agree: ' + JSON.stringify({ expectedExpanded: expanded, ...sample }));
+        if (!reduced) check(sample.middle.height > 0 && sample.middle.height < fullMenuHeight && sample.middle.rotation !== sample.end.rotation, 'menu and arrow have intermediate frames');
+        check(expanded ? sample.end.height > 0 && sample.end.visibility === 'visible' : sample.end.height === 0 && sample.end.visibility === 'hidden' && sample.hidden === 'true', 'disclosure settles to the requested state');
+        menuMotion.push(sample);
+      };
+      await toggle.focus(); await page.keyboard.press('Space'); await sampleMenuMotion(false);
+      check(await sidebar.getByRole('button', { name: 'Google Translate', exact: true }).count() === 0, 'closed menu descendants leave the accessibility tree');
+      await page.keyboard.press('Space'); await sampleMenuMotion(true);
+      // Reverse an in-flight close rather than forcing it to finish first.
+      await page.keyboard.press('Space');
+      await toggle.evaluate(button => { const menu = document.getElementById(button.getAttribute('aria-controls')); for (const animation of [...menu.getAnimations(), ...button.lastElementChild.getAnimations()]) { animation.pause(); animation.currentTime = Number(animation.effect.getTiming().duration) / 2; } });
+      await page.keyboard.press('Space'); await sampleMenuMotion(true);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await toggle.click(); await sampleMenuMotion(false, true);
+      await toggle.click(); await sampleMenuMotion(true, true);
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+    }
+    await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click(); await sidebarGeometry();
     check(await page.locator('button[data-extension-id]:visible').count() === 0, 'Extensions collapses independently');
     await sidebar.getByRole('button', { name: 'Extensions', exact: true }).click();
     const row = await page.locator('button[data-extension-id="google-translate"]').boundingBox(); check(row.height >= 30 && row.height <= 40, 'compact sidebar rows');

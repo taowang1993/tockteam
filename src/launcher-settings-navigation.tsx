@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Blocks, Braces, ChevronDown, ChevronRight, Languages, Puzzle, Settings2, Smile, Zap } from 'lucide-react'
+import { Blocks, Braces, ChevronRight, Languages, Puzzle, Settings2, Smile, Zap, type LucideIcon } from 'lucide-react'
 import { Button } from '@tockteam/ui/button'
 import { Input } from '@tockteam/ui/input'
 import { launcherFixedText } from './launcher-i18n.ts'
@@ -19,6 +19,20 @@ export function createLauncherSettingsNavigation() {
   }
 }
 export type LauncherSettingsNavigation = ReturnType<typeof createLauncherSettingsNavigation>
+
+/** All nested settings menus share motion, reduced-motion, and collapsed accessibility. */
+export function LauncherSettingsMenu({ id, label, icon: Icon, expanded, onToggle, children }: Readonly<{
+  id: string; label: string; icon: LucideIcon; expanded: boolean; onToggle: () => void; children: ReactNode
+}>): ReactNode {
+  return <>
+    <Button unstyled className="launcher-settings-nav-row group" aria-expanded={expanded} aria-controls={id} onClick={onToggle}>
+      <Icon aria-hidden="true" /><span>{label}</span><ChevronRight aria-hidden="true" className="transition-transform duration-200 ease-out group-aria-expanded:rotate-90 motion-reduce:transition-none" />
+    </Button>
+    <div id={id} aria-hidden={!expanded} ref={node => { if (node) node.inert = !expanded }} className="grid grid-rows-[1fr] transition-[grid-template-rows,opacity,visibility] duration-200 ease-out aria-hidden:grid-rows-[0fr] aria-hidden:invisible aria-hidden:opacity-0 motion-reduce:transition-none">
+      <div className="min-h-0 overflow-hidden pl-3">{children}</div>
+    </div>
+  </>
+}
 
 /** The pinned shell has flat section slots. Keep its section button as the activation
  * owner and project our disclosure beside it; never replace React-owned children. */
@@ -66,24 +80,18 @@ export function LauncherSettingsSidebar({ navigation, locale }: Readonly<{ navig
   const matches = findLauncherExtensionPages(query, fixed)
   const ordered = [...matches.filter(page => page.editor === 'compatibility'), ...matches.filter(page => page.editor !== 'compatibility')]
   return <><span ref={anchor} hidden />{host && createPortal(<>
-    <Button unstyled className="launcher-settings-nav-row group" aria-expanded={expanded} aria-controls={`${id}-pages`} onClick={() => { setExpanded(!active || !expanded); if (!active) choose('general') }}>
-      <Zap aria-hidden="true" /><span>TockLauncher</span><ChevronRight aria-hidden="true" className="transition-transform duration-200 ease-out group-aria-expanded:rotate-90 motion-reduce:transition-none" />
-    </Button>
-    <div id={`${id}-pages`} aria-hidden={!expanded} ref={node => { if (node) node.inert = !expanded }} className="grid grid-rows-[1fr] transition-[grid-template-rows,opacity,visibility] duration-200 ease-out aria-hidden:grid-rows-[0fr] aria-hidden:invisible aria-hidden:opacity-0 motion-reduce:transition-none">
-      <div className="min-h-0 overflow-hidden pl-3">
-        <Button unstyled className="launcher-settings-nav-row" aria-current={active && selected === 'general' ? 'page' : undefined} onClick={() => choose('general')}><Settings2 aria-hidden="true" /><span>{fixed('General')}</span></Button>
-        <Button unstyled className="launcher-settings-nav-row" aria-expanded={extensionsOpen} aria-controls={`${id}-extensions`} onClick={() => setExtensionsOpen(!extensionsOpen)}><Blocks aria-hidden="true" /><span>{fixed('Extensions')}</span>{extensionsOpen ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</Button>
-        <div id={`${id}-extensions`} hidden={!extensionsOpen}>
-          <div className="flex min-w-0 flex-col gap-1 pl-3">
-            <Input className="my-1 h-8 min-w-0 focus-visible:ring-0!" type="search" aria-label={fixed('Search Extensions')} placeholder={fixed('Search Extensions')} value={query} maxLength={256} onChange={event => setQuery(event.target.value)} />
-            {ordered.map(page => {
-              const Icon = page.id === 'google-translate' ? Languages : page.id === 'can-i-use' ? Braces : page.id === 'kaomoji-search' ? Smile : Puzzle
-              return <Button unstyled key={page.id} className="launcher-settings-nav-row" data-extension-id={page.id} title={fixed(page.label)} aria-current={active && selected === page.id ? 'page' : undefined} onClick={() => choose(page.id)}><Icon aria-hidden="true" /><span>{fixed(page.label)}</span></Button>
-            })}
-            {ordered.length === 0 && <p role="status" className="px-2 text-xs text-muted-foreground">{fixed('No matching extensions.')}</p>}
-          </div>
+    <LauncherSettingsMenu id={`${id}-pages`} label="TockLauncher" icon={Zap} expanded={expanded} onToggle={() => { setExpanded(!active || !expanded); if (!active) choose('general') }}>
+      <Button unstyled className="launcher-settings-nav-row" aria-current={active && selected === 'general' ? 'page' : undefined} onClick={() => choose('general')}><Settings2 aria-hidden="true" /><span>{fixed('General')}</span></Button>
+      <LauncherSettingsMenu id={`${id}-extensions`} label={fixed('Extensions')} icon={Blocks} expanded={extensionsOpen} onToggle={() => setExtensionsOpen(!extensionsOpen)}>
+        <div className="flex min-w-0 flex-col gap-1">
+          <Input className="my-1 h-8 min-w-0 focus-visible:ring-0!" type="search" aria-label={fixed('Search Extensions')} placeholder={fixed('Search Extensions')} value={query} maxLength={256} onChange={event => setQuery(event.target.value)} />
+          {ordered.map(page => {
+            const Icon = page.id === 'google-translate' ? Languages : page.id === 'can-i-use' ? Braces : page.id === 'kaomoji-search' ? Smile : Puzzle
+            return <Button unstyled key={page.id} className="launcher-settings-nav-row" data-extension-id={page.id} title={fixed(page.label)} aria-current={active && selected === page.id ? 'page' : undefined} onClick={() => choose(page.id)}><Icon aria-hidden="true" /><span>{fixed(page.label)}</span></Button>
+          })}
+          {ordered.length === 0 && <p role="status" className="px-2 text-xs text-muted-foreground">{fixed('No matching extensions.')}</p>}
         </div>
-      </div>
-    </div>
+      </LauncherSettingsMenu>
+    </LauncherSettingsMenu>
   </>, host)}</>
 }
