@@ -15,6 +15,7 @@ export function isWebUiPath(relativePath: string): boolean {
   const file = toPosix(relativePath)
   return (
     file === 'src/client.ts' ||
+    /^src\/launcher[^/]*\.(?:tsx?|html)$/u.test(file) ||
     file === 'cordis.patch.yml' ||
     file.startsWith('web/') ||
     /^plugins\/.+\/src\/.+\.(?:css|tsx)$/u.test(file) ||
