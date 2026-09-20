@@ -320,6 +320,7 @@ export function FilesView({
     setLoading(true)
     void betterSidebarApi.fsTree(scope, path, controller.signal).then(
       listing => {
+        if (controller.signal.aborted) return
         setSnapshot(mapBetterSidebarTree(cwd, listing))
         setError('')
       },

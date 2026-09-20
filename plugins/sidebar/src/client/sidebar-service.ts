@@ -349,7 +349,7 @@ export class DesktopSidebarService implements DesktopSidebar {
       return { kind: 'focused', tab: existing }
     }
     if (tabs.length >= SIDEBAR_MAX_TABS) return { kind: 'limit' }
-    tab = { ...tab }
+    tab = { ...tab, title: tab.title.slice(0, 240) }
     this.writeSession([...tabs, tab], tab.id)
     return { kind: 'opened', tab }
   }

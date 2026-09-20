@@ -121,23 +121,31 @@ test('terminal parks on conversation switches and closes on tab removal', () => 
   const previous = globalThis.WebSocket
   Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: FakeWebSocket })
   try {
+    const lateEvents: string[] = []
     const handlers = {
       onError() {},
-      onExit() {},
-      onOutput() {},
-      onReady() {},
+      onExit() { lateEvents.push('exit') },
+      onOutput() { lateEvents.push('output') },
+      onReady() { lateEvents.push('ready') },
     }
     const parked = new TerminalSocket('ws://127.0.0.1/terminal')
     parked.connect(80, 24, handlers, { sessionId: 'session', tabId: 'parked' })
     const parkedTransport = (parked as unknown as { socket: FakeWebSocket }).socket
     parked.close('park')
     assert.deepEqual(parkedTransport.sent, [JSON.stringify({ type: 'park' })])
+    parkedTransport.onopen?.()
+    parkedTransport.onmessage?.({ data: 'late output after disposal' })
+    parkedTransport.onmessage?.({ data: new TextEncoder().encode(JSON.stringify({ type: 'tockteam-terminal-exit', code: 0 })).buffer })
+    assert.deepEqual(lateEvents, [], 'parked terminals must not call disposed views')
 
     const closed = new TerminalSocket('ws://127.0.0.1/terminal')
     closed.connect(80, 24, handlers, { sessionId: 'session', tabId: 'closed' })
     const closedTransport = (closed as unknown as { socket: FakeWebSocket }).socket
     closed.close()
     assert.deepEqual(closedTransport.sent, [JSON.stringify({ type: 'close' })])
+    closedTransport.onopen?.()
+    closedTransport.onmessage?.({ data: 'late output after tab removal' })
+    assert.deepEqual(lateEvents, [], 'closed terminals must not call disposed views')
   } finally {
     Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: previous })
   }

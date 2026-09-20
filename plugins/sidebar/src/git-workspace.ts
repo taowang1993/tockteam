@@ -12,7 +12,7 @@ const execFileAsync = promisify(execFile)
 const MAX_GIT_OUTPUT = 8 * 1024 * 1024
 
 export function normalizeWorkspacePath(raw: string | undefined): string {
-  const cwd = raw?.trim()
+  const cwd = raw
   if (cwd === undefined || cwd === '' || cwd.length > 4096
     || !isAbsolute(cwd)) {
     throw new Error('invalid workspace path')
@@ -49,7 +49,8 @@ function parseAheadBehind(output: string): { ahead: number; behind: number } {
 
 async function repositoryRoot(cwd: string): Promise<string | null> {
   try {
-    return (await git(['rev-parse', '--show-toplevel'], cwd)).trim() || null
+    // Git adds one line terminator; whitespace before it belongs to the path.
+    return (await git(['rev-parse', '--show-toplevel'], cwd)).replace(/\n$/, '') || null
   } catch {
     return null
   }
@@ -139,11 +140,13 @@ export async function mutateWorkspace(
         '--show-current',
       ], before.root)).trim()
       if (branch === '') throw new Error('cannot push a detached HEAD')
+      // Let Git choose the remote from the user's branch/push configuration.
+      // A new branch has no upstream, so use current-branch push semantics.
       await git([
+        '-c',
+        'push.default=current',
         'push',
         '--set-upstream',
-        'origin',
-        branch,
       ], before.root, 120_000)
     }
     message = 'Pushed the current branch'

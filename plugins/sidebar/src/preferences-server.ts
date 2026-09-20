@@ -123,15 +123,15 @@ export function mountSidebarPreferences(
     path: SIDEBAR_PREFERENCES_API_PATH,
     handler: async (request, response) => {
       try {
+        if (!isTrustedBrowserRequest(request, trustedHosts)) {
+          sendJson(response, 403, { error: 'untrusted sidebar origin' })
+          return
+        }
         if (request.method === 'GET') {
           sendJson(response, 200, await loadSidebarPreferences(path))
           return
         }
         if (request.method === 'PUT') {
-          if (!isTrustedBrowserRequest(request, trustedHosts)) {
-            sendJson(response, 403, { error: 'untrusted sidebar origin' })
-            return
-          }
           const value = parseSidebarPreferences(await readJson(request))
           if (value === undefined) {
             sendJson(response, 400, { error: 'invalid sidebar preferences' })

@@ -208,24 +208,34 @@ function statusFromCode(code: string): WorkspaceChange['status'] {
 export function workspaceChangesFromBetterSidebar(
   entries: readonly BetterSidebarGitStatusEntry[],
 ): WorkspaceChange[] {
-  return entries.map(entry => ({
-    path: entry.path,
-    oldPath: null,
-    status: statusFromCode(entry.xy),
-    staged: entry.xy[0] !== ' ' && entry.xy[0] !== '?',
-  })).sort((left, right) => left.path.localeCompare(right.path))
+  return entries.flatMap((entry): WorkspaceChange[] => {
+    const status = statusFromCode(entry.xy)
+    const change = { path: entry.path, oldPath: null, status }
+    if (status === 'untracked' || status === 'conflicted') {
+      return [{ ...change, staged: false }]
+    }
+    return [...entry.xy].flatMap((code, index) => code === ' ' ? [] : [{
+      ...change,
+      status: statusFromCode(code),
+      staged: index === 0,
+    }])
+  }).sort((left, right) => left.path.localeCompare(right.path))
 }
 
 function normalizedPath(path: string): string {
-  return path.replaceAll('\\', '/').replace(/\/$/, '')
+  // A backslash is a valid filename character in an absolute POSIX path.
+  const normalized = path.startsWith('/') ? path : path.replaceAll('\\', '/')
+  if (/^[A-Za-z]:\/+$/u.test(normalized)) return `${normalized.slice(0, 2)}/`
+  return normalized.replace(/\/+$/, '') || '/'
 }
 
 function workspaceParent(cwd: string, path: string): string | null {
   const root = normalizedPath(cwd)
   const current = normalizedPath(path)
-  if (current === root || !current.startsWith(`${root}/`)) return null
+  const prefix = root.endsWith('/') ? root : `${root}/`
+  if (current === root || !current.startsWith(prefix)) return null
   const parent = current.slice(0, current.lastIndexOf('/'))
-  return parent.length >= root.length ? parent : null
+  return parent.length >= root.length ? parent : root
 }
 
 export function mapBetterSidebarTree(

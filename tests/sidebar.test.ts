@@ -195,6 +195,30 @@ test('desktop sidebar matches viewers by priority, sniffing, and enablement', as
   assert.equal(sidebar.matchViewer('photo.png')?.id, 'text')
 })
 
+test('opening long file titles keeps sidebar preferences valid and restorable', async () => {
+  const storage = new MemorySidebarStorage()
+  const sidebar = new DesktopSidebarService(storage)
+  await sidebar.start()
+  sidebar.setSession('long-filename')
+  sidebar.registerTab(tab('file'))
+  const filename = `${'a'.repeat(245)}.txt`
+  const resource = `/workspace/${filename}`
+  sidebar.openTab({ type: 'file', title: filename, resource })
+  sidebar.setWidth(400)
+  await sidebar.settle()
+
+  const persisted = parseSidebarPreferences(storage.value)
+  assert.ok(persisted, 'a valid filesystem name must not invalidate all preference saves')
+  const restored = new DesktopSidebarService(new MemorySidebarStorage(persisted))
+  restored.setSession('long-filename')
+  await restored.start()
+  assert.equal(restored.getSnapshot().width, 400)
+  assert.equal(restored.getSnapshot().tabs[0]?.title, filename.slice(0, 240))
+  assert.equal(restored.getSnapshot().tabs[0]?.resource, resource)
+  sidebar.dispose()
+  restored.dispose()
+})
+
 test('desktop sidebar persists bounded per-session state outside Web storage', async () => {
   const storage = new MemorySidebarStorage()
   const sidebar = new DesktopSidebarService(storage)

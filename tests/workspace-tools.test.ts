@@ -95,3 +95,53 @@ test('workspace files adapt Better Sidebar responses to the TockTeam UI', () => 
   assert.equal(preview.kind, 'file')
   if (preview.kind === 'file') assert.match(preview.content ?? '', /ready = true/)
 })
+
+test('workspace changes keep both index and working-tree edits reviewable', () => {
+  assert.deepEqual(workspaceChangesFromBetterSidebar([
+    { path: 'partial.ts', xy: 'MM' },
+    { path: 'removed.ts', xy: 'AD' },
+    { path: 'conflict.ts', xy: 'UU' },
+  ]), [
+    { path: 'conflict.ts', oldPath: null, status: 'conflicted', staged: false },
+    { path: 'partial.ts', oldPath: null, status: 'modified', staged: true },
+    { path: 'partial.ts', oldPath: null, status: 'modified', staged: false },
+    { path: 'removed.ts', oldPath: null, status: 'added', staged: true },
+    { path: 'removed.ts', oldPath: null, status: 'deleted', staged: false },
+  ])
+})
+
+test('workspace file navigation preserves POSIX path identity and filesystem roots', () => {
+  for (const [cwd, path, parent] of [
+    ['/workspace', '/workspace/folder\\name/child', '/workspace/folder\\name'],
+    ['/workspace\\name', '/workspace\\name/child', '/workspace\\name'],
+    ['/', '/child', '/'],
+    ['/', '/', null],
+    ['/workspace/', '/workspace/child/', '/workspace'],
+    ['/workspace', '/workspace-sibling/child', null],
+    ['/workspace', '/elsewhere/child', null],
+  ] as const) {
+    const listing = mapBetterSidebarTree(cwd, { path, entries: [], truncated: false })
+    assert.equal(listing.parent, parent, `parent of ${path} in ${cwd}`)
+    const file = mapBetterSidebarFile(cwd, path, { kind: 'text', content: '', truncated: false })
+    assert.equal(file.parent, parent ?? cwd, `file parent of ${path} in ${cwd}`)
+  }
+})
+
+test('workspace file navigation keeps Windows drive roots absolute and supports UNC paths', () => {
+  for (const [cwd, path, parent] of [
+    ['C:\\', 'C:\\child', 'C:/'],
+    ['C:/', 'C:/child/', 'C:/'],
+    ['C:\\', 'C:\\', null],
+    ['C:\\workspace', 'C:\\workspace\\nested\\child', 'C:/workspace/nested'],
+    ['C:\\workspace', 'C:\\workspace-sibling\\child', null],
+    ['C:\\workspace', 'D:\\workspace\\child', null],
+    ['\\\\server\\share\\', '\\\\server\\share\\child', '//server/share'],
+    ['\\\\server\\share', '\\\\server\\share', null],
+    ['//server/share/', '//server/share/child', '//server/share'],
+  ] as const) {
+    const listing = mapBetterSidebarTree(cwd, { path, entries: [], truncated: false })
+    assert.equal(listing.parent, parent, `parent of ${path} in ${cwd}`)
+    const file = mapBetterSidebarFile(cwd, path, { kind: 'binary', size: 0, truncated: false })
+    assert.equal(file.parent, parent ?? cwd, `file parent of ${path} in ${cwd}`)
+  }
+})

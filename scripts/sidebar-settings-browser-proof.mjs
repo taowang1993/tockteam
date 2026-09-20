@@ -1,0 +1,150 @@
+import assert from 'node:assert/strict'
+import { execFile as execFileCallback } from 'node:child_process'
+import { createServer } from 'node:http'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { promisify } from 'node:util'
+import { build, stop } from 'esbuild'
+import { buildTailwindCss } from './tailwind.mjs'
+import { focusProofDescendants, readFocusProofProcessSnapshot } from './trusted-raycast-focus-proof-client.ts'
+
+// Render the actual settings component with isolated stores; no Desktop authority or user data.
+const repo = resolve(import.meta.dirname, '..')
+const evidence = await mkdtemp(join(tmpdir(), 'sidebar-settings-proof-'))
+const session = `sidebar-settings-${process.pid}`
+const execFile = promisify(execFileCallback)
+const observed = new Map()
+const observe = async () => {
+  const rows = await readFocusProofProcessSnapshot()
+  for (const root of rows.filter(row => row.command.includes(session))) {
+    for (const row of [root, ...focusProofDescendants(rows, root.pid)]) observed.set(row.pid, row)
+  }
+}
+const cli = async (...args) => {
+  const { stdout, stderr } = await execFile('playwright-cli', [`-s=${session}`, ...args], { cwd: evidence, timeout: 60000, maxBuffer: 2 * 1024 * 1024 }).catch(error => { throw new Error(error.stdout || error.message) })
+  await observe()
+  await writeFile(join(evidence, 'interactions.txt'), stdout + stderr, { flag: 'a' })
+  if (stdout.includes('### Error')) throw new Error(stdout)
+  return stdout
+}
+const source = await readFile(join(repo, 'plugins/sidebar/src/client/plugin.tsx'), 'utf8')
+const component = source.slice(source.indexOf('function sidebarLabel('), source.indexOf('\nfunction syncSidebarSettings('))
+assert.ok(component.includes('function SidebarSettingsRow('))
+const fixture = `
+import React, { useState, useSyncExternalStore } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Alert } from '@tockteam/ui/alert';
+import { Button } from '@tockteam/ui/button';
+import { Input } from '@tockteam/ui/input';
+import { Label } from '@tockteam/ui/label';
+import { Switch } from '@tockteam/ui/switch';
+import { WORKSPACE_MESSAGES } from './src/client/i18n.ts';
+import { SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH } from './src/sidebar-preferences.ts';
+import { SidebarRuntimeSettingsService } from './src/client/runtime-settings.ts';
+${component}
+let preferences = { agentTerminalTools:false, bottomPanelAutoTerminal:true, browserInterceptLinks:true, interceptOpenPath:true };
+let revision = 0;
+const runtime = new SidebarRuntimeSettingsService({
+  settingsGet: async () => ({value:preferences,revision}),
+  settingsUpdate: async patch => { if(window.proof.pauseSave) await new Promise(resolve => {window.proof.resumeSave=resolve}); if(window.proof.failSave) throw Error('fixture save failure'); preferences = {...preferences,...patch}; return {value:preferences,revision:++revision}; },
+});
+window.proof = { runtime, failSave:false };
+await runtime.start();
+const t = (key, values = {}) => Object.entries(values).reduce((text,[name,value]) => text.replace('{'+name+'}',String(value)),WORKSPACE_MESSAGES.en[key]);
+const descriptors = names => names.map(title => ({id:title,title}));
+const sidebar = {getTabs:() => descriptors(['Review','Terminal','Browser','Files','Side Chat','Trajectory']), getViewers:() => descriptors(['Binary File','HTML Preview','Markdown Preview','Text Preview'])};
+function Harness() {
+ const [state,setState] = useState({openByDefault:false,width:300,tabsEnabled:{},viewersEnabled:{}});
+ return <SidebarSettingsRow runtime={runtime} sidebar={sidebar} t={t} useStore={selector => selector(state)}
+  setOpenByDefault={openByDefault => setState(s => ({...s,openByDefault}))}
+  setWidth={width => setState(s => ({...s,width}))}
+  setTabEnabled={(id,value) => setState(s => ({...s,tabsEnabled:{...s.tabsEnabled,[id]:value}}))}
+  setViewerEnabled={(id,value) => setState(s => ({...s,viewersEnabled:{...s.viewersEnabled,[id]:value}}))}
+  reset={() => {setState({openByDefault:false,width:300,tabsEnabled:{},viewersEnabled:{}});void runtime.reset();}} />;
+}
+createRoot(document.querySelector('main')).render(<Harness/>);
+`
+const css = await buildTailwindCss(repo)
+const html = `<!doctype html><html style="color-scheme:dark"><head><meta charset="utf-8"><link rel="icon" href="data:,"><style>
+:root { --dsw-alias-bg-base:light-dark(#fff,#171717); --dsw-alias-bg-layer-1:light-dark(#fafafa,#232323); --dsw-alias-bg-layer-2:light-dark(#eee,#333); --dsw-alias-label-primary:light-dark(#202020,#eee); --dsw-alias-label-secondary:light-dark(#666,#b8b8b8); --dsw-alias-border-l1:light-dark(#ddd,#383838); --dsw-alias-border-l2:light-dark(#ccc,#454545); --dsw-alias-brand-primary:light-dark(#202020,#fafafa); --dsw-alias-brand-primary-invert:light-dark(#fafafa,#202020); }
+* { box-sizing:border-box } body { margin:0; font:14px/1.5 system-ui; background:var(--dsw-alias-bg-layer-1); color:var(--dsw-alias-label-primary) } button,input { font:inherit;color:inherit } main {max-width:1120px;margin:32px auto;padding:0 32px} @media(max-width:760px){ main{padding:0 20px} }
+</style><style>${css}</style></head><body><main></main><script type="module" src="/fixture.js"></script></body></html>`
+let js
+const server = createServer((request, response) => {
+  if (request.url !== '/' && request.url !== '/fixture.js') { response.writeHead(404).end(); return }
+  response.setHeader('Content-Type', request.url === '/' ? 'text/html' : 'text/javascript')
+  response.end(request.url === '/' ? html : js)
+})
+try {
+  console.log(JSON.stringify({ evidence, rootPid: process.pid, session }))
+  const result = await build({ stdin: { contents: fixture, resolveDir: join(repo, 'plugins/sidebar'), loader: 'tsx' }, bundle: true, format: 'esm', platform: 'browser', write: false })
+  js = result.outputFiles[0].contents
+  stop()
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  await writeFile(join(evidence, 'playwright.json'), JSON.stringify({ browser: { browserName: 'chromium', launchOptions: { channel: 'chromium', headless: true, args: ['--use-mock-keychain'] }, contextOptions: { viewport: { width:1512,height:949 }, deviceScaleFactor:2, colorScheme:'dark' } } }))
+  await cli('open', `http://127.0.0.1:${server.address().port}`, `--config=${join(evidence, 'playwright.json')}`)
+  const output = await cli('run-code', `async page => {
+    const check = (value,message) => {if(!value) throw Error(message)};
+    const errors = []; page.on('pageerror',error => errors.push(error.message)); page.on('console',message => {if(message.type()==='error') errors.push(message.text())});
+    await page.reload();
+    await page.getByRole('switch').first().waitFor();
+    const facts = await page.evaluate(() => {
+      const root = document.querySelector('.tockteam-sidebar-settings');
+      const switches = [...root.querySelectorAll('[role=switch]')].map(el => {const track=el.getBoundingClientRect(),thumb=el.firstElementChild.getBoundingClientRect();return {state:el.dataset.state,width:track.width,height:track.height,padding:getComputedStyle(el).padding,left:thumb.left-track.left,right:track.right-thumb.right,thumb:thumb.width}});
+      return {width:innerWidth,height:innerHeight,scale:devicePixelRatio,theme:document.documentElement.style.colorScheme,skin:document.documentElement.dataset.tockteamSkin??null,descriptions:[...root.querySelectorAll('p,small')].map(el => parseFloat(getComputedStyle(el).fontSize)),rowHeights:[...root.querySelectorAll('.tockteam-sidebar-settings-row')].map(el=>el.getBoundingClientRect().height),switches};
+    });
+    console.log(JSON.stringify(facts));
+    check(facts.width===1512 && facts.height===949 && facts.scale===2,'exact screenshot geometry');
+    check(facts.switches.every(s=>s.left>=1 && s.right>=1 && s.thumb>=16),'switch thumbs must fit inside tracks in both states: '+JSON.stringify(facts.switches));
+    check(facts.descriptions.every(size=>size>=14),'descriptions must be at least 14px');
+    check(facts.rowHeights.every(height=>height>=52),'settings rows need breathing room');
+    const open = page.getByRole('switch',{name:/Open at Launch/});
+    await open.focus(); await open.press('Space'); check(await open.isChecked(),'keyboard toggle');
+    await page.waitForFunction(()=>document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).boxShadow.includes('3px'));
+    const focus = await open.evaluate(el=>getComputedStyle(el).boxShadow);
+    await page.getByText('Open at Launch',{exact:true}).click(); check(!await open.isChecked(),'label toggles switch');
+    const agent = page.getByRole('switch',{name:/Terminal Tools for Agents/i});
+    await page.evaluate(()=>window.proof.pauseSave=true); await agent.click();
+    check(await agent.isDisabled(),'switch disabled during save');
+    await page.evaluate(()=>{window.proof.pauseSave=false;window.proof.resumeSave()});
+    await page.waitForFunction(()=>!window.proof.runtime.getSnapshot().busy && window.proof.runtime.getSnapshot().preferences.agentTerminalTools===true);
+    await page.getByRole('switch',{name:'Review',exact:true}).click(); check(!await page.getByRole('switch',{name:'Review',exact:true}).isChecked(),'tool preference');
+    await page.getByRole('switch',{name:'HTML Preview',exact:true}).click(); check(!await page.getByRole('switch',{name:'HTML Preview',exact:true}).isChecked(),'viewer preference');
+    await page.getByRole('button',{name:'Reset',exact:true}).click(); await page.waitForFunction(()=>!window.proof.runtime.getSnapshot().busy);
+    check(!await agent.isChecked() && await page.getByRole('switch',{name:'Review',exact:true}).isChecked(),'reset restores defaults');
+    await page.evaluate(()=>window.proof.failSave=true); await agent.click(); await page.getByRole('alert').waitFor(); check(!await agent.isChecked(),'failed save restores switch');
+    await page.evaluate(()=>window.proof.failSave=false); await page.getByRole('button',{name:'Reset',exact:true}).click(); await page.getByRole('alert').waitFor({state:'detached'});
+    await page.emulateMedia({reducedMotion:'reduce'});
+    check(await open.evaluate(el=>getComputedStyle(el).transitionProperty==='none' && getComputedStyle(el.firstElementChild).transitionProperty==='none'),'reduced motion');
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:${JSON.stringify(join(evidence, 'side-panel-dark.png'))}});
+    await page.evaluate(()=>document.documentElement.style.colorScheme='light');
+    await page.screenshot({path:${JSON.stringify(join(evidence, 'side-panel-light.png'))}});
+    await page.setViewportSize({width:600,height:949});
+    check(await page.evaluate(()=>document.documentElement.scrollWidth===innerWidth),'no narrow overflow');
+    check(await page.locator('.tockteam-sidebar-settings-list').first().evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length===1),'narrow single column');
+    check(errors.length===0,JSON.stringify(errors));
+    return {facts,focus,errors,keyboard:true,label:true,save:true,disabled:true,rollback:true,reset:true,narrow:true};
+  }`)
+  await writeFile(join(evidence, 'result.txt'), output)
+  for (const name of ['side-panel-dark.png', 'side-panel-light.png']) {
+    const png = await readFile(join(evidence, name))
+    assert.equal(png.readUInt32BE(16), 3024)
+    assert.equal(png.readUInt32BE(20), 1898)
+  }
+  console.log(output)
+} finally {
+  await observe()
+  await cli('close').catch(() => undefined)
+  server.closeAllConnections()
+  await new Promise(resolve => server.close(resolve))
+  stop()
+  await new Promise(resolve => setTimeout(resolve, 500))
+  const remaining = (await readFocusProofProcessSnapshot()).filter(row => observed.has(row.pid))
+  for (const row of remaining) { try { process.kill(row.pid, 'SIGTERM') } catch {} }
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const residue = (await readFocusProofProcessSnapshot()).filter(row => observed.has(row.pid))
+  await writeFile(join(evidence, 'cleanup.json'), JSON.stringify({ rootPid:process.pid, observed:[...observed.keys()], residue, serverClosed:true }))
+  assert.deepEqual(residue, [], 'owned browser process tree must stop')
+}

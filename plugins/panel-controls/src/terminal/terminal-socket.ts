@@ -89,7 +89,10 @@ export class TerminalSocket {
   close(mode: 'close' | 'park' = 'close'): void {
     const socket = this.socket
     this.socket = undefined
+    this.status = 'closed'
     if (socket === undefined) return
+    socket.onopen = null
+    socket.onmessage = null
     socket.onclose = null
     socket.onerror = null
     if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: mode }))
