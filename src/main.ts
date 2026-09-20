@@ -4,6 +4,9 @@ import { resolveTrustedTranslateProxy } from './trusted-raycast-translate-proxy.
 import { TrustedRaycastTrustStore } from './trusted-raycast-trust.ts'
 import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, TrustedRaycastOrigin, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
+import { createTrustedRaycastSettings } from './trusted-raycast-settings.ts'
+import { CAN_I_USE_SETTINGS_TARGETS } from './trusted-raycast-settings-catalog.ts'
+import { launcherExtensionSupported, type LauncherExtensionId } from './launcher-extension-settings.ts'
 import { loadTrustedRaycastPreferenceState, loadTrustedRaycastPreferences, saveTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
@@ -1599,10 +1602,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
   const history = historyEnabled && Array.isArray(rawHistory) ? rawHistory.filter(item => typeof item === 'string').slice(0, historyLimit) : []
   const enabled = new Set(launcherEnabledLocalExtensionIds())
   if (launcherWorkflowFixtureEnabled) enabled.add('Workflow')
-  const unsupported = new Set<string>([
-    ...(platform === 'Linux' ? ['BrowserBookmarks', 'FileSearch', 'TerminalLauncher'] : []),
-    ...(platform !== 'Windows' ? ['WindowsControlPanel'] : []),
-  ])
+  const unsupported = new Set(LAUNCHER_COMPOSITION.extensionIds.filter(id => !launcherExtensionSupported(id, platform)))
   const providerErrors = new Set<string>([
     ...(launcherLocal?.getProviderErrors().keys() ?? []),
     ...(launcherDiscovery?.getProviderErrors().keys() ?? []),
@@ -2297,18 +2297,38 @@ function initializeLauncher(): void {
     preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Can I Use runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir, 'can-i-use'),
   })
   const trustStoreFor = (extensionId: keyof typeof trustedRaycastDescriptors) => extensionId === 'can-i-use' ? trustedRaycastCanIUseTrust : extensionId === 'kaomoji-search' ? trustedRaycastKaomojiTrust : trustedRaycastTrust
+  const extensionSettings = createTrustedRaycastSettings({
+    read: id => id === 'google-translate' ? loadTrustedRaycastPreferences(translatePreferencesPath)
+      : id === 'kaomoji-search' ? loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).values
+      : loadTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile),
+    write: async (id, values) => {
+      if (id === 'google-translate') await saveTrustedRaycastPreferences(translatePreferencesPath, values)
+      else if (id === 'kaomoji-search') await saveKaomojiPreferences(kaomojiTrustedPaths.preferencesFile, values)
+      else await saveTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile, values, { canonicalTargets: CAN_I_USE_SETTINGS_TARGETS })
+    },
+    trust: id => ({ ...(trustStoreFor(id)?.status() ?? { candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '' as const, staged: false }), active: trustedRaycastChannel.active && process.platform === 'darwin' }),
+    setEnabled: async (id, enabled) => {
+      trustedRaycastFirstUse?.invalidate(id)
+      await trustedRaycastMutex(async () => {
+        const store = trustStoreFor(id)
+        if (!store || !trustedRaycastChannel.active || process.platform !== 'darwin') throw new Error('Extension is unavailable')
+        if (enabled) store.enable()
+        else {
+          if (trustedRaycast?.activeExtensionId === id) await trustedRaycast.stop('capability-disabled')
+          store.disable()
+        }
+        await rescan(undefined, undefined, 'trusted-raycast-settings-enablement')
+      })
+    },
+  })
   trustedRaycast = new TrustedRaycastManager({
     runtimeDir: extensionId => trustStoreFor(extensionId)?.runtimeDir(),
     nodePath: runtimePaths().nodeBinary,
     resolveTranslateProxy: () => resolveTrustedTranslateProxy(url => session.defaultSession.resolveProxy(url)),
     stateFile: extensionId => extensionId === 'can-i-use' ? canIUseTrustedPaths.stateFile : extensionId === 'kaomoji-search' ? kaomojiTrustedPaths.stateFile : googleTrustedPaths.stateFile,
     preferencesConfigured: extensionId => extensionId === 'can-i-use' ? true : extensionId === 'kaomoji-search' ? loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).configured : loadTrustedRaycastPreferenceState(translatePreferencesPath).configured,
-    savePreferences: (preferences, extensionId) => {
-      if (extensionId === 'kaomoji-search') return saveKaomojiPreferences(kaomojiTrustedPaths.preferencesFile, preferences)
-      if (extensionId === 'google-translate') return saveTrustedRaycastPreferences(translatePreferencesPath, preferences)
-      throw new Error('Can I Use preferences require main-owned setup')
-    },
-    saveCanIUsePreferences: (preferences, canonicalTargets) => saveTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile, preferences, { canonicalTargets }),
+    savePreferences: (preferences, extensionId, previous) => extensionSettings.saveFromCommand(extensionId, preferences, previous),
+    saveCanIUsePreferences: (preferences, _canonicalTargets, previous) => extensionSettings.saveFromCommand('can-i-use', preferences, previous),
     openCanIUse: async url => {
       if (trustedRaycastDenyEffectsProofEnabled) throw new Error('Browser opening is disabled in the bounded visual proof')
       await shell.openExternal(url)
@@ -2697,6 +2717,7 @@ function initializeLauncher(): void {
     throw error
   }
   workbenchLauncherIpcDisposer = registerWorkbenchLauncherIpcHandlers({
+    extensionSettings,
     assertTrustedMainIpc: event => { assertTrustedMainIpc(event as Electron.IpcMainInvokeEvent) },
     controller: nextController,
     ipcMain,
@@ -2941,10 +2962,10 @@ async function ensureWorkbenchWindow(): Promise<void> {
   window.focus()
 }
 
-async function openWorkbenchSettings(): Promise<void> {
+async function openWorkbenchSettings(extensionId?: LauncherExtensionId): Promise<void> {
   await ensureWorkbenchWindow()
   dispatchWorkbenchRoute({ destination: 'tockcoder' })
-  sendCommand({ section: 'tocklauncher', type: 'show-settings' })
+  sendCommand({ section: 'tocklauncher', ...(extensionId === undefined ? {} : { extensionId }), type: 'show-settings' })
 }
 
 function settingsOperation(canceled = false): Readonly<{ canceled?: boolean; ok: true }> {

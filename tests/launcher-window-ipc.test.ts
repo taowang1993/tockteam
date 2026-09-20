@@ -20,6 +20,19 @@ class FakeIpcMain {
   }
 }
 
+test('launcher extension settings destination is finite and never executes a command', async () => {
+  const ipcMain = new FakeIpcMain()
+  const destinations: unknown[] = []
+  const dispose = registerLauncherWindowIpcHandlers({ controller: { hide: () => {} }, guard: { assert: () => ({ role: 'launcher', webContentsId: 2 }) }, ipcMain, openSettings: id => { destinations.push(id) } })
+  const open = ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings)!
+  await open({}, 'Calculator')
+  await open({}, 'google-translate')
+  await open({})
+  assert.deepEqual(destinations, ['Calculator', 'google-translate', undefined])
+  for (const args of [['unknown'], ['../path'], ['Calculator', 'extra'], [{ extensionId: 'Calculator' }]]) await assert.rejects(async () => open({}, ...args))
+  dispose()
+})
+
 test('launcher IPC registration owns only dismiss and disposes idempotently', async () => {
   const ipcMain = new FakeIpcMain()
   let guardCalls = 0

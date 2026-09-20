@@ -1,4 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import { isLauncherExtensionId } from './launcher-extension-settings.ts'
+import { TRUSTED_SETTINGS_CHANNELS, parseTrustedSettingsId, parseTrustedSettingsUpdate, parseTrustedSettingsSnapshot, parseTrustedSettingsResult } from './trusted-raycast-settings-contract.ts'
+import type { TrustedSettingsUpdate } from './trusted-raycast-settings-contract.ts'
+import type { TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 import type {
   DesktopBridge,
   DesktopCommand,
@@ -57,6 +61,7 @@ export function parseDesktopCommand(value: unknown): DesktopCommand {
   if (value.type === 'show-settings') {
     if (keys.length === 1 && value.section === undefined) return { type: 'show-settings' }
     if (keys.length === 2 && value.section === 'tocklauncher') return { section: 'tocklauncher', type: 'show-settings' }
+    if (keys.length === 3 && value.section === 'tocklauncher' && isLauncherExtensionId(value.extensionId)) return { section: 'tocklauncher', extensionId: value.extensionId, type: 'show-settings' }
     throw new Error('Invalid desktop settings command')
   }
   if (value.type === 'open-paths') {
@@ -122,6 +127,28 @@ const bridge: DesktopBridge = Object.freeze({
       )
     },
     settings: Object.freeze({
+      getExtension: async (id: TrustedRaycastExtensionId, ...extra: unknown[]) => {
+        assertNoLauncherIpcArguments(extra)
+        const extensionId = parseTrustedSettingsId(id)
+        const snapshot = parseTrustedSettingsSnapshot(await ipcRenderer.invoke(TRUSTED_SETTINGS_CHANNELS.get, extensionId))
+        if (snapshot.extensionId !== extensionId) throw new Error('Extension settings identity mismatch')
+        return snapshot
+      },
+      updateExtension: async (raw: TrustedSettingsUpdate, ...extra: unknown[]) => {
+        assertNoLauncherIpcArguments(extra)
+        const request = parseTrustedSettingsUpdate(raw)
+        const result = parseTrustedSettingsResult(await ipcRenderer.invoke(TRUSTED_SETTINGS_CHANNELS.update, request))
+        if (result.ok && result.snapshot.extensionId !== request.extensionId) throw new Error('Extension settings identity mismatch')
+        return result
+      },
+      setExtensionEnabled: async (id: TrustedRaycastExtensionId, enabled: boolean, ...extra: unknown[]) => {
+        assertNoLauncherIpcArguments(extra)
+        const extensionId = parseTrustedSettingsId(id)
+        if (typeof enabled !== 'boolean') throw new Error('Invalid extension enablement')
+        const snapshot = parseTrustedSettingsSnapshot(await ipcRenderer.invoke(TRUSTED_SETTINGS_CHANNELS.enable, extensionId, enabled))
+        if (snapshot.extensionId !== extensionId) throw new Error('Extension settings identity mismatch')
+        return snapshot
+      },
       getSnapshot: async (...args: unknown[]) => {
         assertNoLauncherIpcArguments(args)
         return parseLauncherSettingsSnapshot(await ipcRenderer.invoke(LAUNCHER_SETTINGS_IPC_CHANNELS.getSnapshot))

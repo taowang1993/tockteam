@@ -23,11 +23,11 @@ export type TrustedRaycastManagerOptions = Readonly<{
   copyText?: (text: string) => void | Promise<void>
   openGoogleTranslate?: (url: string) => Promise<void>
   openCanIUse?: (url: string) => Promise<void>
-  saveCanIUsePreferences?: (preferences: TrustedRaycastCanIUsePreferences, canonicalTargets: readonly string[]) => void | Promise<void>
+  saveCanIUsePreferences?: (preferences: TrustedRaycastCanIUsePreferences, canonicalTargets: readonly string[], previous: Readonly<Record<string, boolean | string>>) => void | Promise<void>
   readSelectedText?: () => Promise<Readonly<{ text?: string; unavailable?: string }>>
   pasteText?: (text: string) => void | Promise<void>
   preferencesConfigured?: (extensionId: TrustedRaycastExtensionId) => boolean
-  savePreferences?: (preferences: Readonly<Record<string, boolean | string>>, extensionId: TrustedRaycastExtensionId) => void | Promise<void>
+  savePreferences?: (preferences: Readonly<Record<string, boolean | string>>, extensionId: TrustedRaycastExtensionId, previous: Readonly<Record<string, boolean | string>>) => void | Promise<void>
   stateFile?: string | ((extensionId: TrustedRaycastExtensionId) => string | undefined)
 }>
 type Session = { themeEventId?: string | undefined; preferencesEventId?: string | undefined; navigationEventId?: string | undefined; canIUse?: ReturnType<typeof createTrustedRaycastCanIUseRuntime>; revoked?: boolean; child: ChildProcessWithoutNullStreams; owner: TrustedRaycastOwner; input: TrustedRaycastViewOpen; workspace: string; revision: number; querySequence: number; eventId: string; actions: Map<string, string>; fields: Map<string, string>; action?: { eventId: string; revision: number; nativeUsed: boolean } | undefined; reject: (error: Error) => void }
@@ -150,7 +150,7 @@ export class TrustedRaycastManager {
     catch { fail('Use supported exact browser targets, such as chrome 100, firefox 100.'); return }
     try {
       if (!this.options.saveCanIUsePreferences) throw new Error('Preference storage is unavailable')
-      await this.options.saveCanIUsePreferences(preferences, setup.data.canonicalTargets)
+      await this.options.saveCanIUsePreferences(preferences, setup.data.canonicalTargets, setup.input.preferences)
     } catch { fail('Preferences could not be saved. Please try again.'); return }
     if (this.setup !== setup || this.disposed) return
     this.setup = undefined
@@ -445,7 +445,8 @@ export class TrustedRaycastManager {
           await this.options.openGoogleTranslate(request.url)
         } else {
           if (!this.options.savePreferences) throw new Error('Translate preference storage is unavailable')
-          await this.options.savePreferences(request.preferences, request.extensionId)
+          await this.options.savePreferences(request.preferences, request.extensionId, session.input.preferences)
+          session.input = { ...session.input, preferences: request.preferences }
         }
       }
       succeeded = true

@@ -18,6 +18,7 @@ import {
   parseLauncherThemeProjection,
   type LauncherThemeProjection,
 } from './launcher-window-contract.ts'
+import { isLauncherExtensionId } from './launcher-extension-settings.ts'
 import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastFirstUseRequest, type TrustedRaycastFirstUseRequest, isTrustedRaycastTrustAction, isTrustedRaycastTrustResult, isTrustedRaycastTrustStateEnvelope, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastTrustAction, type TrustedRaycastTrustResult, type TrustedRaycastTrustState, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
@@ -129,8 +130,8 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       return () => { themeListeners.delete(listener) }
     },
     openSettings: async (...args: unknown[]): Promise<void> => {
-      assertArity('openSettings', args, 0)
-      parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings))
+      if (args.length > 1 || (args.length === 1 && !isLauncherExtensionId(args[0]))) throw new Error('Invalid extension settings destination')
+      parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings, args[0]))
     },
     recordSearch: async (query: unknown, ...extra: unknown[]): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> => {
       assertArity('recordSearch', [query, ...extra], 1)
