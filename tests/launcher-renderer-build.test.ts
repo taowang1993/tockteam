@@ -117,13 +117,14 @@ test('local tools stay finite and browser-safe', () => {
 })
 
 test('settings renderer never inserts sensitive values and preserves focused controls across reloads', () => {
-  assert.match(launcherSettings, /!LAUNCHER_SENSITIVE_SETTING_KEYS\.includes\(key as never\)[\s\S]+setSnapshot/u)
-  assert.match(launcherSettings, /pendingValues/u)
+  assert.match(launcherSettings, /setSnapshot\(next\)/u)
+  assert.doesNotMatch(launcherSettings, /pendingValues/u, 'pending inputs, including secrets, are never merged into persisted snapshots')
+  assert.doesNotMatch(launcherSettings, /setSnapshot\(previous =>[\s\S]*\[key\]: value/u, 'drafts are acknowledged only by persisted snapshots, never optimistic values')
   assert.doesNotMatch(launcherSettings, /<LauncherLocalSettings key=\{snapshotRevision\}/u)
   assert.match(launcherSettings, /simpleFileSearchDraft/u)
   assert.match(launcherSettings, /operation\('External revocation', settings\.revokeExternalSettings, true, true\)/u)
   assert.match(launcherSettings, /settingsOwnershipRef\.current !== undefined[\s\S]+clearSimpleFileSearchDraft\(\)/u)
-  assert.match(launcherSettings, /pendingValues\.current\.get\(key\) === value\)[\s\S]+pendingValues\.current\.delete\(key\)[\s\S]+void reload\(\)\.catch\(\(\) => \{\}\)/u)
+  assert.match(launcherSettings, /if \(!isSimpleFileSearchFolders\) void reload\(\)\.catch\(\(\) => \{\}\)/u)
   assert.match(launcherSettings, /createLauncherSettingsWriteQueue[\s\S]+writeQueue\.enqueue/u)
   assert.match(launcherSettings, /writeQueue\?\.waitForIdle\(\)/u)
   assert.match(launcherSettings, /save\('window\.visibleOnAllWorkspaces', checked\)/u)

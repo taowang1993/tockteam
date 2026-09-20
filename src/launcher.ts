@@ -1,3 +1,4 @@
+import { isLauncherExtensionId } from './launcher-extension-settings.ts'
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
 import { createTrustedRaycastFirstUseView, createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
 import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
@@ -859,6 +860,18 @@ async function bootstrap(): Promise<void> {
         buttons[next]?.focus()
       }
     })
+    const extensionId = isLauncherExtensionId(item.sourceExtension) ? item.sourceExtension
+      : trustedRaycastCommands.find(command => command.id === item.id || trustedRaycastSetupId(command.extensionId) === item.id)?.extensionId
+    if (extensionId) {
+      const settingsAction = document.createElement('button')
+      settingsAction.type = 'button'
+      settingsAction.className = 'launcher-command-menu-item'
+      settingsAction.setAttribute('role', 'menuitem')
+      settingsAction.textContent = surfaceSettings.locale === 'zh-CN' ? '扩展设置' : 'Extension Settings'
+      settingsAction.disabled = workflowInteractionBlocked()
+      settingsAction.addEventListener('click', () => { if (!workflowInteractionBlocked()) void bridge.openSettings(extensionId).catch(() => undefined) })
+      menu.append(settingsAction)
+    }
     details.append(menu)
   }
 

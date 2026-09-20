@@ -401,11 +401,12 @@ test('EmptyView renders explicit Hourglass and neutral implicit search icons', (
   } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
   const chromePaths = nodes.filter(node => node.getAttribute('tag') === 'path').length
+  const chromeCircles = nodes.filter(node => node.getAttribute('tag') === 'circle').length
   view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [{ type: 'raycast-empty', props: { title: 'Translating…', icon: 'Hourglass' }, children: [] }] } })
   assert.equal(nodes.filter(node => node.getAttribute('tag') === 'path').length - chromePaths, 4)
-  assert.equal(nodes.some(node => node.getAttribute('tag') === 'circle'), false)
+  assert.equal(nodes.filter(node => node.getAttribute('tag') === 'circle').length, chromeCircles)
   view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [{ type: 'raycast-empty', props: { title: 'No Results' }, children: [] }] } })
-  assert.equal(nodes.some(node => node.getAttribute('tag') === 'circle'), true)
+  assert.ok(nodes.filter(node => node.getAttribute('tag') === 'circle').length > chromeCircles)
 })
 
 test('result accessories are bounded text and malformed values stay inert', () => {

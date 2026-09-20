@@ -39,7 +39,7 @@ export function launcherExtensionSettingOwner(key: string): LauncherExtensionId 
 export const launcherExtensionPages = Object.freeze([...LAUNCHER_COMPOSITION.extensionIds, ...TRUSTED_RAYCAST_EXTENSION_IDS].map(id => {
   const [label, editor] = definitions[id]
   const settingKeys = Object.freeze(LAUNCHER_SETTINGS_CATALOG.filter(row => launcherExtensionSettingOwner(row.key) === id).map(row => row.key))
-  const fields = settingKeys.map(key => key.split('].')[1]!.replace(/([a-z])([A-Z])/gu, '$1 $2').replace(/\b[a-z]/gu, char => char.toUpperCase()))
+  const fields = settingKeys.map(key => key.replace(/^extension\[[^\]]+\]\./u, '').replace(/([a-z])([A-Z])/gu, '$1 $2').replace(/\b[a-z]/gu, char => char.toUpperCase()))
   const searchLabels = Object.freeze([label, ...fields, ...fields.map(field => `${label} ${field}`), ...(compatibilitySearch[id as TrustedRaycastExtensionId] ?? [])])
   return Object.freeze({ id, label, editor, settingKeys, searchLabels })
 }))
@@ -48,7 +48,7 @@ export type LauncherExtensionPage = typeof launcherExtensionPages[number]
 export function findLauncherExtensionPages(query: string, translate: (label: string) => string = label => label): readonly LauncherExtensionPage[] {
   const terms = query.trim().toLocaleLowerCase().split(/\s+/u)
   return launcherExtensionPages.filter(page => {
-    const search = [...page.searchLabels, ...page.searchLabels.map(translate)].join(' ').toLocaleLowerCase()
+    const search = [...page.searchLabels, ...page.searchLabels.map(label => translate(label))].join(' ').toLocaleLowerCase()
     return terms.every(term => search.includes(term))
   })
 }
@@ -57,5 +57,5 @@ export function findLauncherExtensionPages(query: string, translate: (label: str
 export function launcherExtensionSupported(id: string, platform: 'Linux' | 'macOS' | 'Windows'): boolean {
   if ((TRUSTED_RAYCAST_EXTENSION_IDS as readonly string[]).includes(id)) return platform === 'macOS'
   if (id === 'WindowsControlPanel') return platform === 'Windows'
-  return platform !== 'Linux' || !['BrowserBookmarks', 'FileSearch', 'TerminalLauncher'].includes(id)
+  return platform !== 'Linux' || !['AppearanceSwitcher', 'BrowserBookmarks', 'FileSearch', 'SystemSettings', 'TerminalLauncher'].includes(id)
 }

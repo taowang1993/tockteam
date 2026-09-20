@@ -1,4 +1,4 @@
-import { Check, CircleHelp, CircleX, ChevronDown, ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
+import { Settings, Check, CircleHelp, CircleX, ChevronDown, ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import { isTrustedRaycastKaomojiSvg, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
 
@@ -64,7 +64,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const close = document.createElement('button'); close.type = 'button'; close.className = 'launcher-command-footer-action !size-8 !min-h-8 !px-0'; close.append(icon(ChevronLeft, 'size-5')); close.setAttribute('aria-label', zh ? '返回结果' : 'Back to Results'); close.addEventListener('click', () => current?.root?.props.languageCollection === true ? popNavigation() : onClose())
   const titleIcon = document.createElement('img'); titleIcon.setAttribute('src', './trusted-raycast/google-translate.png'); titleIcon.setAttribute('alt', ''); titleIcon.className = 'size-6 rounded-md'
   const title = document.createElement('h2'); title.textContent = 'Google Translate'; title.className = 'm-0 min-w-0 truncate text-sm font-semibold'
-  header.append(close, titleIcon, title)
+  const settingsButton = document.createElement('button'); settingsButton.type = 'button'; settingsButton.className = 'launcher-command-footer-action ml-auto'; settingsButton.setAttribute('aria-label', zh ? '扩展设置' : 'Extension Settings'); settingsButton.title = zh ? '扩展设置' : 'Extension Settings'; settingsButton.append(icon(Settings, 'size-[18px]'))
+  settingsButton.addEventListener('click', () => { if (current) void bridge.openSettings(current.extensionId).catch(() => { error.textContent = zh ? '无法打开设置。' : 'Settings could not be opened.' }) })
+  header.append(close, titleIcon, title, settingsButton)
   const hero = document.createElement('div'); hero.className = 'flex flex-col items-center px-6 pb-2 text-center'; hero.hidden = true
   const logoFrame = document.createElement('div'); logoFrame.className = 'launcher-preference-logo mb-5 flex size-16 items-center justify-center rounded-full'
   const logo = document.createElement('img'); logo.setAttribute('src', './trusted-raycast/google-translate.png'); logo.setAttribute('alt', 'Google Translate'); logo.className = 'size-8'; logoFrame.append(logo)

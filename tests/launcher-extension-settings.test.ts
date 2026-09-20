@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { trustedRaycastSettingsCatalogSource } from '../scripts/trusted-raycast-settings-catalog.mjs'
+import { execFileSync } from 'node:child_process'
 import { test } from 'node:test'
 import { LAUNCHER_COMPOSITION } from '../src/launcher-contract.ts'
 import { TRUSTED_RAYCAST_EXTENSION_IDS } from '../src/trusted-raycast-descriptors.ts'
@@ -23,7 +22,7 @@ test('search finds settings by labels as well as extension names', () => {
 
 test('search finds translated names and field labels without losing English search', () => {
   const translated: Record<string, string> = { Calculator: '计算器', 'Calculator Precision': '计算器精度', 'Proxy Override': '代理覆盖' }
-  const translate = (label: string) => translated[label] ?? label
+  const translate = (label: string, locale = 'zh') => locale === 'zh' ? translated[label] ?? label : label
   assert.deepEqual(findLauncherExtensionPages('计算器', translate).map(page => page.id), ['Calculator'])
   assert.deepEqual(findLauncherExtensionPages('精度', translate).map(page => page.id), ['Calculator'])
   assert.deepEqual(findLauncherExtensionPages('代理', translate).map(page => page.id), ['google-translate'])
@@ -31,7 +30,7 @@ test('search finds translated names and field labels without losing English sear
 })
 
 test('inert settings choices match the admitted artifact and pinned data bytes', () => {
-  assert.equal(readFileSync(new URL('../src/trusted-raycast-settings-catalog.ts', import.meta.url), 'utf8'), trustedRaycastSettingsCatalogSource())
+  execFileSync(process.execPath, ['scripts/trusted-raycast-settings-catalog.mjs', '--check'], { timeout: 15000 })
 })
 
 test('every reviewed extension setting has exactly one finite page owner', () => {
@@ -47,7 +46,7 @@ test('every reviewed extension setting has exactly one finite page owner', () =>
 test('unavailable providers retain destinations but do not claim platform support', () => {
   assert.equal(launcherExtensionSupported('WindowsControlPanel', 'macOS'), false)
   assert.equal(launcherExtensionSupported('WindowsControlPanel', 'Windows'), true)
-  for (const id of ['BrowserBookmarks', 'FileSearch', 'TerminalLauncher']) assert.equal(launcherExtensionSupported(id, 'Linux'), false)
+  for (const id of ['AppearanceSwitcher', 'BrowserBookmarks', 'FileSearch', 'SystemSettings', 'TerminalLauncher']) assert.equal(launcherExtensionSupported(id, 'Linux'), false)
   assert.equal(launcherExtensionSupported('SimpleFileSearch', 'Linux'), true)
   assert.equal(launcherExtensionSupported('google-translate', 'Windows'), false)
 })
