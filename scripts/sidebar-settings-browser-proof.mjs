@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { build, stop } from 'esbuild'
 import { buildTailwindCss } from './tailwind.mjs'
+import { TOCKTEAM_SKINS } from '../plugins/skins/src/skins.ts'
 import { focusProofDescendants, readFocusProofProcessSnapshot } from './trusted-raycast-focus-proof-client.ts'
 
 // Render the actual settings component with isolated stores; no Desktop authority or user data.
@@ -63,11 +64,19 @@ function Harness() {
   setViewerEnabled={(id,value) => setState(s => ({...s,viewersEnabled:{...s.viewersEnabled,[id]:value}}))}
   reset={() => {setState({openByDefault:false,width:300,tabsEnabled:{},viewersEnabled:{}});void runtime.reset();}} />;
 }
-createRoot(document.querySelector('main')).render(<Harness/>);
+const root = createRoot(document.querySelector('main'));
+root.render(<Harness/>);
+window.proof.switchRef = React.createRef();
+window.proof.renderSmallSwitches = () => root.render(<div>
+  <Switch size="sm" aria-label="Small Off" ref={window.proof.switchRef}/>
+  <Switch size="sm" aria-label="Small On" defaultChecked/>
+  <Switch size="sm" aria-label="Small Disabled" disabled/>
+  <Switch size="sm" aria-label="Small Invalid" aria-invalid="true"/>
+</div>);
 `
 const css = await buildTailwindCss(repo)
 const html = `<!doctype html><html style="color-scheme:dark"><head><meta charset="utf-8"><link rel="icon" href="data:,"><style>
-:root { --dsw-alias-bg-base:light-dark(#fff,#171717); --dsw-alias-bg-layer-1:light-dark(#fafafa,#232323); --dsw-alias-bg-layer-2:light-dark(#eee,#333); --dsw-alias-label-primary:light-dark(#202020,#eee); --dsw-alias-label-secondary:light-dark(#666,#b8b8b8); --dsw-alias-border-l1:light-dark(#ddd,#383838); --dsw-alias-border-l2:light-dark(#ccc,#454545); --dsw-alias-brand-primary:light-dark(#202020,#fafafa); --dsw-alias-brand-primary-invert:light-dark(#fafafa,#202020); }
+:root { --dsw-alias-bg-base:light-dark(#fff,#171717); --dsw-alias-bg-layer-1:light-dark(#fafafa,#232323); --dsw-alias-bg-layer-2:light-dark(#eee,#333); --dsw-alias-label-primary:light-dark(#202020,#eee); --dsw-alias-label-secondary:light-dark(#666,#b8b8b8); --dsw-alias-border-l1:light-dark(#ddd,#383838); --dsw-alias-border-l2:light-dark(#ccc,#454545); --dsw-alias-brand-primary:light-dark(#202020,#fafafa); --dsw-alias-brand-primary-invert:light-dark(#fafafa,#202020); --dsw-alias-state-error-primary:light-dark(#b91c1c,#f87171); }
 * { box-sizing:border-box } body { margin:0; font:14px/1.5 system-ui; background:var(--dsw-alias-bg-layer-1); color:var(--dsw-alias-label-primary) } button,input { font:inherit;color:inherit } main {max-width:1120px;margin:32px auto;padding:0 32px} @media(max-width:760px){ main{padding:0 20px} }
 </style><style>${css}</style></head><body><main></main><script type="module" src="/fixture.js"></script></body></html>`
 let js
@@ -91,13 +100,15 @@ try {
     await page.getByRole('switch').first().waitFor();
     const facts = await page.evaluate(() => {
       const root = document.querySelector('.tockteam-sidebar-settings');
-      const switches = [...root.querySelectorAll('[role=switch]')].map(el => {const track=el.getBoundingClientRect(),thumb=el.firstElementChild.getBoundingClientRect();return {state:el.dataset.state,width:track.width,height:track.height,padding:getComputedStyle(el).padding,left:thumb.left-track.left,right:track.right-thumb.right,thumb:thumb.width}});
-      return {width:innerWidth,height:innerHeight,scale:devicePixelRatio,theme:document.documentElement.style.colorScheme,skin:document.documentElement.dataset.tockteamSkin??null,descriptions:[...root.querySelectorAll('p,small')].map(el => parseFloat(getComputedStyle(el).fontSize)),rowHeights:[...root.querySelectorAll('.tockteam-sidebar-settings-row')].map(el=>el.getBoundingClientRect().height),switches};
+      const switches = [...root.querySelectorAll('[role=switch]')].map(el => {const track=el.getBoundingClientRect(),thumb=el.firstElementChild.getBoundingClientRect();return {state:el.dataset.state,width:track.width,height:track.height,padding:getComputedStyle(el).padding,left:thumb.left-track.left,right:track.right-thumb.right,thumb:thumb.width,shadow:getComputedStyle(el.firstElementChild).boxShadow}});
+      return {width:innerWidth,height:innerHeight,scale:devicePixelRatio,theme:document.documentElement.style.colorScheme,skin:document.documentElement.dataset.tockteamSkin??null,titles:[...root.querySelectorAll('strong,h4')].map(el=>parseFloat(getComputedStyle(el).fontSize)),descriptions:[...root.querySelectorAll('p,small')].map(el => parseFloat(getComputedStyle(el).fontSize)),rowHeights:[...root.querySelectorAll('.tockteam-sidebar-settings-row')].map(el=>el.getBoundingClientRect().height),switches};
     });
     console.log(JSON.stringify(facts));
     check(facts.width===1512 && facts.height===949 && facts.scale===2,'exact screenshot geometry');
-    check(facts.switches.every(s=>s.left>=1 && s.right>=1 && s.thumb>=16),'switch thumbs must fit inside tracks in both states: '+JSON.stringify(facts.switches));
-    check(facts.descriptions.every(size=>size>=14),'descriptions must be at least 14px');
+    check(facts.theme==='dark' && facts.skin===null,'built-in dark appearance without an active skin');
+    check(facts.titles.every(size=>size===14) && facts.descriptions.every(size=>size===12),'match General settings typography: 14px labels and 12px descriptions');
+    check(facts.switches.every(s=>s.width===32 && Math.abs(s.height-18.4)<0.1 && s.thumb===16 && !/[1-9][0-9.]*px/.test(s.shadow)),'original shadcn radix-nova switch geometry, without custom thumb shadows: '+JSON.stringify(facts.switches));
+    check(facts.switches.every(s=>s.left>=1 && s.right>=1 && Math.abs((s.state==='checked'?s.right:s.left)-1)<0.1),'switch thumbs align inside tracks in both states: '+JSON.stringify(facts.switches));
     check(facts.rowHeights.every(height=>height>=52),'settings rows need breathing room');
     const open = page.getByRole('switch',{name:/Open at Launch/});
     await open.focus(); await open.press('Space'); check(await open.isChecked(),'keyboard toggle');
@@ -124,8 +135,28 @@ try {
     await page.setViewportSize({width:600,height:949});
     check(await page.evaluate(()=>document.documentElement.scrollWidth===innerWidth),'no narrow overflow');
     check(await page.locator('.tockteam-sidebar-settings-list').first().evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length===1),'narrow single column');
+    const themes = [];
+    for (const skin of [{id:null,colorScheme:'light',tokens:{}},...${JSON.stringify(TOCKTEAM_SKINS.map(({ id, colorScheme, tokens }) => ({ id, colorScheme, tokens })))}]) {
+      await page.evaluate(skin=>{
+        document.documentElement.style.cssText='color-scheme:'+skin.colorScheme;
+        if(skin.id) document.documentElement.dataset.tockteamSkin=skin.id; else delete document.documentElement.dataset.tockteamSkin;
+        for(const [key,value] of Object.entries(skin.tokens)) document.documentElement.style.setProperty(key,value);
+      },skin);
+      const switches = await page.getByRole('switch').evaluateAll(elements=>elements.map(el=>({state:el.dataset.state,track:getComputedStyle(el).backgroundColor,thumb:getComputedStyle(el.firstElementChild).backgroundColor,width:el.getBoundingClientRect().width})));
+      check(switches.every(s=>s.width===32 && s.track!==s.thumb && s.track!=='rgba(0, 0, 0, 0)'), 'switches remain visible in '+(skin.id??'light'));
+      themes.push({id:skin.id,colorScheme:skin.colorScheme,switches});
+    }
+    await page.evaluate(()=>window.proof.renderSmallSwitches());
+    const small = page.getByRole('switch',{name:'Small Off',exact:true});
+    await small.waitFor();
+    const smallGeometry = await page.getByRole('switch').evaluateAll(elements=>elements.map(el=>{const track=el.getBoundingClientRect(),thumb=el.firstElementChild.getBoundingClientRect();return {width:track.width,height:track.height,thumb:thumb.width,left:thumb.left-track.left,right:track.right-thumb.right}}));
+    check(smallGeometry.every(s=>s.width===24 && s.height===14 && s.thumb===12 && s.left>=1 && s.right>=1),'upstream small switch geometry');
+    check(await small.evaluate(el=>el===window.proof.switchRef.current),'React 18 ref forwarding');
+    await small.focus(); await small.press('Space'); check(await small.isChecked(),'small switch keyboard toggle');
+    check(await page.getByRole('switch',{name:'Small Disabled'}).isDisabled(),'disabled small switch');
+    check(await page.getByRole('switch',{name:'Small Invalid'}).evaluate(el=>getComputedStyle(el).boxShadow.includes('3px')),'invalid switch has an error ring');
     check(errors.length===0,JSON.stringify(errors));
-    return {facts,focus,errors,keyboard:true,label:true,save:true,disabled:true,rollback:true,reset:true,narrow:true};
+    return {facts,focus,themes,smallGeometry,errors,keyboard:true,label:true,save:true,disabled:true,rollback:true,reset:true,narrow:true};
   }`)
   await writeFile(join(evidence, 'result.txt'), output)
   for (const name of ['side-panel-dark.png', 'side-panel-light.png']) {

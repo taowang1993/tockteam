@@ -4,19 +4,21 @@ import { cn } from './utils.ts'
 
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>
->(function Switch({ className, ...props }, ref) {
-  // DSH omits Tailwind Preflight: reset native button padding and sizing here.
+  React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> & { size?: 'sm' | 'default' }
+>(function Switch({ className, size = 'default', ...props }, ref) {
+  // shadcn radix-nova: retain React 18 refs, DSH color-scheme, and the no-Preflight reset.
+  // Use Radix data-state selectors directly (DSH does not load shadcn's custom variants).
   return (
     <SwitchPrimitive.Root
       ref={ref}
       data-slot="switch"
-      className={cn('peer relative box-border inline-flex h-5 w-9 shrink-0 cursor-pointer appearance-none items-center rounded-full border border-solid border-border bg-muted p-0 outline-none transition-[background-color,border-color,box-shadow] duration-150 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-transparent data-[state=checked]:bg-primary motion-reduce:transition-none', className)}
+      data-size={size}
+      className={cn('peer group/switch relative box-border inline-flex shrink-0 appearance-none items-center rounded-full border border-solid border-transparent p-0 outline-none transition-[background-color,border-color,box-shadow] group-has-[:focus-visible]/field-label:border-transparent group-has-[:focus-visible]/field-label:ring-0 after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6 data-[state=checked]:bg-primary data-[state=unchecked]:bg-[light-dark(var(--dsw-alias-border-l2),color-mix(in_srgb,var(--dsw-alias-border-l2)_80%,transparent))] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none', className)}
       {...props}
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
-        className="pointer-events-none block size-4 shrink-0 translate-x-px rounded-full bg-[light-dark(var(--dsw-alias-bg-base),var(--dsw-alias-label-primary))] shadow-[0_1px_3px_rgb(0_0_0_/_20%)] transition-transform duration-150 data-[state=checked]:translate-x-[17px] data-[state=checked]:bg-primary-foreground motion-reduce:transition-none"
+        className="pointer-events-none block rounded-full bg-[light-dark(var(--dsw-alias-bg-base),var(--dsw-alias-label-primary))] ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=checked]:bg-[light-dark(var(--dsw-alias-bg-base),var(--dsw-alias-brand-primary-invert))] data-[state=unchecked]:translate-x-0 motion-reduce:transition-none"
       />
     </SwitchPrimitive.Root>
   )
