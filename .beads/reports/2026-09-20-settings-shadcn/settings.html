@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shadcn Settings Migration</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #111214; color: #f0f1f3; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header, main, footer { width: min(1512px, calc(100% - 32px)); margin-inline: auto; }
+    header { padding: 40px 0 24px; }
+    h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: -.025em; }
+    p { max-width: 1000px; color: #a6aab2; font-size: 14px; line-height: 1.6; }
+    a { color: inherit; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 20px; font-size: 13px; }
+    a:focus-visible { outline: 2px solid #a6c8ff; outline-offset: 4px; }
+    main { display: flex; flex-direction: column; gap: 28px; }
+    figure { width: 100%; margin: 0; border: 1px solid #30333a; background: #181a1d; scroll-margin-top: 16px; }
+    figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 14px 16px; border-bottom: 1px solid #30333a; }
+    h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    figcaption span { color: #a6aab2; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .screenshot { display: block; }
+    img { display: block; width: 100%; height: auto; }
+    footer { padding: 24px 0 40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Shadcn Settings Migration</h1>
+    <p>Updated real TockTeam Desktop captures, one screenshot per row. New: shared sliders, expandable groups, and skin-choice group. Pinned DSH controls remain unchanged. Every page title starts at <strong>x=344, y=94</strong> and uses the same 18px semibold type with a 24px line height. Screenshots are uncropped and displayed at an identical scale. Click any image to inspect its original size.</p>
+    <p>Built-in dark theme · No active skin · 1512 × 949 CSS pixels at 2× · 3024 × 1898 PNG pixels · Top of each page · Isolated profile, not your saved settings. All six settings pages are included; Plugins has a separate capture for each of its three tabs.</p>
+    <nav aria-label="Settings Screenshots">
+      <a href="#general">General</a><a href="#models">Models</a><a href="#plugins-marketplace">Plugins: Marketplace</a><a href="#plugins-plugin-config">Plugins: Plugin Config</a><a href="#plugins-plugin-list">Plugins: Plugin List</a><a href="#agent-presets">Agent Presets</a><a href="#side-panel">Side Panel</a><a href="#tocklauncher">TockLauncher</a>
+    </nav>
+  </header>
+  <main>
+    <figure id="general">
+      <figcaption><h2>01 · General</h2><span>Title: x=344, y=94 · Dark · No Skin</span></figcaption>
+      <a class="screenshot" href="screenshots/general.png"><img src="screenshots/general.png" width="3024" height="1898" alt="General settings with permission, language, appearance, font size, conversation display, and skin controls."></a>
+    </figure>
+    <figure id="models">
+      <figcaption><h2>02 · Models</h2><span>Title: x=344, y=94 · Dark · No Skin</span></figcaption>
+      <a class="screenshot" href="screenshots/models.png"><img src="screenshots/models.png" width="3024" height="1898" alt="Models settings in a fresh isolated profile, with no provider credentials added."></a>
+    </figure>
+    <figure id="plugins-marketplace">
+      <figcaption><h2>03 · Plugins — Marketplace</h2><span>Title: x=344, y=94 · Dark · No Skin</span></figcaption>
+      <a class="screenshot" href="screenshots/plugins-marketplace.png"><img src="screenshots/plugins-marketplace.png" width="3024" height="1898" alt="Plugins settings with the Marketplace tab selected, showing its initial catalog state."></a>
+    </figure>
+    <figure id="plugins-plugin-config">
+      <figcaption><h2>04 · Plugins — Plugin Config</h2><span>Title: x=344, y=94 · Dark · No Skin</span></figcaption>
+      <a class="screenshot" href="screenshots/plugins-plugin-config.png"><img src="screenshots/plugins-plugin-config.png" width="3024" height="1898" alt="Plugins settings with the Plugin Config tab selected."></a>
+    </figure>
+    <figure id="plugins-plugin-list">
+      <figcaption><h2>05 · Plugins — Plugin List</h2><span>Title: x=344, y=94 · Dark · No Skin</span></figcaption>
+      <a class="screenshot" href="screenshots/plugins-plugin-list.png"><img src="screenshots/plugins-plugin-list.png" width="3024" height="1898" alt="Plugins settings with the Plugin List tab selected, showing the isolated runtime inventory."></a>
+    </figure>
+    <figure id="agent-presets">
+      <figcaption><h2>06 · Agent Presets</h2><span>Title: x=344, y=94 · Dark · No Skin</span></figcaption>
+      <a class="screenshot" href="screenshots/agent-presets.png"><img src="screenshots/agent-presets.png" width="3024" height="1898" alt="Agent Presets settings showing the built-in presets and custom preset controls."></a>
+    </figure>
+    <figure id="side-panel">
+      <figcaption><h2>07 · Side Panel</h2><span>Title: x=344, y=94 · Dark · No Skin</span></figcaption>
+      <a class="screenshot" href="screenshots/side-panel.png"><img src="screenshots/side-panel.png" width="3024" height="1898" alt="Side Panel settings showing panel behavior, agent access, and tool controls."></a>
+    </figure>
+    <figure id="tocklauncher">
+      <figcaption><h2>08 · TockLauncher</h2><span>Title: x=344, y=94 · Dark · No Skin</span></figcaption>
+      <a class="screenshot" href="screenshots/tocklauncher.png"><img src="screenshots/tocklauncher.png" width="3024" height="1898" alt="TockLauncher settings with its title aligned to the other settings pages, followed by search and history controls."></a>
+    </figure>
+  </main>
+  <footer><p><a href="proof.json">Capture Measurements</a> · <a href="cleanup.json">Process Cleanup</a> · Electron verification found no renderer or console errors. This page needs no server, external assets, or JavaScript.</p></footer>
+</body>
+</html>
