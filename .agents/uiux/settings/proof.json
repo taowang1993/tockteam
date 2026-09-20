@@ -1,0 +1,260 @@
+{
+  "mode": "real Desktop settings, isolated profile, built-in dark theme",
+  "captures": [
+    {
+      "name": "General",
+      "activeTab": null,
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "skin": null,
+      "route": "/settings",
+      "title": {
+        "text": "General",
+        "x": 344,
+        "y": 94,
+        "width": 1144,
+        "height": 24,
+        "font": "18px",
+        "weight": "600",
+        "lineHeight": "24px"
+      },
+      "selected": "General",
+      "file": "general.png",
+      "pngSize": [
+        3024,
+        1898
+      ],
+      "sha256": "d49a77afccec422b12b593984991c4d9335faba2b4c4ad70d6bc971a343ff75e"
+    },
+    {
+      "name": "Models",
+      "activeTab": null,
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "skin": null,
+      "route": "/settings",
+      "title": {
+        "text": "Models",
+        "x": 344,
+        "y": 94,
+        "width": 720,
+        "height": 24,
+        "font": "18px",
+        "weight": "600",
+        "lineHeight": "24px"
+      },
+      "selected": "Models",
+      "file": "models.png",
+      "pngSize": [
+        3024,
+        1898
+      ],
+      "sha256": "156ffc3666049c0a5339a7211959ce752bf637b417903518ad6398a98ad48cf4"
+    },
+    {
+      "name": "Plugins",
+      "activeTab": "Marketplace",
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "skin": null,
+      "route": "/settings",
+      "title": {
+        "text": "Plugins",
+        "x": 344,
+        "y": 94,
+        "width": 1144,
+        "height": 24,
+        "font": "18px",
+        "weight": "600",
+        "lineHeight": "24px"
+      },
+      "selected": "Plugins",
+      "file": "plugins-marketplace.png",
+      "pngSize": [
+        3024,
+        1898
+      ],
+      "sha256": "7d42dc93791955b74f3763c321fa92ec7d14ebf40d1d0279989cd679c7812f8b"
+    },
+    {
+      "name": "Plugins",
+      "activeTab": "Plugin Config",
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "skin": null,
+      "route": "/settings",
+      "title": {
+        "text": "Plugins",
+        "x": 344,
+        "y": 94,
+        "width": 1144,
+        "height": 24,
+        "font": "18px",
+        "weight": "600",
+        "lineHeight": "24px"
+      },
+      "selected": "Plugins",
+      "file": "plugins-plugin-config.png",
+      "pngSize": [
+        3024,
+        1898
+      ],
+      "sha256": "c6b93dc3d6f38cd9e0fef8dccc33f9f7016855311d94cc5e800aaf575e718ce2"
+    },
+    {
+      "name": "Plugins",
+      "activeTab": "Plugin List",
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "skin": null,
+      "route": "/settings",
+      "title": {
+        "text": "Plugins",
+        "x": 344,
+        "y": 94,
+        "width": 1136,
+        "height": 24,
+        "font": "18px",
+        "weight": "600",
+        "lineHeight": "24px"
+      },
+      "selected": "Plugins",
+      "file": "plugins-plugin-list.png",
+      "pngSize": [
+        3024,
+        1898
+      ],
+      "sha256": "e4e35ca13055582905f5d4fad45fbf22c17ef327849dcda34006c927192b0b5d"
+    },
+    {
+      "name": "Agent Presets",
+      "activeTab": null,
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "skin": null,
+      "route": "/settings",
+      "title": {
+        "text": "Agent Presets",
+        "x": 344,
+        "y": 94,
+        "width": 720,
+        "height": 24,
+        "font": "18px",
+        "weight": "600",
+        "lineHeight": "24px"
+      },
+      "selected": "Agent Presets",
+      "file": "agent-presets.png",
+      "pngSize": [
+        3024,
+        1898
+      ],
+      "sha256": "dc472c4dd34dc5103caa83a6086e1c958f144952b64b880bc01f2f010a903a65"
+    },
+    {
+      "name": "Side Panel",
+      "activeTab": null,
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "skin": null,
+      "route": "/settings",
+      "title": {
+        "text": "Side Panel",
+        "x": 344,
+        "y": 94,
+        "width": 431.5546875,
+        "height": 24,
+        "font": "18px",
+        "weight": "600",
+        "lineHeight": "24px"
+      },
+      "selected": "Side Panel",
+      "file": "side-panel.png",
+      "pngSize": [
+        3024,
+        1898
+      ],
+      "sha256": "e23ae152e3ac6fd1b7acfed9f2a31d5f8ddade1155807381026c4b26e43d80d9"
+    },
+    {
+      "name": "TockLauncher",
+      "activeTab": null,
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "skin": null,
+      "route": "/settings",
+      "title": {
+        "text": "TockLauncher",
+        "x": 344,
+        "y": 94,
+        "width": 702.5234375,
+        "height": 24,
+        "font": "18px",
+        "weight": "600",
+        "lineHeight": "24px"
+      },
+      "selected": "TockLauncher",
+      "file": "tocklauncher.png",
+      "pngSize": [
+        3024,
+        1898
+      ],
+      "sha256": "dd11572c42302e29b3ac88d9b58b60a5995e5900e299a05ff446eeccdfa4ecbf"
+    }
+  ],
+  "errors": [],
+  "failures": [],
+  "capturedAt": "2026-09-20T14:08:01.087Z",
+  "dsh": {
+    "source": "npm",
+    "package": "@deepseek-ai/dsh",
+    "version": "0.1.2-rc.1",
+    "integrity": "sha512-RPq48TzxvwpdT9/7W1tbhZDBMmeK+bxDrX9cqQC27Wx/LqtgJF8PSa3b3xriU8oxtvhwYmk21w2cej3uMQrnVA==",
+    "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.2-rc.1.tgz",
+    "packageManager": "pnpm@11.20.0",
+    "pnpmIntegrity": "sha512-mm8zCpW2ZEbqCI+vFSFAWooB8H/ecSTMmVjf7VLUu0NnN+ZbCPhfN7Rvy6N1CSVYrFEmK4FoRLIvY0Bu0Wa/7g=="
+  },
+  "focus": {
+    "checkpoint": "settings-layout",
+    "focusedWindowCount": 0,
+    "windows": [
+      {
+        "focused": false,
+        "id": 1
+      }
+    ]
+  },
+  "sourceCommit": "4bba6ce31b7b29b280e0e5f15754932fc1640bca"
+}
