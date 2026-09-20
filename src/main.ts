@@ -1,5 +1,6 @@
 import { createTrustedRaycastFirstUse } from './trusted-raycast-first-use.ts'
 import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
+import { resolveTrustedTranslateProxy } from './trusted-raycast-translate-proxy.ts'
 import { TrustedRaycastTrustStore } from './trusted-raycast-trust.ts'
 import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, TrustedRaycastOrigin, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
@@ -2299,6 +2300,7 @@ function initializeLauncher(): void {
   trustedRaycast = new TrustedRaycastManager({
     runtimeDir: extensionId => trustStoreFor(extensionId)?.runtimeDir(),
     nodePath: runtimePaths().nodeBinary,
+    resolveTranslateProxy: () => resolveTrustedTranslateProxy(url => session.defaultSession.resolveProxy(url)),
     stateFile: extensionId => extensionId === 'can-i-use' ? canIUseTrustedPaths.stateFile : extensionId === 'kaomoji-search' ? kaomojiTrustedPaths.stateFile : googleTrustedPaths.stateFile,
     preferencesConfigured: extensionId => extensionId === 'can-i-use' ? true : extensionId === 'kaomoji-search' ? loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).configured : loadTrustedRaycastPreferenceState(translatePreferencesPath).configured,
     savePreferences: (preferences, extensionId) => {

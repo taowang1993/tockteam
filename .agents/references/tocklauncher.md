@@ -152,6 +152,8 @@ The distribution contains three reviewed Raycast compatibility artifacts. Google
 
 These trusted children are not OS sandboxes. They have the launching account's filesystem, network, and process authority. The security boundary is instead finite admission and ownership: exact archive and derived-file hashes, isolated preview, journaled current/previous rotation, recovery, authenticated owner/session/generation/revision IPC, bounded messages, main-owned native effects, private process-group cleanup, and renderers that receive no extension functions, HTML, React, Node, or generic RPC. New bytes require a new reviewed TockTeam build. Bundled features install and enable automatically after that release-time review; user disablement remains persistent, and selected text never falls back to Clipboard.
 
+Translate resolves Google's fixed origin through Electron main's system proxy settings on each command launch. An explicit extension proxy takes precedence; HTTP/HTTPS proxies and direct connections are supported, while unsupported proxy rules fail without silently bypassing them. The first-party network adapter applies the same route to the unchanged source's token lookup and translation requests, with a 10-second deadline covering each request and response body. Proxy configuration stays in the trusted child, not renderer projections or persisted preference defaults.
+
 Compatibility extends only to these exact artifacts and their reviewed API subsets:
 
 | Extension | Command | Finite Feature Scope |

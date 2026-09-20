@@ -17,6 +17,7 @@ export type TrustedRaycastManagerOptions = Readonly<{
   /** The live runtime directory, or a main-owned resolver when the install store owns it. */
   runtimeDir: string | ((extensionId: TrustedRaycastRuntimeExtensionId) => string | undefined)
   nodePath: string
+  resolveTranslateProxy?: () => Promise<string>
   onMessage: (owner: TrustedRaycastOwner, message: TrustedRaycastViewMessage) => void
   onError?: (owner: TrustedRaycastOwner, error: Error) => void
   copyText?: (text: string) => void | Promise<void>
@@ -82,7 +83,7 @@ export class TrustedRaycastManager {
       return { workspace, artifactRoot: descriptor.artifactRoot }
     } catch (error) { rmSync(workspace, { recursive: true, force: true }); throw error }
   }
-  private createWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen, initialQuery = ''): { child: ChildProcessWithoutNullStreams; workspace: string; canIUse?: ReturnType<typeof createTrustedRaycastCanIUseRuntime> } {
+  private createWorkspace(runtimeDir: string, input: TrustedRaycastViewOpen, initialQuery = '', translateProxy = ''): { child: ChildProcessWithoutNullStreams; workspace: string; canIUse?: ReturnType<typeof createTrustedRaycastCanIUseRuntime> } {
     const { workspace, artifactRoot } = this.stageWorkspace(runtimeDir, input)
     try {
       const canIUse = input.extensionId === 'can-i-use' ? createTrustedRaycastCanIUseRuntime(join(workspace, artifactRoot), input.sessionId, input.preferences, initialQuery) : undefined
@@ -91,7 +92,7 @@ export class TrustedRaycastManager {
       const defaults = input.extensionId === 'kaomoji-search' ? KAOMOJI_PREFERENCE_DEFAULTS : TRUSTED_RAYCAST_PREFERENCE_DEFAULTS
       const child = spawn(this.options.nodePath, ['--import', join(workspace, 'resolution.mjs'), join(workspace, 'child.mjs')], {
         cwd: workspace, detached: true,
-        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_EXTENSION_ID: input.extensionId, TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(canIUse?.preferences ?? (Object.keys(input.preferences).length === 0 ? defaults : input.preferences)), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: input.extensionId !== 'can-i-use' && this.options.preferencesConfigured?.(input.extensionId) === false ? '0' : '1', ...(stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: stateFile }), ...(canIUse ? { TRUSTED_RAYCAST_CAN_I_USE_CONTEXT: JSON.stringify(canIUse.context), TRUSTED_RAYCAST_CAN_I_USE_ROOT: canIUse.initialMessage } : {}) },
+        env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TMP: join(workspace, 'tmp'), TEMP: join(workspace, 'tmp'), TRUSTED_RAYCAST_EXTENSION_ID: input.extensionId, TRUSTED_RAYCAST_SESSION_ID: input.sessionId, TRUSTED_RAYCAST_GENERATION: input.generation, TRUSTED_RAYCAST_PREFERENCES: JSON.stringify(canIUse?.preferences ?? (Object.keys(input.preferences).length === 0 ? defaults : input.preferences)), TRUSTED_RAYCAST_PREFERENCES_CONFIGURED: input.extensionId !== 'can-i-use' && this.options.preferencesConfigured?.(input.extensionId) === false ? '0' : '1', ...(stateFile === undefined ? {} : { TRUSTED_RAYCAST_STATE_FILE: stateFile }), ...(input.extensionId === 'google-translate' ? { TRUSTED_RAYCAST_TRANSLATE_PROXY: String(input.preferences.proxy || translateProxy) } : {}), ...(canIUse ? { TRUSTED_RAYCAST_CAN_I_USE_CONTEXT: JSON.stringify(canIUse.context), TRUSTED_RAYCAST_CAN_I_USE_ROOT: canIUse.initialMessage } : {}) },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
       return { child, workspace, ...(canIUse ? { canIUse } : {}) }
@@ -227,7 +228,12 @@ export class TrustedRaycastManager {
     let current: Session | undefined
     let workspace = ''
     try {
-      const created = this.createWorkspace(runtimeDir, input, initialQuery)
+      const token = this.lifecycleToken
+      const proxy = input.extensionId === 'google-translate' && !input.preferences.proxy && this.options.resolveTranslateProxy
+        ? await this.options.resolveTranslateProxy() : ''
+      if (this.disposed || this.session || this.setup || this.stopping || this.preview || token !== this.lifecycleToken) throw new Error('Translate startup was cancelled')
+      checkLaunch?.()
+      const created = this.createWorkspace(runtimeDir, input, initialQuery, proxy)
       workspace = created.workspace
       const child = created.child
       let resolveReady!: () => void
