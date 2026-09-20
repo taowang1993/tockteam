@@ -38,9 +38,9 @@
   --color-input: var(--dsw-alias-border-l2);
   --color-ring: var(--dsw-alias-brand-primary);
   --color-brand: var(--dsw-alias-brand-primary);
-  --color-brand-foreground: var(--dsw-alias-brand-primary-invert);
+  --color-brand-foreground: var(--dsw-alias-label-primary-inverted);
   --color-primary: var(--dsw-alias-brand-primary);
-  --color-primary-foreground: var(--dsw-alias-brand-primary-invert);
+  --color-primary-foreground: var(--dsw-alias-label-primary-inverted);
   --color-secondary: var(--dsw-alias-bg-layer-2);
   --color-secondary-foreground: var(--dsw-alias-label-primary);
   --color-muted: var(--dsw-alias-bg-layer-2);
@@ -963,6 +963,20 @@
 
 /* The embedded DSH root has no component seam for these inherited nodes. */
 @utility tockteam-sidebar-styles {
+  /* DSH 0.1.2-rc.1 Agent Presets: bounded by the Electron settings proof. */
+  & [data-slot='settings.section'] .rtSEdW_cards {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 268px), 1fr));
+  }
+
+  & [data-slot='settings.section'] .rtSEdW_cardHead {
+    flex-wrap: wrap;
+  }
+
+  & [data-slot='settings.section'] .rtSEdW_cardMain {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   & {
     --tockteam-primary-sidebar-width: 280px;
     --tockteam-rail-width: 40px;

@@ -1919,13 +1919,13 @@ function SidebarSettingsRow({
     void runtime.update({ [key]: enabled })
   }
   return (
-    <div className="tockteam-sidebar-settings grid w-full gap-6 px-0 pt-2 pb-6 text-[var(--dsw-alias-label-primary,#1f2328)] [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-heading>button]:cursor-pointer [&_.tockteam-sidebar-settings-heading>button]:rounded-lg [&_.tockteam-sidebar-settings-heading>button]:border [&_.tockteam-sidebar-settings-heading>button]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_9%))] [&_.tockteam-sidebar-settings-heading>button]:bg-transparent [&_.tockteam-sidebar-settings-heading>button]:px-2.5 [&_.tockteam-sidebar-settings-heading>button]:py-1.5 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row]:min-h-14 [&_.tockteam-sidebar-settings-row]:py-2 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 max-[760px]:[&_.tockteam-sidebar-settings-size]:flex-col max-[760px]:[&_.tockteam-sidebar-settings-size]:items-start [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-sm [&_strong]:font-medium [&_p]:m-0 [&_p]:text-xs [&_p]:leading-[18px] [&_p]:text-[var(--dsw-alias-label-secondary,#656d76)] [&_small]:m-0 [&_small]:text-xs [&_small]:leading-[18px] [&_small]:text-[var(--dsw-alias-label-secondary,#656d76)] [&>section]:grid [&>section]:gap-3 [&>section>h4]:m-0 [&>section>h4]:text-sm [&_input[type='range']]:w-[min(210px,40%)] [&_input[type='range']]:accent-[var(--dsw-alias-interactive-primary,#4f7de8)] max-[760px]:[&_input[type='range']]:w-full">
+    <div className="tockteam-sidebar-settings box-border grid w-full min-w-0 gap-6 pr-3 pt-2 pb-6 pl-0 text-foreground [&_*]:box-border [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:flex-wrap [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:min-w-0 [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:min-w-0 [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row]:min-h-14 [&_.tockteam-sidebar-settings-row]:py-2 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:min-w-0 [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:flex-wrap [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-sm [&_strong]:font-medium [&_p]:m-0 [&_p]:text-xs [&_p]:leading-[18px] [&_p]:text-muted-foreground [&_small]:m-0 [&_small]:text-xs [&_small]:leading-[18px] [&_small]:text-muted-foreground [&>section]:grid [&>section]:min-w-0 [&>section]:gap-3 [&>section>h3]:m-0 [&>section>h3]:text-base [&>section>h3]:font-semibold [&_input[type='range']]:w-[min(210px,100%)] [&_input[type='range']]:accent-primary [overflow-wrap:anywhere]">
       <div className="tockteam-sidebar-settings-heading">
         <div>
-          <strong>{t('settings.title')}</strong>
+          <h2 className="m-0 text-lg font-semibold">{t('settings.title')}</h2>
           <p>{t('settings.description')}</p>
         </div>
-        <Button unstyled type="button" onClick={reset}>{t('settings.reset')}</Button>
+        <Button size="sm" variant="outline" type="button" onClick={reset}>{t('settings.reset')}</Button>
       </div>
       <Label unstyled className="tockteam-sidebar-settings-row">
         <span>
@@ -1952,7 +1952,7 @@ function SidebarSettingsRow({
         />
       </Label>
       <section>
-        <h4>{t('settings.runtime')}</h4>
+        <h3>{t('settings.runtime')}</h3>
         <p>{t('settings.runtime-description')}</p>
         <Label unstyled className="tockteam-sidebar-settings-row">
           <span>
@@ -2013,7 +2013,7 @@ function SidebarSettingsRow({
           />
         </Label>
         {runtimeState.error !== null && (
-          <Alert unstyled className="tockteam-sidebar-settings-error text-[#cf222e]!">
+          <Alert unstyled className="tockteam-sidebar-settings-error text-destructive!">
             {t(runtimeState.error === 'load'
               ? 'settings.runtime-load-failed'
               : 'settings.runtime-save-failed')}
@@ -2021,7 +2021,7 @@ function SidebarSettingsRow({
         )}
       </section>
       <section>
-        <h4>{t('settings.tools')}</h4>
+        <h3>{t('settings.tools')}</h3>
         <p>{t('settings.tools-description')}</p>
         <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-3 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-12 [&_label]:items-center [&_label]:justify-between [&_label]:gap-4 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-4 [&_label]:py-2 [&_label]:text-sm">
           {tabs.map(descriptor => (
@@ -2038,7 +2038,7 @@ function SidebarSettingsRow({
         </div>
       </section>
       <section>
-        <h4>{t('settings.viewers')}</h4>
+        <h3>{t('settings.viewers')}</h3>
         <p>{t('settings.viewers-description')}</p>
         <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-3 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-12 [&_label]:items-center [&_label]:justify-between [&_label]:gap-4 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-4 [&_label]:py-2 [&_label]:text-sm">
           {viewers.map(descriptor => (

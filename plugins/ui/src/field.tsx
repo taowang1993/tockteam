@@ -4,11 +4,11 @@ import { Label } from './label.tsx'
 import { cn } from './utils.ts'
 
 function FieldSet({ className, ...props }: React.ComponentProps<'fieldset'>): React.ReactElement {
-  return <fieldset data-slot="field-set" className={cn('flex flex-col gap-4', className)} {...props} />
+  return <fieldset data-slot="field-set" className={cn('m-0 min-w-0 border-0 p-0 flex flex-col gap-4', className)} {...props} />
 }
 
 function FieldLegend({ className, variant = 'legend', ...props }: React.ComponentProps<'legend'> & { variant?: 'legend' | 'label' }): React.ReactElement {
-  return <legend data-slot="field-legend" data-variant={variant} className={cn('font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base', className)} {...props} />
+  return <legend data-slot="field-legend" data-variant={variant} className={cn('p-0 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base', className)} {...props} />
 }
 
 function FieldGroup({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {
@@ -43,7 +43,7 @@ function FieldTitle({ className, ...props }: React.ComponentProps<'div'>): React
 }
 
 function FieldDescription({ className, ...props }: React.ComponentProps<'p'>): React.ReactElement {
-  return <p data-slot="field-description" className={cn('text-sm leading-normal text-muted-foreground', className)} {...props} />
+  return <p data-slot="field-description" className={cn('m-0 text-sm leading-normal text-muted-foreground', className)} {...props} />
 }
 
 function FieldSeparator({ children, className, ...props }: React.ComponentProps<'div'>): React.ReactElement {

@@ -125,7 +125,7 @@ function SectionCard({ icon, title, description, children, testId }: Readonly<{ 
   return (
     <Card aria-labelledby={headingId} data-testid={testId} role="region">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><h2 id={headingId} className="flex items-center gap-2 text-base font-semibold">{icon}{title}</h2></CardTitle>
+        <CardTitle className="flex items-center gap-2"><h3 id={headingId} className="m-0 flex items-center gap-2 text-base font-semibold">{icon}{title}</h3></CardTitle>
         <CardDescription>{launcherFixedText(description)}</CardDescription>
       </CardHeader>
       <CardContent>{children}</CardContent>
@@ -381,7 +381,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
     <div className="mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-5 px-1 py-4" data-testid="tocklauncher-settings">
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold text-foreground">{t('title')}</h1>
+          <h2 className="m-0 text-lg font-semibold text-foreground">{t('title')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t('description')}</p>
         </div>
         <Badge variant="secondary">{t('badge')}</Badge>

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Globe2, KeyRound, ShieldCheck } from 'lucide-react'
+import { KeyRound, ShieldCheck } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { FieldError } from '@tockteam/ui/field'
 import { Input } from '@tockteam/ui/input'
@@ -66,7 +66,6 @@ export function LauncherNetworkSettings({ busy, save, snapshot }: NetworkSetting
     }, () => setTargetError(fixed('Default target currency could not be saved.')))
   }
   return <section className="space-y-3" data-testid="tockteam-network-settings">
-    <div><h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Globe2 aria-hidden="true" className="size-4" />{fixed('Network Extensions')}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{fixed('Network requests and browser effects are owned by Electron main. Renderer controls submit only validated settings and bounded typed text.')}</p></div>
     <Alert role="note"><ShieldCheck aria-hidden="true" /><AlertTitle>{fixed('Privacy and Destination Policy')}</AlertTitle><AlertDescription>{fixed('Currency rates use cdn.jsdelivr.net. DeepL uses api-free.deepl.com. Web Search uses Google or DuckDuckGo. Custom templates must be HTTPS public-host URLs; redirects and private network destinations are rejected.')}</AlertDescription></Alert>
     <Field label="Currencies" description="Lowercase currency codes used during the next rate refresh."><div className="flex flex-col items-end gap-1"><Input aria-label={fixed('Currency Codes')} aria-describedby={currencyError === undefined ? undefined : 'tockteam-currency-error'} aria-invalid={currencyError !== undefined} className="w-64" maxLength={512} disabled={busy} value={currencyDraft} onChange={event => setCurrencyDraft(event.target.value)} onBlur={event => updateCurrencies(event.target.value)} /><FieldError id="tockteam-currency-error" className="max-w-80 text-right text-xs">{currencyError}</FieldError></div></Field>
     <Field label="Default Target Currency"><div className="flex flex-col items-end gap-1"><Input aria-label={fixed('Default Target Currency')} aria-describedby={targetError === undefined ? undefined : 'tockteam-target-currency-error'} aria-invalid={targetError !== undefined} className="w-24" maxLength={16} disabled={busy} value={targetDraft} onChange={event => setTargetDraft(event.target.value)} onBlur={event => updateTarget(event.target.value)} /><FieldError id="tockteam-target-currency-error" className="max-w-80 text-right text-xs">{targetError}</FieldError></div></Field>

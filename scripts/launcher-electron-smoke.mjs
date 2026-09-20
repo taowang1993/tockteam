@@ -1108,7 +1108,7 @@ try {
   )
   const chineseSettingsFacts = await workbenchConnection.evaluate(`({
     lang: document.documentElement.lang,
-    title: document.querySelector('[data-testid="tocklauncher-settings"] h1')?.textContent ?? '',
+    title: document.querySelector('[data-testid="tocklauncher-settings"] h2')?.textContent ?? '',
     localLabel: document.querySelector('[aria-label="Base64 编码前缀"]') !== null,
     terminalLabel: document.querySelector('[aria-label="终端启动器命令前缀"]') !== null,
   })`)

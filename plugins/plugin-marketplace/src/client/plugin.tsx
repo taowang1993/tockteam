@@ -135,7 +135,7 @@ function PluginCard({
       type="button"
     >
       <div className="flex items-start gap-[11px]">
-        <span className="grid size-[34px] flex-none place-items-center rounded-[10px] bg-[#eef4ff] text-base font-bold text-[#3f74df] uppercase dark:bg-[#1d2c4c] dark:text-[#8eb4ff]">{plugin.title.slice(0, 1)}</span>
+        <span className="grid size-[34px] flex-none place-items-center rounded-[10px] bg-brand/10 text-base font-bold text-foreground uppercase">{plugin.title.slice(0, 1)}</span>
         <div className="min-w-0">
           <h2 className="mt-px mb-0 truncate text-sm font-[620]">{plugin.title}</h2>
           <div className="mt-[3px] text-[10px] text-subtle-foreground capitalize">{plugin.category}</div>
@@ -250,14 +250,14 @@ function PluginDetail({
         </dl>
 
         {plan !== null && (
-          <Card unstyled className="mt-[18px] rounded-xl border border-[#d7e3ff] bg-[#f7f9ff] p-3.5 text-[11px] dark:border-[#33466d] dark:bg-[#19233a] [&_code]:my-[5px] [&_code]:block [&_code]:text-[9px] [&_code]:leading-normal [&_code]:text-[#355593] [&_code]:[overflow-wrap:anywhere]">
-            <div className="mb-[13px] grid grid-cols-3 gap-[5px] [&_span]:rounded-[7px] [&_span]:bg-[rgba(53,85,147,0.07)] [&_span]:px-1 [&_span]:py-1.5 [&_span]:text-center [&_span]:text-[9px] [&_span]:text-subtle-foreground [&_span[data-active=true]]:bg-[#e7efff] [&_span[data-active=true]]:font-[650] [&_span[data-active=true]]:text-[#315fae] dark:[&_span[data-active=true]]:bg-[#283d67] dark:[&_span[data-active=true]]:text-[#b8ceff]" aria-label={t('prepared-plan', { action: t(`action.${plan.action}`) })}>
+          <Card unstyled className="mt-[18px] rounded-xl border border-border bg-surface-muted p-3.5 text-[11px] [&_code]:my-[5px] [&_code]:block [&_code]:text-[9px] [&_code]:leading-normal [&_code]:text-foreground [&_code]:[overflow-wrap:anywhere]">
+            <div className="mb-[13px] grid grid-cols-3 gap-[5px] [&_span]:rounded-[7px] [&_span]:bg-surface [&_span]:px-1 [&_span]:py-1.5 [&_span]:text-center [&_span]:text-[9px] [&_span]:text-subtle-foreground [&_span[data-active=true]]:bg-brand/10 [&_span[data-active=true]]:font-semibold [&_span[data-active=true]]:text-foreground" aria-label={t('prepared-plan', { action: t(`action.${plan.action}`) })}>
               <span data-active="true">1 · {t('flow.review')}</span>
               <span data-active={String(snapshot.preview !== null)}>2 · {t('flow.preview')}</span>
               <span>3 · {t('flow.apply')}</span>
             </div>
             <h3 className="mt-0 mb-[9px] text-xs">{t('prepared-plan', { action: t(`action.${plan.action}`) })}</h3>
-            <div className="my-2 grid gap-[3px] rounded-[9px] bg-[#ecf7f0] px-2.5 py-[9px] leading-[1.45] text-[#17663a] data-[risk=elevated]:bg-[#fff6e6] data-[risk=elevated]:text-[#83570b] data-[risk=high]:bg-[#fff0ef] data-[risk=high]:text-[#a33228] data-[risk=blocked]:bg-[#fff0ef] data-[risk=blocked]:text-[#a33228] dark:bg-[#193326] dark:text-[#94d5ae] dark:data-[risk=elevated]:bg-[#3b2e16] dark:data-[risk=elevated]:text-[#e5c27f] dark:data-[risk=high]:bg-[#40211e] dark:data-[risk=high]:text-[#f0aaa4] dark:data-[risk=blocked]:bg-[#40211e] dark:data-[risk=blocked]:text-[#f0aaa4]" data-risk={plan.riskLevel}>
+            <div className="my-2 grid gap-[3px] rounded-[9px] border border-success/40 bg-success/10 px-2.5 py-[9px] leading-[1.45] text-foreground data-[risk=elevated]:border-warning/40 data-[risk=elevated]:bg-warning/10 data-[risk=high]:border-destructive/40 data-[risk=high]:bg-destructive/10 data-[risk=blocked]:border-destructive/40 data-[risk=blocked]:bg-destructive/10" data-risk={plan.riskLevel}>
               <strong>{t('risk-level')}: {t(`risk-level.${plan.riskLevel}`)}</strong>
               <span>{t('source-review')}: {t(`source-review.${plan.sourceReview}`)}</span>
             </div>
@@ -277,7 +277,7 @@ function PluginDetail({
               <code>{Object.entries(plan.buildScripts).map(([name, script]) => `${name}: ${script}`).join('\n')}</code>
             )}
             {plan.requirements.map(requirement => (
-              <Label unstyled className="my-3 flex items-start gap-2 text-[10px] leading-[1.45] text-[#7d5412] [&_[data-slot=checkbox]]:mt-0.5 [&_[data-slot=checkbox]]:flex-none" key={requirement}>
+              <Label unstyled className="my-3 flex items-start gap-2 text-[10px] leading-[1.45] text-foreground [&_[data-slot=checkbox]]:mt-0.5 [&_[data-slot=checkbox]]:flex-none" key={requirement}>
                   <Checkbox
                     checked={confirmations.includes(requirement)}
                     onCheckedChange={checked => { setConfirmed(requirement, checked === true) }}
@@ -526,7 +526,7 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
             </div>
           </header>
           {preview !== null && (
-            <Alert unstyled role="status" className="mx-7 mt-3.5 flex flex-wrap items-center gap-2.5 rounded-[11px] border border-[#bcd0fa] bg-[#f2f6ff] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#244f9e] dark:border-[#395993] dark:bg-[#182744] dark:text-[#a9c4ff] [&_strong]:mr-auto">
+            <Alert unstyled role="status" className="mx-7 mt-3.5 flex flex-wrap items-center gap-2.5 rounded-[11px] border border-brand/30 bg-brand/10 px-3.5 py-[11px] text-[11px] leading-[1.45] text-foreground [&_strong]:mr-auto">
               <strong>{t('preview.running', { plugin: preview.pluginId })}</strong>
               <Button unstyled className={BUTTON_CLASSES} disabled={pending} onClick={() => { void run({ type: 'discard' }) }} type="button">
                 {t('discard')}
@@ -537,10 +537,10 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
             </Alert>
           )}
           {error !== null && (
-            <Alert unstyled className="mx-7 mt-[18px] flex items-center gap-3 rounded-[11px] border border-[#f1c2bd] bg-[#fff5f4] px-3.5 py-[11px] text-[11px] leading-[1.45] text-[#9c2f24] [&_span]:mr-auto [&_span]:min-w-0 [&_span]:[overflow-wrap:anywhere]">
+            <Alert unstyled className="mx-7 mt-[18px] flex items-center gap-3 rounded-[11px] border border-destructive/40 bg-destructive/10 px-3.5 py-[11px] text-[11px] leading-[1.45] text-foreground [&_span]:mr-auto [&_span]:min-w-0 [&_span]:[overflow-wrap:anywhere]">
               <span>{error}</span>
               <Button unstyled
-                className={`${BUTTON_CLASSES} flex-none border-[#e8b4ae] bg-white text-[#9c2f24]`}
+                className={`${BUTTON_CLASSES} flex-none border-destructive/40 bg-surface text-foreground`}
                 disabled={pending}
                 onClick={() => { resetView(); void run({ type: 'refresh' }) }}
                 type="button"
@@ -550,7 +550,7 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
             </Alert>
           )}
           {snapshot?.lastAction !== null && snapshot?.lastAction !== undefined && error === null && (
-            <Alert unstyled role="status" className="mx-7 mt-[18px] rounded-[11px] border border-[#dedfe2] px-3.5 py-[11px] text-[11px] leading-[1.45] text-muted-foreground">
+            <Alert unstyled role="status" className="mx-7 mt-[18px] rounded-[11px] border border-border px-3.5 py-[11px] text-[11px] leading-[1.45] text-muted-foreground">
               {localizedHostMessage(snapshot.lastAction, t)}
             </Alert>
           )}
@@ -562,7 +562,7 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
                 <Search aria-hidden="true" />
                 <Input unstyled
                   aria-label={t('search.label')}
-                  className="w-full border-0 bg-transparent font-[inherit] text-[13px] text-inherit outline-0"
+                  className="w-full border-0 bg-transparent font-[inherit] text-[13px] text-inherit outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   onChange={event => { setSearch(event.target.value) }}
                   placeholder={t('search.placeholder')}
                   value={search}
@@ -570,7 +570,7 @@ function MarketplaceSurface({ bridge, locale, translate }: MarketplaceSettingsPr
                 {search !== '' && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button unstyled className="grid size-6 flex-none cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-0 font-[15px/1_system-ui,sans-serif] text-subtle-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover,#f1f2f3)] [&_svg]:m-0 [&_svg]:size-3.5" aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></Button>
+                      <Button unstyled className="grid size-6 flex-none cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-0 font-[15px/1_system-ui,sans-serif] text-subtle-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover)] [&_svg]:m-0 [&_svg]:size-3.5" aria-label={t('search.clear')} onClick={() => { setSearch('') }} type="button"><X aria-hidden="true" /></Button>
                     </TooltipTrigger>
                     <TooltipContent>{t('search.clear')}</TooltipContent>
                   </Tooltip>

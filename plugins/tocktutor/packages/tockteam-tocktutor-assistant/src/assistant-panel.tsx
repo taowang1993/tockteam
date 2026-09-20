@@ -1,3 +1,4 @@
+import { cn } from '@tockteam/ui'
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@tockteam/ui/empty'
@@ -33,6 +34,9 @@ import type {
   AssistantTurnRequest,
   AssistantTurnResult,
 } from './remote-types.ts'
+
+// The body portal and the panel own the same semantic aliases and focus treatment.
+const ASSISTANT_SURFACE = 'text-foreground [--tta-accent:var(--dsw-alias-brand-primary)] [--tta-bg:var(--dsw-alias-bg-base)] [--tta-border:var(--dsw-alias-border-l1)] [--tta-muted:var(--dsw-alias-label-secondary)] [--tta-panel:var(--dsw-alias-bg-layer-1)] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_:is(button,input,select,textarea,summary):focus-visible]:outline-2 [&_:is(button,input,select,textarea,summary):focus-visible]:outline-offset-2 [&_:is(button,input,select,textarea,summary):focus-visible]:outline-ring [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!duration-0'
 
 const EMPTY_CONVERSATION: AssistantConversationSnapshot = Object.freeze({
   lastAgentError: null,
@@ -454,7 +458,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
     <TooltipProvider>
       <aside
       aria-label="TockTutor Assistant"
-      className="tocktutor-assistant-panel relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[var(--tta-panel)] text-inherit [--tta-accent:var(--tt-accent,#4f46e5)] [--tta-bg:var(--tt-bg,#f7f8fa)] [--tta-border:var(--tt-border,#d9dde5)] [--tta-muted:var(--tt-muted,#667085)] [--tta-panel:var(--tt-panel,#fff)] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tta-accent)] [&_h2]:m-0 [&_h3]:m-0 [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tta-accent)] [&_p]:m-0 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-offset-2 [&_select:focus-visible]:outline-[var(--tta-accent)] [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tta-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!duration-0"
+      className={cn(ASSISTANT_SURFACE, 'tocktutor-assistant-panel relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[var(--tta-panel)]')}
     >
       <div
         className="tocktutor-assistant-scroll flex min-h-0 flex-[1_1_auto] flex-col overflow-auto p-3.5"
@@ -515,7 +519,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             <p className="tocktutor-assistant-tool-status py-0.5 text-xs text-[var(--tta-muted)]" key={call.callId}>{boundedText(call.name, 127)} · Reading…</p>
           ))}
           {transcriptError !== null && transcriptError !== undefined && (
-            <Alert unstyled className="tocktutor-assistant-error rounded-lg border border-[var(--tta-border)] p-2 text-xs text-[#b42318]">{boundedText(transcriptError, 500)}</Alert>
+            <Alert unstyled className="tocktutor-assistant-error rounded-lg border border-[var(--tta-border)] p-2 text-xs text-destructive">{boundedText(transcriptError, 500)}</Alert>
           )}
           {(proposalPage?.proposals.length ?? 0) > 0 && (
             <section aria-label="Staged Proposals" className="tocktutor-assistant-reviews grid gap-2.5">
@@ -542,7 +546,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                     <div className="flex flex-wrap gap-1.5">
                       <Button unstyled
                         aria-label={expired ? undefined : `Approve ${operation} ${proposal.destination}`}
-                        className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50"
+                        className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-primary-foreground disabled:cursor-default disabled:opacity-50"
                         disabled={expired || activeDecision !== null}
                         onClick={() => { decideProposal(proposal, 'approve') }}
                         type="button"
@@ -596,7 +600,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
             unstyled
             align="start"
             aria-label="Assistant Options"
-            className="tocktutor-assistant-add-menu z-[2147483647] grid max-h-[min(520px,calc(100vh-180px))] w-[min(304px,calc(100vw-24px))] gap-1 overflow-auto rounded-[10px] border border-[var(--tta-border,#d9dde5)] bg-[var(--tta-panel,#fff)] p-2 text-inherit shadow-[0_8px_24px_rgb(0_0_0_/_12%)] outline-none [--tta-accent:var(--tt-accent,#4f46e5)] [--tta-bg:var(--tt-bg,#f7f8fa)] [--tta-border:var(--tt-border,#d9dde5)] [--tta-muted:var(--tt-muted,#667085)] [--tta-panel:var(--tt-panel,#fff)]"
+            className={cn(ASSISTANT_SURFACE, 'tocktutor-assistant-add-menu z-50 grid max-h-[min(520px,calc(100vh-180px))] w-[min(304px,calc(100vw-24px))] gap-1 overflow-auto rounded-[10px] border border-[var(--tta-border)] bg-[var(--tta-panel)] p-2 shadow-md outline-none')}
             id="tocktutor-assistant-add-menu"
             side="top"
             sideOffset={8}
@@ -681,7 +685,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                   <NativeSelectOption value="automatic">Automatic</NativeSelectOption>
                 </NativeSelect>
               </Label>
-              <Button unstyled className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-white disabled:cursor-default disabled:opacity-50" disabled={settings === null || settingsSaving} type="submit">
+              <Button unstyled className="cursor-pointer rounded-[7px] border border-[var(--tta-accent)] bg-[var(--tta-accent)] px-[9px] py-1.5 font-semibold text-primary-foreground disabled:cursor-default disabled:opacity-50" disabled={settings === null || settingsSaving} type="submit">
                 {settingsSaving ? 'Saving…' : 'Save Settings'}
               </Button>
             </form>
@@ -758,7 +762,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                 <TooltipTrigger asChild>
                   <Button unstyled
                     aria-label="Send"
-                    className="tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-white disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:stroke-white [&_svg]:text-white"
+                    className="tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-primary-foreground disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5"
                     disabled={message.trim() === ''}
                     type="submit"
                   ><ArrowUp aria-hidden="true" /></Button>
