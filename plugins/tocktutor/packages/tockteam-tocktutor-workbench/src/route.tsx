@@ -36,6 +36,7 @@ import {
   FileCode2,
   FileText,
   FolderInput,
+  FolderOpen,
   Globe2,
   Link2,
   ListTree,
@@ -330,6 +331,7 @@ export interface WorkbenchRouteSnapshot {
   searchDirectory?: string
   searchModifiedFrom?: number | null
   searchModifiedTo?: number | null
+  searchPresentation?: 'dialog' | 'sidebar'
   searchOpen: boolean
   searchQuery: string
   selectedSnapshot?: SnapshotContentResult | null
@@ -763,6 +765,8 @@ export class WorkbenchRouteController {
   private treeComplete = false
   private dispatchRevision = 0
   private operationAbort: AbortController | null = null
+  private sidebarSearchAbort: AbortController | null = null
+  private sidebarSearchOperation = 0
   private searchTimer: ReturnType<typeof setTimeout> | null = null
   private searchPreviewAbort: AbortController | null = null
   private searchPreviewOperation = 0
@@ -1128,7 +1132,7 @@ export class WorkbenchRouteController {
 
   setSearchQuery(query: string): void {
     if (query.length > 1_000) return
-    this.nextOperation()
+    this.nextSearchRequest()
     const trimmed = query.trim()
     this.update({
       searchActiveIndex: null,
@@ -1175,13 +1179,21 @@ export class WorkbenchRouteController {
   }
 
   closeSearch(): void {
-    this.nextOperation()
+    this.nextSearchRequest()
     this.update({ searchActiveIndex: null, searchAnswer: { status: 'idle', answer: '', citations: [] }, searchDirectory: '', searchIntelligenceStatus: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false })
   }
 
-  openSearch(query: string): void {
+  openSidebarSearch(): void {
+    if (this.snapshot.searchOpen && this.snapshot.searchPresentation === 'sidebar') return
+    this.update({ searchMode: 'query', searchDirectory: '', searchModifiedFrom: null, searchModifiedTo: null, searchTitleOnly: false })
+    this.openSearch(this.snapshot.searchQuery, 'sidebar')
+  }
+
+  openSearch(query: string, presentation: 'dialog' | 'sidebar' = 'dialog'): void {
     if (query.length > 1_000) return
-    this.nextOperation()
+    if (presentation === 'sidebar' && this.snapshot.searchOpen && this.snapshot.searchPresentation !== 'sidebar') this.nextOperation()
+    this.update({ searchPresentation: presentation })
+    this.nextSearchRequest()
     const trimmed = query.trim()
     this.update({
       searchActiveIndex: null,
@@ -1192,12 +1204,13 @@ export class WorkbenchRouteController {
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
       searchOpen: true,
+      searchPresentation: presentation,
       searchPreview: null,
       searchPreviewError: null,
       searchPreviewLoading: false,
       searchQuery: query,
     })
-    if (trimmed === '' && this.snapshot.vault !== null) void this.loadRecentSearch(this.snapshot.vault)
+    if (trimmed === '' && this.snapshot.vault !== null && presentation === 'dialog') void this.loadRecentSearch(this.snapshot.vault)
     else this.scheduleSearch()
   }
 
@@ -1263,7 +1276,7 @@ export class WorkbenchRouteController {
       return false
     }
     const mode = this.snapshot.searchMode ?? 'query'
-    const operation = this.nextOperation()
+    const operation = this.nextSearchRequest()
     this.update({ searchAnswer: { status: 'idle', answer: '', citations: [] }, searchError: null, searchIntelligenceStatus: null, searchLoading: true, searchMatches: Object.freeze([]) })
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
@@ -1276,7 +1289,7 @@ export class WorkbenchRouteController {
         mode,
         query,
       }, operation.signal))
-      if (!this.current(operation.id, vault)) return false
+      if (!this.currentSearchRequest(operation, vault)) return false
       if (!validSearchResult(result, vault) || result.query !== query) {
         this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false })
         return false
@@ -1294,14 +1307,15 @@ export class WorkbenchRouteController {
         searchPreviewLoading: false,
         searchCursor: result.cursor,
       })
+      if (this.snapshot.searchPresentation === 'sidebar') return true
       await this.enhanceSearch(operation, vault, query, mode)
-      if (!this.current(operation.id, vault)) return false
+      if (!this.currentSearchRequest(operation, vault)) return false
       const enhancedMatches = this.snapshot.searchMatches ?? matches
       if (enhancedMatches.length > 0 && this.snapshot.searchActiveIndex === null) void this.previewSearchMatch(0)
       else if (matches.length > 0 && this.snapshot.searchPreview === null) void this.previewSearchMatch(0)
       return true
     } catch {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+      if (this.currentSearchRequest(operation, vault) && !operation.signal.aborted) {
         this.update({ message: 'Search could not be completed.', searchError: 'Search could not be completed.', searchLoading: false })
       }
       return false
@@ -1438,7 +1452,7 @@ export class WorkbenchRouteController {
     const query = this.snapshot.searchQuery.trim()
     if (vault === null || cursor === null || query.length === 0) return false
     const mode = this.snapshot.searchMode ?? 'query'
-    const operation = this.nextOperation()
+    const operation = this.nextSearchRequest()
     this.update({ searchError: null, searchLoading: true })
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
@@ -1452,7 +1466,7 @@ export class WorkbenchRouteController {
         mode,
         query,
       }, operation.signal))
-      if (!this.current(operation.id, vault) || operation.signal.aborted) return false
+      if (!this.currentSearchRequest(operation, vault) || operation.signal.aborted) return false
       if (!validSearchResult(result, vault) || result.query !== query || result.cursor === cursor) {
         this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false })
         return false
@@ -1475,7 +1489,7 @@ export class WorkbenchRouteController {
       })
       return true
     } catch {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+      if (this.currentSearchRequest(operation, vault) && !operation.signal.aborted) {
         this.update({ message: 'Search could not be completed.', searchError: 'Search could not be completed.', searchLoading: false })
       }
       return false
@@ -1890,9 +1904,26 @@ export class WorkbenchRouteController {
       && this.snapshot.searchMatches?.[active]?.path === path
   }
 
-  private nextOperation(): { id: number; signal: AbortSignal } {
+  private nextSearchRequest(): { id: number; signal: AbortSignal; sidebar: boolean } {
+    this.sidebarSearchAbort?.abort()
+    if (this.snapshot.searchPresentation !== 'sidebar') return { ...this.nextOperation(), sidebar: false }
     if (this.searchTimer !== null) clearTimeout(this.searchTimer)
     this.searchTimer = null
+    this.cancelSearchPreview()
+    this.sidebarSearchAbort = new AbortController()
+    return { id: ++this.sidebarSearchOperation, signal: this.sidebarSearchAbort.signal, sidebar: true }
+  }
+
+  private currentSearchRequest(operation: { id: number; signal: AbortSignal; sidebar: boolean }, vault: VaultReference): boolean {
+    return !this.disposed && !operation.signal.aborted && sameVault(this.snapshot.vault, vault)
+      && (operation.sidebar ? operation.id === this.sidebarSearchOperation : this.current(operation.id, vault))
+  }
+
+  private nextOperation(): { id: number; signal: AbortSignal } {
+    if (this.snapshot.searchPresentation !== 'sidebar') {
+      if (this.searchTimer !== null) clearTimeout(this.searchTimer)
+      this.searchTimer = null
+    }
     this.cancelSearchPreview()
     this.cancelRecoveryOperations()
     this.operationAbort?.abort()
@@ -1950,6 +1981,9 @@ export class WorkbenchRouteController {
   }
 
   async reload(): Promise<void> {
+    this.sidebarSearchAbort?.abort()
+    if (this.searchTimer !== null) clearTimeout(this.searchTimer)
+    this.searchTimer = null
     this.invalidateDispatch()
     const operation = this.nextOperation()
     this.eventDispose ??= this.remote.$on('note-vault/change', event => { this.onVaultChange(event) })
@@ -3387,6 +3421,7 @@ export class WorkbenchRouteController {
     if (this.searchTimer !== null) clearTimeout(this.searchTimer)
     this.searchTimer = null
     this.disposed = true
+    this.sidebarSearchAbort?.abort()
     this.dispatchRevision += 1
     this.operation += 1
     this.operationAbort?.abort()
@@ -3453,6 +3488,7 @@ export interface TockTutorRouteViewProps {
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenExternalUrl?(url: string): void
   onOpenSearch?(): void
+  onOpenSidebarSearch?(): void
   onPrepareOrganization?(): void
   onPreviewAttachment?(path: string): void
   onReadSnapshot?(id: string): void
@@ -3568,11 +3604,12 @@ const SEARCH_OPTIONS = [
   { description: 'match property', label: '[property]', value: '[]' },
 ] as const
 
-function NotePathDialog(props: {
+function NoteValueDialog(props: {
   initialValue: string
-  kind: 'move' | 'rename'
+  kind: 'move' | 'rename' | 'property'
   onCancel(): void
   onSubmit(value: string): Promise<boolean> | boolean
+  validate?(value: string): string | null
 }): ReactNode {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -3582,18 +3619,26 @@ function NotePathDialog(props: {
     setError(null)
   }, [props.initialValue])
   const rename = props.kind === 'rename'
-  const label = rename ? 'Rename Note' : 'Move Note'
+  const property = props.kind === 'property'
+  const label = property ? 'Add Property' : rename ? 'Rename Note' : 'Move Note'
+  const fieldLabel = property ? 'Property Name' : rename ? 'Note Title' : 'Note Folder'
+  const failure = property ? 'That property could not be added.' : `The note could not be ${rename ? 'renamed' : 'moved'}.`
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault()
     if (pending) return
+    const validationError = props.validate?.(value)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
     setPending(true)
     setError(null)
     void Promise.resolve()
       .then(() => props.onSubmit(value))
       .then(success => {
         if (success === true) props.onCancel()
-        else setError(`The note could not be ${rename ? 'renamed' : 'moved'}.`)
-      }, () => { setError(`The note could not be ${rename ? 'renamed' : 'moved'}.`) })
+        else setError(failure)
+      }, () => { setError(failure) })
       .finally(() => { setPending(false) })
   }
   return (
@@ -3607,19 +3652,19 @@ function NotePathDialog(props: {
         <form className="grid gap-3" onSubmit={submit}>
           <DialogTitle className="m-0 text-[17px]">{label}</DialogTitle>
           <Label unstyled className="grid gap-1.5 text-sm font-[650]">
-            {rename ? 'Note Title' : 'Note Folder'}
+            {fieldLabel}
             <Input
               unstyled
-              aria-label={rename ? 'Note Title' : 'Note Folder'}
+              aria-label={fieldLabel}
               autoFocus
               disabled={pending}
               maxLength={4_096}
               onChange={event => { setValue(event.target.value); setError(null) }}
-              placeholder={rename ? undefined : 'Folder/Subfolder (optional)'}
+              placeholder={props.kind === 'move' ? 'Folder/Subfolder (optional)' : undefined}
               value={value}
             />
           </Label>
-          {!rename && <p className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Leave the folder empty to move the note to the vault root.</p>}
+          {props.kind === 'move' && <p className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Leave the folder empty to move the note to the vault root.</p>}
           {error !== null && <p className="m-0 text-xs text-[var(--dsw-alias-state-error-primary,#dc2626)]" role="alert">{error}</p>}
           <div className="flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
             <Button unstyled disabled={pending} onClick={props.onCancel} type="button">Cancel</Button>
@@ -3689,6 +3734,61 @@ function highlightSearchText(text: string, query: string): ReactNode {
   const escaped = needle.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
   const parts = text.split(new RegExp(`(${escaped})`, 'iu'))
   return parts.map((part, index) => index % 2 === 0 ? part : <mark className="rounded-sm bg-[var(--tt-selected)] text-inherit" key={`${part}:${String(index)}`}>{part}</mark>)
+}
+
+function SidebarSearch(props: {
+  snapshot: WorkbenchRouteSnapshot
+  onChange: ((query: string) => void) | undefined
+  onRun: (() => void) | undefined
+  onLoadMore: (() => void) | undefined
+  onSelect: ((match: VaultSearchMatch, newTab: boolean) => Promise<boolean> | boolean | void) | undefined
+}): ReactNode {
+  const { snapshot } = props
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => { input.current?.focus() }, [])
+  const hasQuery = snapshot.searchQuery.trim() !== ''
+  return <section aria-label="Search Vault Results" className="flex min-h-0 flex-col gap-3 px-1.5 py-2 [&_mark]:bg-[color-mix(in_srgb,var(--tt-accent)_30%,transparent)]">
+    <form className="flex items-center gap-1" onSubmit={event => { event.preventDefault(); props.onRun?.() }} role="search">
+      <Input unstyled ref={input} aria-label="Search Vault Query" className="min-w-0 flex-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] px-2 py-1.5 text-sm outline-none focus-visible:border-[var(--tt-accent)] [&::-webkit-search-cancel-button]:appearance-none" disabled={snapshot.phase !== 'ready'} maxLength={1000} onChange={event => { props.onChange?.(event.target.value) }} placeholder="Search vault…" type="search" value={snapshot.searchQuery} />
+      <Button unstyled aria-label="Clear Vault Search" className="shrink-0 rounded border-0 bg-transparent p-1 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]" disabled={!hasQuery} onClick={() => { props.onChange?.(''); input.current?.focus() }} title="Clear search" type="button"><X aria-hidden="true" className="size-4" /></Button>
+    </form>
+    <SidebarSearchResults snapshot={snapshot} onLoadMore={props.onLoadMore} onSelect={props.onSelect} />
+  </section>
+}
+
+function SidebarSearchResults(props: {
+  snapshot: WorkbenchRouteSnapshot
+  onLoadMore: (() => void) | undefined
+  onSelect: ((match: VaultSearchMatch, newTab: boolean) => Promise<boolean> | boolean | void) | undefined
+}): ReactNode {
+  const { snapshot } = props
+  const matches = snapshot.searchMatches ?? []
+  const groups = new Map<string, VaultSearchMatch[]>()
+  for (const match of matches) {
+    const group = groups.get(match.path) ?? []
+    group.push(match)
+    groups.set(match.path, group)
+  }
+  return snapshot.searchLoading ? <Alert unstyled role="status" className="text-xs text-[var(--tt-muted)]">Searching notes…</Alert>
+      : snapshot.searchError ? <Alert unstyled role="alert" className="text-xs text-[var(--tt-muted)]">{snapshot.searchError}</Alert>
+        : snapshot.searchQuery.trim() === '' ? <p className="m-0 text-xs text-[var(--tt-muted)]">Search across your vault. Open a match to read it alongside these results.</p>
+          : <>
+            <p aria-live="polite" className="m-0 text-xs text-[var(--tt-muted)]">{groups.size} {groups.size === 1 ? 'note' : 'notes'} · {matches.length} {matches.length === 1 ? 'match' : 'matches'}</p>
+            {groups.size === 0 ? <p className="m-0 text-sm text-[var(--tt-muted)]">No matches found.</p> : <div className="flex flex-col gap-3">
+              {[...groups].sort(([a], [b]) => a.localeCompare(b)).map(([path, group]) => <details key={path} open className="group">
+                <summary className="cursor-pointer rounded px-1 py-1 text-sm hover:bg-[var(--tt-selected)] focus-visible:outline-[var(--tt-accent)]" title={path}>
+                  <span className="inline-flex max-w-[calc(100%-18px)] items-center gap-2 align-middle"><span className="truncate">{noteTitle(path)}</span><span className="text-xs text-[var(--tt-muted)]">{group.length}</span></span>
+                </summary>
+                {path.includes('/') && <p className="my-0.5 truncate px-2 text-[11px] text-[var(--tt-muted)]" title={path}>{path.slice(0, path.lastIndexOf('/'))}</p>}
+                <div className="overflow-hidden rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)]">
+                  {group.map(match => <Button unstyled aria-label={`${path}, ${match.line === null ? 'title' : `line ${String(match.line)}`}: ${match.preview}`} className="block w-full border-0 border-b border-solid border-[var(--tt-border)] bg-transparent px-2 py-2 text-left text-xs leading-relaxed last:border-b-0 hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] focus-visible:outline-[var(--tt-accent)]" key={match.id ?? `${match.path}:${match.kind}:${String(match.line)}:${match.preview}`} onClick={event => { void props.onSelect?.(match, event.metaKey || event.ctrlKey) }} type="button">
+                    {highlightSearchText(match.preview, snapshot.searchQuery)}
+                  </Button>)}
+                </div>
+              </details>)}
+            </div>}
+            {snapshot.searchCursor && <Button unstyled className="rounded-md border border-[var(--tt-border)] p-2 text-xs" onClick={props.onLoadMore} type="button">Load More Results</Button>}
+          </>
 }
 
 function NoteSearchResultList(props: {
@@ -4033,7 +4133,7 @@ function WorkbenchCommandPalette(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
         unstyled
-        className="fixed top-[42%] left-1/2 -ml-[5px] z-[2147483647] grid h-[520px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[640px] -translate-x-1/2 -translate-y-[42%] grid-rows-[60px_minmax(0,1fr)_44px] overflow-hidden rounded-[12px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        className="fixed top-[42%] left-1/2 -ml-[5px] z-[2147483647] grid h-[520px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[640px] -translate-x-1/2 -translate-y-[42%] grid-rows-[60px_minmax(0,1fr)_32px] overflow-hidden rounded-[12px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
         onCloseAutoFocus={props.onCloseAutoFocus}
         onOpenAutoFocus={props.onOpenAutoFocus}
         overlayClassName="z-[2147483646] !bg-transparent"
@@ -4076,9 +4176,10 @@ function WorkbenchCommandPalette(props: {
               </CommandList>
             </section>
           </div>
-          <footer className="flex items-center gap-5 border-t border-[var(--tt-border)] px-4 text-xs text-[var(--tt-muted)]">
-            <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Enter</kbd> Run</span>
-            <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Esc</kbd> Dismiss</span>
+          <footer className="flex items-center justify-center gap-3 px-3 text-xs text-[var(--tt-muted)]">
+            <span className="flex items-center gap-1"><kbd aria-label="Up and Down Arrows" className="font-[inherit] font-semibold">↑↓</kbd> to navigate</span>
+            <span className="flex items-center gap-1"><kbd aria-label="Enter" className="font-[inherit] font-semibold">↵</kbd> to use</span>
+            <span className="flex items-center gap-1"><kbd aria-label="Escape" className="font-[inherit] font-semibold">esc</kbd> to dismiss</span>
           </footer>
         </Command>
       </DialogContent>
@@ -4115,14 +4216,12 @@ function TreeEntries(props: {
     })
   return children.map(entry => entry.kind === 'directory' ? (
     <li className="tocktutor-tree-directory" key={entry.path}>
-      <details className="group" open>
-        <summary className="tocktutor-tree-row grid min-h-8 w-full cursor-pointer list-none grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&::-webkit-details-marker]:hidden [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:first-child]:transition-transform group-open:[&>svg:first-child]:rotate-90 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80" title={entry.path}>
+      <details className="group/folder" open>
+        <summary className="tocktutor-tree-row grid min-h-7 w-full cursor-pointer list-none grid-cols-[12px_minmax(0,1fr)] items-center gap-[7px] rounded bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [&::-webkit-details-marker]:hidden [&>svg]:size-3 group-open/folder:[&>svg]:rotate-90" title={entry.path}>
           <WorkbenchGlyph kind="collapse" />
-          <WorkbenchGlyph kind="folder" />
-          <span>{fileName(entry.path)}</span>
-          <WorkbenchGlyph kind="more" />
+          <span className="truncate">{fileName(entry.path)}</span>
         </summary>
-        <ul className="m-0 list-none p-0 pl-4">
+        <ul className="my-0 mr-0 ml-[11px] list-none border-l border-[var(--tt-border)] py-0 pr-0 pl-1">
           <TreeEntries entries={props.entries} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} />
         </ul>
       </details>
@@ -4131,21 +4230,26 @@ function TreeEntries(props: {
     <li key={entry.path}>
       <Button unstyled
         aria-current={entry.path === props.path ? 'page' : undefined}
-        className="tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded border-0 bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] aria-current:bg-[var(--tt-selected)] aria-current:[&>svg:last-child]:text-[var(--tt-text)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80"
+        aria-label={entry.path}
+        className="tocktutor-tree-row grid min-h-7 w-full grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-[7px] rounded border-0 bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] aria-[current=page]:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)]"
         onClick={() => { props.onSelect(entry.path) }}
         title={entry.path}
         type="button"
       >
         <span className="tocktutor-tree-indent w-3" />
-        <WorkbenchGlyph kind="document" />
-        <span>{fileName(entry.path)}</span>
-        <WorkbenchGlyph kind="more" />
+        <span className="truncate">{noteTitle(entry.path)}</span>
+        {/\.(?:base|canvas)$/iu.test(entry.path) && <span aria-hidden="true" className="text-[10px] font-medium tracking-wide text-[var(--tt-muted)]">{entry.path.split('.').at(-1)?.toUpperCase()}</span>}
       </Button>
     </li>
   ))
 }
 
 const NOTE_ACTION_CLASS = "min-h-7 w-full gap-2 rounded-[5px] px-2 py-1 text-[13px] text-inherit focus:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus:text-inherit data-[highlighted]:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[highlighted]:text-inherit [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate"
+
+function snapshotPalette(snapshot: WorkbenchRouteSnapshot): 'notes' | 'commands' | null {
+  if (snapshot.searchOpen && snapshot.searchPresentation !== 'sidebar') return 'notes'
+  return snapshot.commandPaletteOpen === true ? 'commands' : null
+}
 
 /** Semantic, authority-free view for the route state machine. */
 export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
@@ -4157,23 +4261,18 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const sourceLabel = snapshot.documentKind === 'canvas'
     ? 'Canvas Source'
     : snapshot.documentKind === 'base' ? 'Base Source' : 'Markdown Source'
-  const query = snapshot.searchQuery.trim().toLocaleLowerCase()
   const backlinkCount = snapshot.links?.backlinkDetails.length ?? 0
   const backlinkLabel = `${String(backlinkCount)} backlink${backlinkCount === 1 ? '' : 's'}`
-  const documents = snapshot.entries.filter(entry => entry.kind === 'document'
-    && supportedDocument(entry.path)
-    && (query === '' || entry.path.toLocaleLowerCase().includes(query)))
+  const documents = snapshot.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path))
   const focusedPane = snapshot.panes.find(pane => pane.id === snapshot.focusedPaneId)
-  const visibleTreeEntries = query === ''
-    ? snapshot.entries.filter(entry => entry.kind === 'directory'
-      || (entry.kind === 'document' && supportedDocument(entry.path)))
-    : snapshot.entries.filter(entry => entry.kind === 'directory'
-      ? documents.some(document => document.path.startsWith(`${entry.path}/`))
-      : documents.includes(entry))
+  const visibleTreeEntries = snapshot.entries.filter(entry => entry.kind === 'directory'
+    || (entry.kind === 'document' && supportedDocument(entry.path)))
   const [panel, setPanel] = useState<'assistant' | WorkbenchUtilityView | null>(null)
-  const [noteAction, setNoteAction] = useState<'move' | 'rename' | null>(null)
+  const [noteAction, setNoteAction] = useState<'move' | 'rename' | 'property' | null>(null)
   const [paletteView, setPaletteView] = useState<'commands' | 'notes' | null>(null)
-  const visiblePalette = paletteView ?? (snapshot.searchOpen ? 'notes' : snapshot.commandPaletteOpen === true ? 'commands' : null)
+  const [sidebarSearch, setSidebarSearch] = useState(true)
+  const showSidebarSearch = sidebarSearch && snapshot.searchOpen && snapshot.searchPresentation === 'sidebar'
+  const visiblePalette = paletteView ?? snapshotPalette(snapshot)
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
   const [baseView, setBaseView] = useState<string | null>(null)
   const [baseSearches, setBaseSearches] = useState<Record<string, string>>({})
@@ -4300,12 +4399,12 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       <div className="tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-1 pl-[46px] [&>button]:inline-flex [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]">
         {effectiveSidebarOpen && (
           <>
-            <span className="tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]"><WorkbenchGlyph kind="document" /></span>
-            <span><WorkbenchGlyph kind="document" /></span>
+            <Button unstyled aria-label="Show Files" aria-pressed={!showSidebarSearch} className="h-7 w-[22px] rounded-[5px] aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" onClick={() => { setSidebarSearch(false) }} title="Files" type="button"><FolderOpen aria-hidden="true" /></Button>
+            <Button unstyled aria-label="Search Vault" aria-pressed={showSidebarSearch} className="h-7 w-[22px] rounded-[5px] aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" disabled={props.onOpenSidebarSearch === undefined} onClick={() => { setSidebarSearch(true); props.onOpenSidebarSearch?.() }} title="Search vault in sidebar" type="button"><Search aria-hidden="true" /></Button>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
-                  <Button unstyled aria-label="Search Notes" className="border-0 bg-transparent p-0" disabled={props.onOpenSearch === undefined} onClick={event => { openSearch(event.currentTarget); }} type="button"><Search aria-hidden="true" /></Button>
+                  <Button unstyled aria-label="Search Notes" className="border-0 bg-transparent p-0" disabled={props.onOpenSearch === undefined} onClick={event => { openSearch(event.currentTarget); }} type="button"><SlidersHorizontal aria-hidden="true" /></Button>
                 </span>
               </TooltipTrigger>
               <TooltipContent>Search Notes</TooltipContent>
@@ -4408,13 +4507,23 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         />
       )}
       {noteAction !== null && snapshot.path !== null && (
-        <NotePathDialog
-          initialValue={noteAction === 'rename'
+        <NoteValueDialog
+          key={`${snapshot.path}:${noteAction}`}
+          initialValue={noteAction === 'property' ? '' : noteAction === 'rename'
             ? noteTitle(snapshot.path)
             : snapshot.path.includes('/') ? snapshot.path.slice(0, snapshot.path.lastIndexOf('/')) : ''}
           kind={noteAction}
           onCancel={() => { setNoteAction(null) }}
-          onSubmit={value => noteAction === 'rename'
+          validate={value => {
+            if (noteAction !== 'property') return null
+            const key = value.trim()
+            if (key === '') return 'Enter a property name.'
+            return parseFrontmatterProperties(snapshot.source).some(property => property.key.toLocaleLowerCase() === key.toLocaleLowerCase())
+              ? 'A property with this name already exists.' : null
+          }}
+          onSubmit={value => noteAction === 'property'
+            ? props.onSetProperty?.(value.trim(), '') ?? false
+            : noteAction === 'rename'
             ? props.onRenameTitle?.(value) ?? false
             : props.onMoveNote?.(value) ?? false}
         />
@@ -4469,16 +4578,16 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       >
         <aside
           aria-hidden={!effectiveSidebarOpen}
-          aria-label="Files"
+          aria-label={showSidebarSearch ? 'Vault Search' : 'Files'}
           className="tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]"
           data-open={effectiveSidebarOpen}
           {...(effectiveSidebarOpen ? {} : { inert: '' })}
         >
           <header className="tocktutor-sidebar-header flex items-center border-b border-[var(--tt-border)] px-2.5">
-            <h1 className="m-0 text-sm font-semibold">Files</h1>
+            <h1 className="m-0 text-sm font-semibold">{showSidebarSearch ? 'Search' : 'Files'}</h1>
           </header>
           <div className="tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]">
-            <nav aria-label="Vault Notes">
+            {showSidebarSearch ? <SidebarSearch snapshot={snapshot} onChange={props.onSearchChange} onRun={props.onRunSearch} onLoadMore={props.onLoadMoreSearch} onSelect={props.onSelectSearchMatch} /> : <nav aria-label="Vault Notes">
               {snapshot.phase === 'loading' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">Loading notes…</p>}
               {snapshot.phase === 'inactive' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">No Active Vault</Alert>}
               {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">{snapshot.message}</Alert>}
@@ -4486,7 +4595,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <ul className="tocktutor-tree m-0 list-none p-0">
                 <TreeEntries entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} />
               </ul>
-            </nav>
+            </nav>}
           </div>
           <WorkbenchVaultDialog
             onCreateManagedVault={props.onCreateManagedVault}
@@ -4567,6 +4676,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                     </>
                   )}
                   <DropdownMenuGroup>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || snapshot.path === null || props.onSetProperty === undefined} onSelect={() => { setNoteAction('property') }}><Plus aria-hidden="true" /><span>Add Property</span></DropdownMenuItem>
                     <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || props.onRenameTitle === undefined} onSelect={() => { setNoteAction('rename') }}><Pencil aria-hidden="true" /><span>Rename Note</span></DropdownMenuItem>
                     <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || props.onMoveNote === undefined} onSelect={() => { setNoteAction('move') }}><FolderInput aria-hidden="true" /><span>Move Note</span></DropdownMenuItem>
                   </DropdownMenuGroup>
@@ -4579,6 +4689,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   <DropdownMenuGroup>
                     {([
                       ['recovery', 'File Recovery', FileClock],
+                      ['outline', 'Outline', ListTree],
                       ['properties', 'Properties', ListTree],
                       ['backlinks', 'Backlinks', Link2],
                       ['graph', 'Graph View', Network],
@@ -4600,7 +4711,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    <DropdownMenuItem className={`${NOTE_ACTION_CLASS} text-[var(--dsw-alias-state-error-primary,#dc2626)]`} disabled={snapshot.path === null || props.onTrashCurrent === undefined} onSelect={() => { props.onTrashCurrent?.() }}><Trash2 aria-hidden="true" /><span>Move File to Trash</span></DropdownMenuItem>
+                    <DropdownMenuItem className={`${NOTE_ACTION_CLASS} text-[color:var(--dsw-alias-state-error-primary,#dc2626)]!`} disabled={snapshot.path === null || props.onTrashCurrent === undefined} onSelect={() => { props.onTrashCurrent?.() }}><Trash2 aria-hidden="true" /><span>Move File to Trash</span></DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -4608,7 +4719,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           </header>
           <div
             aria-label="Editor Attachment Drop Zone"
-            className="tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-3xl [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none"
+            className="tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-[700px] [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none"
             onDrop={event => {
               if (event.dataTransfer.files.length === 0) return
               event.preventDefault()
@@ -5006,7 +5117,8 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenGraphNode={(path, mode) => controller.openGraphNode(path, mode)}
         onOpenInternalLink={target => controller.openInternalLink(target)}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
-        onOpenSearch={() => { controller.openSearch('') }}
+        onOpenSearch={() => { controller.openSearch(snapshot.searchQuery) }}
+        onOpenSidebarSearch={() => { controller.openSidebarSearch() }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}
         onPrepareOrganization={() => { void controller.prepareOrganization() }}
         onPreviewAttachment={path => { void controller.previewAttachment(path) }}

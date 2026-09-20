@@ -12,9 +12,12 @@ import { BUILTIN_TEMPLATES } from './capture.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import type { TockTutorRouteViewProps } from './route.tsx'
 import { MAX_PANE_GROUPS } from './session.ts'
+import { NoteOutlinePanel } from './note-outline.tsx'
+import { VaultProperties } from './vault-properties.tsx'
+import { VaultTags } from './vault-tags.tsx'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 
-export type WorkbenchUtilityView = 'attachments' | 'backlinks' | 'bookmarks' | 'extensions' | 'graph' | 'properties' | 'recovery' | 'tags' | 'tools' | 'web' | 'workspace'
+export type WorkbenchUtilityView = 'attachments' | 'backlinks' | 'bookmarks' | 'extensions' | 'graph' | 'outline' | 'properties' | 'recovery' | 'tags' | 'tools' | 'web' | 'workspace'
 
 const UTILITY_TITLES: Record<WorkbenchUtilityView, string> = {
   attachments: 'Attachments and Embeds',
@@ -22,6 +25,7 @@ const UTILITY_TITLES: Record<WorkbenchUtilityView, string> = {
   graph: 'Graph View',
   backlinks: 'Backlinks',
   bookmarks: 'Bookmarks',
+  outline: 'Outline',
   properties: 'Properties',
   tags: 'Tags',
   recovery: 'File Recovery',
@@ -117,6 +121,9 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               <TooltipContent>Close Utility Panel</TooltipContent>
             </Tooltip>
           </header>
+          <section aria-label="Outline" className="p-3" hidden={props.view !== 'outline'}>
+            {props.view === 'outline' && <NoteOutlinePanel snapshot={snapshot} onJumpToLine={props.onJumpToLine} />}
+          </section>
           <section aria-label="File Recovery" className="p-3" hidden={props.view !== 'recovery'}>
             <div className="flex items-center justify-end gap-2">
               <span className="flex gap-1">
@@ -268,38 +275,11 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               {(snapshot.bookmarks?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No bookmarks.</span>}
             </div>
           </section>
-          <section aria-label="Tags" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'tags'}>
-            <div aria-label="Vault Tags" className="grid gap-0.5" role="list">
-              {vaultTags.map(tag => (
-                <div className="min-w-0" key={tag.tag.toLocaleLowerCase()} role="listitem">
-                  <Button unstyled className="w-full truncate rounded border-0 bg-transparent px-1 py-1 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" onClick={() => { props.onSearchChange?.(`tag:${tag.tag}`); props.onRunSearch?.() }} type="button">#{tag.tag} · {String(tag.count)}</Button>
-                </div>
-              ))}
-              {vaultTags.length === 0 && <span className="text-xs text-[var(--tt-muted)]">No tags.</span>}
-            </div>
+          <section aria-label="Tags" className="p-3" hidden={props.view !== 'tags'}>
+            <VaultTags key={snapshot.vault?.id ?? 'inactive'} tags={vaultTags} onSearch={tag => { props.onOpenSearch?.(); props.onSearchChange?.(`tag:${tag}`); props.onSearchMode?.('query'); props.onRunSearch?.() }} />
           </section>
           <section aria-label="Properties" className="p-3" hidden={props.view !== 'properties'}>
-            <table aria-label="Vault Properties" className="w-full table-fixed border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-[var(--tt-border)] text-left text-[var(--tt-muted)]">
-                  <th className="w-[46%] px-1 py-1 font-medium" scope="col">Property</th>
-                  <th className="w-[34%] px-1 py-1 font-medium" scope="col">Type</th>
-                  <th className="w-[20%] px-1 py-1 text-right font-medium" scope="col">Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vaultProperties.map(property => (
-                  <tr className="border-b border-[color-mix(in_srgb,var(--tt-border)_60%,transparent)] last:border-0" key={property.key.toLocaleLowerCase()}>
-                    <th className="truncate px-1 py-1 text-left font-medium" scope="row">
-                      <Button unstyled aria-label={`Search Property ${property.key}`} className="max-w-full truncate rounded border-0 bg-transparent p-0 text-left text-xs hover:text-[var(--tt-accent)] focus-visible:text-[var(--tt-accent)]" onClick={() => { props.onSearchChange?.(`[${property.key}]`); props.onRunSearch?.() }} type="button">{property.key}</Button>
-                    </th>
-                    <td className="truncate px-1 py-1 text-[var(--tt-muted)]">{property.types.join(', ') || 'Unknown'}</td>
-                    <td className="px-1 py-1 text-right tabular-nums">{String(property.count)}</td>
-                  </tr>
-                ))}
-                {vaultProperties.length === 0 && <tr><td className="px-1 py-2 text-[var(--tt-muted)]" colSpan={3}>No properties.</td></tr>}
-              </tbody>
-            </table>
+            <VaultProperties key={snapshot.vault?.id ?? 'inactive'} properties={vaultProperties} onSearch={key => { props.onOpenSearch?.(); props.onSearchChange?.(`[${key}]`); props.onRunSearch?.() }} />
           </section>
           <section aria-label="Backlinks" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'backlinks'}>
             <details className="rounded border border-[var(--tt-border)]" open>

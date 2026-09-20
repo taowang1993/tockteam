@@ -153,13 +153,18 @@ describe('CodeMirror Source editor', () => {
     expect(shouldStartEditorRectangularSelection({ altKey: true, shiftKey: false, button: 0 })).toBe(false)
   })
 
-  it('toggles a Source task through one CodeMirror transaction', async () => {
+  it('keeps Source task markers literal and editable rather than replacing them with checkboxes', async () => {
     const onChange = vi.fn()
-    render(<SourceEditor content={'- [ ] Review\n'} onContentChange={onChange} />)
-    const task = await screen.findByRole('checkbox', { name: 'Mark Source Task as Complete' }, { timeout: 5_000 })
-    expect(task.tabIndex).toBe(0)
-    fireEvent.keyDown(task, { key: ' ' })
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith('- [x] Review\n'))
+    const source = '- [ ] Review\n- [x] Done\n'
+    const editorViewRef = { current: null }
+    const { container } = render(<SourceEditor content={source} editorViewRef={editorViewRef} onContentChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy())
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull()
+    expect(container.querySelector('.cm-content')?.textContent).toContain('- [ ] Review')
+    expect(container.querySelector('.cm-content')?.textContent).toContain('- [x] Done')
+    expect(onChange).not.toHaveBeenCalled()
+    editorViewRef.current?.dispatch({ changes: { from: 3, to: 4, insert: 'x' } })
+    expect(onChange).toHaveBeenCalledWith('- [x] Review\n- [x] Done\n')
   })
 
   it('renders fenced Source previews without invalid block decorations', async () => {
@@ -235,10 +240,52 @@ describe('Milkdown Live Preview editor', () => {
     const tagsTerm = screen.getByText('tags').closest('dt')!
     expect(tagsTerm.querySelector('.lucide-tags')).toBeTruthy()
     expect(tagsTerm.parentElement?.querySelector('dd')?.textContent).toContain('onetwo')
-    expect(screen.getByText('one').className).toContain('var(--dsw-specific-markdown-accent)_10%')
-    expect(screen.getByText('one').className).toContain('text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]')
+    expect(screen.getByText('one').parentElement?.className).toContain('var(--dsw-specific-markdown-accent)_10%')
+    expect(screen.getByText('one').parentElement?.className).toContain('text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]')
     fireEvent.click(screen.getByRole('button', { name: 'Remove one tag' }))
     expect(onSetProperty).toHaveBeenCalledWith('tags', ['two'])
+  })
+
+  it.each(['reading', 'live'])('folds document properties without changing note content in %s mode', mode => {
+    const source = '---\nstatus: active\ntags: [one, two]\n---\n# Lesson\n'
+    const onSetProperty = vi.fn(() => true)
+    const onAddProperty = vi.fn(() => true)
+    const onMarkdownChange = vi.fn()
+    const view = (content: string) => mode === 'reading'
+      ? <RichReadingView source={content} onAddProperty={onAddProperty} onSetProperty={onSetProperty} onToggleTask={() => {}} title="Lesson note" />
+      : <LivePreviewEditor content={content} onAddProperty={onAddProperty} onSetProperty={onSetProperty} onMarkdownChange={onMarkdownChange} title="Lesson note" />
+    const { rerender } = render(view(source))
+    const disclosure = screen.getByRole('button', { name: 'Properties', exact: true })
+    const content = document.getElementById(disclosure.getAttribute('aria-controls')!)!
+    expect(disclosure.getAttribute('aria-expanded')).toBe('true')
+    expect(content.hidden).toBe(false)
+    fireEvent.click(disclosure)
+    expect(disclosure.getAttribute('aria-expanded')).toBe('false')
+    expect(content.hidden).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Add Property' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Remove one tag' })).toBeNull()
+    rerender(view(source.replace('active', 'review')))
+    expect(disclosure.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(disclosure)
+    expect(content.hidden).toBe(false)
+    expect(screen.getByLabelText('Document Properties').textContent).toContain('statusreview')
+    expect(screen.getByRole('button', { name: 'Remove one tag' })).toBeTruthy()
+    expect(onSetProperty).not.toHaveBeenCalled()
+    expect(onAddProperty).not.toHaveBeenCalled()
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+  })
+
+  it('preserves an unfinished property name while its section is folded', () => {
+    const onAddProperty = vi.fn(() => true)
+    render(<RichReadingView source={'---\nstatus: active\n---\n# Lesson\n'} onAddProperty={onAddProperty} onToggleTask={() => {}} title="Lesson note" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add Property' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Property Name' }), { target: { value: 'effort' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Properties', exact: true }))
+    expect(screen.queryByRole('textbox', { name: 'Property Name' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Properties', exact: true }))
+    expect((screen.getByRole('textbox', { name: 'Property Name' }) as HTMLInputElement).value).toBe('effort')
+    fireEvent.submit(screen.getByRole('form', { name: 'Add Property' }))
+    expect(onAddProperty).toHaveBeenCalledExactlyOnceWith('effort')
   })
 
   it('adds a validated property from Live Preview without overwriting an existing key', () => {
@@ -260,9 +307,9 @@ describe('Milkdown Live Preview editor', () => {
     expect(screen.queryByRole('form', { name: 'Add Property' })).toBeNull()
   })
 
-  it('adds a property from Reading View without existing frontmatter', () => {
+  it('adds a property from Reading View with existing frontmatter', () => {
     const onAddProperty = vi.fn(() => true)
-    render(<RichReadingView onAddProperty={onAddProperty} onToggleTask={() => {}} source="# Lesson\n" title="Lesson note" />)
+    render(<RichReadingView onAddProperty={onAddProperty} onToggleTask={() => {}} source={'---\nstatus: active\n---\n# Lesson\n'} title="Lesson note" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Add Property' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Property Name' }), { target: { value: 'area' } })
@@ -278,10 +325,11 @@ describe('Milkdown Live Preview editor', () => {
     expect(screen.queryByRole('button', { name: 'Add Property' })).toBeNull()
   })
 
-  it('renders property controls for empty frontmatter', () => {
-    render(<LivePreviewEditor content={'---\n---\n'} onAddProperty={() => true} onMarkdownChange={() => {}} title="Untitled" />)
+  it.each(['# Lesson\n', '---\n---\n', '---\n# Metadata later\n---\n# Lesson\n'])('keeps plain notes free of empty property controls: %s', source => {
+    render(<LivePreviewEditor content={source} onAddProperty={() => true} onMarkdownChange={() => {}} title="Untitled" />)
 
-    expect(screen.getByRole('button', { name: 'Add Property' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Properties' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add Property' })).toBeNull()
   })
 
   it('renders boolean properties as checkboxes and brackets footnote references in Reading View', () => {
@@ -311,6 +359,51 @@ describe('Milkdown Live Preview editor', () => {
     await waitFor(() => expect(onSelection).toHaveBeenCalled())
   })
 
+  it('keeps a list folded across parent renders without changing authored Markdown', async () => {
+    const source = '1. Parent\n   - Child\n'
+    const onChange = vi.fn()
+    const { rerender } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
+    const collapse = await screen.findByRole('button', { name: 'Collapse List' })
+    collapse.focus()
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Collapse List' }), { key: 'Enter' })
+    expect(screen.getByRole('button', { name: 'Expand List' }).getAttribute('aria-expanded')).toBe('false')
+
+    rerender(<LivePreviewEditor content={source} onMarkdownChange={onChange} title="Parent rendered again" />)
+    expect(screen.getByRole('button', { name: 'Expand List' }).getAttribute('aria-expanded')).toBe('false')
+    rerender(<LivePreviewEditor content={`---\nstatus: review\n---\n${source}`} onMarkdownChange={onChange} />)
+    expect(screen.getByRole('button', { name: 'Expand List' }).getAttribute('aria-expanded')).toBe('false')
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Expand List' }), { key: ' ' })
+    expect(screen.getByRole('button', { name: 'Collapse List' }).getAttribute('aria-expanded')).toBe('true')
+    expect(onChange).not.toHaveBeenCalled()
+
+    rerender(<LivePreviewEditor content={'# Updated externally\n'} onMarkdownChange={onChange} />)
+    await screen.findByRole('heading', { name: 'Updated externally' })
+    expect(screen.queryByText('Child')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Collapse List' })).toBeNull()
+  })
+
+  it('accepts edited Markdown echoed by the parent and later external changes', async () => {
+    const source = '---\r\nstatus: draft\r\n---\r\n1. Parent\r\n   - Child\r\n'
+    const onChange = vi.fn()
+    const editorViewRef = { current: null }
+    const { rerender } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await screen.findByRole('button', { name: 'Collapse List' })
+    const view = editorViewRef.current
+    view.dispatch(view.state.tr.insertText('Edited ', 3))
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const edited = onChange.mock.lastCall![0] as string
+    expect(edited).toContain('Edited Parent')
+    expect(edited.startsWith('---\r\nstatus: draft\r\n---\r\n')).toBe(true)
+    rerender(<LivePreviewEditor content={edited} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Collapse List' }), { key: 'Enter' })
+    rerender(<LivePreviewEditor content={edited} editorViewRef={editorViewRef} onMarkdownChange={onChange} title="Edited note" />)
+    expect(screen.getByRole('button', { name: 'Expand List' }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByText('Edited Parent')).toBeTruthy()
+    rerender(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await screen.findByText('Parent')
+    expect(screen.queryByText('Edited Parent')).toBeNull()
+  })
+
   it('uses readable document typography and Obsidian-style blockquotes in both preview modes', async () => {
     const live = render(<LivePreviewEditor content={'> Quoted lesson\n'} onMarkdownChange={() => {}} />)
 
@@ -318,7 +411,7 @@ describe('Milkdown Live Preview editor', () => {
     const liveSurface = screen.getByLabelText('Live Preview Editor')
     expect(liveSurface.className).toContain('text-base')
     expect(liveSurface.className).toContain('[&_blockquote]:border-l-2')
-    expect(liveSurface.className).toContain('[&_blockquote]:pl-3')
+    expect(liveSurface.className).toContain('[&_blockquote]:pl-6')
     live.unmount()
 
     render(<RichReadingView source={'> Quoted lesson\n'} onToggleTask={() => {}} title="Quote" />)
@@ -326,7 +419,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.querySelector('blockquote')?.textContent).toBe('Quoted lesson')
     expect(readingSurface.className).toContain('text-base')
     expect(readingSurface.className).toContain('[&_blockquote]:border-l-2')
-    expect(readingSurface.className).toContain('[&_blockquote]:pl-3')
+    expect(readingSurface.className).toContain('[&_blockquote]:pl-6')
     expect(readingSurface.className).toContain('[&_ul:not(.task-list)]:list-disc')
     expect(readingSurface.className).toContain('[&_code]:bg-[var(--dsw-specific-markdown-inline-code)]')
     expect(readingSurface.className).toContain('[&_code]:rounded-sm')
@@ -384,14 +477,14 @@ describe('Milkdown Live Preview editor', () => {
     expect([...live.container.querySelectorAll('.tocktutor-live-link-markup')].map(markup => markup.textContent).join('')).toBe('[[]][[Guide|]]')
     const liveSurface = screen.getByLabelText('Live Preview Editor')
     expect(liveSurface.className).toContain('[&_.tocktutor-live-internal-link]:text-[var(--dsw-specific-markdown-accent)]')
-    expect(liveSurface.className).not.toContain('[&_.tocktutor-live-internal-link]:underline')
+    expect(liveSurface.className).toContain('[&_.tocktutor-live-internal-link]:underline')
     live.unmount()
 
     render(<RichReadingView source={'Review [[Welcome]].\n'} onToggleTask={() => {}} title="Links" />)
     const readingSurface = screen.getByLabelText('Reading View').querySelector<HTMLElement>('.tocktutor-reading')!
     expect(readingSurface.querySelector('a.internal-link')?.textContent).toBe('Welcome')
-    expect(readingSurface.className).not.toContain('[&_a]:underline')
-    expect(readingSurface.className).toContain('[&_a.internal-link]:no-underline')
+    expect(readingSurface.className).toContain('[&_a]:underline')
+    expect(readingSurface.className).not.toContain('[&_a.internal-link]:no-underline')
     expect(readingSurface.className).toContain('[&_a]:text-[var(--dsw-specific-markdown-accent)]')
     expect(readingSurface.className).toContain('[&_mark]:text-inherit')
   })
@@ -418,7 +511,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(editor.className).toContain('[&_code]:py-0.5')
     expect(editor.className).toContain('[&_pre_code]:p-0')
     expect(editor.className).toContain('[&_.tocktutor-live-fold]:absolute')
-    expect(editor.className).toContain('[&_li>ul]:!pl-4')
+    expect(editor.className).toContain('[&_li>ul]:!pl-8')
   })
 
   it('renders compact Obsidian-style task rows in Live Preview', async () => {

@@ -1,5 +1,6 @@
 ---
 status: review
+favorite: true
 area: markdown
 tags: [comparison, typography]
 difficulty: medium

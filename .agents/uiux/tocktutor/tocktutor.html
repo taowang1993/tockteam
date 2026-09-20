@@ -127,9 +127,9 @@
 <body>
   <header class="page-header">
     <div class="header-inner">
-      <p class="eyebrow">Visual Design Audit · 51 Captures</p>
+      <p class="eyebrow">Visual Design Audit · 55 Captures</p>
       <h1>TockTutor and Obsidian</h1>
-      <p class="intro">A surface-by-surface comparison using the standard capture geometry. TockTutor appears on the left and the installed Obsidian 1.13.7 reference appears on the right where the states are genuinely comparable; approximate equivalents are labeled as closest references. Each capture uses the fixture named in its proof: the <a href="shared-note.md">shared Markdown fixture</a> where noted, or the matching <a href="../../../plugins/tocktutor/parity/fixtures/vault/">parity fixture files</a> for Source, Reading View, Recovery, and Attachments and Embeds. Click any screenshot to inspect its full-resolution pixels.</p>
+      <p class="intro">Fresh captures of TockTutor and installed Obsidian 1.13.7 using identical isolated comparison vaults. Note-based surfaces open <code>UIUX Comparison.md</code> with the exact <a href="shared-note.md">shared Markdown content</a>; attachments use <code>Notes/Welcome.md</code>, and Base and Canvas use the same <a href="../../../plugins/tocktutor/parity/fixtures/vault/">parity fixture files</a>. Search uses <code>Markdown</code> in both apps. The assistant pair uses empty conversations beside the same note, with Claudian 2.3.0 in Obsidian. Product-specific controls and catalogs remain genuine, not fabricated matches. See the <a href="../../../.beads/reports/tocktutor-content-alignment.md">capture proof and limitations</a>. Click an image for full resolution.</p>
       <div class="capture-standard">1512 × 949 CSS pixels · 2× scale · 3024 × 1898 output · Built-in Dark Theme · No Active Skin</div>
       <div class="legend" aria-label="Comparison legend">
         <span class="tt">TockTutor</span>
@@ -145,7 +145,7 @@
   <main>
     <section class="surface" id="polish">
       <p class="section-number">Focused Check</p><h2>Tag and Tab Polish</h2><p class="section-note">Targeted verification of higher-contrast frontmatter tags and the active tab’s smoother bottom corners.</p>
-      <p class="fixture-proof"><strong>Capture Proof:</strong> the current Desktop TockTutor route rendered from commit <code>f7c56a5e</code> in a bounded Playwright Electron/CDP session against a temporary parity vault containing the shared visual note, with the built-in dark theme, Live Preview, <code>favorite: true</code>, and <code>Notes/Welcome.md</code> selected. Capture geometry is 1512 × 949 CSS pixels at 2× scale (3024 × 1898 output); the browser reported zero runtime errors and the full process tree was stopped.</p>
+      <p class="fixture-proof"><strong>Capture Proof:</strong> TockTutor built from <code>ce91d652</code> and Obsidian 1.13.7 both open <code>UIUX Comparison.md</code> in Live Preview, with <code>favorite: true</code> and identical Markdown bytes. Bounded, app-scoped Playwright/CDP captures use 1512 × 949 CSS pixels at 2× scale (3024 × 1898 output), built-in dark themes, and no active skin. Process-tree cleanup is verified; runtime observations are recorded in the linked proof.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Tag and Tab Polish</span><span class="badge">Focused Verification</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-tag-tab-polish.png"><img src="screenshots/tocktutor-tag-tab-polish.png" alt="TockTutor higher-contrast frontmatter tags and softened active tab corners"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Tag and Tab Reference</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-main-editor.png"><img src="screenshots/obsidian-main-editor.png" alt="Obsidian frontmatter tag contrast and tab shape reference"></a></figure>
@@ -161,8 +161,8 @@
     </section>
 
     <section class="surface" id="reading">
-      <p class="section-number">Surface 02</p><h2>Reading View</h2><p class="section-note">Parity-fixture rendering covers typography, measure, metadata, tasks, callout tinting, fenced code, safe HTML, hidden block IDs, accessible Mermaid SVGs, and Host-resolved local media and note embeds rendered inline.</p>
-      <p class="fixture-proof"><strong>Fixture Proof:</strong> tracked <code>plugins/tocktutor/parity/fixtures/vault/Notes/Welcome.md</code> and copied <code>TockTutor Parity Fixture/Notes/Welcome.md</code> use the same normalized bytes for both isolated surfaces: 656 bytes and SHA-256 <code>sha256:d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c</code>. Equality is explicit: tracked and copied byte counts and SHA-256 values match.</p>
+      <p class="section-number">Surface 02</p><h2>Reading View</h2><p class="section-note">The same Markdown Rendering Lab note in Reading View: typography, metadata, links, lists, tasks, quotations, tables, and code. Both notes begin at the top; differences in how much fits are renderer differences.</p>
+      <p class="fixture-proof"><strong>Fixture Proof:</strong> <code>shared-note.md</code> is copied byte-for-byte to <code>UIUX Comparison.md</code> in both isolated vaults. The proof records the source hash, both copied hashes, active path, and editor mode for every pair. The separate Attachments and Embeds surface retains the shared Welcome fixture.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reading View</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-reading.png"><img src="screenshots/tocktutor-editor-reading.png" alt="TockTutor reading view"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Reading View</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-reading-view.png"><img src="screenshots/obsidian-reading-view.png" alt="Obsidian reading view"></a></figure>
@@ -212,7 +212,7 @@
     <section class="surface" id="search">
       <p class="section-number">Surface 08</p><h2>Search</h2><p class="section-note">Query controls, result grouping, match emphasis, and dialog density.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Search</span><span class="badge">Verified Capture</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-search.png"><img src="screenshots/tocktutor-search.png" alt="TockTutor search with bounded Search Options and unavailable Quick Answer"></a><p class="section-note">Captured at <code>319d6566</code>. Search Options fits the viewport and scrolls natively. Quick Answer is unavailable; no provider is configured.</p></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Search</span><span class="badge">Verified Capture</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-search.png"><img src="screenshots/tocktutor-search.png" alt="TockTutor search with bounded Search Options and unavailable Quick Answer"></a><p class="section-note">Both apps search the identical vault for <code>Markdown</code>, without extra filters. TockTutor’s provider is unconfigured; no AI answer was generated.</p></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Search</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-search.png"><img src="screenshots/obsidian-search.png" alt="Obsidian search"></a></figure>
       </div>
     </section>
@@ -241,7 +241,7 @@
       </div>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Expanded Unlinked Mentions</span><span class="badge">Interaction Proof</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-backlinks-unlinked-expanded.png"><img loading="lazy" src="screenshots/tocktutor-backlinks-unlinked-expanded.png" alt="TockTutor expanded unlinked mentions"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Backlinks</span><span class="badge">Closest Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-backlinks.png"><img loading="lazy" src="screenshots/obsidian-backlinks.png" alt="Obsidian backlinks reference"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Expanded Unlinked Mentions</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-backlinks-unlinked-expanded.png"><img loading="lazy" src="screenshots/obsidian-backlinks-unlinked-expanded.png" alt="Obsidian expanded unlinked mentions for the same note"></a></figure>
       </div>
     </section>
 
@@ -258,7 +258,7 @@
     </section>
 
     <section class="surface" id="graph">
-      <p class="section-number">Surface 13</p><h2>Graph</h2><p class="section-note">Global graph occupancy and a matching local graph state compared with Obsidian’s captured graph views.</p>
+      <p class="section-number">Surface 13</p><h2>Graph</h2><p class="section-note">Matching graph content: 8 global nodes and 4 local nodes around UIUX Comparison at depth 2. Obsidian hides unresolved links and excludes the Base file to match TockTutor’s node set; renderer layout and scale remain genuine.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Global Graph</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-graph-global.png"><img src="screenshots/tocktutor-graph-global.png" alt="TockTutor global graph"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Global Graph</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-graph-global.png"><img src="screenshots/obsidian-graph-global.png" alt="Obsidian global graph"></a></figure>
@@ -271,10 +271,10 @@
 
     <section class="surface" id="attachments">
       <p class="section-number">Surface 14</p><h2>Attachments and Embeds</h2><p class="section-note">Host-resolved local media renders inline in the comparable Reading state. The TockTutor Attachments and Embeds utility panel is retained as an additional surface; Obsidian has no captured one-to-one panel. External HTTP(S) media stays behind the isolated Web Viewer.</p>
-      <p class="fixture-proof"><strong>Embed Proof:</strong> tracked <code>plugins/tocktutor/parity/fixtures/vault/Attachments/pixel.png</code> and copied <code>TockTutor Parity Fixture/Attachments/pixel.png</code> use the same 68 bytes and SHA-256 <code>sha256:431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460</code>; equality is explicit because tracked and copied byte counts and hashes match. The isolated <code>Notes/Welcome.md</code> fixture resolves <code>![[../Attachments/pixel.png|16x16]]</code> to <code>Attachments/pixel.png</code> as <code>image/png</code>; both Reading captures place the local image inline at 16 × 16 CSS pixels without exposing the raw marker.</p>
+      <p class="fixture-proof"><strong>Embed Proof:</strong> tracked <code>plugins/tocktutor/parity/fixtures/vault/Attachments/pixel.png</code> and copied <code>Comparison Vault/Attachments/pixel.png</code> use the same 68 bytes and SHA-256 <code>sha256:431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460</code>; equality is explicit because tracked and copied byte counts and hashes match. The isolated <code>Notes/Welcome.md</code> fixture resolves <code>![[../Attachments/pixel.png|16x16]]</code> to <code>Attachments/pixel.png</code> as <code>image/png</code>; both dedicated Reading Embed captures place the local image inline at 16 × 16 CSS pixels without exposing the raw marker.</p>
       <div class="comparison">
-        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reading Embed</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-editor-reading.png"><img src="screenshots/tocktutor-editor-reading.png" alt="TockTutor Reading View with a resolved local image"></a></figure>
-        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Reading Embed</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-reading-view.png"><img src="screenshots/obsidian-reading-view.png" alt="Obsidian Reading View with a resolved local image"></a></figure>
+        <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Reading Embed</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-reading-embed.png"><img src="screenshots/tocktutor-reading-embed.png" alt="TockTutor Reading View with a resolved local image"></a></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Reading Embed</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-reading-embed.png"><img src="screenshots/obsidian-reading-embed.png" alt="Obsidian Reading View with a resolved local image"></a></figure>
       </div>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Attachments Utility Panel</span><span class="badge">Additional Surface</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-attachments-embeds.png"><img src="screenshots/tocktutor-attachments-embeds.png" alt="TockTutor Attachments and Embeds utility panel"></a></figure>
@@ -307,7 +307,7 @@
     </section>
 
     <section class="surface" id="settings">
-      <p class="section-number">Surface 18</p><h2>Settings</h2><p class="section-note">Full workspace route, sidebar geometry, section navigation, and content density.</p>
+      <p class="section-number">Surface 18</p><h2>Settings</h2><p class="section-note">TockTeam’s General settings beside Obsidian’s Appearance settings, both explicitly using the built-in dark theme. These are closest equivalents; product-specific settings differ.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTeam · Settings</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-settings.png"><img src="screenshots/tocktutor-settings.png" alt="TockTeam Settings workspace"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · General Settings</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-settings-general.png"><img src="screenshots/obsidian-settings-general.png" alt="Obsidian general settings"></a></figure>
@@ -315,7 +315,7 @@
     </section>
 
     <section class="surface" id="marketplace">
-      <p class="section-number">Surface 19</p><h2>Plugin Marketplace</h2><p class="section-note">Catalog hierarchy, search and filter controls, plugin metadata, and Settings integration.</p>
+      <p class="section-number">Surface 19</p><h2>Plugin Marketplace</h2><p class="section-note">Real plugin-management surfaces: TockTeam’s catalog beside Obsidian’s installed community plugins, including Claudian. Catalog entries are product-specific and are not presented as identical content.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTeam · Plugin Marketplace</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-marketplace.png"><img src="screenshots/tocktutor-marketplace.png" alt="TockTeam plugin marketplace"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Community Plugins</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-settings-community-plugins.png"><img src="screenshots/obsidian-settings-community-plugins.png" alt="Obsidian community plugins settings"></a></figure>
@@ -323,10 +323,10 @@
     </section>
 
     <section class="surface" id="assistant">
-      <p class="section-number">Surface 20</p><h2>Assistant</h2><p class="section-note">TockTutor-specific agent surface with no direct first-party Obsidian counterpart.</p>
+      <p class="section-number">Surface 20</p><h2>Assistant</h2><p class="section-note">The same UIUX Comparison note in Live Preview beside an empty assistant conversation. Obsidian uses the already-installed Claudian 2.3.0 plugin. No prompt was sent and no response was invented; provider/model controls remain product-specific.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Assistant</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-assistant.png"><img src="screenshots/tocktutor-assistant.png" alt="TockTutor assistant"></a></figure>
-        <figure><figcaption><span class="caption-title">Obsidian · Assistant</span><span class="badge">Not Applicable</span></figcaption><div class="missing-reference"><strong>No Direct Reference</strong><p>Obsidian has no equivalent first-party agent pane in this audit set.</p></div></figure>
+        <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Claudian</span><span class="badge">Installed Plugin</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-assistant.png"><img src="screenshots/obsidian-assistant.png" alt="Obsidian Claudian 2.3.0 empty conversation beside the shared UIUX Comparison note"></a></figure>
       </div>
     </section>
 
@@ -355,14 +355,14 @@
     </section>
 
     <section class="surface" id="web-viewer">
-      <p class="section-number">Surface 24</p><h2>Web Viewer</h2><p class="section-note">TockTutor-specific browsing and clipping surface beside Obsidian’s installed Web Viewer.</p>
+      <p class="section-number">Surface 24</p><h2>Web Viewer</h2><p class="section-note">Both viewers open https://example.com/ and show Example Domain. TockTutor retains its isolated browsing and clipping panel; Obsidian uses its built-in Web Viewer.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Web Viewer</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-web-viewer.png"><img src="screenshots/tocktutor-web-viewer.png" alt="TockTutor Web Viewer"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Web Viewer</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-web-viewer.png"><img src="screenshots/obsidian-web-viewer.png" alt="Obsidian Web Viewer with a local fixture page"></a></figure>
       </div>
     </section>
 
-    <p class="footer">All screenshot files use the standard 1512 × 949 CSS-pixel viewport at 2× scale. Closest-reference panels identify approximate equivalents; only TockTutor-specific Assistant and Reviews remain Not Applicable.</p>
+    <p class="footer">All screenshot files use the standard 1512 × 949 CSS-pixel viewport at 2× scale. Closest-reference panels identify approximate equivalents; only the product-specific Reviews workflow remains Not Applicable. Claudian supplies the assistant reference. All TockTutor images, including supplemental captures, were retaken.</p>
   </main>
 </body>
 </html>

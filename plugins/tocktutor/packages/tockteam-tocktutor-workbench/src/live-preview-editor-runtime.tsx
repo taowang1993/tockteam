@@ -84,6 +84,7 @@ function toggleCalloutFold(source: string, targetIndex: number): string {
 
 function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
   const sourceRef = useRef(props.content)
+  const synchronizedBodyRef = useRef(splitLivePreviewSource(props.content).body)
   const frontmatterRef = useRef(splitLivePreviewSource(props.content).prefix)
   const embedsRef = useRef(props.resolvedEmbeds ?? [])
   const protectedRef = useRef(isLivePreviewSourceProtected(props.content))
@@ -204,6 +205,7 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
           if (syncingRef.current || protectedRef.current) return
           const next = preserveLineEndings(sourceRef.current, `${frontmatterRef.current}${markdown}`)
           sourceRef.current = next
+          synchronizedBodyRef.current = splitLivePreviewSource(next).body
           onMarkdownChangeRef.current(next)
         })
       })
@@ -227,18 +229,25 @@ function LivePreviewEditorInner(props: LivePreviewEditorProps): ReactNode {
     const instance = editor.get()
     if (!instance) return
     try {
-      const current = instance.action(ctx => getMarkdown()(ctx))
       const body = splitLivePreviewSource(props.content).body
-      if (normalizeSource(current) === body) return
+      // Serialization normalizes authored list spacing. Unchanged source must not
+      // replace the document on a parent render and discard its local fold state.
+      if (synchronizedBodyRef.current === body) return
+      const current = instance.action(ctx => getMarkdown()(ctx))
+      if (normalizeSource(current) === body) {
+        synchronizedBodyRef.current = body
+        return
+      }
       syncingRef.current = true
       instance.action(replaceAll(body))
+      synchronizedBodyRef.current = body
       syncingRef.current = false
     } catch {
       syncingRef.current = false
     }
   }, [editor, loading, props.content])
 
-  const shellClass = useMemo(() => `tocktutor-live-preview-editor relative min-h-0 min-w-0 flex-1 overflow-auto text-base leading-6 [&_blockquote]:mx-0 [&_blockquote]:my-4 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--dsw-specific-markdown-accent)] [&_blockquote]:pl-3 [&_blockquote_p]:m-0 [&_a]:text-[var(--dsw-specific-markdown-accent)] [&_.tocktutor-live-internal-link]:text-[var(--dsw-specific-markdown-accent)] [&_.tocktutor-live-highlight]:bg-[var(--dsw-specific-markdown-highlight)] [&_h1]:text-[30px] [&_h1]:leading-tight [&_h2]:text-2xl [&_h2]:leading-8 [&_h3]:text-xl [&_h3]:leading-7 [&_ol]:my-2 [&_ol]:pl-[30px] [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-[30px] [&_li>p]:m-0 [&_li>ul]:!my-0 [&_li>ul]:!pl-4 [&_li>ol]:!my-0 [&_li>ol]:!pl-4 [&_li:has(>.tocktutor-live-fold)]:relative [&_.tocktutor-live-fold]:absolute [&_.tocktutor-live-fold]:top-0 [&_.tocktutor-live-fold]:-left-5 [&_.tocktutor-live-fold]:opacity-0 [&_li:hover>.tocktutor-live-fold]:opacity-100 [&_li:focus-within>.tocktutor-live-fold]:opacity-100 [&_ul:has(li[data-item-type=task])]:m-0 [&_ul:has(li[data-item-type=task])]:list-none [&_ul:has(li[data-item-type=task])]:pl-1 [&_li[data-item-type=task]]:min-h-6 [&_li[data-item-type=task]]:leading-6 [&_li[data-item-type=task]>p]:inline [&_li[data-checked=true]>p]:text-[var(--tt-muted)] [&_li[data-checked=true]>p]:line-through [&_code]:rounded-sm [&_code]:bg-[var(--dsw-specific-markdown-inline-code)] [&_code]:px-1 [&_code]:py-0.5 [&_pre_code]:rounded-none [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_table]:my-4 [&_table]:border-collapse [&_table_p]:m-0 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_.selectedCell]:bg-[var(--tt-selected)] ${props.className ?? ''}`, [props.className])
+  const shellClass = useMemo(() => `tocktutor-note-links tocktutor-live-preview-editor relative min-h-0 min-w-0 flex-1 overflow-auto text-base leading-6 [&_blockquote]:mx-0 [&_blockquote]:my-4 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--dsw-specific-markdown-accent)] [&_blockquote]:pl-6 [&_blockquote_p]:m-0 [&_blockquote>p+p]:mt-4 [&_a]:text-[var(--dsw-specific-markdown-accent)] [&_a]:underline [&_a]:underline-offset-2 [&_.tocktutor-live-internal-link]:text-[var(--dsw-specific-markdown-accent)] [&_.tocktutor-live-internal-link]:underline [&_.tocktutor-live-internal-link]:underline-offset-2 [&_.tocktutor-live-highlight]:bg-[var(--dsw-specific-markdown-highlight)] [&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-[26px] [&_h1]:leading-[31px] [&_h2]:mt-10 [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:leading-8 [&_h3]:mt-6 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:leading-7 [&_h4]:mt-6 [&_h4]:mb-4 [&_h4]:text-[19px] [&_h4]:leading-[27px] [&_h4]:font-[640] [&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:text-[17px] [&_h5]:leading-[26px] [&_h5]:font-[620] [&_h6]:mt-6 [&_h6]:mb-4 [&_h6]:text-base [&_h6]:leading-6 [&_h6]:font-semibold [&_.ProseMirror>h1:not(:first-child)]:mt-10 [&_.ProseMirror>:is(h1,h2,h3,h4,h5,h6):first-child]:mt-0 [&_.ProseMirror>ol]:!my-6 [&_.ProseMirror>ul]:!my-6 [&_ol]:my-2 [&_ol]:pl-[30px] [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-[30px] [&_li>p]:m-0 [&_li>ul]:!my-0 [&_li>ul]:!pl-8 [&_li>ul]:border-l [&_li>ul]:border-[var(--tt-border)] [&_li>ol]:!my-0 [&_li>ol]:!pl-8 [&_li>ol]:border-l [&_li>ol]:border-[var(--tt-border)] [&_li:has(>.tocktutor-live-fold)]:relative [&_.tocktutor-live-fold]:absolute [&_.tocktutor-live-fold]:top-0 [&_.tocktutor-live-fold]:-left-10 [&_.tocktutor-live-fold]:opacity-0 [&_li:hover>.tocktutor-live-fold]:opacity-100 [&_li:focus-within>.tocktutor-live-fold]:opacity-100 [&_ul:has(li[data-item-type=task])]:m-0 [&_ul:has(li[data-item-type=task])]:list-none [&_ul:has(li[data-item-type=task])]:pl-1 [&_li[data-item-type=task]]:min-h-6 [&_li[data-item-type=task]]:leading-6 [&_li[data-item-type=task]>p]:inline [&_li[data-checked=true]>p]:text-[var(--tt-muted)] [&_li[data-checked=true]>p]:line-through [&_code]:rounded-sm [&_code]:bg-[var(--dsw-specific-markdown-inline-code)] [&_code]:px-1 [&_code]:py-0.5 [&_pre_code]:rounded-none [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_table]:my-4 [&_table]:border-collapse [&_table_p]:m-0 [&_th]:border [&_th]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-[var(--dsw-alias-border-l2,var(--tt-border))] [&_td]:px-2 [&_td]:py-1 [&_.selectedCell]:bg-[var(--tt-selected)] ${props.className ?? ''}`, [props.className])
   return <div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={shellClass}><Milkdown /></div>
 }
 

@@ -1,7 +1,9 @@
 // @ts-nocheck -- CodeMirror's declaration graph is not consumable by the pinned Typert NodeNext analyzer; the public adapter remains runtime-typed by CodeMirror.
 import { minimalSetup } from 'codemirror'
-import { markdown } from '@codemirror/lang-markdown'
-import { foldAll, foldCode, foldGutter, unfoldAll, unfoldCode } from '@codemirror/language'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { yamlFrontmatter } from '@codemirror/lang-yaml'
+import { Tag, tags } from '@lezer/highlight'
+import { defaultHighlightStyle, foldAll, foldCode, foldGutter, HighlightStyle, syntaxHighlighting, syntaxTree, unfoldAll, unfoldCode } from '@codemirror/language'
 import { EditorSelection, EditorState, type Extension, type Range } from '@codemirror/state'
 import {
   Decoration,
@@ -28,7 +30,6 @@ import {
 } from './source-editor.tsx'
 import { buildSourceEmbedWidgetExtension, refreshSourceEmbedWidgets } from './source-embed-widgets.ts'
 import { applyEditorCommandToSelections, type EditorCommandId } from './editor-commands.ts'
-import { buildSourceTaskWidgetExtension } from './source-task-widgets.ts'
 import firaCodeUrl from './fonts/FiraCode-VF.woff2'
 
 const firaCode = typeof FontFace === 'undefined'
@@ -40,6 +41,33 @@ function normalizeEditorSource(source: string): string {
 }
 
 const EMPTY_EXTENSIONS: readonly unknown[] = Object.freeze([])
+const highlightTag = Tag.define()
+const highlightDelimiter = { resolve: 'Highlight', mark: 'HighlightMark' }
+const noteInlineSyntax = {
+  defineNodes: [
+    { name: 'Highlight', style: { 'Highlight/...': highlightTag } },
+    'HighlightMark',
+    { name: 'WikiLink', style: tags.link },
+  ],
+  parseInline: [
+    {
+      name: 'Highlight',
+      parse(cx, char, pos) {
+        if (char !== 61 || cx.char(pos + 1) !== 61 || cx.char(pos - 1) === 61 || cx.char(pos + 2) === 61) return -1
+        return cx.addDelimiter(highlightDelimiter, pos, pos + 2,
+          !/\s/u.test(cx.slice(pos + 2, pos + 3)), !/\s/u.test(cx.slice(pos - 1, pos)))
+      },
+    },
+    {
+      name: 'WikiLink', before: 'Link',
+      parse(cx, char, pos) {
+        if (char !== 91 || cx.char(pos + 1) !== 91) return -1
+        const match = /^\[\[[^\]\n]+\]\]/u.exec(cx.slice(pos, cx.end))
+        return match ? cx.addElement(cx.elt('WikiLink', pos, pos + match[0].length)) : -1
+      },
+    },
+  ],
+}
 
 function selectionSnapshot(view: EditorView): SourceEditorSelection {
   const ranges = view.state.selection.ranges.map(range => ({ from: range.from, to: range.to }))
@@ -105,10 +133,13 @@ function deleteCurrentLines(view: EditorView): boolean {
 
 function sourceDecorations(state: EditorState) {
   const decorations: Array<Range<Decoration>> = []
+  const firstBlock = syntaxTree(state).topNode.firstChild
+  const frontmatterEnd = firstBlock?.name === 'Frontmatter' ? firstBlock.to : 0
   let fenceOpen = false
   let commentOpen = false
   for (let number = 1; number <= state.doc.lines; number += 1) {
     const line = state.doc.line(number)
+    if (line.from < frontmatterEnd) continue
     const text = line.text
     const fence = /^ {0,3}(`{3,}|~{3,})/u.test(text)
     if (fence) fenceOpen = !fenceOpen
@@ -181,7 +212,13 @@ function buildEditorExtensions(props: {
   let plainTextPaste = false
   const extensions: Extension[] = [
     minimalSetup,
-    markdown(),
+    yamlFrontmatter({ content: markdown({ base: markdownLanguage, extensions: [noteInlineSyntax] }) }),
+    // Keep ordinary punctuation readable; use the shared document colors for links and highlights.
+    syntaxHighlighting(HighlightStyle.define([
+      ...defaultHighlightStyle.specs.map(spec => ({ ...spec, color: 'inherit' })),
+      { tag: [tags.link, tags.url], color: 'var(--dsw-specific-markdown-accent)' },
+      { tag: highlightTag, backgroundColor: 'var(--dsw-specific-markdown-highlight)' },
+    ])),
     ...(props.showFoldGutter ? [foldGutter()] : []),
     scrollPastEnd(),
     EditorState.readOnly.of(!props.editable),
@@ -279,7 +316,6 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   const userExtensions = props.extraExtensions ?? EMPTY_EXTENSIONS
   const chromeExtensions = useMemo(() => [
     ...buildSourceEmbedWidgetExtension(() => embedsRef.current),
-    ...buildSourceTaskWidgetExtension(),
   ], [])
   const extraExtensions = useMemo(() => [...chromeExtensions, ...userExtensions], [chromeExtensions, userExtensions])
   useEffect(() => { sourceRef.current = props.content }, [props.content])

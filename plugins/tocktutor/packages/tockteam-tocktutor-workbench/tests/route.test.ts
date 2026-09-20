@@ -2800,3 +2800,59 @@ test('late note and vault completions cannot replace the active route identity',
   assert.deepEqual(controller.getSnapshot().vault, firstVault)
   controller.dispose()
 })
+
+test('sidebar search preserves results through navigation and does not cancel opening a note', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor')
+    controller.openSidebarSearch()
+    controller.setSearchQuery('lesson')
+    assert.equal(await controller.runSearch(), true)
+    const matches = controller.getSnapshot().searchMatches
+    assert.ok(matches?.[0])
+    assert.equal(await controller.openSearchMatch(matches[0]), true)
+    controller.openSidebarSearch()
+    assert.equal(controller.getSnapshot().searchQuery, 'lesson')
+    assert.equal(controller.getSnapshot().searchMatches, matches)
+    assert.equal(controller.getSnapshot().searchPresentation, 'sidebar')
+
+    const opening = deferred<{ ok: true; value: OpenDocumentResult }>()
+    remote.openOverride = () => opening.promise
+    const selected = controller.select('Second.md')
+    controller.setSearchQuery('another')
+    opening.resolve({ ok: true, value: {
+      content: '# Second\n', digest: `sha256:${'d'.repeat(64)}`,
+      generation: firstVault.generation, path: 'Second.md', revision: secondRevision,
+    } })
+    assert.equal(await selected, true)
+    assert.equal(controller.getSnapshot().path, 'Second.md')
+    controller.closeSearch()
+  } finally { await controller.dispose() }
+})
+
+for (const action of ['query', 'close', 'reload', 'dialog'] as const) {
+  test(`ignores late sidebar search results after ${action}`, async () => {
+    const remote = new FakeRemote()
+    const controller = new WorkbenchRouteController(remote, () => {})
+    const pending = deferred<{ ok: true; value: VaultSearchResult }>()
+    try {
+      await controller.syncLocation('/tocktutor')
+      remote.searchOverride = () => pending.promise
+      controller.openSidebarSearch()
+      controller.setSearchQuery('lesson')
+      const searching = controller.runSearch()
+      if (action === 'query') controller.setSearchQuery('new')
+      else if (action === 'close') controller.closeSearch()
+      else if (action === 'reload') await controller.reload()
+      else controller.openSearch('new')
+      pending.resolve({ ok: true, value: {
+        cursor: null, generation: firstVault.generation, query: 'lesson',
+        matches: [{ kind: 'content', line: 2, path: 'Folder/Note.md', preview: 'Old lesson' }],
+        scan: { bytes: 30, entries: 4, files: 2 }, truncated: false, truncationReason: null, warnings: [],
+      } })
+      assert.equal(await searching, false)
+      assert.equal(controller.getSnapshot().searchMatches?.some(match => match.preview === 'Old lesson'), false)
+    } finally { await controller.dispose() }
+  })
+}

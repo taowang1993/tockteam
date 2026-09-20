@@ -42,6 +42,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onCopyGraphPath?(path: string): void
   onCreateManagedVault?(name: string): void
   onEdit?(source: string): void
+  onJumpToLine?(line: number): void
   onLoadFacets?(): void
   onLoadRelationships?(): void
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
@@ -51,6 +52,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onOpenInternalLink?(target: string): void | Promise<{ fragment: string | null } | null>
   onOpenRecovery?(): void
   onOpenSearch?(): void
+  onOpenSidebarSearch?(): void
   onReadSnapshot?(id: string): void
   onReopenClosedTab?(): void
   onRestoreSnapshot?(id: string): void
@@ -65,7 +67,9 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onSearchActiveSet?(index: number): void
   onSearchChange?(query: string): void
   onSearchMode?(mode: 'query' | 'related'): void
+  onSelect?(path: string): void
   onSelectSearchMatch?(match: { kind: 'content'; line: number; path: string; preview: string }, newTab: boolean): void
+  onSetProperty?(key: string, value: import('../src/properties.ts').PropertyValue): boolean
   onSettingsChange?(change: Record<string, unknown>): void
   onSubmitDispatch?(draft: { path: string } | { text: string; title: string }): void
   onToggleFocusMode?(): void
@@ -100,6 +104,162 @@ function openNoteActions(): HTMLElement {
 }
 
 describe('TockTutor titlebar panel controls', () => {
+  it('validates property names, preserves failed input, and cancels without a write', async () => {
+    const onSetProperty = vi.fn(() => false)
+    renderRoute({ documentKind: 'markdown', path: 'Note.md', phase: 'ready', source: '---\nstatus: active\n---\n# Note\n' }, { onSetProperty })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Add Property', exact: true }))
+    const input = screen.getByRole('textbox', { name: 'Property Name' }) as HTMLInputElement
+    fireEvent.submit(input.closest('form')!)
+    expect(screen.getByRole('alert').textContent).toBe('Enter a property name.')
+    fireEvent.change(input, { target: { value: ' STATUS ' } })
+    fireEvent.submit(input.closest('form')!)
+    expect(screen.getByRole('alert').textContent).toContain('already exists')
+    expect(onSetProperty).not.toHaveBeenCalled()
+    fireEvent.change(input, { target: { value: 'area' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('could not be added'))
+    expect(input.value).toBe('area')
+    expect(onSetProperty).toHaveBeenCalledExactlyOnceWith('area', '')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(onSetProperty).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { documentKind: null, path: null },
+    { documentKind: 'canvas', path: 'Board.canvas', source: '{"nodes":[],"edges":[]}' },
+  ] as const)('disables adding properties for an unavailable Markdown note: %s', async unavailable => {
+    renderRoute(unavailable, { onSetProperty: () => true })
+    openNoteActions()
+    expect(screen.getByRole('menuitem', { name: 'Add Property', exact: true }).getAttribute('aria-disabled')).toBe('true')
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  })
+
+  it.each(['reading', 'live-preview', 'source'] as const)('adds the first property through note actions in %s', async mode => {
+    const onSetProperty = vi.fn(() => true)
+    renderRoute({ documentKind: 'markdown', path: 'Note.md', phase: 'ready', mode, source: '# Note\n' }, { onSetProperty })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Add Property', exact: true }))
+    const dialog = screen.getByRole('dialog', { name: 'Add Property' })
+    const input = within(dialog).getByRole('textbox', { name: 'Property Name' })
+    await waitFor(() => expect(document.activeElement).toBe(input))
+    fireEvent.change(input, { target: { value: ' area ' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(onSetProperty).toHaveBeenCalledWith('area', ''))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('omits frontmatter, comments and fenced code from the note outline', () => {
+    renderRoute({ documentKind: 'markdown', path: 'Guide.md', source: ['---', 'title: Guide', '# metadata', '---', '# Visible', '```md', '## Code', '```', '%%', '## Comment', '%%', '### Child'].join('\n') })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Outline', exact: true }))
+    const panel = within(screen.getByRole('region', { name: 'Outline', exact: true }))
+    expect(panel.getAllByRole('button', { name: /^Go to / }).map(button => button.textContent)).toEqual(['Visible', 'Child'])
+  })
+
+  it('outlines unsaved source headings without waiting for the saved-note index', () => {
+    const onJumpToLine = vi.fn()
+    renderRoute({ phase: 'ready', documentKind: 'markdown', path: 'Draft.md', mode: 'source', saveStatus: 'unsaved', source: '# Draft\n\n## New section', outline: null }, { onJumpToLine })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Outline', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'Go to New section' }))
+    expect(onJumpToLine).toHaveBeenCalledWith(3)
+  })
+
+  it('opens a hierarchical outline and jumps within Reading View', () => {
+    const scrollIntoView = vi.fn()
+    const original = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    try {
+      renderRoute({ phase: 'ready', documentKind: 'markdown', path: 'Guide.md', source: '# Guide\n\n## Structure\n\n### Lists\n\n## Data', outline: {
+        generation: 1, path: 'Guide.md', truncated: false, headings: [
+          { level: 1, line: 1, selector: 'Guide', text: 'Guide' },
+          { level: 2, line: 3, selector: 'Structure', text: 'Structure' },
+          { level: 3, line: 5, selector: 'Lists', text: 'Lists' },
+          { level: 2, line: 7, selector: 'Data', text: 'Data' },
+        ],
+      } })
+      openNoteActions()
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Outline', exact: true }))
+      const outline = within(screen.getByRole('region', { name: 'Outline', exact: true }))
+      fireEvent.click(outline.getByRole('button', { name: 'Collapse Structure' }))
+      expect(outline.queryByRole('button', { name: 'Go to Lists' })).toBeNull()
+      expect(outline.getByRole('button', { name: 'Go to Data' })).toBeTruthy()
+      fireEvent.click(outline.getByRole('button', { name: 'Expand Structure' }))
+      fireEvent.click(outline.getByRole('button', { name: 'Go to Lists' }))
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
+      expect(screen.getByRole('region', { name: 'Reading View' })).toBeTruthy()
+    } finally { HTMLElement.prototype.scrollIntoView = original }
+  })
+
+  it.each([
+    [{ searchQuery: '' }, 'Search across your vault. Open a match to read it alongside these results.'],
+    [{ searchLoading: true }, 'Searching notes…'],
+    [{ searchError: 'Search could not be completed.' }, 'Search could not be completed.'],
+    [{ searchMatches: [] }, 'No matches found.'],
+  ])('shows sidebar search feedback for %j', (state, text) => {
+    renderRoute({ phase: 'ready', searchOpen: true, searchPresentation: 'sidebar', searchQuery: 'lesson', ...state })
+    expect(within(screen.getByRole('complementary', { name: 'Vault Search' })).getByText(text)).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('keeps grouped search matches beside the note and preserves them when switching to Files', () => {
+    const onSelectSearchMatch = vi.fn()
+    const onSearchChange = vi.fn()
+    const onOpenSidebarSearch = vi.fn()
+    renderRoute({
+      phase: 'ready', path: 'Note.md', documentKind: 'markdown', source: '# Open note',
+      searchOpen: true, searchPresentation: 'sidebar', searchQuery: 'lesson',
+      searchMatches: [
+        { kind: 'content', path: 'Folder/Note.md', line: 2, preview: 'First lesson' },
+        { kind: 'content', path: 'Folder/Note.md', line: 8, preview: 'Another lesson' },
+      ],
+    }, { onSelectSearchMatch, onSearchChange, onOpenSidebarSearch })
+    const sidebar = screen.getByRole('complementary', { name: 'Vault Search' })
+    expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull()
+    expect(screen.getByText('Open note')).toBeTruthy()
+    expect(within(sidebar).getByText('1 note · 2 matches')).toBeTruthy()
+    expect(sidebar.querySelectorAll('mark').length).toBe(2)
+    fireEvent.click(within(sidebar).getByRole('button', { name: 'Folder/Note.md, line 8: Another lesson' }), { metaKey: true })
+    expect(onSelectSearchMatch).toHaveBeenCalledWith(expect.objectContaining({ line: 8 }), true)
+    expect(screen.getByRole('searchbox', { name: 'Search Vault Query' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show Files' }))
+    expect(screen.getByRole('navigation', { name: 'Vault Notes' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Search Vault', exact: true }))
+    expect(onOpenSidebarSearch).toHaveBeenCalledOnce()
+    expect((screen.getByRole('searchbox', { name: 'Search Vault Query' }) as HTMLInputElement).value).toBe('lesson')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Vault Search' }))
+    expect(onSearchChange).toHaveBeenCalledWith('')
+  })
+
+  it('shows readable explorer names and file types while preserving exact navigation paths', () => {
+    const onSelect = vi.fn()
+    renderRoute({
+      phase: 'ready', path: 'Notes/Study.md',
+      entries: [
+        { kind: 'directory', path: 'Notes' },
+        ...['Notes/Study.md', 'Notes/Study.markdown', 'Notes/Study.canvas', 'Notes/Study.base', 'Notes/Study.MD'].map(path => ({
+          createdAt: 1, kind: 'document' as const, modifiedAt: 2, path, revision: '1'.repeat(64), size: 12,
+        })),
+      ],
+    }, { onSelect })
+    const explorer = within(screen.getByRole('navigation', { name: 'Vault Notes' }))
+    for (const path of ['Notes/Study.md', 'Notes/Study.markdown', 'Notes/Study.canvas', 'Notes/Study.base', 'Notes/Study.MD']) {
+      const row = explorer.getByRole('button', { name: path, exact: true })
+      expect(row.title).toBe(path)
+      expect(within(row).getByText('Study')).toBeTruthy()
+      expect(row.getAttribute('aria-current')).toBe(path === 'Notes/Study.md' ? 'page' : null)
+      fireEvent.click(row)
+      expect(onSelect).toHaveBeenLastCalledWith(path)
+    }
+    expect(explorer.getByText('CANVAS')).toBeTruthy()
+    expect(explorer.getByText('BASE')).toBeTruthy()
+    expect(explorer.queryByText('MD')).toBeNull()
+    expect(explorer.queryByText('MARKDOWN')).toBeNull()
+  })
+
   it('keeps the executable Base view selector interactive in the route', () => {
     renderRoute({
       baseFiles: [{
@@ -212,7 +372,7 @@ describe('TockTutor titlebar panel controls', () => {
 
     const searchButton = screen.getByRole('button', { name: 'Search Notes' })
     expect(searchButton.className).toContain('border-0')
-    expect(searchButton.querySelector('svg')?.classList.contains('lucide-search')).toBe(true)
+    expect(searchButton.querySelector('svg')?.classList.contains('lucide-sliders-horizontal')).toBe(true)
 
     const sidebarButton = screen.getByRole('button', { name: 'Toggle Files Sidebar' })
     const sidebar = screen.getByRole('complementary', { name: 'Files' })
@@ -429,7 +589,10 @@ describe('TockTutor titlebar panel controls', () => {
     expect(newNote.className).not.toContain('min-h-9')
     expect(screen.queryByRole('region', { name: 'Command Preview' })).toBeNull()
     expect(screen.queryByText('Best Matches')).toBeNull()
-    expect(screen.getByText('Dismiss')).toBeTruthy()
+    expect(dialog.querySelector('footer')?.textContent).toBe('↑↓ to navigate↵ to useesc to dismiss')
+    expect(screen.getByLabelText('Up and Down Arrows')).toBeTruthy()
+    expect(screen.getByLabelText('Enter')).toBeTruthy()
+    expect(screen.getByLabelText('Escape')).toBeTruthy()
     fireEvent.click(screen.getByRole('option', { name: 'Search Notes' }))
     expect(onOpenSearch).toHaveBeenCalledOnce()
     expect(onCloseCommandPalette).not.toHaveBeenCalled()
@@ -498,7 +661,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(document.querySelector('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
     const editorBody = screen.getByLabelText('Editor Attachment Drop Zone')
     expect(editorBody.className).toContain('[&_.ProseMirror]:mx-auto')
-    expect(editorBody.className).toContain('[&_.ProseMirror]:max-w-3xl')
+    expect(editorBody.className).toContain('[&_.ProseMirror]:max-w-[700px]')
     expect(editorBody.className).toContain('[&_.ProseMirror]:w-[calc(100%-48px)]')
     expect(editorBody.className).toContain('[&_.ProseMirror]:outline-none')
     expect(screen.queryByRole('note')).toBeNull()
@@ -906,6 +1069,63 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onReadSnapshot).toHaveBeenLastCalledWith(firstId)
   })
 
+  it('keeps files visible after dismissing a tag search', () => {
+    renderRoute({ phase: 'ready', searchOpen: false, searchPresentation: 'dialog', searchQuery: 'tag:lesson', entries: [{ path: 'Notes', kind: 'directory' }, { path: 'Notes/Welcome.md', kind: 'document' }] })
+    expect(screen.getByRole('button', { name: 'Notes/Welcome.md', exact: true })).toBeTruthy()
+    expect(screen.queryByText('No supported notes found.')).toBeNull()
+  })
+
+  it('browses nested tags and opens search results for a child tag', () => {
+    const onOpenSearch = vi.fn()
+    const onSearchChange = vi.fn()
+    const onRunSearch = vi.fn()
+    const onSearchMode = vi.fn()
+    renderRoute({ searchMode: 'related', facets: { properties: [], tags: [{ tag: 'lesson/intro', count: 2 }] } }, { onOpenSearch, onSearchChange, onRunSearch, onSearchMode })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Tags', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Tag lesson' }))
+    expect(screen.queryByRole('button', { name: 'Search Tag lesson/intro' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Tag lesson' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Search Tag lesson/intro' }))
+    expect(onOpenSearch).toHaveBeenCalledOnce()
+    expect(onSearchChange).toHaveBeenCalledWith('tag:lesson/intro')
+    expect(onSearchMode).toHaveBeenCalledWith('query')
+    expect(onRunSearch).toHaveBeenCalledOnce()
+  })
+
+  it('filters and sorts vault properties without changing the note search', () => {
+    const onOpenSearch = vi.fn()
+    const onSearchChange = vi.fn()
+    const onRunSearch = vi.fn()
+    renderRoute({ facets: { properties: [
+      { key: 'status', count: 4, types: ['string'] },
+      { key: 'aliases', count: 2, types: ['list'] },
+      { key: 'area', count: 2, types: ['string'] },
+    ], tags: [] } }, { onOpenSearch, onSearchChange, onRunSearch })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Properties' }))
+    const filter = screen.getByRole('searchbox', { name: 'Filter Properties' })
+    const names = () => within(screen.getByRole('table', { name: 'Vault Properties' })).getAllByRole('button').map(button => button.textContent)
+    expect(names()).toEqual(['status', 'aliases', 'area'])
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort Properties' }), { target: { value: 'name' } })
+    expect(names()).toEqual(['aliases', 'area', 'status'])
+    fireEvent.change(filter, { target: { value: '  STA  ' } })
+    expect(names()).toEqual(['status'])
+    expect(onSearchChange).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Search Property status' }))
+    expect(onOpenSearch).toHaveBeenCalledOnce()
+    expect(onSearchChange).toHaveBeenCalledWith('[status]')
+    expect(onRunSearch).toHaveBeenCalledOnce()
+    fireEvent.change(filter, { target: { value: 'no-match' } })
+    expect(screen.getByText('No matching properties.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Property Filter' }))
+    expect(document.activeElement).toBe(filter)
+    expect(names()).toEqual(['aliases', 'area', 'status'])
+    fireEvent.change(filter, { target: { value: 'area' } })
+    fireEvent.keyDown(filter, { key: 'Escape' })
+    expect(names()).toEqual(['aliases', 'area', 'status'])
+  })
+
   it('keeps Properties and Backlinks as separate utility views', () => {
     const onLoadFacets = vi.fn()
     renderRoute({
@@ -924,7 +1144,6 @@ describe('TockTutor titlebar panel controls', () => {
     expect(within(properties).queryByRole('heading', { name: 'Properties' })).toBeNull()
     expect(screen.getByRole('table', { name: 'Vault Properties' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Property' })).toBeTruthy()
-    expect(screen.getByRole('columnheader', { name: 'Type' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Count' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Properties' }).textContent).toContain('status')
     expect(screen.getByRole('region', { name: 'Properties' }).textContent).toContain('string')
@@ -1009,7 +1228,7 @@ describe('TockTutor titlebar panel controls', () => {
     const tags = screen.getByRole('region', { name: 'Tags' })
     expect(within(tags).queryByRole('heading', { name: 'Tags' })).toBeNull()
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('tags')
-    expect(tags.textContent).toContain('#lesson')
+    expect(within(tags).getByRole('button', { name: 'Search Tag lesson' })).toBeTruthy()
     expect(tags.textContent).toContain('2')
     expect(screen.getByRole('list', { name: 'Vault Tags' })).toBeTruthy()
     expect(tags.textContent).not.toContain('Recent')

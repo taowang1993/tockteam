@@ -1,0 +1,508 @@
+{
+  "info": {
+    "root": "/tmp/tutor-empty-bvu6eY",
+    "repo": "/Users/taowang/projects/worktrees/tutor",
+    "port": 52705,
+    "data": "/tmp/tutor-empty-bvu6eY/data",
+    "vault": "/tmp/tutor-empty-bvu6eY/Comparison Vault",
+    "pid": 34014
+  },
+  "capturedAt": "2026-09-19T08:28:06.743Z",
+  "captures": [
+    {
+      "name": "live-preview.png",
+      "mode": "Live Preview",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+      "sha256": "5049dab8f9ba1193b47f545bab5a104c2b08ff4f4b160798941263bcbb26a9b3",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "reading.png",
+      "mode": "Reading View",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n Completed task\n Pending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses E = mc^2, while a footnote keeps context nearby.[1]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\nFootnotes should remain readable without dominating the page.\nUIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters",
+      "sha256": "edf1aff594552c880c5d0d5bf901c9fbdb3297800ad1eb76191630f1cb569fc8",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "live-preview-plain.png",
+      "mode": "Live Preview",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/Untitled.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUntitled.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUntitled\nUntitled\nNested quotations\n\nKeep the original thought and the response easy to distinguish.\n\nLearning begins with a useful question.\n\nWhat does this idea connect to?\n\nFollow the welcome note and keep the important detail in view.\n\nA smaller observation can sit inside the response.\n\nReturn to the original thought without losing the thread.\n\nThe quotation ends here. This paragraph belongs to the note.\n\nUntitled.md opened.\n0 backlinks\nLive Preview\n63 words\n438 characters",
+      "sha256": "f05971a650d283083517cb41cf03b88f69c49c3ce67b8fab350fb4a7c27cdad5",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "reading-plain.png",
+      "mode": "Reading View",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/Untitled.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUntitled.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUntitled\nUntitled\nNested quotations\n\nKeep the original thought and the response easy to distinguish.\n\nLearning begins with a useful question.\n\nWhat does this idea connect to?\n\nFollow the welcome note and keep the important detail in view.\n\nA smaller observation can sit inside the response.\n\nReturn to the original thought without losing the thread.\n\nThe quotation ends here. This paragraph belongs to the note.\n\nUntitled.md opened.\n0 backlinks\nReading\n63 words\n438 characters",
+      "sha256": "7129e80e4425062324dd2868cf8dcb19f3e0cc3d0ce86a8132afd206121498cc",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "add-property.png",
+      "mode": "Reading View",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/Untitled.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUntitled.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUntitled\nUntitled\nNested quotations\n\nKeep the original thought and the response easy to distinguish.\n\nLearning begins with a useful question.\n\nWhat does this idea connect to?\n\nFollow the welcome note and keep the important detail in view.\n\nA smaller observation can sit inside the response.\n\nReturn to the original thought without losing the thread.\n\nThe quotation ends here. This paragraph belongs to the note.\n\nUntitled.md opened.\n0 backlinks\nReading\n63 words\n438 characters\nAdd Property\nProperty Name\nCancel\nAdd Property",
+      "sha256": "f2e211d05a2440b7d44ded91ca6ccca15221ae637f4ffd690c8299979ab4fe3b",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "first-property.png",
+      "mode": "Reading View",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/Untitled.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\n•Untitled.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUntitled\nUntitled\nProperties\narea\nAdd Property\nNested quotations\n\nKeep the original thought and the response easy to distinguish.\n\nLearning begins with a useful question.\n\nWhat does this idea connect to?\n\nFollow the welcome note and keep the important detail in view.\n\nA smaller observation can sit inside the response.\n\nReturn to the original thought without losing the thread.\n\nThe quotation ends here. This paragraph belongs to the note.\n\nUnsaved changes.\n0 backlinks\nReading\n64 words\n455 characters",
+      "sha256": "e7270e77fbadfba40d28d1971c48ac5bdca9416624dc9bcf02b98eeec815f86d",
+      "pixels": [
+        3024,
+        1898
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "wideLive": {
+        "overflow": false,
+        "headingTop": 173.5,
+        "text": "Nested quotationsKeep the original thought and the response easy to distinguish.Learning begins with a useful question.What does this idea connect to?Follow [[Welcome|the welcome note]] and keep the important detail in view.A smaller observation can sit inside the response.Return to the original thought without losing the thread.The quotation ends here. This paragraph belongs to the note."
+      }
+    },
+    {
+      "wideReading": {
+        "overflow": false,
+        "headingTop": 173.5,
+        "text": "Nested quotations\nKeep the original thought and the response easy to distinguish.\nLearning begins with a useful question.What does this idea connect to?Follow the welcome note and keep the important detail in view.A smaller observation can sit inside the response.Return to the original thought without losing the thread.\nThe quotation ends here. This paragraph belongs to the note."
+      }
+    },
+    {
+      "narrowReading": {
+        "overflow": false,
+        "headingTop": 173.5,
+        "text": "Nested quotations\nKeep the original thought and the response easy to distinguish.\nLearning begins with a useful question.What does this idea connect to?Follow the welcome note and keep the important detail in view.A smaller observation can sit inside the response.Return to the original thought without losing the thread.\nThe quotation ends here. This paragraph belongs to the note."
+      }
+    },
+    {
+      "narrowLive": {
+        "overflow": false,
+        "headingTop": 173.5,
+        "text": "Nested quotationsKeep the original thought and the response easy to distinguish.Learning begins with a useful question.What does this idea connect to?Follow [[Welcome|the welcome note]] and keep the important detail in view.A smaller observation can sit inside the response.Return to the original thought without losing the thread.The quotation ends here. This paragraph belongs to the note."
+      }
+    },
+    "Keyboard menu, initial focus, empty-name validation and Escape cancel leave note bytes unchanged",
+    "First property persisted with original Markdown body intact; appears in Reading and Live Preview; duplicate rejected without write",
+    "Add Property works from Source Mode"
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "fixture": "# Nested quotations\n\nKeep the original thought and the response easy to distinguish.\n\n> Learning begins with a useful question.\n>\n> > What does this idea connect to?\n> >\n> > Follow [[Welcome|the welcome note]] and keep **the important detail** in view.\n> >\n> > > A smaller observation can sit inside the response.\n>\n> Return to the original thought without losing the thread.\n\nThe quotation ends here. This paragraph belongs to the note.\n",
+  "fixtureSha256": "674ed64f54bf342814b11b0f1b6902d9b4c8617fac2d2f8862ccb9e6d9972612",
+  "sources": [
+    {
+      "name": "live-preview-editor.tsx",
+      "sha256": "3ca9b7f91343956704797d8bc2fdc27f3a16e05d81443a2ca19ccbe09305edcb"
+    },
+    {
+      "name": "route.tsx",
+      "sha256": "2a74f1440a4a1ce8952b08b84fd2200384e435a72256b4ec974848ade6827c1f"
+    }
+  ],
+  "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+  "before": {
+    "info": {
+      "root": "/tmp/tutor-empty-KQXpAr",
+      "repo": "/Users/taowang/projects/worktrees/tutor",
+      "port": 49234,
+      "data": "/tmp/tutor-empty-KQXpAr/data",
+      "vault": "/tmp/tutor-empty-KQXpAr/Comparison Vault",
+      "pid": 16583
+    },
+    "captures": [
+      {
+        "name": "live-preview-nested.png",
+        "mode": "Live Preview",
+        "geometry": {
+          "width": 1512,
+          "height": 949,
+          "deviceScaleFactor": 2
+        },
+        "colorScheme": "dark",
+        "skinId": null,
+        "route": "/tocktutor/Untitled.md",
+        "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUntitled.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUntitled\nUntitled\nProperties\nAdd Property\nNested quotations\n\nKeep the original thought and the response easy to distinguish.\n\nLearning begins with a useful question.\n\nWhat does this idea connect to?\n\nFollow the welcome note and keep the important detail in view.\n\nA smaller observation can sit inside the response.\n\nReturn to the original thought without losing the thread.\n\nThe quotation ends here. This paragraph belongs to the note.\n\nUntitled.md opened.\n0 backlinks\nLive Preview\n63 words\n438 characters",
+        "sha256": "574f52728a039f63c8406022930b08d10588f0936d3b5359a051cd7031f26a19",
+        "pixels": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "name": "reading-nested.png",
+        "mode": "Reading View",
+        "geometry": {
+          "width": 1512,
+          "height": 949,
+          "deviceScaleFactor": 2
+        },
+        "colorScheme": "dark",
+        "skinId": null,
+        "route": "/tocktutor/Untitled.md",
+        "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUntitled.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUntitled\nUntitled\nProperties\nAdd Property\nNested quotations\n\nKeep the original thought and the response easy to distinguish.\n\nLearning begins with a useful question.\n\nWhat does this idea connect to?\n\nFollow the welcome note and keep the important detail in view.\n\nA smaller observation can sit inside the response.\n\nReturn to the original thought without losing the thread.\n\nThe quotation ends here. This paragraph belongs to the note.\n\nUntitled.md opened.\n0 backlinks\nReading\n63 words\n438 characters",
+        "sha256": "f02a03a68520db0a1a1106173720ddd3d49792e16e93a4b09bc4bdd050e99321",
+        "pixels": [
+          3024,
+          1898
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "wide": {
+          "live": {
+            "overflow": false,
+            "quotes": [
+              {
+                "depth": 1,
+                "left": 566,
+                "width": 700,
+                "padding": "24px",
+                "border": "2px",
+                "overflow": false
+              },
+              {
+                "depth": 2,
+                "left": 592,
+                "width": 674,
+                "padding": "24px",
+                "border": "2px",
+                "overflow": false
+              },
+              {
+                "depth": 3,
+                "left": 618,
+                "width": 648,
+                "padding": "24px",
+                "border": "2px",
+                "overflow": false
+              }
+            ],
+            "text": "Nested quotationsKeep the original thought and the response easy to distinguish.Learning begins with a useful question.What does this idea connect to?Follow [[Welcome|the welcome note]] and keep the important detail in view.A smaller observation can sit inside the response.Return to the original thought without losing the thread.The quotation ends here. This paragraph belongs to the note.",
+            "html": "<h1 id=\"nested-quotations\">Nested quotations</h1><p>Keep the original thought and the response easy to distinguish.</p><blockquote><p>Learning begins with a useful question.</p><blockquote><p>What does this idea connect to?</p><p>Follow <span class=\"tocktutor-live-link-markup hidden\">[[Welcome|</span><span class=\"tocktutor-live-internal-link\">the welcome note</span><span class=\"tocktutor-live-link-markup hidden\">]]</span> and keep <strong>the important detail</strong> in view.</p><blockquote><p>A smaller observation can sit inside the response.</p></blockquote></blockquote><p>Return to the original thought without losing the thread.</p></blockquote><p>The quotation ends here. This paragraph belongs to the note.</p>"
+          },
+          "reading": {
+            "overflow": false,
+            "quotes": [
+              {
+                "depth": 1,
+                "left": 566,
+                "width": 700,
+                "padding": "24px",
+                "border": "2px",
+                "overflow": false
+              },
+              {
+                "depth": 2,
+                "left": 592,
+                "width": 674,
+                "padding": "24px",
+                "border": "2px",
+                "overflow": false
+              },
+              {
+                "depth": 3,
+                "left": 618,
+                "width": 648,
+                "padding": "24px",
+                "border": "2px",
+                "overflow": false
+              }
+            ],
+            "text": "Nested quotations\nKeep the original thought and the response easy to distinguish.\nLearning begins with a useful question.What does this idea connect to?Follow the welcome note and keep the important detail in view.A smaller observation can sit inside the response.Return to the original thought without losing the thread.\nThe quotation ends here. This paragraph belongs to the note.",
+            "html": "<div><h1>Nested quotations</h1>\n<p>Keep the original thought and the response easy to distinguish.</p>\n<blockquote><p>Learning begins with a useful question.</p><blockquote><p>What does this idea connect to?</p><p>Follow <a class=\"internal-link\" data-target=\"Welcome\" href=\"#\">the welcome note</a> and keep <strong>the important detail</strong> in view.</p><blockquote><p>A smaller observation can sit inside the response.</p></blockquote></blockquote><p>Return to the original thought without losing the thread.</p></blockquote>\n<p>The quotation ends here. This paragraph belongs to the note.</p></div>"
+          }
+        }
+      }
+    ]
+  },
+  "obsidian": {
+    "info": {
+      "repo": "/Users/taowang/projects/worktrees/tutor",
+      "root": "/tmp/tutor-nesting-ob-AVwgai",
+      "vault": "/tmp/tutor-nesting-ob-AVwgai/Comparison Vault",
+      "data": "/tmp/tutor-nesting-ob-AVwgai/data",
+      "port": 64524
+    },
+    "capturedAt": "2026-09-19T06:29:04.608Z",
+    "state": {
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "dark": true,
+      "theme": "obsidian",
+      "mode": "preview",
+      "file": "Untitled.md",
+      "text": "Comparison Vault\nAttachments\nBases\nBoards\nImports\nNotes\nUntitled\nUntitled\nUntitled\nUntitled\nNested quotations\n\nKeep the original thought and the response easy to distinguish.\n\nLearning begins with a useful question.\n\nWhat does this idea connect to?\n\nFollow the welcome note and keep the important detail in view.\n\nA smaller observation can sit inside the response.\n\nReturn to the original thought without losing the thread.\n\nThe quotation ends here. This paragraph belongs to the note.",
+      "quoteCount": 3,
+      "html": "<div class=\"markdown-preview-sizer markdown-preview-section\" style=\"padding-bottom: 436px; min-height: 370px;\"><div class=\"markdown-preview-pusher\" style=\"width: 1px; height: 0.1px; margin-bottom: 0px;\"></div><div class=\"mod-header mod-ui\"><div class=\"inline-title\" contenteditable=\"true\" spellcheck=\"true\" autocapitalize=\"on\" tabindex=\"-1\" enterkeyhint=\"done\">Untitled</div><div class=\"metadata-container\" tabindex=\"-1\" data-property-count=\"0\"><div class=\"metadata-error-container\" style=\"display: none;\"></div><div class=\"metadata-properties-heading\" tabindex=\"0\"><div class=\"collapse-indicator collapse-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"svg-icon right-triangle\"><path d=\"M3 8L12 17L21 8\"></path></svg></div><div class=\"metadata-properties-title\">Properties</div></div><div class=\"metadata-content\"><div class=\"metadata-properties\"></div><div class=\"metadata-add-button text-icon-button\" tabindex=\"0\"><span class=\"text-button-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"svg-icon lucide-plus\"><path d=\"M5 12h14\"></path><path d=\"M12 5v14\"></path></svg></span><span class=\"text-button-label\">Add property</span></div></div></div></div><div class=\"el-h1\"><h1 data-heading=\"Nested quotations\" dir=\"auto\"><span class=\"heading-collapse-indicator collapse-indicator collapse-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"svg-icon right-triangle\"><path d=\"M3 8L12 17L21 8\"></path></svg></span>Nested quotations</h1></div><div class=\"el-p\"><p dir=\"auto\">Keep the original thought and the response easy to distinguish.</p></div><div class=\"el-blockquote\"><blockquote dir=\"auto\">\n<p>Learning begins with a useful question.</p>\n<blockquote dir=\"auto\">\n<p>What does this idea connect to?</p>\n<p>Follow <a data-tooltip-position=\"top\" aria-label=\"Welcome\" data-href=\"Welcome\" href=\"Welcome\" class=\"internal-link\" target=\"_blank\" rel=\"noopener nofollow\">the welcome note</a> and keep <strong>the important detail</strong> in view.</p>\n<blockquote dir=\"auto\">\n<p>A smaller observation can sit inside the response.</p>\n</blockquote>\n</blockquote>\n<p>Return to the original thought without losing the thread.</p>\n</blockquote></div><div class=\"el-p\"><p dir=\"auto\">The quotation ends here. This paragraph belongs to the note.</p></div><div class=\"mod-footer mod-ui\"><div class=\"embedded-backlinks\" style=\"display: none;\"></div></div></div>"
+    },
+    "errors": [],
+    "consoleErrors": [],
+    "sha256": "d2435302e59c18115864176e7ea22d3e084abff8552bb84d16725f72240ba7a1",
+    "fixtureSha256": "674ed64f54bf342814b11b0f1b6902d9b4c8617fac2d2f8862ccb9e6d9972612"
+  },
+  "cleanup": [
+    {
+      "path": "/tmp/tutor-empty-o5CWpC/cleanup.json",
+      "verified": true,
+      "remaining": [],
+      "pids": [
+        29660,
+        29672,
+        29673,
+        29674,
+        29687,
+        29690,
+        29726,
+        29750,
+        29836,
+        29837,
+        29838,
+        29839,
+        29840,
+        29841,
+        29842,
+        29843,
+        29886
+      ],
+      "rootPid": 29660,
+      "focus": [
+        {
+          "type": "READY",
+          "channel": "tockteam-launcher-focus-proof",
+          "focusInconclusiveCount": 0,
+          "faulted": false,
+          "nonce": "3e049a57566e5d77cc3af2cf26aac9819156012c859c8381310b81682d611345",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "path": "/tmp/tutor-empty-bvu6eY/cleanup.json",
+      "verified": true,
+      "remaining": [],
+      "pids": [
+        34014,
+        34026,
+        34027,
+        34030,
+        34044,
+        35120,
+        36341,
+        36679,
+        36680,
+        36681,
+        36682,
+        36741,
+        37130,
+        37131,
+        37132,
+        37133,
+        37134,
+        37135,
+        37136,
+        37137
+      ],
+      "rootPid": 34014,
+      "focus": [
+        {
+          "type": "READY",
+          "channel": "tockteam-launcher-focus-proof",
+          "focusInconclusiveCount": 0,
+          "faulted": false,
+          "nonce": "388a9638706cbdea7915befe7ef32eea7f2f2b31793cd5d25576ee643b205cb3",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "path": "/tmp/tutor-empty-UWaBeM/cleanup.json",
+      "verified": true,
+      "remaining": [],
+      "pids": [
+        15024,
+        15036,
+        15037,
+        15039,
+        15040,
+        15041,
+        15058,
+        15074,
+        15087,
+        15117,
+        15118,
+        15119,
+        15120,
+        15121,
+        15122,
+        15123,
+        15124,
+        15232,
+        15341,
+        15342,
+        15343,
+        15344,
+        15347,
+        15351,
+        15356,
+        15359
+      ],
+      "rootPid": 15024,
+      "focus": [
+        {
+          "type": "READY",
+          "channel": "tockteam-launcher-focus-proof",
+          "focusInconclusiveCount": 0,
+          "faulted": false,
+          "nonce": "8fc30fb8016cd46a91ff0d67a69a2c358502c9e4769dd52e84cf7b0eda0fff61",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "path": "/tmp/tutor-empty-KQXpAr/cleanup.json",
+      "verified": true,
+      "remaining": [],
+      "pids": [
+        16583,
+        16595,
+        16596,
+        16599,
+        16613,
+        16636,
+        16651,
+        16660,
+        16661,
+        16662,
+        16663,
+        16664,
+        16787,
+        16848,
+        16849,
+        16850,
+        16851,
+        16852,
+        16853,
+        16854,
+        16855
+      ],
+      "rootPid": 16583,
+      "focus": [
+        {
+          "type": "READY",
+          "channel": "tockteam-launcher-focus-proof",
+          "focusInconclusiveCount": 0,
+          "faulted": false,
+          "nonce": "5467e5ec8c6c32b41bd5fd9a8ced57a821a340ad0356260af4713270827afbb7",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "path": "/tmp/tutor-empty-I2xTS7/cleanup.json",
+      "verified": true,
+      "remaining": [],
+      "pids": [
+        32223,
+        32235,
+        32236,
+        32239,
+        32254,
+        32268,
+        32281,
+        32290,
+        32291,
+        32292,
+        32293,
+        32294,
+        32417,
+        32489,
+        32490,
+        32491
+      ],
+      "rootPid": 32223,
+      "focus": [
+        {
+          "type": "READY",
+          "channel": "tockteam-launcher-focus-proof",
+          "focusInconclusiveCount": 0,
+          "faulted": false,
+          "nonce": "bb2a09b1809f449a22e29f15938fe70c8fc43423bf3e54e42f6efdf756b1f2d2",
+          "sequence": 1
+        }
+      ]
+    }
+  ],
+  "visualInspection": "All six fresh screenshots inspected. Plain note has no empty Properties block, both modes align and preserve quote hierarchy; first-property dialog and populated header render without clipping. Before and same-note Obsidian reference are reused and explicitly dated.",
+  "runtimeLogWarnings": [],
+  "verification": "109 focused component tests, typecheck, build manifest verification, 4 gallery/content tests and git diff --check. React Doctor 69, unchanged four complexity warnings. Earlier RED and build/stage logs resumed from interrupted run."
+}

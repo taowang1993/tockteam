@@ -138,6 +138,7 @@ export interface WorkbenchRouteSnapshot {
     searchDirectory?: string;
     searchModifiedFrom?: number | null;
     searchModifiedTo?: number | null;
+    searchPresentation?: 'dialog' | 'sidebar';
     searchOpen: boolean;
     searchQuery: string;
     selectedSnapshot?: SnapshotContentResult | null;
@@ -194,6 +195,8 @@ export declare class WorkbenchRouteController {
     private treeComplete;
     private dispatchRevision;
     private operationAbort;
+    private sidebarSearchAbort;
+    private sidebarSearchOperation;
     private searchTimer;
     private searchPreviewAbort;
     private searchPreviewOperation;
@@ -226,7 +229,8 @@ export declare class WorkbenchRouteController {
     setSearchQuery(query: string): void;
     private loadRecentSearch;
     closeSearch(): void;
-    openSearch(query: string): void;
+    openSidebarSearch(): void;
+    openSearch(query: string, presentation?: 'dialog' | 'sidebar'): void;
     setSearchMode(mode: 'query' | 'related'): void;
     setSearchFilters(filters: {
         directory?: string;
@@ -272,6 +276,8 @@ export declare class WorkbenchRouteController {
     private cancelSearchPreview;
     private nextSearchPreviewOperation;
     private currentSearchPreview;
+    private nextSearchRequest;
+    private currentSearchRequest;
     private nextOperation;
     private cancelEmbedOperation;
     private nextEmbedOperation;
@@ -393,6 +399,7 @@ export interface TockTutorRouteViewProps {
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenExternalUrl?(url: string): void;
     onOpenSearch?(): void;
+    onOpenSidebarSearch?(): void;
     onPrepareOrganization?(): void;
     onPreviewAttachment?(path: string): void;
     onReadSnapshot?(id: string): void;
