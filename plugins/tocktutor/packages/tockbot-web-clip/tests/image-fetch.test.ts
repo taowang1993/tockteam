@@ -19,6 +19,20 @@ test('loads image bytes over the same pinned, credential-free public transport',
   assert.equal(seen[0]?.headers.referer, undefined)
 })
 
+test('images have a separate bounded budget from text downloads', async () => {
+  const data = Buffer.concat([png, Buffer.alloc(1_489_970 - png.length)])
+  const options = { lookup, request: async () => new Response(data, { headers: { 'content-type': 'image/png', 'content-length': String(data.length) } }) }
+  const result = await transport.fetchPublicImage('https://example.com/large.png', options)
+  assert.equal(Buffer.from(result.dataBase64, 'base64').length, data.length)
+  assert.equal(transport.defaultPublicFetchLimits.maxResponseBytes, 1_000_000)
+  for (const declared of [true, false]) {
+    const oversized = Buffer.concat([png, Buffer.alloc(10_000_001 - png.length)])
+    await assert.rejects(transport.fetchPublicImage('https://example.com/oversized.png', {
+      lookup, request: async () => new Response(oversized, { headers: { 'content-type': 'image/png', ...(declared ? { 'content-length': String(oversized.length) } : {}) } }),
+    }), (error: unknown) => error instanceof transport.WebFetchError && error.code === 'body')
+  }
+})
+
 test('image loading rejects private redirect targets, active formats, forged image bytes and oversized bodies', async () => {
   const cases = [
     { response: new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/private' } }), code: 'address' },

@@ -61,6 +61,8 @@ export const maximumPublicFetchLimits: Readonly<PublicFetchLimits> = {
   timeoutMs: 60_000,
 }
 
+export const defaultPublicImageMaxBytes = maximumPublicFetchLimits.maxResponseBytes
+
 export interface PublicAddress {
   address: string
 }
@@ -468,7 +470,8 @@ export interface PublicImageResult {
 
 /** Public raster bytes only: no cookies, active SVG, renderer network access, or private redirects. */
 export async function fetchPublicImage(value: string, options: FetchPublicTextOptions = {}): Promise<PublicImageResult> {
-  return await fetchPublicResource(value, options, 'image/avif,image/webp,image/png,image/jpeg,image/gif', async (response, limits, signal, url) => {
+  const imageOptions = { ...options, limits: { maxResponseBytes: defaultPublicImageMaxBytes, ...options.limits } }
+  return await fetchPublicResource(value, imageOptions, 'image/avif,image/webp,image/png,image/jpeg,image/gif', async (response, limits, signal, url) => {
     const mimeType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() ?? ''
     if (!/^image\/(?:png|jpeg|gif|webp|avif)$/u.test(mimeType)) return fail('content-type', 'A raster image is required.')
     const length = response.headers.get('content-length')

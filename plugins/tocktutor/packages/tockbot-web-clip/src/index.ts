@@ -8,6 +8,7 @@ import type {
 } from 'tockbot-note-runtime'
 import {
   defaultPublicFetchLimits,
+  defaultPublicImageMaxBytes,
   fetchPublicText,
   fetchPublicImage,
   type PublicImageResult,
@@ -63,6 +64,8 @@ declare module '@deepseek-ai/cordis' {
 
 export interface Config extends PublicFetchLimits, ReaderViewLimits {
   maxConcurrentRequests: number
+  /** Raster image budget, independent of the HTML/text response budget. */
+  maxImageResponseBytes?: number
 }
 
 export type ClipRuntimeErrorCode = 'capacity' | 'runtime-result' | 'runtime-unavailable' | 'stale-vault'
@@ -85,6 +88,7 @@ export const Config: Schema<Config> = Schema.object({
   connectTimeoutMs: positiveInteger(defaultPublicFetchLimits.connectTimeoutMs, maximumPublicFetchLimits.connectTimeoutMs),
   maxAddresses: positiveInteger(defaultPublicFetchLimits.maxAddresses, maximumPublicFetchLimits.maxAddresses),
   maxConcurrentRequests: positiveInteger(8, 64),
+  maxImageResponseBytes: positiveInteger(defaultPublicImageMaxBytes, maximumPublicFetchLimits.maxResponseBytes),
   maxRedirects: Schema.number().step(1).min(0).max(maximumPublicFetchLimits.maxRedirects).default(defaultPublicFetchLimits.maxRedirects),
   maxResponseBytes: positiveInteger(defaultPublicFetchLimits.maxResponseBytes, maximumPublicFetchLimits.maxResponseBytes),
   maxResponseHeadersBytes: positiveInteger(defaultPublicFetchLimits.maxResponseHeadersBytes, maximumPublicFetchLimits.maxResponseHeadersBytes),
@@ -132,6 +136,7 @@ export class WebClipHost extends Service {
   private closing = false
   private readonly fetchLimits: PublicFetchLimits
   private readonly maxConcurrentRequests: number
+  private readonly maxImageResponseBytes: number
   private readonly readerLimits: ReaderViewLimits
   private runtime: NoteVaultRuntime | undefined
   private runtimeEpoch = 0
@@ -149,6 +154,7 @@ export class WebClipHost extends Service {
       timeoutMs: config.timeoutMs,
     }
     this.maxConcurrentRequests = config.maxConcurrentRequests
+    this.maxImageResponseBytes = config.maxImageResponseBytes ?? defaultPublicImageMaxBytes
     this.readerLimits = {
       maxParserInputChars: config.maxParserInputChars,
       maxParserTokens: config.maxParserTokens,
@@ -413,7 +419,7 @@ export class WebClipHost extends Service {
     try {
       return await this.trackOperation(options.signal, async signal => {
         const { epoch, runtime, vault } = this.activeRuntime()
-        const image = await fetchPublicImage(url, { limits: this.fetchLimits, signal })
+        const image = await fetchPublicImage(url, { limits: { ...this.fetchLimits, maxResponseBytes: this.maxImageResponseBytes }, signal })
         signal.throwIfAborted()
         if (epoch !== this.runtimeEpoch || !runtime.state.active || runtime.state.id !== vault.id || runtime.state.generation !== vault.generation) {
           throw new ClipRuntimeError('stale-vault', 'The active vault changed while loading the image')

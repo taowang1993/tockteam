@@ -17,6 +17,8 @@ declare module '@deepseek-ai/cordis' {
 }
 export interface Config extends PublicFetchLimits, ReaderViewLimits {
     maxConcurrentRequests: number;
+    /** Raster image budget, independent of the HTML/text response budget. */
+    maxImageResponseBytes?: number;
 }
 export type ClipRuntimeErrorCode = 'capacity' | 'runtime-result' | 'runtime-unavailable' | 'stale-vault';
 export declare class ClipRuntimeError extends Error {
@@ -32,6 +34,7 @@ export declare class WebClipHost extends Service {
     private closing;
     private readonly fetchLimits;
     private readonly maxConcurrentRequests;
+    private readonly maxImageResponseBytes;
     private readonly readerLimits;
     private runtime;
     private runtimeEpoch;

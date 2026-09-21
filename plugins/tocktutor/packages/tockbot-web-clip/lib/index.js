@@ -1,6 +1,6 @@
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
-import { defaultPublicFetchLimits, fetchPublicText, fetchPublicImage, readBoundedText, responseHeaderBytes, maximumPublicFetchLimits, WebFetchError, } from "./fetch.js";
+import { defaultPublicFetchLimits, defaultPublicImageMaxBytes, fetchPublicText, fetchPublicImage, readBoundedText, responseHeaderBytes, maximumPublicFetchLimits, WebFetchError, } from "./fetch.js";
 import { defaultReaderViewLimits, maximumReaderViewLimits, projectReaderView, } from "./reader.js";
 import { ClipReviewStore, } from "./review.js";
 import { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH, WEB_CLIP_IMAGE_API_PATH, createImageHandler, createClipApplyHandler, createClipCancelHandler, createClipReviewHandler, createReaderHandler, createViewerHandler, } from "./server.js";
@@ -22,6 +22,7 @@ export const Config = Schema.object({
     connectTimeoutMs: positiveInteger(defaultPublicFetchLimits.connectTimeoutMs, maximumPublicFetchLimits.connectTimeoutMs),
     maxAddresses: positiveInteger(defaultPublicFetchLimits.maxAddresses, maximumPublicFetchLimits.maxAddresses),
     maxConcurrentRequests: positiveInteger(8, 64),
+    maxImageResponseBytes: positiveInteger(defaultPublicImageMaxBytes, maximumPublicFetchLimits.maxResponseBytes),
     maxRedirects: Schema.number().step(1).min(0).max(maximumPublicFetchLimits.maxRedirects).default(defaultPublicFetchLimits.maxRedirects),
     maxResponseBytes: positiveInteger(defaultPublicFetchLimits.maxResponseBytes, maximumPublicFetchLimits.maxResponseBytes),
     maxResponseHeadersBytes: positiveInteger(defaultPublicFetchLimits.maxResponseHeadersBytes, maximumPublicFetchLimits.maxResponseHeadersBytes),
@@ -53,6 +54,7 @@ export class WebClipHost extends Service {
     closing = false;
     fetchLimits;
     maxConcurrentRequests;
+    maxImageResponseBytes;
     readerLimits;
     runtime;
     runtimeEpoch = 0;
@@ -69,6 +71,7 @@ export class WebClipHost extends Service {
             timeoutMs: config.timeoutMs,
         };
         this.maxConcurrentRequests = config.maxConcurrentRequests;
+        this.maxImageResponseBytes = config.maxImageResponseBytes ?? defaultPublicImageMaxBytes;
         this.readerLimits = {
             maxParserInputChars: config.maxParserInputChars,
             maxParserTokens: config.maxParserTokens,
@@ -334,7 +337,7 @@ export class WebClipHost extends Service {
         try {
             return await this.trackOperation(options.signal, async (signal) => {
                 const { epoch, runtime, vault } = this.activeRuntime();
-                const image = await fetchPublicImage(url, { limits: this.fetchLimits, signal });
+                const image = await fetchPublicImage(url, { limits: { ...this.fetchLimits, maxResponseBytes: this.maxImageResponseBytes }, signal });
                 signal.throwIfAborted();
                 if (epoch !== this.runtimeEpoch || !runtime.state.active || runtime.state.id !== vault.id || runtime.state.generation !== vault.generation) {
                     throw new ClipRuntimeError('stale-vault', 'The active vault changed while loading the image');

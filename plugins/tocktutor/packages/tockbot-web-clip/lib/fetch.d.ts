@@ -16,6 +16,7 @@ export interface PublicFetchLimits {
 }
 export declare const defaultPublicFetchLimits: Readonly<PublicFetchLimits>;
 export declare const maximumPublicFetchLimits: Readonly<PublicFetchLimits>;
+export declare const defaultPublicImageMaxBytes: number;
 export interface PublicAddress {
     address: string;
 }

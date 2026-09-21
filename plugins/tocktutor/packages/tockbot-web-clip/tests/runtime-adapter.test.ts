@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { Resolver } from 'node:dns/promises'
+import { EventEmitter } from 'node:events'
+import https from 'node:https'
+import { syncBuiltinESMExports } from 'node:module'
+import { Readable } from 'node:stream'
 import test from 'node:test'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { Context, Service } from '@deepseek-ai/cordis'
@@ -23,6 +28,35 @@ import WebClipHost, {
 import { parseReaderViewResult, parseViewerPageResult } from '../src/client-api.ts'
 
 const config: Config = { ...defaultPublicFetchLimits, ...defaultReaderViewLimits, maxConcurrentRequests: 8 }
+
+test('Host image downloads use their own default and configured byte budget', async t => {
+  const data = Buffer.alloc(1_489_970)
+  data.set([0xff, 0xd8, 0xff])
+  t.mock.method(Resolver.prototype, 'resolve4', async () => ['93.184.216.34'])
+  t.mock.method(Resolver.prototype, 'resolve6', async () => [])
+  t.mock.method(https, 'request', (_url: URL, _options: unknown, incoming: (response: unknown) => void) => {
+    const outgoing = new EventEmitter()
+    return Object.assign(outgoing, { end() {
+      queueMicrotask(() => incoming(Object.assign(Readable.from([data]), {
+        statusCode: 200, headers: { 'content-type': 'image/jpeg', 'content-length': String(data.length) },
+      })))
+    } })
+  })
+  syncBuiltinESMExports()
+  try {
+    for (const limited of [false, true]) {
+      const { context, host } = await setup(true, { ...config, maxResponseBytes: 64, ...(limited ? { maxImageResponseBytes: 1024 } : {}) })
+      try {
+        const request = host.fetchImage('https://example.com/large.jpeg')
+        if (limited) await assert.rejects(request, (error: unknown) => error instanceof WebFetchError && error.code === 'body')
+        else assert.equal(Buffer.from((await request).dataBase64, 'base64').length, data.length)
+      } finally { await context.fiber.dispose() }
+    }
+  } finally {
+    t.mock.restoreAll()
+    syncBuiltinESMExports()
+  }
+})
 
 class FixedFetchHost extends WebClipHost {
   protected override async loadPublicText(url: string): Promise<PublicTextResult> {
@@ -123,7 +157,7 @@ class TestNoteVault extends Service {
   }
 }
 
-async function setup(withRuntime = true): Promise<{
+async function setup(withRuntime = true, hostConfig: Config = config): Promise<{
   context: Context
   host: WebClipHost
   runtime: TestNoteVault | null
@@ -131,7 +165,7 @@ async function setup(withRuntime = true): Promise<{
 }> {
   const context = new Context()
   const runtimeFiber = withRuntime ? await context.plugin(TestNoteVault) : null
-  await context.plugin(TestWebClipHost, config)
+  await context.plugin(TestWebClipHost, hostConfig)
   return {
     context,
     host: context.webClip,
