@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { createLauncherPreloadBridge } from '../src/launcher-preload-bridge.ts'
 import {
   LAUNCHER_SETTINGS_IPC_CHANNELS,
   LAUNCHER_WINDOW_IPC_CHANNELS,
@@ -25,11 +26,15 @@ test('launcher extension settings destination is finite and never executes a com
   const destinations: unknown[] = []
   const dispose = registerLauncherWindowIpcHandlers({ controller: { hide: () => {} }, guard: { assert: () => ({ role: 'launcher', webContentsId: 2 }) }, ipcMain, openSettings: id => { destinations.push(id) } })
   const open = ipcMain.handlers.get(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings)!
-  await open({}, 'Calculator')
-  await open({}, 'google-translate')
-  await open({})
+  const bridge = createLauncherPreloadBridge({ invoke: async (channel, ...args) => ipcMain.handlers.get(channel)!({}, ...args) })
+  await bridge.openSettings('Calculator')
+  await bridge.openSettings('google-translate')
+  await bridge.openSettings()
   assert.deepEqual(destinations, ['Calculator', 'google-translate', undefined])
-  for (const args of [['unknown'], ['../path'], ['Calculator', 'extra'], [{ extensionId: 'Calculator' }]]) await assert.rejects(async () => open({}, ...args))
+  for (const args of [[undefined], ['unknown'], ['../path'], ['Calculator', 'extra'], [{ extensionId: 'Calculator' }]]) {
+    await assert.rejects(async () => open({}, ...args))
+    await assert.rejects(async () => (bridge.openSettings as (...args: unknown[]) => Promise<void>)(...args))
+  }
   dispose()
 })
 

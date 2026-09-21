@@ -131,7 +131,7 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
     },
     openSettings: async (...args: unknown[]): Promise<void> => {
       if (args.length > 1 || (args.length === 1 && !isLauncherExtensionId(args[0]))) throw new Error('Invalid extension settings destination')
-      parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings, args[0]))
+      parseLauncherWindowAcknowledgement(await ipcRenderer.invoke(LAUNCHER_WINDOW_IPC_CHANNELS.openSettings, ...args))
     },
     recordSearch: async (query: unknown, ...extra: unknown[]): Promise<import('./launcher-contract.ts').LauncherSurfaceSettings> => {
       assertArity('recordSearch', [query, ...extra], 1)
