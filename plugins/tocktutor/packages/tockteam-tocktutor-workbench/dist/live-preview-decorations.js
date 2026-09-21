@@ -1,14 +1,47 @@
 // @ts-nocheck -- CodeMirror's declarations are incompatible with the pinned NodeNext analyzer.
+import { markdownLanguage } from '@codemirror/lang-markdown';
 import { syntaxTree } from '@codemirror/language';
 import { StateEffect, StateField } from '@codemirror/state';
-import { Decoration, EditorView, WidgetType } from '@codemirror/view';
+import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view';
 import { renderMarkdownHtml } from "./rich-markdown.js";
-import { collectEmbedTargets } from "./embeds.js";
-import { attachInlineImages } from "./inline-images.js";
+import { collectEmbedTargets, MAX_EMBED_CONTENT_BYTES } from "./embeds.js";
+import { attachInlineImages, InlineImageLoader } from "./inline-images.js";
 import { classifyExternalEmbed } from "./external-embeds.js";
+/** Parse the complete note, not CodeMirror's viewport-limited syntax tree. */
+export function markdownImageUrls(source) {
+    if (new TextEncoder().encode(source).byteLength > MAX_EMBED_CONTENT_BYTES)
+        return [];
+    const tree = markdownLanguage.parser.parse(source);
+    const references = new Map(), images = [];
+    tree.iterate({ enter: ref => {
+            if (ref.name === 'LinkReference') {
+                const label = ref.node.getChild('LinkLabel'), url = ref.node.getChild('URL');
+                if (label && url)
+                    references.set(source.slice(label.from + 1, label.to - 1).toLowerCase(), source.slice(url.from, url.to));
+            }
+            if (ref.name === 'Image')
+                images.push(ref.node);
+        } });
+    return images.flatMap(node => {
+        const url = node.getChild('URL'), reference = node.getChild('LinkLabel'), marks = node.getChildren('LinkMark');
+        const label = source.slice(marks[0]?.to ?? node.from, marks[1]?.from ?? node.to);
+        const raw = url ? source.slice(url.from, url.to) : references.get(reference ? source.slice(reference.from + 1, reference.to - 1).toLowerCase() : label.toLowerCase());
+        const target = raw && classifyExternalEmbed(raw.replace(/^<|>$/gu, '').replace(/\\([()\\])/gu, '$1'));
+        return target && (target.kind === 'web' || target.kind === 'image') ? [target.sourceUrl] : [];
+    });
+}
 export const refreshLivePreview = StateEffect.define();
 const owners = new WeakMap();
 const EMPTY_EMBEDS = Object.freeze([]);
+const imageLoaders = new WeakMap();
+function imageLoader(view) {
+    let loader = imageLoaders.get(view);
+    if (!loader) {
+        loader = new InlineImageLoader();
+        imageLoaders.set(view, loader);
+    }
+    return loader;
+}
 class Preview extends WidgetType {
     source;
     from;
@@ -74,7 +107,7 @@ class Preview extends WidgetType {
                 view.requestMeasure();
             }, { signal: this.controls.signal });
         }
-        this.disposeImages = attachInlineImages(dom, () => view.requestMeasure());
+        this.disposeImages = attachInlineImages(dom, () => view.requestMeasure(), imageLoader(view));
         return dom;
     }
     updateDOM(dom) {
@@ -117,7 +150,7 @@ class ImagePreview extends Preview {
         placeholder.dataset.externalUrl = this.url;
         placeholder.dataset.imageAlt = this.alt;
         dom.append(placeholder);
-        this.disposeImages = attachInlineImages(dom, () => view.requestMeasure());
+        this.disposeImages = attachInlineImages(dom, () => view.requestMeasure(), imageLoader(view));
         return dom;
     }
 }
@@ -348,7 +381,22 @@ export function buildLivePreviewExtension(getEmbeds, openUrl) {
         view.dispatch({ selection: { anchor: Math.min(from + 1, to - 1) }, scrollIntoView: true });
         return true;
     };
-    return [focused, field, EditorView.domEventHandlers({
+    const images = ViewPlugin.define(view => {
+        const loader = imageLoader(view);
+        const sync = () => loader.sync([
+            ...markdownImageUrls(view.state.doc.toString()),
+            ...getEmbeds().filter(embed => embed.target.kind === 'note').flatMap(embed => markdownImageUrls(embed.content)),
+        ]);
+        sync();
+        return {
+            update(update) {
+                if (update.docChanged || update.transactions.some(transaction => transaction.effects.some(effect => effect.is(refreshLivePreview) && effect.value === undefined)))
+                    sync();
+            },
+            destroy() { loader.dispose(); imageLoaders.delete(view); },
+        };
+    });
+    return [focused, field, images, EditorView.domEventHandlers({
             mousedown: activate, click: activate, keydown: activate,
             focus: (_event, view) => { view.dispatch({ effects: focus.of(true) }); return false; },
             blur: (_event, view) => { view.dispatch({ effects: focus.of(false) }); return false; },
