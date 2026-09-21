@@ -8,7 +8,7 @@ No DSH pin, upstream source, or GitHub workflow file changed. The pre-existing e
 
 ## Independent Feature Verdict
 
-**Works within the exercised Settings scope.** A fresh read-only verifier drove the real isolated Desktop app through app-scoped Playwright/CDP:
+**Works within the exercised Settings scope.** A fresh read-only verifier drove the real isolated Desktop app through app-scoped Playwright/CDP (the intended hidden mode was later found to display non-focusable windows; see the correction below):
 
 - Inspected General, Models, Plugins, Agent Presets, Side Panel, and TockLauncher, including all three Plugins tabs.
 - Used arrow keys and Space to select Deep Current and restore Original; verified built-in dark appearance with no active skin afterward.
@@ -67,9 +67,15 @@ Only these three allowlisted images were copied transactionally from the final r
 
 ![TockLauncher](2026-09-21-pr-local-verification/tocklauncher.png)
 
+## Window-Visibility Correction
+
+After PR creation, the user reported that the smoke-test Electron/launcher appeared fullscreen and could not be closed normally; they stopped it themselves. Source inspection confirms that `createWindow()` in `src/main.ts` sets `focusable: false` for inactive proof but still calls `window.showInactive()`. The launcher controller also uses `showInactive()`. These windows are displayed, not hidden. Zero-focused-window checkpoints and eventual process cleanup do **not** prove non-interference. The exact fullscreen sizing cause has not been reproduced or established.
+
+The earlier hidden-window description was incorrect. This safety gap is tracked as `tockteam-1i1h`; no further Electron launches will be made for investigation without explicit user permission. It requires genuine hidden-window enforcement and visibility assertions, not simply another focus check. Functional test results above stand, but the harness must not be represented as verified invisible.
+
 ## Limits and CI Policy
 
 - This is local macOS arm64 verification, not a replacement claim for Linux, Windows, macOS x64, Nix builds, or packaged/installed release certification.
-- The full foreground launcher smoke and installed smoke were not run. The foreground launcher harness can show/focus windows and does not establish the authenticated inactive-proof IPC used by the settings harness; no foreground-control permission was requested or assumed. Native tray, hidden Desktop settings, runtime integration, and launcher unit regressions were used instead.
+- The full foreground launcher smoke and installed smoke were not run. The foreground launcher harness can show/focus windows and does not establish the authenticated inactive-proof IPC used by the settings harness. Native tray, inactive Desktop settings, runtime integration, and launcher unit regressions were used instead. **Inactive did not mean hidden**, as discovered after the user reported visible, difficult-to-dismiss smoke-test windows.
 - The independent UI verifier did not exercise native import/export dialogs, marketplace approval/apply, credential saves, preset editing, or every earlier feature. Their available automated regressions ran locally; manual coverage is not claimed.
 - Per the owner's request, the PR-head documentation commit carries `[skip ci]`. No repository-wide Actions settings or protection rules were changed, and no workflow is manually dispatched. Required checks may remain pending when GitHub skips CI; this PR does not request merging around such requirements.
