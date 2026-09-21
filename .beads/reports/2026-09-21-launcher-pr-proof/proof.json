@@ -1,0 +1,271 @@
+{
+  "head": "09cd548b",
+  "screenshots": [
+    {
+      "name": "preloaded-image.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "6dd987a8f1fd1b9ee7becad1b12fb6a32727f9c132731018eea87f2820262164"
+    },
+    {
+      "name": "editor-undo-and-images.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "6655d54138285911f2ae37a0c1fd64d3058f5feb778d47f887051fb9d85abe7b"
+    }
+  ],
+  "editor": {
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "dpr": 2,
+      "colorScheme": "dark",
+      "skin": null
+    },
+    "sourceOriginal": {
+      "originalLength": 256,
+      "sourceLength": 256,
+      "mode": "live-preview"
+    },
+    "imageEvidence": [
+      {
+        "alt": "Query",
+        "naturalWidth": 1691,
+        "naturalHeight": 1112,
+        "complete": true,
+        "failed": null,
+        "connected": true
+      },
+      {
+        "alt": "Reference",
+        "naturalWidth": 1691,
+        "naturalHeight": 1112,
+        "complete": true,
+        "failed": null,
+        "connected": true
+      }
+    ],
+    "imageRequestCount": 2,
+    "relayBodies": [
+      {
+        "url": null,
+        "search": null
+      }
+    ],
+    "dedupExactQuery": false,
+    "sourceMode": {
+      "mode": "source",
+      "typed": {
+        "prefix": "Hello World\n\n> ![Q",
+        "length": 262
+      },
+      "formatted": {
+        "prefix": "Hello **World**\n\n> ![Que",
+        "length": 266
+      },
+      "undoRestoredOriginal": true,
+      "redoRestoredFormatting": true,
+      "propertyApplied": true,
+      "propertyAfter": {
+        "applied": true,
+        "snippet": "---\nproof: yes\n---\nHello\n\n> ![Query](https://piccdn2.umiwi.com/uploade"
+      },
+      "propertyUndoable": true
+    },
+    "livePreviewMode": {
+      "mode": "live-preview",
+      "typed": {
+        "prefix": "Hello World\n\n> ![Q",
+        "length": 262
+      },
+      "formatted": {
+        "prefix": "Hello **World**\n\n> ![Que",
+        "length": 266
+      },
+      "undoRestoredOriginal": true,
+      "redoRestoredFormatting": true,
+      "propertyApplied": true,
+      "propertyAfter": {
+        "applied": true,
+        "snippet": "---\nproof: yes\n---\nHello\n\n> ![Query](https://piccdn2.umiwi.com/uploade"
+      },
+      "propertyUndoable": true
+    },
+    "errors": [],
+    "warnings": [],
+    "externalRequests": [],
+    "screenshot": "/tmp/launcher-pr-editor-independent-proof/editor-proof.png"
+  },
+  "networkCorrection": [
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:55448/web-clip/api/image",
+      "bodyUrl": "https://piccdn2.umiwi.com/uploader/image/ddarticle/2025102218/1890998915952562708/102218.jpeg?x=1&y=2",
+      "bodySearch": "?x=1&y=2",
+      "bodyKeys": [
+        "url"
+      ],
+      "postDataPresent": true
+    }
+  ],
+  "prefetch": {
+    "before": {
+      "decodes": [
+        {
+          "width": 1691,
+          "height": 1112,
+          "connected": false,
+          "scrollTop": 0
+        }
+      ],
+      "scrollTop": 0,
+      "mountedImages": 0,
+      "paragraphs": 1000,
+      "sourceLength": 48412,
+      "mode": "live-preview"
+    },
+    "arrival": {
+      "width": 1691,
+      "height": 1112,
+      "complete": true,
+      "rect": {
+        "x": 542,
+        "y": 460.9296875,
+        "width": 700,
+        "height": 460.3125,
+        "top": 460.9296875,
+        "right": 1242,
+        "bottom": 921.2421875,
+        "left": 542
+      },
+      "failed": null,
+      "connected": true
+    },
+    "appearance": {
+      "scheme": "dark",
+      "skin": null,
+      "width": 1512,
+      "height": 949,
+      "dpr": 2,
+      "sourceUnchanged": true,
+      "mode": "live-preview"
+    },
+    "imageRequestsBeforeScroll": 1,
+    "imageRequestsAfterScroll": 1,
+    "noAdditionalDownload": true,
+    "decodeCount": 2,
+    "errors": [],
+    "warnings": [],
+    "externalRequests": [],
+    "screenshot": {
+      "path": "/tmp/tocktutor-independent-proof/prefetch-arrival.png"
+    }
+  },
+  "settings": {
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "dpr": 2,
+      "colorScheme": "dark",
+      "skin": null,
+      "scrollWidth": 1512,
+      "bodyScrollWidth": 1512
+    },
+    "disclosure": {
+      "builtinOpen": {
+        "expected": true,
+        "expanded": true,
+        "inert": false,
+        "hidden": "false",
+        "durations": [
+          200,
+          200,
+          200,
+          200
+        ],
+        "middle": {
+          "height": 767.0625,
+          "rotation": "75.5321deg",
+          "visibility": "visible"
+        },
+        "end": {
+          "height": 914,
+          "visibility": "visible"
+        }
+      },
+      "builtinClose": {
+        "expected": false,
+        "expanded": false,
+        "inert": true,
+        "hidden": "true",
+        "durations": [
+          200,
+          200,
+          200,
+          200
+        ],
+        "middle": {
+          "height": 146.921875,
+          "rotation": "14.4679deg",
+          "visibility": "visible"
+        },
+        "end": {
+          "height": 0,
+          "visibility": "hidden"
+        }
+      }
+    },
+    "extensionList": {
+      "visible": [
+        "google-translate",
+        "kaomoji-search",
+        "can-i-use"
+      ],
+      "total": 26,
+      "noHorizontalOverflow": true
+    },
+    "searchFocus": {
+      "activeAria": "Search Extensions",
+      "activeTag": "INPUT",
+      "value": "google"
+    },
+    "google": {
+      "heading": "Google Translate",
+      "primary": "en",
+      "color": "rgb(15, 17, 21)",
+      "background": "rgb(249, 250, 251)",
+      "contrast": 18.082282383551934
+    },
+    "initialPrecision": "8",
+    "rejectedDraft": "13",
+    "retainedAfterNavigation": "13",
+    "googleWhileCalculatorDraft": true,
+    "retainedAfterExtensionSwitch": "13",
+    "savedPrecision": "6",
+    "errors": [],
+    "warnings": [],
+    "screenshot": "/tmp/launcher-settings-independent-proof/settings-bounded-3.png"
+  },
+  "notes": [
+    "Initial editor request-counter instrumentation was corrected by a fresh reload with parsed POST bodies; networkCorrection is authoritative.",
+    "Settings PNG used CSS-scale capture and was1512x949, so it is not published. CSS1512x949/dpr2/appearance/behavior assertions remain valid."
+  ],
+  "cleanup": [
+    {
+      "root": 52368,
+      "remaining": []
+    },
+    {
+      "root": 57258,
+      "remaining": []
+    },
+    {
+      "root": 72062,
+      "remaining": []
+    },
+    {
+      "root": 80275,
+      "remaining": []
+    }
+  ]
+}
