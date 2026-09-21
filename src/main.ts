@@ -2550,7 +2550,7 @@ function initializeLauncher(): void {
       if (process.platform !== 'darwin' || trustedRaycastDenyEffectsProofEnabled) { trustedRaycastOrigin.clear(); return }
       await trustedRaycastOrigin.capture(() => selectionFixture || pasteFixture
         ? Promise.resolve({ name: 'TockTeam Fixture Target', capturedAt: Date.now() })
-        : captureTrustedRaycastPriorApp(trustedRaycastNativeDeps))
+        : captureTrustedRaycastPriorApp(trustedRaycastNativeDeps, mainWindow))
     },
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
     focusApp: async () => {

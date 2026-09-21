@@ -55,6 +55,60 @@ test('prior-app capture admits only an external frontmost application', async ()
   assert.equal(await captureTrustedRaycastPriorApp(deps({ execFile: async () => ({ stdout: '' }) })), undefined)
 })
 
+test('Kaomoji pastes into the captured TockTutor window without Apple Events or clipboard mutation', async () => {
+  const inserted: string[] = []
+  let shown = false
+  const workbench = {
+    isDestroyed: () => false, isFocused: () => true, show: () => { shown = true },
+    webContents: {
+      isDestroyed: () => false, getURL: () => 'http://localhost/tocktutor',
+      insertText: async (text: string) => { inserted.push(text) },
+    },
+  }
+  const native = deps({
+    execFile: async () => { throw new Error('Apple Events must not be used for our own window') },
+    readClipboardFormats: () => { throw new Error('The clipboard must remain untouched') },
+  })
+  const target = await captureTrustedRaycastPriorApp(native, workbench)
+  assert.equal(target?.name, 'TockTeam Desktop')
+  const result = await pasteTrustedRaycastText('(づ｡◕‿‿◕｡)づ', target, native)
+  assert.deepEqual(inserted, ['(づ｡◕‿‿◕｡)づ'])
+  assert.equal(shown, true)
+  assert.equal(result.restoration, 'unchanged')
+  assert.ok('unavailable' in await readTrustedRaycastSelectedText(target, native), 'never read the launcher selection as the workbench selection')
+  await assert.rejects(pasteTrustedRaycastText('x'.repeat(128 * 1024 + 1), target, native), /exceeds its bound/)
+  assert.equal(inserted.length, 1)
+})
+
+test('own-window paste rejects closed or navigated targets instead of redirecting the paste', async () => {
+  let destroyed = false
+  let contentsDestroyed = false
+  let url = 'http://localhost/tocktutor'
+  const workbench = {
+    isDestroyed: () => destroyed, isFocused: () => true, show: () => assert.fail('stale window shown'),
+    webContents: { isDestroyed: () => contentsDestroyed, getURL: () => url, insertText: async () => assert.fail('stale target received text') },
+  }
+  const native = deps({ execFile: async () => ({ stdout: 'TockTeam Desktop' }) })
+  const target = await captureTrustedRaycastPriorApp(native, workbench)
+  assert.ok(target)
+  url = 'http://localhost/another-document'
+  await assert.rejects(pasteTrustedRaycastText('kaomoji', target, native), /target.*unavailable/i)
+  url = 'http://localhost/tocktutor'
+  destroyed = true
+  await assert.rejects(pasteTrustedRaycastText('kaomoji', target, native), /target.*unavailable/i)
+  assert.equal(await captureTrustedRaycastPriorApp(native, workbench), undefined)
+  destroyed = false
+  assert.equal(await captureTrustedRaycastPriorApp(native, { ...workbench, isFocused: () => false }), undefined, 'an unfocused workbench must not become a paste target')
+  const external = await captureTrustedRaycastPriorApp(deps({ execFile: async () => ({ stdout: 'Code' }) }), { ...workbench, isFocused: () => false })
+  assert.equal(external?.name, 'Code', 'an inactive workbench must not steal an external app paste')
+  contentsDestroyed = true
+  await assert.rejects(pasteTrustedRaycastText('kaomoji', target, native), /target.*unavailable/i)
+  assert.equal(await captureTrustedRaycastPriorApp(native, workbench), undefined)
+  contentsDestroyed = false
+  workbench.webContents.insertText = async () => { throw new Error('Editor insertion failed') }
+  await assert.rejects(pasteTrustedRaycastText('kaomoji', target, native), /Editor insertion failed/)
+})
+
 test('selected text reads honestly: fixture, permission denial, no selection, and manual-input fallback', async () => {
   assert.deepEqual(await readTrustedRaycastSelectedText(undefined, deps({ fixture: 'selection' })), { text: 'TockTeam trusted Raycast selection fixture' })
   const denied = await readTrustedRaycastSelectedText(undefined, deps())

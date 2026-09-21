@@ -1,8 +1,12 @@
 import { Buffer } from 'node:buffer'
+import type { BrowserWindow, WebContents } from 'electron'
 
 const byteLength = (value: string): number => Buffer.byteLength(value)
 
-export type TrustedRaycastPriorApp = Readonly<{ name: string; capturedAt: number }>
+export type TrustedRaycastPriorApp = Readonly<{ name: string; capturedAt: number; insertText?: (text: string) => Promise<void> }>
+type PasteWorkbench = Pick<BrowserWindow, 'isDestroyed' | 'isFocused' | 'show'> & {
+  webContents: Pick<WebContents, 'isDestroyed' | 'getURL' | 'insertText'>
+}
 
 /** One opening owns its target; late asynchronous captures cannot restore an older target. */
 export class TrustedRaycastOrigin {
@@ -35,7 +39,21 @@ const MAX_PASTE_TEXT = 128 * 1024
 const applescriptString = (value: string): string => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
 /** Capture the originating app before the launcher changes foreground focus. */
-export async function captureTrustedRaycastPriorApp(deps: TrustedRaycastNativeDeps): Promise<TrustedRaycastPriorApp | undefined> {
+export async function captureTrustedRaycastPriorApp(deps: TrustedRaycastNativeDeps, workbench?: PasteWorkbench): Promise<TrustedRaycastPriorApp | undefined> {
+  // Bind the owned editor before the launcher takes focus. App-name targeting cannot
+  // distinguish the launcher from TockTutor, and must remain external-app-only.
+  if (workbench !== undefined && !workbench.isDestroyed() && workbench.isFocused() && !workbench.webContents.isDestroyed()) {
+    const contents = workbench.webContents
+    const url = contents.getURL()
+    return Object.freeze({
+      name: deps.ownAppNames[0] ?? 'TockTeam Desktop', capturedAt: Date.now(),
+      insertText: async (text: string) => {
+        if (workbench.isDestroyed() || contents.isDestroyed() || contents.getURL() !== url) throw new Error('The captured paste target is unavailable')
+        await contents.insertText(text)
+        workbench.show()
+      },
+    })
+  }
   try {
     const { stdout } = await deps.execFile('/usr/bin/osascript', ['-e', 'tell application "System Events" to get name of first application process whose frontmost is true'], { timeout: 4000, maxBuffer: 4096 })
     const name = stdout.trim().slice(0, 128)
@@ -49,7 +67,7 @@ export type TrustedRaycastSelectionResult = Readonly<{ text: string } | { unavai
 /** Honest selected-text adapter: never reads the clipboard as a substitute for the user's selection. */
 export async function readTrustedRaycastSelectedText(priorApp: TrustedRaycastPriorApp | undefined, deps: TrustedRaycastNativeDeps): Promise<TrustedRaycastSelectionResult> {
   if (deps.fixture === 'selection') return Object.freeze({ text: 'TockTeam trusted Raycast selection fixture' })
-  if (priorApp === undefined) return Object.freeze({ unavailable: 'No prior application captured. Manual input is available.' })
+  if (priorApp === undefined || priorApp.insertText !== undefined) return Object.freeze({ unavailable: 'No external application captured. Manual input is available.' })
   try {
     const { stdout } = await deps.execFile('/usr/bin/osascript', ['-e', `tell application "System Events" to tell process "${applescriptString(priorApp.name)}" to get value of attribute "AXSelectedText" of focused UI element`], { timeout: 6000, maxBuffer: MAX_SELECTED_TEXT + 1024 })
     const text = stdout.replace(/\n$/, '')
@@ -63,7 +81,7 @@ export async function readTrustedRaycastSelectedText(priorApp: TrustedRaycastPri
   }
 }
 
-export type TrustedRaycastPasteResult = Readonly<{ target: string; fixture: boolean; restoration: 'restored' | 'external-change-preserved' }>
+export type TrustedRaycastPasteResult = Readonly<{ target: string; fixture: boolean; restoration: 'restored' | 'external-change-preserved' | 'unchanged' }>
 
 type ClipboardSnapshot = Readonly<{ formats: string[]; data: Map<string, Buffer> }>
 const MAX_CLIPBOARD_SNAPSHOT = 16 * 1024 * 1024
@@ -95,6 +113,10 @@ const stillOwnsPasteWrite = (deps: TrustedRaycastNativeDeps, text: string): bool
 export async function pasteTrustedRaycastText(text: string, priorApp: TrustedRaycastPriorApp | undefined, deps: TrustedRaycastNativeDeps): Promise<TrustedRaycastPasteResult> {
   if (byteLength(text) > MAX_PASTE_TEXT) throw new Error('Paste text exceeds its bound')
   if (priorApp === undefined) throw new Error('No prior application captured. Paste requires a captured target application.')
+  if (priorApp.insertText !== undefined) {
+    await priorApp.insertText(text)
+    return Object.freeze({ target: priorApp.name, fixture: false, restoration: 'unchanged' })
+  }
   // Capture every clipboard format in memory before any mutation; deny the paste instead of clobbering.
   const snapshot = captureClipboardSnapshot(deps)
   const wait = deps.wait ?? (ms => new Promise(resolve => setTimeout(resolve, ms)))
