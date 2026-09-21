@@ -8,6 +8,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     ariaLabel={props.ariaLabel ?? 'Live Preview Editor'}
     className={`tocktutor-live-preview-editor tocktutor-live-preview-styles ${props.className ?? ''}`}
     content={props.content}
+    localEditRevision={props.localEditRevision}
     livePreview
     onContentChange={props.onMarkdownChange}
     onOpenExternalUrl={props.onOpenExternalUrl}

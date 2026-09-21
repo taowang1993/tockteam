@@ -14,6 +14,7 @@ export interface LivePreviewEditorProps {
     ariaLabel?: string;
     className?: string;
     content: string;
+    localEditRevision?: number | undefined;
     editorViewRef?: MutableRefObject<unknown | null>;
     onAddProperty?: (key: string) => boolean;
     onMarkdownChange: (markdown: string) => void;

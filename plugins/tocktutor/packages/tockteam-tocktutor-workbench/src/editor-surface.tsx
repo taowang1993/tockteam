@@ -159,6 +159,7 @@ export function RichReadingView(props: {
 
 export function LivePreviewView(props: {
   documentKey: string
+  localEditRevision?: number | undefined
   embeds?: readonly ResolvedEmbedNode[] | undefined
   onAddProperty?: ((key: string) => boolean) | undefined
   onEdit(source: string): void
@@ -176,6 +177,7 @@ export function LivePreviewView(props: {
         ariaLabel="Live Preview Editor"
         className="min-h-[20rem]"
         content={props.source}
+        localEditRevision={props.localEditRevision}
         key={props.documentKey}
         onMarkdownChange={props.onEdit}
         {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })}

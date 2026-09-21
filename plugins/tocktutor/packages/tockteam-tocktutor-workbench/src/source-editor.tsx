@@ -24,6 +24,7 @@ export interface SourceEditorProps {
   ariaLabel?: string
   className?: string
   content: string
+  localEditRevision?: number | undefined
   editable?: boolean
   livePreview?: boolean
   onOpenExternalUrl?: ((url: string) => void) | undefined

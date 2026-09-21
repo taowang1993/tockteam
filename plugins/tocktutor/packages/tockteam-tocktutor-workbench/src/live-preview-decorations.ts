@@ -40,8 +40,8 @@ function imageLoader(view: EditorView): InlineImageLoader {
 }
 
 class Preview extends WidgetType {
-  constructor(readonly source: string, readonly from: number, readonly to: number, readonly embeds: readonly unknown[], readonly block = false) { super() }
-  eq(other: Preview) { return this.source === other.source && this.from === other.from && this.to === other.to && this.embeds === other.embeds }
+  constructor(readonly source: string, readonly from: number, readonly to: number, readonly embeds: readonly unknown[], readonly block = false, readonly renderedSource = source) { super() }
+  eq(other: Preview) { return this.source === other.source && this.renderedSource === other.renderedSource && this.from === other.from && this.to === other.to && this.embeds === other.embeds }
   toDOM(view: EditorView): HTMLElement {
     const dom = document.createElement(this.block ? 'div' : 'span')
     dom.className = `tocktutor-live-rendered${this.source.startsWith('![[') ? ' tocktutor-live-embed-widget' : ''}`
@@ -50,7 +50,7 @@ class Preview extends WidgetType {
     dom.dataset.previewFrom = String(this.from)
     dom.dataset.previewTo = String(this.to)
     owners.set(dom, this)
-    dom.innerHTML = renderMarkdownHtml(this.source, { externalEmbedMode: 'viewer', resolvedEmbeds: this.embeds })
+    dom.innerHTML = renderMarkdownHtml(this.renderedSource, { externalEmbedMode: 'viewer', resolvedEmbeds: this.embeds })
     const markers: number[] = []
     syntaxTree(view.state).iterate({ from: this.from, to: this.to, enter: node => { if (node.name === 'TaskMarker') markers.push(node.from) } })
     dom.querySelectorAll<HTMLInputElement>('input[data-task-index]').forEach((input, index) => {
@@ -93,7 +93,7 @@ class Preview extends WidgetType {
   }
   updateDOM(dom: HTMLElement): boolean {
     const owner = owners.get(dom)
-    if (!owner || owner.constructor !== this.constructor || owner.source !== this.source || owner.embeds !== this.embeds) return false
+    if (!owner || owner.constructor !== this.constructor || owner.source !== this.source || owner.renderedSource !== this.renderedSource || owner.embeds !== this.embeds) return false
     const shift = this.from - Number(dom.dataset.previewFrom)
     dom.dataset.previewFrom = String(this.from)
     dom.dataset.previewTo = String(this.to)
@@ -110,6 +110,11 @@ class Preview extends WidgetType {
 
 class ImagePreview extends Preview {
   constructor(source: string, from: number, to: number, readonly url: string, readonly alt: string) { super(source, from, to, EMPTY_EMBEDS) }
+  eq(other: ImagePreview) { return super.eq(other) && this.url === other.url && this.alt === other.alt }
+  updateDOM(dom: HTMLElement): boolean {
+    const owner = owners.get(dom)
+    return owner instanceof ImagePreview && owner.url === this.url && owner.alt === this.alt && super.updateDOM(dom)
+  }
   toDOM(view: EditorView): HTMLElement {
     const dom = document.createElement('span')
     dom.className = 'tocktutor-live-image'
@@ -158,7 +163,20 @@ export function buildLivePreviewExtension(getEmbeds: () => readonly unknown[], o
     const covered: Array<{ from: number; to: number }> = []
     const preview = (from: number, to: number) => {
       if (active(from, to)) return false
-      values.push(Decoration.replace({ block: true, widget: new Preview(source.slice(from, to), from, to, embeds, true) }).range(from, to))
+      let rendered = '', cursor = from
+      // Fragment rendering cannot see reference definitions elsewhere in the note.
+      tree.iterate({ from, to, enter: ref => {
+        if (ref.name !== 'Image' || ref.node.getChild('URL')) return
+        const marks = ref.node.getChildren('LinkMark'), reference = ref.node.getChild('LinkLabel')
+        const label = source.slice(marks[0]?.to ?? ref.from, marks[1]?.from ?? ref.to)
+        const key = reference ? source.slice(reference.from + 1, reference.to - 1) : label
+        const url = references.get(key.toLowerCase())
+        if (!url || !marks[1]) return
+        rendered += source.slice(cursor, ref.from) + source.slice(ref.from, marks[1].to) + `(${url})`
+        cursor = ref.to
+      } })
+      rendered += source.slice(cursor, to)
+      values.push(Decoration.replace({ block: true, widget: new Preview(source.slice(from, to), from, to, embeds, true, rendered) }).range(from, to))
       covered.push({ from, to })
       return true
     }

@@ -285,6 +285,7 @@ export interface WorkbenchSearchPreview {
 }
 
 export interface WorkbenchRouteSnapshot {
+  localEditRevision?: number | undefined
   attachmentPreview?: AttachmentPreviewResult | null
   baseFiles?: readonly BaseHydratedFile[]
   bookmarks?: readonly TockTutorBookmark[]
@@ -2911,6 +2912,7 @@ export class WorkbenchRouteController {
       ...(embedsChanged ? { embeds: Object.freeze([]) } : {}),
       message: 'Unsaved changes.',
       saveStatus: 'unsaved',
+      localEditRevision: (this.snapshot.localEditRevision ?? 0) + 1,
       source,
     })
     this.recordDirty(true)
@@ -4633,6 +4635,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   ariaLabel={sourceLabel}
                   className="h-full"
                   content={snapshot.source}
+                  localEditRevision={snapshot.localEditRevision}
                   key={snapshot.path}
                   onContentChange={props.onEdit}
                   {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}
@@ -4646,6 +4649,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             ) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (
               <LivePreviewView
                 documentKey={snapshot.path}
+                localEditRevision={snapshot.localEditRevision}
                 embeds={snapshot.embeds}
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
                 onEdit={props.onEdit}

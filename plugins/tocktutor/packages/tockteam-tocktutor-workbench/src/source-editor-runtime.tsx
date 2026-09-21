@@ -3,7 +3,7 @@ import { minimalSetup } from 'codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { foldAll, foldCode, foldGutter, unfoldAll, unfoldCode } from '@codemirror/language'
 import { EditorSelection, EditorState, StateEffect, StateField, type Extension, type Range } from '@codemirror/state'
-import { invertedEffects } from '@codemirror/commands'
+import { invertedEffects, isolateHistory } from '@codemirror/commands'
 import {
   Decoration,
   EditorView,
@@ -250,7 +250,7 @@ function buildEditorExtensions(props: {
     }),
     ...(props.livePreview ? [] : [EditorView.decorations.compute(['doc'], sourceDecorations)]),
     EditorView.updateListener.of((update: ViewUpdate) => {
-      if (update.docChanged) {
+      if (update.docChanged && props.sourceRef.current !== update.state.field(authoredSource)) {
         props.sourceRef.current = update.state.field(authoredSource)
         props.onContentChangeRef.current?.(props.sourceRef.current)
       }
@@ -305,6 +305,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   const parentRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<EditorView | null>(null)
   const sourceRef = useRef(props.content)
+  const localEditRevisionRef = useRef(props.localEditRevision)
   const embedsRef = useRef(props.resolvedEmbeds ?? [])
   const onContentChangeRef = useRef(props.onContentChange)
   const onSelectionChangeRef = useRef(props.onSelectionChange)
@@ -386,8 +387,14 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   useEffect(() => {
     const view = editorRef.current
     if (!view) return
+    const localEdit = localEditRevisionRef.current !== props.localEditRevision
+    localEditRevisionRef.current = props.localEditRevision
     const change = buildSourceChange(view.state.doc.toString(), normalizeEditorSource(props.content))
     if (!change && view.state.field(authoredSource) === props.content) return
+    if (localEdit) {
+      view.dispatch({ changes: change ?? [], effects: restoreSeparators.of(separators(props.content)), annotations: isolateHistory.of('full') })
+      return
+    }
     // An authoritative replacement is not a local edit and must not retain stale undo.
     const { scrollTop, scrollLeft } = view.scrollDOM
     const focused = view.hasFocus
@@ -398,7 +405,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     view.scrollDOM.scrollLeft = scrollLeft
     onSelectionChangeRef.current?.(selectionSnapshot(view))
     onWidgetStateRef.current?.(projectEditorWidgets(props.content, selectionSnapshot(view).main))
-  }, [extensions, livePreview, props.content])
+  }, [extensions, livePreview, props.content, props.localEditRevision])
 
   useEffect(() => {
     const view = editorRef.current

@@ -287,16 +287,16 @@ function renderInline(source: string, footnoteNumbers: ReadonlyMap<string, numbe
   let text = source
   text = text.replace(/<[^>]{1,200}>/gu, tag => SAFE_RAW_TAG.test(tag) ? hold(tag.toLocaleLowerCase()) : tag)
   text = text.replace(/`([^`\n]{0,10000})`/gu, (_match, code: string) => hold(`<code>${escapeMarkdownHtml(code)}</code>`))
-  text = escapeMarkdownHtml(text)
   text = text.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt: string, target: string) => {
     const external = classifyExternalEmbed(target)
     if (external !== null) {
       const image = external.kind === 'youtube' || external.kind === 'twitter' ? external : { ...external, kind: 'image' as const }
-      return externalEmbedMode === 'viewer' ? externalEmbedButtonHtml(alt, image) : externalEmbedInertHtml(alt, image)
+      return hold(externalEmbedMode === 'viewer' ? externalEmbedButtonHtml(alt, image) : externalEmbedInertHtml(alt, image))
     }
     // Only Host-resolved data may become a resource; rejected URLs stay inert.
-    return hold(match)
+    return hold(escapeMarkdownHtml(match))
   })
+  text = escapeMarkdownHtml(text)
   text = text.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label: string, target: string) => {
     const url = safeUrl(target)
     return url === null

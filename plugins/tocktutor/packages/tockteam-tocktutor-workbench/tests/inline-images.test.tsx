@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
+import { LivePreviewEditor } from '../src/live-preview-editor.tsx'
 import { attachInlineImages, InlineImageLoader } from '../src/inline-images.ts'
 import { markdownImageUrls } from '../src/live-preview-decorations.ts'
 
@@ -25,6 +26,37 @@ it('loads offscreen images without waiting for an intersection', async () => {
 it('discovers distant, reference and nested images, not code or viewer embeds', () => {
   const source = '# Note\n\n' + 'Paragraph.\n\n'.repeat(1000) + '\n![Photo][id]\n\n[id]: https://example.com/a.png\n\n> ![](https://example.com/b.png)\n\n```md\n![](https://example.com/code.png)\n```\n\n![](https://youtu.be/abcdefghijk)'
   expect(markdownImageUrls(source)).toEqual(['https://example.com/a.png', 'https://example.com/b.png'])
+})
+
+it.each([
+  '> ![Photo](https://example.com/a.png?x=1&y=2)',
+  '> ![Photo][id]\n\n[id]: https://example.com/a.png?x=1&y=2',
+  '![Photo][id]\n\n[id]: https://example.com/a.png?x=1&y=2',
+])('renders parsed image destinations without changing their URL: %s', async source => {
+  const request = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => payload())
+  const { container, unmount } = render(<LivePreviewEditor content={source} onMarkdownChange={() => {}} />)
+  try {
+    await waitFor(() => expect(container.querySelector('img.tocktutor-inline-image[src]')).toBeTruthy())
+    expect(request.mock.calls.map(([, options]) => JSON.parse(String(options?.body)).url)).toEqual(['https://example.com/a.png?x=1&y=2'])
+    expect(container.querySelector('img')?.alt).toBe('Photo')
+  } finally { unmount() }
+})
+
+it.each(['', '> '])('refreshes a %sreference image when its definition changes', async prefix => {
+  const request = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => payload())
+  const source = `${prefix}![Photo][id]\n\n[id]: https://example.com/first.png`
+  const editorViewRef = { current: null as any }
+  const { container, unmount } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
+  try {
+    await waitFor(() => expect(container.querySelector('img[src]')).toBeTruthy())
+    const previous = container.querySelector('img')
+    act(() => editorViewRef.current.dispatch({ changes: { from: source.indexOf('first.png'), to: source.length, insert: 'other.png' } }))
+    await waitFor(() => {
+      expect(container.querySelector('img[src]')).toBeTruthy()
+      expect(container.querySelector('img')).not.toBe(previous)
+    })
+    expect(request.mock.calls.map(([, options]) => JSON.parse(String(options?.body)).url)).toEqual(['https://example.com/first.png', 'https://example.com/other.png'])
+  } finally { unmount() }
 })
 
 it('reuses prefetched images across widget recreation without one consumer cancelling another', async () => {
