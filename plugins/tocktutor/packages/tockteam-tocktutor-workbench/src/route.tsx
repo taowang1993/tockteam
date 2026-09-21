@@ -4649,6 +4649,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 embeds={snapshot.embeds}
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
                 onEdit={props.onEdit}
+                onEditSource={() => { props.onMode('source') }}
                 onOpenExternalUrl={props.onOpenExternalUrl}
                 onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
                 onSetProperty={props.onSetProperty}

@@ -1,10 +1,12 @@
+import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
+import { Button } from '@tockteam/ui/button'
 import {
   useMemo,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
 import type { ResolvedEmbedNode } from './embeds.ts'
-import { LivePreviewEditor, MarkdownDocumentHeader, type LivePreviewSelection } from './live-preview-editor.tsx'
+import { isLivePreviewSourceProtected, LivePreviewEditor, MarkdownDocumentHeader, type LivePreviewSelection } from './live-preview-editor.tsx'
 import type { PropertyValue } from './properties.ts'
 import { buildMarkdownSlides, renderMarkdownHtml } from './rich-markdown.ts'
 
@@ -157,6 +159,7 @@ export function LivePreviewView(props: {
   embeds?: readonly ResolvedEmbedNode[] | undefined
   onAddProperty?: ((key: string) => boolean) | undefined
   onEdit(source: string): void
+  onEditSource?: (() => void) | undefined
   onOpenExternalUrl?: ((url: string) => void) | undefined
   onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined
   onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined
@@ -166,6 +169,17 @@ export function LivePreviewView(props: {
 }): ReactNode {
   return (
     <section aria-label="Live Preview" className="flex min-h-full flex-col" tabIndex={-1}>
+      {isLivePreviewSourceProtected(props.source) && (
+        <div className="mx-auto mt-3 w-[calc(100%-48px)] max-w-3xl">
+          <Alert role="note">
+            <AlertTitle>Editing Is Limited</AlertTitle>
+            <AlertDescription>
+              <p>Typing and pasting are disabled in Live Preview because this note contains formatting it cannot safely preserve. Use Source Mode to edit without changing that formatting.</p>
+              {props.onEditSource !== undefined && <Button className="mt-2" onClick={props.onEditSource} size="sm" type="button" variant="outline">Edit in Source Mode</Button>}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       <LivePreviewEditor
         ariaLabel="Live Preview Editor"
         className="min-h-[20rem]"

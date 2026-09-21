@@ -29,6 +29,7 @@ export declare function LivePreviewView(props: {
     embeds?: readonly ResolvedEmbedNode[] | undefined;
     onAddProperty?: ((key: string) => boolean) | undefined;
     onEdit(source: string): void;
+    onEditSource?: (() => void) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
     onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined;
     onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined;

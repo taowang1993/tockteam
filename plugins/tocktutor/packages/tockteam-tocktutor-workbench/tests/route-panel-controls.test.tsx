@@ -7,6 +7,7 @@ import {
   type WorkbenchRouteSnapshot,
 } from '../src/route.tsx'
 import { createWorkbenchSession } from '../src/session.ts'
+import { LivePreviewView } from '../src/editor-surface.tsx'
 
 const snapshot: WorkbenchRouteSnapshot = {
   dispatchDialog: null,
@@ -454,7 +455,59 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
   })
 
-  it('renders editable source-preserving Live Preview chrome', async () => {
+  it('explains protected Live Preview and switches explicitly to Source Mode without changing the draft', async () => {
+    const source = '---\ntags: [draft]\n---\n# Lesson\n\n> [!note]\n> Keep this exact.\n'
+    const onEdit = vi.fn()
+    function ProtectedNote(): ReactNode {
+      const [mode, setMode] = useState<WorkbenchRouteSnapshot['mode']>('live-preview')
+      return <TockTutorRouteView
+        onActivateTab={() => {}}
+        onAddPane={() => {}}
+        onEdit={onEdit}
+        onFocusPane={() => {}}
+        onMode={setMode}
+        onMoveCanvas={() => {}}
+        onSave={() => {}}
+        onSelect={() => {}}
+        onToggleTask={() => {}}
+        snapshot={{ ...snapshot, documentKind: 'markdown', mode, path: 'Lesson.md', phase: 'ready', source, saveStatus: 'unsaved', panes: [{ activePath: 'Lesson.md', id: 'main', tabs: [{ dirty: true, mode, path: 'Lesson.md' }] }] }}
+      />
+    }
+    render(<ProtectedNote />)
+    expect(screen.getByRole('note').textContent).toContain('Typing and pasting are disabled')
+    expect(screen.getByLabelText('Live Preview')).toBeTruthy()
+    expect(screen.queryByLabelText('Markdown Source')).toBeNull()
+    expect(onEdit).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit in Source Mode' }))
+    await waitFor(() => expect(screen.getByLabelText('Markdown Source').querySelector('.cm-content')).toBeTruthy())
+    const lines = document.querySelectorAll('.cm-line')
+    expect(Array.from(lines, line => line.textContent).join('\n')).toBe(source)
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.getByLabelText('Unsaved')).toBeTruthy()
+    expect(onEdit).not.toHaveBeenCalled()
+  })
+
+  it('updates the protection notice with the source and omits unavailable actions', () => {
+    const props = { documentKey: 'Lesson.md', onEdit: vi.fn(), onToggleTask: vi.fn(), title: 'Lesson' }
+    const view = render(<LivePreviewView {...props} source={'> [!note]\n> Protected\n'} />)
+    expect(screen.getByRole('note')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
+    view.rerender(<LivePreviewView {...props} source={'# Lesson\nPlain text.\n'} />)
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(props.onEdit).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['live-preview', '---\ntitle: Lesson\n---\n# Lesson\n[[Note]]\n'],
+    ['reading', '> [!note]\n> Protected\n'],
+    ['source', '> [!note]\n> Protected\n'],
+  ] as const)('does not show a protected-edit notice in %s for an unaffected surface', (mode, source) => {
+    renderRoute({ documentKind: 'markdown', mode, path: 'Lesson.md', phase: 'ready', source })
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
+  })
+
+  it('renders source-preserving Live Preview chrome with an explicit editing fallback', async () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
     const onToggleTask = vi.fn()
@@ -501,8 +554,8 @@ describe('TockTutor titlebar panel controls', () => {
     expect(editorBody.className).toContain('[&_.ProseMirror]:max-w-3xl')
     expect(editorBody.className).toContain('[&_.ProseMirror]:w-[calc(100%-48px)]')
     expect(editorBody.className).toContain('[&_.ProseMirror]:outline-none')
-    expect(screen.queryByRole('note')).toBeNull()
-    expect(screen.queryByText(/Protected Markdown stays exact/u)).toBeNull()
+    expect(screen.getByRole('note')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Edit in Source Mode' })).toBeTruthy()
     const task = screen.getByRole('checkbox', { name: 'Mark Task as Complete' })
     expect(task.tabIndex).toBe(0)
     fireEvent.keyDown(task, { key: ' ' })
