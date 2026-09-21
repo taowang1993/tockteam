@@ -71,11 +71,19 @@ export function collectEmbedTargets(source, sourcePath) {
         if (fence !== null)
             continue;
         const code = codeSpans(line);
-        for (const match of line.matchAll(/!\[\[([^\]\r\n]{1,4096})\]\]/gu)) {
+        for (const match of line.matchAll(/!\[\[([^\]\r\n]{1,4096})\]\]|!\[([^\]\r\n]{0,1000})\]\((<[^>\r\n]{1,4096}>|[^)\s]{1,4096})(?:\s+["'][^"'\r\n]*["'])?\)/gu)) {
             if (match.index === undefined || code.some(([start, end]) => match.index >= start && match.index < end) || escapedAt(line, match.index))
                 continue;
-            const [rawTarget, displayPart] = match[1].split('|', 2);
-            const targetPart = rawTarget ?? '';
+            const [rawTarget, displayPart] = match[1] === undefined ? [match[3]?.replace(/^<|>$/gu, ''), match[2]] : match[1].split('|', 2);
+            let targetPart = rawTarget ?? '';
+            if (match[1] === undefined) {
+                try {
+                    targetPart = decodeURIComponent(targetPart);
+                }
+                catch {
+                    continue;
+                }
+            }
             const hash = targetPart.indexOf('#');
             const path = (hash < 0 ? targetPart : targetPart.slice(0, hash)).trim();
             const fragment = hash < 0 ? null : targetPart.slice(hash + 1).trim() || null;

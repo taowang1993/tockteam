@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WriteDocumentResult } from 'tockbot-note-runtime'
-import type { PublicTextResult } from './fetch.ts'
+import type { PublicImageResult, PublicTextResult } from './fetch.ts'
 import type { ReaderViewResult } from './reader.ts'
 import type { ClipApproval, ClipPreview } from './review.ts'
 import {
@@ -18,6 +18,7 @@ export {
   WEB_CLIP_REVIEW_API_PATH,
   WEB_CLIP_VIEWER_API_PATH,
 }
+export const WEB_CLIP_IMAGE_API_PATH = '/web-clip/api/image'
 const MAX_VIEWER_REQUEST_BYTES = 8192
 const DEFAULT_REQUEST_BODY_TIMEOUT_MS = 5_000
 
@@ -217,6 +218,10 @@ function createApiHandler<Input, Output>(
       response.removeListener('close', abortClosed)
     }
   }
+}
+
+export function createImageHandler(load: (url: string, signal: AbortSignal) => Promise<PublicImageResult>, options: ApiHandlerOptions = {}) {
+  return createApiHandler(urlRequest, load, options)
 }
 
 export function createViewerHandler(load: ViewerPageLoader, options: ApiHandlerOptions = {}) {

@@ -1,7 +1,7 @@
 import { Service, type Context } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
 import type { WriteDocumentResult } from 'tockbot-note-runtime';
-import { type PublicFetchLimits, type PublicTextResult } from './fetch.ts';
+import { type PublicImageResult, type PublicFetchLimits, type PublicTextResult } from './fetch.ts';
 import { type ReaderViewLimits, type ReaderViewResult } from './reader.ts';
 import { type ClipApproval, type ClipPreview, type ClipPreviewInput, type ClipVaultReference, type ConsumedClipCreate } from './review.ts';
 import { type ViewerPageResult } from './server.ts';
@@ -54,6 +54,9 @@ export declare class WebClipHost extends Service {
     fetchText(url: string, options?: {
         signal?: AbortSignal;
     }): Promise<PublicTextResult>;
+    fetchImage(url: string, options?: {
+        signal?: AbortSignal;
+    }): Promise<PublicImageResult>;
     readerView(url: string, options?: {
         signal?: AbortSignal;
     }): Promise<ReaderViewResult>;

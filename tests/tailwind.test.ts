@@ -105,7 +105,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
       'launcher-command-menu', 'launcher-command-menu-item',
       'launcher-local-tool', 'launcher-local-tool-header', 'launcher-local-tool-identity', 'launcher-local-tool-content',
       'launcher-local-tool-field', 'launcher-local-tool-status', 'launcher-local-tool-error', 'launcher-secondary-button', 'launcher-primary-button',
-      'tockteam-desktop-shell', 'tockteam-sidebar-styles',
+      'tockteam-desktop-shell', 'tockteam-sidebar-styles', 'tocktutor-live-preview-styles',
     ],
   )
 })

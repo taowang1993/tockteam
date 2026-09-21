@@ -44,3 +44,10 @@ export declare function createPinnedLookup(rawAddress: string): LookupFunction;
 export declare function responseHeaderBytes(headers: Headers): number;
 export declare function readBoundedText(response: Response, limits: PublicFetchLimits, signal: AbortSignal): Promise<string>;
 export declare function fetchPublicText(value: string, options?: FetchPublicTextOptions): Promise<PublicTextResult>;
+export interface PublicImageResult {
+    dataBase64: string;
+    mimeType: string;
+    url: string;
+}
+/** Public raster bytes only: no cookies, active SVG, renderer network access, or private redirects. */
+export declare function fetchPublicImage(value: string, options?: FetchPublicTextOptions): Promise<PublicImageResult>;

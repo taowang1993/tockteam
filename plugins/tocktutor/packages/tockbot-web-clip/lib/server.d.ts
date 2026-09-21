@@ -1,10 +1,11 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { WriteDocumentResult } from 'tockbot-note-runtime';
-import type { PublicTextResult } from './fetch.ts';
+import type { PublicImageResult, PublicTextResult } from './fetch.ts';
 import type { ReaderViewResult } from './reader.ts';
 import type { ClipApproval, ClipPreview } from './review.ts';
 import { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH } from './viewer.ts';
 export { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH, };
+export declare const WEB_CLIP_IMAGE_API_PATH = "/web-clip/api/image";
 export interface ApiHandlerOptions {
     requestBodyTimeoutMs?: number;
 }
@@ -24,6 +25,7 @@ export type ClipReviewLoader = (input: ClipReviewRequest, signal: AbortSignal) =
 export type ClipApplyLoader = (approval: ClipApproval, signal: AbortSignal) => Promise<WriteDocumentResult>;
 export type ClipCancelLoader = (reviewId: string) => boolean;
 export declare function isTrustedDesktopRequest(request: IncomingMessage): boolean;
+export declare function createImageHandler(load: (url: string, signal: AbortSignal) => Promise<PublicImageResult>, options?: ApiHandlerOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 export declare function createViewerHandler(load: ViewerPageLoader, options?: ApiHandlerOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 export declare function createReaderHandler(load: ReaderPageLoader, options?: ApiHandlerOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 export declare function createClipReviewHandler(load: ClipReviewLoader, options?: ApiHandlerOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void>;

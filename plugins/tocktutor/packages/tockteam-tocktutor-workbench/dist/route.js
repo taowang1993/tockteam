@@ -2656,7 +2656,7 @@ export class WorkbenchRouteController {
         this.setSelection(authoredSourceOffset(this.snapshot.source, start), authoredSourceOffset(this.snapshot.source, end));
     }
     setSelection(start, end) {
-        if (this.snapshot.path === null || this.snapshot.mode !== 'source')
+        if (this.snapshot.path === null || this.snapshot.mode === 'reading')
             return;
         const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0;
         const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart;
@@ -2677,7 +2677,7 @@ export class WorkbenchRouteController {
         }
     }
     runEditorCommand(command) {
-        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source')
+        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading')
             return;
         const result = applyEditorCommand(this.snapshot.source, command, this.snapshot.selectionStart ?? this.snapshot.source.length, this.snapshot.selectionEnd ?? this.snapshot.source.length);
         if (result.source === this.snapshot.source)
@@ -2735,7 +2735,7 @@ export class WorkbenchRouteController {
         const path = this.snapshot.path;
         const start = this.snapshot.selectionStart ?? 0;
         const end = this.snapshot.selectionEnd ?? 0;
-        if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source' || end <= start)
+        if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading' || end <= start)
             return false;
         const identity = this.recoveryIdentity();
         const routeOperation = this.operation;
@@ -2788,7 +2788,7 @@ export class WorkbenchRouteController {
         }
     }
     insertCurrentDateTime(kind) {
-        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source')
+        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading')
             return false;
         const start = this.snapshot.selectionStart ?? this.snapshot.source.length;
         const end = this.snapshot.selectionEnd ?? start;
@@ -3611,7 +3611,7 @@ export function TockTutorRouteView(props) {
                                                                                 props.onLoadRelationships?.();
                                                                             if (view === 'recovery')
                                                                                 props.onOpenRecovery?.();
-                                                                        }, children: [_jsx(Icon, { "aria-hidden": "true" }), _jsx("span", { children: label })] }, view))) }), _jsx(DropdownMenuSeparator, {}), _jsx(DropdownMenuGroup, { children: _jsxs(DropdownMenuItem, { className: `${NOTE_ACTION_CLASS} text-[var(--dsw-alias-state-error-primary,#dc2626)]`, disabled: snapshot.path === null || props.onTrashCurrent === undefined, onSelect: () => { props.onTrashCurrent?.(); }, children: [_jsx(Trash2, { "aria-hidden": "true" }), _jsx("span", { children: "Move File to Trash" })] }) })] })] })] })] }), _jsx("div", { "aria-label": "Editor Attachment Drop Zone", className: "tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-3xl [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none", onDrop: event => {
+                                                                        }, children: [_jsx(Icon, { "aria-hidden": "true" }), _jsx("span", { children: label })] }, view))) }), _jsx(DropdownMenuSeparator, {}), _jsx(DropdownMenuGroup, { children: _jsxs(DropdownMenuItem, { className: `${NOTE_ACTION_CLASS} text-[var(--dsw-alias-state-error-primary,#dc2626)]`, disabled: snapshot.path === null || props.onTrashCurrent === undefined, onSelect: () => { props.onTrashCurrent?.(); }, children: [_jsx(Trash2, { "aria-hidden": "true" }), _jsx("span", { children: "Move File to Trash" })] }) })] })] })] })] }), _jsx("div", { "aria-label": "Editor Attachment Drop Zone", className: "tocktutor-editor-body relative min-h-0 overflow-auto", onDrop: event => {
                                         if (event.dataTransfer.files.length === 0)
                                             return;
                                         event.preventDefault();
@@ -3698,7 +3698,7 @@ export function TockTutorRoute(props) {
         const container = root.current;
         if (!active || snapshot.path === null || container === null)
             return;
-        const selector = snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]';
+        const selector = snapshot.mode === 'source' || snapshot.mode === 'live-preview' ? '.cm-content' : '[aria-label$="View"]';
         const stop = () => {
             observer.disconnect();
             container.ownerDocument.removeEventListener('pointerdown', stop, true);

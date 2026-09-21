@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { createServer } from 'node:http'
+import { createServer, type RequestListener } from 'node:http'
 import { connect } from 'node:net'
 import { once } from 'node:events'
 import test from 'node:test'
@@ -11,6 +11,7 @@ import {
   createClipCancelHandler,
   createClipReviewHandler,
   createViewerHandler,
+  createImageHandler,
   isTrustedDesktopRequest,
   type ViewerPageResult,
 } from '../src/server.ts'
@@ -22,8 +23,8 @@ const page: ViewerPageResult = {
   url: 'https://example.com/final',
 }
 
-async function withServer(run: (origin: string) => Promise<void>) {
-  const server = createServer(createViewerHandler(async url => ({ ...page, title: url })))
+async function withServer(run: (origin: string) => Promise<void>, handler: RequestListener = createViewerHandler(async url => ({ ...page, title: url }))) {
+  const server = createServer(handler)
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject)
     server.listen(0, '127.0.0.1', resolve)
@@ -57,6 +58,21 @@ test('serves one same-origin bounded viewer request', async () => {
     assert.deepEqual(await response.json(), { ...page, title: 'https://example.com/article' })
     assert.equal(response.headers.get('cache-control'), 'no-store')
   })
+})
+
+test('inline image requests retain same-origin, method and request-size enforcement', async () => {
+  let loaded = 0
+  await withServer(async origin => {
+    const post = (requestOrigin: string, body: string) => fetch(origin, { method: 'POST', headers: { origin: requestOrigin, 'content-type': 'application/json' }, body })
+    assert.equal((await fetch(origin)).status, 405)
+    assert.equal((await post('https://attacker.example', JSON.stringify({ url: 'https://example.com/a.png' }))).status, 403)
+    assert.equal((await post(origin, 'x'.repeat(9000))).status, 400)
+    assert.equal(loaded, 0)
+    const response = await post(origin, JSON.stringify({ url: 'https://example.com/a.png' }))
+    assert.equal(response.status, 200)
+    assert.deepEqual(await response.json(), { dataBase64: 'iVBORw0KGgo=', mimeType: 'image/png', url: 'https://example.com/a.png' })
+    assert.equal(loaded, 1)
+  }, createImageHandler(async url => { loaded++; return { dataBase64: 'iVBORw0KGgo=', mimeType: 'image/png', url } }))
 })
 
 test('serves bounded review, apply, and cancel requests without accepting malformed approvals', async () => {

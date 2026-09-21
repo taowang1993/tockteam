@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TockTutorRoute } from '../src/route.tsx'
 
 // Control editor readiness without warming the real lazy imports first. The
-// existing search focus matrix separately exercises both real editor engines.
+// existing search focus matrix separately exercises Source and Live Preview.
 const readiness = vi.hoisted(() => ({ ready: false, listeners: new Set<() => void>() }))
 vi.mock('../src/editor-surface.tsx', async importOriginal => {
   const original = await importOriginal<typeof import('../src/editor-surface.tsx')>()
@@ -15,7 +15,7 @@ vi.mock('../src/editor-surface.tsx', async importOriginal => {
         readiness.listeners.add(listener)
         return () => { readiness.listeners.delete(listener) }
       }, () => readiness.ready)
-      return ready ? <div aria-label="Live Preview Editor" className="ProseMirror" contentEditable suppressContentEditableWarning tabIndex={0}>{source}</div> : <p>Loading Editor…</p>
+      return ready ? <div aria-label="Live Preview Editor" className="cm-content" contentEditable suppressContentEditableWarning tabIndex={0}>{source}</div> : <p>Loading Editor…</p>
     },
   }
 })

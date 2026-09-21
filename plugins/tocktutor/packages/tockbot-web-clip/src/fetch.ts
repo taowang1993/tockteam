@@ -374,7 +374,12 @@ function mappedFailure(error: unknown, timedOut: boolean, callerAborted: boolean
   return new WebFetchError('network', 'The public request failed.')
 }
 
-export async function fetchPublicText(value: string, options: FetchPublicTextOptions = {}): Promise<PublicTextResult> {
+async function fetchPublicResource<T>(
+  value: string,
+  options: FetchPublicTextOptions,
+  accept: string,
+  read: (response: Response, limits: PublicFetchLimits, signal: AbortSignal, url: string) => Promise<T>,
+): Promise<T> {
   const limits = checkedLimits(options.limits)
   let currentUrl = normalizePublicHttpUrl(value, limits.maxUrlBytes)
   const controller = new AbortController()
@@ -401,7 +406,7 @@ export async function fetchPublicText(value: string, options: FetchPublicTextOpt
         address,
         connectTimeoutMs: limits.connectTimeoutMs,
         headers: {
-          accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
+          accept,
           'accept-encoding': 'identity',
         },
         maxResponseHeadersBytes: limits.maxResponseHeadersBytes,
@@ -433,15 +438,12 @@ export async function fetchPublicText(value: string, options: FetchPublicTextOpt
         await discard(response)
         return fail('encoding', 'Compressed response bodies are not accepted.')
       }
-      let type: PublicTextResult['contentType']
       try {
-        type = contentType(response)
+        return await read(response, limits, controller.signal, currentUrl)
       } catch (error) {
         await discard(response)
         throw error
       }
-      const text = await readBoundedText(response, limits, controller.signal)
-      return { contentType: type, text, url: currentUrl }
     }
   } catch (error) {
     throw mappedFailure(error, timedOut, callerAborted)
@@ -449,4 +451,53 @@ export async function fetchPublicText(value: string, options: FetchPublicTextOpt
     clearTimeout(timer)
     options.signal?.removeEventListener('abort', abortFromCaller)
   }
+}
+
+export async function fetchPublicText(value: string, options: FetchPublicTextOptions = {}): Promise<PublicTextResult> {
+  return await fetchPublicResource(value, options, 'text/html,application/xhtml+xml,text/plain;q=0.8', async (response, limits, signal, url) => {
+    const type = contentType(response)
+    return { contentType: type, text: await readBoundedText(response, limits, signal), url }
+  })
+}
+
+export interface PublicImageResult {
+  dataBase64: string
+  mimeType: string
+  url: string
+}
+
+/** Public raster bytes only: no cookies, active SVG, renderer network access, or private redirects. */
+export async function fetchPublicImage(value: string, options: FetchPublicTextOptions = {}): Promise<PublicImageResult> {
+  return await fetchPublicResource(value, options, 'image/avif,image/webp,image/png,image/jpeg,image/gif', async (response, limits, signal, url) => {
+    const mimeType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() ?? ''
+    if (!/^image\/(?:png|jpeg|gif|webp|avif)$/u.test(mimeType)) return fail('content-type', 'A raster image is required.')
+    const length = response.headers.get('content-length')
+    if (length !== null && (!/^\d+$/u.test(length) || Number(length) > limits.maxResponseBytes)) return fail('body', 'The image is too large.')
+    const reader = response.body?.getReader()
+    if (!reader) return fail('body', 'The image is empty.')
+    const chunks: Uint8Array[] = []
+    let total = 0
+    try {
+      while (true) {
+        const { done, value } = await abortable(reader.read(), signal)
+        if (done) break
+        total += value.byteLength
+        if (total > limits.maxResponseBytes) return fail('body', 'The image is too large.')
+        chunks.push(value)
+      }
+    } catch (error) {
+      await reader.cancel().catch(() => undefined)
+      throw error
+    } finally {
+      reader.releaseLock()
+    }
+    const data = Buffer.concat(chunks, total)
+    const signature = mimeType === 'image/png' ? data.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
+      : mimeType === 'image/jpeg' ? data.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex'))
+      : mimeType === 'image/gif' ? /^GIF8[79]a$/u.test(data.subarray(0, 6).toString('ascii'))
+      : mimeType === 'image/webp' ? data.subarray(0, 4).toString('ascii') === 'RIFF' && data.subarray(8, 12).toString('ascii') === 'WEBP'
+      : data.subarray(4, 8).toString('ascii') === 'ftyp' && /avif|avis/u.test(data.subarray(8, 32).toString('ascii'))
+    if (!signature) return fail('content-type', 'The image bytes do not match their content type.')
+    return { dataBase64: data.toString('base64'), mimeType, url }
+  })
 }

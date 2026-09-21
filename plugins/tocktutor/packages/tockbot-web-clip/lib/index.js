@@ -1,9 +1,9 @@
 import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
-import { defaultPublicFetchLimits, fetchPublicText, readBoundedText, responseHeaderBytes, maximumPublicFetchLimits, WebFetchError, } from "./fetch.js";
+import { defaultPublicFetchLimits, fetchPublicText, fetchPublicImage, readBoundedText, responseHeaderBytes, maximumPublicFetchLimits, WebFetchError, } from "./fetch.js";
 import { defaultReaderViewLimits, maximumReaderViewLimits, projectReaderView, } from "./reader.js";
 import { ClipReviewStore, } from "./review.js";
-import { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH, createClipApplyHandler, createClipCancelHandler, createClipReviewHandler, createReaderHandler, createViewerHandler, } from "./server.js";
+import { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH, WEB_CLIP_IMAGE_API_PATH, createImageHandler, createClipApplyHandler, createClipCancelHandler, createClipReviewHandler, createReaderHandler, createViewerHandler, } from "./server.js";
 export * from "./fetch.js";
 export * from "./reader.js";
 export * from "./review.js";
@@ -119,6 +119,11 @@ export class WebClipHost extends Service {
                         throw new AggregateError(errors, 'Web Clip routes could not be removed');
                 };
                 try {
+                    removers.push(webServer.register({
+                        handler: createImageHandler(async (url, signal) => await this.fetchImage(url, { signal })),
+                        kind: 'exact',
+                        path: WEB_CLIP_IMAGE_API_PATH,
+                    }));
                     removers.push(webServer.register({
                         handler: createViewerHandler(async (url, signal) => await this.viewerPage(url, { signal })),
                         kind: 'exact',
@@ -317,6 +322,25 @@ export class WebClipHost extends Service {
         this.activeFetches += 1;
         try {
             return await this.trackOperation(options.signal, async (signal) => await this.loadPublicText(url, signal));
+        }
+        finally {
+            this.activeFetches -= 1;
+        }
+    }
+    async fetchImage(url, options = {}) {
+        if (this.activeFetches >= this.maxConcurrentRequests)
+            throw new ClipRuntimeError('capacity', 'Too many Web Clip requests are active');
+        this.activeFetches += 1;
+        try {
+            return await this.trackOperation(options.signal, async (signal) => {
+                const { epoch, runtime, vault } = this.activeRuntime();
+                const image = await fetchPublicImage(url, { limits: this.fetchLimits, signal });
+                signal.throwIfAborted();
+                if (epoch !== this.runtimeEpoch || !runtime.state.active || runtime.state.id !== vault.id || runtime.state.generation !== vault.generation) {
+                    throw new ClipRuntimeError('stale-vault', 'The active vault changed while loading the image');
+                }
+                return image;
+            });
         }
         finally {
             this.activeFetches -= 1;

@@ -199,7 +199,7 @@ test('rolls back partial route registration and removes successful routes on unl
   const server = context.get('webServer') as unknown as TestWebServer
   const fiber = await context.plugin(TestWebClipHost, config)
   await new Promise(resolve => setImmediate(resolve))
-  assert.equal(server.routes.size, 5)
+  assert.equal(server.routes.size, 6)
   await fiber.dispose()
   assert.equal(server.routes.size, 0)
   await context.fiber.dispose()

@@ -25,6 +25,8 @@ export interface SourceEditorProps {
     className?: string;
     content: string;
     editable?: boolean;
+    livePreview?: boolean;
+    onOpenExternalUrl?: ((url: string) => void) | undefined;
     extraExtensions?: readonly unknown[];
     foldRequest?: SourceEditorFoldRequest | null;
     id?: string;

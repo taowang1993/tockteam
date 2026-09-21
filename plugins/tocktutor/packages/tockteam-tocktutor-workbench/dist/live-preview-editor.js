@@ -5,9 +5,6 @@ import { Input } from '@tockteam/ui/input';
 import { AlignLeft, Plus, Tags, X } from 'lucide-react';
 import { lazy, Suspense, useId, useMemo, useState, } from 'react';
 import { parseFrontmatterProperties } from "./properties.js";
-export function isLivePreviewSourceProtected(source) {
-    return /(?:^|\n)\s*>\s*\[![A-Za-z][\w-]*\][+-]?|%%|\$\$|!\[\[|(?:^|\n) {0,3}(?:`{3,}|~{3,})\s*(?:base|mermaid)\b|<\/?[A-Za-z][^>]*>/u.test(source);
-}
 export function splitLivePreviewSource(source) {
     const normalized = source.replace(/\r\n?/gu, '\n');
     const match = normalized.match(/^---\n[\s\S]*?\n(?:---|\.\.\.)(?:\n|$)/u);
@@ -67,6 +64,6 @@ export function MarkdownDocumentHeader(props) {
                         : _jsxs(Button, { className: "mt-1 -ml-1 bg-transparent text-[var(--tt-muted)] hover:text-[var(--tt-text)]", onClick: () => { setAdding(true); }, size: "xs", type: "button", variant: "ghost", children: [_jsx(Plus, { "aria-hidden": "true" }), "Add Property"] }))] }))] }));
 }
 export function LivePreviewEditor(props) {
-    return (_jsxs("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col", children: [_jsx(MarkdownDocumentHeader, { className: "mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]", source: props.content, ...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(props.title === undefined ? {} : { title: props.title }) }), _jsx(Suspense, { fallback: _jsx("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: props.className, children: "Loading Live Preview\u2026" }), children: _jsx(LazyLivePreviewEditor, { ...props }) })] }));
+    return (_jsxs("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col", children: [_jsx(MarkdownDocumentHeader, { className: "mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]", source: props.content, ...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(props.title === undefined ? {} : { title: props.title }) }), _jsx(Suspense, { fallback: _jsx("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: props.className, children: "Loading Live Preview\u2026" }), children: _jsx(LazyLivePreviewEditor, { ...props }) })] }));
 }
 //# sourceMappingURL=live-preview-editor.js.map

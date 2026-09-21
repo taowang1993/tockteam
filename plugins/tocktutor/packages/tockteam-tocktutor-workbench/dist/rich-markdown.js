@@ -82,7 +82,7 @@ function replaceResolvedEmbedSources(markdown, replacements) {
         if (fence !== null)
             return line;
         const code = inlineCodeRanges(line);
-        return line.replace(/!\[\[([^\]\r\n]{1,4096})\]\]/gu, (match, _target, offset) => {
+        return line.replace(/!\[\[[^\]\r\n]{1,4096}\]\]|!\[[^\]\r\n]{0,1000}\]\((?:<[^>\r\n]{1,4096}>|[^)\s]{1,4096})(?:\s+["'][^"'\r\n]*["'])?\)/gu, (match, offset) => {
             const token = sourceTokens.get(match);
             return token !== undefined && !code.some(([start, end]) => offset >= start && offset < end) && !escapedAt(line, offset) ? token : match;
         });

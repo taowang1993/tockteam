@@ -20,10 +20,6 @@ export interface LivePreviewSelection {
   to: number
 }
 
-export function isLivePreviewSourceProtected(source: string): boolean {
-  return /(?:^|\n)\s*>\s*\[![A-Za-z][\w-]*\][+-]?|%%|\$\$|!\[\[|(?:^|\n) {0,3}(?:`{3,}|~{3,})\s*(?:base|mermaid)\b|<\/?[A-Za-z][^>]*>/u.test(source)
-}
-
 export function splitLivePreviewSource(source: string): { body: string; prefix: string } {
   const normalized = source.replace(/\r\n?/gu, '\n')
   const match = normalized.match(/^---\n[\s\S]*?\n(?:---|\.\.\.)(?:\n|$)/u)
@@ -142,7 +138,7 @@ export function MarkdownDocumentHeader(props: { className?: string; onAddPropert
 export function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]" source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
+      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]" source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
       <Suspense fallback={<div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={props.className}>Loading Live Preview…</div>}>
         <LazyLivePreviewEditor {...props} />
       </Suspense>

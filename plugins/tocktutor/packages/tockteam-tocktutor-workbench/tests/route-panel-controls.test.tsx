@@ -455,7 +455,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
   })
 
-  it('explains protected Live Preview and switches explicitly to Source Mode without changing the draft', async () => {
+  it('keeps complex notes editable in Live Preview without changing mode or the untouched draft', async () => {
     const source = '---\ntags: [draft]\n---\n# Lesson\n\n> [!note]\n> Keep this exact.\n'
     const onEdit = vi.fn()
     function ProtectedNote(): ReactNode {
@@ -474,23 +474,23 @@ describe('TockTutor titlebar panel controls', () => {
       />
     }
     render(<ProtectedNote />)
-    expect(screen.getByRole('note').textContent).toContain('Typing and pasting are disabled')
-    expect(screen.getByLabelText('Live Preview')).toBeTruthy()
+    await waitFor(() => expect(screen.getByLabelText('Live Preview').querySelector('.cm-content[contenteditable="true"]')).toBeTruthy())
     expect(screen.queryByLabelText('Markdown Source')).toBeNull()
-    expect(onEdit).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Edit in Source Mode' }))
-    await waitFor(() => expect(screen.getByLabelText('Markdown Source').querySelector('.cm-content')).toBeTruthy())
-    const lines = document.querySelectorAll('.cm-line')
-    expect(Array.from(lines, line => line.textContent).join('\n')).toBe(source)
     expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
     expect(screen.getByLabelText('Unsaved')).toBeTruthy()
     expect(onEdit).not.toHaveBeenCalled()
+    const editor = document.querySelector<HTMLElement>('.cm-content')!
+    editor.focus()
+    fireEvent.keyDown(editor, { key: 'Enter', code: 'Enter' })
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('# Lesson', '\n# Lesson')))
   })
 
-  it('updates the protection notice with the source and omits unavailable actions', () => {
+  it('never locks Live Preview when the note formatting changes', async () => {
     const props = { documentKey: 'Lesson.md', onEdit: vi.fn(), onToggleTask: vi.fn(), title: 'Lesson' }
     const view = render(<LivePreviewView {...props} source={'> [!note]\n> Protected\n'} />)
-    expect(screen.getByRole('note')).toBeTruthy()
+    await waitFor(() => expect(view.container.querySelector('.cm-content[contenteditable="true"]')).toBeTruthy())
+    expect(screen.queryByRole('note')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
     view.rerender(<LivePreviewView {...props} source={'# Lesson\nPlain text.\n'} />)
     expect(screen.queryByRole('note')).toBeNull()
@@ -507,7 +507,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
   })
 
-  it('renders source-preserving Live Preview chrome with an explicit editing fallback', async () => {
+  it('renders editable Live Preview with exact-source task and callout controls', async () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
     const onToggleTask = vi.fn()
@@ -547,28 +547,21 @@ describe('TockTutor titlebar panel controls', () => {
     expect(sourceMode.getAttribute('aria-checked')).toBe('false')
     fireEvent.click(sourceMode)
     expect(onMode).toHaveBeenCalledWith('source')
-    await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
-    expect(document.querySelector('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
-    const editorBody = screen.getByLabelText('Editor Attachment Drop Zone')
-    expect(editorBody.className).toContain('[&_.ProseMirror]:mx-auto')
-    expect(editorBody.className).toContain('[&_.ProseMirror]:max-w-3xl')
-    expect(editorBody.className).toContain('[&_.ProseMirror]:w-[calc(100%-48px)]')
-    expect(editorBody.className).toContain('[&_.ProseMirror]:outline-none')
-    expect(screen.getByRole('note')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Edit in Source Mode' })).toBeTruthy()
+    await waitFor(() => expect(document.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
+    expect(document.querySelector('.cm-content')?.getAttribute('contenteditable')).toBe('true')
+    expect(screen.getByLabelText('Live Preview Editor').className).toContain('tocktutor-live-preview-styles')
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
     const task = screen.getByRole('checkbox', { name: 'Mark Task as Complete' })
     expect(task.tabIndex).toBe(0)
     fireEvent.keyDown(task, { key: ' ' })
-    expect(onToggleTask).toHaveBeenCalledWith(0)
-    const callout = document.querySelector('.tocktutor-live-callout')
-    expect(callout?.classList.contains('hidden')).toBe(true)
-    expect(callout?.textContent).toContain('Body')
-    const calloutFold = screen.getByRole('button', { name: 'Expand Callout' })
-    fireEvent.keyDown(calloutFold, { key: 'Enter' })
-    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('> [!tip]- Fold', '> [!tip]+ Fold')))
-    expect(callout).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Collapse Heading' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Collapse List' })).toBeTruthy()
+    expect(onEdit).toHaveBeenCalledWith(source.replace('- [ ] Review', '- [x] Review'))
+    const callout = document.querySelector<HTMLDetailsElement>('details.callout')!
+    expect(callout.open).toBe(false)
+    expect(callout.textContent).toContain('Body')
+    fireEvent.click(callout.querySelector('summary')!)
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('- [ ] Review', '- [x] Review').replace('> [!tip]- Fold', '> [!tip]+ Fold')))
+    expect(screen.getByLabelText('Collapse List')).toBeTruthy()
   })
 
   it('returns the resolved Reading View fragment through the mounted route and scrolls it after navigation', { timeout: 20_000 }, async () => {
@@ -1416,7 +1409,7 @@ describe('TockTutor titlebar panel controls', () => {
     }
     if (!sameNote) await waitFor(() => expect(navigate).toHaveBeenCalledWith('/tocktutor/Notes/Result.md'))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull())
-    await waitFor(() => expect(document.activeElement?.classList.contains(content ? 'cm-content' : 'ProseMirror')).toBe(true))
+    await waitFor(() => expect(document.activeElement?.classList.contains('cm-content')).toBe(true))
     expect(document.activeElement?.textContent).toContain(sameNote ? 'Welcome' : 'Result')
   })
 
