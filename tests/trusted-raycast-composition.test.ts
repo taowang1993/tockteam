@@ -23,6 +23,7 @@ test('catalog separates runnable commands from safe setup and gates discovery on
   assert.equal(trustItem!.id, 'trusted-raycast:trust')
   assert.equal(trustItem!.imageKey, 'ueli-command')
   const [translate, kaomoji, manage] = trustedRaycastCatalog(true, { ...approved, installed: true, enabled: true }, { ...approved, installed: true, enabled: true })
+  assert.deepEqual([translate!.name, kaomoji!.name], ['Google Translate', 'Kaomoji Search'])
   assert.equal(translate!.id, 'trusted-raycast:google-translate:translate')
   assert.equal(kaomoji!.id, 'trusted-raycast:kaomoji-search:index')
   assert.equal(kaomoji!.imageKey, 'trusted-raycast-kaomoji-search')

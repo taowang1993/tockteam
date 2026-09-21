@@ -19,8 +19,8 @@ export function trustedRaycastAssetUrl(imageKey: string | undefined): string | u
 }
 
 export const trustedRaycastCommands = Object.freeze([
-  { extensionId: 'google-translate', id: TRUSTED_RAYCAST_RESULT_ID, name: 'Translate', extensionName: 'Google Translate', imageKey: TRUSTED_RAYCAST_TRANSLATE_IMAGE_KEY, handler: TRUSTED_RAYCAST_TRANSLATE_HANDLER, command: 'translate' },
-  { extensionId: 'kaomoji-search', id: TRUSTED_RAYCAST_KAOMOJI_RESULT_ID, name: 'Search Kaomoji', extensionName: 'Kaomoji Search', imageKey: TRUSTED_RAYCAST_KAOMOJI_IMAGE_KEY, handler: TRUSTED_RAYCAST_KAOMOJI_HANDLER, command: 'index' },
+  { extensionId: 'google-translate', id: TRUSTED_RAYCAST_RESULT_ID, name: 'Google Translate', extensionName: 'Google Translate', imageKey: TRUSTED_RAYCAST_TRANSLATE_IMAGE_KEY, handler: TRUSTED_RAYCAST_TRANSLATE_HANDLER, command: 'translate' },
+  { extensionId: 'kaomoji-search', id: TRUSTED_RAYCAST_KAOMOJI_RESULT_ID, name: 'Kaomoji Search', extensionName: 'Kaomoji Search', imageKey: TRUSTED_RAYCAST_KAOMOJI_IMAGE_KEY, handler: TRUSTED_RAYCAST_KAOMOJI_HANDLER, command: 'index' },
   { extensionId: 'can-i-use', id: TRUSTED_RAYCAST_CAN_I_USE_RESULT_ID, name: 'Can I Use', extensionName: 'Can I Use', imageKey: TRUSTED_RAYCAST_CAN_I_USE_IMAGE_KEY, handler: TRUSTED_RAYCAST_CAN_I_USE_HANDLER, command: 'index' },
 ] as const)
 export const trustedRaycastSetupId = (id: TrustedRaycastRuntimeExtensionId): string => `trusted-raycast:setup:${id}`

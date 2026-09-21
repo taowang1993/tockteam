@@ -171,10 +171,10 @@ export async function runBundledTrustedRaycastInstalledSmoke(launcher, userData,
   await assertLoaded('google-translate')
   await close('section[aria-label="Google Translate"]')
 
-  await open('Search Kaomoji', 'kaomoji-search:index', 'section[aria-label="Kaomoji Search"]')
+  await open('Kaomoji Search', 'kaomoji-search:index', 'section[aria-label="Kaomoji Search"]')
   await assertLoaded('kaomoji-search')
   await close('section[aria-label="Kaomoji Search"]')
-  await open('Search Kaomoji', 'kaomoji-search:index', 'section[aria-label="Kaomoji Search"]')
+  await open('Kaomoji Search', 'kaomoji-search:index', 'section[aria-label="Kaomoji Search"]')
   await assertLoaded('kaomoji-search')
   await close('section[aria-label="Kaomoji Search"]')
 
@@ -185,7 +185,7 @@ export async function runBundledTrustedRaycastInstalledSmoke(launcher, userData,
   await wait(`document.querySelector('section[aria-label="Extensions"] [role="status"]')?.textContent?.includes('Installed · Disabled') === true`)
   await click('Back to Results')
   await wait(`document.querySelector('section[aria-label="Extensions"]') === null`)
-  await input('#launcher-search', 'Search Kaomoji')
+  await input('#launcher-search', 'Kaomoji Search')
   await wait(`document.querySelector('[data-result-id="trusted-raycast:setup:kaomoji-search"]') !== null`)
   assert.equal(await launcher.evaluate(`document.querySelector('[data-result-id="trusted-raycast:kaomoji-search:index"]') !== null`), false, 'disabled Kaomoji remained a runnable command')
   const disabled = await installedTrustState(launcher, 'kaomoji-search')
@@ -215,7 +215,7 @@ export async function runTrustedRaycastInstalledRestartSmoke(launcher, userData,
     await launcher.pressKey('Escape')
     await wait(`document.querySelector('#trusted-raycast-search') === null`)
   }
-  await input('#launcher-search', 'Search Kaomoji')
+  await input('#launcher-search', 'Kaomoji Search')
   await wait(`document.querySelector('[data-result-id="trusted-raycast:setup:kaomoji-search"]') !== null`)
   assert.equal(await launcher.evaluate(`document.querySelector('[data-result-id="trusted-raycast:kaomoji-search:index"]') !== null`), false, 'restart bootstrap re-enabled disabled Kaomoji')
   await input('#launcher-search', 'Extensions')
