@@ -8,13 +8,13 @@ test('desktop terminal uses the Better Sidebar host endpoint', () => {
   assert.equal(BETTER_SIDEBAR_TERMINAL_WS_PATH, '/sidebar/ws/terminal')
 })
 
-test('Better Sidebar adapter frames session exits without changing agent terminals', () => {
+for (const newline of ['\n', '\r\n']) test(`Better Sidebar adapter frames session exits without changing agent terminals (${newline === '\n' ? 'LF' : 'CRLF'})`, () => {
   const manifest = JSON.parse(readFileSync(
     new URL('../upstream/DSH-better-sidebar/package.json', import.meta.url),
     'utf8',
   )) as { version?: string }
   assert.equal(manifest.version, '0.18.0')
-  const source = readFileSync(new URL('../upstream/DSH-better-sidebar/src/index.ts', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../upstream/DSH-better-sidebar/src/index.ts', import.meta.url), 'utf8').replaceAll('\r\n', '\n').replaceAll('\n', newline)
   assert.match(source, /'open\.external'/u)
   const adapted = adaptBetterSidebarHost(source)
   assert.doesNotMatch(adapted, /launchExternal|'open\.external'/u)
@@ -22,8 +22,9 @@ test('Better Sidebar adapter frames session exits without changing agent termina
   const externalStart = source.indexOf('    // External open for the file tree')
   const sideChatStart = source.indexOf('    // Side Chat:', externalStart)
   const terminalStart = source.indexOf('const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24')
-  assert.ok(adapted.includes(source.slice(sideChatStart, terminalStart)),
-    'removing external-open must preserve the following host routes byte-for-byte')
+  // The adapter deliberately canonicalizes CRLF before matching its pinned seams.
+  assert.ok(adapted.includes(source.slice(sideChatStart, terminalStart).replaceAll('\r\n', '\n')),
+    'removing external-open must preserve the following host routes after newline normalization')
   assert.doesNotMatch(adapted, /External open for the file tree/u)
   const gitSource = readFileSync(new URL('../upstream/DSH-better-sidebar/src/git.ts', import.meta.url), 'utf8')
   assert.match(gitSource, /windowsHide: true/u)
