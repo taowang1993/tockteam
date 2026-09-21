@@ -16,6 +16,21 @@ afterEach(() => {
 })
 
 describe('CodeMirror Source editor', () => {
+  it('uses the note text color for drawn cursors instead of the light-theme default', async () => {
+    const editorViewRef = { current: null }
+    const { container } = render(<SourceEditor content="Caret contrast" editorViewRef={editorViewRef} onContentChange={() => {}} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
+    // jsdom has no cursor geometry and preserves CSS variables. Probe the real
+    // editor's stylesheet; browser verification checks the drawn cursor and contrast.
+    for (const className of ['cm-cursor', 'cm-dropCursor']) {
+      const cursor = document.createElement('div')
+      cursor.className = className
+      container.querySelector('.cm-editor')!.append(cursor)
+      expect(getComputedStyle(cursor).borderLeftColor).toBe('var(--tt-text)')
+      cursor.remove()
+    }
+  })
+
   it('preserves exact source, reports selections, and accepts a real edit', async () => {
     const source = '---\r\nstatus: active\r\n---\r\n# Keep\r\n'
     const onChange = vi.fn()

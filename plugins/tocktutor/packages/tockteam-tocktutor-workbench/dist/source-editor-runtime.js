@@ -156,6 +156,10 @@ function buildEditorExtensions(props) {
     let plainTextPaste = false;
     const extensions = [
         minimalSetup,
+        EditorView.theme({
+            '.cm-content': { caretColor: 'var(--tt-text)' },
+            '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--tt-text)' },
+        }),
         markdown(),
         ...(props.showFoldGutter ? [foldGutter()] : []),
         scrollPastEnd(),
