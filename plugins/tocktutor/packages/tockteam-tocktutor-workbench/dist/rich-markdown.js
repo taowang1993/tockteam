@@ -265,8 +265,8 @@ function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
     let text = source;
     text = text.replace(/<[^>]{1,200}>/gu, tag => SAFE_RAW_TAG.test(tag) ? hold(tag.toLocaleLowerCase()) : tag);
     text = text.replace(/`([^`\n]{0,10000})`/gu, (_match, code) => hold(`<code>${escapeMarkdownHtml(code)}</code>`));
-    text = text.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt, target) => {
-        const external = classifyExternalEmbed(target);
+    text = text.replace(/!\[([^\]\n]{0,1000})\]\((<[^>\n]{1,4096}>|[^)\n]{1,4096})\)/gu, (match, alt, target) => {
+        const external = classifyExternalEmbed(target.replace(/^<|>$/gu, ''));
         if (external !== null) {
             const image = external.kind === 'youtube' || external.kind === 'twitter' ? external : { ...external, kind: 'image' };
             return hold(externalEmbedMode === 'viewer' ? externalEmbedButtonHtml(alt, image) : externalEmbedInertHtml(alt, image));

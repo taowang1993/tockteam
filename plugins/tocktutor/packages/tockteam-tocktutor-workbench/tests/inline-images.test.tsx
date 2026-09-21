@@ -59,6 +59,15 @@ it.each(['', '> '])('refreshes a %sreference image when its definition changes',
   } finally { unmount() }
 })
 
+it.each(['![Photo][id]\n\n[id]: https://example.com/a(1).png', '![Photo](https://example.com/a(1).png)'])('keeps parenthesized image destinations in block previews: %s', async image => {
+  const request = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => payload())
+  const { container, unmount } = render(<LivePreviewEditor content={`> ${image}`} onMarkdownChange={() => {}} />)
+  try {
+    await waitFor(() => expect(container.querySelector('img.tocktutor-inline-image[src]')).toBeTruthy())
+    expect(request.mock.calls.map(([, options]) => JSON.parse(String(options?.body)).url)).toEqual(['https://example.com/a(1).png'])
+  } finally { unmount() }
+})
+
 it('reuses prefetched images across widget recreation without one consumer cancelling another', async () => {
   const request = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => payload())
   const loader = new InlineImageLoader()

@@ -200,17 +200,18 @@ export function buildLivePreviewExtension(getEmbeds, openUrl) {
             if (active(from, to))
                 return false;
             let rendered = '', cursor = from;
-            // Fragment rendering cannot see reference definitions elsewhere in the note.
+            // Preserve parsed destinations, including note-level references and parentheses.
             tree.iterate({ from, to, enter: ref => {
-                    if (ref.name !== 'Image' || ref.node.getChild('URL'))
+                    if (ref.name !== 'Image')
                         return;
-                    const marks = ref.node.getChildren('LinkMark'), reference = ref.node.getChild('LinkLabel');
+                    const marks = ref.node.getChildren('LinkMark'), reference = ref.node.getChild('LinkLabel'), target = ref.node.getChild('URL');
                     const label = source.slice(marks[0]?.to ?? ref.from, marks[1]?.from ?? ref.to);
                     const key = reference ? source.slice(reference.from + 1, reference.to - 1) : label;
-                    const url = references.get(key.toLowerCase());
+                    const raw = target ? source.slice(target.from, target.to).replace(/^<|>$/gu, '') : references.get(key.toLowerCase());
+                    const url = raw && classifyExternalEmbed(raw.replace(/\\([()\\])/gu, '$1'))?.sourceUrl;
                     if (!url || !marks[1])
                         return;
-                    rendered += source.slice(cursor, ref.from) + source.slice(ref.from, marks[1].to) + `(${url})`;
+                    rendered += source.slice(cursor, ref.from) + source.slice(ref.from, marks[1].to) + `(<${url}>)`;
                     cursor = ref.to;
                 } });
             rendered += source.slice(cursor, to);
