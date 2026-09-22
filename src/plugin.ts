@@ -23,6 +23,7 @@ import {
   TOCKTEAM_DESKTOP_PRINT_EXPORT_SERVICE,
 } from './host-contract.ts'
 import { DesktopRevealProvider } from './desktop-reveal-provider.ts'
+import { mountDesktopPageRoutes, type DesktopPageContext } from './desktop-page-routes.ts'
 
 interface SystemPromptService {
   section(entry: {
@@ -40,7 +41,7 @@ interface BashEnvService {
   }): unknown
 }
 
-interface HostServices {
+interface HostServices extends DesktopPageContext {
   systemPrompt: SystemPromptService
   bashEnv: BashEnvService
 }
@@ -139,6 +140,8 @@ export function apply(ctx: HostContext): void {
     version: capability.version,
   } satisfies TockTeamSurface))
   mountMarketplaceAgentTools(ctx)
+
+  ctx.inject(['webServer', 'connection'], mountDesktopPageRoutes)
 
   ctx.inject(['systemPrompt'], (promptCtx) => {
     promptCtx.systemPrompt.section({
