@@ -353,6 +353,7 @@ describe('TockTutor titlebar panel controls', () => {
     openNoteActions()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmark Note…', exact: true }))
     const dialog = screen.getByRole('dialog', { name: 'Bookmark Note' })
+    expect(within(dialog).getByRole('option', { name: 'No Group', exact: true })).toBeTruthy()
     const title = within(dialog).getByRole('textbox', { name: 'Bookmark Title' })
     fireEvent.change(title, { target: { value: 'Lesson' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel', exact: true }))

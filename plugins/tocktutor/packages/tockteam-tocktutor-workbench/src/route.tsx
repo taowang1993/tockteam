@@ -4374,7 +4374,7 @@ function BookmarkDialog(props: {
           <Label unstyled className="grid gap-1.5 text-sm font-[650]">
             Bookmark Group
             <NativeSelect unstyled aria-label="Bookmark Group" disabled={pending} onChange={event => { setGroupId(event.target.value); setError(null) }} value={groupId}>
-              <NativeSelectOption value="">No group</NativeSelectOption>
+              <NativeSelectOption value="">No Group</NativeSelectOption>
               {props.groups.filter((group): group is Extract<TockTutorBookmark, { kind: 'group' }> => group.kind === 'group').map(group => <NativeSelectOption key={group.id} value={group.id}>{group.title}</NativeSelectOption>)}
             </NativeSelect>
           </Label>
