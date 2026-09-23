@@ -17,7 +17,8 @@ import {
 
 test('Git review preserves filenames with spaces and escaped characters from real patches', () => {
   const directory = mkdtempSync(join(tmpdir(), 'tockcoder-review-paths-'))
-  const names = ['with space.md', 'trailing .md ', 'with\ttab.md', '测试 file.md']
+  const names = ['with space.md', '测试 file.md']
+  if (process.platform !== 'win32') names.push('trailing .md ', 'with\ttab.md')
   try {
     execFileSync('git', ['init', '-q', directory])
     for (const name of names) writeFileSync(join(directory, name), 'before\n')
@@ -30,6 +31,20 @@ test('Git review preserves filenames with spaces and escaped characters from rea
     for (const file of files) assert.equal(file.lines.at(-1)?.content, 'after')
   } finally {
     rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('Git review preserves POSIX-only filenames on every parser platform', () => {
+  for (const path of ['trailing .md ', 'with\ttab.md']) {
+    const [file] = parseGitReviewDiff([
+      `diff --git ${JSON.stringify(`a/${path}`)} ${JSON.stringify(`b/${path}`)}`,
+      `--- ${JSON.stringify(`a/${path}`)}`,
+      `+++ ${JSON.stringify(`b/${path}`)}`,
+      '@@ -1 +1 @@', '-before', '+after',
+    ].join('\n'))
+    assert.equal(file?.path, path)
+    assert.equal(file?.oldPath, path)
+    assert.equal(file?.lines.at(-1)?.content, 'after')
   }
 })
 
