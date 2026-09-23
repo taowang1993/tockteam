@@ -14995,7 +14995,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15010,7 +15010,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15088,7 +15088,7 @@ var Alert = React.forwardRef(function Alert2({ className, variant = "default", u
 var React2 = __toESM(require("react"), 1);
 var import_jsx_runtime2 = require("react/jsx-runtime");
 var buttonVariants = cva(
-  "group/button inline-flex shrink-0 cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-clip-padding text-sm font-medium outline-none transition-[background-color,border-color,color,box-shadow,transform] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button box-border m-0 py-0 inline-flex shrink-0 cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-clip-padding text-sm font-medium outline-none transition-[background-color,border-color,color,box-shadow,transform] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -15155,19 +15155,19 @@ function Label({ className, unstyled = false, ...props }) {
   );
 }
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var import_react2 = require("react");
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/shared/src/utils.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/shared/src/utils.js
 var toKebabCase = (string4) => string4.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 var mergeClasses = (...classes) => classes.filter((className, index, array2) => {
   return Boolean(className) && className.trim() !== "" && array2.indexOf(className) === index;
 }).join(" ").trim();
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/Icon.js
 var import_react = require("react");
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/defaultAttributes.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/defaultAttributes.js
 var defaultAttributes = {
   xmlns: "http://www.w3.org/2000/svg",
   width: 24,
@@ -15180,7 +15180,7 @@ var defaultAttributes = {
   strokeLinejoin: "round"
 };
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/Icon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/Icon.js
 var Icon = (0, import_react.forwardRef)(
   ({
     color = "currentColor",
@@ -15212,7 +15212,7 @@ var Icon = (0, import_react.forwardRef)(
   }
 );
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/createLucideIcon.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/createLucideIcon.js
 var createLucideIcon = (iconName, iconNode) => {
   const Component = (0, import_react2.forwardRef)(
     ({ className, ...props }, ref) => (0, import_react2.createElement)(Icon, {
@@ -15226,11 +15226,11 @@ var createLucideIcon = (iconName, iconNode) => {
   return Component;
 };
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/chevron-down.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/chevron-down.js
 var __iconNode = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
 var ChevronDown = createLucideIcon("ChevronDown", __iconNode);
 
-// ../../../../node_modules/.pnpm/lucide-react@0.473.0_react@18.3.1/node_modules/lucide-react/dist/esm/icons/loader-circle.js
+// ../../node_modules/.pnpm/lucide-react@0.473.0_react@..+node_modules+.pnpm+react@18.3.1+node_modules+react/node_modules/lucide-react/dist/esm/icons/loader-circle.js
 var __iconNode2 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
 var LoaderCircle = createLucideIcon("LoaderCircle", __iconNode2);
 
@@ -15243,7 +15243,7 @@ function NativeSelect({ className, size = "default", unstyled = false, ...props 
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
     "div",
     {
-      className: cn("group/native-select relative w-fit has-[select:disabled]:opacity-50", className),
+      className: cn("group/native-select relative w-fit min-w-0 max-w-full has-[select:disabled]:opacity-50", className),
       "data-slot": "native-select-wrapper",
       "data-size": size,
       children: [
@@ -15252,7 +15252,7 @@ function NativeSelect({ className, size = "default", unstyled = false, ...props 
           {
             "data-slot": "native-select",
             "data-size": size,
-            className: "h-8 w-full min-w-0 appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=sm]:h-7 data-[size=sm]:rounded-md data-[size=sm]:py-0.5",
+            className: "box-border m-0 h-8 w-full min-w-0 appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-sm text-foreground outline-none transition-[background-color,border-color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=sm]:h-7 data-[size=sm]:rounded-md data-[size=sm]:py-0.5",
             ...props
           }
         ),

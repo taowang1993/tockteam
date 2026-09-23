@@ -1,3 +1,5 @@
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './accordion.tsx'
+export { Slider } from './slider.tsx'
 export { Alert, AlertDescription, AlertTitle } from './alert.tsx'
 export type { AlertProps } from './alert.tsx'
 export { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogOverlay, AlertDialogPortal, AlertDialogTitle, AlertDialogTrigger } from './alert-dialog.tsx'

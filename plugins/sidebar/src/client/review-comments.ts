@@ -460,7 +460,11 @@ export class ReviewCommentsService {
   add(commit: GitReviewCommit, comment: ReviewCommentDraft): InjectionResult {
     const stored: ReviewComment = { ...comment, request: '' }
     stored.request = formatReviewComment(commit, stored)
-    this.comments = [...this.comments, stored].slice(-MAX_PERSISTED_COMMENTS)
+    const next = [...this.comments, stored]
+    for (const evicted of next.slice(0, -MAX_PERSISTED_COMMENTS)) {
+      this.bridge.removeComment(evicted.id)
+    }
+    this.comments = next.slice(-MAX_PERSISTED_COMMENTS)
     this.publish()
     return this.bridge.addComment(stored.request, stored.id, stored.branch)
   }

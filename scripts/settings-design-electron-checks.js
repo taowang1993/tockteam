@@ -1,0 +1,154 @@
+async page => {
+  const errors = [];
+  const cdp = await page.context().newCDPSession(page);
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.waitForFunction(() => typeof window.renderPrimitives === 'function');
+  const failures = [];
+  const check = (condition, message) => { if (!condition) failures.push(message); };
+  const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number).map(n => n / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4).reduce((sum, n, i) => sum + n * [.2126, .7152, .0722][i], 0);
+  const contrast = (a, b) => { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+  const theme = async id => {
+    await page.evaluate(id => {
+      for (const s of window.auditSkins) for (const name of Object.keys(s.tokens)) document.body.style.removeProperty(name);
+      const skin = window.auditSkins.find(s => s.id === id);
+      document.documentElement.style.colorScheme = skin?.colorScheme ?? id;
+      document.body.toggleAttribute('data-ds-dark-theme', (skin?.colorScheme ?? id) === 'dark');
+      delete document.body.dataset.tockteamSkin;
+      if (skin) { document.body.dataset.tockteamSkin = skin.id; for (const [key, value] of Object.entries(skin.tokens)) document.body.style.setProperty(key, value); }
+    }, id);
+    await page.waitForTimeout(250);
+  };
+  const captures = [];
+  const capture = async (name, content) => {
+    const facts = await page.evaluate(() => ({ viewport: [innerWidth, innerHeight, devicePixelRatio], route: location.href, mode: document.documentElement.style.colorScheme, skin: document.body.dataset.tockteamSkin ?? document.documentElement.dataset.tockteamSkin ?? null }));
+    check(JSON.stringify(facts.viewport) === '[1512,949,2]' && facts.mode === 'dark' && facts.skin === null, 'canonical Electron geometry/theme: ' + JSON.stringify(facts));
+    await page.screenshot({ path: 'EVIDENCE_DIRECTORY/' + name + '.png' });
+    captures.push({ name, content, ...facts });
+  };
+  const colors = locator => locator.evaluate(e => ({ color: getComputedStyle(e).color, bg: getComputedStyle(e).backgroundColor }));
+  await page.evaluate(() => window.renderPrimitives());
+  await page.getByRole('checkbox', { name: 'Checked Option' }).waitFor();
+  check(await page.getByRole('checkbox', { name: 'Checked Option' }).evaluate(e => getComputedStyle(e).padding === '0px' && e.getBoundingClientRect().width === 16), 'checkbox geometry excludes native button padding');
+  const palettes = [];
+  for (const id of await page.evaluate(() => ['dark', 'light', ...window.auditSkins.map(s => s.id)])) {
+    await theme(id);
+    const button = await colors(page.getByRole('button', { name: 'Default Action' }));
+    const checkbox = await colors(page.getByRole('checkbox', { name: 'Checked Option' }));
+    check(contrast(button.color, button.bg) >= 4.5, id + ': primary button text contrast ' + JSON.stringify(button));
+    check(contrast(checkbox.color, checkbox.bg) >= 3, id + ': checked mark contrast');
+    const thumb = page.getByRole('slider', { name: 'Shared Range' });
+    await thumb.focus(); await thumb.press('ArrowRight'); await page.waitForTimeout(150);
+    const slider = await thumb.evaluate(e => { const s = getComputedStyle(e), r = e.getBoundingClientRect(); return { width: r.width, height: r.height, border: s.borderColor, fill: s.backgroundColor, corner: s.cornerShape, ring: s.boxShadow, focused: document.activeElement === e, focusVisible: e.matches(':focus-visible') }; });
+    check(slider.width === 12 && slider.height === 12 && ['round', 'superellipse(1)'].includes(slider.corner), id + ': round 12px slider thumb');
+    check(contrast(slider.border, slider.fill) >= 3 && slider.ring !== 'none', id + ': slider contrast and keyboard focus: ' + JSON.stringify(slider));
+    palettes.push({ id, button, checkbox, slider });
+  }
+  check(await page.getByRole('slider', { name: 'Disabled Range' }).getAttribute('tabindex') === null, 'disabled slider leaves the tab order');
+  await theme('dark');
+  await page.evaluate(() => window.renderLauncher());
+  await page.getByRole('heading', { name: 'TockLauncher', exact: true }).waitFor();
+  const base64 = page.getByRole('button', { name: 'Base64 Conversion', exact: true });
+  const calculator = page.getByRole('button', { name: 'Calculator', exact: true });
+  await base64.focus(); await base64.press('ArrowDown');
+  check(await calculator.evaluate(e => document.activeElement === e), 'accordion supports arrow-key navigation');
+  await calculator.press('Enter');
+  const precision = page.getByRole('spinbutton', { name: 'Calculator Precision', exact: true });
+  await precision.fill('7');
+  await calculator.click();
+  check(!await precision.isVisible(), 'closed accordion hides its controls');
+  await calculator.click();
+  check(await precision.inputValue() === '7', 'accordion preserves edited settings while collapsed');
+  check(await base64.getAttribute('aria-expanded') === 'true', 'multiple settings groups can stay open');
+  const uuid = page.getByRole('button', { name: 'UUID / GUID Generator', exact: true });
+  await uuid.click();
+  const formats = page.getByRole('textbox', { name: 'UUID Search Result Formats', exact: true });
+  await formats.fill('{invalid');
+  await uuid.click(); await uuid.click();
+  check(await formats.inputValue() === '{invalid' && await formats.getAttribute('aria-invalid') === 'true', 'accordion preserves invalid unsaved drafts and validation on reopen');
+  const closedGroups = page.locator('[data-slot="accordion-trigger"][aria-expanded="false"]');
+  while (await closedGroups.count()) await closedGroups.first().click();
+  const input = page.getByRole('spinbutton', { name: 'Maximum Results', exact: true });
+  check(await input.evaluate(e => e.getBoundingClientRect().height) === 32, 'text inputs render 32px including padding and border');
+  check(await page.locator('[data-slot="field-description"]').first().evaluate(e => getComputedStyle(e).marginTop === '0px' && getComputedStyle(e).marginBottom === '0px'), 'field descriptions have no UA margins');
+  const range = page.getByRole('slider', { name: 'Search Fuzziness' });
+  check(await range.evaluate(e => { const width = e.closest('[data-slot="slider"]').getBoundingClientRect().width; return width >= 120 && width <= 210; }), 'Search Fuzziness slider has a usable bounded track');
+  const initialFuzziness = await range.evaluate(e => Number(e.getAttribute('aria-valuenow') ?? e.value));
+  await range.focus();
+  await range.press('ArrowRight');
+  await page.waitForTimeout(150);
+  check(await page.evaluate(expected => window.auditValues()['searchEngine.fuzziness'] === expected, Math.round((initialFuzziness + .1) * 10) / 10), 'slider commits keyboard changes without requiring blur');
+  check(await range.evaluate(e => !!e.getAttribute('aria-describedby')?.split(' ').some(id => document.getElementById(id)?.textContent.includes('Higher values'))), 'slider thumb has associated help');
+  await range.press('Home'); await page.waitForTimeout(150);
+  check(await range.getAttribute('aria-valuenow') === '0', 'slider respects minimum');
+  await range.press('End'); await page.waitForTimeout(150);
+  check(await range.getAttribute('aria-valuenow') === '1', 'slider respects maximum');
+  const track = await range.locator('xpath=ancestor::*[@data-slot="slider"]').boundingBox();
+  await page.mouse.click(track.x + track.width * .7, track.y + track.height / 2);
+  await page.waitForTimeout(150);
+  const pointerValue = Number(await range.getAttribute('aria-valuenow'));
+  check(pointerValue > 0 && pointerValue < 1 && await page.evaluate(value => window.auditValues()['searchEngine.fuzziness'] === value, pointerValue), 'slider pointer release commits the selected value');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  check(await range.evaluate(e => getComputedStyle(e).transitionProperty === 'none'), 'slider respects reduced motion');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  for (const name of ['Appearance and Input', 'Keyboard and Mouse', 'Browser and Shortcuts', 'Local Transformation Extensions', 'File Search', 'Network Extensions']) check(await page.getByRole('heading', { name, exact: true }).count() === 1, 'one heading: ' + name);
+  const history = page.getByRole('switch', { name: 'Enable Search History' });
+  const previous = await history.getAttribute('aria-checked');
+  await page.getByText('Search History', { exact: true }).click();
+  check(await history.getAttribute('aria-checked') !== previous, 'visible label toggles Search History');
+  check(await history.evaluate(e => !!e.getAttribute('aria-describedby')?.split(' ').some(id => document.getElementById(id)?.textContent.includes('Desktop-owned'))), 'switch help is associated');
+  await capture('launcher-dark', 'TockLauncher settings; all disclosures open; in-memory settings fixture');
+  for (const width of [600, 375]) {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 949, deviceScaleFactor: 2, mobile: false });
+    const widths = await page.locator('[data-slot="field-content"]').evaluateAll(es => es.filter(e => e.getBoundingClientRect().height > 0).map(e => e.getBoundingClientRect().width));
+    check(widths.every(w => w >= 120), 'readable field labels at ' + width + ': ' + Math.min(...widths));
+  }
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false });
+  await page.evaluate(() => window.renderMarketplace());
+  await page.locator('input').first().waitFor();
+  await page.locator('input').first().focus();
+  check(await page.locator('input').first().evaluate(e => { const s = getComputedStyle(e), p = getComputedStyle(e.parentElement); return (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== 'none' || p.boxShadow !== 'none'; }), 'marketplace search shows keyboard focus');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  const statusDark = await colors(page.locator('[role="status"]').first());
+  await page.emulateMedia({ colorScheme: 'light' });
+  check(JSON.stringify(await colors(page.locator('[role="status"]').first())) === JSON.stringify(statusDark), 'marketplace follows app theme, not system scheme');
+  await page.evaluate(() => window.renderAssistant());
+  await page.getByRole('button', { name: 'Add Context', exact: true }).click();
+  await page.getByText('Assistant Settings', { exact: true }).click();
+  const popup = page.getByRole('dialog', { name: 'Assistant Options' });
+  for (const id of palettes.map(p => p.id)) {
+    await theme(id);
+    const assistant = await colors(popup);
+    const save = await colors(page.getByRole('button', { name: 'Save Settings', exact: true }));
+    check(contrast(assistant.color, assistant.bg) >= 4.5, id + ': assistant portal text contrast');
+    check(contrast(save.color, save.bg) >= 4.5, id + ': assistant save contrast');
+    await page.getByRole('textbox', { name: 'Provider', exact: true }).focus();
+    check(await page.getByRole('textbox', { name: 'Provider', exact: true }).evaluate(e => { const s = getComputedStyle(e); return s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2; }), id + ': assistant portal keyboard focus');
+  }
+  await theme('dark');
+  await capture('assistant-dark', 'TockTutor assistant; Assistant Settings body portal open; in-memory settings fixture');
+  await page.keyboard.press('Escape');
+  await popup.waitFor({ state: 'hidden' });
+  await page.waitForTimeout(50);
+  check(await page.getByRole('button', { name: 'Add Context', exact: true }).evaluate(e => document.activeElement === e), 'assistant restores trigger focus');
+  check(errors.length === 0, JSON.stringify(errors));
+  await page.evaluate(() => window.renderLauncher());
+  await page.getByRole('heading', { name: 'TockLauncher', exact: true }).waitFor();
+  check(await page.getByRole('heading', { name: 'TockLauncher', exact: true, level: 2 }).count() === 1, 'settings page heading has consistent level');
+  await page.evaluate(() => window.renderSidebar());
+  await page.getByRole('heading', { name: 'Side Panel', exact: true }).waitFor();
+  check(await page.getByRole('heading', { name: 'Side Panel', level: 2 }).evaluate(e => getComputedStyle(e).fontSize === '18px'), 'Side Panel has an 18px page heading');
+  check(await page.getByRole('heading', { name: 'Agent Access', level: 3 }).count() === 1, 'Side Panel subsection follows heading order');
+  const sidebarRange = page.getByRole('slider', { name: 'Default Width' });
+  check(await sidebarRange.evaluate(e => { const root = e.closest('[data-slot="slider"]'); return root.getBoundingClientRect().width <= 210 && getComputedStyle(root).display === 'flex'; }), 'Side Panel slider retains compact width and flex geometry');
+  for (const render of ['renderSidebar', 'renderPresets']) {
+    await page.evaluate(name => window[name](), render);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 280, height: 949, deviceScaleFactor: 2, mobile: false });
+    await page.waitForTimeout(100);
+    const geometry = await page.locator('main').evaluate(e => { const root = e.firstElementChild, r = root.getBoundingClientRect(); return { width: root.clientWidth, scroll: root.scrollWidth, overflow: [...root.querySelectorAll('*')].filter(n => n.getBoundingClientRect().right > r.right + 1).map(n => [n.tagName, n.textContent.slice(0, 35), n.getBoundingClientRect().width]) }; });
+    check(geometry.scroll <= geometry.width, render + ' narrow content fits: ' + JSON.stringify(geometry));
+  }
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false });
+  if (failures.length) throw new Error(failures.join('\n'));
+  return { palettes, captures, errors, viewport: await page.evaluate(() => [innerWidth, innerHeight, devicePixelRatio]) };
+}

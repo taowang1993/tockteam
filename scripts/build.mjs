@@ -17,7 +17,7 @@ import { LAUNCHER_OS_ASSETS } from '../src/launcher-os-assets.ts'
 import { LAUNCHER_TERMINAL_ASSETS } from '../src/launcher-terminal-assets.ts'
 import { LAUNCHER_WORKFLOW_ASSETS } from '../src/launcher-workflow-assets.ts'
 import { resolveProductVersion } from '../src/version.ts'
-import { adaptBetterSidebarHost } from './better-sidebar-upstream-adapter.mjs'
+import { adaptBetterSidebarFs, adaptBetterSidebarGit, adaptBetterSidebarHost } from './better-sidebar-upstream-adapter.mjs'
 import { buildTailwindCss } from './tailwind.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -231,6 +231,24 @@ for (const plugin of pluginPackages) {
       ? [{
           name: 'tockteam-better-sidebar-adapter',
           setup(esbuild) {
+            const fsEntry = join(dirname(hostEntry), 'fs-tree.ts')
+            esbuild.onLoad({ filter: /fs-tree\.ts$/ }, args => args.path === fsEntry
+              ? {
+                  contents: adaptBetterSidebarFs(readFileSync(fsEntry, 'utf8')),
+                  loader: 'ts',
+                  resolveDir: dirname(fsEntry),
+                  watchFiles: [fsEntry],
+                }
+              : null)
+            const gitEntry = join(dirname(hostEntry), 'git.ts')
+            esbuild.onLoad({ filter: /git\.ts$/ }, args => args.path === gitEntry
+              ? {
+                  contents: adaptBetterSidebarGit(readFileSync(gitEntry, 'utf8')),
+                  loader: 'ts',
+                  resolveDir: dirname(gitEntry),
+                  watchFiles: [gitEntry],
+                }
+              : null)
             esbuild.onLoad({ filter: /index\.ts$/ }, args => args.path === hostEntry
               ? {
                   contents: adaptBetterSidebarHost(readFileSync(hostEntry, 'utf8')),

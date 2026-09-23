@@ -52,6 +52,10 @@ function decodeGitPath(value: string): string {
 }
 
 function headerPaths(line: string): { oldPath: string; path: string } | null {
+  // Unquoted names can contain " b/". For unchanged paths, match the whole
+  // repeated name before attempting to split the two header fields.
+  const unchanged = /^diff --git a\/(.+) b\/\1$/u.exec(line)?.[1]
+  if (unchanged !== undefined) return { oldPath: unchanged, path: unchanged }
   const match = /^diff --git ("(?:\\.|[^"])*"|a\/.+) ("(?:\\.|[^"])*"|b\/.+)$/u.exec(line)
   if (match?.[1] === undefined || match[2] === undefined) return null
   const oldPath = decodeGitPath(match[1])
@@ -65,7 +69,6 @@ function headerPaths(line: string): { oldPath: string; path: string } | null {
 function fileStatus(line: string): GitReviewFileStatus | null {
   if (line.startsWith('new file mode ')) return 'added'
   if (line.startsWith('deleted file mode ')) return 'deleted'
-  if (line.startsWith('rename from ')) return 'renamed'
   if (line.startsWith('Binary files ')) return 'binary'
   return null
 }
@@ -155,20 +158,27 @@ export function parseGitReviewDiff(output: string): GitReviewFile[] {
       current.status = status
       continue
     }
+    if (rawLine.startsWith('rename from ')) {
+      current.oldPath = decodeGitPath(rawLine.slice('rename from '.length))
+      current.status = 'renamed'
+      continue
+    }
     if (rawLine.startsWith('rename to ')) {
       current.path = decodeGitPath(rawLine.slice('rename to '.length))
       current.status = 'renamed'
       continue
     }
     if (rawLine.startsWith('--- ')) {
-      const path = decodeGitPath(rawLine.slice(4))
+      // Git separates an ambiguous filename from an optional timestamp with a
+      // literal tab. Tabs inside filenames are quoted and escaped by Git.
+      const path = decodeGitPath(rawLine.slice(4).split('\t', 1)[0]!)
       if (path !== '/dev/null') {
         current.oldPath = path.startsWith('a/') ? path.slice(2) : path
       }
       continue
     }
     if (rawLine.startsWith('+++ ')) {
-      const path = decodeGitPath(rawLine.slice(4))
+      const path = decodeGitPath(rawLine.slice(4).split('\t', 1)[0]!)
       if (path !== '/dev/null') {
         current.path = path.startsWith('b/') ? path.slice(2) : path
       }

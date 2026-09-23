@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { readFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import {
@@ -11,6 +14,85 @@ import {
   formatReviewComment,
   formatReviewRequest,
 } from '../plugins/sidebar/src/client/review-comments.ts'
+
+test('Git review preserves filenames with spaces and escaped characters from real patches', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'tockcoder-review-paths-'))
+  const names = ['with space.md', '测试 file.md']
+  if (process.platform !== 'win32') names.push('trailing .md ', 'with\ttab.md')
+  try {
+    execFileSync('git', ['init', '-q', directory])
+    for (const name of names) writeFileSync(join(directory, name), 'before\n')
+    execFileSync('git', ['add', '.'], { cwd: directory })
+    for (const name of names) writeFileSync(join(directory, name), 'after\n')
+    const patch = execFileSync('git', ['diff', '--no-ext-diff', '--no-color'], { cwd: directory, encoding: 'utf8' })
+    const files = parseGitReviewDiff(patch)
+    assert.deepEqual(files.map(file => file.path).sort(), [...names].sort())
+    assert.deepEqual(files.map(file => file.oldPath).sort(), [...names].sort())
+    for (const file of files) assert.equal(file.lines.at(-1)?.content, 'after')
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('Git review preserves POSIX-only filenames on every parser platform', () => {
+  for (const path of ['trailing .md ', 'with\ttab.md']) {
+    const [file] = parseGitReviewDiff([
+      `diff --git ${JSON.stringify(`a/${path}`)} ${JSON.stringify(`b/${path}`)}`,
+      `--- ${JSON.stringify(`a/${path}`)}`,
+      `+++ ${JSON.stringify(`b/${path}`)}`,
+      '@@ -1 +1 @@', '-before', '+after',
+    ].join('\n'))
+    assert.equal(file?.path, path)
+    assert.equal(file?.oldPath, path)
+    assert.equal(file?.lines.at(-1)?.content, 'after')
+  }
+})
+
+test('Git review preserves both paths in rename-only patches with ambiguous headers', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'tockcoder-review-renames-'))
+  try {
+    execFileSync('git', ['init', '-q', directory])
+    mkdirSync(join(directory, 'old b'))
+    mkdirSync(join(directory, 'new b'))
+    writeFileSync(join(directory, 'old b/file.md'), 'unchanged\n')
+    execFileSync('git', ['add', '.'], { cwd: directory })
+    execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.test',
+      'commit', '-qm', 'initial'], { cwd: directory })
+    renameSync(join(directory, 'old b/file.md'), join(directory, 'new b/file.md'))
+    execFileSync('git', ['add', '-A'], { cwd: directory })
+    const patch = execFileSync('git', ['diff', '--cached', '--no-ext-diff', '--no-color', '-M'], {
+      cwd: directory, encoding: 'utf8',
+    })
+    const [file] = parseGitReviewDiff(patch)
+    assert.equal(file?.status, 'renamed')
+    assert.equal(file?.path, 'new b/file.md')
+    assert.equal(file?.oldPath, 'old b/file.md')
+    assert.deepEqual(file?.lines, [])
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('Git review preserves ambiguous filenames in binary patches without text headers', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'tockcoder-review-binary-'))
+  try {
+    execFileSync('git', ['init', '-q', directory])
+    mkdirSync(join(directory, 'assets b'))
+    const path = 'assets b/file.bin'
+    writeFileSync(join(directory, path), Buffer.from([0, 1]))
+    execFileSync('git', ['add', '.'], { cwd: directory })
+    writeFileSync(join(directory, path), Buffer.from([0, 2]))
+    const patch = execFileSync('git', ['diff', '--no-ext-diff', '--no-color'], {
+      cwd: directory, encoding: 'utf8',
+    })
+    const [file] = parseGitReviewDiff(patch)
+    assert.equal(file?.status, 'binary')
+    assert.equal(file?.path, path)
+    assert.equal(file?.oldPath, path)
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
 
 test('Git review paths decode quoted UTF-8 names', () => {
   const files = parseGitReviewDiff([

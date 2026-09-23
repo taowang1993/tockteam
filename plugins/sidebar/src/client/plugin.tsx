@@ -5,6 +5,7 @@ import { Empty } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
 import { NativeSelect, NativeSelectOption } from '@tockteam/ui/native-select'
+import { Slider } from '@tockteam/ui/slider'
 import { Switch } from '@tockteam/ui/switch'
 import { Textarea } from '@tockteam/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockteam/ui/tooltip'
@@ -340,6 +341,10 @@ function workspaceUrl(cwd: string, sessionId: string): string {
   url.searchParams.set('cwd', cwd)
   url.searchParams.set('sessionId', sessionId)
   return url.href
+}
+
+function workspaceChangeKey(change: WorkspaceSnapshot['changes'][number]): string {
+  return `${Number(change.staged)}:${change.path}`
 }
 
 function statusLabel(status: WorkspaceSnapshot['changes'][number]['status']): string {
@@ -1021,7 +1026,7 @@ function WorkspacePanel({
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const [selectedChangeKey, setSelectedChangeKey] = useState<string | null>(null)
   const [diff, setDiff] = useState('')
   const [commitOpen, setCommitOpen] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
@@ -1165,14 +1170,15 @@ function WorkspacePanel({
   ): Promise<void> => {
     if (scope === undefined) return
     diffRequest.current?.abort()
-    if (selectedPath === change.path) {
-      setSelectedPath(null)
+    const key = workspaceChangeKey(change)
+    if (selectedChangeKey === key) {
+      setSelectedChangeKey(null)
       setDiff('')
       return
     }
     const controller = new AbortController()
     diffRequest.current = controller
-    setSelectedPath(change.path)
+    setSelectedChangeKey(key)
     setDiff(t('workspace.loading-diff'))
     try {
       const response = await betterSidebarApi.gitDiff(
@@ -1297,18 +1303,18 @@ function WorkspacePanel({
               </div>
               <div className="tockteam-change-list pt-0 pr-0.5 pb-[5px] pl-[30px]">
                 {visibleChanges.map(change => (
-                  <div key={`${change.path}:${change.oldPath ?? ''}`}>
+                  <div key={workspaceChangeKey(change)}>
                     <Button unstyled
                       type="button"
                       className="tockteam-change-row grid min-h-[30px] w-full grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-md border-0 bg-transparent px-1.5 py-[3px] text-left text-[11px] leading-[1.35] text-[var(--dsw-alias-label-primary,#1f2328)] hover:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] data-[selected]:bg-[var(--dsw-alias-interactive-bg-hover,rgb(0_0_0_/_6%))] [font-family:var(--ds-font-family-code,ui-monospace,monospace)] [&>span:nth-child(2)]:truncate [&_small]:text-[9px] [&_small]:leading-none [&_small]:text-[var(--dsw-alias-label-dimmed,#8c959f)]"
-                      data-selected={selectedPath === change.path || undefined}
+                      data-selected={selectedChangeKey === workspaceChangeKey(change) || undefined}
                       onClick={() => { void showDiff(change) }}
                     >
                       <span className={`tockteam-change-status font-bold ${change.status === 'added' || change.status === 'untracked' ? 'text-[#2da44e]' : change.status === 'deleted' || change.status === 'conflicted' ? 'text-[#cf222e]' : 'text-[#9a6700]'}`}>{statusLabel(change.status)}</span>
                       <span title={change.path}>{change.path}</span>
                       {change.staged && <small>{t('workspace.staged')}</small>}
                     </Button>
-                    {selectedPath === change.path && <pre className="tockteam-change-diff mt-[3px] mb-[7px] max-h-60 overflow-auto whitespace-pre rounded-md bg-[var(--dsw-alias-bg-layer-1,#f6f8fa)] p-[9px] text-[10px] leading-[1.45] text-[var(--dsw-alias-label-secondary,#57606a)] [font-family:var(--ds-font-family-code,ui-monospace,monospace)]">{diff}</pre>}
+                    {selectedChangeKey === workspaceChangeKey(change) && <pre className="tockteam-change-diff mt-[3px] mb-[7px] max-h-60 overflow-auto whitespace-pre rounded-md bg-[var(--dsw-alias-bg-layer-1,#f6f8fa)] p-[9px] text-[10px] leading-[1.45] text-[var(--dsw-alias-label-secondary,#57606a)] [font-family:var(--ds-font-family-code,ui-monospace,monospace)]">{diff}</pre>}
                   </div>
                 ))}
                 {(snapshot?.changes.length ?? 0) > visibleChanges.length && (
@@ -1914,13 +1920,13 @@ function SidebarSettingsRow({
     void runtime.update({ [key]: enabled })
   }
   return (
-    <div className="tockteam-sidebar-settings grid w-full gap-[18px] px-0 pt-1 pb-3 text-[var(--dsw-alias-label-primary,#1f2328)] [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-heading>button]:cursor-pointer [&_.tockteam-sidebar-settings-heading>button]:rounded-lg [&_.tockteam-sidebar-settings-heading>button]:border [&_.tockteam-sidebar-settings-heading>button]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_9%))] [&_.tockteam-sidebar-settings-heading>button]:bg-transparent [&_.tockteam-sidebar-settings-heading>button]:px-2.5 [&_.tockteam-sidebar-settings-heading>button]:py-1.5 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 max-[760px]:[&_.tockteam-sidebar-settings-size]:flex-col max-[760px]:[&_.tockteam-sidebar-settings-size]:items-start [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-[13px] [&_p]:m-0 [&_p]:text-[11px] [&_p]:leading-[1.45] [&_p]:text-[var(--dsw-alias-label-secondary,#656d76)] [&_small]:m-0 [&_small]:text-[11px] [&_small]:leading-[1.45] [&_small]:text-[var(--dsw-alias-label-secondary,#656d76)] [&>section]:grid [&>section]:gap-2 [&>section>h4]:m-0 [&>section>h4]:text-xs [&_input[type='range']]:w-[min(210px,40%)] [&_input[type='range']]:accent-[var(--dsw-alias-interactive-primary,#4f7de8)] max-[760px]:[&_input[type='range']]:w-full">
+    <div className="tockteam-sidebar-settings box-border grid w-full min-w-0 gap-6 pr-3 pt-0 pb-6 pl-0 text-foreground [&_*]:box-border [&_.tockteam-sidebar-settings-heading]:flex [&_.tockteam-sidebar-settings-heading]:flex-wrap [&_.tockteam-sidebar-settings-heading]:items-center [&_.tockteam-sidebar-settings-heading]:justify-between [&_.tockteam-sidebar-settings-heading]:gap-5 [&_.tockteam-sidebar-settings-heading>div]:grid [&_.tockteam-sidebar-settings-heading>div]:min-w-0 [&_.tockteam-sidebar-settings-heading>div]:gap-1 [&_.tockteam-sidebar-settings-row]:flex [&_.tockteam-sidebar-settings-row]:min-w-0 [&_.tockteam-sidebar-settings-row]:items-center [&_.tockteam-sidebar-settings-row]:justify-between [&_.tockteam-sidebar-settings-row]:gap-5 [&_.tockteam-sidebar-settings-row]:min-h-14 [&_.tockteam-sidebar-settings-row]:py-2 [&_.tockteam-sidebar-settings-row>span]:grid [&_.tockteam-sidebar-settings-row>span]:min-w-0 [&_.tockteam-sidebar-settings-row>span]:gap-1 [&_.tockteam-sidebar-settings-size]:flex [&_.tockteam-sidebar-settings-size]:flex-wrap [&_.tockteam-sidebar-settings-size]:items-center [&_.tockteam-sidebar-settings-size]:justify-between [&_.tockteam-sidebar-settings-size]:gap-5 [&_.tockteam-sidebar-settings-size>span]:grid [&_.tockteam-sidebar-settings-size>span]:gap-1 [&_strong]:text-sm [&_strong]:font-medium [&_p]:m-0 [&_p]:text-xs [&_p]:leading-[18px] [&_p]:text-muted-foreground [&_small]:m-0 [&_small]:text-xs [&_small]:leading-[18px] [&_small]:text-muted-foreground [&>section]:grid [&>section]:min-w-0 [&>section]:gap-3 [&>section>h3]:m-0 [&>section>h3]:text-base [&>section>h3]:font-semibold [overflow-wrap:anywhere]">
       <div className="tockteam-sidebar-settings-heading">
         <div>
-          <strong>{t('settings.title')}</strong>
+          <h2 className="m-0 text-lg font-semibold leading-6">{t('settings.title')}</h2>
           <p>{t('settings.description')}</p>
         </div>
-        <Button unstyled type="button" onClick={reset}>{t('settings.reset')}</Button>
+        <Button size="sm" variant="outline" type="button" onClick={reset}>{t('settings.reset')}</Button>
       </div>
       <Label unstyled className="tockteam-sidebar-settings-row">
         <span>
@@ -1932,22 +1938,25 @@ function SidebarSettingsRow({
           onCheckedChange={setOpenByDefault}
         />
       </Label>
-      <Label unstyled className="tockteam-sidebar-settings-size">
+      <div className="tockteam-sidebar-settings-size">
         <span>
           <strong>{t('settings.width')}</strong>
           <small>{t('settings.width-value', { width: state.width })}</small>
         </span>
-        <Input unstyled
-          type="range"
-          min={SIDEBAR_MIN_WIDTH}
-          max={SIDEBAR_MAX_WIDTH}
-          step="10"
-          value={state.width}
-          onChange={event => { setWidth(Number(event.currentTarget.value)) }}
-        />
-      </Label>
+        <div className="w-52 max-w-full">
+          <Slider
+            aria-label={t('settings.width')}
+            aria-valuetext={t('settings.width-value', { width: state.width })}
+            min={SIDEBAR_MIN_WIDTH}
+            max={SIDEBAR_MAX_WIDTH}
+            step={10}
+            value={[state.width]}
+            onValueChange={([width]) => { setWidth(width!) }}
+          />
+        </div>
+      </div>
       <section>
-        <h4>{t('settings.runtime')}</h4>
+        <h3>{t('settings.runtime')}</h3>
         <p>{t('settings.runtime-description')}</p>
         <Label unstyled className="tockteam-sidebar-settings-row">
           <span>
@@ -2008,7 +2017,7 @@ function SidebarSettingsRow({
           />
         </Label>
         {runtimeState.error !== null && (
-          <Alert unstyled className="tockteam-sidebar-settings-error text-[#cf222e]!">
+          <Alert unstyled className="tockteam-sidebar-settings-error text-destructive!">
             {t(runtimeState.error === 'load'
               ? 'settings.runtime-load-failed'
               : 'settings.runtime-save-failed')}
@@ -2016,9 +2025,9 @@ function SidebarSettingsRow({
         )}
       </section>
       <section>
-        <h4>{t('settings.tools')}</h4>
+        <h3>{t('settings.tools')}</h3>
         <p>{t('settings.tools-description')}</p>
-        <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-1.5 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-9 [&_label]:items-center [&_label]:justify-between [&_label]:gap-2.5 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-2.5 [&_label]:text-xs">
+        <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-3 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-12 [&_label]:items-center [&_label]:justify-between [&_label]:gap-4 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-4 [&_label]:py-2 [&_label]:text-sm">
           {tabs.map(descriptor => (
             <Label unstyled key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>
@@ -2033,9 +2042,9 @@ function SidebarSettingsRow({
         </div>
       </section>
       <section>
-        <h4>{t('settings.viewers')}</h4>
+        <h3>{t('settings.viewers')}</h3>
         <p>{t('settings.viewers-description')}</p>
-        <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-1.5 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-9 [&_label]:items-center [&_label]:justify-between [&_label]:gap-2.5 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-2.5 [&_label]:text-xs">
+        <div className="tockteam-sidebar-settings-list grid grid-cols-2 gap-3 max-[760px]:grid-cols-1 [&_label]:flex [&_label]:min-h-12 [&_label]:items-center [&_label]:justify-between [&_label]:gap-4 [&_label]:rounded-[9px] [&_label]:border [&_label]:border-[var(--dsw-alias-border-l1,rgb(0_0_0_/_8%))] [&_label]:bg-[var(--dsw-alias-bg-base,transparent)] [&_label]:px-4 [&_label]:py-2 [&_label]:text-sm">
           {viewers.map(descriptor => (
             <Label unstyled key={descriptor.id}>
               <span>{sidebarLabel(descriptor.title)}</span>

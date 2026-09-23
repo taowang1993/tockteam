@@ -1,0 +1,201 @@
+{
+  "wide": {
+    "viewport": [
+      1512,
+      949,
+      2
+    ],
+    "width": 1497,
+    "scrollWidth": 1497,
+    "images": [
+      {
+        "source": "screenshots/general.png",
+        "x": 17,
+        "y": 322.4921875,
+        "width": 1463,
+        "height": 918.2421875,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/models.png",
+        "x": 17,
+        "y": 1317.734375,
+        "width": 1463,
+        "height": 918.2421875,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/plugins-marketplace.png",
+        "x": 17,
+        "y": 2312.9765625,
+        "width": 1463,
+        "height": 918.2421875,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/plugins-plugin-config.png",
+        "x": 17,
+        "y": 3308.21875,
+        "width": 1463,
+        "height": 918.2421875,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/plugins-plugin-list.png",
+        "x": 17,
+        "y": 4303.4609375,
+        "width": 1463,
+        "height": 918.2421875,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/agent-presets.png",
+        "x": 17,
+        "y": 5298.703125,
+        "width": 1463,
+        "height": 918.2421875,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/side-panel.png",
+        "x": 17,
+        "y": 6293.9453125,
+        "width": 1463,
+        "height": 918.2421875,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/tocklauncher.png",
+        "x": 17,
+        "y": 7289.1875,
+        "width": 1463,
+        "height": 918.2421875,
+        "natural": [
+          3024,
+          1898
+        ]
+      }
+    ]
+  },
+  "narrow": {
+    "viewport": [
+      600,
+      949,
+      2
+    ],
+    "width": 585,
+    "scrollWidth": 585,
+    "images": [
+      {
+        "source": "screenshots/general.png",
+        "x": 17,
+        "y": 412.6875,
+        "width": 551,
+        "height": 345.828125,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/models.png",
+        "x": 17,
+        "y": 835.515625,
+        "width": 551,
+        "height": 345.828125,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/plugins-marketplace.png",
+        "x": 17,
+        "y": 1258.34375,
+        "width": 551,
+        "height": 345.828125,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/plugins-plugin-config.png",
+        "x": 17,
+        "y": 1681.171875,
+        "width": 551,
+        "height": 345.828125,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/plugins-plugin-list.png",
+        "x": 17,
+        "y": 2104,
+        "width": 551,
+        "height": 345.828125,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/agent-presets.png",
+        "x": 17,
+        "y": 2526.828125,
+        "width": 551,
+        "height": 345.828125,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/side-panel.png",
+        "x": 17,
+        "y": 2949.65625,
+        "width": 551,
+        "height": 345.828125,
+        "natural": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "source": "screenshots/tocklauncher.png",
+        "x": 17,
+        "y": 3372.484375,
+        "width": 551,
+        "height": 345.828125,
+        "natural": [
+          3024,
+          1898
+        ]
+      }
+    ]
+  },
+  "errors": []
+}

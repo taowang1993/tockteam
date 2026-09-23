@@ -61,15 +61,22 @@ function render(component: unknown, props: Record<string, unknown>): string {
 
 test('provider family selection hides sibling groups without unmounting controls', () => {
   const local = render(components.LauncherLocalSettings, { busy: false, extensionId: 'Calculator', save, snapshot })
-  assert.match(local, /<div hidden=""><h2[^>]*>Local Transformation Extensions<\/h2>/u)
-  assert.match(local, /<details hidden=""><summary[^>]*>Base64 Conversion<\/summary>[\s\S]*Encode\/Decode Prefix/u)
-  assert.match(local, /<details open=""><summary[^>]*>Calculator<\/summary>[\s\S]*Calculator Precision/u)
+  const localGroups = local.split(/<div(?=[^>]*data-slot="accordion-item")/u).slice(1)
+  assert.equal(localGroups.length, 7)
+  assert.match(localGroups[0]!.split('>')[0]!, /hidden=""/u)
+  assert.match(localGroups[0]!, /Base64 Conversion[\s\S]*Encode\/Decode Prefix/u)
+  assert.doesNotMatch(localGroups[1]!.split('>')[0]!, /hidden/u)
+  assert.match(localGroups[1]!, /aria-expanded="true"[\s\S]*Calculator[\s\S]*Calculator Precision/u)
   assert.match(local, /Password Generator/u)
 
   const discovery = render(components.LauncherDiscoverySettings, { busy: false, extensionId: 'VSCode', save, snapshot })
   assert.match(discovery, /<div hidden=""><h2[^>]*>Application, Bookmark, and IDE Discovery<\/h2>/u)
-  assert.match(discovery, /<details hidden=""><summary[\s\S]*?Application Search<\/summary>[\s\S]*Include Windows Store Apps/u)
-  assert.match(discovery, /<details open=""><summary[\s\S]*?Visual Studio Code<\/summary>[\s\S]*VS Code Command Template/u)
+  const discoveryGroups = discovery.split(/<div(?=[^>]*data-slot="accordion-item")/u).slice(1)
+  assert.equal(discoveryGroups.length, 4)
+  assert.match(discoveryGroups[0]!.split('>')[0]!, /hidden=""/u)
+  assert.match(discoveryGroups[0]!, /Application Search[\s\S]*Include Windows Store Apps/u)
+  assert.doesNotMatch(discoveryGroups[3]!.split('>')[0]!, /hidden/u)
+  assert.match(discoveryGroups[3]!, /aria-expanded="true"[\s\S]*Visual Studio Code[\s\S]*VS Code Command Template/u)
   assert.match(discovery, /Browser Bookmarks/u)
 
   const fileSearch = render(components.LauncherFileSearchSettings, {
@@ -94,9 +101,10 @@ test('provider family selection hides sibling groups without unmounting controls
 
 test('omitting extension selection preserves the family view', () => {
   const local = render(components.LauncherLocalSettings, { busy: false, save, snapshot })
-  assert.match(local, /<div><h2[^>]*>Local Transformation Extensions<\/h2>/u)
-  assert.match(local, /<details open=""><summary[^>]*>Base64 Conversion<\/summary>/u)
-  assert.doesNotMatch(local, /<details hidden="">/u)
+  assert.match(local, /aria-expanded="true"[\s\S]*Base64 Conversion/u)
+  const localGroups = local.split(/<div(?=[^>]*data-slot="accordion-item")/u).slice(1)
+  assert.equal(localGroups.length, 7)
+  for (const group of localGroups) assert.doesNotMatch(group.split('>')[0]!, /hidden/u)
 
   const network = render(components.LauncherNetworkSettings, { busy: false, save, snapshot })
   assert.match(network, /<div><h2[\s\S]*?Network Extensions<\/h2>/u)

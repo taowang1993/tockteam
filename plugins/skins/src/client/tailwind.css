@@ -1020,6 +1020,28 @@
 
 /* The embedded DSH root has no component seam for these inherited nodes. */
 @utility tockteam-sidebar-styles {
+  /* DSH 0.1.2-rc.1 page titles: same line box as first-party settings.
+     Keep this seam revision-bound; settings-layout-electron-proof verifies it. */
+  & [data-slot='settings.section'] :is(.zGbnIq_title, .pbvGtq_heading, .rtSEdW_title) {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 24px;
+  }
+
+  /* DSH 0.1.2-rc.1 Agent Presets: bounded by the Electron settings proof. */
+  & [data-slot='settings.section'] .rtSEdW_cards {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 268px), 1fr));
+  }
+
+  & [data-slot='settings.section'] .rtSEdW_cardHead {
+    flex-wrap: wrap;
+  }
+
+  & [data-slot='settings.section'] .rtSEdW_cardMain {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   & {
     --tockteam-primary-sidebar-width: 280px;
     --tockteam-rail-width: 40px;

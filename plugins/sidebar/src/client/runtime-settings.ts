@@ -90,12 +90,16 @@ export class SidebarRuntimeSettingsService {
   }
 
   async start(): Promise<void> {
-    this.publish({ ...this.snapshot, busy: true, error: null })
-    try {
-      this.publish(snapshotFromView(await this.api.settingsGet()))
-    } catch {
-      this.publish({ ...this.snapshot, busy: false, error: 'load' })
-    }
+    const run = this.queue.then(async () => {
+      this.publish({ ...this.snapshot, busy: true, error: null })
+      try {
+        this.publish(snapshotFromView(await this.api.settingsGet()))
+      } catch {
+        this.publish({ ...this.snapshot, busy: false, error: 'load' })
+      }
+    })
+    this.queue = run.then(() => undefined, () => undefined)
+    await run
   }
 
   update(patch: Partial<SidebarRuntimePreferences>): Promise<void> {
@@ -111,7 +115,15 @@ export class SidebarRuntimeSettingsService {
         const view = await this.api.settingsUpdate(patch, previous.revision)
         this.publish(snapshotFromView(view))
       } catch {
-        this.publish({ ...previous, busy: false, error: 'save' })
+        // A competing save or a lost response can invalidate our revision.
+        // Refresh before the next explicit attempt; never replay the patch.
+        let restored = previous
+        try {
+          restored = snapshotFromView(await this.api.settingsGet())
+        } catch {
+          // Keep the last known preferences when the Host is unavailable.
+        }
+        this.publish({ ...restored, busy: false, error: 'save' })
       }
     })
     this.queue = run.then(() => undefined, () => undefined)
