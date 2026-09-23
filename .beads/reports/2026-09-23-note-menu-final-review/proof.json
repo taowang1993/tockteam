@@ -139,7 +139,7 @@
     "pageErrorsObserved": 0,
     "consoleWarnings": 2,
     "warning": "Electron Security Warning: insecure Content-Security-Policy / unsafe-eval; no app page/runtime errors observed.",
-    "consoleEvidence": ".playwright-cli/console-2026-09-23T00-17-41-699Z.log"
+    "consoleEvidence": "console.txt"
   },
   "unverified": [
     "Replacement Undo isolation from typing in Source and Live Preview was optional and not run within the bounded window.",

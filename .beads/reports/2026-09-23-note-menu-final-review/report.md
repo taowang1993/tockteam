@@ -79,6 +79,6 @@ Clipboard and native association were intercepted. This proof does not certify a
 - `recheck-*.md`: all four independent rechecks.
 - `fresh-desktop-proof.original.md`: original verifier output, with the scope correction above.
 - `entry.cjs`: isolated fixture and explicitly intercepted native effects.
-- `console.log`: scoped renderer warnings.
+- `console.txt`: scoped renderer warnings.
 
 Publication validates the screenshot geometry, theme evidence, filesystem results, and cleanup before an atomic directory rename. No canonical skin screenshot was overwritten.
