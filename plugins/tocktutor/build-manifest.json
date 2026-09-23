@@ -247,7 +247,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/lib/search-index-native.js",
-      "sha256": "64f9baf2eacdc3924c6dd5469f6c144b0ba64b0c7f06633c6086829cf586d7c8"
+      "sha256": "eeeef5e85f938ddb5263b51133b71910de468379a4528a2d298cb4ac6e6bf403"
     },
     {
       "path": "packages/tockbot-note-runtime/lib/search-index-ownership.d.ts",
@@ -315,7 +315,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/src/search-index-native.ts",
-      "sha256": "4394d469650690b06d4eca51456199dcd91e2b94b7cace58326f3168ef5c905c"
+      "sha256": "e000568df6ff4899d562fd0acb3988bcb1df410e1d014d930fd2d2fa32161d7d"
     },
     {
       "path": "packages/tockbot-note-runtime/src/search-index-ownership.ts",

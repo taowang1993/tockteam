@@ -127,8 +127,9 @@ export async function acquireSearchIndexLease(filename, progress) {
         if (!dependencies)
             throw new Error('Native index dependencies unavailable');
         const lease = await openSearchDatabase(dependencies.sqlite3.Database, filename, progress);
-        // A failed lease is not retried. The child exits and the OS releases its connection.
-        await runSearchDatabase(lease, 'PRAGMA busy_timeout=0');
+        // Bound SQLite's wait for transient startup readers; never retry a failed
+        // lease, unlink it, or bypass an existing owner's exclusive lock.
+        await runSearchDatabase(lease, 'PRAGMA busy_timeout=250');
         const rows = await allSearchDatabase(lease, 'PRAGMA journal_mode');
         if (rows[0]?.journal_mode !== 'delete')
             throw new Error('Unexpected index lease journal mode');
