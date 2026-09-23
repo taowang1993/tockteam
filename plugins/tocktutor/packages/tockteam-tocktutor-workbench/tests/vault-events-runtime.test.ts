@@ -126,10 +126,6 @@ test('real save, Properties save and external mutation refresh linked peers thro
   const host = new Context()
   const client = new Context()
   let controller: WorkbenchRouteController | undefined
-  const settled = async (check: () => boolean) => {
-    for (let i = 0; i < 200 && !check(); i++) await new Promise(resolve => setTimeout(resolve, 10))
-    assert.ok(check(), 'linked relationship state must settle from real save/watch delivery')
-  }
   try {
     await mkdir(vaultRoot)
     await writeFile(join(vaultRoot, 'B.md'), '# B\n')
@@ -170,12 +166,20 @@ test('real save, Properties save and external mutation refresh linked peers thro
     assert.equal(await route.openLinkedView(source, 'backlinks'), true)
     assert.equal(await route.openLinkedView(source, 'outgoing-links'), true)
     const peers = route.getSnapshot().panes.filter(pane => pane.linkedView).map(pane => pane.id)
+    const settled = async (phase: string, check: () => boolean) => {
+      for (let i = 0; i < 200 && !check(); i++) await new Promise(resolve => setTimeout(resolve, 10))
+      if (!check()) assert.fail(`linked relationship state must settle: ${JSON.stringify({
+        phase, source: await readFile(join(vaultRoot, '中文 A.md'), 'utf8'),
+        frames: sink.frames.filter(frame => frame.event === 'note-vault/change').slice(-40),
+        peers: peers.map(id => { const pane = route.getPaneSnapshot(id); return { id, path: pane.path, links: pane.links, error: pane.linkedError } }),
+      })}`)
+    }
     await route.splitPane(source, 'horizontal')
     assert.equal(await route.select('中文 A.md'), true, route.getSnapshot().message)
     route.setMode('source')
     route.edit('# A\n[[B]]\n')
     assert.equal(await route.save(), true)
-    await settled(() => peers.every(id => route.getPaneSnapshot(id).links?.backlinks.includes('中文 A.md')))
+    await settled('owned save adds link', () => peers.every(id => route.getPaneSnapshot(id).links?.backlinks.includes('中文 A.md')))
     assert.match(await readFile(join(vaultRoot, '中文 A.md'), 'utf8'), /\[\[B\]\]/u)
 
     await route.openLinkedView(route.getSnapshot().focusedPaneId, 'properties')
@@ -185,13 +189,13 @@ test('real save, Properties save and external mutation refresh linked peers thro
     assert.match(await readFile(join(vaultRoot, '中文 A.md'), 'utf8'), /title: Saved through Properties/u)
     route.edit('# A\n')
     assert.equal(await route.save(), true)
-    await settled(() => peers.every(id => route.getPaneSnapshot(id).links?.backlinks.length === 0))
+    await settled('owned save removes link', () => peers.every(id => route.getPaneSnapshot(id).links?.backlinks.length === 0))
 
     await writeFile(join(vaultRoot, '中文 A.md'), '# External\n[[B]]\n')
-    await settled(() => peers.every(id => route.getPaneSnapshot(id).links?.backlinks.includes('中文 A.md')))
+    await settled('external write adds link', () => peers.every(id => route.getPaneSnapshot(id).links?.backlinks.includes('中文 A.md')))
     await route.closePane(peers[0]!)
     await writeFile(join(vaultRoot, '中文 A.md'), '# External without link\n')
-    await settled(() => route.getPaneSnapshot(peers[1]!).links?.backlinks.length === 0)
+    await settled('external write removes link after peer close', () => route.getPaneSnapshot(peers[1]!).links?.backlinks.length === 0)
   } finally {
     await controller?.dispose()
     await client.fiber.dispose()

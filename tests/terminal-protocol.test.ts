@@ -30,7 +30,10 @@ test('Better Sidebar adapter frames session exits without changing agent termina
   assert.equal((adapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)
   assert.equal((adapted.match(/\[process exited with code/g) ?? []).length, 1)
   const crlfSource = source.replaceAll('\r\n', '\n').replaceAll('\n', '\r\n')
-  assert.equal((adaptBetterSidebarHost(crlfSource).match(/tockteam-terminal-exit/g) ?? []).length, 1)
+  const crlfAdapted = adaptBetterSidebarHost(crlfSource)
+  assert.equal((crlfAdapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)
+  assert.ok(crlfAdapted.includes(crlfSource.slice(crlfSource.indexOf('    // Side Chat:'), crlfSource.indexOf('const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24'))),
+    'CRLF adaptation must preserve the following host routes byte-for-byte')
   assert.throws(() => adaptBetterSidebarHost(adapted), /seam changed upstream/u)
 })
 

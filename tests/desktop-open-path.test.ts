@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { chmod, lstat, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { performDesktopOpenPath } from '../src/desktop-open-path-native.ts'
@@ -21,9 +21,9 @@ for (const extension of ['md', 'markdown']) test(`default-app dispatch accepts b
       assert.equal((await performDesktopOpenPath({ ...input, ...patch }, operations)).status, 'denied')
     }
     assert.equal((await performDesktopOpenPath({ ...input, identity: { dev: input.identity.dev, ino: '0' } }, operations)).status, 'stale')
-    await chmod(file, 0o755)
-    assert.equal((await performDesktopOpenPath(input, operations)).status, 'denied')
-    await chmod(file, 0o644)
+    // Windows chmod cannot set POSIX execute bits. Exercise the same guard on every OS.
+    const executable = { ...stats, mode: stats.mode | 0o111n, isFile: () => stats.isFile() }
+    assert.equal((await performDesktopOpenPath(input, { ...operations, lstat: async () => executable })).status, 'denied')
     assert.deepEqual(opened, [canonicalPath])
     assert.equal((await performDesktopOpenPath(input, { openPath: async () => 'No application is associated' })).status, 'unavailable')
     assert.equal((await performDesktopOpenPath(input, { openPath: async () => { throw new Error('OS failed') } })).status, 'unavailable')
