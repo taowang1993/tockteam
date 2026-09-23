@@ -12,6 +12,10 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     livePreview
     onContentChange={props.onMarkdownChange}
     onOpenExternalUrl={props.onOpenExternalUrl}
+    {...(props.onSearchState === undefined ? {} : { onSearchState: props.onSearchState })}
+    {...(props.searchCurrentIndex === undefined ? {} : { searchCurrentIndex: props.searchCurrentIndex })}
+    {...(props.searchQuery === undefined ? {} : { searchQuery: props.searchQuery })}
+    {...(props.searchRequest === undefined ? {} : { searchRequest: props.searchRequest })}
     onSelectionChange={selection => props.onSelectionChange?.(selection.main)}
     {...(props.editorViewRef === undefined ? {} : { editorViewRef: props.editorViewRef })}
     {...(props.resolvedEmbeds === undefined ? {} : { resolvedEmbeds: props.resolvedEmbeds })}

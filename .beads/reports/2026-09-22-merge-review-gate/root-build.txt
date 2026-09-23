@@ -1,0 +1,151 @@
+$ node scripts/build.mjs
+
+  dist/host.js       6.3kb
+  dist/host.js.map  30.0kb
+
+⚡ Done in 4ms
+
+  dist/client-api.js      1.6kb
+  dist/client-api.js.map  5.6kb
+
+⚡ Done in 5ms
+
+  dist/web/index.js      2.1kb
+  dist/web/index.js.map  6.3kb
+
+⚡ Done in 5ms
+
+  dist/web/client.js      4.6kb
+  dist/web/client.js.map  8.6kb
+
+⚡ Done in 5ms
+
+  dist/plugins/pinned-summary/index.js      114b
+  dist/plugins/pinned-summary/index.js.map  308b
+
+⚡ Done in 4ms
+
+  dist/plugins/tui/index.js      1.3kb
+  dist/plugins/tui/index.js.map  4.5kb
+
+⚡ Done in 5ms
+
+  dist/plugins/save-as-image/index.js      113b
+  dist/plugins/save-as-image/index.js.map  331b
+
+⚡ Done in 2ms
+
+  dist/plugins/skins/index.js      21.2kb
+  dist/plugins/skins/index.js.map  41.5kb
+
+⚡ Done in 7ms
+
+  dist/plugins/panel-controls/index.js      114b
+  dist/plugins/panel-controls/index.js.map  308b
+
+⚡ Done in 6ms
+
+  dist/plugins/trusted-raycast/contract.js      22.6kb
+  dist/plugins/trusted-raycast/contract.js.map  42.8kb
+
+⚡ Done in 9ms
+
+  dist/tockteam.js      38.6kb
+  dist/tockteam.js.map  82.1kb
+
+⚡ Done in 13ms
+
+  dist/plugins/plugin-marketplace/index.js      300b
+  dist/plugins/plugin-marketplace/index.js.map  811b
+
+⚡ Done in 8ms
+
+  dist/launcher-preload.cjs       61.3kb
+  dist/launcher-preload.cjs.map  140.9kb
+
+⚡ Done in 15ms
+
+  dist/plugins/trusted-raycast/index.js       3.0kb
+  dist/plugins/trusted-raycast/index.js.map  11.3kb
+
+⚡ Done in 6ms
+
+  dist/plugins/sidebar/index.js      16.4kb
+  dist/plugins/sidebar/index.js.map  36.6kb
+
+⚡ Done in 13ms
+
+  dist/preload.cjs      114.3kb
+  dist/preload.cjs.map  220.7kb
+
+⚡ Done in 24ms
+
+  dist/plugins/trusted-raycast/runtime.js      119.4kb
+  dist/plugins/trusted-raycast/runtime.js.map  240.1kb
+
+⚡ Done in 41ms
+
+  dist/plugin.js       64.1kb
+  dist/plugin.js.map  168.1kb
+
+⚡ Done in 47ms
+
+  dist/web.js      27.2kb
+  dist/web.js.map  59.8kb
+
+⚡ Done in 47ms
+
+  dist/plugins/better-sidebar-runtime/index.js      146.3kb
+  dist/plugins/better-sidebar-runtime/index.js.map  384.9kb
+
+⚡ Done in 47ms
+
+  dist/plugins/pinned-summary/client.js      33.0kb
+  dist/plugins/pinned-summary/client.js.map  57.5kb
+
+⚡ Done in 198ms
+
+  dist/launcher.js      266.3kb
+  dist/launcher.js.map  480.9kb
+
+⚡ Done in 204ms
+
+  dist/plugins/trusted-raycast/renderer.js       65.1kb
+  dist/plugins/trusted-raycast/renderer.js.map  131.0kb
+
+⚡ Done in 256ms
+
+  dist/plugins/skins/client.js      231.0kb
+  dist/plugins/skins/client.js.map   66.5kb
+
+⚡ Done in 342ms
+
+  dist/plugins/save-as-image/client.js      191.6kb
+  dist/plugins/save-as-image/client.js.map  392.5kb
+
+⚡ Done in 366ms
+
+  dist/main.js      2.9mb ⚠️
+  dist/main.js.map  6.1mb
+
+⚡ Done in 566ms
+
+  dist/plugins/sidebar/client.js      403.0kb
+  dist/plugins/sidebar/client.js.map  758.8kb
+
+⚡ Done in 630ms
+
+  dist/plugins/plugin-marketplace/client.js      264.9kb
+  dist/plugins/plugin-marketplace/client.js.map  516.9kb
+
+⚡ Done in 633ms
+
+  dist/plugins/panel-controls/client.js      686.2kb
+  dist/plugins/panel-controls/client.js.map    2.1mb
+
+⚡ Done in 641ms
+
+  dist/client.js      487.7kb
+  dist/client.js.map  878.9kb
+
+⚡ Done in 674ms

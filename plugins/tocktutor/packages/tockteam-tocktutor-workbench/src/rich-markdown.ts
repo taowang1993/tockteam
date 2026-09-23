@@ -504,6 +504,38 @@ function renderMarkdownList(
   return { html: `<${tag}${attributes}>${children.join('')}</${tag}>`, next: cursor, taskIndex: nextTaskIndex }
 }
 
+function renderQuoteBody(
+  lines: string[],
+  strict: boolean,
+  footnotes: ReadonlyMap<string, number>,
+  externalEmbedMode: 'inert' | 'viewer',
+  depth = 1,
+): string {
+  const blocks: string[] = []
+  let paragraph: string[] = []
+  const flush = (): void => {
+    if (paragraph.length > 0) blocks.push(paragraphHtml(paragraph, strict, footnotes, externalEmbedMode))
+    paragraph = []
+  }
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!
+    // Bound recursion for deeply nested, user-authored Markdown.
+    const quote = depth < 32 ? line.match(/^ {0,3}> ?(.*)$/u) : null
+    if (quote !== null) {
+      flush()
+      const body = [quote[1]!]
+      while (index + 1 < lines.length && /^ {0,3}> ?/u.test(lines[index + 1]!)) {
+        index += 1
+        body.push(lines[index]!.replace(/^ {0,3}> ?/u, ''))
+      }
+      blocks.push(`<blockquote>${renderQuoteBody(body, strict, footnotes, externalEmbedMode, depth + 1)}</blockquote>`)
+    } else if (line.trim() === '') flush()
+    else paragraph.push(line)
+  }
+  flush()
+  return blocks.join('')
+}
+
 export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOptions = {}): string {
   if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES) return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`
   const normalized = stripComments(stripLeadingFrontmatter(markdown)).replaceAll('\r\n', '\n').replaceAll('\r', '\n')
@@ -603,9 +635,7 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
         index += 1
         body.push(lines[index]!.replace(/^ {0,3}> ?/u, ''))
       }
-      const content = body.join('\n').split(/\n[ \t]*\n/u)
-        .map(value => paragraphHtml(value.split('\n'), options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode))
-        .join('')
+      const content = renderQuoteBody(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode)
       blocks.push(`<blockquote>${content}</blockquote>`)
       continue
     }

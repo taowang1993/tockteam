@@ -1,0 +1,31 @@
+✔ index peers authenticate before exchanging generation-bound frames (6.00675ms)
+✔ bad authentication receives no privileged data and does not consume the valid peer (2.63275ms)
+✔ unauthenticated stalled sockets are closed on abort; the listener does not survive (0.565042ms)
+✔ index authentication rejects extra fields and bounded repeated attempts (2.258958ms)
+✔ authenticating the valid peer evicts a stalled competitor without killing the winner (0.906291ms)
+✔ stalled unauthenticated peer expires after two seconds without blocking a valid peer (1.296459ms)
+✔ authentication has an absolute deadline even with no peer (0.225959ms)
+✔ index child rejects malformed bootstrap and an already-aborted launch (0.13525ms)
+✔ an authenticated owned child indexes paged inventory and chunked Unicode documents (313.279167ms)
+✔ four searches plus an invalidation retain control capacity and fence old results (84.654125ms)
+✔ a changed document reconciles incrementally without another full inventory (84.007666ms)
+✔ changed-path count or byte overflow collapses to one full invalidation (97.321708ms)
+✔ the child engine bounds changed paths across multiple admitted batches (2.793666ms)
+✔ cancelled callers settle promptly without bypassing native admission limits (83.237375ms)
+✔ lease excludes a contender and persistent index reopens after verified owner death (525.860417ms)
+✔ a first lease survives a briefly held startup reader (148.785583ms)
+✔ simultaneous first lease acquisition admits exactly one child (381.617042ms)
+✔ held child-native callback cannot keep the Host alive past its progress deadline (5105.55175ms)
+✔ retiring a generation waiting for global spawn admission cannot deadlock on itself (2.191292ms)
+✔ failed spawn cleanup never becomes a fulfilled generation close (0.921042ms)
+✔ cancellation during platform preparation rejects admission without inventing ownership uncertainty (0.588416ms)
+✔ closing an authenticated generation before spawn returns leaves no polling timer (62.562625ms)
+✔ disposal does not wait for a held Host inventory callback and rejects retired readiness (59.531792ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7019.341958

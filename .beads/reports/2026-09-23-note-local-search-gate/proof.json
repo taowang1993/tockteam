@@ -1,0 +1,120 @@
+{
+  "run": "817cabaf-220c-4b93-943f-3a42f5c2f2c0",
+  "rootPid": 56702,
+  "displayId": 11,
+  "reading": {
+    "url": "http://127.0.0.1:61661/tocktutor/Notes/Source.md",
+    "mode": "Reading",
+    "query": "Source formatted phrase.",
+    "strip": "1 / 1",
+    "marks": [
+      {
+        "text": "Source ",
+        "id": "0",
+        "strong": false
+      },
+      {
+        "text": "formatted",
+        "id": "0",
+        "strong": true
+      },
+      {
+        "text": " phrase.",
+        "id": "0",
+        "strong": false
+      }
+    ],
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "dpr": 2,
+      "color": "dark",
+      "skin": null
+    },
+    "pageErrors": [],
+    "screenshot": "reading-find-dark.png"
+  },
+  "source": {
+    "mode": "Source",
+    "url": "http://127.0.0.1:61661/tocktutor/Editable.md",
+    "baseline": "# Editable\n\n\nalpha beta alpha\n\n",
+    "before": "# Editable\n\n\nalpha beta alpha\n typed-before",
+    "replaced": "# Editable\n\n\nomega beta omega\n typed-before",
+    "after": "# Editable\n\n\nomega beta omega\n typed-before typed-after",
+    "undo": [
+      "# Editable\n\n\nomega beta omega\n typed-before",
+      "# Editable\n\n\nalpha beta alpha\n typed-before",
+      "# Editable\n\n\nalpha beta alpha\n\n"
+    ],
+    "redo": [
+      "# Editable\n\n\nalpha beta alpha\n typed-before",
+      "# Editable\n\n\nomega beta omega\n typed-before",
+      "# Editable\n\n\nomega beta omega\n typed-before typed-after"
+    ],
+    "pageErrors": [],
+    "screenshot": "source-undo-dark.png"
+  },
+  "live": {
+    "mode": "Live Preview",
+    "url": "http://127.0.0.1:61661/tocktutor/Editable.md",
+    "baseline": "Editable\n\nomega beta omega typed-before typed-after",
+    "before": "Editable\n\nomega beta omega typed-before typed-after live-before",
+    "replaced": "Editable\n\nsigma beta sigma typed-before typed-after live-before",
+    "after": "Editable\n\nsigma beta sigma typed-before typed-after live-before live-after",
+    "undo": [
+      "Editable\n\nsigma beta sigma typed-before typed-after live-before",
+      "Editable\n\nomega beta omega typed-before typed-after live-before",
+      "Editable\n\nomega beta omega typed-before typed-after"
+    ],
+    "redo": [
+      "Editable\n\nomega beta omega typed-before typed-after live-before",
+      "Editable\n\nsigma beta sigma typed-before typed-after live-before",
+      "Editable\n\nsigma beta sigma typed-before typed-after live-before live-after"
+    ],
+    "pageErrors": [],
+    "screenshot": "live-preview-undo-dark.png"
+  },
+  "whiteSpace": "pre-wrap",
+  "consoleErrors": 0,
+  "consoleWarnings": 1,
+  "reactDoctor": {
+    "baseline": 58,
+    "current": 58,
+    "warnings": 80
+  },
+  "cleanup": {
+    "source": "extended_display.stop",
+    "stopped": true,
+    "recordedPids": [
+      56702,
+      56704,
+      56705,
+      56709,
+      56712,
+      56718,
+      56726,
+      56783,
+      56784,
+      56785,
+      56786,
+      56787,
+      56788,
+      56789,
+      56790,
+      56859,
+      56980,
+      56981,
+      56982,
+      56983,
+      56984,
+      56985,
+      56986,
+      56987
+    ],
+    "remaining": []
+  },
+  "earlierRunsStopped": [
+    "c9f5135e-00a6-49d2-b90b-0a70d40bcd79",
+    "ac3dc9d2-290e-456c-aefe-89554edd2c2a"
+  ]
+}

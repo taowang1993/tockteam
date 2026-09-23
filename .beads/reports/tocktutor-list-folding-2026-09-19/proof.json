@@ -1,0 +1,163 @@
+{
+  "capturedAt": "2026-09-19T05:17:24.702Z",
+  "captures": [
+    {
+      "name": "expanded.png",
+      "mode": "Live Preview",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+      "expanded": "true",
+      "sha256": "f3c9ad4c39679c45c37f177a69dee8d10b4674747d636ea965f4714d0688471f",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "collapsed.png",
+      "mode": "Live Preview",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n›\n\nInspect nested content.\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+      "expanded": "false",
+      "sha256": "39120e270dcb1fc0aa98bec8d0487a8fd1995bf4448815bb44f9b2b806efdaf4",
+      "pixels": [
+        3024,
+        1898
+      ]
+    }
+  ],
+  "checks": [
+    "Shared note stays folded after Enter, two Files sidebar toggles, and settling",
+    {
+      "foldGutter": {
+        "buttonRight": 538,
+        "textLeft": 558,
+        "gap": 20
+      }
+    },
+    "Space expands and pointer mousedown collapses",
+    "Collapsed list remains usable at 820px without editor overflow",
+    "Fold works after Reading / Live Preview remount",
+    "Minimal before-fix reproduction now remains collapsed and authored bytes unchanged"
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "sources": [
+    {
+      "name": "live-preview-editor-runtime.tsx",
+      "sha256": "e0f1b84ae478d429dea9e8b295feb8de4176b28ad489c5003146bcab2de9d73e"
+    }
+  ],
+  "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+  "before": {
+    "capturedAt": "2026-09-19T05:13:20.295Z",
+    "repro": "Fold list with Enter, toggle Files Sidebar",
+    "expectedExpanded": false,
+    "actualExpanded": true,
+    "notes": [
+      "Desktop reproduced on minimal ordered/nested bullet fixture; prior-run report observed shared note reset. Current shared-note retry interrupted during shutdown.",
+      "Component trace: fold metadata transaction followed by full document replacement on parent render"
+    ]
+  },
+  "cleanup": [
+    {
+      "path": "/tmp/tutor-fold-hkPoCy/cleanup.json",
+      "rootPid": 46897,
+      "pids": [
+        46897,
+        46909,
+        46910,
+        46911,
+        46924,
+        46925,
+        46928,
+        46952,
+        46998,
+        47068,
+        47069,
+        47070,
+        47071,
+        47072,
+        47073,
+        47074,
+        47075,
+        47142,
+        47282,
+        47283,
+        47284,
+        47285,
+        47286,
+        47287,
+        47288,
+        47289
+      ],
+      "verified": true,
+      "remaining": []
+    },
+    {
+      "path": "/tmp/tutor-fold-ODymmg/cleanup.json",
+      "rootPid": 44533,
+      "pids": [
+        44533,
+        44545,
+        44546,
+        44549,
+        44563,
+        44624,
+        44711,
+        44863,
+        44882,
+        45036,
+        45045,
+        45046,
+        45047
+      ],
+      "verified": true,
+      "remaining": []
+    },
+    {
+      "path": "/tmp/tutor-fold-3mogvF/cleanup.json",
+      "rootPid": 34908,
+      "pids": [
+        34908,
+        34920,
+        34921,
+        34924,
+        34938,
+        34952,
+        34970,
+        35025,
+        35026,
+        35027,
+        35028,
+        35029,
+        35030,
+        35031,
+        35033,
+        35137,
+        35216,
+        35217,
+        35395,
+        43375
+      ],
+      "verified": true,
+      "remaining": []
+    }
+  ],
+  "visualInspection": "Expanded and collapsed screenshots visually inspected; fold control sits before the number, focused state visible, child bullets hidden, surrounding content moves up without clipping.",
+  "runtimeLogWarnings": []
+}

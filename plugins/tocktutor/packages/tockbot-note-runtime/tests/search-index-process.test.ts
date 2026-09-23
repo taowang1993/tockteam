@@ -163,12 +163,40 @@ test('lease excludes a contender and persistent index reopens after verified own
   }
 })
 
+test('a first lease survives a briefly held startup reader', { timeout: 5000 }, async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'index-lease-reader-'))
+  const fixture = join(directory, 'reader.mjs')
+  const packagePath = fileURLToPath(new URL('../package.json', import.meta.url))
+  await writeFile(fixture, `import { createRequire } from 'node:module'; import { pathToFileURL } from 'node:url';
+const sqlite = createRequire(${JSON.stringify(packagePath)})('sqlite3');
+const reader = await new Promise((resolve,reject) => { const db=new sqlite.Database(process.argv[3],error=>error?reject(error):resolve(db)); });
+await new Promise((resolve,reject) => reader.exec('CREATE TABLE held (value); INSERT INTO held VALUES (1); BEGIN; SELECT * FROM held;',error=>error?reject(error):resolve()));
+const run = sqlite.Database.prototype.run;
+sqlite.Database.prototype.run = function(sql,...args) {
+  if (sql === 'BEGIN EXCLUSIVE') setTimeout(() => reader.exec('ROLLBACK',error=>{ if(error) throw error; reader.close(); }),50);
+  return Reflect.apply(run,this,[sql,...args]);
+};
+await import(pathToFileURL(process.argv[2]).href);\n`)
+  const prototype = SearchIndexProcess.prototype as unknown as { spawn(options: OwnedProcessOptions): ReturnType<typeof spawnOwnedProcess> }
+  t.mock.method(prototype, 'spawn', (options: OwnedProcessOptions) => spawnOwnedProcess({ ...options, args: [fixture, options.args[0]!, join(directory, 'fixture-fixture.sqlite.lease')] }))
+  const index = new SearchIndexProcess(fixtureOptions(directory))
+  try {
+    await index.whenReady
+    assert.equal((await index.search(request, new AbortController().signal))?.entries.length, 1)
+  } finally {
+    await index.close()
+    if (index.pid) assert.throws(() => process.kill(index.pid!, 0), { code: 'ESRCH' })
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
 test('simultaneous first lease acquisition admits exactly one child', { timeout: 15000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'index-lease-race-'))
   const indexes = [new SearchIndexProcess(fixtureOptions(directory)), new SearchIndexProcess(fixtureOptions(directory))]
   try {
     const outcomes = await Promise.allSettled(indexes.map(index => index.whenReady))
-    assert.equal(outcomes.filter(outcome => outcome.status === 'fulfilled').length, 1)
+    assert.equal(outcomes.filter(outcome => outcome.status === 'fulfilled').length, 1,
+      outcomes.map(outcome => outcome.status === 'rejected' ? String(outcome.reason) : 'ready').join('\n'))
     assert.equal(outcomes.filter(outcome => outcome.status === 'rejected').length, 1)
   } finally { await Promise.all(indexes.map(index => index.close())); await rm(directory, { recursive: true, force: true }) }
 })

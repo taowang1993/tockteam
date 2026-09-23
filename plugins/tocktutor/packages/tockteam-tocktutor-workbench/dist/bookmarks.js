@@ -120,6 +120,108 @@ export function addBookmark(bookmarks, bookmark) {
         throw new Error('Bookmark capacity is full.');
     return next;
 }
+function bookmarkTitle(title) {
+    const normalized = title.trim();
+    if (normalized.length === 0 || normalized.length > 200)
+        throw new Error('Bookmark title is invalid.');
+    return normalized;
+}
+function findBookmark(bookmarks, id) {
+    for (let index = 0; index < bookmarks.length; index += 1) {
+        const bookmark = bookmarks[index];
+        if (bookmark.id === id)
+            return { bookmark, groupId: null, index };
+        if (bookmark.kind === 'group') {
+            const childIndex = bookmark.children.findIndex(child => child.id === id);
+            if (childIndex >= 0)
+                return { bookmark: bookmark.children[childIndex], groupId: bookmark.id, index: childIndex };
+        }
+    }
+    return null;
+}
+export function getBookmark(bookmarks, id) {
+    return findBookmark(bookmarks, id)?.bookmark ?? null;
+}
+export function removeBookmark(bookmarks, id) {
+    let found = false;
+    const next = [];
+    for (const bookmark of bookmarks) {
+        if (bookmark.id === id) {
+            found = true;
+        }
+        else if (bookmark.kind === 'group') {
+            const children = bookmark.children.filter(child => {
+                if (child.id !== id)
+                    return true;
+                found = true;
+                return false;
+            });
+            next.push({ ...bookmark, children });
+        }
+        else {
+            next.push(bookmark);
+        }
+    }
+    return found ? next : null;
+}
+/** Updates one bookmark record while retaining its ID and moving it between existing groups. */
+export function editBookmark(bookmarks, id, title, groupId = null) {
+    const located = findBookmark(bookmarks, id);
+    if (located === null || located.bookmark.kind === 'group')
+        throw new Error('Bookmark was not found.');
+    const nextTitle = bookmarkTitle(title);
+    const requestedGroup = groupId ?? '';
+    let targetGroup = null;
+    if (requestedGroup !== '') {
+        const candidate = bookmarks.find((bookmark) => bookmark.kind === 'group' && bookmark.id === requestedGroup);
+        if (candidate === undefined || candidate.id === id)
+            throw new Error('Bookmark group was not found.');
+        targetGroup = candidate;
+    }
+    const updated = { ...located.bookmark, title: nextTitle };
+    const without = [];
+    for (const bookmark of bookmarks) {
+        if (bookmark.kind === 'group') {
+            without.push(bookmark.id === located.groupId
+                ? { ...bookmark, children: bookmark.children.filter(child => child.id !== id) }
+                : bookmark);
+        }
+        else if (bookmark.id !== id) {
+            without.push(bookmark);
+        }
+    }
+    if (targetGroup === null) {
+        if (located.groupId === null) {
+            const index = bookmarks.findIndex(bookmark => bookmark.id === id);
+            without.splice(index < 0 ? without.length : index, 0, updated);
+        }
+        else {
+            without.push(updated);
+        }
+    }
+    else {
+        const groupIndex = without.findIndex(bookmark => bookmark.kind === 'group' && bookmark.id === targetGroup.id);
+        const group = without[groupIndex];
+        if (group === undefined || group.kind !== 'group')
+            throw new Error('Bookmark group was not found.');
+        const children = [...group.children];
+        children.splice(targetGroup.id === located.groupId ? located.index : children.length, 0, updated);
+        without[groupIndex] = { ...group, children };
+    }
+    if (flattenCount(without) > MAX_BOOKMARK_ITEMS || saveableBookmarks(without) === null)
+        throw new Error('Bookmark is invalid.');
+    return without;
+}
+function saveableBookmarks(bookmarks) {
+    const parsed = [];
+    for (const bookmark of bookmarks) {
+        const value = parseBookmark(bookmark, true);
+        if (value === null)
+            return null;
+        parsed.push(value);
+    }
+    return parsed;
+}
 function remap(path, fromPath, toPath) {
     return path === fromPath ? toPath : path.startsWith(`${fromPath}/`) ? `${toPath}${path.slice(fromPath.length)}` : path;
 }

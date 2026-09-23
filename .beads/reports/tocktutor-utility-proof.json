@@ -1,4 +1,6 @@
 {
+  "status": "Historical evidence; screenshot paths have been replaced by the complete content-alignment recapture.",
+  "supersededBy": ".beads/reports/tocktutor-content-alignment.json",
   "capturedAt": "2026-09-10",
   "viewport": {
     "css": {

@@ -1,0 +1,124 @@
+{
+  "scope": "incremental history/copy gate only",
+  "runId": "aba9b731-612c-43aa-a2fc-9a7b8c7ede4f",
+  "rootPid": 44099,
+  "displayId": 11,
+  "windowBounds": {
+    "x": 1512,
+    "y": 30,
+    "width": 1366,
+    "height": 994
+  },
+  "focused": false,
+  "menus": [
+    {
+      "background": "rgb(21, 21, 23)",
+      "color": "rgb(249, 250, 251)",
+      "border": "rgba(255, 255, 255, 0.12)",
+      "box": {
+        "x": 1260.5,
+        "y": 79.5,
+        "width": 215.2890625,
+        "height": 777,
+        "top": 79.5,
+        "right": 1475.7890625,
+        "bottom": 856.5,
+        "left": 1260.5
+      }
+    },
+    {
+      "background": "rgb(21, 21, 23)",
+      "color": "rgb(249, 250, 251)",
+      "border": "rgba(255, 255, 255, 0.12)",
+      "box": {
+        "x": 1053.5,
+        "y": 422.5,
+        "width": 210,
+        "height": 64,
+        "top": 422.5,
+        "right": 1263.5,
+        "bottom": 486.5,
+        "left": 1053.5
+      }
+    }
+  ],
+  "geometry": {
+    "width": 1512,
+    "height": 949,
+    "dpr": 2,
+    "theme": "dark",
+    "skin": null
+  },
+  "png": {
+    "width": 3024,
+    "height": 1898
+  },
+  "savedFiles": [
+    {
+      "label": "replace1",
+      "token": "omega",
+      "exact": true,
+      "source": "---\r\ntitle: Retained Title\r\ntags: [keep]\r\n---\r\n\r\n# Search Proof\r\n\r\nomega **omega** ALPHA\r\n\r\nEmoji 🙂 and 中文 omega.\r\n\r\n## Second Heading\r\n\r\n[Sibling](Sibling.md) and [[Destination]].\r\n",
+      "root": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-rJEGa3"
+    },
+    {
+      "label": "replace2",
+      "token": "sigma",
+      "exact": true,
+      "source": "---\r\ntitle: Retained Title\r\ntags: [keep]\r\n---\r\n\r\n# Search Proof\r\n\r\nsigma **sigma** ALPHA\r\n\r\nEmoji 🙂 and 中文 sigma.\r\n\r\n## Second Heading\r\n\r\n[Sibling](Sibling.md) and [[Destination]].\r\n",
+      "root": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-rJEGa3"
+    },
+    {
+      "label": "undo1",
+      "token": "omega",
+      "exact": true,
+      "source": "---\r\ntitle: Retained Title\r\ntags: [keep]\r\n---\r\n\r\n# Search Proof\r\n\r\nomega **omega** ALPHA\r\n\r\nEmoji 🙂 and 中文 omega.\r\n\r\n## Second Heading\r\n\r\n[Sibling](Sibling.md) and [[Destination]].\r\n",
+      "root": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-rJEGa3"
+    },
+    {
+      "label": "undo2",
+      "token": "alpha",
+      "exact": true,
+      "source": "---\r\ntitle: Retained Title\r\ntags: [keep]\r\n---\r\n\r\n# Search Proof\r\n\r\nalpha **alpha** ALPHA\r\n\r\nEmoji 🙂 and 中文 alpha.\r\n\r\n## Second Heading\r\n\r\n[Sibling](Sibling.md) and [[Destination]].\r\n",
+      "root": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-rJEGa3"
+    },
+    {
+      "label": "redo1",
+      "token": "omega",
+      "exact": true,
+      "source": "---\r\ntitle: Retained Title\r\ntags: [keep]\r\n---\r\n\r\n# Search Proof\r\n\r\nomega **omega** ALPHA\r\n\r\nEmoji 🙂 and 中文 omega.\r\n\r\n## Second Heading\r\n\r\n[Sibling](Sibling.md) and [[Destination]].\r\n",
+      "root": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-rJEGa3"
+    },
+    {
+      "label": "redo2",
+      "token": "sigma",
+      "exact": true,
+      "source": "---\r\ntitle: Retained Title\r\ntags: [keep]\r\n---\r\n\r\n# Search Proof\r\n\r\nsigma **sigma** ALPHA\r\n\r\nEmoji 🙂 and 中文 sigma.\r\n\r\n## Second Heading\r\n\r\n[Sibling](Sibling.md) and [[Destination]].\r\n",
+      "root": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-rJEGa3"
+    }
+  ],
+  "clipboard": "Main sink intercepted; canonical path matched",
+  "cleanup": {
+    "stopped": true,
+    "recordedPids": [
+      44099,
+      44101,
+      44102,
+      44106,
+      44107,
+      44111,
+      44116,
+      44131,
+      44220,
+      44221,
+      44222,
+      44223,
+      44224,
+      44225,
+      44227,
+      44228,
+      44264
+    ],
+    "remaining": []
+  }
+}

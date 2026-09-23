@@ -1,0 +1,39 @@
+$ pnpm -C plugins/tocktutor run build && node scripts/tocktutor-build-manifest.mjs --write
+$ pnpm -r --filter='!@tockteam/tocktutor-workspace' --if-present run build
+Scope: 10 of 11 workspace projects
+../ui build$ node scripts/build.mjs
+../ui build:   lib/index.js  27.9kb
+../ui build: ⚡ Done in 5ms
+../ui build: Done
+packages/tockbot-note-runtime build$ tsc -p tsconfig.build.json
+packages/tockbot-note-runtime build: Done
+packages/tockteam-note-vault-tools build$ tsc -p tsconfig.build.json
+packages/tockteam-tocktutor-workbench build$ pnpm run generate:typert && tsc -p tsconfig.build.json && node scripts/build-client.mjs
+packages/tockteam-tocktutor-workbench build: $ node scripts/generate-typert.mjs
+packages/tockteam-note-vault-tools build: Done
+packages/tockteam-tocktutor-workbench build:   dist/client.js      3.0mb ⚠️
+packages/tockteam-tocktutor-workbench build:   dist/client.js.map  7.7mb
+packages/tockteam-tocktutor-workbench build: ⚡ Done in 211ms
+packages/tockteam-tocktutor-workbench build: Done
+packages/tockbot-note-desktop build$ node scripts/generate-typert.mjs && tsc -p tsconfig.build.json && node scripts/build-client.mjs
+packages/tockbot-web-clip build$ tsc -p tsconfig.build.json && node scripts/build-client.mjs
+packages/tockteam-tocktutor-assistant build$ pnpm run generate:typert && tsc -p tsconfig.build.json && node scripts/build-client.mjs
+.../tockteam-tocktutor-import-export build$ pnpm run generate:typert && tsc -p tsconfig.build.json && node scripts/build-client.mjs
+packages/tockteam-tocktutor-assistant build: $ node scripts/generate-typert.mjs
+.../tockteam-tocktutor-import-export build: $ node scripts/generate-typert.mjs
+packages/tockbot-web-clip build:   lib/client.js       60.2kb
+packages/tockbot-web-clip build:   lib/client.js.map  106.9kb
+packages/tockbot-web-clip build: ⚡ Done in 85ms
+packages/tockbot-web-clip build: Done
+packages/tockbot-note-desktop build:   dist/client.js      609.4kb
+packages/tockbot-note-desktop build:   dist/client.js.map    1.0mb
+packages/tockbot-note-desktop build: ⚡ Done in 21ms
+packages/tockbot-note-desktop build: Done
+packages/tockteam-tocktutor-assistant build:   lib/client-bundle.js      811.9kb
+packages/tockteam-tocktutor-assistant build:   lib/client-bundle.js.map    1.5mb
+packages/tockteam-tocktutor-assistant build: ⚡ Done in 115ms
+packages/tockteam-tocktutor-assistant build: Done
+.../tockteam-tocktutor-import-export build:   dist/client.js      589.2kb
+.../tockteam-tocktutor-import-export build:   dist/client.js.map    1.0mb
+.../tockteam-tocktutor-import-export build: ⚡ Done in 94ms
+.../tockteam-tocktutor-import-export build: Done

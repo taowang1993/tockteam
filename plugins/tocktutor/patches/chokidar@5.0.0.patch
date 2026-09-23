@@ -1,0 +1,46 @@
+diff --git a/handler.js b/handler.js
+index 6b12880bfcdae186dd738a9397b53ebb5849f0ac..9dcd1011b4a75997fb84a317cf7592e5fa99d4c2 100644
+--- a/handler.js
++++ b/handler.js
+@@ -160,6 +160,7 @@ const setFsWatchListener = (path, fullPath, options, handlers) => {
+         watcher = createFsWatchInstance(path, options, listener, errHandler, rawEmitter);
+         if (!watcher)
+             return;
++        watcher.on(EV.ERROR, errHandler);
+         return watcher.close.bind(watcher);
+     }
+     if (cont) {
+diff --git a/index.js b/index.js
+index f26482978d544bf39828bd152f2369d53413bc27..bf2aec7a579b4b2154e823695dcf568ddecc5594 100644
+--- a/index.js
++++ b/index.js
+@@ -415,6 +415,8 @@ export class FSWatcher extends EventEmitter {
+             return this._closePromise;
+         }
+         this.closed = true;
++        this._pendingWrites.forEach((write) => write.cancelWait());
++        this._pendingWrites.clear();
+         // Memory management.
+         this.removeAllListeners();
+         const closers = [];
+@@ -617,8 +619,10 @@ export class FSWatcher extends EventEmitter {
+         }
+         const now = new Date();
+         const writes = this._pendingWrites;
+-        function awaitWriteFinishFn(prevStat) {
++        const awaitWriteFinishFn = (prevStat) => {
++            if (this.closed || !writes.has(path)) return;
+             statcb(fullPath, (err, curStat) => {
++                if (this.closed) return;
+                 if (err || !writes.has(path)) {
+                     if (err && err.code !== 'ENOENT')
+                         awfEmit(err);
+@@ -638,7 +642,7 @@ export class FSWatcher extends EventEmitter {
+                     timeoutHandler = setTimeout(awaitWriteFinishFn, pollInterval, curStat);
+                 }
+             });
+-        }
++        };
+         if (!writes.has(path)) {
+             writes.set(path, {
+                 lastChange: now,

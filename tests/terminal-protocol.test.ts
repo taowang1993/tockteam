@@ -22,16 +22,18 @@ for (const newline of ['\n', '\r\n']) test(`Better Sidebar adapter frames sessio
   const externalStart = source.indexOf('    // External open for the file tree')
   const sideChatStart = source.indexOf('    // Side Chat:', externalStart)
   const terminalStart = source.indexOf('const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24')
-  // The adapter deliberately canonicalizes CRLF before matching its pinned seams.
-  assert.ok(adapted.includes(source.slice(sideChatStart, terminalStart).replaceAll('\r\n', '\n')),
-    'removing external-open must preserve the following host routes after newline normalization')
+  assert.ok(adapted.includes(source.slice(sideChatStart, terminalStart)),
+    'removing external-open must preserve the following host routes byte-for-byte')
   assert.doesNotMatch(adapted, /External open for the file tree/u)
   const gitSource = readFileSync(new URL('../upstream/DSH-better-sidebar/src/git.ts', import.meta.url), 'utf8')
   assert.match(gitSource, /windowsHide: true/u)
   assert.equal((adapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)
   assert.equal((adapted.match(/\[process exited with code/g) ?? []).length, 1)
   const crlfSource = source.replaceAll('\r\n', '\n').replaceAll('\n', '\r\n')
-  assert.equal((adaptBetterSidebarHost(crlfSource).match(/tockteam-terminal-exit/g) ?? []).length, 1)
+  const crlfAdapted = adaptBetterSidebarHost(crlfSource)
+  assert.equal((crlfAdapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)
+  assert.ok(crlfAdapted.includes(crlfSource.slice(crlfSource.indexOf('    // Side Chat:'), crlfSource.indexOf('const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24'))),
+    'CRLF adaptation must preserve the following host routes byte-for-byte')
   assert.throws(() => adaptBetterSidebarHost(adapted), /seam changed upstream/u)
 })
 

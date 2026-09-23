@@ -1,0 +1,242 @@
+{
+  "themes": {
+    "proofs": [
+      {
+        "name": "Original",
+        "file": "light",
+        "theme": "light",
+        "skin": null,
+        "rootSkin": null,
+        "width": 1512,
+        "height": 949,
+        "dpr": 2,
+        "route": "/tocktutor/Notes/Source.md",
+        "background": "rgb(255, 255, 255)",
+        "foreground": "rgb(15, 17, 21)",
+        "buttonForeground": "rgb(255, 255, 255)",
+        "buttonBackground": "rgb(15, 17, 21)",
+        "contrast": 18.896452054380127,
+        "scrollWidth": 670,
+        "clientWidth": 670,
+        "content": "Merge Entire File WithReview merging Notes/Source.md into Other.md. No merge changes are written during review; any unsaved changes are saved first.Destination: Other.mdPlacementAppend to DestinationPrepend to DestinationOriginal NoteMove to Trash After ConfirmationKeep OriginalReplace With a LinkReplace With an EmbedMerge PreviewNotes/Source.md will be kept unchanged.Destination Content---\nstatus: source\n---\n# Other\n\nAn unrelated note.\n\n# Source\n\nSource paragraph 🙂.\nOther Notes to Update (0)No merge has been applied. Confirm Merge writes these changes; originals remain recoverable as new notes.CancelChange DestinationPreview MergeConfirm Merge"
+      },
+      {
+        "name": "Deep Current",
+        "file": "deep-current",
+        "theme": "dark",
+        "skin": "tockteam-skin-deep-current",
+        "rootSkin": null,
+        "width": 1512,
+        "height": 949,
+        "dpr": 2,
+        "route": "/tocktutor/Notes/Source.md",
+        "background": "rgb(11, 34, 48)",
+        "foreground": "rgb(233, 248, 251)",
+        "buttonForeground": "rgb(15, 17, 21)",
+        "buttonBackground": "rgb(73, 200, 235)",
+        "contrast": 9.668356927793951,
+        "scrollWidth": 670,
+        "clientWidth": 670,
+        "content": "Merge Entire File WithReview merging Notes/Source.md into Other.md. No merge changes are written during review; any unsaved changes are saved first.Destination: Other.mdPlacementAppend to DestinationPrepend to DestinationOriginal NoteMove to Trash After ConfirmationKeep OriginalReplace With a LinkReplace With an EmbedMerge PreviewNotes/Source.md will be kept unchanged.Destination Content---\nstatus: source\n---\n# Other\n\nAn unrelated note.\n\n# Source\n\nSource paragraph 🙂.\nOther Notes to Update (0)No merge has been applied. Confirm Merge writes these changes; originals remain recoverable as new notes.CancelChange DestinationPreview MergeConfirm Merge"
+      },
+      {
+        "name": "Jade Circuit",
+        "file": "jade-circuit",
+        "theme": "dark",
+        "skin": "tockteam-skin-jade-circuit",
+        "rootSkin": null,
+        "width": 1512,
+        "height": 949,
+        "dpr": 2,
+        "route": "/tocktutor/Notes/Source.md",
+        "background": "rgb(11, 36, 30)",
+        "foreground": "rgb(233, 251, 243)",
+        "buttonForeground": "rgb(15, 17, 21)",
+        "buttonBackground": "rgb(82, 214, 160)",
+        "contrast": 10.334566488412754,
+        "scrollWidth": 670,
+        "clientWidth": 670,
+        "content": "Merge Entire File WithReview merging Notes/Source.md into Other.md. No merge changes are written during review; any unsaved changes are saved first.Destination: Other.mdPlacementAppend to DestinationPrepend to DestinationOriginal NoteMove to Trash After ConfirmationKeep OriginalReplace With a LinkReplace With an EmbedMerge PreviewNotes/Source.md will be kept unchanged.Destination Content---\nstatus: source\n---\n# Other\n\nAn unrelated note.\n\n# Source\n\nSource paragraph 🙂.\nOther Notes to Update (0)No merge has been applied. Confirm Merge writes these changes; originals remain recoverable as new notes.CancelChange DestinationPreview MergeConfirm Merge"
+      },
+      {
+        "name": "Porcelain",
+        "file": "porcelain",
+        "theme": "light",
+        "skin": "tockteam-skin-porcelain",
+        "rootSkin": null,
+        "width": 1512,
+        "height": 949,
+        "dpr": 2,
+        "route": "/tocktutor/Notes/Source.md",
+        "background": "rgb(248, 251, 250)",
+        "foreground": "rgb(24, 49, 47)",
+        "buttonForeground": "rgb(255, 255, 255)",
+        "buttonBackground": "rgb(45, 119, 115)",
+        "contrast": 5.252798498933039,
+        "scrollWidth": 670,
+        "clientWidth": 670,
+        "content": "Merge Entire File WithReview merging Notes/Source.md into Other.md. No merge changes are written during review; any unsaved changes are saved first.Destination: Other.mdPlacementAppend to DestinationPrepend to DestinationOriginal NoteMove to Trash After ConfirmationKeep OriginalReplace With a LinkReplace With an EmbedMerge PreviewNotes/Source.md will be kept unchanged.Destination Content---\nstatus: source\n---\n# Other\n\nAn unrelated note.\n\n# Source\n\nSource paragraph 🙂.\nOther Notes to Update (0)No merge has been applied. Confirm Merge writes these changes; originals remain recoverable as new notes.CancelChange DestinationPreview MergeConfirm Merge"
+      },
+      {
+        "name": "Ember Dusk",
+        "file": "ember-dusk",
+        "theme": "dark",
+        "skin": "tockteam-skin-ember-dusk",
+        "rootSkin": null,
+        "width": 1512,
+        "height": 949,
+        "dpr": 2,
+        "route": "/tocktutor/Notes/Source.md",
+        "background": "rgb(42, 27, 39)",
+        "foreground": "rgb(255, 240, 234)",
+        "buttonForeground": "rgb(15, 17, 21)",
+        "buttonBackground": "rgb(255, 146, 117)",
+        "contrast": 8.65675678524138,
+        "scrollWidth": 670,
+        "clientWidth": 670,
+        "content": "Merge Entire File WithReview merging Notes/Source.md into Other.md. No merge changes are written during review; any unsaved changes are saved first.Destination: Other.mdPlacementAppend to DestinationPrepend to DestinationOriginal NoteMove to Trash After ConfirmationKeep OriginalReplace With a LinkReplace With an EmbedMerge PreviewNotes/Source.md will be kept unchanged.Destination Content---\nstatus: source\n---\n# Other\n\nAn unrelated note.\n\n# Source\n\nSource paragraph 🙂.\nOther Notes to Update (0)No merge has been applied. Confirm Merge writes these changes; originals remain recoverable as new notes.CancelChange DestinationPreview MergeConfirm Merge"
+      },
+      {
+        "name": "Original",
+        "file": "dark",
+        "theme": "dark",
+        "skin": null,
+        "rootSkin": null,
+        "width": 1512,
+        "height": 949,
+        "dpr": 2,
+        "route": "/tocktutor/Notes/Source.md",
+        "background": "rgb(35, 35, 36)",
+        "foreground": "rgb(249, 250, 251)",
+        "buttonForeground": "rgb(15, 17, 21)",
+        "buttonBackground": "rgb(249, 250, 251)",
+        "contrast": 18.082282383551934,
+        "scrollWidth": 670,
+        "clientWidth": 670,
+        "content": "Merge Entire File WithReview merging Notes/Source.md into Other.md. No merge changes are written during review; any unsaved changes are saved first.Destination: Other.mdPlacementAppend to DestinationPrepend to DestinationOriginal NoteMove to Trash After ConfirmationKeep OriginalReplace With a LinkReplace With an EmbedMerge PreviewNotes/Source.md will be kept unchanged.Destination Content---\nstatus: source\n---\n# Other\n\nAn unrelated note.\n\n# Source\n\nSource paragraph 🙂.\nOther Notes to Update (0)No merge has been applied. Confirm Merge writes these changes; originals remain recoverable as new notes.CancelChange DestinationPreview MergeConfirm Merge"
+      }
+    ],
+    "errors": [],
+    "boundary": "Real settings-controlled theme/skin captures, separately labeled; no merge applied"
+  },
+  "preview": {
+    "menu": "Backlinks in Document\nReading View\nLive Preview\nSource Mode\nSplit Right\nSplit Down\nOpen in New Window\nRename Note…\nMove Note…\nBookmark Note…\nMerge Entire File With…\nAdd Property\nExport PDF…\nFind…\nReplace…\nCopy Path\nOpen Linked View\nOpen in Default App\nReveal in Finder\nReveal File in Navigation\nFile Recovery\nOutline\nProperties\nBacklinks\nGraph View\nWeb Viewer\nBookmarks\nTags\nAttachments and Embeds\nNote Tools\nWorkspaces and Panes\nReviews and Actions\nMerge Recovery\nMove File to Trash",
+    "content": "---\nstatus: source\n---\n# Destination\n\nDestination paragraph.\n\n# Source\n\nSource paragraph 🙂.\n",
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "dpr": 2,
+      "theme": "dark",
+      "skin": null
+    },
+    "errors": [],
+    "route": "http://127.0.0.1:52107/tocktutor/Notes/Source.md",
+    "state": "Preview ready; not applied"
+  },
+  "apply": {
+    "merged": "---\nstatus: source\n---\n# Destination\n\n\nDestination paragraph.\n\n\n# Source\n\n\nSource paragraph 🙂.\n\n",
+    "recovery": "Originals recovered in Recovered Merge d8ae5052-468e-4846-937c-61ae4335773a. Current notes were not overwritten.",
+    "route": "http://127.0.0.1:52107/tocktutor/Notes/Destination.md",
+    "errors": [],
+    "boundary": "Production Host/runtime filesystem effects; OS association was intercepted"
+  },
+  "deepReload": {
+    "route": "http://127.0.0.1:52107/tocktutor/Notes/Destination.md",
+    "status": 404,
+    "text": ""
+  },
+  "filesystem": {
+    "originalsRecoveredExactly": true,
+    "sourceRetired": true,
+    "referrerRewritten": true,
+    "newerDestinationPreserved": true,
+    "unrelatedNoteUnchanged": true,
+    "recovery": [
+      "Recovered Merge d8ae5052-468e-4846-937c-61ae4335773a"
+    ]
+  },
+  "screenshots": [
+    {
+      "file": "menu.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "preview.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "light.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "deep-current.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "jade-circuit.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "porcelain.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "ember-dusk.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "dark.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "applied.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "file": "recovered.png",
+      "width": 3024,
+      "height": 1898
+    }
+  ],
+  "cleanup": {
+    "run": "19c7ce63-ee5f-45e4-afc1-a2e897eac4bd",
+    "rootPid": 83791,
+    "recordedPids": [
+      83791,
+      83793,
+      83794,
+      83796,
+      83798,
+      83801,
+      83806,
+      83819,
+      83893,
+      83894,
+      83895,
+      83896,
+      83897,
+      83898,
+      83899,
+      83936,
+      84098,
+      84099,
+      84100,
+      84101,
+      84102,
+      84103,
+      84104,
+      84105
+    ],
+    "remaining": [],
+    "source": "extended_display.stop"
+  }
+}

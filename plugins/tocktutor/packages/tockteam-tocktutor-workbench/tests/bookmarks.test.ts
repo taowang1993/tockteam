@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   addBookmark,
+  editBookmark,
   loadBookmarks,
   remapBookmarks,
+  removeBookmark,
   saveBookmarks,
   type Bookmark,
 } from '../dist/bookmarks.js'
@@ -58,4 +60,36 @@ test('fails malformed nested groups and excessive local state closed', () => {
     { id: 'valid', kind: 'note', path: 'A.md', title: 'A' },
   ]))
   assert.deepEqual(loadBookmarks(storage, vault), [{ id: 'valid', kind: 'note', path: 'A.md', title: 'A' }])
+})
+
+test('removes groups and edits duplicate-title groups by ID without changing child order', () => {
+  const first = { id: 'a', kind: 'note' as const, path: 'A.md', title: 'A' }
+  const second = { id: 'b', kind: 'note' as const, path: 'B.md', title: 'B' }
+  const bookmarks: Bookmark[] = [
+    { id: 'one', kind: 'group', title: 'Lessons', children: [] },
+    { id: 'two', kind: 'group', title: 'Lessons', children: [first, second] },
+  ]
+  assert.deepEqual(removeBookmark(bookmarks, 'two'), [bookmarks[0]])
+  const edited = editBookmark(bookmarks, 'a', 'Renamed', 'two')
+  assert.deepEqual(edited, [bookmarks[0], { ...bookmarks[1], children: [{ ...first, title: 'Renamed' }, second] }])
+})
+
+test('edits one stable bookmark into and out of an existing group without duplicating it', () => {
+  const bookmarks: Bookmark[] = [
+    { id: 'first', kind: 'note', path: 'First.md', title: 'First' },
+    { id: 'lessons', kind: 'group', title: 'Lessons', children: [] },
+    { id: 'second', kind: 'note', path: 'Second.md', title: 'Second' },
+  ]
+  const grouped = editBookmark(bookmarks, 'second', 'Edited', 'lessons')
+  assert.deepEqual(grouped, [
+    { id: 'first', kind: 'note', path: 'First.md', title: 'First' },
+    { id: 'lessons', kind: 'group', title: 'Lessons', children: [{ id: 'second', kind: 'note', path: 'Second.md', title: 'Edited' }] },
+  ])
+  assert.deepEqual(editBookmark(grouped, 'second', 'Moved Back', null), [
+    { id: 'first', kind: 'note', path: 'First.md', title: 'First' },
+    { id: 'lessons', kind: 'group', title: 'Lessons', children: [] },
+    { id: 'second', kind: 'note', path: 'Second.md', title: 'Moved Back' },
+  ])
+  assert.throws(() => editBookmark(bookmarks, 'second', 'Edited', 'Missing'), /group/u)
+  assert.throws(() => editBookmark(bookmarks, 'second', ' ', null), /title/u)
 })

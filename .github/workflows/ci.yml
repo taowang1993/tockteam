@@ -202,6 +202,9 @@ jobs:
       - name: Stage the pinned runtime
         run: pnpm run stage:dsh
 
+      - name: Verify authenticated Desktop page routes
+        run: node --test tests/desktop-page-routes.integration.ts
+
       - name: Smoke the web profile
         run: pnpm run smoke:web
 

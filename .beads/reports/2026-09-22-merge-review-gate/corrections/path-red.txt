@@ -1,0 +1,46 @@
+
+ RUN  v4.1.8 /Users/taowang/projects/worktrees/tutor/plugins/tocktutor/packages/tockteam-tocktutor-workbench
+
+ ❯ tests/merge-review.test.tsx (6 tests | 2 failed) 218ms
+   × prepends into the exact leading-space filename among " Note.md" 15ms
+   × prepends into the exact leading-space filename among " Note.md" 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/merge-review.test.tsx > prepends into the exact leading-space filename among " Note.md"
+AssertionError: expected 'append' to be 'prepend' // Object.is equality
+
+Expected: "prepend"
+Received: "append"
+
+ ❯ tests/merge-review.test.tsx:113:99
+    111|   await waitFor(() => { expect(screen.getAllByRole('option').find(opti…
+    112|   fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter', shif…
+    113|   expect((await screen.findByRole('combobox', { name: 'Placement' }) a…
+       |                                                                                                   ^
+    114|   expect(prepare.mock.calls[0]![0]).toBe(' Note.md')
+    115| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/merge-review.test.tsx > prepends into the exact leading-space filename among " Note.md"
+AssertionError: expected 'Note.md' to be ' Note.md' // Object.is equality
+
+Expected: " Note.md"
+Received: "Note.md"
+
+ ❯ tests/merge-review.test.tsx:114:37
+    112|   fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter', shif…
+    113|   expect((await screen.findByRole('combobox', { name: 'Placement' }) a…
+    114|   expect(prepare.mock.calls[0]![0]).toBe(' Note.md')
+       |                                     ^
+    115| })
+    116|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+   Start at  19:22:41
+   Duration  1.96s (transform 1.06s, setup 11ms, import 1.47s, tests 218ms, environment 207ms)

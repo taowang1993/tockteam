@@ -1,0 +1,315 @@
+{
+  "createdAt": "2026-09-21T22:43:32.166Z",
+  "desktop": {
+    "sourceId": "pane-1",
+    "firstStatus": "中文 #Open\n# Default App Proof\n\n\nSaved before external dispatch 🙂.\n\n\nNotes/中文 #Open.md saved.\nOpened in the default app.\n0 backlinks\nSource\n7 words\n56 characters",
+    "source": "中文 #Open\n# Default App Proof\n\n\nSaved before external dispatch 🙂.\n\n\nNotes/中文 #Open.md saved.\nOpened in the default app.\n0 backlinks\nSource\n7 words\n56 characters",
+    "other": "Other\n# Other\n\n\nSeparate unsaved draft; must stay off disk.\n\n\nUnsaved changes.\n0 backlinks\nSource\n8 words\n53 characters",
+    "session": {
+      "layout": {
+        "axis": "horizontal",
+        "ratio": 0.5,
+        "children": [
+          {
+            "groupId": "pane-1"
+          },
+          {
+            "groupId": "group-1"
+          }
+        ]
+      },
+      "routeId": "/tocktutor",
+      "vault": {
+        "id": "vault:ad8817a7165665550aa259601c8bf1dc959a4314fdab165652c5bea13679524f",
+        "generation": 1
+      },
+      "focusedGroupId": "pane-1",
+      "groups": [
+        {
+          "id": "pane-1",
+          "activeTabId": "tab-1",
+          "tabs": [
+            {
+              "id": "tab-1",
+              "path": "Notes/中文 #Open.md",
+              "pinned": false,
+              "mode": "source",
+              "lastEditingMode": "source",
+              "revision": 1,
+              "savedRevision": 1,
+              "dirty": false
+            }
+          ]
+        },
+        {
+          "id": "group-1",
+          "activeTabId": "tab-2",
+          "tabs": [
+            {
+              "id": "tab-2",
+              "path": "Notes/Other.md",
+              "pinned": false,
+              "mode": "source",
+              "lastEditingMode": "source",
+              "revision": 2,
+              "savedRevision": 0,
+              "dirty": true
+            }
+          ]
+        }
+      ],
+      "editorRevision": 2
+    },
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "dpr": 2,
+      "theme": "dark",
+      "skin": null
+    },
+    "route": "http://127.0.0.1:54511/tocktutor/Notes/%E4%B8%AD%E6%96%87%20%23Open.md",
+    "boundary": "OS association intercepted; no external app opened"
+  },
+  "failure": {
+    "result": {
+      "ok": false,
+      "error": {
+        "code": "unavailable",
+        "message": "Desktop open failed with status unavailable",
+        "details": {}
+      }
+    },
+    "failed": "中文 #Open\n# Default App Proof\n\n\nSaved before external dispatch 🙂.\n\n\nNotes/中文 #Open.md saved.\nThe native action failed safely.\n0 backlinks\nSource\n7 words\n56 characters",
+    "preparedConflict": "# Default App Proof\n\n\nUnsaved local conflict draft.\n\n"
+  },
+  "conflict": {
+    "dispatches": 0,
+    "source": "中文 #Open\n# Default App Proof\n\n\nUnsaved local conflict draft.\n\n\nSave Conflict: The note changed outside this editor. Your source remains unsaved.\nThe note could not be saved.\n0 backlinks\nSource\n7 words\n51 characters",
+    "route": "http://127.0.0.1:54511/tocktutor/Notes/%E4%B8%AD%E6%96%87%20%23Open.md"
+  },
+  "effects": [
+    {
+      "target": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-yP9yhF/Comparison Vault/Notes/中文 #Open.md",
+      "savedContent": "# Default App Proof\n\nSaved before external dispatch 🙂.\n",
+      "failed": false,
+      "boundary": "OS association intercepted; no app launched"
+    },
+    {
+      "target": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-yP9yhF/Comparison Vault/Notes/中文 #Open.md",
+      "savedContent": "# Default App Proof\n\nSaved before external dispatch 🙂.\n",
+      "failed": false,
+      "boundary": "OS association intercepted; no app launched"
+    },
+    {
+      "target": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-yP9yhF/Comparison Vault/Notes/中文 #Open.md",
+      "savedContent": "# Default App Proof\n\nSaved before external dispatch 🙂.\n",
+      "failed": true,
+      "boundary": "OS association intercepted; no app launched"
+    }
+  ],
+  "console": "### Result\nTotal messages: 1 (Errors: 0, Warnings: 1)\n\n[WARNING] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged. @ node:electron/js2c/sandbox_bundle:1\n",
+  "placement": {
+    "pid": 70387,
+    "events": [
+      {
+        "windowId": 1,
+        "displayId": 11,
+        "bounds": {
+          "x": 1512,
+          "y": 30,
+          "width": 1366,
+          "height": 994
+        },
+        "visible": true,
+        "focused": false
+      }
+    ],
+    "ready": true,
+    "display": {
+      "accelerometerSupport": "unknown",
+      "bounds": {
+        "x": 1512,
+        "y": 0,
+        "width": 1366,
+        "height": 1024
+      },
+      "colorDepth": 24,
+      "colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+      "depthPerComponent": 8,
+      "detected": true,
+      "displayFrequency": 60,
+      "id": 11,
+      "internal": false,
+      "label": "Sidecar Display (AirPlay)",
+      "maximumCursorSize": {
+        "width": 0,
+        "height": 0
+      },
+      "monochrome": false,
+      "nativeOrigin": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0,
+      "scaleFactor": 2,
+      "size": {
+        "width": 1366,
+        "height": 1024
+      },
+      "workArea": {
+        "x": 1512,
+        "y": 30,
+        "width": 1366,
+        "height": 994
+      },
+      "workAreaSize": {
+        "width": 1366,
+        "height": 994
+      },
+      "touchSupport": "unknown"
+    },
+    "port": 54492
+  },
+  "screenshots": [
+    {
+      "file": "menu.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "63c4115af91523d6f90cffff78c8c5766d3b8b35b5f9e6e29b35a6ee7948bc9a"
+    },
+    {
+      "file": "owner-only-save.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "fd50335e8867e6f6f8954729552ae26fa209bd04a462e49a756afb2525ccdcc0"
+    },
+    {
+      "file": "os-failure.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "6d986200731e00a18989fc4c6e05dff8f6a81ba554267f13b4405eeb7004346f"
+    },
+    {
+      "file": "save-conflict.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "26ac3aba27166e54956cf119e0d7803b2b81c4f175a475e3056a210ee2d1b227"
+    }
+  ],
+  "sourceHashes": {
+    "src/main.ts": "421c152dc61abb89b37c4393a4feeab79052ae894f69fd4210936c29ac7f4cbd",
+    "src/desktop-open-path.ts": "aead4f6923066037a08d5c3ab7de4f81c9b0c22e868054b3c4463a42c346b0ef",
+    "src/desktop-open-path-native.ts": "a6898ef343761be8d173212edd9c51e41387fc516ece7789f0788792b36c8b7b",
+    "src/desktop-open-path-channel.ts": "56aa035fb1155992da0e853576fa308121cf5c540dbd22154cfbb4af4f72bb2c",
+    "src/desktop-open-path-provider.ts": "cdc401ed37049d62b14914d2fe4224c0b46364c448998a6de352bddece165fef",
+    "src/plugin.ts": "000e1f432de5bb0e33f662456f024965ff0ede5ff4dc2ec397605a7e9561f296",
+    "src/desktop-caller-authorization.ts": "16d2f58fefdad37d48ead7357a36e95080cefc521f6a4bd88e42319dbcf60ef5",
+    "src/desktop-runtime-environment.ts": "3e54ebd222eb8c931a29f05ef8ea4970fbafd6b3f7ae9ca56648536f9dbfdd09",
+    "src/host-contract.ts": "2d113c9a1be4f1c43d4cb540f15a071b91a3e7d6085edbaef5bc82c336de6ec2",
+    "client.d.ts": "3a7d48228ef1938b389891e6cd3ac8624c2d3f9057b12cefc1775f212cdb6196",
+    "plugins/tocktutor/packages/tockbot-note-desktop/src/client-actions.tsx": "545d0bb629defffcbe341c23a672968fe99baddccb4d64c0ae0a5379dc9ec231",
+    "plugins/tocktutor/packages/tockbot-note-desktop/src/host-actions.ts": "0589408bcde1d8e32f97934a8b0ce02841148a26bb4e63baa40c721a1650b80f",
+    "plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts": "030c8519a90bd701c8b1eaa2c100a1f3c89b7eb3c7c424dcd84d1fa84883f835",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx": "ebb871cbbe932e2e0c5eb8cc1cb55f21023226e5fd963db47c2f10da8b03800a",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/native-actions.ts": "2a0b236d431b55db307055cc5ee70e3d9299e42a80296a1c49322fd37e16acd5",
+    "dist/main.js": "cc61df903f41839d9406f2602e4be0df93bffa90e8dc6debed6ffcc5051f2d90",
+    "dist/plugin.js": "4463b687f6b1c7603985d51ddd47148fa417796855c8d3862c6cabc322ecb019"
+  },
+  "stagedHashes": {
+    "tockbot-note-runtime/lib/index.js": "9382ae9680d5a24c68e6bd7276750ebb662081c83fb1e6be1fffde9f681c3979",
+    "tockbot-note-desktop/dist/host-actions.js": "9571d31087f2c1a0a7d57741f121927281d515662fa6d66897d84304e7891e1d",
+    "tockbot-note-desktop/dist/client-actions.js": "cc966603f34ead2f19a7c81784f4502ffc55945bb148ae3757ab4da960c3de9e",
+    "tockbot-note-desktop/dist/client.js": "6544a44f99939b1f97a6395324548c915e26fce26601848761f55bcd2cac7262",
+    "tockbot-note-desktop/dist/typert.remote-client.js": "a13a85465eaaf0b098167661d4d15e007447fff326214b03bd17e3f8b97d875e",
+    "@tockteam/tocktutor-workbench/dist/client.js": "38faf9ee9f935ca5214bae83f6c05483fc10ef9f8ae8b0f21404a3b0fb063352"
+  },
+  "cleanup": [
+    {
+      "id": "efa003ee-4ada-474f-a7e1-50c8a87c6125",
+      "rootPid": 70387,
+      "recordedPids": [
+        70387,
+        70389,
+        70390,
+        70397,
+        70399,
+        70401,
+        70488,
+        70495,
+        70502,
+        70607,
+        70722,
+        70723,
+        70724,
+        70725,
+        70726,
+        70727,
+        70728,
+        70729
+      ],
+      "remaining": []
+    },
+    {
+      "id": "6d91628a-9c66-4b0c-a977-12b892101cff",
+      "rootPid": 57732,
+      "recordedPids": [
+        57732,
+        57734,
+        57735,
+        57740,
+        57741,
+        57743,
+        57749,
+        57756,
+        57775,
+        57866,
+        57867,
+        57868,
+        57869,
+        57870,
+        57871,
+        57872,
+        57873,
+        57886,
+        58049,
+        58050,
+        58051,
+        58052,
+        58053,
+        58054,
+        58055,
+        58056
+      ],
+      "remaining": []
+    },
+    {
+      "id": "8c051f6b-7c4e-4954-a097-69578b94990d",
+      "rootPid": 57118,
+      "recordedPids": [
+        57118,
+        57121,
+        57122
+      ],
+      "remaining": []
+    }
+  ],
+  "tests": {
+    "native": 19,
+    "desktop": 53,
+    "route": 147,
+    "runtime": 94,
+    "ui": 136,
+    "total": 449,
+    "root": {
+      "passed": 1367,
+      "failed": 5,
+      "skipped": 18
+    }
+  },
+  "limitations": [
+    "OS association and clipboard intercepted; no external app launch",
+    "Five known sandbox/process root-test failures",
+    "Full note-menu parity and merge work incomplete",
+    "No installed smoke, Nix execution, Git staging, commit or push"
+  ]
+}

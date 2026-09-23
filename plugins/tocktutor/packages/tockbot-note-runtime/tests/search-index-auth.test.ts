@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
-import { createConnection } from 'node:net'
+import { createConnection, type Socket } from 'node:net'
 import { test } from 'node:test'
 import { connectIndexPeer, listenForIndexPeer } from '../src/search-index-auth.ts'
 import { IndexChannel } from '../src/search-index-channel.ts'
+
+function socketClosed(socket: Socket): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Denied/aborted unauthenticated peers may receive FIN or RST; both must close.
+    socket.once('error', error => { if ((error as NodeJS.ErrnoException).code !== 'ECONNRESET') reject(error) })
+    socket.once('close', () => resolve())
+  })
+}
 
 test('index peers authenticate before exchanging generation-bound frames', { timeout: 5000 }, async () => {
   const controller = new AbortController()
@@ -49,7 +57,7 @@ test('unauthenticated stalled sockets are closed on abort; the listener does not
   const socket = createConnection({ host: '127.0.0.1', port: JSON.parse(listener.bootstrap).port })
   try {
     await once(socket, 'connect')
-    const closed = once(socket, 'close')
+    const closed = socketClosed(socket)
     controller.abort()
     await rejection
     await closed
@@ -65,7 +73,7 @@ test('index authentication rejects extra fields and bounded repeated attempts', 
   try {
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const socket = createConnection({ host: '127.0.0.1', port: bootstrap.port })
-      const closed = once(socket, 'close')
+      const closed = socketClosed(socket)
       const channel = new IndexChannel(socket)
       await channel.send({ type: 'hello', version: 1, generation: bootstrap.generation, token: bootstrap.token, extra: true })
       await closed
@@ -81,7 +89,7 @@ test('authenticating the valid peer evicts a stalled competitor without killing 
   let client
   try {
     await once(stalled, 'connect')
-    const closed = once(stalled, 'close')
+    const closed = socketClosed(stalled)
     client = await connectIndexPeer(listener.bootstrap, controller.signal)
     const winner = await listener.peer
     await closed
@@ -99,7 +107,7 @@ test('stalled unauthenticated peer expires after two seconds without blocking a 
   let client
   try {
     await once(socket, 'connect')
-    const closed = once(socket, 'close')
+    const closed = socketClosed(socket)
     t.mock.timers.tick(2000)
     await closed
     client = await connectIndexPeer(listener.bootstrap, controller.signal)

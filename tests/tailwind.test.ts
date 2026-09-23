@@ -26,6 +26,8 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(css, /\.flex\{/)
   assert.match(css, /\.flex-col\{/)
   assert.match(css, /\.text-foreground\{color:var\(--dsw-alias-label-primary\)\}/)
+  assert.match(css, /\.bg-primary(?:,[^{]+)?\{background-color:var\(--dsw-alias-button-primary-fill\)\}/)
+  assert.match(css, /\.text-primary-foreground\{color:var\(--dsw-alias-label-primary-foreground\)\}/)
   assert.doesNotMatch(css, /@layer utilities/)
   assert.doesNotMatch(css, /\*,:before,:after\{box-sizing:border-box/)
   assert.match(css, /grid-template-columns:minmax\(10rem,\.?8fr\) minmax\(0,1\.8fr\)/)
@@ -99,6 +101,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
     [
+      'tocktutor-note-links',
       'launcher-settings-nav-row', 'launcher-command-surface', 'launcher-command-header', 'launcher-command-search', 'launcher-command-content', 'launcher-command-list',
       'launcher-command-field', 'launcher-command-control', 'launcher-command-select-content', 'launcher-command-select-item', 'launcher-command-status', 'launcher-command-empty', 'launcher-command-error', 'launcher-command-group-title',
       'launcher-command-row', 'launcher-command-row-icon', 'launcher-command-footer', 'launcher-command-footer-identity', 'launcher-command-footer-actions', 'launcher-command-footer-action',

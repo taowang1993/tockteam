@@ -1,0 +1,13 @@
+▶ packaged vault watcher survives replacement, forwards native errors, and stops pending writes
+  ✔ equivalent root spellings are not ignored (0.312625ms)
+  ✔ nonpersistent native errors reach the runtime error event (0.57875ms)
+  ✔ closing cancels pending write waits and ignores late stat errors (13.415459ms)
+✔ packaged vault watcher survives replacement, forwards native errors, and stops pending writes (267.012916ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 325.276375

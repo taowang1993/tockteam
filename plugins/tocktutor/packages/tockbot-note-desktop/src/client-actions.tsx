@@ -1,6 +1,6 @@
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type {
   DesktopCallerOperation,
@@ -29,6 +29,18 @@ export interface DesktopActionRemote {
     ): Promise<RemoteResult<NativeActionResult>>
     closeAllPopOuts(
       authorization: string,
+      expectedVault: VaultReference,
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<NativeActionResult>>
+    openInDefaultApp(
+      authorization: string,
+      path: string,
+      expectedVault: VaultReference,
+      signal?: AbortSignal,
+    ): Promise<RemoteResult<NativeActionResult>>
+    copyAbsolutePath(
+      authorization: string,
+      path: string,
       expectedVault: VaultReference,
       signal?: AbortSignal,
     ): Promise<RemoteResult<NativeActionResult>>
@@ -500,6 +512,7 @@ function resultMessage(result: NativeActionResult): string {
   switch (result.status) {
     case 'activated': return 'Vault selected.'
     case 'closed': return 'Pop-out closed.'
+    case 'copied': return 'Path copied.'
     case 'exported': return 'Note exported.'
     case 'focused': return 'Pop-out focused.'
     case 'granted': return 'Microphone ready.'
@@ -708,6 +721,9 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
   const owner = useRef<TockTutorNativeActionsOwnerProps>(props)
   const lifetime = useRef<AbortController>()
   const activeRecording = useRef<AudioRecording>()
+  const noteLifetime = useRef<AbortController>()
+  const pendingNote = useRef<AbortSignal>()
+  const recordingStarting = useRef(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
   const [message, setMessage] = useState('Ready.')
@@ -739,22 +755,36 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     }
   }, [props.bridge, props.remote])
 
-  const run = async (
+  useEffect(() => {
+    const controller = new AbortController()
+    noteLifetime.current = controller
+    if (pendingNote.current) {
+      pendingNote.current = undefined
+      setBusy(null)
+      setMessage('Ready.')
+    }
+    return () => { controller.abort() }
+  }, [props.activePath, props.vault?.id, props.vault?.generation, props.noteSource, props.noteOwnerKey, props.bridge, props.remote])
+
+  const run = useCallback(async (
     label: string,
     operation: DesktopCallerOperation,
     call: (authorization: string, signal: AbortSignal) => Promise<RemoteResult<NativeActionResult>>,
     expectedVault?: VaultReference,
+    noteSignal?: AbortSignal,
   ): Promise<NativeActionResult | undefined> => {
-    const signal = lifetime.current?.signal
+    const signal = noteSignal ?? lifetime.current?.signal
     if (signal === undefined || signal.aborted) return undefined
     setBusy(label)
     setMessage(`${label}…`)
     try {
       const { authorization } = await props.bridge.authorize(operation, expectedVault)
+      if (signal.aborted) return undefined
       let response = await call(authorization, signal)
       if (responseWasLost(response) && !signal.aborted) response = await call(authorization, signal)
       const result = valueOf(response)
-      if (!signal.aborted) setMessage(resultMessage(result))
+      if (!signal.aborted) setMessage(operation === 'open-default-app' && result.status === 'opened'
+        ? 'Opened in the default app.' : resultMessage(result))
       return result
     } catch {
       if (!signal.aborted) setMessage('The native action failed safely.')
@@ -762,9 +792,9 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     } finally {
       if (!signal.aborted) setBusy(null)
     }
-  }
+  }, [props.bridge])
 
-  const withNote = (
+  const withNote = useCallback((
     label: string,
     operation: DesktopCallerOperation,
     call: (
@@ -775,15 +805,73 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     ) => Promise<RemoteResult<NativeActionResult>>,
     saveFirst = false,
   ) => async (): Promise<void> => {
-    if (props.activePath === null || props.vault === null || (saveFirst && !await saveCurrent(props))) return
-    await run(label, operation, (authorization, signal) => (
-      call(authorization, props.activePath!, props.vault!, signal)
-    ), props.vault)
-  }
+    const signal = noteLifetime.current?.signal
+    if (signal === undefined || signal.aborted || lifetime.current?.signal.aborted !== false) return
+    const current = owner.current
+    const { activePath, vault } = current
+    if (activePath === null || vault === null) return
+    pendingNote.current = signal
+    try {
+      if (saveFirst) {
+        setBusy('Saving Note')
+        try {
+          if (!await (current.saveNote?.() ?? saveCurrent(current))) {
+            if (!signal.aborted) setMessage('The note could not be saved.')
+            return
+          }
+        } catch {
+          if (!signal.aborted) setMessage('The note could not be saved.')
+          return
+        } finally {
+          if (!signal.aborted) setBusy(null)
+        }
+      }
+      if (signal.aborted || !sameRecordingOwner(activePath, vault, owner.current)) return
+      await run(label, operation, (authorization, signal) => (
+        sameRecordingOwner(activePath, vault, owner.current)
+          ? call(authorization, activePath, vault, signal)
+          : Promise.resolve({ ok: true, value: { status: 'stale' } })
+      ), vault, signal)
+    } finally {
+      if (pendingNote.current === signal) pendingNote.current = undefined
+    }
+  }, [run])
+
+  const noteActions = useMemo(() => ({
+    'open-default': withNote('Opening in Default App', 'open-default-app', (authorization, path, vault, signal) => (
+      props.remote.tocktutorDesktop.openInDefaultApp(authorization, path, vault, signal)
+    ), true),
+    reveal: withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (
+      props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal)
+    )),
+    'copy-absolute': withNote('Copying Absolute Path', 'copy-absolute-path', (authorization, path, vault, signal) => (
+      props.remote.tocktutorDesktop.copyAbsolutePath(authorization, path, vault, signal)
+    )),
+    'open-window': withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (
+      props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)
+    ), true),
+    'export-pdf': withNote('Exporting PDF', 'export-pdf', (authorization, path, vault, signal) => (
+      props.remote.tocktutorDesktop.exportNote(authorization, 'pdf', path, vault, signal)
+    ), true),
+  }), [props.remote, withNote])
+  const vaultId = props.vault?.id
+  const vaultGeneration = props.vault?.generation
+  useEffect(() => {
+    props.publishNoteActions?.({
+      activePath: props.activePath,
+      disabled: busy !== null || !hasNote,
+      message,
+      run: action => { void noteActions[action]() },
+      vault: vaultId === undefined || vaultGeneration === undefined ? null : { id: vaultId, generation: vaultGeneration },
+    })
+    return () => { props.publishNoteActions?.(null) }
+  }, [props.publishNoteActions, props.activePath, vaultId, vaultGeneration, busy, hasNote, message, noteActions])
 
   const startRecording = async (): Promise<void> => {
     const signal = lifetime.current?.signal
-    if (signal === undefined || signal.aborted || props.activePath === null || props.vault === null || props.storeAudio === undefined) return
+    if (signal === undefined || signal.aborted || props.activePath === null || props.vault === null || props.storeAudio === undefined
+      || recordingStarting.current || activeRecording.current) return
+    recordingStarting.current = true
     setBusy('Starting Recording')
     setMessage('Starting Recording…')
     try {
@@ -818,6 +906,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
     } catch {
       if (!signal.aborted) setMessage('Audio recording could not start.')
     } finally {
+      recordingStarting.current = false
       if (!signal.aborted) setBusy(null)
     }
   }
@@ -866,12 +955,8 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
   return (
     <div aria-label="Desktop Note Actions" className="tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]" role="group">
       <div className="tocktutor-desktop-actions-grid grid grid-cols-2 gap-2">
-        {button('Reveal Entry', withNote('Revealing Entry', 'reveal-entry', (authorization, path, vault, signal) => (
-          props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal)
-        )), hasNote)}
-        {button('Open Pop-Out', withNote('Opening Pop-Out', 'popout-open', (authorization, path, vault, signal) => (
-          props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal)
-        ), true), hasNote)}
+        {button('Reveal Entry', noteActions.reveal, hasNote)}
+        {button('Open Pop-Out', noteActions['open-window'], hasNote)}
         {button('Close Pop-Out', withNote('Closing Pop-Out', 'popout-close', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal)
         )), hasNote)}
@@ -907,9 +992,7 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
         {button('Export HTML', withNote('Exporting HTML', 'export-html', (authorization, path, vault, signal) => (
           props.remote.tocktutorDesktop.exportNote(authorization, 'html', path, vault, signal)
         ), true), hasNote)}
-        {button('Export PDF', withNote('Exporting PDF', 'export-pdf', (authorization, path, vault, signal) => (
-          props.remote.tocktutorDesktop.exportNote(authorization, 'pdf', path, vault, signal)
-        ), true), hasNote)}
+        {button('Export PDF', noteActions['export-pdf'], hasNote)}
       </div>
       <Alert unstyled aria-live="polite" className="mt-1 mb-0 text-[var(--tt-muted,#667085)]" role="status">{message}</Alert>
     </div>

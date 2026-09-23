@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.1",
+    "chokidar": "5.0.0",
     "flexsearch": "0.8.212",
     "sqlite3": "5.1.7"
   },

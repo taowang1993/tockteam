@@ -94,6 +94,10 @@ import { DesktopPopOutOwner } from './desktop-popout-owner.ts'
 import { DesktopMicrophoneOwner } from './desktop-microphone-owner.ts'
 import { DesktopPickerChannel } from './desktop-picker-channel.ts'
 import { DesktopPickerOwner, type DesktopPickerDialogOptions } from './desktop-picker-owner.ts'
+import { DesktopOpenPathChannel } from './desktop-open-path-channel.ts'
+import { performDesktopOpenPath } from './desktop-open-path-native.ts'
+import { DesktopCopyPathChannel } from './desktop-copy-path-channel.ts'
+import { performDesktopCopyPath } from './desktop-copy-path-native.ts'
 import { DesktopRevealChannel } from './desktop-reveal-channel.ts'
 import { performDesktopReveal } from './desktop-reveal-native.ts'
 import {
@@ -776,6 +780,22 @@ const logTail: string[] = []
 const desktopCallerAuthorizations = new DesktopCallerAuthorizations()
 const webClipFrames = new WebClipFrameAuthorizations()
 const webClipSessions = new WeakSet<Session>()
+const desktopOpenPathChannel = new DesktopOpenPathChannel({
+  isAvailable: () => isEligibleDesktopRevealWindow(),
+  onOpen: async (input, signal) => await performDesktopOpenPath(input, {
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+    openPath: async path => await shell.openPath(path),
+  }, signal),
+})
+const desktopCopyPathChannel = new DesktopCopyPathChannel({
+  isAvailable: () => isEligibleDesktopRevealWindow(),
+  onCopy: async (input, signal) => await performDesktopCopyPath(input, {
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+    lstat: async path => await lstat(path, { bigint: true }),
+    realpath: async path => await realpath(path),
+    writeText: path => { clipboard.writeText(path) },
+  }, signal),
+})
 const desktopRevealChannel = new DesktopRevealChannel({
   isAvailable: () => isEligibleDesktopRevealWindow(),
   onReveal: async (input, signal) => await performDesktopReveal(input, {
@@ -1192,6 +1212,16 @@ function runtimeEnvironment(
   if (trusted !== undefined) {
     environment.DSH_DESKTOP_TRUSTED_RAYCAST_ENDPOINT = trusted.endpoint
     environment.DSH_DESKTOP_TRUSTED_RAYCAST_TOKEN = trusted.token
+  }
+  const openPath = overrides.preview === undefined ? desktopOpenPathChannel.environment : undefined
+  if (openPath !== undefined) {
+    environment.DSH_DESKTOP_OPEN_PATH_ENDPOINT = openPath.endpoint
+    environment.DSH_DESKTOP_OPEN_PATH_TOKEN = openPath.token
+  }
+  const copyPath = overrides.preview === undefined ? desktopCopyPathChannel.environment : undefined
+  if (copyPath !== undefined) {
+    environment.DSH_DESKTOP_COPY_PATH_ENDPOINT = copyPath.endpoint
+    environment.DSH_DESKTOP_COPY_PATH_TOKEN = copyPath.token
   }
   const reveal = overrides.preview === undefined ? desktopRevealChannel.environment : undefined
   if (reveal !== undefined) {
@@ -3411,6 +3441,8 @@ async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolea
       desktopCallerChannel.stop(),
       desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),
+      desktopOpenPathChannel.stop(),
+      desktopCopyPathChannel.stop(),
       trustedRaycastChannel.stop(),
     ])
     const failed = results.find(result => result.status === 'rejected')
@@ -3459,6 +3491,8 @@ async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>):
     }
     await startChannel(() => trustedRaycastChannel.start())
     await startChannel(() => desktopRevealChannel.start())
+    await startChannel(() => desktopOpenPathChannel.start())
+    await startChannel(() => desktopCopyPathChannel.start())
     await startChannel(() => desktopPickerChannel.start())
     await startChannel(() => desktopCallerChannel.start())
     await startChannel(() => desktopDispatchChannel.start())

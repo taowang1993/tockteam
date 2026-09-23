@@ -1,0 +1,1246 @@
+{
+  "run": "desktop-mue3cizy",
+  "connection": "owned app-scoped CDP endpoint (redacted)",
+  "vault": "isolated fixture vault (path intentionally omitted)",
+  "assertions": [
+    {
+      "name": "exact Desktop geometry",
+      "ok": true,
+      "expected": {
+        "cssWidth": 1512,
+        "cssHeight": 949,
+        "dpr": 2
+      },
+      "actual": {
+        "cssWidth": 1512,
+        "cssHeight": 949,
+        "dpr": 2,
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark",
+        "skin": null,
+        "hasSkinAttribute": false,
+        "route": "/tocktutor/Editable.md",
+        "title": "TockCoder"
+      }
+    },
+    {
+      "name": "built-in dark theme",
+      "ok": true,
+      "expected": {
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark"
+      },
+      "actual": {
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark"
+      }
+    },
+    {
+      "name": "no active TockTeam skin",
+      "ok": true,
+      "expected": {
+        "skin": null,
+        "hasSkinAttribute": false
+      },
+      "actual": {
+        "skin": null,
+        "hasSkinAttribute": false
+      }
+    },
+    {
+      "name": "TockTutor route mounted",
+      "ok": true,
+      "expected": "/tocktutor route",
+      "actual": "/tocktutor/Editable.md"
+    },
+    {
+      "name": "Editable fixture has repeated replacement target",
+      "ok": true,
+      "expected": "a repeated authored token",
+      "actual": "alpha"
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": false,
+      "expected": "Saved",
+      "actual": "Editable.md opened.0 backlinksSource9 words66 characters"
+    },
+    {
+      "name": "Source typing before Replace All is authored",
+      "ok": true,
+      "expected": "contains TUTOR_SOURCE_BEFORE_desktop-mue3cizy",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 66,
+          "sha256": "d3a38e5d9c09abf84c299c962ffcd15bc3d84942a76eb0c997589daed4084f1d",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Source Find count matches authored bytes",
+      "ok": true,
+      "expected": "at least 2",
+      "actual": 2
+    },
+    {
+      "name": "Find/Replace All alpha → TUTOR_SOURCE_REPLACE_desktop-mue3cizy",
+      "ok": true,
+      "expected": "at least 2 replacement occurrences",
+      "actual": {
+        "output": "1 / 2",
+        "replacementOccurrences": 2
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksSource17 words130 characters"
+    },
+    {
+      "name": "Source Replace All preserves exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "bb71320c48b0523bd75e0167e17f4d85836cedb34ad9728e4356c19f109470ac",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "bb71320c48b0523bd75e0167e17f4d85836cedb34ad9728e4356c19f109470ac",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksSource22 words166 characters"
+    },
+    {
+      "name": "Source typing after Replace All is authored",
+      "ok": true,
+      "expected": "contains TUTOR_SOURCE_AFTER_desktop-mue3cizy",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 166,
+          "sha256": "fa02bc2780d8e3a8871f839ed049e805d25f1e9de232d48b9dfcb12ab189dc2a",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksSource17 words130 characters"
+    },
+    {
+      "name": "Source undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "bb71320c48b0523bd75e0167e17f4d85836cedb34ad9728e4356c19f109470ac",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "bb71320c48b0523bd75e0167e17f4d85836cedb34ad9728e4356c19f109470ac",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksSource9 words66 characters"
+    },
+    {
+      "name": "Source undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 66,
+        "sha256": "d3a38e5d9c09abf84c299c962ffcd15bc3d84942a76eb0c997589daed4084f1d",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 66,
+        "sha256": "d3a38e5d9c09abf84c299c962ffcd15bc3d84942a76eb0c997589daed4084f1d",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksSource4 words29 characters"
+    },
+    {
+      "name": "Source undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksSource9 words66 characters"
+    },
+    {
+      "name": "Source redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 66,
+        "sha256": "d3a38e5d9c09abf84c299c962ffcd15bc3d84942a76eb0c997589daed4084f1d",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 66,
+        "sha256": "d3a38e5d9c09abf84c299c962ffcd15bc3d84942a76eb0c997589daed4084f1d",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksSource17 words130 characters"
+    },
+    {
+      "name": "Source redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "bb71320c48b0523bd75e0167e17f4d85836cedb34ad9728e4356c19f109470ac",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "bb71320c48b0523bd75e0167e17f4d85836cedb34ad9728e4356c19f109470ac",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksSource22 words166 characters"
+    },
+    {
+      "name": "Source redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "fa02bc2780d8e3a8871f839ed049e805d25f1e9de232d48b9dfcb12ab189dc2a",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "fa02bc2780d8e3a8871f839ed049e805d25f1e9de232d48b9dfcb12ab189dc2a",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "Source final state after grouped undo/redo",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "fa02bc2780d8e3a8871f839ed049e805d25f1e9de232d48b9dfcb12ab189dc2a",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "fa02bc2780d8e3a8871f839ed049e805d25f1e9de232d48b9dfcb12ab189dc2a",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "source screenshot geometry",
+      "ok": true,
+      "expected": {
+        "width": 3024,
+        "height": 1898
+      },
+      "actual": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 125372
+      }
+    },
+    {
+      "name": "Live Preview replacement target remains authored",
+      "ok": true,
+      "expected": "at least 2",
+      "actual": 2
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview27 words201 characters"
+    },
+    {
+      "name": "Live Preview typing before Replace All is authored",
+      "ok": true,
+      "expected": "contains TUTOR_LIVE_BEFORE_desktop-mue3cizy",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 201,
+          "sha256": "3fd06050269f359d680c36f96a420b56f294523df05006be7a9a8662a0436544",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Find/Replace All TUTOR_SOURCE_REPLACE_desktop-mue3cizy → TUTOR_LIVE_REPLACE_desktop-mue3cizy",
+      "ok": true,
+      "expected": "at least 2 replacement occurrences",
+      "actual": {
+        "output": "1 / 2",
+        "replacementOccurrences": 2
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview27 words197 characters"
+    },
+    {
+      "name": "Live Preview Replace All preserves exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "6faa123feeeb0cc29c7dc944caeef7ecd604723b2657a708fd6478732bf3c21c",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "6faa123feeeb0cc29c7dc944caeef7ecd604723b2657a708fd6478732bf3c21c",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview32 words231 characters"
+    },
+    {
+      "name": "Live Preview typing after Replace All is authored",
+      "ok": true,
+      "expected": "contains TUTOR_LIVE_AFTER_desktop-mue3cizy",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 231,
+          "sha256": "ed535e23aa67f9cb8c434034bdb5a1d6c06c769bddee4b9dcc5b1959f3335009",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview27 words197 characters"
+    },
+    {
+      "name": "Live Preview undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "6faa123feeeb0cc29c7dc944caeef7ecd604723b2657a708fd6478732bf3c21c",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "6faa123feeeb0cc29c7dc944caeef7ecd604723b2657a708fd6478732bf3c21c",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview27 words201 characters"
+    },
+    {
+      "name": "Live Preview undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 201,
+        "sha256": "3fd06050269f359d680c36f96a420b56f294523df05006be7a9a8662a0436544",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 201,
+        "sha256": "3fd06050269f359d680c36f96a420b56f294523df05006be7a9a8662a0436544",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview22 words166 characters"
+    },
+    {
+      "name": "Live Preview undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "fa02bc2780d8e3a8871f839ed049e805d25f1e9de232d48b9dfcb12ab189dc2a",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "fa02bc2780d8e3a8871f839ed049e805d25f1e9de232d48b9dfcb12ab189dc2a",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview27 words201 characters"
+    },
+    {
+      "name": "Live Preview redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 201,
+        "sha256": "3fd06050269f359d680c36f96a420b56f294523df05006be7a9a8662a0436544",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 201,
+        "sha256": "3fd06050269f359d680c36f96a420b56f294523df05006be7a9a8662a0436544",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview27 words197 characters"
+    },
+    {
+      "name": "Live Preview redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "6faa123feeeb0cc29c7dc944caeef7ecd604723b2657a708fd6478732bf3c21c",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "6faa123feeeb0cc29c7dc944caeef7ecd604723b2657a708fd6478732bf3c21c",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Editable.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Editable.md saved.0 backlinksLive Preview32 words231 characters"
+    },
+    {
+      "name": "Live Preview redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 231,
+        "sha256": "ed535e23aa67f9cb8c434034bdb5a1d6c06c769bddee4b9dcc5b1959f3335009",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 231,
+        "sha256": "ed535e23aa67f9cb8c434034bdb5a1d6c06c769bddee4b9dcc5b1959f3335009",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "Live Preview final state after grouped undo/redo",
+      "ok": true,
+      "expected": {
+        "bytes": 231,
+        "sha256": "ed535e23aa67f9cb8c434034bdb5a1d6c06c769bddee4b9dcc5b1959f3335009",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 231,
+        "sha256": "ed535e23aa67f9cb8c434034bdb5a1d6c06c769bddee4b9dcc5b1959f3335009",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "live screenshot geometry",
+      "ok": true,
+      "expected": {
+        "width": 3024,
+        "height": 1898
+      },
+      "actual": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 136649
+      }
+    },
+    {
+      "name": "Mixed fixture has repeated replacement target",
+      "ok": true,
+      "expected": "a repeated authored token",
+      "actual": "alpha"
+    },
+    {
+      "name": "Find/Replace All alpha → TUTOR_MIXED_REPLACE_desktop-mue3cizy",
+      "ok": true,
+      "expected": "at least 2 replacement occurrences",
+      "actual": {
+        "output": "1 / 2",
+        "replacementOccurrences": 2
+      }
+    },
+    {
+      "name": "save status Mixed.md",
+      "ok": false,
+      "expected": "Saved",
+      "actual": "Mixed.md opened.0 backlinksSource21 words173 characters"
+    },
+    {
+      "name": "Mixed Source Replace All preserves exact bytes and separators",
+      "ok": true,
+      "expected": {
+        "bytes": 173,
+        "sha256": "8c2d850fa320954dfcba22b17352ae625a0795dc884a611e7c694dda3af7871c",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 173,
+        "sha256": "8c2d850fa320954dfcba22b17352ae625a0795dc884a611e7c694dda3af7871c",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "Mixed Source newline sequence survives replacement",
+      "ok": true,
+      "expected": [
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "LF",
+        "LF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CR",
+        "LF"
+      ],
+      "actual": [
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "LF",
+        "LF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CR",
+        "LF"
+      ]
+    },
+    {
+      "name": "save status Mixed.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Mixed.md saved.0 backlinksSource13 words111 characters"
+    },
+    {
+      "name": "Mixed Source undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Mixed.md",
+      "ok": false,
+      "expected": "Saved",
+      "actual": "Mixed.md opened.0 backlinksSource21 words173 characters"
+    },
+    {
+      "name": "Mixed Source redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 173,
+        "sha256": "8c2d850fa320954dfcba22b17352ae625a0795dc884a611e7c694dda3af7871c",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 173,
+        "sha256": "8c2d850fa320954dfcba22b17352ae625a0795dc884a611e7c694dda3af7871c",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "Mixed Source final redo exact bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 173,
+        "sha256": "8c2d850fa320954dfcba22b17352ae625a0795dc884a611e7c694dda3af7871c",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 173,
+        "sha256": "8c2d850fa320954dfcba22b17352ae625a0795dc884a611e7c694dda3af7871c",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save status Notes/Source.md",
+      "ok": true,
+      "expected": "Saved",
+      "actual": "Notes/Source.md saved.1 backlinkLive Preview12 words109 characters"
+    },
+    {
+      "name": "Live Preview simple formatting remains authored while editable",
+      "ok": true,
+      "expected": {
+        "marker": " TUTOR_FORMAT_EDIT_desktop-mue3cizy",
+        "boldDelimiterCount": 2
+      },
+      "actual": {
+        "summary": {
+          "bytes": 109,
+          "sha256": "a67c60734d7109ee7caa1e4f2bfe44ce13cba58c4cf0e33508bf25a948cf29e9",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF"
+          ]
+        },
+        "boldDelimiterCount": 2
+      }
+    }
+  ],
+  "states": [
+    {
+      "name": "Editable Source baseline",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Source",
+      "status": "Editable.md opened.0 backlinksSource4 words29 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Editable Source after Replace All and after-typing",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Source",
+      "status": "Editable.md saved.0 backlinksSource22 words166 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Editable Live Preview baseline",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Live Preview",
+      "status": "Editable.md opened.0 backlinksLive Preview22 words166 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Editable Live Preview after Replace All and after-typing",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Live Preview",
+      "status": "Editable.md saved.0 backlinksLive Preview32 words231 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Mixed Source after exact replace/undo/redo",
+      "path": "Mixed.md",
+      "route": "/tocktutor/Mixed.md",
+      "title": "Mixed",
+      "mode": "Source",
+      "status": "Mixed.md opened.0 backlinksSource21 words173 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Source Live Preview task/format edit saved",
+      "path": "Notes/Source.md",
+      "route": "/tocktutor/Notes/Source.md",
+      "title": "Source",
+      "mode": "Live Preview",
+      "status": "Notes/Source.md opened.0 backlinksLive Preview12 words109 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    }
+  ],
+  "screenshots": {
+    "source": {
+      "file": "/tmp/tutor-main-integration-28-ui/source-find-replace.png",
+      "size": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 125372
+      }
+    },
+    "live": {
+      "file": "/tmp/tutor-main-integration-28-ui/live-preview-find-replace.png",
+      "size": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 136649
+      }
+    }
+  },
+  "pageErrors": [],
+  "consoleErrors": [],
+  "consoleWarnings": [],
+  "requestFailures": [
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "startupRequestFailures": [],
+  "fatal": "Error: Properties linked pane timed out\n    at eventually (file:///private/tmp/tutor-main-integration-28-ui/desktop-verifier.mjs:128:9)\n    at async openLinked (file:///private/tmp/tutor-main-integration-28-ui/desktop-verifier.mjs:443:5)\n    at async file:///private/tmp/tutor-main-integration-28-ui/desktop-verifier.mjs:445:3",
+  "geometry": {
+    "cssWidth": 1512,
+    "cssHeight": 949,
+    "dpr": 2,
+    "styleColorScheme": "dark",
+    "computedColorScheme": "dark",
+    "skin": null,
+    "hasSkinAttribute": false,
+    "route": "/tocktutor/Editable.md",
+    "title": "TockCoder"
+  },
+  "taskEdit": {
+    "kind": "simple-formatting-fallback",
+    "before": {
+      "bytes": 74,
+      "sha256": "003c82870e04a195d87f72b48ddf4ac474f31aa1207daba8e705cc0688b21ba7",
+      "newlineKinds": [
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF"
+      ]
+    },
+    "after": {
+      "bytes": 109,
+      "sha256": "a67c60734d7109ee7caa1e4f2bfe44ce13cba58c4cf0e33508bf25a948cf29e9",
+      "newlineKinds": [
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF"
+      ]
+    },
+    "marker": " TUTOR_FORMAT_EDIT_desktop-mue3cizy"
+  },
+  "final": {
+    "geometry": {
+      "cssWidth": 1512,
+      "cssHeight": 949,
+      "dpr": 2,
+      "styleColorScheme": "dark",
+      "computedColorScheme": "dark",
+      "skin": null,
+      "hasSkinAttribute": false,
+      "route": "/tocktutor/Editable.md",
+      "title": "TockCoder"
+    },
+    "route": "/tocktutor/Notes/Source.md",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "requestFailures": [
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "startupRequestFailures": [],
+    "screenshotFiles": {
+      "source": {
+        "file": "/tmp/tutor-main-integration-28-ui/source-find-replace.png",
+        "size": {
+          "width": 3024,
+          "height": 1898,
+          "bytes": 125372
+        }
+      },
+      "live": {
+        "file": "/tmp/tutor-main-integration-28-ui/live-preview-find-replace.png",
+        "size": {
+          "width": 3024,
+          "height": 1898,
+          "bytes": 136649
+        }
+      }
+    }
+  }
+}

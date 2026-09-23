@@ -1,12 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import type { NoteVaultRuntime } from 'tockbot-note-runtime';
-import type { ActiveVaultResult, AttachmentMetadataResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, RenameDocumentRequest, RenameDocumentResult, ReadSnapshotRequest, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, PrepareMergeRequest, PreparedMergeResult, ApplyMergeRequest, MergeRequest, MergeResult, MergeListResult, MergeListRequest, AttachmentMetadataResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, MergeLinkPreviewRequest, MergeLinkPreviewResult, OpenDocumentResult, RenameDocumentRequest, RenameDocumentResult, ReadSnapshotRequest, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from './types.ts';
 export type * from './types.ts';
 export declare const MAX_DOCUMENT_CONTENT_BYTES = 2000000;
 export declare const MAX_TREE_CURSOR_LENGTH = 512;
 export declare const MAX_TREE_PAGE_SIZE = 200;
-export type NoteVaultCapability = Pick<NoteVaultRuntime, 'activeVaultDisplayPath' | 'activeVaultName' | 'captureSnapshot' | 'clearDraft' | 'clearSnapshots' | 'createDocument' | 'createManagedVault' | 'facets' | 'graph' | 'inspectAttachment' | 'listSnapshots' | 'listTrash' | 'links' | 'listTree' | 'openDocument' | 'moveFileWithLinkRewrite' | 'outline' | 'openSandboxVault' | 'previewAttachment' | 'readDraft' | 'readSnapshot' | 'restoreSnapshot' | 'restoreSnapshotAsNew' | 'restoreTrash' | 'saveDocument' | 'saveDraft' | 'search' | 'state' | 'storeAttachment' | 'trashEntry'>;
+export type NoteVaultCapability = Pick<NoteVaultRuntime, 'activeVaultDisplayPath' | 'activeVaultName' | 'captureSnapshot' | 'clearDraft' | 'clearSnapshots' | 'createDocument' | 'createManagedVault' | 'facets' | 'graph' | 'inspectAttachment' | 'listSnapshots' | 'listTrash' | 'links' | 'listTree' | 'openDocument' | 'moveFileWithLinkRewrite' | 'outline' | 'openSandboxVault' | 'previewAttachment' | 'previewMergeLinks' | 'prepareMerge' | 'applyMerge' | 'listMerges' | 'recoverMerge' | 'readDraft' | 'readSnapshot' | 'restoreSnapshot' | 'restoreSnapshotAsNew' | 'restoreTrash' | 'saveDocument' | 'saveDraft' | 'search' | 'state' | 'storeAttachment' | 'trashEntry'>;
 declare module '@deepseek-ai/cordis' {
     interface Context {
         tocktutorWorkbench: TockTutorWorkbenchGateway;
@@ -27,6 +27,11 @@ export declare class TockTutorWorkbenchGateway extends TypertRemoteService {
     createDocument(request: CreateDocumentRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
     saveDocument(request: SaveDocumentRequest, signal: AbortSignal): Promise<WriteDocumentResult>;
     renameDocument(request: RenameDocumentRequest, signal: AbortSignal): Promise<RenameDocumentResult>;
+    previewMergeLinks(request: MergeLinkPreviewRequest, signal: AbortSignal): Promise<MergeLinkPreviewResult>;
+    prepareMerge(request: PrepareMergeRequest, signal: AbortSignal): Promise<PreparedMergeResult>;
+    applyMerge(request: ApplyMergeRequest, signal: AbortSignal): Promise<MergeResult>;
+    listMerges(request: MergeListRequest, signal: AbortSignal): Promise<MergeListResult>;
+    recoverMerge(request: MergeRequest, signal: AbortSignal): Promise<MergeResult>;
     graph(request: VaultGraphRequest, signal: AbortSignal): Promise<VaultGraphResult>;
     facets(request: VaultFacetsRequest, signal: AbortSignal): Promise<VaultFacetsResult>;
     outline(request: VaultOutlineRequest, signal: AbortSignal): Promise<VaultOutlineResult>;

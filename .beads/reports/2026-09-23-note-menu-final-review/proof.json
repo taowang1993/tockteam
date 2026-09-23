@@ -1,0 +1,175 @@
+{
+  "result": "PASS",
+  "scope": "Independent fresh-context production Desktop UI proof",
+  "ownedRun": "bd0ec82d-6736-41b9-baa6-04dfc241e3f9",
+  "rootPid": 24655,
+  "cdpEndpoint": "http://127.0.0.1:59194",
+  "fixture": {
+    "root": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-wntWDf",
+    "vault": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-wntWDf/Review Proof Vault",
+    "data": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-wntWDf/user-data",
+    "entry": "/tmp/tutor-final-ui-entry.cjs"
+  },
+  "geometry": {
+    "cssViewport": {
+      "width": 1512,
+      "height": 949
+    },
+    "devicePixelRatio": 2,
+    "measuredInnerSize": {
+      "width": 1512,
+      "height": 949
+    },
+    "screenshot": {
+      "path": "/tmp/tutor-final-desktop-proof.png",
+      "dimensions": {
+        "width": 3024,
+        "height": 1898
+      },
+      "verifiedWith": "file"
+    }
+  },
+  "theme": {
+    "colorScheme": "dark",
+    "documentElementStyleColorScheme": "dark",
+    "skinId": null,
+    "dataTockteamSkinPresent": false
+  },
+  "checks": {
+    "focusModeRevealFile": {
+      "status": "PASS",
+      "focusModeBefore": true,
+      "focusModeAfter": false,
+      "filesSidebarAfter": true,
+      "selectedPathAfter": "Notes/Source.md",
+      "statusTextAfter": "Revealed Notes/Source.md in Files.",
+      "evidenceSnapshot": ".playwright-cli/page-2026-09-23T00-21-17-482Z.yml"
+    },
+    "splitAndMerge": {
+      "status": "PASS",
+      "preMergePanes": [
+        {
+          "path": "Notes/Source.md",
+          "mode": "Reading"
+        },
+        {
+          "path": "Notes/Destination.md",
+          "mode": "Live Preview"
+        }
+      ],
+      "mergeDestination": "Notes/Destination.md",
+      "placement": "Append to Destination",
+      "propertyDecision": "Keep Destination Value (status: destination)",
+      "sourceDisposition": "Move to Trash After Confirmation",
+      "previewConfirmedSourceRetirement": true,
+      "postMergePanes": [
+        {
+          "path": "Notes/Destination.md",
+          "mode": "Reading"
+        },
+        {
+          "path": "Notes/Destination.md",
+          "mode": "Live Preview"
+        }
+      ],
+      "postMergeFiles": [
+        "Notes/Destination.md",
+        "Other.md",
+        "Referrer.md"
+      ],
+      "sourcePaneAbsent": true,
+      "staleSourcePaneAbsent": true,
+      "mergePreviewSnapshot": ".playwright-cli/page-2026-09-23T00-21-58-205Z.yml",
+      "appliedSnapshot": ".playwright-cli/page-2026-09-23T00-22-04-073Z.yml",
+      "recoveryHistorySnapshot": ".playwright-cli/page-2026-09-23T00-22-19-891Z.yml"
+    },
+    "reload": {
+      "status": "PASS",
+      "httpStatus": 200,
+      "url": "http://127.0.0.1:59211/tocktutor/Notes/Destination.md",
+      "savedContentVisible": true,
+      "postReloadPanes": [
+        {
+          "path": "Notes/Destination.md",
+          "mode": "Reading",
+          "characters": 118
+        },
+        {
+          "path": "Notes/Destination.md",
+          "mode": "Live Preview",
+          "characters": 118
+        }
+      ],
+      "focusModeAfterReload": false,
+      "evidence": "/tmp/tutor-proof-reload.cjs; .playwright-cli/page-2026-09-23T00-23-01-916Z.yml"
+    },
+    "vaultSearch": {
+      "status": "PASS",
+      "query": "formatted",
+      "resultSummary": "1 note · 1 match",
+      "resultPath": "Notes/Source.md",
+      "matchedSource": "Source **formatted** phrase.",
+      "previewRenderedStrongText": true,
+      "previewRenderedNavigationLink": "Other",
+      "resultClickNavigatedTo": "http://127.0.0.1:59211/tocktutor/Notes/Source.md",
+      "readingViewRenderedStrongText": true,
+      "evidenceSnapshot": ".playwright-cli/page-2026-09-23T00-20-12-294Z.yml",
+      "navigationEvidenceSnapshot": ".playwright-cli/page-2026-09-23T00-20-32-989Z.yml"
+    }
+  },
+  "diskEvidence": {
+    "destinationPath": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-wntWDf/Review Proof Vault/Notes/Destination.md",
+    "destinationContains": "# Destination\n\nDestination paragraph.\n\n# Source\n\nSource **formatted** phrase.\n\n![[Other]]",
+    "sourcePath": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-wntWDf/Review Proof Vault/Notes/Source.md",
+    "sourceExistsAfterMerge": false,
+    "recoverableSourcePath": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-wntWDf/Review Proof Vault/.trash/merge-bc3807cb-d06f-4984-9301-96fefe452ec1.md",
+    "referrerPath": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-wntWDf/Review Proof Vault/Referrer.md",
+    "referrerContent": "[[Notes/Destination]]",
+    "mergeHistoryPath": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-wntWDf/user-data/tocktutor/merges/dfb0628572fce614a2482a4e4a193fce0cd269e3d35d040292b3a93424c14254/merge-bc3807cb-d06f-4984-9301-96fefe452ec1.json",
+    "mergeHistory": {
+      "id": "merge-bc3807cb-d06f-4984-9301-96fefe452ec1",
+      "status": "applied",
+      "sourcePath": "Notes/Source.md",
+      "destinationPath": "Notes/Destination.md",
+      "sourceDisposition": "trash"
+    }
+  },
+  "runtime": {
+    "consoleErrors": 0,
+    "pageErrorsObserved": 0,
+    "consoleWarnings": 2,
+    "warning": "Electron Security Warning: insecure Content-Security-Policy / unsafe-eval; no app page/runtime errors observed.",
+    "consoleEvidence": "console.txt"
+  },
+  "unverified": [
+    "Replacement Undo isolation from typing in Source and Live Preview was optional and not run within the bounded window.",
+    "Clipboard and OS open/reveal effects were not certified because the fixture intercepts them.",
+    "The fresh verifier exercised vault search, not note-local Reading Find. Cross-inline note-local Find is not GUI-certified by this capture."
+  ],
+  "artifacts": {
+    "screenshot": "split-merge-reload-dark.png",
+    "machineProof": "/tmp/tutor-final-desktop-proof.json",
+    "finalSnapshot": ".playwright-cli/page-2026-09-23T00-23-22-821Z.yml"
+  },
+  "cleanup": {
+    "source": "extended_display.stop",
+    "stopped": true,
+    "rootPid": 24655,
+    "recordedPids": [
+      24655,
+      24657,
+      24658,
+      24662,
+      24663,
+      24665,
+      24670,
+      24676,
+      24773,
+      24774,
+      24776,
+      45625
+    ],
+    "remaining": []
+  },
+  "parentAssessment": "Accept Focus Mode reveal, split-pane merge retirement, recovery history, authenticated reload, geometry/theme and disk checks. Reclassify the search step as vault search."
+}

@@ -75,6 +75,14 @@ async function loaded(documents: Record<string, string> = {}): Promise<{
           state = { active: true, ...nextVault }
           return state
         },
+        async openEntry(...parameters: unknown[]) {
+          calls.push({ method: 'openEntry', parameters })
+          return { generation: vault.generation, path: 'Folder/Note.md', status: 'opened' }
+        },
+        async copyEntryPath(...parameters: unknown[]) {
+          calls.push({ method: 'copyEntryPath', parameters })
+          return { generation: vault.generation, path: 'Folder/Note.md', status: 'copied' }
+        },
         async revealEntry(...parameters: unknown[]) {
           calls.push({ method: 'revealEntry', parameters })
           if (stateAfterReveal !== undefined) state = stateAfterReveal
@@ -228,12 +236,57 @@ test('publishes only the bounded native action Remote methods', async () => {
       { invocation: { kind: 'direct' }, method: 'printNote' },
       { invocation: { kind: 'direct' }, method: 'exportNote' },
       { invocation: { kind: 'direct' }, method: 'requestMicrophone' },
+      { invocation: { kind: 'direct' }, method: 'openInDefaultApp' },
+      { invocation: { kind: 'direct' }, method: 'copyAbsolutePath' },
       { invocation: { kind: 'direct' }, method: 'revealEntry' },
       { invocation: { kind: 'direct' }, method: 'revealVault' },
       { invocation: { kind: 'direct' }, method: 'renameVault' },
       { invocation: { kind: 'direct' }, method: 'moveVault' },
       { invocation: { kind: 'direct' }, method: 'removeVault' },
     ])
+  } finally {
+    await state.context.fiber.dispose()
+  }
+})
+
+test('opens only the caller-authorized document and recovers a lost response without another open', async () => {
+  const state = await loaded()
+  try {
+    const signal = new AbortController().signal
+    assert.deepEqual(await state.gateway.openInDefaultApp('authorization-1', 'Folder/Note.md', vault, signal), { status: 'opened' })
+    assert.deepEqual(publicCalls(state.calls), [
+      { method: 'claim', value: { authorization: 'authorization-1', operation: 'open-default-app' } },
+      { method: 'openEntry', value: { expectedVault: vault, path: 'Folder/Note.md', operationId: identity.operationId } },
+    ])
+    assertSharedSignal(state.calls)
+    assert.deepEqual(await state.gateway.openInDefaultApp('authorization-1', 'Folder/Note.md', vault, signal), { status: 'opened' })
+    await assert.rejects(state.gateway.openInDefaultApp('authorization-1', 'Other.md', vault, signal))
+    await assert.rejects(state.gateway.openInDefaultApp('authorization-2', '../Note.md', vault, signal))
+    assert.equal(state.calls.filter(call => call.method === 'openEntry').length, 1)
+  } finally { await state.context.fiber.dispose() }
+})
+
+test('copies an active vault entry only after caller authorization', async () => {
+  const state = await loaded()
+  try {
+    const signal = new AbortController().signal
+    assert.deepEqual(
+      await state.gateway.copyAbsolutePath('authorization-1', 'Folder/Note.md', vault, signal),
+      { status: 'copied' },
+    )
+    assert.deepEqual(publicCalls(state.calls), [
+      {
+        method: 'claim',
+        value: { authorization: 'authorization-1', operation: 'copy-absolute-path' },
+      },
+      {
+        method: 'copyEntryPath',
+        value: { expectedVault: vault, path: 'Folder/Note.md', operationId: identity.operationId },
+      },
+    ])
+    assertSharedSignal(state.calls)
+    await assert.rejects(state.gateway.copyAbsolutePath('authorization-2', '../Note.md', vault, signal))
+    assert.equal(state.calls.length, 2)
   } finally {
     await state.context.fiber.dispose()
   }

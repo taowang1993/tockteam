@@ -1,0 +1,104 @@
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 8, reused 8, downloaded 0, added 0
+Progress: resolved 9, reused 8, downloaded 0, added 0
+Progress: resolved 15, reused 15, downloaded 0, added 0
+Progress: resolved 18, reused 18, downloaded 0, added 0
+Progress: resolved 19, reused 18, downloaded 0, added 0
+Progress: resolved 19, reused 19, downloaded 0, added 0
+Progress: resolved 56, reused 38, downloaded 0, added 0
+Progress: resolved 79, reused 51, downloaded 0, added 0
+Progress: resolved 80, reused 53, downloaded 0, added 0
+Progress: resolved 81, reused 53, downloaded 0, added 0
+Progress: resolved 100, reused 58, downloaded 0, added 0
+Progress: resolved 113, reused 60, downloaded 0, added 0
+[WARN] Request took 10197ms: https://registry.npmjs.org/@oxlint%2Fbinding-linux-ppc64-gnu
+Progress: resolved 114, reused 60, downloaded 0, added 0
+Progress: resolved 192, reused 128, downloaded 0, added 0
+Progress: resolved 215, reused 151, downloaded 0, added 0
+Progress: resolved 256, reused 192, downloaded 0, added 0
+Packages: +190
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 260, reused 196, downloaded 0, added 4, done
+The `--diff` flag is deprecated; use `--scope changed` (add `--base <ref>` to pin the base) instead.
+Scanning changes: tutor → origin/main
+
+
+[32m✔[39m Scanned 70 files in 4.7s [~10 workers]
+✔ Scanned 70 files in 9.8s
+
+React Doctor — @tockteam/tocktutor-workbench
+Score: 67 / 100 Needs work
+
+38 issues
+Bugs: 26 warnings
+Performance: 4 warnings
+Maintainability: 7 warnings
+Accessibility: 1 warning
+
+⚠ Data passed to parent via effect ×4
+  react-doctor/no-pass-data-to-parent
+  dist/editor-surface.js:151
+  dist/editor-surface.js:181
+  src/editor-surface.tsx:202
+  src/editor-surface.tsx:229
+⚠ Missing effect dependencies ×4
+  react-doctor/exhaustive-deps
+  dist/live-preview-editor-runtime.js:353
+  dist/live-preview-editor-runtime.js:452
+  src/live-preview-editor-runtime.tsx:361
+  src/live-preview-editor-runtime.tsx:452
+⚠ await inside a loop ×2
+  react-doctor/async-await-in-loop
+  dist/route.js:3717
+  src/route.tsx:3867
+⚠ React function has high control-flow complexity ×5
+  react-doctor/no-high-complexity-react-function
+  dist/route.js:4302
+  src/live-preview-editor.tsx:76
+  src/route.tsx:4454
+  src/route.tsx:5081
+  src/utility-panel.tsx:53
+⚠ Large component is hard to read and change ×2
+  react-doctor/no-giant-component
+  dist/route.js:4302
+  src/live-preview-editor-runtime.tsx:157
+⚠ State adjusted after a prop changes ×18
+  react-doctor/no-adjust-state-on-prop-change
+  dist/route.js:4485
+  dist/route.js:4486
+  dist/route.js:4499
+  dist/route.js:4500
+  dist/route.js:4501
+  dist/route.js:4502
+  dist/route.js:4503
+  dist/route.js:4504
+  dist/route.js:4508
+  src/route.tsx:5248
+  src/route.tsx:5249
+  src/route.tsx:5260
+  src/route.tsx:5261
+  src/route.tsx:5262
+  src/route.tsx:5263
+  src/route.tsx:5264
+  src/route.tsx:5265
+  src/route.tsx:5268
+⚠ Role used instead of HTML tag
+  react-doctor/prefer-tag-over-role
+  src/route.tsx:5002
+⚠ JSON parse/stringify deep clone ×2
+  react-doctor/no-json-parse-stringify-clone
+  tests/session.test.ts:162 (test file)
+  tests/session.test.ts:218 (test file)
+  Full diagnostics written to /var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/react-doctor-c4f6e4c4-23f7-49ad-8019-91aa00d510eb
+
+  ────────────────────────────────────────────────────────────
+
+  Share: https://react.doctor/share?p=%40tockteam%2Ftocktutor-workbench&s=67&w=38&f=9
+  Tell others how you did on socials
+
+  Docs: https://react.doctor/docs
+  Learn more about fixing issues, setting up CI/CD, and
+  configuring rules with a config file
+
+  GitHub: https://github.com/millionco/react-doctor
+  Report issues and star the repository!

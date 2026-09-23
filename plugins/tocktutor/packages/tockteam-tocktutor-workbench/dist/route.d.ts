@@ -8,26 +8,34 @@ import { type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from
 import { type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts';
 import type { BaseHydratedFile } from './base-query.ts';
 import type { CanvasChange } from './canvas-change.ts';
-import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult, type TockTutorVaultActionsOwnerProps } from './native-actions.ts';
+import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult, type TockTutorNativeNoteActions, type TockTutorVaultActionsOwnerProps } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts';
 import { type ReadingLinkResult } from './editor-surface.tsx';
 import { type SourceEditorSelectionRequest } from './source-editor.tsx';
+import { type WorkbenchUtilityView } from './utility-panel.tsx';
 import { type PropertyValue } from './properties.ts';
 import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
 import { type GraphPosition } from './graph.ts';
 import { BUILTIN_TEMPLATES } from './capture.ts';
 import { type OrganizationProposal } from './organize.ts';
+import { type PreparedNoteMerge } from './merge-preview.ts';
 import { type EmbedTarget } from './embeds.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
 import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
+import { type LinkedView, type LinkedViewKind, type PaneLayout } from './session.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
 import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, RestoreTrashResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorAssistant?: WorkbenchSearchIntelligenceRemote | undefined;
     tocktutorWorkbench: {
+        previewMergeLinks?(request: import('./types.ts').MergeLinkPreviewRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeLinkPreviewResult>>;
+        prepareMerge?(request: import('./types.ts').PrepareMergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').PreparedMergeResult>>;
+        applyMerge?(request: import('./types.ts').ApplyMergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeResult>>;
+        listMerges?(request: import('./types.ts').MergeListRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeListResult>>;
+        recoverMerge?(request: import('./types.ts').MergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeResult>>;
         currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>;
         createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
         openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
@@ -73,6 +81,7 @@ export interface RouteTabSummary {
     pinned?: boolean;
 }
 export interface RoutePaneSummary {
+    linkedView?: LinkedView;
     activePath: string | null;
     id: string;
     tabs: readonly RouteTabSummary[];
@@ -94,6 +103,11 @@ export interface WorkbenchSearchPreview {
 }
 export interface WorkbenchRouteSnapshot {
     localEditRevision?: number | undefined;
+    mergeRecoveryPending?: boolean;
+    linkedLoading?: boolean;
+    linkedError?: string | null;
+    layout?: PaneLayout;
+    editorReset?: number;
     attachmentPreview?: AttachmentPreviewResult | null;
     baseFiles?: readonly BaseHydratedFile[];
     bookmarks?: readonly TockTutorBookmark[];
@@ -101,6 +115,7 @@ export interface WorkbenchRouteSnapshot {
     canGoForward?: boolean;
     commandPaletteOpen?: boolean;
     dispatchDialog: 'capture' | 'new' | null;
+    documentUnavailable?: boolean;
     documentKind: RouteDocumentKind | null;
     draftRecovered?: boolean;
     embeds?: readonly ResolvedEmbed[];
@@ -112,6 +127,7 @@ export interface WorkbenchRouteSnapshot {
     graphLayout?: readonly GraphPosition[];
     graphMode?: 'global' | 'local';
     links?: VaultLinksResult | null;
+    linksLoading?: boolean;
     message: string;
     mode: RouteEditorMode;
     organizationProposal?: OrganizationProposal | null;
@@ -139,6 +155,7 @@ export interface WorkbenchRouteSnapshot {
     searchDirectory?: string;
     searchModifiedFrom?: number | null;
     searchModifiedTo?: number | null;
+    searchPresentation?: 'dialog' | 'sidebar';
     searchOpen: boolean;
     searchQuery: string;
     selectedSnapshot?: SnapshotContentResult | null;
@@ -170,13 +187,41 @@ export declare function trackTockTutorRouteFlush(flush: PromiseLike<void> | void
 /** Await route cleanup without allowing a stuck transport to block unload forever. */
 export declare function waitForTockTutorRouteFlushes(timeoutMs?: number): Promise<void>;
 export declare function pathFromTockTutorLocation(pathname: string): string | null;
-/** Bounded route state machine shared by the React contribution and focused tests. */
+interface RouteDocument {
+    key: string;
+    vault: VaultReference;
+    path: string;
+    state: Partial<WorkbenchRouteSnapshot>;
+    epoch: number;
+    durableEpoch?: number;
+    hydratedEpoch?: number | undefined;
+    hydratedRevision?: string | null | undefined;
+    hydration?: {
+        epoch: number;
+        revision: string | null | undefined;
+        promise: Promise<void>;
+    } | undefined;
+    relationshipsAbort?: AbortController | undefined;
+    embedsAbort?: AbortController | undefined;
+    baseAbort?: AbortController | undefined;
+    saving: Promise<boolean> | null;
+    saveAbort: AbortController | null;
+    draftTimer: ReturnType<typeof setTimeout> | null;
+    draftFlight: Promise<void> | null;
+}
 export declare class WorkbenchRouteController {
     private readonly remote;
     private readonly navigate;
     private readonly now;
     private readonly storage;
     private snapshot;
+    private readonly documents;
+    private readonly documentLoads;
+    private readonly documentSelections;
+    private readonly linkedLoads;
+    private readonly paneViews;
+    private readonly paneLifetimes;
+    private paneLifetime;
     private readonly listeners;
     private disposal;
     private vaultGeneration;
@@ -189,21 +234,20 @@ export declare class WorkbenchRouteController {
     private operation;
     private recoveryOperation;
     private recoveryAbort;
-    private embedOperation;
     private embedTargets;
     private selectionRequestId;
     private treeComplete;
+    private treeAbort;
+    private treeGeneration;
     private dispatchRevision;
     private operationAbort;
+    private mergeReviewAbort;
+    private pendingMerge;
+    private sidebarSearchAbort;
+    private sidebarSearchOperation;
     private searchTimer;
     private searchPreviewAbort;
     private searchPreviewOperation;
-    private embedAbort;
-    private saveAbort;
-    private saving;
-    private draftAbort;
-    private draftFlush;
-    private draftTimer;
     private eventDispose;
     private pendingDispatch;
     private pendingRename;
@@ -227,7 +271,8 @@ export declare class WorkbenchRouteController {
     setSearchQuery(query: string): void;
     private loadRecentSearch;
     closeSearch(): void;
-    openSearch(query: string): void;
+    openSidebarSearch(): void;
+    openSearch(query: string, presentation?: 'dialog' | 'sidebar'): void;
     setSearchMode(mode: 'query' | 'related'): void;
     setSearchFilters(filters: {
         directory?: string;
@@ -247,21 +292,41 @@ export declare class WorkbenchRouteController {
     openGraphNode(path: string, mode: 'local' | 'note'): Promise<boolean>;
     openInternalLink(target: string): Promise<ReadingLinkResult | null>;
     openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean>;
-    loadRelationships(): Promise<boolean>;
+    private documentCurrent;
+    private publishDocument;
+    private hydrateDocument;
+    loadRelationships(document?: RouteDocument | undefined): Promise<boolean>;
     private jumpToMatch;
     jumpToLine(line: number): boolean;
     private settlePendingDispatch;
     private dispatchCurrent;
     private invalidateDispatch;
     subscribe: (listener: () => void) => (() => void);
+    private documentKey;
+    private activeDocument;
     private update;
+    getPaneSnapshot(id: string): WorkbenchRouteSnapshot;
+    paneLifetimeFor(id: string): number | undefined;
+    nativeNoteOwnerKey(): string;
+    bindPaneEdit(id: string): (source: string) => boolean;
+    private markDocumentDirty;
+    splitPane(id: string, axis: 'horizontal' | 'vertical'): Promise<boolean>;
+    openLinkedView(id: string, kind: LinkedViewKind): Promise<boolean>;
+    unlinkLinkedView(id: string): void;
+    toggleLinkedPin(id: string): void;
+    bindLinkedProperty(id: string): (key: string, value: PropertyValue) => boolean;
+    saveLinkedView(id: string): Promise<boolean>;
+    navigateLinkedView(id: string, path: string): Promise<boolean>;
+    loadLinkedView(id: string): Promise<boolean>;
+    resizeSplit(path: readonly number[], ratio: number): void;
     private shellPanes;
     private syncShell;
+    private pruneDocuments;
     private pane;
     private recordOpen;
     private recordDirty;
-    private persistDraft;
-    private persistFinalDraft;
+    private scheduleDocumentDraft;
+    private flushDocumentDraft;
     private scheduleDraft;
     private flushPendingDraft;
     private clearDocument;
@@ -273,13 +338,17 @@ export declare class WorkbenchRouteController {
     private cancelSearchPreview;
     private nextSearchPreviewOperation;
     private currentSearchPreview;
+    private nextSearchRequest;
+    private currentSearchRequest;
     private nextOperation;
+    private cancelTreeRefresh;
     private cancelEmbedOperation;
-    private nextEmbedOperation;
-    private currentEmbed;
     private current;
     syncLocation(pathname: string): Promise<void>;
     reload(): Promise<void>;
+    private loadPaneDocument;
+    private invalidateLinkedPath;
+    private refreshRelationships;
     private onVaultChange;
     private loadTreePages;
     private refreshTree;
@@ -294,7 +363,7 @@ export declare class WorkbenchRouteController {
     trashCurrent(): Promise<boolean>;
     restoreTrashEntry(id: string): Promise<boolean>;
     addPane(): Promise<boolean>;
-    focusPane(id: string, pathOverride?: string): Promise<boolean>;
+    focusPane(id: string, pathOverride?: string, ownerCurrent?: () => boolean): Promise<boolean>;
     closePane(id: string): Promise<boolean>;
     activateTab(paneId: string, path: string): Promise<boolean>;
     togglePinTab(paneId: string, path: string): void;
@@ -307,7 +376,8 @@ export declare class WorkbenchRouteController {
     toggleFocusMode(): void;
     updateSettings(change: Partial<TockTutorSettings>): boolean;
     saveCurrentWorkspace(name?: string): boolean;
-    addActiveBookmark(): boolean;
+    addActiveBookmark(title?: string, groupId?: string | null): boolean;
+    editActiveBookmark(id: string, title: string, groupId: string | null): boolean;
     addLinkBookmark(title: string, url: string): boolean;
     removeBookmark(id: string): boolean;
     openBookmark(id: string): Promise<boolean>;
@@ -315,8 +385,9 @@ export declare class WorkbenchRouteController {
     renameActiveTitle(title: string): Promise<boolean>;
     moveActiveNote(folder: string): Promise<boolean>;
     private renameActivePath;
-    select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean, newTab?: boolean): Promise<boolean>;
-    edit(source: string): void;
+    select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean, newTab?: boolean, refresh?: boolean, ownerCurrent?: () => boolean): Promise<boolean>;
+    revealActiveFile(): Promise<boolean>;
+    edit(source: string, originPaneId?: string): void;
     setSourceEditorSelection(start: number, end: number): void;
     setSelection(start: number, end: number): void;
     setProperty(key: string, value: PropertyValue): boolean;
@@ -331,7 +402,7 @@ export declare class WorkbenchRouteController {
     prepareOrganization(): Promise<boolean>;
     cancelOrganization(): void;
     applyOrganization(): Promise<boolean>;
-    loadEmbeds(): Promise<boolean>;
+    loadEmbeds(document?: RouteDocument | undefined): Promise<boolean>;
     hydrateBaseRows(basePath: string): Promise<boolean>;
     applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean>;
     attachFiles(files: readonly File[]): Promise<boolean>;
@@ -339,14 +410,32 @@ export declare class WorkbenchRouteController {
     previewAttachment(path: string): Promise<boolean>;
     closeAttachmentPreview(): void;
     applyCanvasChange(change: CanvasChange): Promise<boolean>;
+    prepareNoteMerge(destinationPath: string, callerSignal: AbortSignal): Promise<PreparedNoteMerge>;
+    listMergeRecovery(signal: AbortSignal, cursor?: string): Promise<import('./types.ts').MergeListResult>;
+    recoverNoteMerge(id: string, signal: AbortSignal): Promise<import('./types.ts').MergeResult>;
     save(): Promise<boolean>;
+    saveAll(): Promise<boolean>;
+    private saveDocumentRecord;
     private failureMessage;
     dispose(): Promise<void>;
 }
+export interface BookmarkDraft {
+    group: string | null;
+    title: string;
+}
 export interface TockTutorRouteViewProps {
+    paneController?: WorkbenchRouteController;
+    paneOnly?: boolean;
+    panePanel?: 'assistant' | WorkbenchUtilityView | null;
+    onPanePanel?(panel: 'assistant' | WorkbenchUtilityView | null): void;
+    onPaneReveal?(path: string): void;
+    onSplitPane?(id: string, axis: 'horizontal' | 'vertical'): void;
     assistantPanel?: ReactNode;
     nativeActions?: ReactNode;
-    onAddBookmark?(): void;
+    nativeNoteActions?: TockTutorNativeNoteActions | null;
+    onAddBookmark?(title?: string, group?: string | null): boolean | void;
+    onEditBookmark?(id: string, title: string, group: string | null): boolean | void;
+    onRevealFile?(): Promise<boolean> | boolean;
     onAttachFiles?(files: FileList): void;
     onActivateTab(paneId: string, path: string): void;
     onApplyOrganization?(): void;
@@ -385,6 +474,9 @@ export interface TockTutorRouteViewProps {
     onMoveTab?(paneId: string, path: string, direction: -1 | 1): void;
     onMode(mode: RouteEditorMode): void;
     onMoveNote?(folder: string): Promise<boolean> | boolean;
+    onPrepareNoteMerge?(path: string, signal: AbortSignal): Promise<PreparedNoteMerge>;
+    onListMergeRecovery?(signal: AbortSignal, cursor?: string): Promise<import('./types.ts').MergeListResult>;
+    onRecoverNoteMerge?(id: string, signal: AbortSignal): Promise<import('./types.ts').MergeResult>;
     onNewNote?(): void;
     onOpenBookmark?(id: string): void;
     onOpenCommandPalette?(): void;
@@ -394,11 +486,12 @@ export interface TockTutorRouteViewProps {
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenExternalUrl?(url: string): void;
     onOpenSearch?(): void;
+    onOpenSidebarSearch?(): void;
     onPrepareOrganization?(): void;
     onPreviewAttachment?(path: string): void;
     onReadSnapshot?(id: string): void;
     onRenameTitle?(title: string): Promise<boolean>;
-    onRemoveBookmark?(id: string): void;
+    onRemoveBookmark?(id: string): boolean | void;
     onReopenClosedTab?(): void;
     onRestoreSnapshot?(id: string): void;
     onRestoreSnapshotOverwrite?(id: string): void;
@@ -446,4 +539,5 @@ export type TockTutorRouteProps = TockTutorRouteOwnerProps & PropsRenderSlots<ty
 };
 /** Root-scoped component contributed to TockTeam's exact Desktop route seat. */
 export declare function TockTutorRoute(props: TockTutorRouteProps): ReactNode;
+export {};
 //# sourceMappingURL=route.d.ts.map

@@ -1,0 +1,281 @@
+{
+  "sourceCommit": "80e103d7",
+  "verifierRun": "3a7708cc-ee90-41b8-9cfb-7e76ee6e8b90",
+  "cleanup": [
+    {
+      "id": "a17dd124-f921-4c4b-b5ce-f43b8e045fd9",
+      "rootPid": 68537,
+      "remaining": [],
+      "accepted": false,
+      "reason": "Workflow timeout before complete verification"
+    },
+    {
+      "id": "a4bdb94e-b5b6-4a1d-8c39-967083088720",
+      "rootPid": 72637,
+      "remaining": [],
+      "accepted": true
+    },
+    {
+      "id": "63ee4af9-a727-4b08-bb07-7eb73dad1d11",
+      "rootPid": 75371,
+      "remaining": [],
+      "accepted": true
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "reading-find-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "22742628fff397067822c0fcfa925cb51cdfe7907a9023b9e728c51fc93a2820"
+    },
+    {
+      "name": "source-undo-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "05e4a26cd917a9e38067eb447185edc95f0c63fd9bfd4248e88554a6fe29bedc"
+    },
+    {
+      "name": "live-preview-undo-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "5c482306f0d185f52ebac3e2b0bb394c73b47906f3d509369dd6e5a6e7b23567"
+    },
+    {
+      "name": "menu-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "b57f954e25fbf418a1303dff189675c888ca4981fafbc45afaf4315f259562e2"
+    },
+    {
+      "name": "bookmark-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "a84157c34a56aa5c00b027a40f153a68b4738a44f60c5486727c36a3fac24df3"
+    }
+  ],
+  "accepted": {
+    "find": [
+      {
+        "name": "viewport geometry",
+        "ok": true,
+        "expected": "{\"width\":1512,\"height\":949,\"dpr\":2}",
+        "actual": "{\"width\":1512,\"height\":949,\"dpr\":2}"
+      },
+      {
+        "name": "dark built-in theme",
+        "ok": true,
+        "expected": "dark",
+        "actual": "dark"
+      },
+      {
+        "name": "no active TockTeam skin",
+        "ok": true,
+        "expected": null,
+        "actual": null
+      },
+      {
+        "name": "note-local Find query",
+        "ok": true,
+        "expected": "Source formatted phrase.",
+        "actual": "Source formatted phrase."
+      },
+      {
+        "name": "note-local Find count",
+        "ok": true,
+        "expected": "1 / 1",
+        "actual": "1 / 1"
+      },
+      {
+        "name": "one logical match split into inline fragments",
+        "ok": true,
+        "expected": 3,
+        "actual": 3
+      },
+      {
+        "name": "Find preserves bold markup",
+        "ok": true,
+        "expected": true,
+        "actual": true
+      }
+    ],
+    "edits": [
+      {
+        "name": "viewport geometry",
+        "ok": true,
+        "expected": "{\"width\":1512,\"height\":949,\"dpr\":2}",
+        "actual": "{\"width\":1512,\"height\":949,\"dpr\":2}"
+      },
+      {
+        "name": "dark built-in theme",
+        "ok": true,
+        "expected": "dark",
+        "actual": "dark"
+      },
+      {
+        "name": "no active TockTeam skin",
+        "ok": true,
+        "expected": null,
+        "actual": null
+      },
+      {
+        "name": "Source baseline",
+        "ok": true,
+        "expected": "# Editable\n\nalpha beta alpha\n",
+        "actual": "# Editable\n\nalpha beta alpha\n"
+      },
+      {
+        "name": "Source type before replacement",
+        "ok": true,
+        "expected": "# Editable\n\nalpha beta alpha\n BEFORE",
+        "actual": "# Editable\n\nalpha beta alpha\n BEFORE"
+      },
+      {
+        "name": "Source Replace count before Replace All",
+        "ok": true,
+        "expected": "1 / 2",
+        "actual": "1 / 2"
+      },
+      {
+        "name": "Source Replace All two occurrences",
+        "ok": true,
+        "expected": "# Editable\n\nomega beta omega\n BEFORE",
+        "actual": "# Editable\n\nomega beta omega\n BEFORE"
+      },
+      {
+        "name": "Source type after replacement",
+        "ok": true,
+        "expected": "# Editable\n\nomega beta omega\n BEFORE AFTER",
+        "actual": "# Editable\n\nomega beta omega\n BEFORE AFTER"
+      },
+      {
+        "name": "Source undo 1",
+        "ok": true,
+        "expected": "# Editable\n\nomega beta omega\n BEFORE",
+        "actual": "# Editable\n\nomega beta omega\n BEFORE"
+      },
+      {
+        "name": "Source undo 2",
+        "ok": true,
+        "expected": "# Editable\n\nalpha beta alpha\n BEFORE",
+        "actual": "# Editable\n\nalpha beta alpha\n BEFORE"
+      },
+      {
+        "name": "Source undo 3",
+        "ok": true,
+        "expected": "# Editable\n\nalpha beta alpha\n",
+        "actual": "# Editable\n\nalpha beta alpha\n"
+      },
+      {
+        "name": "Source redo 1",
+        "ok": true,
+        "expected": "# Editable\n\nalpha beta alpha\n BEFORE",
+        "actual": "# Editable\n\nalpha beta alpha\n BEFORE"
+      },
+      {
+        "name": "Source redo 2",
+        "ok": true,
+        "expected": "# Editable\n\nomega beta omega\n BEFORE",
+        "actual": "# Editable\n\nomega beta omega\n BEFORE"
+      },
+      {
+        "name": "Source redo 3",
+        "ok": true,
+        "expected": "# Editable\n\nomega beta omega\n BEFORE AFTER",
+        "actual": "# Editable\n\nomega beta omega\n BEFORE AFTER"
+      },
+      {
+        "name": "Source final after redo 3",
+        "ok": true,
+        "expected": "# Editable\n\nomega beta omega\n BEFORE AFTER",
+        "actual": "# Editable\n\nomega beta omega\n BEFORE AFTER"
+      },
+      {
+        "name": "Live Preview type before replacement",
+        "ok": true,
+        "expected": "Editable\n\nomega beta omega BEFORE AFTER LIVE_BEFORE",
+        "actual": "Editable\n\nomega beta omega BEFORE AFTER LIVE_BEFORE"
+      },
+      {
+        "name": "Live Preview Replace count before Replace All",
+        "ok": true,
+        "expected": "1 / 2",
+        "actual": "1 / 2"
+      },
+      {
+        "name": "Live Preview Replace All two occurrences",
+        "ok": true,
+        "expected": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE",
+        "actual": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE"
+      },
+      {
+        "name": "Live Preview type after replacement",
+        "ok": true,
+        "expected": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE LIVE_AFTER",
+        "actual": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE LIVE_AFTER"
+      },
+      {
+        "name": "Live Preview undo 1",
+        "ok": true,
+        "expected": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE",
+        "actual": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE"
+      },
+      {
+        "name": "Live Preview undo 2",
+        "ok": true,
+        "expected": "Editable\n\nomega beta omega BEFORE AFTER LIVE_BEFORE",
+        "actual": "Editable\n\nomega beta omega BEFORE AFTER LIVE_BEFORE"
+      },
+      {
+        "name": "Live Preview undo 3",
+        "ok": true,
+        "expected": "Editable\n\nomega beta omega BEFORE AFTER",
+        "actual": "Editable\n\nomega beta omega BEFORE AFTER"
+      },
+      {
+        "name": "Live Preview redo 1",
+        "ok": true,
+        "expected": "Editable\n\nomega beta omega BEFORE AFTER LIVE_BEFORE",
+        "actual": "Editable\n\nomega beta omega BEFORE AFTER LIVE_BEFORE"
+      },
+      {
+        "name": "Live Preview redo 2",
+        "ok": true,
+        "expected": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE",
+        "actual": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE"
+      },
+      {
+        "name": "Live Preview redo 3",
+        "ok": true,
+        "expected": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE LIVE_AFTER",
+        "actual": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE LIVE_AFTER"
+      },
+      {
+        "name": "Live Preview final after redo 3",
+        "ok": true,
+        "expected": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE LIVE_AFTER",
+        "actual": "Editable\n\nsigma beta sigma BEFORE AFTER LIVE_BEFORE LIVE_AFTER"
+      }
+    ],
+    "menuKeyboard": {
+      "first": "Backlinks in Document",
+      "last": "Move File to Trash",
+      "copySubmenu": true,
+      "linkedSubmenu": true,
+      "escapeFocus": true
+    },
+    "bookmarkIdentityAndGroupMove": true,
+    "bookmarkCancelReloadRemoval": true,
+    "bookmarkDoesNotModifyFile": {
+      "path": "Editable.md",
+      "expected": "# Editable\n\nalpha beta alpha\n",
+      "actual": "# Editable\n\nalpha beta alpha\n"
+    }
+  },
+  "limits": [
+    "The original Find JSON retains a later hidden-select locator timeout. Find assertions and its screenshot precede that harness failure; the separate successful edit proof certifies both edit modes.",
+    "Existing empty bookmark group was seeded before UI actions.",
+    "Clipboard and default-app effects intercepted; not certified.",
+    "Source/Live Undo evidence is in-memory, not save/reload certification."
+  ]
+}

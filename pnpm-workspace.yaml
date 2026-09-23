@@ -98,3 +98,6 @@ overrides:
   '@deepseek-ai/dsh-web-app': 0.1.2-rc.1
   '@deepseek-ai/dsh-workspace': 0.1.2-rc.1
   dsh-working-activity>@deepseek-ai/dsh-client-ui-slots: 0.1.2-rc.1
+
+patchedDependencies:
+  chokidar@5.0.0: plugins/tocktutor/patches/chokidar@5.0.0.patch

@@ -3,6 +3,7 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { NoteVaultError } from 'tockbot-note-runtime'
+import { createVaultInspection } from 'tockbot-note-vault/inspection'
 import { createExecutableBaseFrontmatterEdit } from '../dist/base-edit.js'
 import { createCanvasChange } from '../dist/canvas-change.js'
 import { updateCanvasNodeGeometry } from '../dist/canvas-nodes.js'
@@ -142,7 +143,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   treeFailure: Error | null = null
   treeGate: { promise: Promise<void> } | null = null
   treePageOverride: ((request: { cursor?: string | null; expectedVault: VaultReference; limit?: number }, signal?: AbortSignal) => Promise<{ ok: true; value: VaultTreePage }>) | null = null
-  openOverride: ((path: string) => Promise<{ ok: true; value: OpenDocumentResult }>) | null = null
+  openOverride: ((path: string) => Promise<{ ok: true; value: OpenDocumentResult } | { ok: false; error: NoteVaultError }>) | null = null
   renameFailure: { code: 'conflict'; message: string } | null = null
   renameRewriteError: string | undefined
   renamedPath: string | null = null
@@ -478,6 +479,255 @@ class FakeRemote implements WorkbenchRouteRemote {
     for (const listener of this.listeners) listener(event)
   }
 }
+
+function mergeReviewRemote() {
+  const remote = new FakeRemote()
+  const notes = new Map(['Folder/Note.md', 'Second.md', 'Ref.md'].map(path => [path, {
+    path, content: path === 'Ref.md' ? '[[Folder/Note]]\n' : path === 'Second.md' ? '# Destination\n' : '# Source\n',
+    revision: firstRevision, digest: `sha256:${'c'.repeat(64)}`, generation: firstVault.generation,
+  }]))
+  remote.openOverride = path => {
+    if (!notes.has(path)) return Promise.resolve({ ok: false as const, error: new NoteVaultError('not-found', 'The note no longer exists.') })
+    return success({ ...notes.get(path)! })
+  }
+  remote.searchOverride = async request => ({ ok: true, value: {
+    generation: firstVault.generation, query: (request as { query: string }).query, cursor: null,
+    matches: [...notes.values()].map(note => ({ kind: 'content' as const, path: note.path, line: 1, preview: note.content })),
+    scan: { bytes: 100, entries: notes.size, files: notes.size }, truncated: false, truncationReason: null, warnings: [],
+  } })
+  const originalTree = remote.tocktutorWorkbench.listTree
+  remote.tocktutorWorkbench.listTree = async (request, signal) => {
+    const result = await originalTree(request, signal)
+    if (!result.ok) return result
+    return { ...result, value: { ...result.value, entries: result.value.entries.filter(entry => entry.kind !== 'document' || notes.has(entry.path)).map(entry => ({ ...entry, revision: notes.get(entry.path)?.revision ?? entry.revision })) } }
+  }
+  const inspection = createVaultInspection({
+    async list() { return { entries: [...notes.values()].sort((a, b) => a.path.localeCompare(b.path)).map(note => ({ path: note.path, kind: 'document' as const, revision: note.revision, size: Buffer.byteLength(note.content), createdMs: 1, modifiedMs: 1 })), complete: true, cursor: null, truncated: false, truncationReason: null, warnings: [] } },
+    async read(path) { return { ...notes.get(path)! } },
+  }, { maxReadBytes: 2_000_000, maxSearchFileBytes: 2_000_000, maxSearchBytes: 64 * 1024 * 1024, maxSearchEntries: 100, maxSearchResults: 1 })
+  Object.assign(remote.tocktutorWorkbench, { previewMergeLinks: async (request: import('../dist/types.js').MergeLinkPreviewRequest, signal?: AbortSignal) => success({ ...await inspection.planMergeLinks(request, signal), generation: firstVault.generation }) })
+  return { remote, notes }
+}
+
+test('revealing a file exits Focus Mode without discarding its draft', async () => {
+  const controller = new WorkbenchRouteController(new FakeRemote(), () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    controller.edit('# Draft')
+    controller.toggleFocusMode()
+    assert.equal(controller.getSnapshot().focusMode, true)
+    assert.equal(await controller.revealActiveFile(), true)
+    assert.equal(controller.getSnapshot().focusMode, false)
+    assert.equal(controller.getSnapshot().source, '# Draft')
+  } finally { await controller.dispose() }
+})
+
+test('merge confirmation consumes only the latest review and reconciles every source pane with an existing destination', async () => {
+  const { remote, notes } = mergeReviewRemote()
+  let calls = 0, preparedRequest: import('../dist/types.js').PrepareMergeRequest | undefined
+  Object.assign(remote.tocktutorWorkbench, {
+    prepareMerge: async (request: import('../dist/types.js').PrepareMergeRequest) => { preparedRequest = request; return success({ id: 'merge-00000000-0000-4000-8000-000000000000', generation: firstVault.generation }) },
+    applyMerge: async (request: import('../dist/types.js').ApplyMergeRequest, signal: AbortSignal) => {
+      assert.equal(request.confirmed, true); calls++
+      notes.set('Second.md', { ...notes.get('Second.md')!, content: preparedRequest!.mergedContent, revision: secondRevision })
+      notes.set('Ref.md', { ...notes.get('Ref.md')!, content: '[[Second]]\n', revision: secondRevision })
+      notes.delete('Folder/Note.md')
+      remote.emit({ kind: 'entry', action: 'updated', path: 'Second.md', vault: firstVault })
+      remote.emit({ kind: 'entry', action: 'trashed', path: 'Folder/Note.md', fromPath: 'Folder/Note.md', vault: firstVault })
+      assert.equal(signal.aborted, false, 'owned publications do not cancel their own apply')
+      return success({ ...request, generation: firstVault.generation, status: 'applied', sourcePath: 'Folder/Note.md', destinationPath: 'Second.md', sourceDisposition: 'trash', paths: ['Second.md', 'Folder/Note.md', 'Ref.md'], recoveryPath: 'Recovered Merge test' })
+    },
+  })
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    const left = controller.getSnapshot().focusedPaneId
+    await controller.splitPane(left, 'horizontal')
+    await controller.select('Second.md')
+    await controller.focusPane(left)
+    await controller.splitPane(left, 'vertical')
+    controller.openSidebarSearch()
+    controller.setSearchQuery('note')
+    assert.equal(await controller.runSearch(), true)
+    assert.equal(controller.getSnapshot().searchMatches?.length, 3)
+    const prepared = await controller.prepareNoteMerge('Second.md', new AbortController().signal)
+    const old = await prepared.preview({ placement: 'append', sourceDisposition: 'trash' }, new AbortController().signal)
+    const latest = await prepared.preview({ placement: 'prepend', sourceDisposition: 'trash' }, new AbortController().signal)
+    await assert.rejects(prepared.apply!(old, new AbortController().signal), /new merge preview/iu)
+    assert.equal(calls, 0)
+    assert.equal((await prepared.apply!(latest, new AbortController().signal)).status, 'applied')
+    assert.equal(calls, 1)
+    assert.equal(controller.getSnapshot().path, 'Second.md')
+    assert.equal(controller.getSnapshot().source, '# Source\n\n# Destination\n')
+    assert.equal(controller.getSnapshot().panes.flatMap(pane => pane.tabs).some(tab => tab.path === 'Folder/Note.md'), false)
+    await new Promise(resolve => setTimeout(resolve, 250))
+    assert.deepEqual(controller.getSnapshot().searchMatches?.map(match => [match.path, match.preview]), [
+      ['Second.md', '# Source\n\n# Destination\n'], ['Ref.md', '[[Second]]\n'],
+    ])
+    await assert.rejects(prepared.apply!(latest, new AbortController().signal))
+    assert.equal(calls, 1)
+  } finally { await controller.dispose() }
+})
+
+for (const dirty of [false, true]) for (const rejected of [false, true]) for (const truncated of [false, true]) test(`interrupted merge retirement reconciles missing source and retains drafts: dirty=${dirty}, rejected=${rejected}, truncated=${truncated}`, async () => {
+  const { remote, notes } = mergeReviewRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  Object.assign(remote.tocktutorWorkbench, {
+    prepareMerge: async () => success({ id: 'merge-00000000-0000-4000-8000-000000000000', generation: firstVault.generation }),
+    applyMerge: async (request: import('../dist/types.js').ApplyMergeRequest) => {
+      if (dirty) controller.edit('# Local draft\n')
+      notes.delete('Folder/Note.md')
+      if (truncated) remote.treePageOverride = async () => success({ ...tree(firstVault), complete: false, truncated: true, truncationReason: 'depth-limit' })
+      if (!rejected) remote.emit({ kind: 'entry', action: 'trashed', path: 'Folder/Note.md', fromPath: 'Folder/Note.md', vault: firstVault })
+      if (rejected) throw new Error('The completion response was lost.')
+      return success({ ...request, generation: firstVault.generation, status: 'recovery-required', sourcePath: 'Folder/Note.md', destinationPath: 'Second.md', sourceDisposition: 'trash', paths: [], recoveryPath: 'Recovered Merge test' })
+    },
+  })
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    const prepared = await controller.prepareNoteMerge('Second.md', new AbortController().signal)
+    const preview = await prepared.preview({ placement: 'append', sourceDisposition: 'trash' }, new AbortController().signal)
+    const applying = prepared.apply!(preview, new AbortController().signal)
+    if (rejected) await assert.rejects(applying, /completion response/)
+    else assert.equal((await applying).status, 'recovery-required')
+    await new Promise(resolve => setTimeout(resolve, 0))
+    assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+    assert.equal(controller.getSnapshot().documentUnavailable, true)
+    assert.equal(controller.getSnapshot().source, dirty ? '# Local draft\n' : '# Source\n')
+    assert.equal(controller.getSnapshot().saveStatus, dirty ? 'unsaved' : 'saved')
+  } finally { await controller.dispose() }
+})
+
+test('vault reload detects interrupted merges and offers recovery without changing notes', async () => {
+  const { remote } = mergeReviewRemote()
+  Object.assign(remote.tocktutorWorkbench, { listMerges: async () => success({ generation: firstVault.generation, merges: [{ status: 'recovery-required' }] }) })
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    assert.equal(controller.getSnapshot().mergeRecoveryPending, true)
+    assert.equal(controller.getSnapshot().source, '# Source\n')
+    assert.equal(remote.calls.some(call => call.method === 'saveDocument'), false)
+  } finally { await controller.dispose() }
+})
+
+for (const target of ['Second.md', 'Ref.md', 'New Alias.md', 'tree'] as const) test(`merge review invalidates on external inventory changes: ${target}`, async () => {
+  const { remote, notes } = mergeReviewRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    const prepared = await controller.prepareNoteMerge('Second.md', new AbortController().signal)
+    const preview = await prepared.preview({ placement: 'append', sourceDisposition: 'trash' }, new AbortController().signal)
+    assert.equal(preview.destinationContent, '# Destination\n\n# Source\n')
+    assert.deepEqual(preview.plan.updates.map(update => update.path), ['Ref.md'])
+    assert.equal(remote.calls.some(call => ['saveDocument', 'trashEntry', 'renameDocument', 'createDocument'].includes(call.method)), false)
+    remote.emit({ kind: 'entry', action: 'updated', path: 'Second.md', vault: secondVault })
+    assert.equal(prepared.signal.aborted, false, 'other vault events do not invalidate this review')
+    if (notes.has(target)) notes.set(target, { ...notes.get(target)!, revision: secondRevision, content: '# External revision\n' })
+    remote.emit(target === 'tree' ? { kind: 'tree', action: 'changed', vault: firstVault } : { kind: 'entry', action: target === 'New Alias.md' ? 'created' : 'updated', path: target, vault: firstVault })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(prepared.signal.aborted, true, 'even unopened files and inventory-only changes invalidate the completed review')
+  } finally { await controller.dispose() }
+})
+
+test('merge preview rejects a late plan after an unopened destination changes', async () => {
+  const { remote } = mergeReviewRemote()
+  const read = (remote as WorkbenchRouteRemote).tocktutorWorkbench.previewMergeLinks!
+  Object.assign(remote.tocktutorWorkbench, { previewMergeLinks: async (request: import('../dist/types.js').MergeLinkPreviewRequest, signal?: AbortSignal) => {
+    const result = await read(request, signal)
+    remote.emit({ kind: 'entry', action: 'updated', path: 'Second.md', vault: firstVault })
+    return result
+  } })
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    const prepared = await controller.prepareNoteMerge('Second.md', new AbortController().signal)
+    await assert.rejects(prepared.preview({ placement: 'append', sourceDisposition: 'trash' }, new AbortController().signal), /vault changed/u)
+    assert.equal(prepared.signal.aborted, true)
+  } finally { await controller.dispose() }
+})
+
+for (const change of ['dirty', 'revision', 'later-edit'] as const) test(`merge preview protects affected open referrers: ${change}`, async () => {
+  const { remote, notes } = mergeReviewRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    const left = controller.getSnapshot().focusedPaneId
+    await controller.splitPane(left, 'horizontal')
+    const right = controller.getSnapshot().focusedPaneId
+    await controller.select('Ref.md')
+    await controller.focusPane(left)
+    if (change === 'dirty') controller.bindPaneEdit(right)('# Local referrer draft\n')
+    if (change === 'revision') notes.set('Ref.md', { ...notes.get('Ref.md')!, revision: secondRevision })
+    const prepared = await controller.prepareNoteMerge('Second.md', new AbortController().signal)
+    const preview = prepared.preview({ placement: 'append', sourceDisposition: 'trash' }, new AbortController().signal)
+    if (change !== 'later-edit') await assert.rejects(preview, /Save or reload Ref.md/u)
+    else {
+      assert.deepEqual((await preview).plan.updates.map(update => update.path), ['Ref.md'])
+      controller.bindPaneEdit(right)('# Later referrer draft\n')
+      assert.equal(prepared.signal.aborted, true)
+    }
+  } finally { await controller.dispose() }
+})
+
+test('prepares saved merge documents without writes and invalidates the review on a later edit', async () => {
+  const remote = new FakeRemote()
+  Object.assign(remote.tocktutorWorkbench, { previewMergeLinks: async () => { throw new Error('Not reached for a stale review') } })
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    for (const path of ['Folder/NOTE.md', '../Outside.md', 'Board.canvas']) {
+      await assert.rejects(controller.prepareNoteMerge(path, new AbortController().signal), /distinct Markdown/u)
+    }
+    const prepared = await controller.prepareNoteMerge('Second.md', new AbortController().signal)
+    assert.equal(prepared.source.path, 'Folder/Note.md')
+    assert.equal(prepared.destination.path, 'Second.md')
+    assert.equal(prepared.source.content, controller.getSnapshot().source)
+    assert.equal(remote.calls.some(call => ['saveDocument', 'trashEntry', 'renameDocument', 'createDocument'].includes(call.method)), false)
+    controller.edit('# Changed after preparation\n')
+    assert.equal(prepared.signal.aborted, true)
+    await assert.rejects(prepared.preview({ placement: 'append', sourceDisposition: 'trash' }, new AbortController().signal))
+  } finally { await controller.dispose() }
+})
+
+test('merge preparation saves drafts before reading and stops on save conflicts or late cancellation', async () => {
+  const remote = new FakeRemote()
+  Object.assign(remote.tocktutorWorkbench, { previewMergeLinks: async () => { throw new Error('Not used by preparation') } })
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    controller.edit('# Local draft\n')
+    remote.saveFailure = { code: 'conflict', message: 'Changed externally' }
+    const reads = remote.calls.filter(call => call.method === 'openDocument').length
+    await assert.rejects(controller.prepareNoteMerge('Second.md', new AbortController().signal), /Save both notes/u)
+    assert.equal(remote.calls.filter(call => call.method === 'openDocument').length, reads)
+    assert.equal(controller.getSnapshot().source, '# Local draft\n')
+    remote.saveFailure = null
+    const source: OpenDocumentResult = { content: '# Local draft\n', path: 'Folder/Note.md', generation: firstVault.generation, revision: secondRevision, digest: `sha256:${'c'.repeat(64)}` }
+    remote.openOverride = path => success({ ...source, path, content: path === source.path ? source.content : '# Destination\n' })
+    const save = remote.tocktutorWorkbench.saveDocument
+    remote.tocktutorWorkbench.saveDocument = (request, signal) => {
+      const result = save(request, signal)
+      remote.emit({ kind: 'entry', action: 'updated', path: request.path, vault: firstVault })
+      return result
+    }
+    const prepared = await controller.prepareNoteMerge('Second.md', new AbortController().signal)
+    assert.equal(prepared.signal.aborted, false, 'owned draft-save events precede the review inventory guard')
+    assert.equal(prepared.source.content, '# Local draft\n')
+    assert.equal(controller.getSnapshot().saveStatus, 'saved')
+    const started = deferred<void>(), late = deferred<{ ok: true; value: OpenDocumentResult }>()
+    remote.openOverride = path => {
+      if (path === source.path) { started.resolve(); return late.promise }
+      return success({ ...source, path })
+    }
+    const abort = new AbortController()
+    const next = controller.prepareNoteMerge('Second.md', abort.signal)
+    await started.promise
+    assert.equal(prepared.signal.aborted, true, 'a new preparation invalidates the older review')
+    abort.abort()
+    late.resolve({ ok: true, value: source })
+    await assert.rejects(next)
+  } finally { await controller.dispose() }
+})
 
 test('saves an edited note before renaming every open pane reference and refreshing the tree', async () => {
   const navigations: string[] = []
@@ -1332,7 +1582,7 @@ test('loads, edits, reads, toggles, and snapshot-saves one exact note', async ()
   assert.equal(remote.listeners.size, 0)
 })
 
-test('reuses the active note tab and dirty-gates pane transitions', async () => {
+test('reuses the active note tab and preserves dirty drafts across pane focus', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})
   await controller.syncLocation('/tocktutor')
@@ -1363,9 +1613,10 @@ test('reuses the active note tab and dirty-gates pane transitions', async () => 
   await controller.focusPane('pane-1')
   controller.edit('# Dirty pane\n')
   remote.saveFailure = { code: 'conflict', message: 'revision changed' }
-  assert.equal(await controller.focusPane('pane-2'), false)
-  assert.equal(controller.getSnapshot().focusedPaneId, 'pane-1')
-  assert.equal(controller.getSnapshot().source, '# Dirty pane\n')
+  assert.equal(await controller.focusPane('pane-2'), true)
+  assert.equal(controller.getSnapshot().focusedPaneId, 'pane-2')
+  assert.equal(controller.getPaneSnapshot('pane-1').source, '# Dirty pane\n')
+  await controller.focusPane('pane-1')
 
   const html = renderToStaticMarkup(createElement(TockTutorRouteView, {
     onActivateTab() {},
@@ -2044,6 +2295,52 @@ test('clears stale relationship projections before refreshing the active note', 
   gate.resolve()
   assert.equal(await refresh, true)
   controller.dispose()
+})
+
+test('refreshing document backlinks does not cancel an in-flight vault search', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  await controller.select('Folder/Note.md')
+  await new Promise(resolve => setImmediate(resolve))
+  const gate = deferred<void>()
+  remote.searchOverride = async () => {
+    await gate.promise
+    return success({ cursor: null, generation: firstVault.generation, matches: [], query: 'lesson', scan: { bytes: 0, entries: 0, files: 0 }, truncated: false, truncationReason: null, warnings: [] })
+  }
+  controller.openSearch('lesson')
+  const searching = controller.runSearch()
+  assert.equal(await controller.loadRelationships(), true)
+  gate.resolve()
+  assert.equal(await searching, true)
+  await controller.dispose()
+})
+
+test('document backlinks reload on enable and vault changes without accepting stale note results', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(10), new MemoryStorage())
+  await controller.syncLocation('/tocktutor')
+  await controller.select('Folder/Note.md')
+  await new Promise(resolve => setImmediate(resolve))
+  const before = remote.calls.filter(call => call.method === 'links').length
+  assert.equal(controller.updateSettings({ backlinksInDocument: true }), true)
+  assert.equal(controller.getSnapshot().linksLoading, true)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().linksLoading, false)
+  assert.equal(remote.calls.filter(call => call.method === 'links').length, before + 1)
+  remote.emit({ action: 'updated', kind: 'entry', path: 'Second.md', vault: firstVault })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(remote.calls.filter(call => call.method === 'links').length, before + 2)
+  const gate = deferred<void>()
+  remote.linksGate = gate.promise
+  const pending = controller.loadRelationships()
+  await controller.select('Second.md')
+  gate.resolve()
+  await pending
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().links?.path, 'Second.md')
+  assert.equal(controller.getSnapshot().linksLoading, false)
+  await controller.dispose()
 })
 
 test('uses optional bounded search intelligence without making local search depend on the assistant', async () => {
@@ -2808,4 +3105,898 @@ test('late note and vault completions cannot replace the active route identity',
   await new Promise(resolve => setTimeout(resolve, 0))
   assert.deepEqual(controller.getSnapshot().vault, firstVault)
   controller.dispose()
+})
+
+test('sidebar search preserves results through navigation and does not cancel opening a note', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor')
+    controller.openSidebarSearch()
+    controller.setSearchQuery('lesson')
+    assert.equal(await controller.runSearch(), true)
+    const matches = controller.getSnapshot().searchMatches
+    assert.ok(matches?.[0])
+    assert.equal(await controller.openSearchMatch(matches[0]), true)
+    controller.openSidebarSearch()
+    assert.equal(controller.getSnapshot().searchQuery, 'lesson')
+    assert.equal(controller.getSnapshot().searchMatches, matches)
+    assert.equal(controller.getSnapshot().searchPresentation, 'sidebar')
+
+    const opening = deferred<{ ok: true; value: OpenDocumentResult }>()
+    remote.openOverride = () => opening.promise
+    const selected = controller.select('Second.md')
+    controller.setSearchQuery('another')
+    opening.resolve({ ok: true, value: {
+      content: '# Second\n', digest: `sha256:${'d'.repeat(64)}`,
+      generation: firstVault.generation, path: 'Second.md', revision: secondRevision,
+    } })
+    assert.equal(await selected, true)
+    assert.equal(controller.getSnapshot().path, 'Second.md')
+    controller.closeSearch()
+  } finally { await controller.dispose() }
+})
+
+for (const action of ['query', 'close', 'reload', 'dialog'] as const) {
+  test(`ignores late sidebar search results after ${action}`, async () => {
+    const remote = new FakeRemote()
+    const controller = new WorkbenchRouteController(remote, () => {})
+    const pending = deferred<{ ok: true; value: VaultSearchResult }>()
+    try {
+      await controller.syncLocation('/tocktutor')
+      remote.searchOverride = () => pending.promise
+      controller.openSidebarSearch()
+      controller.setSearchQuery('lesson')
+      const searching = controller.runSearch()
+      if (action === 'query') controller.setSearchQuery('new')
+      else if (action === 'close') controller.closeSearch()
+      else if (action === 'reload') await controller.reload()
+      else controller.openSearch('new')
+      pending.resolve({ ok: true, value: {
+        cursor: null, generation: firstVault.generation, query: 'lesson',
+        matches: [{ kind: 'content', line: 2, path: 'Folder/Note.md', preview: 'Old lesson' }],
+        scan: { bytes: 30, entries: 4, files: 2 }, truncated: false, truncationReason: null, warnings: [],
+      } })
+      assert.equal(await searching, false)
+      assert.equal(controller.getSnapshot().searchMatches?.some(match => match.preview === 'Old lesson'), false)
+    } finally { await controller.dispose() }
+  })
+}
+
+test('real splits share drafts, accept rapid owner edits and reject stale peer callbacks without saving on focus', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'horizontal')
+  const right = controller.getSnapshot().focusedPaneId
+  const leftEdit = controller.bindPaneEdit(left)
+  const rightEdit = controller.bindPaneEdit(right)
+  assert.equal(leftEdit('first'), true)
+  assert.equal(leftEdit('second'), true)
+  assert.equal(controller.getPaneSnapshot(right).source, 'second')
+  assert.equal(rightEdit('stale'), false)
+  assert.equal(controller.getPaneSnapshot(left).source, 'second')
+  await controller.focusPane(left)
+  assert.equal(remote.calls.filter(call => call.method === 'saveDocument').length, 0)
+  await controller.select('Second.md')
+  const editOther = controller.bindPaneEdit(left)
+  const editNote = controller.bindPaneEdit(right)
+  assert.equal(editOther('other draft'), true)
+  assert.equal(editNote('note draft'), true)
+  assert.equal(controller.getPaneSnapshot(left).source, 'other draft')
+  assert.equal(controller.getPaneSnapshot(right).source, 'note draft')
+  await controller.dispose()
+  const drafts = remote.calls.filter(call => call.method === 'saveDraft').map(call => call.parameters[0] as { path: string; content: string })
+  assert.ok(drafts.some(draft => draft.path === 'Second.md' && draft.content === 'other draft'))
+  assert.ok(drafts.some(draft => draft.path === 'Folder/Note.md' && draft.content === 'note draft'))
+})
+
+test('a delayed save belongs to its document, not the focused pane, and cannot clean newer edits', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'horizontal')
+  const right = controller.getSnapshot().focusedPaneId
+  await controller.select('Second.md')
+  controller.edit('second dirty')
+  const pending = deferred<{ ok: true; value: WriteDocumentResult }>()
+  remote.saveOverride = () => pending.promise
+  const save = controller.save()
+  await controller.focusPane(left)
+  controller.bindPaneEdit(right)('newer second')
+  controller.edit('first dirty')
+  pending.resolve({ ok: true, value: { digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: 'Second.md', revision: secondRevision, snapshotId: 'saved', status: 'saved' } })
+  assert.equal(await save, false)
+  assert.equal(controller.getPaneSnapshot(right).source, 'newer second')
+  assert.equal(controller.getPaneSnapshot(right).revision, secondRevision)
+  assert.equal(controller.getPaneSnapshot(right).saveStatus, 'unsaved')
+  assert.equal(controller.getPaneSnapshot(left).source, 'first dirty')
+  await controller.dispose()
+})
+
+test('closing the last view of an inactive dirty document blocks on conflict and vault transition saves all documents', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'vertical')
+  const right = controller.getSnapshot().focusedPaneId
+  await controller.select('Second.md')
+  controller.edit('keep me')
+  await controller.focusPane(left)
+  remote.saveFailure = { code: 'conflict', message: 'changed' }
+  assert.equal(await controller.closePane(right), false)
+  assert.equal(controller.getPaneSnapshot(right).source, 'keep me')
+  assert.equal(await controller.createManagedVault('Blocked'), false)
+  assert.equal(remote.calls.some(call => call.method === 'createManagedVault'), false)
+  assert.equal(await controller.closePane(left), true)
+  assert.equal(controller.getSnapshot().panes.length, 1)
+  assert.equal(controller.getSnapshot().source, 'keep me')
+  await controller.dispose()
+})
+
+test('inactive external changes refresh clean panes, preserve dirty panes, and old callbacks cannot cross tab lifetimes', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  const stale = controller.bindPaneEdit(left)
+  await controller.splitPane(left, 'horizontal')
+  const right = controller.getSnapshot().focusedPaneId
+  await controller.select('Second.md')
+  remote.openOverride = path => success({ content: 'disk changed', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path, revision: secondRevision })
+  remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getPaneSnapshot(left).source, 'disk changed')
+  controller.bindPaneEdit(left)('local change')
+  remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getPaneSnapshot(left).source, 'local change')
+  assert.equal(controller.getPaneSnapshot(right).path, 'Second.md')
+  await controller.focusPane(left)
+  await controller.select('Second.md')
+  await controller.select('Folder/Note.md')
+  assert.equal(stale('late old text'), false)
+  await controller.dispose()
+})
+
+test('publishes a saved revision before recovery cleanup awaits, retaining edits made during cleanup', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  controller.edit('saving')
+  const clear = deferred<void>()
+  const original = remote.tocktutorWorkbench.clearDraft
+  remote.tocktutorWorkbench.clearDraft = async (...args) => { await clear.promise; return original(...args) }
+  const save = controller.save()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().revision, secondRevision)
+  controller.edit('newer during clear')
+  clear.resolve()
+  assert.equal(await save, false)
+  assert.equal(controller.getSnapshot().revision, secondRevision)
+  assert.equal(controller.getSnapshot().source, 'newer during clear')
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+  await controller.save()
+  const request = remote.calls.filter(call => call.method === 'saveDocument').at(-1)?.parameters[0] as { expectedRevision: string }
+  assert.equal(request.expectedRevision, secondRevision)
+  await controller.dispose()
+})
+
+test('a close that waits for a save cannot clear the newly focused document', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'horizontal')
+  const right = controller.getSnapshot().focusedPaneId
+  await controller.select('Second.md')
+  controller.edit('second dirty')
+  const pending = deferred<{ ok: true; value: WriteDocumentResult }>()
+  remote.saveOverride = () => pending.promise
+  const close = controller.closeTab(right, 'Second.md')
+  await controller.focusPane(left)
+  pending.resolve({ ok: true, value: { digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: 'Second.md', revision: secondRevision, snapshotId: 'saved', status: 'saved' } })
+  assert.equal(await close, true)
+  assert.equal(controller.getSnapshot().focusedPaneId, left)
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  assert.notEqual(controller.getSnapshot().source, '')
+  await controller.dispose()
+})
+
+test('location selection reuses the other pane authoritative dirty draft without disk refresh', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'horizontal')
+  await controller.select('Second.md')
+  controller.bindPaneEdit(left)('unsaved peer\r\n\r\n[[Keep]]')
+  const reads = remote.calls.filter(call => call.method === 'openDocument').length
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  assert.equal(controller.getSnapshot().source, 'unsaved peer\r\n\r\n[[Keep]]')
+  assert.equal(controller.getPaneSnapshot(left).source, 'unsaved peer\r\n\r\n[[Keep]]')
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+  assert.equal(remote.calls.filter(call => call.method === 'openDocument').length, reads)
+  await controller.dispose()
+})
+
+test('aggregate save rejects edits to an initially clean document while a sibling save is delayed', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'horizontal')
+  await controller.select('Second.md')
+  controller.edit('dirty B')
+  await controller.focusPane(left)
+  const pending = deferred<{ ok: true; value: WriteDocumentResult }>()
+  remote.saveOverride = () => pending.promise
+  const transition = controller.createManagedVault('Must remain blocked')
+  controller.edit('new unsaved A')
+  pending.resolve({ ok: true, value: { digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: 'Second.md', revision: secondRevision, snapshotId: 'saved', status: 'saved' } })
+  assert.equal(await transition, false)
+  assert.equal(remote.calls.some(call => call.method === 'createManagedVault'), false)
+  assert.equal(controller.getPaneSnapshot(left).source, 'new unsaved A')
+  await controller.dispose()
+})
+
+async function storedSplitFixture(paths: string[], focusedIndex = 0) {
+  const { createWorkbenchSession, openNoteTab, addPaneGroup, focusPaneGroup } = await import('../dist/session.js')
+  const { saveWorkbenchState } = await import('../dist/settings.js')
+  const storage = new MemoryStorage()
+  let session = createWorkbenchSession('/tocktutor', firstVault, 'pane-1')
+  session = openNoteTab(session, 'pane-1', paths[0]!, { mode: 'source' })
+  for (const path of paths.slice(1)) {
+    const added = addPaneGroup(session)
+    session = openNoteTab(added.session, added.groupId, path, { mode: path.endsWith('.base') ? 'reading' : 'source' })
+  }
+  session = focusPaneGroup(session, session.groups[focusedIndex]!.id)
+  saveWorkbenchState(storage, firstVault.id, { focusMode: false, session, workspaces: [] })
+  return { storage, ids: session.groups.map(group => group.id) }
+}
+
+test('focusing a restoring inactive pane joins its pending load instead of creating an empty document', async () => {
+  const { storage, ids } = await storedSplitFixture(['Folder/Note.md', 'Second.md'])
+  const remote = new FakeRemote()
+  const pending = deferred<{ ok: true; value: OpenDocumentResult }>()
+  const started = deferred<void>()
+  remote.openOverride = path => {
+    if (path === 'Second.md') { started.resolve(); return pending.promise }
+    return success({ content: 'first', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path, revision: firstRevision })
+  }
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), storage)
+  const restore = controller.syncLocation('/tocktutor')
+  await started.promise
+  const focus = controller.focusPane(ids[1]!)
+  pending.resolve({ ok: true, value: { content: 'restored second', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: 'Second.md', revision: firstRevision } })
+  await Promise.all([restore, focus])
+  assert.equal(controller.getSnapshot().source, 'restored second')
+  assert.equal(controller.getSnapshot().revision, firstRevision)
+  assert.equal(remote.calls.filter(call => call.method === 'openDocument' && call.parameters[0] === 'Second.md').length, 1)
+  controller.edit('editable second')
+  assert.equal(controller.getSnapshot().source, 'editable second')
+  await controller.dispose()
+})
+
+test('restored inactive Markdown and Base panes hydrate their own normal content projections', async () => {
+  const { storage, ids } = await storedSplitFixture(['Folder/Note.md', 'Second.md', 'Tasks.base'], 1)
+  const remote = new FakeRemote()
+  remote.openOverride = path => success({ content: path === 'Folder/Note.md' ? '# Before\n![[Second.md]]' : path === 'Tasks.base' ? 'views:\n  - type: table\n    name: Notes\n' : '# Target', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path, revision: firstRevision })
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), storage)
+  await controller.syncLocation('/tocktutor')
+  await new Promise(resolve => setImmediate(resolve))
+  const markdown = controller.getPaneSnapshot(ids[0]!)
+  assert.equal(markdown.links?.path, 'Folder/Note.md')
+  assert.equal(markdown.outline?.path, 'Folder/Note.md')
+  assert.equal(markdown.embeds?.[0]?.target.path, 'Second.md')
+  assert.ok(controller.getPaneSnapshot(ids[2]!).baseFiles?.some(file => file.path === 'Folder/Note.md'))
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  await controller.focusPane(ids[0]!)
+  assert.equal(controller.getSnapshot().embeds?.[0]?.target.path, 'Second.md')
+  await controller.dispose()
+})
+
+test('aggregate save also rejects an additional dirty document loaded during its await', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'horizontal')
+  await controller.select('Second.md')
+  controller.edit('dirty B')
+  await controller.focusPane(left)
+  const pending = deferred<{ ok: true; value: WriteDocumentResult }>()
+  remote.saveOverride = () => pending.promise
+  const save = controller.saveAll()
+  await controller.addPane()
+  const third = controller.getSnapshot().focusedPaneId
+  await controller.select('Third.md')
+  controller.edit('new document C')
+  await controller.focusPane(left)
+  pending.resolve({ ok: true, value: { digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: 'Second.md', revision: secondRevision, snapshotId: 'saved', status: 'saved' } })
+  assert.equal(await save, false)
+  assert.equal(controller.getPaneSnapshot(third).source, 'new document C')
+  remote.saveOverride = null
+  assert.equal(await controller.saveAll(), true)
+  await controller.dispose()
+})
+
+for (const deferredRead of ['open', 'draft'] as const) test(`explicit inactive refresh rejects a peer edit during the ${deferredRead} await`, async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'horizontal')
+  await controller.select('Second.md')
+  const entered = deferred<void>()
+  const gate = deferred<void>()
+  const originalOpen = remote.tocktutorWorkbench.openDocument
+  const originalDraft = remote.tocktutorWorkbench.readDraft
+  remote.tocktutorWorkbench.openDocument = async (...args) => {
+    if (args[0] === 'Folder/Note.md') {
+      if (deferredRead === 'open') { entered.resolve(); await gate.promise }
+      return success({ content: 'new disk', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: args[0], revision: secondRevision })
+    }
+    return originalOpen(...args)
+  }
+  remote.tocktutorWorkbench.readDraft = async (...args) => {
+    if (args[0].path === 'Folder/Note.md' && deferredRead === 'draft') { entered.resolve(); await gate.promise }
+    return originalDraft(...args)
+  }
+  remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+  await entered.promise
+  controller.bindPaneEdit(left)('newer peer source')
+  gate.resolve()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getPaneSnapshot(left).source, 'newer peer source')
+  assert.equal(controller.getPaneSnapshot(left).revision, firstRevision)
+  assert.equal(controller.getPaneSnapshot(left).saveStatus, 'unsaved')
+  await controller.dispose()
+})
+
+for (const completion of ['background', 'edited', 'vault', 'closed'] as const) test(`inactive relationship hydration is record-bound after ${completion}`, async () => {
+  const { storage, ids } = await storedSplitFixture(['Folder/Note.md', 'Second.md'], 1)
+  const remote = new FakeRemote()
+  const gate = deferred<void>()
+  const entered = deferred<void>()
+  const original = remote.tocktutorWorkbench.links
+  remote.tocktutorWorkbench.links = async (...args) => {
+    if (args[0].path === 'Folder/Note.md') { entered.resolve(); await gate.promise }
+    return original(...args)
+  }
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), storage)
+  await controller.syncLocation('/tocktutor')
+  await entered.promise
+  if (completion === 'edited') controller.bindPaneEdit(ids[0]!)('newer draft')
+  if (completion === 'vault') { remote.vault = secondVault; await controller.reload() }
+  if (completion === 'closed') assert.equal(await controller.closePane(ids[0]!), true)
+  gate.resolve()
+  await new Promise(resolve => setImmediate(resolve))
+  if (completion === 'background') {
+    assert.equal(controller.getPaneSnapshot(ids[0]!).links?.path, 'Folder/Note.md')
+    assert.equal(controller.getPaneSnapshot(ids[0]!).outline?.path, 'Folder/Note.md')
+    assert.equal(controller.getSnapshot().path, 'Second.md')
+  } else if (completion === 'edited') {
+    assert.equal(controller.getPaneSnapshot(ids[0]!).links, null)
+    assert.equal(controller.getPaneSnapshot(ids[0]!).source, 'newer draft')
+    await controller.focusPane(ids[0]!)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().links?.path, 'Folder/Note.md')
+  } else {
+    assert.notEqual(controller.getSnapshot().links?.path, 'Folder/Note.md')
+  }
+  await controller.dispose()
+})
+
+for (const kind of ['markdown', 'base'] as const) for (const completion of ['background', 'edited', 'closed', 'vault', 'disposed'] as const) test(`inactive ${kind} content hydration rejects stale ${completion} completion`, async () => {
+  const path = kind === 'markdown' ? 'Folder/Note.md' : 'Tasks.base'
+  const { storage, ids } = await storedSplitFixture([path, 'Second.md'], 1)
+  const remote = new FakeRemote()
+  const gate = deferred<void>()
+  const entered = deferred<void>()
+  let secondReads = 0
+  remote.tocktutorWorkbench.openDocument = async (requested, vault) => {
+    const delayed = kind === 'markdown' ? requested === 'Second.md' && ++secondReads > 1 : requested === 'Folder/Note.md'
+    if (delayed) { entered.resolve(); await gate.promise }
+    return success({ content: requested === path ? kind === 'markdown' ? '# Source\n![[Second.md]]' : 'views:\n  - type: table\n    name: All\n' : '# Hydrated target', digest: `sha256:${'e'.repeat(64)}`, generation: vault.generation, path: requested, revision: firstRevision })
+  }
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), storage)
+  await controller.syncLocation('/tocktutor')
+  await entered.promise
+  if (completion === 'edited') controller.bindPaneEdit(ids[0]!)(kind === 'markdown' ? '# No embed anymore' : 'views:\n  - type: table\n    name: Changed\n')
+  if (completion === 'closed') assert.equal(await controller.closePane(ids[0]!), true)
+  if (completion === 'vault') { remote.vault = secondVault; await controller.reload() }
+  if (completion === 'disposed') await controller.dispose()
+  const before = controller.getSnapshot()
+  gate.resolve()
+  await new Promise(resolve => setImmediate(resolve))
+  if (completion === 'background') {
+    const pane = controller.getPaneSnapshot(ids[0]!)
+    if (kind === 'markdown') assert.equal(pane.embeds?.[0]?.content, '# Hydrated target')
+    else assert.ok(pane.baseFiles?.some(file => file.source === '# Hydrated target'))
+    assert.equal(controller.getSnapshot().path, 'Second.md')
+  } else if (completion === 'edited') {
+    const pane = controller.getPaneSnapshot(ids[0]!)
+    assert.equal((kind === 'markdown' ? pane.embeds : pane.baseFiles)?.length, 0)
+    await controller.focusPane(ids[0]!)
+    await new Promise(resolve => setImmediate(resolve))
+    if (kind === 'base') assert.ok(controller.getSnapshot().baseFiles?.length)
+    else assert.equal(controller.getSnapshot().embeds?.length, 0)
+  } else if (completion === 'disposed') assert.equal(controller.getSnapshot(), before)
+  else assert.equal(controller.getSnapshot().path, before.path)
+  await controller.dispose()
+})
+
+test('explicit clean refresh supersedes older hydration even when document bytes and revision are unchanged', async () => {
+  const { storage, ids } = await storedSplitFixture(['Folder/Note.md', 'Second.md'], 1)
+  const remote = new FakeRemote()
+  const gate = deferred<void>()
+  let requests = 0
+  const original = remote.tocktutorWorkbench.links
+  remote.tocktutorWorkbench.links = async (...args) => {
+    if (args[0].path !== 'Folder/Note.md') return original(...args)
+    const index = ++requests
+    if (index === 1) await gate.promise
+    const result = await original(...args)
+    return { ...result, value: { ...result.value, backlinks: [index === 1 ? 'Old.md' : 'Fresh.md'] } }
+  }
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), storage)
+  try {
+    await controller.syncLocation('/tocktutor')
+    remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(requests, 2)
+    gate.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(controller.getPaneSnapshot(ids[0]!).links?.backlinks, ['Fresh.md'])
+  } finally { gate.resolve(); await controller.dispose() }
+})
+
+for (const pane of ['active', 'inactive'] as const) test(`new disk refresh supersedes a delayed draft read for the ${pane} document`, async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const owner = controller.getSnapshot().focusedPaneId
+  if (pane === 'inactive') { await controller.splitPane(owner, 'horizontal'); await controller.select('Second.md') }
+  const started = deferred<void>()
+  const oldDraft = deferred<void>()
+  const newestDraft = deferred<void>()
+  let reads = 0
+  let drafts = 0
+  const signals: AbortSignal[] = []
+  const originalOpen = remote.tocktutorWorkbench.openDocument
+  const originalDraft = remote.tocktutorWorkbench.readDraft
+  remote.tocktutorWorkbench.openDocument = async (...args) => {
+    if (args[0] !== 'Folder/Note.md') return originalOpen(...args)
+    reads += 1
+    signals.push(args[2]!)
+    return success({ content: `disk R${reads + 1}`, digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: args[0], revision: `file:${String(reads + 1).repeat(64)}` })
+  }
+  remote.tocktutorWorkbench.readDraft = async (...args) => {
+    if (args[0].path !== 'Folder/Note.md') return originalDraft(...args)
+    const index = ++drafts
+    if (index === 1) { started.resolve(); await oldDraft.promise }
+    if (index === 2) await newestDraft.promise
+    return success({ draft: null, generation: firstVault.generation })
+  }
+  try {
+    remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+    await started.promise
+    remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(reads, 2)
+    assert.equal(signals[0]?.aborted, true)
+    oldDraft.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    // The obsolete finalizer must leave R3 registered so R4 can cancel it.
+    remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(reads, 3)
+    assert.equal(signals[1]?.aborted, true)
+    newestDraft.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getPaneSnapshot(owner).source, 'disk R4')
+    assert.equal(controller.getPaneSnapshot(owner).revision, `file:${'4'.repeat(64)}`)
+  } finally { oldDraft.resolve(); newestDraft.resolve(); await controller.dispose() }
+})
+
+test('unrelated typing coalesces a fresh embed read after invalidating pending hydration without navigation', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const pending = deferred<void>()
+  const entered = deferred<void>()
+  let reads = 0
+  const original = remote.tocktutorWorkbench.openDocument
+  remote.tocktutorWorkbench.openDocument = async (...args) => {
+    if (args[0] !== 'Second.md') return original(...args)
+    reads += 1
+    if (reads === 1) { entered.resolve(); await pending.promise }
+    return success({ content: '# Valid embed body', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: args[0], revision: firstRevision })
+  }
+  controller.edit('![[Second.md]]\n')
+  await entered.promise
+  for (let index = 0; index < 12; index += 1) controller.edit(`![[Second.md]]\n\nAppended prose ${index}`)
+  assert.equal(reads, 1)
+  pending.resolve()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().embeds?.[0]?.content, '# Valid embed body')
+  assert.equal(reads, 2)
+  assert.equal(controller.getSnapshot().source, '![[Second.md]]\n\nAppended prose 11')
+  assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+  await controller.dispose()
+})
+
+test('abandoned recovered draft loads are reclaimed without participating in aggregate save and recover on reopen', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const originalDraft = remote.tocktutorWorkbench.readDraft
+  let gate: ReturnType<typeof deferred<void>> | null = null
+  let entered: ReturnType<typeof deferred<void>> | null = null
+  remote.tocktutorWorkbench.readDraft = async (...args) => {
+    if (!args[0].path.startsWith('Recovered')) return originalDraft(...args)
+    entered?.resolve()
+    if (gate) await gate.promise
+    return success({ draft: { content: `persisted ${args[0].path}\r\n`, path: args[0].path, revision: firstRevision, updatedAt: 1 }, generation: firstVault.generation })
+  }
+  for (let index = 0; index < 12; index += 1) {
+    gate = deferred<void>(); entered = deferred<void>()
+    const abandoned = controller.select(`Recovered${index}.md`)
+    await entered.promise
+    await controller.select(index % 2 ? 'Folder/Note.md' : 'Second.md')
+    gate.resolve()
+    assert.equal(await abandoned, false)
+  }
+  const saves = remote.calls.filter(call => call.method === 'saveDocument').length
+  assert.equal(await controller.saveAll(), true)
+  assert.equal(remote.calls.filter(call => call.method === 'saveDocument').length, saves)
+  gate = null
+  assert.equal(await controller.select('Recovered0.md'), true)
+  assert.equal(controller.getSnapshot().source, 'persisted Recovered0.md\r\n')
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+  controller.edit('later edited draft')
+  await controller.splitPane(controller.getSnapshot().focusedPaneId, 'horizontal')
+  assert.equal(controller.getSnapshot().source, 'later edited draft')
+  await controller.dispose()
+  assert.ok(remote.calls.some(call => call.method === 'saveDraft' && (call.parameters[0] as { content: string }).content === 'later edited draft'))
+})
+
+test('a stale selection consumer cannot prune the recovered record needed by a newer joined selection', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const entered = deferred<void>()
+  const pending = deferred<void>()
+  const original = remote.tocktutorWorkbench.readDraft
+  let draftReads = 0
+  remote.tocktutorWorkbench.readDraft = async (...args) => {
+    if (args[0].path !== 'Second.md') return original(...args)
+    draftReads += 1
+    entered.resolve()
+    await pending.promise
+    return success({ draft: { content: 'joined recovered draft', path: 'Second.md', revision: firstRevision, updatedAt: 1 }, generation: firstVault.generation })
+  }
+  const stale = controller.select('Second.md')
+  await entered.promise
+  const latest = controller.select('Second.md')
+  pending.resolve()
+  assert.equal(await stale, false)
+  assert.equal(await latest, true)
+  assert.equal(draftReads, 1)
+  assert.equal(controller.getSnapshot().source, 'joined recovered draft')
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+  await controller.dispose()
+})
+
+test('evicting an abandoned durable recovery record aborts its pending hydration', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Folder/Note.md')
+  const entered = deferred<void>()
+  const draftGate = deferred<void>()
+  const linksGate = deferred<void>()
+  let signal: AbortSignal | undefined
+  const originalDraft = remote.tocktutorWorkbench.readDraft
+  const originalLinks = remote.tocktutorWorkbench.links
+  remote.tocktutorWorkbench.readDraft = async (...args) => {
+    if (args[0].path !== 'Recovered.md') return originalDraft(...args)
+    entered.resolve(); await draftGate.promise
+    return success({ draft: { content: 'durably stored', path: 'Recovered.md', revision: firstRevision, updatedAt: 1 }, generation: firstVault.generation })
+  }
+  remote.tocktutorWorkbench.links = async (...args) => {
+    if (args[0].path === 'Recovered.md') { signal = args[1]; await linksGate.promise }
+    return originalLinks(...args)
+  }
+  const stale = controller.select('Recovered.md')
+  await entered.promise
+  await controller.select('Second.md')
+  draftGate.resolve()
+  assert.equal(await stale, false)
+  assert.equal(signal?.aborted, true)
+  linksGate.resolve()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.equal(controller.getSnapshot().links?.path, 'Second.md')
+  await controller.dispose()
+  assert.equal(remote.calls.some(call => call.method === 'saveDraft' && (call.parameters[0] as { path: string }).path === 'Recovered.md'), false)
+})
+
+for (const saved of [false, true]) test(`navigation respects a same-byte draft after background refresh (saved=${saved})`, async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), null)
+  const entered = deferred<void>()
+  const release = deferred<void>()
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    const originalSource = controller.getSnapshot().source
+    remote.openOverride = async path => {
+      if (path === 'Second.md') { entered.resolve(); await release.promise }
+      return success({ content: path === 'Second.md' ? '# Second\n' : '# External version\n', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path, revision: secondRevision })
+    }
+    const pending = controller.select('Second.md')
+    await entered.promise
+    remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().source, '# External version\n')
+    controller.edit(originalSource)
+    assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+    if (saved) assert.equal(await controller.save(), true)
+    release.resolve()
+    assert.equal(await pending, saved)
+    assert.equal(controller.getSnapshot().path, saved ? 'Second.md' : 'Folder/Note.md')
+    if (!saved) {
+      assert.equal(controller.getSnapshot().source, originalSource)
+      assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+    }
+  } finally { release.resolve(); await controller.dispose() }
+})
+
+test('a background active refresh error cannot replace pending navigation status', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), null)
+  const navigationEntered = deferred<void>()
+  const releaseNavigation = deferred<void>()
+  const refreshEntered = deferred<void>()
+  const releaseRefresh = deferred<void>()
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    const before = controller.getSnapshot().message
+    remote.openOverride = path => {
+      if (path === 'Second.md') {
+        navigationEntered.resolve()
+        return releaseNavigation.promise.then(() => success({ content: '# Second\n', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path, revision: secondRevision }))
+      }
+      if (path === 'Folder/Note.md') {
+        refreshEntered.resolve()
+        return releaseRefresh.promise.then(() => { throw new Error('stale active refresh') })
+      }
+      return success({ content: '# Other\n', digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path, revision: firstRevision })
+    }
+    const pending = controller.select('Second.md')
+    await navigationEntered.promise
+    remote.emit({ action: 'external-change', kind: 'entry', path: 'Folder/Note.md', vault: firstVault })
+    await refreshEntered.promise
+    releaseRefresh.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().path, 'Folder/Note.md')
+    assert.equal(controller.getSnapshot().message, before)
+    assert.ok(controller.getSnapshot().warnings.includes('stale active refresh'))
+    releaseNavigation.resolve()
+    assert.equal(await pending, true)
+    assert.equal(controller.getSnapshot().path, 'Second.md')
+  } finally {
+    releaseRefresh.resolve()
+    releaseNavigation.resolve()
+    await controller.dispose()
+  }
+})
+
+test('recent-search cannot resurrect a deletion published by an already pending tree', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), null)
+  const releaseTree = deferred<void>()
+  const recentEntered = deferred<void>()
+  const releaseRecent = deferred<void>()
+  try {
+    remote.treePageOverride = async () => success(tree(firstVault, 'Deleted.md'))
+    await controller.syncLocation('/tocktutor')
+    let requests = 0
+    remote.treePageOverride = async () => {
+      if (++requests === 1) await releaseTree.promise
+      else { recentEntered.resolve(); await releaseRecent.promise }
+      return success(tree(firstVault, 'Fresh.md'))
+    }
+    remote.emit({ action: 'changed', kind: 'tree', vault: firstVault })
+    controller.openSearch('')
+    await recentEntered.promise
+    releaseTree.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().entries.some(entry => entry.path === 'Deleted.md'), false)
+    assert.equal(controller.getSnapshot().entries.some(entry => entry.path === 'Fresh.md'), true)
+    releaseRecent.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().entries.some(entry => entry.path === 'Deleted.md'), false)
+    assert.equal(controller.getSnapshot().searchMatches?.some(entry => entry.path === 'Deleted.md'), false)
+    assert.equal(controller.getSnapshot().searchMatches?.some(entry => entry.path === 'Fresh.md'), true)
+    assert.equal(controller.getSnapshot().searchOpen, true)
+  } finally {
+    releaseTree.resolve()
+    releaseRecent.resolve()
+    await controller.dispose()
+  }
+})
+
+test('a recent-search page cannot replace a newer background tree publication', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), null)
+  const oldPage = deferred<void>()
+  const oldStarted = deferred<void>()
+  const newEntry = {
+    createdAt: 3,
+    kind: 'document' as const,
+    modifiedAt: 3,
+    path: 'New.md',
+    revision: firstRevision,
+    size: 8,
+  }
+  let calls = 0
+  try {
+    await controller.syncLocation('/tocktutor')
+    remote.treePageOverride = async (_request, _signal) => {
+      calls += 1
+      if (calls === 1) {
+        oldStarted.resolve()
+        await oldPage.promise
+        return success(tree(firstVault))
+      }
+      const page = tree(firstVault)
+      return success({ ...page, entries: [...page.entries, newEntry], scan: { ...page.scan, entries: page.scan.entries + 1 } })
+    }
+    controller.openSearch('')
+    await oldStarted.promise
+    remote.emit({ action: 'changed', kind: 'tree', vault: firstVault })
+    for (let attempt = 0; attempt < 100 && !controller.getSnapshot().entries.some(entry => entry.path === 'New.md'); attempt += 1) {
+      await new Promise(resolve => setImmediate(resolve))
+    }
+    assert.equal(controller.getSnapshot().entries.some(entry => entry.path === 'New.md'), true)
+    oldPage.resolve()
+    for (let attempt = 0; attempt < 10; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().entries.some(entry => entry.path === 'New.md'), true)
+    assert.equal(controller.getSnapshot().searchOpen, true)
+    controller.setSearchQuery('lesson')
+    assert.equal(await controller.runSearch(), true)
+    assert.equal(controller.getSnapshot().searchOpen, true)
+  } finally {
+    oldPage.resolve()
+    await controller.dispose()
+  }
+})
+
+for (const staleResult of ['page', 'error'] as const) test(`background tree pagination keeps the latest refresh and rejects an older ${staleResult}`, async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), null)
+  const release = deferred<void>()
+  let olderSignal: AbortSignal | undefined
+  let calls = 0
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    remote.treePageOverride = async (request, signal) => {
+      calls++
+      if (calls === 1) return success({ ...tree(firstVault), complete: false, cursor: 'older-page', truncated: true, truncationReason: 'result-limit' })
+      if (request.cursor === 'older-page') {
+        olderSignal = signal
+        await release.promise
+        if (staleResult === 'error') throw new Error('obsolete tree failure')
+        return success({ ...tree(firstVault, 'Obsolete.md'), complete: false, cursor: 'must-not-request', truncated: true, truncationReason: 'result-limit' })
+      }
+      return success(tree(firstVault, 'Latest.md'))
+    }
+    remote.emit({ kind: 'tree', action: 'changed', vault: firstVault })
+    await new Promise(resolve => setImmediate(resolve))
+    remote.emit({ kind: 'tree', action: 'changed', vault: firstVault })
+    await new Promise(resolve => setImmediate(resolve))
+    const latest = controller.getSnapshot()
+    assert.ok(latest.entries.some(entry => entry.path === 'Latest.md'))
+    assert.equal(olderSignal?.aborted, true)
+    release.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(controller.getSnapshot(), latest)
+    assert.equal(calls, 3, 'superseded pagination must not request its next cursor')
+  } finally { release.resolve(); await controller.dispose() }
+})
+
+for (const boundary of ['same-vault reload', 'vault switch', 'dispose'] as const) for (const staleResult of ['page', 'error'] as const) test(`${boundary} rejects an old background tree ${staleResult}`, async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), null)
+  const release = deferred<void>()
+  let signal: AbortSignal | undefined
+  try {
+    await controller.syncLocation('/tocktutor')
+    remote.treePageOverride = async (_request, received) => {
+      signal = received
+      await release.promise
+      if (staleResult === 'error') throw new Error('obsolete tree failure')
+      return success(tree(firstVault, 'Obsolete.md'))
+    }
+    remote.emit({ kind: 'tree', action: 'changed', vault: firstVault })
+    remote.treePageOverride = null
+    if (boundary === 'dispose') await controller.dispose()
+    else {
+      if (boundary === 'vault switch') remote.vault = secondVault
+      await controller.reload()
+    }
+    assert.equal(signal?.aborted, true)
+    const latest = controller.getSnapshot()
+    release.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(controller.getSnapshot(), latest)
+  } finally { release.resolve(); await controller.dispose() }
+})
+
+for (const work of ['search', 'recovery'] as const) test(`background tree notifications preserve pending ${work} and foreground status`, async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), null)
+  const release = deferred<void>()
+  const entered = deferred<void>()
+  let signal: AbortSignal | undefined
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    const listSnapshots = remote.tocktutorWorkbench.listSnapshots
+    remote.tocktutorWorkbench.listSnapshots = async (request, received) => {
+      signal = received
+      entered.resolve()
+      await release.promise
+      return listSnapshots(request, received)
+    }
+    remote.searchOverride = async (_request, received) => {
+      signal = received
+      entered.resolve()
+      await release.promise
+      return success({ cursor: null, generation: firstVault.generation, matches: [], query: 'lesson', scan: { bytes: 0, entries: 0, files: 0 }, truncated: false, truncationReason: null, warnings: [] })
+    }
+    if (work === 'search') controller.openSearch('lesson')
+    const pending = work === 'search' ? controller.runSearch() : controller.setRecoveryOpen(true)
+    await entered.promise
+    const before = controller.getSnapshot()
+    remote.treePageOverride = async () => success({ ...tree(firstVault), complete: false, truncated: true, truncationReason: 'depth-limit' })
+    remote.emit({ kind: 'tree', action: 'changed', vault: firstVault })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(signal?.aborted, false, `${work} must retain its own operation`)
+    assert.equal(controller.getSnapshot().message, before.message)
+    assert.equal(controller.getSnapshot().searchLoading, before.searchLoading)
+    release.resolve()
+    assert.equal(await pending, work === 'search' ? true : undefined)
+  } finally { release.resolve(); await controller.dispose() }
+})
+
+for (const result of ['page', 'error'] as const) test(`a current background tree ${result} can settle after navigation without replacing its status`, async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), null)
+  const release = deferred<void>()
+  let signal: AbortSignal | undefined
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    remote.treePageOverride = async (_request, received) => {
+      signal = received
+      await release.promise
+      if (result === 'error') throw new Error('tree refresh failed')
+      return success({ ...tree(firstVault, 'Fresh.md'), complete: false, truncated: true, truncationReason: 'depth-limit' })
+    }
+    remote.emit({ kind: 'tree', action: 'changed', vault: firstVault })
+    assert.equal(await controller.select('Second.md'), true)
+    const selected = controller.getSnapshot()
+    release.resolve()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(signal?.aborted, false)
+    assert.equal(controller.getSnapshot().path, selected.path)
+    assert.equal(controller.getSnapshot().message, selected.message)
+    if (result === 'page') {
+      assert.ok(controller.getSnapshot().entries.some(entry => entry.path === 'Fresh.md'))
+      assert.ok(controller.getSnapshot().warnings.includes('The vault tree is truncated to a bounded result.'))
+    } else assert.ok(controller.getSnapshot().warnings.includes('tree refresh failed'))
+  } finally { release.resolve(); await controller.dispose() }
 })

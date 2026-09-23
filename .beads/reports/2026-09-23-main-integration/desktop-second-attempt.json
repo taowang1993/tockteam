@@ -1,0 +1,124 @@
+{
+  "run": "desktop-mue3mtnx",
+  "connection": "owned app-scoped CDP endpoint (redacted)",
+  "vault": "isolated fixture vault (path intentionally omitted)",
+  "assertions": [
+    {
+      "name": "exact Desktop geometry",
+      "ok": true,
+      "expected": {
+        "cssWidth": 1512,
+        "cssHeight": 949,
+        "dpr": 2
+      },
+      "actual": {
+        "cssWidth": 1512,
+        "cssHeight": 949,
+        "dpr": 2,
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark",
+        "skin": null,
+        "hasSkinAttribute": false,
+        "route": "/tocktutor",
+        "title": "TockCoder"
+      }
+    },
+    {
+      "name": "built-in dark theme",
+      "ok": true,
+      "expected": {
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark"
+      },
+      "actual": {
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark"
+      }
+    },
+    {
+      "name": "no active TockTeam skin",
+      "ok": true,
+      "expected": {
+        "skin": null,
+        "hasSkinAttribute": false
+      },
+      "actual": {
+        "skin": null,
+        "hasSkinAttribute": false
+      }
+    },
+    {
+      "name": "TockTutor route mounted",
+      "ok": true,
+      "expected": "/tocktutor route",
+      "actual": "/tocktutor"
+    },
+    {
+      "name": "Editable fixture has repeated replacement target",
+      "ok": true,
+      "expected": "a repeated authored token",
+      "actual": "alpha"
+    }
+  ],
+  "states": [
+    {
+      "name": "Editable Source baseline",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Source",
+      "status": "Editable.md opened.0 backlinksSource4 words29 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    }
+  ],
+  "screenshots": {},
+  "pageErrors": [],
+  "consoleErrors": [],
+  "consoleWarnings": [],
+  "requestFailures": [],
+  "expectedRequestAborts": [
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "startupRequestFailures": [],
+  "fatal": "Error: save acknowledgment and bytes Editable.md timed out\n    at eventually (file:///private/tmp/tutor-main-integration-28-ui/desktop-verifier.mjs:137:9)\n    at async saveAndRead (file:///private/tmp/tutor-main-integration-28-ui/desktop-verifier.mjs:256:3)\n    at async file:///private/tmp/tutor-main-integration-28-ui/desktop-verifier.mjs:346:24",
+  "geometry": {
+    "cssWidth": 1512,
+    "cssHeight": 949,
+    "dpr": 2,
+    "styleColorScheme": "dark",
+    "computedColorScheme": "dark",
+    "skin": null,
+    "hasSkinAttribute": false,
+    "route": "/tocktutor",
+    "title": "TockCoder"
+  },
+  "final": {
+    "geometry": {
+      "cssWidth": 1512,
+      "cssHeight": 949,
+      "dpr": 2,
+      "styleColorScheme": "dark",
+      "computedColorScheme": "dark",
+      "skin": null,
+      "hasSkinAttribute": false,
+      "route": "/tocktutor",
+      "title": "TockCoder"
+    },
+    "route": "/tocktutor/Editable.md",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "requestFailures": [],
+    "expectedRequestAborts": [
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "startupRequestFailures": [],
+    "screenshotFiles": {}
+  }
+}
