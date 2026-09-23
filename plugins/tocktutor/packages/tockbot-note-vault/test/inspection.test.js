@@ -645,24 +645,29 @@ test('rewrite planning fails closed on validation, revisions, output bytes, work
     (_, index) => `Text <span data-index="${String(index)}">`,
   ).join('\n')}\n[T](./Target.md)\n`
   const htmlInspection = makeInspection(manyUnclosedTags, 'rev:html', largeLimits)
-  const htmlStarted = performance.now()
+  // Bound scanner work, not runner scheduling: CI can pause a linear scan for >250 ms.
+  let htmlWork = 0
+  const htmlWorkSignal = { throwIfAborted() {
+    if (++htmlWork > manyUnclosedTags.length * 4) assert.fail('unclosed HTML scan exceeded linear work bound')
+  } }
   const htmlResult = await htmlInspection.planPathRewrite({
     oldPath: 'Target.md',
     newPath: 'Archive/Target.md',
     isDirectory: false,
-  })
-  assert.equal(performance.now() - htmlStarted < 250, true)
+  }, htmlWorkSignal)
   assert.equal(htmlResult.updates.length, 1)
 
   const nestedBlock = `${'<div>\n'.repeat(20_000)}${'body\n'.repeat(20_000)}\n`
   const nestedInspection = makeInspection(nestedBlock, 'rev:nested', largeLimits)
-  const nestedStarted = performance.now()
+  let nestedWork = 0
+  const nestedWorkSignal = { throwIfAborted() {
+    if (++nestedWork > nestedBlock.length * 4) assert.fail('nested HTML scan exceeded linear work bound')
+  } }
   const nestedResult = await nestedInspection.planPathRewrite({
     oldPath: 'Target.md',
     newPath: 'Archive/Target.md',
     isDirectory: false,
-  })
-  assert.equal(performance.now() - nestedStarted < 250, true)
+  }, nestedWorkSignal)
   assert.deepEqual(nestedResult.updates, [])
   assert.equal(nestedResult.complete, true)
 
