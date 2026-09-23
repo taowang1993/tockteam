@@ -73,7 +73,7 @@ export type NativeFailureResult = {
     operationId: string;
     status: NativeFailureStatus;
 };
-export type DesktopCallerOperation = 'activate-vault' | 'move-vault' | 'remove-vault' | 'rename-vault' | 'reveal-entry' | 'reveal-vault' | 'popout-open' | 'popout-close' | 'popout-close-all' | 'microphone' | 'print' | 'export-html' | 'export-pdf' | 'import-source' | 'backup' | 'restore-backup';
+export type DesktopCallerOperation = 'activate-vault' | 'move-vault' | 'remove-vault' | 'rename-vault' | 'open-default-app' | 'copy-absolute-path' | 'reveal-entry' | 'reveal-vault' | 'popout-open' | 'popout-close' | 'popout-close-all' | 'microphone' | 'print' | 'export-html' | 'export-pdf' | 'import-source' | 'backup' | 'restore-backup';
 export interface DesktopCallerClaimRequest {
     authorization: string;
     operation: DesktopCallerOperation;

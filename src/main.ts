@@ -1,8 +1,12 @@
 import { createTrustedRaycastFirstUse } from './trusted-raycast-first-use.ts'
 import { TrustedRaycastManager } from './trusted-raycast-manager.ts'
+import { resolveTrustedTranslateProxy } from './trusted-raycast-translate-proxy.ts'
 import { TrustedRaycastTrustStore } from './trusted-raycast-trust.ts'
 import { copyTrustedRaycastText } from './trusted-raycast-clipboard-proof.ts'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, TrustedRaycastOrigin, type TrustedRaycastNativeDeps } from './trusted-raycast-native.ts'
+import { createTrustedRaycastSettings } from './trusted-raycast-settings.ts'
+import { CAN_I_USE_SETTINGS_TARGETS } from './trusted-raycast-settings-catalog.ts'
+import { launcherExtensionSupported, type LauncherExtensionId } from './launcher-extension-settings.ts'
 import { loadTrustedRaycastPreferenceState, loadTrustedRaycastPreferences, saveTrustedRaycastPreferences } from './trusted-raycast-preferences.ts'
 import { DesktopTrustedRaycastChannel } from './trusted-raycast-channel.ts'
 import { createTrustedRaycastMutex } from './trusted-raycast-mutex.ts'
@@ -90,6 +94,10 @@ import { DesktopPopOutOwner } from './desktop-popout-owner.ts'
 import { DesktopMicrophoneOwner } from './desktop-microphone-owner.ts'
 import { DesktopPickerChannel } from './desktop-picker-channel.ts'
 import { DesktopPickerOwner, type DesktopPickerDialogOptions } from './desktop-picker-owner.ts'
+import { DesktopOpenPathChannel } from './desktop-open-path-channel.ts'
+import { performDesktopOpenPath } from './desktop-open-path-native.ts'
+import { DesktopCopyPathChannel } from './desktop-copy-path-channel.ts'
+import { performDesktopCopyPath } from './desktop-copy-path-native.ts'
 import { DesktopRevealChannel } from './desktop-reveal-channel.ts'
 import { performDesktopReveal } from './desktop-reveal-native.ts'
 import {
@@ -772,6 +780,22 @@ const logTail: string[] = []
 const desktopCallerAuthorizations = new DesktopCallerAuthorizations()
 const webClipFrames = new WebClipFrameAuthorizations()
 const webClipSessions = new WeakSet<Session>()
+const desktopOpenPathChannel = new DesktopOpenPathChannel({
+  isAvailable: () => isEligibleDesktopRevealWindow(),
+  onOpen: async (input, signal) => await performDesktopOpenPath(input, {
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+    openPath: async path => await shell.openPath(path),
+  }, signal),
+})
+const desktopCopyPathChannel = new DesktopCopyPathChannel({
+  isAvailable: () => isEligibleDesktopRevealWindow(),
+  onCopy: async (input, signal) => await performDesktopCopyPath(input, {
+    isAvailable: () => isEligibleDesktopRevealWindow(),
+    lstat: async path => await lstat(path, { bigint: true }),
+    realpath: async path => await realpath(path),
+    writeText: path => { clipboard.writeText(path) },
+  }, signal),
+})
 const desktopRevealChannel = new DesktopRevealChannel({
   isAvailable: () => isEligibleDesktopRevealWindow(),
   onReveal: async (input, signal) => await performDesktopReveal(input, {
@@ -1189,6 +1213,16 @@ function runtimeEnvironment(
     environment.DSH_DESKTOP_TRUSTED_RAYCAST_ENDPOINT = trusted.endpoint
     environment.DSH_DESKTOP_TRUSTED_RAYCAST_TOKEN = trusted.token
   }
+  const openPath = overrides.preview === undefined ? desktopOpenPathChannel.environment : undefined
+  if (openPath !== undefined) {
+    environment.DSH_DESKTOP_OPEN_PATH_ENDPOINT = openPath.endpoint
+    environment.DSH_DESKTOP_OPEN_PATH_TOKEN = openPath.token
+  }
+  const copyPath = overrides.preview === undefined ? desktopCopyPathChannel.environment : undefined
+  if (copyPath !== undefined) {
+    environment.DSH_DESKTOP_COPY_PATH_ENDPOINT = copyPath.endpoint
+    environment.DSH_DESKTOP_COPY_PATH_TOKEN = copyPath.token
+  }
   const reveal = overrides.preview === undefined ? desktopRevealChannel.environment : undefined
   if (reveal !== undefined) {
     environment.DSH_DESKTOP_REVEAL_ENDPOINT = reveal.endpoint
@@ -1598,10 +1632,7 @@ function launcherSurfaceSettings(): import('./launcher-contract.ts').LauncherSur
   const history = historyEnabled && Array.isArray(rawHistory) ? rawHistory.filter(item => typeof item === 'string').slice(0, historyLimit) : []
   const enabled = new Set(launcherEnabledLocalExtensionIds())
   if (launcherWorkflowFixtureEnabled) enabled.add('Workflow')
-  const unsupported = new Set<string>([
-    ...(platform === 'Linux' ? ['BrowserBookmarks', 'FileSearch', 'TerminalLauncher'] : []),
-    ...(platform !== 'Windows' ? ['WindowsControlPanel'] : []),
-  ])
+  const unsupported = new Set(LAUNCHER_COMPOSITION.extensionIds.filter(id => !launcherExtensionSupported(id, platform)))
   const providerErrors = new Set<string>([
     ...(launcherLocal?.getProviderErrors().keys() ?? []),
     ...(launcherDiscovery?.getProviderErrors().keys() ?? []),
@@ -2296,17 +2327,38 @@ function initializeLauncher(): void {
     preview: stagedDir => trustedRaycast === undefined ? Promise.resolve('Can I Use runtime is unavailable') : trustedRaycast.previewRuntime(stagedDir, 'can-i-use'),
   })
   const trustStoreFor = (extensionId: keyof typeof trustedRaycastDescriptors) => extensionId === 'can-i-use' ? trustedRaycastCanIUseTrust : extensionId === 'kaomoji-search' ? trustedRaycastKaomojiTrust : trustedRaycastTrust
+  const extensionSettings = createTrustedRaycastSettings({
+    read: id => id === 'google-translate' ? loadTrustedRaycastPreferences(translatePreferencesPath)
+      : id === 'kaomoji-search' ? loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).values
+      : loadTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile),
+    write: async (id, values) => {
+      if (id === 'google-translate') await saveTrustedRaycastPreferences(translatePreferencesPath, values)
+      else if (id === 'kaomoji-search') await saveKaomojiPreferences(kaomojiTrustedPaths.preferencesFile, values)
+      else await saveTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile, values, { canonicalTargets: CAN_I_USE_SETTINGS_TARGETS })
+    },
+    trust: id => ({ ...(trustStoreFor(id)?.status() ?? { candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '' as const, staged: false }), active: trustedRaycastChannel.active && process.platform === 'darwin' }),
+    setEnabled: async (id, enabled) => {
+      trustedRaycastFirstUse?.invalidate(id)
+      await trustedRaycastMutex(async () => {
+        const store = trustStoreFor(id)
+        if (!store || !trustedRaycastChannel.active || process.platform !== 'darwin') throw new Error('Extension is unavailable')
+        if (enabled) store.enable()
+        else {
+          if (trustedRaycast?.activeExtensionId === id) await trustedRaycast.stop('capability-disabled')
+          store.disable()
+        }
+        await rescan(undefined, undefined, 'trusted-raycast-settings-enablement')
+      })
+    },
+  })
   trustedRaycast = new TrustedRaycastManager({
     runtimeDir: extensionId => trustStoreFor(extensionId)?.runtimeDir(),
     nodePath: runtimePaths().nodeBinary,
+    resolveTranslateProxy: () => resolveTrustedTranslateProxy(url => session.defaultSession.resolveProxy(url)),
     stateFile: extensionId => extensionId === 'can-i-use' ? canIUseTrustedPaths.stateFile : extensionId === 'kaomoji-search' ? kaomojiTrustedPaths.stateFile : googleTrustedPaths.stateFile,
     preferencesConfigured: extensionId => extensionId === 'can-i-use' ? true : extensionId === 'kaomoji-search' ? loadKaomojiPreferenceState(kaomojiTrustedPaths.preferencesFile).configured : loadTrustedRaycastPreferenceState(translatePreferencesPath).configured,
-    savePreferences: (preferences, extensionId) => {
-      if (extensionId === 'kaomoji-search') return saveKaomojiPreferences(kaomojiTrustedPaths.preferencesFile, preferences)
-      if (extensionId === 'google-translate') return saveTrustedRaycastPreferences(translatePreferencesPath, preferences)
-      throw new Error('Can I Use preferences require main-owned setup')
-    },
-    saveCanIUsePreferences: (preferences, canonicalTargets) => saveTrustedRaycastCanIUsePreferences(canIUseTrustedPaths.preferencesFile, preferences, { canonicalTargets }),
+    savePreferences: (preferences, extensionId, previous) => extensionSettings.saveFromCommand(extensionId, preferences, previous),
+    saveCanIUsePreferences: (preferences, _canonicalTargets, previous) => extensionSettings.saveFromCommand('can-i-use', preferences, previous),
     openCanIUse: async url => {
       if (trustedRaycastDenyEffectsProofEnabled) throw new Error('Browser opening is disabled in the bounded visual proof')
       await shell.openExternal(url)
@@ -2528,7 +2580,7 @@ function initializeLauncher(): void {
       if (process.platform !== 'darwin' || trustedRaycastDenyEffectsProofEnabled) { trustedRaycastOrigin.clear(); return }
       await trustedRaycastOrigin.capture(() => selectionFixture || pasteFixture
         ? Promise.resolve({ name: 'TockTeam Fixture Target', capturedAt: Date.now() })
-        : captureTrustedRaycastPriorApp(trustedRaycastNativeDeps))
+        : captureTrustedRaycastPriorApp(trustedRaycastNativeDeps, mainWindow))
     },
     createWindow: () => createLauncherWindow({ launcherSession, urlPolicy }),
     focusApp: async () => {
@@ -2695,6 +2747,7 @@ function initializeLauncher(): void {
     throw error
   }
   workbenchLauncherIpcDisposer = registerWorkbenchLauncherIpcHandlers({
+    extensionSettings,
     assertTrustedMainIpc: event => { assertTrustedMainIpc(event as Electron.IpcMainInvokeEvent) },
     controller: nextController,
     ipcMain,
@@ -2939,10 +2992,10 @@ async function ensureWorkbenchWindow(): Promise<void> {
   window.focus()
 }
 
-async function openWorkbenchSettings(): Promise<void> {
+async function openWorkbenchSettings(extensionId?: LauncherExtensionId): Promise<void> {
   await ensureWorkbenchWindow()
   dispatchWorkbenchRoute({ destination: 'tockcoder' })
-  sendCommand({ section: 'tocklauncher', type: 'show-settings' })
+  sendCommand({ section: 'tocklauncher', ...(extensionId === undefined ? {} : { extensionId }), type: 'show-settings' })
 }
 
 function settingsOperation(canceled = false): Readonly<{ canceled?: boolean; ok: true }> {
@@ -3388,6 +3441,8 @@ async function stopRuntimeAndChannels(options: Readonly<{ skipStartWait?: boolea
       desktopCallerChannel.stop(),
       desktopPickerChannel.stop(),
       desktopRevealChannel.stop(),
+      desktopOpenPathChannel.stop(),
+      desktopCopyPathChannel.stop(),
       trustedRaycastChannel.stop(),
     ])
     const failed = results.find(result => result.status === 'rejected')
@@ -3436,6 +3491,8 @@ async function startRuntimeOwned(token: Readonly<{ isCurrent: () => boolean }>):
     }
     await startChannel(() => trustedRaycastChannel.start())
     await startChannel(() => desktopRevealChannel.start())
+    await startChannel(() => desktopOpenPathChannel.start())
+    await startChannel(() => desktopCopyPathChannel.start())
     await startChannel(() => desktopPickerChannel.start())
     await startChannel(() => desktopCallerChannel.start())
     await startChannel(() => desktopDispatchChannel.start())

@@ -143,6 +143,36 @@ export interface VaultPathRewriteResult extends VaultScanResult {
   truncated: boolean
 }
 
+export interface VaultMergeLinkArgs {
+  sourcePath: string
+  destinationPath: string
+  /** Reviewed combined text; its properties define the post-merge alias inventory. */
+  mergedContent: string
+  keepSource: boolean
+  cursor?: string
+}
+
+export interface VaultMergeLinkDocument {
+  /** Original path and revision. Content is rebased for composition at destinationPath, not a write to this path. */
+  path: string
+  revision?: string
+  content: string
+}
+
+export interface VaultMergeLinkResult extends VaultScanResult {
+  source: VaultMergeLinkDocument | null
+  destination: VaultMergeLinkDocument | null
+  /** Other Markdown referrers only, identified by their unchanged paths and pre-merge revisions. */
+  updates: VaultPathRewriteUpdate[]
+  /** Input-inventory fingerprint, not authorization or a substitute for runtime identity/revision checks. */
+  fingerprint: string | null
+  /** Complete Markdown plan only. Consume all pages before application. */
+  complete: boolean
+  truncated: boolean
+  /** Ambiguous/unresolved links or unverified Canvas/Base references prevent source retirement. */
+  requiresKeepSource: boolean
+}
+
 export interface VaultSearchArgs {
   query: string
   mode?: 'literal' | 'query' | 'related'
@@ -442,6 +472,7 @@ export interface VaultInspection {
     args: VaultPathRewriteArgs,
     signal?: AbortSignal,
   ): Promise<VaultPathRewriteResult>
+  planMergeLinks(args: VaultMergeLinkArgs, signal?: AbortSignal): Promise<VaultMergeLinkResult>
 }
 
 export function createVaultInspection(

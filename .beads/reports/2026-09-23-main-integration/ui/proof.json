@@ -1,0 +1,3547 @@
+{
+  "run": "desktop-mue4scut",
+  "connection": "owned app-scoped CDP endpoint (redacted)",
+  "vault": "isolated fixture vault (path intentionally omitted)",
+  "assertions": [
+    {
+      "name": "exact Desktop geometry",
+      "ok": true,
+      "expected": {
+        "cssWidth": 1512,
+        "cssHeight": 949,
+        "dpr": 2
+      },
+      "actual": {
+        "cssWidth": 1512,
+        "cssHeight": 949,
+        "dpr": 2,
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark",
+        "skin": null,
+        "hasSkinAttribute": false,
+        "route": "/tocktutor",
+        "title": "TockCoder"
+      }
+    },
+    {
+      "name": "built-in dark theme",
+      "ok": true,
+      "expected": {
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark"
+      },
+      "actual": {
+        "styleColorScheme": "dark",
+        "computedColorScheme": "dark"
+      }
+    },
+    {
+      "name": "no active TockTeam skin",
+      "ok": true,
+      "expected": {
+        "skin": null,
+        "hasSkinAttribute": false
+      },
+      "actual": {
+        "skin": null,
+        "hasSkinAttribute": false
+      }
+    },
+    {
+      "name": "TockTutor route mounted",
+      "ok": true,
+      "expected": "/tocktutor route",
+      "actual": "/tocktutor"
+    },
+    {
+      "name": "Editable fixture has repeated replacement target",
+      "ok": true,
+      "expected": "a repeated authored token",
+      "actual": "alpha"
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource9 words66 characters"
+      }
+    },
+    {
+      "name": "Source typing before Replace All is authored",
+      "ok": true,
+      "expected": "contains TUTOR_SOURCE_BEFORE_desktop-mue4scut",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 66,
+          "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Source Find count matches authored bytes",
+      "ok": true,
+      "expected": "at least 2",
+      "actual": 2
+    },
+    {
+      "name": "Find/Replace All alpha → TUTOR_SOURCE_REPLACE_desktop-mue4scut",
+      "ok": true,
+      "expected": "at least 2 replacement occurrences",
+      "actual": {
+        "output": "1 / 2",
+        "replacementOccurrences": 2
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource17 words130 characters"
+      }
+    },
+    {
+      "name": "Source Replace All preserves exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource22 words166 characters"
+      }
+    },
+    {
+      "name": "Source typing after Replace All is authored",
+      "ok": true,
+      "expected": "contains TUTOR_SOURCE_AFTER_desktop-mue4scut",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 166,
+          "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource17 words130 characters"
+      }
+    },
+    {
+      "name": "Source undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource9 words66 characters"
+      }
+    },
+    {
+      "name": "Source undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource4 words29 characters"
+      }
+    },
+    {
+      "name": "Source undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource9 words66 characters"
+      }
+    },
+    {
+      "name": "Source redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource17 words130 characters"
+      }
+    },
+    {
+      "name": "Source redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksSource22 words166 characters"
+      }
+    },
+    {
+      "name": "Source redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "Source final state after grouped undo/redo",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "source screenshot geometry",
+      "ok": true,
+      "expected": {
+        "width": 3024,
+        "height": 1898
+      },
+      "actual": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 123189
+      }
+    },
+    {
+      "name": "Live Preview replacement target remains authored",
+      "ok": true,
+      "expected": "at least 2",
+      "actual": 2
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview27 words201 characters"
+      }
+    },
+    {
+      "name": "Live Preview typing before Replace All is authored",
+      "ok": true,
+      "expected": "contains TUTOR_LIVE_BEFORE_desktop-mue4scut",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 201,
+          "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Find/Replace All TUTOR_SOURCE_REPLACE_desktop-mue4scut → TUTOR_LIVE_REPLACE_desktop-mue4scut",
+      "ok": true,
+      "expected": "at least 2 replacement occurrences",
+      "actual": {
+        "output": "1 / 2",
+        "replacementOccurrences": 2
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview27 words197 characters"
+      }
+    },
+    {
+      "name": "Live Preview Replace All preserves exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview32 words231 characters"
+      }
+    },
+    {
+      "name": "Live Preview typing after Replace All is authored",
+      "ok": true,
+      "expected": "contains TUTOR_LIVE_AFTER_desktop-mue4scut",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 231,
+          "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview27 words197 characters"
+      }
+    },
+    {
+      "name": "Live Preview undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview27 words201 characters"
+      }
+    },
+    {
+      "name": "Live Preview undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview22 words166 characters"
+      }
+    },
+    {
+      "name": "Live Preview undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview27 words201 characters"
+      }
+    },
+    {
+      "name": "Live Preview redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview27 words197 characters"
+      }
+    },
+    {
+      "name": "Live Preview redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Editable.md",
+      "ok": true,
+      "expected": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Editable.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Editable.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Editable.md opened.0 backlinksLive Preview32 words231 characters"
+      }
+    },
+    {
+      "name": "Live Preview redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "Live Preview final state after grouped undo/redo",
+      "ok": true,
+      "expected": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "live screenshot geometry",
+      "ok": true,
+      "expected": {
+        "width": 3024,
+        "height": 1898
+      },
+      "actual": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 134518
+      }
+    },
+    {
+      "name": "Mixed fixture has repeated replacement target",
+      "ok": true,
+      "expected": "a repeated authored token",
+      "actual": "alpha"
+    },
+    {
+      "name": "Find/Replace All alpha → TUTOR_MIXED_REPLACE_desktop-mue4scut",
+      "ok": true,
+      "expected": "at least 2 replacement occurrences",
+      "actual": {
+        "output": "1 / 2",
+        "replacementOccurrences": 2
+      }
+    },
+    {
+      "name": "save exact authored bytes Mixed.md",
+      "ok": true,
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Mixed.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Mixed.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Mixed.md opened.0 backlinksSource21 words173 characters"
+      }
+    },
+    {
+      "name": "Mixed Source Replace All preserves exact bytes and separators",
+      "ok": true,
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "Mixed Source newline sequence survives replacement",
+      "ok": true,
+      "expected": [
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "LF",
+        "LF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CR",
+        "LF"
+      ],
+      "actual": [
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "LF",
+        "LF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CRLF",
+        "CR",
+        "LF"
+      ]
+    },
+    {
+      "name": "save exact authored bytes Mixed.md",
+      "ok": true,
+      "expected": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Mixed.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Mixed.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Mixed.md opened.0 backlinksSource13 words111 characters"
+      }
+    },
+    {
+      "name": "Mixed Source undo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Mixed.md",
+      "ok": true,
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Mixed.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Mixed.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Mixed.md opened.0 backlinksSource21 words173 characters"
+      }
+    },
+    {
+      "name": "Mixed Source redo exact authored bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "Mixed Source final redo exact bytes",
+      "ok": true,
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save exact authored bytes Notes/Source.md",
+      "ok": true,
+      "expected": {
+        "bytes": 109,
+        "sha256": "f0845ee4a0fb93cf6118efa807d4ccbf1d3033e4ba41b5e7dc0364aee9352845",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 109,
+        "sha256": "f0845ee4a0fb93cf6118efa807d4ccbf1d3033e4ba41b5e7dc0364aee9352845",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Notes/Source.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Notes/Source.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": "Notes/Source.md opened.1 backlinkLive Preview12 words109 characters"
+      }
+    },
+    {
+      "name": "Live Preview simple formatting remains authored while editable",
+      "ok": true,
+      "expected": {
+        "marker": " TUTOR_FORMAT_EDIT_desktop-mue4scut",
+        "boldDelimiterCount": 2
+      },
+      "actual": {
+        "summary": {
+          "bytes": 109,
+          "sha256": "f0845ee4a0fb93cf6118efa807d4ccbf1d3033e4ba41b5e7dc0364aee9352845",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF"
+          ]
+        },
+        "boldDelimiterCount": 2
+      }
+    },
+    {
+      "name": "Properties is bound to Source owner before pin",
+      "ok": true,
+      "expected": "Properties · Notes/Source.md and Bound",
+      "actual": {
+        "properties": "Properties · Notes/Source.md",
+        "backlinks": "Backlinks · Notes/Source.md",
+        "propertiesText": "Properties · Notes/Source.mdBoundUnlinkPinClosePropertiesstatusAdd Property",
+        "backlinksText": "Backlinks · Notes/Source.mdBoundUnlinkPinCloseLinked Mentions (1)Referrer.md · line 1Notes/SourceUnlinked Mentions (0)No unlinked mentions."
+      }
+    },
+    {
+      "name": "Backlinks is bound to Source owner before pin",
+      "ok": true,
+      "expected": "Backlinks · Notes/Source.md and Bound",
+      "actual": {
+        "properties": "Properties · Notes/Source.md",
+        "backlinks": "Backlinks · Notes/Source.md",
+        "propertiesText": "Properties · Notes/Source.mdBoundUnlinkPinClosePropertiesstatusAdd Property",
+        "backlinksText": "Backlinks · Notes/Source.mdBoundUnlinkPinCloseLinked Mentions (1)Referrer.md · line 1Notes/SourceUnlinked Mentions (0)No unlinked mentions."
+      }
+    },
+    {
+      "name": "Pinned bound views retain Source before owner opens Destination",
+      "ok": true,
+      "expected": {
+        "properties": "Properties · Notes/Source.md",
+        "backlinks": "Backlinks · Notes/Source.md",
+        "pinned": true
+      },
+      "actual": {
+        "properties": "Properties · Notes/Source.md",
+        "backlinks": "Backlinks · Notes/Source.md",
+        "propertiesPinned": "true",
+        "backlinksPinned": "true"
+      }
+    },
+    {
+      "name": "Destination owner identity is exact after switch",
+      "ok": true,
+      "expected": {
+        "ownerTitle": "Destination",
+        "activeTabTitle": "Notes/Destination.md",
+        "route": "/tocktutor/Notes/Destination.md"
+      },
+      "actual": {
+        "properties": "Properties · Notes/Source.md",
+        "backlinks": "Backlinks · Notes/Source.md",
+        "ownerTitle": "Destination",
+        "activeTabCount": 1,
+        "activeTabTitle": "Notes/Destination.md",
+        "route": "/tocktutor/Notes/Destination.md"
+      }
+    },
+    {
+      "name": "Pinned bound views retain Source while owner opens Destination: Properties",
+      "ok": true,
+      "expected": {
+        "properties": "Properties · Notes/Source.md",
+        "ownerTitle": "Destination",
+        "activeTabTitle": "Notes/Destination.md"
+      },
+      "actual": {
+        "properties": "Properties · Notes/Source.md",
+        "backlinks": "Backlinks · Notes/Source.md",
+        "ownerTitle": "Destination",
+        "activeTabCount": 1,
+        "activeTabTitle": "Notes/Destination.md",
+        "route": "/tocktutor/Notes/Destination.md"
+      }
+    },
+    {
+      "name": "Pinned bound views retain Source while owner opens Destination: Backlinks",
+      "ok": true,
+      "expected": {
+        "backlinks": "Backlinks · Notes/Source.md",
+        "ownerTitle": "Destination",
+        "activeTabTitle": "Notes/Destination.md"
+      },
+      "actual": {
+        "properties": "Properties · Notes/Source.md",
+        "backlinks": "Backlinks · Notes/Source.md",
+        "ownerTitle": "Destination",
+        "activeTabCount": 1,
+        "activeTabTitle": "Notes/Destination.md",
+        "route": "/tocktutor/Notes/Destination.md"
+      }
+    },
+    {
+      "name": "peer edit clears stale undo history",
+      "ok": true,
+      "expected": {
+        "unchanged": true,
+        "includes": " TUTOR_PANE_RIGHT_desktop-mue4scut"
+      },
+      "actual": {
+        "unchanged": true,
+        "textLength": 133,
+        "includesRightMarker": true
+      }
+    },
+    {
+      "name": "left split pane owns its Find UI",
+      "ok": true,
+      "expected": {
+        "left": 1,
+        "right": 0
+      },
+      "actual": {
+        "left": 1,
+        "right": 0
+      }
+    },
+    {
+      "name": "right split pane owns its Find UI",
+      "ok": true,
+      "expected": {
+        "left": 0,
+        "right": 1
+      },
+      "actual": {
+        "left": 0,
+        "right": 1
+      }
+    },
+    {
+      "name": "save exact authored bytes Notes/Destination.md",
+      "ok": true,
+      "expected": {
+        "bytes": 133,
+        "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "actual": {
+        "bytes": 133,
+        "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "name": "save clears active tab Unsaved marker Notes/Destination.md",
+      "ok": true,
+      "expected": {
+        "activeTab": "Notes/Destination.md",
+        "unsaved": false
+      },
+      "actual": {
+        "activeTabCount": 1,
+        "activeTabVisible": true,
+        "unsavedCount": 0,
+        "status": ""
+      }
+    },
+    {
+      "name": "split peer edits are saved as authored bytes",
+      "ok": true,
+      "expected": "contains TUTOR_PANE_LEFT_desktop-mue4scut",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 133,
+          "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "split peer edits include second authored marker",
+      "ok": true,
+      "expected": "contains TUTOR_PANE_RIGHT_desktop-mue4scut",
+      "actual": {
+        "contains": true,
+        "summary": {
+          "bytes": 133,
+          "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+          "newlineKinds": [
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF",
+            "LF"
+          ]
+        }
+      }
+    },
+    {
+      "name": "split panes share content after peer edit",
+      "ok": true,
+      "expected": {
+        "shared": true
+      },
+      "actual": {
+        "leftLength": 133,
+        "rightLength": 133,
+        "shared": true
+      }
+    },
+    {
+      "name": "split screenshot geometry",
+      "ok": true,
+      "expected": {
+        "width": 3024,
+        "height": 1898
+      },
+      "actual": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 120529
+      }
+    }
+  ],
+  "states": [
+    {
+      "name": "Editable Source baseline",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Source",
+      "status": "Editable.md opened.0 backlinksSource4 words29 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Editable Source after Replace All and after-typing",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Source",
+      "status": "Editable.md opened.0 backlinksSource22 words166 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Editable Live Preview baseline",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Live Preview",
+      "status": "Editable.md opened.0 backlinksLive Preview22 words166 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Editable Live Preview after Replace All and after-typing",
+      "path": "Editable.md",
+      "route": "/tocktutor/Editable.md",
+      "title": "Editable",
+      "mode": "Live Preview",
+      "status": "Editable.md opened.0 backlinksLive Preview32 words231 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Mixed Source after exact replace/undo/redo",
+      "path": "Mixed.md",
+      "route": "/tocktutor/Mixed.md",
+      "title": "Mixed",
+      "mode": "Source",
+      "status": "Mixed.md opened.0 backlinksSource21 words173 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Source Live Preview task/format edit saved",
+      "path": "Notes/Source.md",
+      "route": "/tocktutor/Notes/Source.md",
+      "title": "Source",
+      "mode": "Live Preview",
+      "status": "Notes/Source.md opened.1 backlinkLive Preview12 words109 characters",
+      "ownerPaneCount": 1,
+      "linkedPaneCount": 0
+    },
+    {
+      "name": "Destination split panes after peer edit and pane-local Find",
+      "path": "Notes/Destination.md",
+      "route": "/tocktutor/Notes/Destination.md",
+      "title": "Destination",
+      "mode": "Source",
+      "status": "",
+      "ownerPaneCount": 2,
+      "linkedPaneCount": 0
+    }
+  ],
+  "screenshots": {
+    "source": {
+      "file": "source-find-replace.png",
+      "size": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 123189
+      }
+    },
+    "live": {
+      "file": "live-preview-find-replace.png",
+      "size": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 134518
+      }
+    },
+    "split": {
+      "file": "split-peer-find.png",
+      "size": {
+        "width": 3024,
+        "height": 1898,
+        "bytes": 120529
+      }
+    }
+  },
+  "saveObservations": [
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource9 words66 characters",
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource9 words66 characters",
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource17 words130 characters",
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource17 words130 characters",
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource22 words166 characters",
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource22 words166 characters",
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource17 words130 characters",
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource17 words130 characters",
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource9 words66 characters",
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource9 words66 characters",
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource4 words29 characters",
+      "actual": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource4 words29 characters",
+      "actual": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 29,
+        "sha256": "d4084c631f694cb96b3a29b39388b60b21130ea3e95554f709c825ab58e6acaa",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource9 words66 characters",
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource9 words66 characters",
+      "actual": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 66,
+        "sha256": "eeab17136f3dc34ee2eee58c50977968d81d33408a6f6c265c3a6a9c34e3ae80",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource17 words130 characters",
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource17 words130 characters",
+      "actual": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 130,
+        "sha256": "02378a90bfcd6e2abe802cf457485df3d92f379fc5275eb12850c9abef357913",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md saved.0 backlinksSource22 words166 characters",
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksSource22 words166 characters",
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md saved.0 backlinksLive Preview27 words201 characters",
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words201 characters",
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words197 characters",
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words197 characters",
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview32 words231 characters",
+      "actual": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview32 words231 characters",
+      "actual": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words197 characters",
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words197 characters",
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md saved.0 backlinksLive Preview27 words201 characters",
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words201 characters",
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md saved.0 backlinksLive Preview22 words166 characters",
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview22 words166 characters",
+      "actual": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 166,
+        "sha256": "c6102aa1d5b3817b4a7be398c5e0727dc965e479a22b8da64c434271891c81b0",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words201 characters",
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words201 characters",
+      "actual": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 201,
+        "sha256": "33ce522d4bfb429e6141815fd82c6154a7bd82f70fc4ecb7786603e60aa7bfd5",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md saved.0 backlinksLive Preview27 words197 characters",
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview27 words197 characters",
+      "actual": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 197,
+        "sha256": "e18f6297311fc6d0c4cc22c491974924db52c26c5db80312773e4792745d1af4",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md saved.0 backlinksLive Preview32 words231 characters",
+      "actual": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Editable.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Editable.md opened.0 backlinksLive Preview32 words231 characters",
+      "actual": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 231,
+        "sha256": "0e00e584d6024dbe6625d03bff171e78d0a93e98bb9120a274d12df27900de36",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Mixed.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Mixed.md opened.0 backlinksSource21 words173 characters",
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Mixed.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Mixed.md opened.0 backlinksSource21 words173 characters",
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Mixed.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Mixed.md opened.0 backlinksSource13 words111 characters",
+      "actual": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Mixed.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Mixed.md opened.0 backlinksSource13 words111 characters",
+      "actual": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 111,
+        "sha256": "e630bd9f1e03814ceb3ec68689ac76ef56cfa450e4ee8e0af281cb64f3f2b4aa",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Mixed.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Mixed.md opened.0 backlinksSource21 words173 characters",
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Mixed.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Mixed.md opened.0 backlinksSource21 words173 characters",
+      "actual": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 173,
+        "sha256": "8a4b08712bfb68c35e3d475c651deb1be0cf28946a88bc1d22696fc1a7da83a0",
+        "newlineKinds": [
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "LF",
+          "LF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CRLF",
+          "CR",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Notes/Source.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Notes/Source.md opened.1 backlinkLive Preview12 words109 characters",
+      "actual": {
+        "bytes": 109,
+        "sha256": "f0845ee4a0fb93cf6118efa807d4ccbf1d3033e4ba41b5e7dc0364aee9352845",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 109,
+        "sha256": "f0845ee4a0fb93cf6118efa807d4ccbf1d3033e4ba41b5e7dc0364aee9352845",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Notes/Source.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "Notes/Source.md opened.1 backlinkLive Preview12 words109 characters",
+      "actual": {
+        "bytes": 109,
+        "sha256": "f0845ee4a0fb93cf6118efa807d4ccbf1d3033e4ba41b5e7dc0364aee9352845",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 109,
+        "sha256": "f0845ee4a0fb93cf6118efa807d4ccbf1d3033e4ba41b5e7dc0364aee9352845",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Notes/Destination.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "",
+      "actual": {
+        "bytes": 133,
+        "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 133,
+        "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    },
+    {
+      "path": "Notes/Destination.md",
+      "activeTabCount": 1,
+      "activeTabVisible": true,
+      "unsavedCount": 0,
+      "status": "",
+      "actual": {
+        "bytes": 133,
+        "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      },
+      "expected": {
+        "bytes": 133,
+        "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+        "newlineKinds": [
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF",
+          "LF"
+        ]
+      }
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "consoleWarnings": [],
+  "requestFailures": [],
+  "expectedRequestAborts": [
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "[url]",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "startupRequestFailures": [],
+  "fatal": null,
+  "geometry": {
+    "cssWidth": 1512,
+    "cssHeight": 949,
+    "dpr": 2,
+    "styleColorScheme": "dark",
+    "computedColorScheme": "dark",
+    "skin": null,
+    "hasSkinAttribute": false,
+    "route": "/tocktutor",
+    "title": "TockCoder"
+  },
+  "taskEdit": {
+    "kind": "simple-formatting-fallback",
+    "before": {
+      "bytes": 74,
+      "sha256": "003c82870e04a195d87f72b48ddf4ac474f31aa1207daba8e705cc0688b21ba7",
+      "newlineKinds": [
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF"
+      ]
+    },
+    "after": {
+      "bytes": 109,
+      "sha256": "f0845ee4a0fb93cf6118efa807d4ccbf1d3033e4ba41b5e7dc0364aee9352845",
+      "newlineKinds": [
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF"
+      ]
+    },
+    "marker": " TUTOR_FORMAT_EDIT_desktop-mue4scut"
+  },
+  "split": {
+    "leftMarker": " TUTOR_PANE_LEFT_desktop-mue4scut",
+    "rightMarker": " TUTOR_PANE_RIGHT_desktop-mue4scut",
+    "destination": {
+      "bytes": 133,
+      "sha256": "f216948a2c85fa92dca3057f7796dcb03955f18e9e2deafb62b7f21c3074a122",
+      "newlineKinds": [
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF",
+        "LF"
+      ]
+    },
+    "paneCount": 2
+  },
+  "final": {
+    "geometry": {
+      "cssWidth": 1512,
+      "cssHeight": 949,
+      "dpr": 2,
+      "styleColorScheme": "dark",
+      "computedColorScheme": "dark",
+      "skin": null,
+      "hasSkinAttribute": false,
+      "route": "/tocktutor",
+      "title": "TockCoder"
+    },
+    "route": "/tocktutor/Notes/Destination.md",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "requestFailures": [],
+    "expectedRequestAborts": [
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "[url]",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "startupRequestFailures": [],
+    "screenshotFiles": {
+      "source": {
+        "file": "/tmp/tutor-main-integration-28-ui/source-find-replace.png",
+        "size": {
+          "width": 3024,
+          "height": 1898,
+          "bytes": 123189
+        }
+      },
+      "live": {
+        "file": "/tmp/tutor-main-integration-28-ui/live-preview-find-replace.png",
+        "size": {
+          "width": 3024,
+          "height": 1898,
+          "bytes": 134518
+        }
+      },
+      "split": {
+        "file": "/tmp/tutor-main-integration-28-ui/split-peer-find.png",
+        "size": {
+          "width": 3024,
+          "height": 1898,
+          "bytes": 120529
+        }
+      }
+    }
+  }
+}

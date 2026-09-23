@@ -14567,14 +14567,14 @@ config(en_default());
 // dist/typert.remote-client.js
 var tockbot_note_desktop_tocktutorDesktop_activateVault_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_parameter_1$schema = external_exports.object({
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_1$schema = external_exports.object({
@@ -14582,7 +14582,7 @@ var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_parameter_1$schema = e
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_1$schema = external_exports.string();
@@ -14591,7 +14591,16 @@ var tockbot_note_desktop_tocktutorDesktop_closePopOut_parameter_2$schema = exter
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+});
+var tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_parameter_0$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_parameter_1$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_parameter_2$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "id": external_exports.string()
+});
+var tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_1$schema = external_exports.union([external_exports.literal("html"), external_exports.literal("pdf")]);
@@ -14601,7 +14610,7 @@ var tockbot_note_desktop_tocktutorDesktop_exportNote_parameter_3$schema = extern
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_1$schema = external_exports.object({
@@ -14609,7 +14618,16 @@ var tockbot_note_desktop_tocktutorDesktop_moveVault_parameter_1$schema = externa
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_moveVault_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+});
+var tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_parameter_0$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_parameter_1$schema = external_exports.string();
+var tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_parameter_2$schema = external_exports.object({
+  "generation": external_exports.number(),
+  "id": external_exports.string()
+});
+var tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_result$schema = external_exports.object({
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_1$schema = external_exports.string();
@@ -14618,7 +14636,7 @@ var tockbot_note_desktop_tocktutorDesktop_openPopOut_parameter_2$schema = extern
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_printNote_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_printNote_parameter_1$schema = external_exports.string();
@@ -14627,7 +14645,7 @@ var tockbot_note_desktop_tocktutorDesktop_printNote_parameter_2$schema = externa
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_printNote_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_1$schema = external_exports.object({
@@ -14635,7 +14653,7 @@ var tockbot_note_desktop_tocktutorDesktop_removeVault_parameter_1$schema = exter
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_removeVault_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_1$schema = external_exports.string();
@@ -14644,7 +14662,7 @@ var tockbot_note_desktop_tocktutorDesktop_renameVault_parameter_2$schema = exter
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_renameVault_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_1$schema = external_exports.object({
@@ -14652,7 +14670,7 @@ var tockbot_note_desktop_tocktutorDesktop_requestMicrophone_parameter_1$schema =
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_1$schema = external_exports.string();
@@ -14661,7 +14679,7 @@ var tockbot_note_desktop_tocktutorDesktop_revealEntry_parameter_2$schema = exter
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_0$schema = external_exports.string();
 var tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_1$schema = external_exports.object({
@@ -14669,7 +14687,7 @@ var tockbot_note_desktop_tocktutorDesktop_revealVault_parameter_1$schema = exter
   "id": external_exports.string()
 });
 var tockbot_note_desktop_tocktutorDesktop_revealVault_result$schema = external_exports.object({
-  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
+  "status": external_exports.union([external_exports.literal("cancelled"), external_exports.literal("denied"), external_exports.literal("stale"), external_exports.literal("unavailable"), external_exports.literal("activated"), external_exports.literal("closed"), external_exports.literal("copied"), external_exports.literal("exported"), external_exports.literal("focused"), external_exports.literal("granted"), external_exports.literal("moved"), external_exports.literal("opened"), external_exports.literal("printed"), external_exports.literal("renamed"), external_exports.literal("revealed")])
 });
 var TYPERT_REMOTE = {
   package: "tockbot-note-desktop",
@@ -14819,6 +14837,52 @@ var TYPERT_REMOTE = {
       sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 434, "column": 9 }
     },
     {
+      id: "tockbot-note-desktop#tocktutorDesktop/copyAbsolutePath",
+      service: "tocktutorDesktop",
+      namespace: "tocktutorDesktop",
+      method: "copyAbsolutePath",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "authorization",
+          wire: "authorization",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/copyAbsolutePath:authorization",
+            schema: tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_parameter_0$schema
+          }
+        },
+        {
+          name: "path",
+          wire: "path",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/copyAbsolutePath:path",
+            schema: tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_parameter_1$schema
+          }
+        },
+        {
+          name: "expectedVault",
+          wire: "expectedVault",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop/types#DesktopVaultReference",
+            schema: tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_parameter_2$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
+        schema: tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_result$schema
+      },
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 654, "column": 9 }
+    },
+    {
       id: "tockbot-note-desktop#tocktutorDesktop/exportNote",
       service: "tocktutorDesktop",
       namespace: "tocktutorDesktop",
@@ -14908,7 +14972,53 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_moveVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 703, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 754, "column": 9 }
+    },
+    {
+      id: "tockbot-note-desktop#tocktutorDesktop/openInDefaultApp",
+      service: "tocktutorDesktop",
+      namespace: "tocktutorDesktop",
+      method: "openInDefaultApp",
+      invocation: { kind: "direct" },
+      parameters: [
+        {
+          name: "authorization",
+          wire: "authorization",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/openInDefaultApp:authorization",
+            schema: tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_parameter_0$schema
+          }
+        },
+        {
+          name: "path",
+          wire: "path",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop#tocktutorDesktop/openInDefaultApp:path",
+            schema: tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_parameter_1$schema
+          }
+        },
+        {
+          name: "expectedVault",
+          wire: "expectedVault",
+          source: "json",
+          codec: {
+            mode: "strict",
+            typeSymbol: "tockbot-note-desktop/types#DesktopVaultReference",
+            schema: tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_parameter_2$schema
+          }
+        }
+      ],
+      cancellation: { parameter: "signal" },
+      result: {
+        mode: "strict",
+        typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
+        schema: tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_result$schema
+      },
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 628, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/openPopOut",
@@ -15036,7 +15146,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_removeVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 736, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 787, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/renameVault",
@@ -15082,7 +15192,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_renameVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 677, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 728, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/requestMicrophone",
@@ -15164,7 +15274,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 628, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 679, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/revealVault",
@@ -15200,7 +15310,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 657, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 708, "column": 9 }
     }
   ]
 };
@@ -15645,6 +15755,8 @@ function resultMessage(result) {
       return "Vault selected.";
     case "closed":
       return "Pop-out closed.";
+    case "copied":
+      return "Path copied.";
     case "exported":
       return "Note exported.";
     case "focused":
@@ -15805,6 +15917,9 @@ function TockTutorNativeActions(props) {
   const owner = (0, import_react.useRef)(props);
   const lifetime = (0, import_react.useRef)();
   const activeRecording = (0, import_react.useRef)();
+  const noteLifetime = (0, import_react.useRef)();
+  const pendingNote = (0, import_react.useRef)();
+  const recordingStarting = (0, import_react.useRef)(false);
   const [busy, setBusy] = (0, import_react.useState)(null);
   const [recording, setRecording] = (0, import_react.useState)(false);
   const [message, setMessage] = (0, import_react.useState)("Ready.");
@@ -15838,17 +15953,30 @@ function TockTutorNativeActions(props) {
       });
     };
   }, [props.bridge, props.remote]);
-  const run = async (label, operation, call, expectedVault) => {
-    const signal = lifetime.current?.signal;
+  (0, import_react.useEffect)(() => {
+    const controller = new AbortController();
+    noteLifetime.current = controller;
+    if (pendingNote.current) {
+      pendingNote.current = void 0;
+      setBusy(null);
+      setMessage("Ready.");
+    }
+    return () => {
+      controller.abort();
+    };
+  }, [props.activePath, props.vault?.id, props.vault?.generation, props.noteSource, props.noteOwnerKey, props.bridge, props.remote]);
+  const run = (0, import_react.useCallback)(async (label, operation, call, expectedVault, noteSignal) => {
+    const signal = noteSignal ?? lifetime.current?.signal;
     if (signal === void 0 || signal.aborted) return void 0;
     setBusy(label);
     setMessage(`${label}\u2026`);
     try {
       const { authorization } = await props.bridge.authorize(operation, expectedVault);
+      if (signal.aborted) return void 0;
       let response = await call(authorization, signal);
       if (responseWasLost(response) && !signal.aborted) response = await call(authorization, signal);
       const result = valueOf(response);
-      if (!signal.aborted) setMessage(resultMessage(result));
+      if (!signal.aborted) setMessage(operation === "open-default-app" && result.status === "opened" ? "Opened in the default app." : resultMessage(result));
       return result;
     } catch {
       if (!signal.aborted) setMessage("The native action failed safely.");
@@ -15856,14 +15984,62 @@ function TockTutorNativeActions(props) {
     } finally {
       if (!signal.aborted) setBusy(null);
     }
-  };
-  const withNote = (label, operation, call, saveFirst = false) => async () => {
-    if (props.activePath === null || props.vault === null || saveFirst && !await saveCurrent(props)) return;
-    await run(label, operation, (authorization, signal) => call(authorization, props.activePath, props.vault, signal), props.vault);
-  };
+  }, [props.bridge]);
+  const withNote = (0, import_react.useCallback)((label, operation, call, saveFirst = false) => async () => {
+    const signal = noteLifetime.current?.signal;
+    if (signal === void 0 || signal.aborted || lifetime.current?.signal.aborted !== false) return;
+    const current = owner.current;
+    const { activePath, vault } = current;
+    if (activePath === null || vault === null) return;
+    pendingNote.current = signal;
+    try {
+      if (saveFirst) {
+        setBusy("Saving Note");
+        try {
+          if (!await (current.saveNote?.() ?? saveCurrent(current))) {
+            if (!signal.aborted) setMessage("The note could not be saved.");
+            return;
+          }
+        } catch {
+          if (!signal.aborted) setMessage("The note could not be saved.");
+          return;
+        } finally {
+          if (!signal.aborted) setBusy(null);
+        }
+      }
+      if (signal.aborted || !sameRecordingOwner(activePath, vault, owner.current)) return;
+      await run(label, operation, (authorization, signal2) => sameRecordingOwner(activePath, vault, owner.current) ? call(authorization, activePath, vault, signal2) : Promise.resolve({ ok: true, value: { status: "stale" } }), vault, signal);
+    } finally {
+      if (pendingNote.current === signal) pendingNote.current = void 0;
+    }
+  }, [run]);
+  const noteActions = (0, import_react.useMemo)(() => ({
+    "open-default": withNote("Opening in Default App", "open-default-app", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.openInDefaultApp(authorization, path, vault, signal), true),
+    reveal: withNote("Revealing Entry", "reveal-entry", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal)),
+    "copy-absolute": withNote("Copying Absolute Path", "copy-absolute-path", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.copyAbsolutePath(authorization, path, vault, signal)),
+    "open-window": withNote("Opening Pop-Out", "popout-open", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal), true),
+    "export-pdf": withNote("Exporting PDF", "export-pdf", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "pdf", path, vault, signal), true)
+  }), [props.remote, withNote]);
+  const vaultId = props.vault?.id;
+  const vaultGeneration = props.vault?.generation;
+  (0, import_react.useEffect)(() => {
+    props.publishNoteActions?.({
+      activePath: props.activePath,
+      disabled: busy !== null || !hasNote,
+      message,
+      run: (action) => {
+        void noteActions[action]();
+      },
+      vault: vaultId === void 0 || vaultGeneration === void 0 ? null : { id: vaultId, generation: vaultGeneration }
+    });
+    return () => {
+      props.publishNoteActions?.(null);
+    };
+  }, [props.publishNoteActions, props.activePath, vaultId, vaultGeneration, busy, hasNote, message, noteActions]);
   const startRecording = async () => {
     const signal = lifetime.current?.signal;
-    if (signal === void 0 || signal.aborted || props.activePath === null || props.vault === null || props.storeAudio === void 0) return;
+    if (signal === void 0 || signal.aborted || props.activePath === null || props.vault === null || props.storeAudio === void 0 || recordingStarting.current || activeRecording.current) return;
+    recordingStarting.current = true;
     setBusy("Starting Recording");
     setMessage("Starting Recording\u2026");
     try {
@@ -15901,6 +16077,7 @@ function TockTutorNativeActions(props) {
     } catch {
       if (!signal.aborted) setMessage("Audio recording could not start.");
     } finally {
+      recordingStarting.current = false;
       if (!signal.aborted) setBusy(null);
     }
   };
@@ -15945,8 +16122,8 @@ function TockTutorNativeActions(props) {
   );
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { "aria-label": "Desktop Note Actions", className: "tocktutor-desktop-actions grid gap-2 px-[18px] pt-3.5 pb-[18px]", role: "group", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "tocktutor-desktop-actions-grid grid grid-cols-2 gap-2", children: [
-      button("Reveal Entry", withNote("Revealing Entry", "reveal-entry", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.revealEntry(authorization, path, vault, signal)), hasNote),
-      button("Open Pop-Out", withNote("Opening Pop-Out", "popout-open", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.openPopOut(authorization, path, vault, signal), true), hasNote),
+      button("Reveal Entry", noteActions.reveal, hasNote),
+      button("Open Pop-Out", noteActions["open-window"], hasNote),
       button("Close Pop-Out", withNote("Closing Pop-Out", "popout-close", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.closePopOut(authorization, path, vault, signal)), hasNote),
       button("Close All Pop-Outs", async () => {
         if (props.vault === null) return;
@@ -15967,7 +16144,7 @@ function TockTutorNativeActions(props) {
       recording ? button("Stop Recording", stopRecording) : button("Start Recording", startRecording, hasNote && props.storeAudio !== void 0 && typeof MediaRecorder !== "undefined"),
       button("Print Note", withNote("Printing Note", "print", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.printNote(authorization, path, vault, signal), true), hasNote),
       button("Export HTML", withNote("Exporting HTML", "export-html", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "html", path, vault, signal), true), hasNote),
-      button("Export PDF", withNote("Exporting PDF", "export-pdf", (authorization, path, vault, signal) => props.remote.tocktutorDesktop.exportNote(authorization, "pdf", path, vault, signal), true), hasNote)
+      button("Export PDF", noteActions["export-pdf"], hasNote)
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Alert, { unstyled: true, "aria-live": "polite", className: "mt-1 mb-0 text-[var(--tt-muted,#667085)]", role: "status", children: message })
   ] });

@@ -82,7 +82,7 @@ function replaceResolvedEmbedSources(markdown, replacements) {
         if (fence !== null)
             return line;
         const code = inlineCodeRanges(line);
-        return line.replace(/!\[\[([^\]\r\n]{1,4096})\]\]/gu, (match, _target, offset) => {
+        return line.replace(/!\[\[[^\]\r\n]{1,4096}\]\]|!\[[^\]\r\n]{0,1000}\]\((?:<[^>\r\n]{1,4096}>|[^)\s]{1,4096})(?:\s+["'][^"'\r\n]*["'])?\)/gu, (match, offset) => {
             const token = sourceTokens.get(match);
             return token !== undefined && !code.some(([start, end]) => offset >= start && offset < end) && !escapedAt(line, offset) ? token : match;
         });
@@ -265,16 +265,16 @@ function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
     let text = source;
     text = text.replace(/<[^>]{1,200}>/gu, tag => SAFE_RAW_TAG.test(tag) ? hold(tag.toLocaleLowerCase()) : tag);
     text = text.replace(/`([^`\n]{0,10000})`/gu, (_match, code) => hold(`<code>${escapeMarkdownHtml(code)}</code>`));
-    text = escapeMarkdownHtml(text);
-    text = text.replace(/!\[([^\]\n]{0,1000})\]\(([^)\n]{1,4096})\)/gu, (match, alt, target) => {
-        const external = classifyExternalEmbed(target);
+    text = text.replace(/!\[([^\]\n]{0,1000})\]\((<[^>\n]{1,4096}>|[^)\n]{1,4096})\)/gu, (match, alt, target) => {
+        const external = classifyExternalEmbed(target.replace(/^<|>$/gu, ''));
         if (external !== null) {
             const image = external.kind === 'youtube' || external.kind === 'twitter' ? external : { ...external, kind: 'image' };
-            return externalEmbedMode === 'viewer' ? externalEmbedButtonHtml(alt, image) : externalEmbedInertHtml(alt, image);
+            return hold(externalEmbedMode === 'viewer' ? externalEmbedButtonHtml(alt, image) : externalEmbedInertHtml(alt, image));
         }
         // Only Host-resolved data may become a resource; rejected URLs stay inert.
-        return hold(match);
+        return hold(escapeMarkdownHtml(match));
     });
+    text = escapeMarkdownHtml(text);
     text = text.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label, target) => {
         const url = safeUrl(target);
         return url === null
@@ -465,6 +465,35 @@ function renderMarkdownList(items, start, indent, taskIndex, footnotes, external
         : !ordered && hasTasks ? ' class="task-list"' : '';
     return { html: `<${tag}${attributes}>${children.join('')}</${tag}>`, next: cursor, taskIndex: nextTaskIndex };
 }
+function renderQuoteBody(lines, strict, footnotes, externalEmbedMode, depth = 1) {
+    const blocks = [];
+    let paragraph = [];
+    const flush = () => {
+        if (paragraph.length > 0)
+            blocks.push(paragraphHtml(paragraph, strict, footnotes, externalEmbedMode));
+        paragraph = [];
+    };
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        // Bound recursion for deeply nested, user-authored Markdown.
+        const quote = depth < 32 ? line.match(/^ {0,3}> ?(.*)$/u) : null;
+        if (quote !== null) {
+            flush();
+            const body = [quote[1]];
+            while (index + 1 < lines.length && /^ {0,3}> ?/u.test(lines[index + 1])) {
+                index += 1;
+                body.push(lines[index].replace(/^ {0,3}> ?/u, ''));
+            }
+            blocks.push(`<blockquote>${renderQuoteBody(body, strict, footnotes, externalEmbedMode, depth + 1)}</blockquote>`);
+        }
+        else if (line.trim() === '')
+            flush();
+        else
+            paragraph.push(line);
+    }
+    flush();
+    return blocks.join('');
+}
 export function renderMarkdownHtml(markdown, options = {}) {
     if (bytes(markdown) > MAX_RICH_MARKDOWN_BYTES)
         return `<pre>${escapeMarkdownHtml(markdown.slice(0, MAX_RICH_MARKDOWN_BYTES))}</pre>`;
@@ -566,9 +595,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
                 index += 1;
                 body.push(lines[index].replace(/^ {0,3}> ?/u, ''));
             }
-            const content = body.join('\n').split(/\n[ \t]*\n/u)
-                .map(value => paragraphHtml(value.split('\n'), options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode))
-                .join('');
+            const content = renderQuoteBody(body, options.strictLineBreaks === true, footnotes.numbers, externalEmbedMode);
             blocks.push(`<blockquote>${content}</blockquote>`);
             continue;
         }

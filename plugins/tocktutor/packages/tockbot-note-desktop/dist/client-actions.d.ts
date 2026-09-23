@@ -12,6 +12,8 @@ export interface DesktopActionRemote {
             id: string;
         }, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
         closeAllPopOuts(authorization: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
+        openInDefaultApp(authorization: string, path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
+        copyAbsolutePath(authorization: string, path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
         closePopOut(authorization: string, path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
         exportNote(authorization: string, format: 'html' | 'pdf', path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;
         openPopOut(authorization: string, path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<NativeActionResult>>;

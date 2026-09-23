@@ -3,7 +3,7 @@ import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@tockteam/ui/command'
 import { Dialog, DialogContent, DialogTitle } from '@tockteam/ui/dialog'
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@tockteam/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@tockteam/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@tockt
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -30,12 +31,17 @@ import {
 import { createPortal } from 'react-dom'
 import {
   BookmarkPlus,
+  Merge,
   ChevronLeft,
   ChevronRight,
+  Copy,
   FileClock,
   FileCode2,
   FileText,
+  FileDown,
+  ExternalLink,
   FolderInput,
+  FolderOpen,
   Globe2,
   Link2,
   ListTree,
@@ -70,13 +76,18 @@ import {
   type TockTutorNativeActionsDispatchEvent,
   type TockTutorNativeActionsDispatchResult,
   type TockTutorNativeActionsOwnerProps,
+  type TockTutorNativeNoteActions,
   type TockTutorVaultActionsOwnerProps,
 } from './native-actions.ts'
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts'
 import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
 import { LivePreviewView, RichReadingView, type ReadingLinkResult } from './editor-surface.tsx'
+import { MAX_EDITOR_SEARCH_QUERY_LENGTH, type EditorSearchAction, type EditorSearchRequest, type EditorSearchState } from './editor-search.ts'
 import { SourceEditor, type SourceEditorSelectionRequest } from './source-editor.tsx'
 import { WorkbenchUtilities, type WorkbenchUtilityView } from './utility-panel.tsx'
+import { LinkedNotePane, LINKED_VIEW_TITLES } from './linked-note-pane.tsx'
+import { PaneLayoutView } from './pane-layout.tsx'
+import { NoteBacklinks } from './note-backlinks.tsx'
 import { WorkbenchVaultDialog } from './vault-dialog.tsx'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 import {
@@ -89,11 +100,13 @@ import {
 } from './live-preview.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import { parseFrontmatterProperties, setFrontmatterProperty, type PropertyValue } from './properties.ts'
-import { addBookmark, loadBookmarks, remapBookmarks, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
+import { addBookmark, editBookmark as updateBookmark, getBookmark, loadBookmarks, remapBookmarks, removeBookmark as removeStoredBookmark, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
 import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
 import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, uniqueNotePath } from './capture.ts'
 import { buildOrganizationProposal, type OrganizationProposal } from './organize.ts'
 import { convertMarkdownFormats, extractSelectionToNote } from './composer.ts'
+import { previewNoteMerge, type NoteMergePreview, type PreparedNoteMerge } from './merge-preview.ts'
+import { NoteMergeReview, MergeRecoveryDialog } from './merge-review.tsx'
 import { appendAttachmentMarkdown, attachmentTargetPath } from './attachments.ts'
 import { collectEmbedTargets, resolveEmbedGraph, type EmbedTarget } from './embeds.ts'
 import {
@@ -119,6 +132,11 @@ import {
 } from './markdown.ts'
 import {
   addPaneGroup,
+  openLinkedPane, syncLinkedViews, unlinkPane, toggleLinkedPanePin,
+  LINKED_VIEW_KINDS, type LinkedView, type LinkedViewKind,
+  splitPaneGroup,
+  resizePaneSplit,
+  type PaneLayout,
   closeNoteTab,
   closePaneGroup,
   createWorkbenchSession,
@@ -130,6 +148,7 @@ import {
   moveNoteTab,
   openNoteTab,
   renameNoteTabPath,
+  mergeNoteTabPath,
   setActiveNoteTab,
   setNoteTabMode,
   setTabPinned,
@@ -207,6 +226,11 @@ export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
   tocktutorAssistant?: WorkbenchSearchIntelligenceRemote | undefined
   tocktutorWorkbench: {
+    previewMergeLinks?(request: import('./types.ts').MergeLinkPreviewRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeLinkPreviewResult>>
+    prepareMerge?(request: import('./types.ts').PrepareMergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').PreparedMergeResult>>
+    applyMerge?(request: import('./types.ts').ApplyMergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeResult>>
+    listMerges?(request: import('./types.ts').MergeListRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeListResult>>
+    recoverMerge?(request: import('./types.ts').MergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeResult>>
     currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>
     createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
     openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
@@ -262,6 +286,7 @@ export interface RouteTabSummary {
 }
 
 export interface RoutePaneSummary {
+  linkedView?: LinkedView
   activePath: string | null
   id: string
   tabs: readonly RouteTabSummary[]
@@ -285,6 +310,12 @@ export interface WorkbenchSearchPreview {
 }
 
 export interface WorkbenchRouteSnapshot {
+  localEditRevision?: number | undefined
+  mergeRecoveryPending?: boolean
+  linkedLoading?: boolean
+  linkedError?: string | null
+  layout?: PaneLayout
+  editorReset?: number
   attachmentPreview?: AttachmentPreviewResult | null
   baseFiles?: readonly BaseHydratedFile[]
   bookmarks?: readonly TockTutorBookmark[]
@@ -292,6 +323,7 @@ export interface WorkbenchRouteSnapshot {
   canGoForward?: boolean
   commandPaletteOpen?: boolean
   dispatchDialog: 'capture' | 'new' | null
+  documentUnavailable?: boolean
   documentKind: RouteDocumentKind | null
   draftRecovered?: boolean
   embeds?: readonly ResolvedEmbed[]
@@ -303,6 +335,7 @@ export interface WorkbenchRouteSnapshot {
   graphLayout?: readonly GraphPosition[]
   graphMode?: 'global' | 'local'
   links?: VaultLinksResult | null
+  linksLoading?: boolean
   message: string
   mode: RouteEditorMode
   organizationProposal?: OrganizationProposal | null
@@ -330,6 +363,7 @@ export interface WorkbenchRouteSnapshot {
   searchDirectory?: string
   searchModifiedFrom?: number | null
   searchModifiedTo?: number | null
+  searchPresentation?: 'dialog' | 'sidebar'
   searchOpen: boolean
   searchQuery: string
   selectedSnapshot?: SnapshotContentResult | null
@@ -358,6 +392,7 @@ interface PendingNativeDispatch {
 }
 
 interface RecoveryIdentity {
+  paneId: string
   path: string | null
   revision: string | null
   source: string
@@ -743,8 +778,36 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
 }
 
 /** Bounded route state machine shared by the React contribution and focused tests. */
+const DOCUMENT_FIELDS = ['source', 'revision', 'saveStatus', 'documentKind', 'documentUnavailable', 'draftRecovered', 'embeds', 'links', 'linksLoading', 'outline', 'baseFiles', 'message'] as const
+const VIEW_FIELDS = ['mode', 'selectionStart', 'selectionEnd', 'selectionRequest', 'editorReset', 'localEditRevision'] as const
+interface RouteDocument {
+  key: string
+  vault: VaultReference
+  path: string
+  state: Partial<WorkbenchRouteSnapshot>
+  epoch: number
+  durableEpoch?: number
+  hydratedEpoch?: number | undefined
+  hydratedRevision?: string | null | undefined
+  hydration?: { epoch: number; revision: string | null | undefined; promise: Promise<void> } | undefined
+  relationshipsAbort?: AbortController | undefined
+  embedsAbort?: AbortController | undefined
+  baseAbort?: AbortController | undefined
+  saving: Promise<boolean> | null
+  saveAbort: AbortController | null
+  draftTimer: ReturnType<typeof setTimeout> | null
+  draftFlight: Promise<void> | null
+}
+
 export class WorkbenchRouteController {
   private snapshot = initialSnapshot()
+  private readonly documents = new Map<string, RouteDocument>()
+  private readonly documentLoads = new Map<string, { abort: AbortController; promise: Promise<RouteDocument | undefined> }>()
+  private readonly documentSelections = new Map<string, number>()
+  private readonly linkedLoads = new Map<string, { abort: AbortController; lifetime: number | undefined; state: Partial<WorkbenchRouteSnapshot> }>()
+  private readonly paneViews = new Map<string, Partial<WorkbenchRouteSnapshot>>()
+  private readonly paneLifetimes = new Map<string, { owner: string; epoch: number }>()
+  private paneLifetime = 0
   private readonly listeners = new Set<() => void>()
   private disposal: Promise<void> | null = null
   private vaultGeneration = 0
@@ -757,21 +820,20 @@ export class WorkbenchRouteController {
   private operation = 0
   private recoveryOperation = 0
   private recoveryAbort: AbortController | null = null
-  private embedOperation = 0
   private embedTargets: readonly string[] = Object.freeze([])
   private selectionRequestId = 0
   private treeComplete = false
+  private treeAbort: AbortController | null = null
+  private treeGeneration = 0
   private dispatchRevision = 0
   private operationAbort: AbortController | null = null
+  private mergeReviewAbort: AbortController | null = null
+  private pendingMerge: { vault: VaultReference; paths: Set<string> } | null = null
+  private sidebarSearchAbort: AbortController | null = null
+  private sidebarSearchOperation = 0
   private searchTimer: ReturnType<typeof setTimeout> | null = null
   private searchPreviewAbort: AbortController | null = null
   private searchPreviewOperation = 0
-  private embedAbort: AbortController | null = null
-  private saveAbort: AbortController | null = null
-  private saving: Promise<boolean> | null = null
-  private draftAbort: AbortController | null = null
-  private draftFlush: Promise<void> | null = null
-  private draftTimer: ReturnType<typeof setTimeout> | null = null
   private eventDispose: (() => void) | null = null
   private pendingDispatch: PendingNativeDispatch | null = null
   private pendingRename: { fromPath: string; toPath: string; vault: VaultReference } | null = null
@@ -1128,7 +1190,7 @@ export class WorkbenchRouteController {
 
   setSearchQuery(query: string): void {
     if (query.length > 1_000) return
-    this.nextOperation()
+    this.nextSearchRequest()
     const trimmed = query.trim()
     this.update({
       searchActiveIndex: null,
@@ -1148,7 +1210,9 @@ export class WorkbenchRouteController {
 
   private async loadRecentSearch(vault: VaultReference): Promise<void> {
     const operation = this.nextOperation()
-    const entriesByPath = new Map(this.snapshot.entries.map(entry => [entry.path, entry]))
+    const treeGeneration = this.treeGeneration
+    const initialEntries = this.snapshot.entries
+    const entriesByPath = new Map(initialEntries.map(entry => [entry.path, entry]))
     const cursors = new Set<string>()
     let cursor: string | null = null
     try {
@@ -1158,15 +1222,19 @@ export class WorkbenchRouteController {
           limit: 200,
           ...(cursor === null ? {} : { cursor }),
         }, operation.signal))
-        if (!this.current(operation.id, vault) || page.generation !== vault.generation) return
+        if (!this.current(operation.id, vault) || treeGeneration !== this.treeGeneration || page.generation !== vault.generation) return
+        if (this.snapshot.entries !== initialEntries) break
         for (const entry of page.entries) entriesByPath.set(entry.path, entry)
         if (page.cursor === null) break
         if (cursors.has(page.cursor)) return
         cursors.add(page.cursor)
         cursor = page.cursor
       }
-      if (this.current(operation.id, vault) && this.snapshot.searchOpen && this.snapshot.searchQuery.trim() === '') {
-        const nextEntries = Object.freeze([...entriesByPath.values()])
+      if (this.current(operation.id, vault) && treeGeneration === this.treeGeneration && this.snapshot.searchOpen && this.snapshot.searchQuery.trim() === '') {
+        // A tree already pending when search began can publish without changing its generation.
+        const nextEntries = this.snapshot.entries === initialEntries
+          ? Object.freeze([...entriesByPath.values()])
+          : this.snapshot.entries
         this.update({ entries: nextEntries, searchMatches: recentSearchMatches(nextEntries) })
       }
     } catch {
@@ -1175,13 +1243,21 @@ export class WorkbenchRouteController {
   }
 
   closeSearch(): void {
-    this.nextOperation()
+    this.nextSearchRequest()
     this.update({ searchActiveIndex: null, searchAnswer: { status: 'idle', answer: '', citations: [] }, searchDirectory: '', searchIntelligenceStatus: null, searchLoading: false, searchMatches: Object.freeze([]), searchCursor: null, searchModifiedFrom: null, searchModifiedTo: null, searchOpen: false, searchPreview: null, searchPreviewError: null, searchPreviewLoading: false, searchQuery: '', searchTitleOnly: false })
   }
 
-  openSearch(query: string): void {
+  openSidebarSearch(): void {
+    if (this.snapshot.searchOpen && this.snapshot.searchPresentation === 'sidebar') return
+    this.update({ searchMode: 'query', searchDirectory: '', searchModifiedFrom: null, searchModifiedTo: null, searchTitleOnly: false })
+    this.openSearch(this.snapshot.searchQuery, 'sidebar')
+  }
+
+  openSearch(query: string, presentation: 'dialog' | 'sidebar' = 'dialog'): void {
     if (query.length > 1_000) return
-    this.nextOperation()
+    if (presentation === 'sidebar' && this.snapshot.searchOpen && this.snapshot.searchPresentation !== 'sidebar') this.nextOperation()
+    this.update({ searchPresentation: presentation })
+    this.nextSearchRequest()
     const trimmed = query.trim()
     this.update({
       searchActiveIndex: null,
@@ -1192,12 +1268,13 @@ export class WorkbenchRouteController {
       searchMatches: trimmed === '' ? recentSearchMatches(this.snapshot.entries) : Object.freeze([]),
       searchCursor: null,
       searchOpen: true,
+      searchPresentation: presentation,
       searchPreview: null,
       searchPreviewError: null,
       searchPreviewLoading: false,
       searchQuery: query,
     })
-    if (trimmed === '' && this.snapshot.vault !== null) void this.loadRecentSearch(this.snapshot.vault)
+    if (trimmed === '' && this.snapshot.vault !== null && presentation === 'dialog') void this.loadRecentSearch(this.snapshot.vault)
     else this.scheduleSearch()
   }
 
@@ -1263,7 +1340,7 @@ export class WorkbenchRouteController {
       return false
     }
     const mode = this.snapshot.searchMode ?? 'query'
-    const operation = this.nextOperation()
+    const operation = this.nextSearchRequest()
     this.update({ searchAnswer: { status: 'idle', answer: '', citations: [] }, searchError: null, searchIntelligenceStatus: null, searchLoading: true, searchMatches: Object.freeze([]) })
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
@@ -1276,7 +1353,7 @@ export class WorkbenchRouteController {
         mode,
         query,
       }, operation.signal))
-      if (!this.current(operation.id, vault)) return false
+      if (!this.currentSearchRequest(operation, vault)) return false
       if (!validSearchResult(result, vault) || result.query !== query) {
         this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false })
         return false
@@ -1294,14 +1371,15 @@ export class WorkbenchRouteController {
         searchPreviewLoading: false,
         searchCursor: result.cursor,
       })
+      if (this.snapshot.searchPresentation === 'sidebar') return true
       await this.enhanceSearch(operation, vault, query, mode)
-      if (!this.current(operation.id, vault)) return false
+      if (!this.currentSearchRequest(operation, vault)) return false
       const enhancedMatches = this.snapshot.searchMatches ?? matches
       if (enhancedMatches.length > 0 && this.snapshot.searchActiveIndex === null) void this.previewSearchMatch(0)
       else if (matches.length > 0 && this.snapshot.searchPreview === null) void this.previewSearchMatch(0)
       return true
     } catch {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+      if (this.currentSearchRequest(operation, vault) && !operation.signal.aborted) {
         this.update({ message: 'Search could not be completed.', searchError: 'Search could not be completed.', searchLoading: false })
       }
       return false
@@ -1438,7 +1516,7 @@ export class WorkbenchRouteController {
     const query = this.snapshot.searchQuery.trim()
     if (vault === null || cursor === null || query.length === 0) return false
     const mode = this.snapshot.searchMode ?? 'query'
-    const operation = this.nextOperation()
+    const operation = this.nextSearchRequest()
     this.update({ searchError: null, searchLoading: true })
     try {
       const result = remoteValue(await this.remote.tocktutorWorkbench.search({
@@ -1452,7 +1530,7 @@ export class WorkbenchRouteController {
         mode,
         query,
       }, operation.signal))
-      if (!this.current(operation.id, vault) || operation.signal.aborted) return false
+      if (!this.currentSearchRequest(operation, vault) || operation.signal.aborted) return false
       if (!validSearchResult(result, vault) || result.query !== query || result.cursor === cursor) {
         this.update({ message: 'Search returned an invalid result.', searchError: 'Search returned an invalid result.', searchLoading: false })
         return false
@@ -1475,7 +1553,7 @@ export class WorkbenchRouteController {
       })
       return true
     } catch {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
+      if (this.currentSearchRequest(operation, vault) && !operation.signal.aborted) {
         this.update({ message: 'Search could not be completed.', searchError: 'Search could not be completed.', searchLoading: false })
       }
       return false
@@ -1575,32 +1653,59 @@ export class WorkbenchRouteController {
     return await this.runSearch()
   }
 
-  async loadRelationships(): Promise<boolean> {
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown') return false
-    this.update({ links: null, outline: null })
-    const operation = this.nextOperation()
+  private documentCurrent(document: RouteDocument, epoch = document.epoch): boolean {
+    return !this.disposed && sameVault(this.snapshot.vault, document.vault)
+      && this.documents.get(document.key) === document && document.epoch === epoch
+  }
+
+  private publishDocument(document: RouteDocument, change: Partial<WorkbenchRouteSnapshot>): void {
+    if (!this.documentCurrent(document)) return
+    document.state = { ...document.state, ...change }
+    if (this.activeDocument() === document) this.update(change)
+    else this.update({})
+  }
+
+  private hydrateDocument(document: RouteDocument): Promise<void> {
+    const epoch = document.epoch
+    const revision = document.state.revision
+    if (!this.documentCurrent(document) || (document.hydratedEpoch === epoch && document.hydratedRevision === revision)) return Promise.resolve()
+    if (document.hydration?.epoch === epoch && document.hydration.revision === revision) return document.hydration.promise
+    const promise = Promise.all(document.state.documentKind === 'markdown'
+      ? [this.loadRelationships(document), this.loadEmbeds(document)]
+      : document.state.documentKind === 'base' ? [this.hydrateBaseRows(document.path)] : []).then(results => {
+        if (document.hydration?.promise === promise && this.documentCurrent(document, epoch) && document.state.revision === revision && results.every(Boolean)) { document.hydratedEpoch = epoch; document.hydratedRevision = revision }
+      }).finally(() => { if (document.hydration?.promise === promise) document.hydration = undefined })
+    document.hydration = { epoch, revision, promise }
+    return promise
+  }
+
+  async loadRelationships(document = this.activeDocument()): Promise<boolean> {
+    if (!document || document.state.documentKind !== 'markdown' || !this.documentCurrent(document)) return false
+    const { vault, path, epoch } = document
+    const revision = document.state.revision
+    document.relationshipsAbort?.abort()
+    const abort = new AbortController()
+    document.relationshipsAbort = abort
+    this.publishDocument(document, { links: null, linksLoading: true, outline: null })
     try {
       const [outlineResult, linksResult] = await Promise.all([
-        this.remote.tocktutorWorkbench.outline({ expectedVault: vault, includeFootnotes: true, path }, operation.signal),
-        this.remote.tocktutorWorkbench.links({ expectedVault: vault, includeUnlinked: true, path }, operation.signal),
+        this.remote.tocktutorWorkbench.outline({ expectedVault: vault, includeFootnotes: true, path }, abort.signal),
+        this.remote.tocktutorWorkbench.links({ expectedVault: vault, includeUnlinked: true, path }, abort.signal),
       ])
       const outline = remoteValue(outlineResult)
       const links = remoteValue(linksResult)
-      if (!this.current(operation.id, vault)
-        || this.snapshot.path !== path
-        || outline.generation !== vault.generation
-        || links.generation !== vault.generation
-        || outline.path !== path
-        || links.path !== path
-        || !Array.isArray(outline.headings)
-        || !Array.isArray(links.backlinkDetails)
-        || !Array.isArray(links.outgoingDetails)) return false
-      this.update({ links, outline })
+      if (!this.documentCurrent(document, epoch) || document.state.revision !== revision || abort.signal.aborted
+        || outline.generation !== vault.generation || links.generation !== vault.generation
+        || outline.path !== path || links.path !== path || !Array.isArray(outline.headings)
+        || !Array.isArray(links.backlinkDetails) || !Array.isArray(links.outgoingDetails)) return false
+      this.publishDocument(document, { links, outline })
       return true
-    } catch {
-      return false
+    } catch { return false }
+    finally {
+      if (document.relationshipsAbort === abort) {
+        document.relationshipsAbort = undefined
+        this.publishDocument(document, { linksLoading: false })
+      }
     }
   }
 
@@ -1643,15 +1748,214 @@ export class WorkbenchRouteController {
     return () => { this.listeners.delete(listener) }
   }
 
+  private documentKey(vault: VaultReference, path: string): string {
+    return JSON.stringify([vault.id, vault.generation, path])
+  }
+
+  private activeDocument(): RouteDocument | undefined {
+    const { vault, path } = this.snapshot
+    return vault && path ? this.documents.get(this.documentKey(vault, path)) : undefined
+  }
+
   private update(change: Partial<WorkbenchRouteSnapshot>): void {
     if (this.disposed) return
     this.snapshot = Object.freeze({ ...this.snapshot, ...change })
+    const { vault, path } = this.snapshot
+    if (vault && path && this.snapshot.revision !== null) {
+      const key = this.documentKey(vault, path)
+      let document = this.documents.get(key)
+      if (!document) {
+        document = { key, vault, path, state: {}, epoch: 0, saving: null, saveAbort: null, draftTimer: null, draftFlight: null }
+        this.documents.set(key, document)
+      }
+      const state = { ...document.state }
+      for (const field of DOCUMENT_FIELDS) Object.assign(state, { [field]: this.snapshot[field] })
+      if (state.source !== document.state.source) document.epoch += 1
+      document.state = state
+      const view = { ...this.paneViews.get(this.snapshot.focusedPaneId) }
+      for (const field of VIEW_FIELDS) Object.assign(view, { [field]: this.snapshot[field] })
+      this.paneViews.set(this.snapshot.focusedPaneId, view)
+    }
     for (const listener of this.listeners) listener()
+  }
+
+  getPaneSnapshot(id: string): WorkbenchRouteSnapshot {
+    const pane = this.pane(id)
+    const path = pane?.activePath ?? null
+    const document = path && this.snapshot.vault ? this.documents.get(this.documentKey(this.snapshot.vault, path)) : undefined
+    const mode = pane?.tabs.find(tab => tab.path === path)?.mode ?? 'live-preview'
+    const empty = pane?.linkedView ? initialSnapshot() : null
+    return { ...this.snapshot, ...(empty ? { ...Object.fromEntries(DOCUMENT_FIELDS.map(field => [field, empty[field]])), graph: null, graphLayout: [], graphMode: 'local' as const } : {}), source: '', revision: null, documentKind: null, documentUnavailable: false, saveStatus: 'saved',
+      ...document?.state, ...this.paneViews.get(id), ...(pane?.linkedView ? this.linkedLoads.get(id)?.state : {}), localEditRevision: this.paneViews.get(id)?.localEditRevision ?? 0, mode, path, focusedPaneId: id }
+  }
+
+  paneLifetimeFor(id: string): number | undefined { return this.paneLifetimes.get(id)?.epoch }
+
+  nativeNoteOwnerKey(): string {
+    const group = this.shellSession.groups.find(group => group.id === this.snapshot.focusedPaneId)
+    return `${group?.id ?? ''}:${group?.activeTabId ?? ''}:${this.paneLifetimeFor(this.snapshot.focusedPaneId) ?? ''}`
+  }
+
+  bindPaneEdit(id: string): (source: string) => boolean {
+    const snapshot = this.getPaneSnapshot(id)
+    const document = snapshot.vault && snapshot.path ? this.documents.get(this.documentKey(snapshot.vault, snapshot.path)) : undefined
+    const lifetime = this.paneLifetimes.get(id)?.epoch
+    let epoch = document?.epoch
+    return source => {
+      if (!document || this.disposed || !sameVault(this.snapshot.vault, document.vault)
+        || this.paneLifetimes.get(id)?.epoch !== lifetime
+        || this.pane(id)?.activePath !== document.path || this.documents.get(document.key) !== document) return false
+      if (document.epoch !== epoch) {
+        const editorReset = (this.paneViews.get(id)?.editorReset ?? 0) + 1
+        this.paneViews.set(id, { ...this.paneViews.get(id), editorReset })
+        document.state = { ...document.state, message: 'This pane changed in another view. The stale edit was not applied; retry against the current text.' }
+        if (this.activeDocument() === document) this.update({ ...document.state, ...(this.snapshot.focusedPaneId === id ? { editorReset } : {}) })
+        else this.update({})
+        return false
+      }
+      if (!boundedSource(source)) return false
+      if (document.state.source === source) return true
+      if (this.activeDocument() === document) this.edit(source, id)
+      else {
+        document.state = { ...document.state, source, saveStatus: 'unsaved', message: 'Unsaved changes.' }
+        document.epoch += 1
+        this.markDocumentDirty(document.path, true)
+        this.scheduleDocumentDraft(document)
+      }
+      epoch = document.epoch
+      return true
+    }
+  }
+
+  private markDocumentDirty(path: string, dirty: boolean): void {
+    const group = this.shellSession.groups.find(group => group.tabs.some(tab => tab.path === path))
+    if (group) this.shellSession = markTabDirty(this.shellSession, group.id, path, dirty)
+    this.syncShell()
+  }
+
+  async splitPane(id: string, axis: 'horizontal' | 'vertical'): Promise<boolean> {
+    if (!this.pane(id)?.activePath || this.shellSession.groups.length >= MAX_PANE_GROUPS) return false
+    const added = splitPaneGroup(this.shellSession, id, axis)
+    this.shellSession = focusPaneGroup(added.session, this.snapshot.focusedPaneId)
+    this.syncShell()
+    return this.focusPane(added.groupId)
+  }
+
+  async openLinkedView(id: string, kind: LinkedViewKind): Promise<boolean> {
+    if (this.disposed || this.snapshot.phase !== 'ready' || this.getPaneSnapshot(id).documentKind !== 'markdown' || this.pane(id)?.linkedView) return false
+    const added = openLinkedPane(this.shellSession, id, kind)
+    if (added.groupId === id) return false
+    this.shellSession = added.session
+    this.syncShell()
+    const lifetime = this.paneLifetimeFor(added.groupId)
+    await this.loadLinkedView(added.groupId)
+    return !this.disposed && this.paneLifetimeFor(added.groupId) === lifetime
+  }
+
+  unlinkLinkedView(id: string): void {
+    this.shellSession = unlinkPane(this.shellSession, id)
+    this.syncShell()
+  }
+
+  toggleLinkedPin(id: string): void {
+    this.shellSession = toggleLinkedPanePin(this.shellSession, id)
+    this.syncShell()
+  }
+
+  bindLinkedProperty(id: string): (key: string, value: PropertyValue) => boolean {
+    const edit = this.bindPaneEdit(id)
+    return (key, value) => {
+      const snapshot = this.getPaneSnapshot(id)
+      if (!this.pane(id)?.linkedView || snapshot.documentKind !== 'markdown' || snapshot.documentUnavailable) return false
+      try { return edit(setFrontmatterProperty(snapshot.source, key, value)) } catch { return false }
+    }
+  }
+
+  async saveLinkedView(id: string): Promise<boolean> {
+    const snapshot = this.getPaneSnapshot(id)
+    const lifetime = this.paneLifetimeFor(id)
+    if (!this.pane(id)?.linkedView || !snapshot.vault || !snapshot.path || snapshot.documentUnavailable) return false
+    const document = this.documents.get(this.documentKey(snapshot.vault, snapshot.path))
+    if (!document) return false
+    const saved = await this.saveDocumentRecord(document)
+    return saved && this.documentCurrent(document) && this.paneLifetimeFor(id) === lifetime
+  }
+
+  async navigateLinkedView(id: string, path: string): Promise<boolean> {
+    const pane = this.pane(id)
+    const linked = pane?.linkedView
+    const vault = this.snapshot.vault
+    const lifetime = this.paneLifetimeFor(id)
+    const ownerCurrent = (): boolean => !this.disposed && this.paneLifetimeFor(id) === lifetime && vault !== null && sameVault(this.snapshot.vault, vault)
+    if (!linked || !vault || !isSafeVaultRelativePath(path) || !supportedDocument(path)) return false
+    let target = linked.sourceGroupId ? this.shellSession.groups.find(group => group.id === linked.sourceGroupId && !group.linkedView) : this.shellSession.groups.find(group => group.id === this.snapshot.focusedPaneId && !group.linkedView)
+    const sourceTab = target?.tabs.find(tab => tab.id === linked.sourceTabId)
+    if (linked.sourceGroupId && !sourceTab) return false
+    if (!target) {
+      if (this.shellSession.groups.length >= MAX_PANE_GROUPS) return false
+      const added = addPaneGroup(this.shellSession)
+      this.shellSession = added.session
+      this.syncShell()
+      target = this.shellSession.groups.find(group => group.id === added.groupId)
+    }
+    if (!target || !await this.focusPane(target.id, sourceTab?.path, ownerCurrent)) return false
+    if (this.disposed || this.paneLifetimeFor(id) !== lifetime || !sameVault(this.snapshot.vault, vault)) return false
+    if (!await this.select(path, true, undefined, true, false, false, ownerCurrent)) return false
+    return true
+  }
+
+  async loadLinkedView(id: string): Promise<boolean> {
+    const pane = this.pane(id)
+    const path = pane?.activePath
+    const vault = this.snapshot.vault
+    if (!pane?.linkedView || !path || !vault || this.disposed) return false
+    this.linkedLoads.get(id)?.abort.abort()
+    const load = { abort: new AbortController(), lifetime: this.paneLifetimeFor(id), state: { linkedLoading: true, linkedError: null, graph: null, graphLayout: [] } as Partial<WorkbenchRouteSnapshot> }
+    this.linkedLoads.set(id, load)
+    const current = (): boolean => !this.disposed && !load.abort.signal.aborted && this.linkedLoads.get(id) === load && this.paneLifetimeFor(id) === load.lifetime && sameVault(this.snapshot.vault, vault) && this.pane(id)?.activePath === path
+    this.update({})
+    try {
+      const retained = this.documents.get(this.documentKey(vault, path))
+      if (retained?.state.documentUnavailable && retained.state.saveStatus !== 'saved') {
+        const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, load.abort.signal))
+        if (!current()) return false
+        if (opened.path !== path || opened.generation !== vault.generation) throw new Error('This note is unavailable.')
+        this.publishDocument(retained, { documentUnavailable: false })
+      }
+      const document = await this.loadPaneDocument(vault, path, false, this.operation)
+      if (!current()) return false
+      if (!document || document.state.documentUnavailable) throw new Error('This note is unavailable. Any local draft has been retained.')
+      if (document.state.documentKind !== 'markdown') throw new Error('Open a Markdown note to use this linked view.')
+      if (pane.linkedView.kind === 'graph') {
+        const epoch = document.epoch
+        const graph = remoteValue(await this.remote.tocktutorWorkbench.graph({ expectedVault: vault, path, scope: 'local', direction: 'both', depth: this.snapshot.settings?.graphDepth ?? 2, limit: 180 }, load.abort.signal))
+        if (!current()) return false
+        if (!this.documentCurrent(document, epoch)) throw new Error('This note changed while its graph was loading. Retry against the current note.')
+        if (graph.generation !== vault.generation || graph.path !== path) throw new Error('The graph response no longer matches this note.')
+        const graphLayout = layoutGraph(projectGraph(graph, { includeOrphans: true, query: '' }), { centerForce: .1, iterations: 32, linkDistance: 120, linkForce: .08, repelForce: 1800 })
+        load.state = { ...load.state, graph, graphLayout, graphMode: 'local' }
+      } else if (pane.linkedView.kind === 'backlinks' || pane.linkedView.kind === 'outgoing-links') {
+        await this.hydrateDocument(document)
+        if (current() && !document.state.links) throw new Error('Relationships are unavailable.')
+      }
+      return current()
+    } catch (error) {
+      if (current()) load.state = { ...load.state, linkedError: this.failureMessage(error, 'This linked view is unavailable.') }
+      return false
+    } finally {
+      if (current()) { load.state = { ...load.state, linkedLoading: false }; this.update({}) }
+    }
+  }
+
+  resizeSplit(path: readonly number[], ratio: number): void {
+    this.shellSession = resizePaneSplit(this.shellSession, path, ratio)
+    this.syncShell()
   }
 
   private shellPanes(): readonly RoutePaneSummary[] {
     return Object.freeze(this.shellSession.groups.map(group => Object.freeze({
-      activePath: group.tabs.find(tab => tab.id === group.activeTabId)?.path ?? null,
+      ...(group.linkedView ? { linkedView: Object.freeze({ ...group.linkedView }) } : {}),
+      activePath: group.linkedView?.path ?? group.tabs.find(tab => tab.id === group.activeTabId)?.path ?? null,
       id: group.id,
       tabs: Object.freeze(group.tabs.map(tab => Object.freeze({
         dirty: tab.dirty,
@@ -1663,7 +1967,20 @@ export class WorkbenchRouteController {
   }
 
   private syncShell(change: Partial<WorkbenchRouteSnapshot> = {}): void {
+    syncLinkedViews(this.shellSession)
+    for (const group of this.shellSession.groups) {
+      const tab = group.tabs.find(tab => tab.id === group.activeTabId)
+      const owner = JSON.stringify([this.shellSession.vault, tab?.id, tab?.path, group.linkedView])
+      if (this.paneLifetimes.get(group.id)?.owner !== owner) this.paneLifetimes.set(group.id, { owner, epoch: ++this.paneLifetime })
+    }
+    for (const id of this.paneLifetimes.keys()) {
+      if (!this.shellSession.groups.some(group => group.id === id)) { this.paneLifetimes.delete(id); this.paneViews.delete(id) }
+    }
+    for (const [id, load] of this.linkedLoads) {
+      if (load.lifetime !== this.paneLifetimeFor(id)) { load.abort.abort(); this.linkedLoads.delete(id) }
+    }
     this.update({
+      layout: this.shellSession.layout,
       canGoBack: this.historyBack.length > 0,
       canGoForward: this.historyForward.length > 0,
       focusedPaneId: this.shellSession.focusedGroupId,
@@ -1672,6 +1989,7 @@ export class WorkbenchRouteController {
       workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
       ...change,
     })
+    this.pruneDocuments()
     const vaultId = this.shellSession.vault?.id
     if (this.storage !== null && vaultId !== undefined) {
       saveWorkbenchState(this.storage, vaultId, {
@@ -1679,6 +1997,20 @@ export class WorkbenchRouteController {
         session: this.shellSession,
         workspaces: this.workspaces,
       })
+    }
+  }
+
+  private pruneDocuments(): void {
+    for (const [key, document] of this.documents) {
+      const referenced = sameVault(this.shellSession.vault, document.vault) && this.shellSession.groups.some(group => group.linkedView?.path === document.path || group.tabs.some(tab => tab.path === document.path))
+      if (!referenced && (document.state.saveStatus === 'saved' || document.durableEpoch === document.epoch)
+        && !this.documentLoads.has(key) && !this.documentSelections.has(key)
+        && !document.saving && !document.draftFlight && document.draftTimer === null) {
+        document.relationshipsAbort?.abort()
+        document.embedsAbort?.abort()
+        document.baseAbort?.abort()
+        this.documents.delete(key)
+      }
     }
   }
 
@@ -1709,102 +2041,59 @@ export class WorkbenchRouteController {
   private recordDirty(dirty: boolean): void {
     const path = this.snapshot.path
     if (path === null) return
-    this.shellSession = markTabDirty(
-      this.shellSession,
-      this.shellSession.focusedGroupId,
-      path,
-      dirty,
-    )
-    this.syncShell()
+    this.markDocumentDirty(path, dirty)
   }
 
-  private persistDraft(
-    request: SaveDraftRequest,
-    abort: AbortController,
-    final = false,
-  ): Promise<void> {
-    const flush = final
-      ? this.persistFinalDraft(request, abort)
-      : Promise.resolve()
-        .then(() => this.remote.tocktutorWorkbench.saveDraft(request, abort.signal))
-        .then(result => { remoteValue(result) })
-        .catch(() => undefined)
-    this.draftFlush = flush
-    void flush.then(
-      () => {
-        if (this.draftFlush === flush) this.draftFlush = null
-        if (this.draftAbort === abort) this.draftAbort = null
-      },
-      () => {
-        if (this.draftFlush === flush) this.draftFlush = null
-        if (this.draftAbort === abort) this.draftAbort = null
-      },
-    )
-    return flush
-  }
-
-  private async persistFinalDraft(
-    request: SaveDraftRequest,
-    abort: AbortController,
-  ): Promise<void> {
-    let lastError: unknown
-    for (let attempt = 0; attempt < FINAL_DRAFT_ATTEMPTS; attempt += 1) {
-      try {
-        const result = await this.remote.tocktutorWorkbench.saveDraft(request, abort.signal)
-        remoteValue(result)
-        return
-      } catch (error) {
-        lastError = error
-        if (abort.signal.aborted) break
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('The latest TockTutor draft could not be saved.')
-  }
-
-  private scheduleDraft(): void {
-    if (this.draftTimer !== null) clearTimeout(this.draftTimer)
-    this.draftAbort?.abort()
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    const revision = this.snapshot.revision
-    const content = this.snapshot.source
-    if (vault === null || path === null) return
-    const abort = new AbortController()
-    this.draftAbort = abort
-    this.draftTimer = setTimeout(() => {
-      this.draftTimer = null
-      this.persistDraft({
-        content,
-        expectedVault: vault,
-        path,
-        ...(revision === null ? {} : { revision }),
-      }, abort)
+  private scheduleDocumentDraft(document: RouteDocument): void {
+    if (this.disposed) return
+    if (document.draftTimer !== null) clearTimeout(document.draftTimer)
+    document.draftTimer = setTimeout(() => {
+      document.draftTimer = null
+      void this.flushDocumentDraft(document).catch(error => {
+        if (!this.disposed && this.activeDocument() === document) this.update({ message: this.failureMessage(error, 'Draft recovery failed.') })
+      })
     }, 400)
   }
 
-  private flushPendingDraft(): Promise<void> | null {
-    if (this.draftTimer !== null) {
-      clearTimeout(this.draftTimer)
-      this.draftTimer = null
-    }
-    const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    if (vault === null || path === null || this.snapshot.saveStatus === 'saved') return null
-    this.draftAbort?.abort()
-    const abort = new AbortController()
-    this.draftAbort = abort
-    return this.persistDraft({
-      content: this.snapshot.source,
-      expectedVault: vault,
-      path,
-      ...(this.snapshot.revision === null ? {} : { revision: this.snapshot.revision }),
-    }, abort, true)
+  private flushDocumentDraft(document: RouteDocument): Promise<void> {
+    if (document.draftTimer !== null) clearTimeout(document.draftTimer)
+    document.draftTimer = null
+    const previous = document.draftFlight ?? Promise.resolve()
+    const flight = previous.catch(() => undefined).then(async () => {
+      if (document.state.saveStatus === 'saved') return
+      const source = document.state.source ?? ''
+      const epoch = document.epoch
+      const revision = document.state.revision
+      let error: unknown
+      for (let attempt = 0; attempt < FINAL_DRAFT_ATTEMPTS; attempt += 1) {
+        try {
+          remoteValue(await this.remote.tocktutorWorkbench.saveDraft({ content: source, expectedVault: document.vault, path: document.path, ...(revision == null ? {} : { revision }) }))
+          document.durableEpoch = epoch
+          return
+        } catch (caught) { error = caught }
+      }
+      throw error
+    })
+    document.draftFlight = flight
+    void flight.finally(() => { if (document.draftFlight === flight) document.draftFlight = null; this.pruneDocuments() }).catch(() => undefined)
+    return flight
+  }
+
+  private scheduleDraft(): void {
+    const document = this.activeDocument()
+    if (document) this.scheduleDocumentDraft(document)
+  }
+
+  private async flushPendingDraft(): Promise<void> {
+    const results = await Promise.allSettled([...this.documents.values()].map(document => this.flushDocumentDraft(document)))
+    const failed = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+    if (failed.length === 1) throw failed[0]!.reason
+    if (failed.length) throw new AggregateError(failed.map(result => result.reason), 'The latest TockTutor drafts could not all be saved.')
   }
 
   private clearDocument(): void {
     this.invalidateDispatch()
     this.nextOperation()
-    this.cancelEmbedOperation()
     this.embedTargets = Object.freeze([])
     this.update({
       baseFiles: Object.freeze([]),
@@ -1833,6 +2122,7 @@ export class WorkbenchRouteController {
     const vault = this.snapshot.vault
     if (vault === null) return null
     return {
+      paneId: this.snapshot.focusedPaneId,
       path: this.snapshot.path,
       revision: this.snapshot.revision,
       source: this.snapshot.source,
@@ -1856,6 +2146,7 @@ export class WorkbenchRouteController {
   private recoveryIdentityMatches(identity: RecoveryIdentity, requireRevision = true): boolean {
     return !this.disposed
       && sameVault(this.snapshot.vault, identity.vault)
+      && this.snapshot.focusedPaneId === identity.paneId
       && this.snapshot.path === identity.path
       && this.snapshot.source === identity.source
       && (!requireRevision || this.snapshot.revision === identity.revision)
@@ -1890,9 +2181,26 @@ export class WorkbenchRouteController {
       && this.snapshot.searchMatches?.[active]?.path === path
   }
 
-  private nextOperation(): { id: number; signal: AbortSignal } {
+  private nextSearchRequest(): { id: number; signal: AbortSignal; sidebar: boolean } {
+    this.sidebarSearchAbort?.abort()
+    if (this.snapshot.searchPresentation !== 'sidebar') return { ...this.nextOperation(), sidebar: false }
     if (this.searchTimer !== null) clearTimeout(this.searchTimer)
     this.searchTimer = null
+    this.cancelSearchPreview()
+    this.sidebarSearchAbort = new AbortController()
+    return { id: ++this.sidebarSearchOperation, signal: this.sidebarSearchAbort.signal, sidebar: true }
+  }
+
+  private currentSearchRequest(operation: { id: number; signal: AbortSignal; sidebar: boolean }, vault: VaultReference): boolean {
+    return !this.disposed && !operation.signal.aborted && sameVault(this.snapshot.vault, vault)
+      && (operation.sidebar ? operation.id === this.sidebarSearchOperation : this.current(operation.id, vault))
+  }
+
+  private nextOperation(): { id: number; signal: AbortSignal } {
+    if (this.snapshot.searchPresentation !== 'sidebar') {
+      if (this.searchTimer !== null) clearTimeout(this.searchTimer)
+      this.searchTimer = null
+    }
     this.cancelSearchPreview()
     this.cancelRecoveryOperations()
     this.operationAbort?.abort()
@@ -1901,20 +2209,14 @@ export class WorkbenchRouteController {
     return { id: this.operation, signal: this.operationAbort.signal }
   }
 
+  private cancelTreeRefresh(): void {
+    this.treeAbort?.abort()
+    this.treeAbort = null
+    this.treeGeneration += 1
+  }
+
   private cancelEmbedOperation(): void {
-    this.embedAbort?.abort()
-    this.embedAbort = null
-    this.embedOperation += 1
-  }
-
-  private nextEmbedOperation(): { id: number; signal: AbortSignal } {
-    this.cancelEmbedOperation()
-    this.embedAbort = new AbortController()
-    return { id: this.embedOperation, signal: this.embedAbort.signal }
-  }
-
-  private currentEmbed(id: number, vault: VaultReference, path: string): boolean {
-    return !this.disposed && id === this.embedOperation && sameVault(this.snapshot.vault, vault) && this.snapshot.path === path
+    this.activeDocument()?.embedsAbort?.abort()
   }
 
   private current(id: number, vault?: VaultReference): boolean {
@@ -1950,6 +2252,26 @@ export class WorkbenchRouteController {
   }
 
   async reload(): Promise<void> {
+    try { await this.flushPendingDraft() } catch (error) {
+      this.update({ message: this.failureMessage(error, 'Unresolved drafts prevent changing vaults.') })
+      return
+    }
+    if (this.disposed) return
+    this.cancelTreeRefresh()
+    for (const load of this.linkedLoads.values()) load.abort.abort()
+    this.linkedLoads.clear()
+    for (const load of this.documentLoads.values()) load.abort.abort()
+    this.documentLoads.clear()
+    for (const document of this.documents.values()) {
+      document.relationshipsAbort?.abort()
+      document.embedsAbort?.abort()
+      document.baseAbort?.abort()
+      document.hydration = undefined
+      document.hydratedEpoch = undefined
+    }
+    this.sidebarSearchAbort?.abort()
+    if (this.searchTimer !== null) clearTimeout(this.searchTimer)
+    this.searchTimer = null
     this.invalidateDispatch()
     const operation = this.nextOperation()
     this.eventDispose ??= this.remote.$on('note-vault/change', event => { this.onVaultChange(event) })
@@ -2005,6 +2327,7 @@ export class WorkbenchRouteController {
       vaultDisplayPath: null,
       vaultName: null,
       warnings: Object.freeze([]),
+      mergeRecoveryPending: false,
     })
     try {
       const activeVault = remoteValue(await this.remote.tocktutorWorkbench.currentVault(operation.signal))
@@ -2015,8 +2338,10 @@ export class WorkbenchRouteController {
         this.update({ message: 'No active TockTutor vault is available.', phase: 'inactive' })
         return
       }
-      const tree = await this.loadTreePages(vault, operation)
-      if (tree === null) return
+      const requestCurrent = (): boolean => this.current(operation.id) && !operation.signal.aborted
+        && (this.snapshot.vault === null || sameVault(this.snapshot.vault, vault))
+      const tree = await this.loadTreePages(vault, operation.signal, requestCurrent)
+      if (tree === null || !requestCurrent()) return
       this.treeComplete = !tree.truncated
       const openable = new Set(tree.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path)).map(entry => entry.path))
       let settings: TockTutorSettings | undefined
@@ -2043,6 +2368,7 @@ export class WorkbenchRouteController {
       this.update({
         bookmarks: Object.freeze(this.bookmarks.map(bookmark => Object.freeze({ ...bookmark }))),
         entries: Object.freeze(tree.entries.toSorted((left, right) => left.path.localeCompare(right.path))),
+        layout: this.shellSession.layout,
         focusedPaneId: this.shellSession.focusedGroupId,
         focusMode: restoredFocusMode,
         message: tree.truncated ? 'The vault tree is truncated to a bounded result.' : 'Vault ready.',
@@ -2055,11 +2381,123 @@ export class WorkbenchRouteController {
         warnings: tree.warnings,
         workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
       })
+      this.syncShell()
       const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null
-      if (path !== null) await this.select(path, false)
+      if (path !== null && !this.pane()?.linkedView) await this.select(path, false, undefined, true, false, true)
+      await Promise.all(this.shellSession.groups.map(group => {
+        const path = group.linkedView?.path ?? group.tabs.find(tab => tab.id === group.activeTabId)?.path
+        return path ? this.loadPaneDocument(vault, path, path !== this.snapshot.path) : Promise.resolve()
+      }))
+      if (this.remote.tocktutorWorkbench.listMerges && this.operationAbort && !this.operationAbort.signal.aborted) {
+        try { await this.listMergeRecovery(this.operationAbort.signal) }
+        catch { if (!this.disposed && sameVault(this.snapshot.vault, vault)) this.update({ mergeRecoveryPending: true }) }
+      }
     } catch (error) {
       if (!this.current(operation.id) || operation.signal.aborted) return
       this.update({ message: this.failureMessage(error, 'The vault could not be loaded.'), phase: 'error' })
+    }
+  }
+
+  private loadPaneDocument(vault: VaultReference, path: string, refresh = false, backgroundOperation?: number): Promise<RouteDocument | undefined> {
+    const key = this.documentKey(vault, path)
+    const previous = this.documents.get(key)
+    refresh ||= previous?.state.documentUnavailable === true
+    if (previous?.state.revision != null && (!refresh || previous.state.saveStatus !== 'saved')) {
+      if (refresh) this.publishDocument(previous, { message: 'External Change: Your local draft remains unsaved.' })
+      void this.hydrateDocument(previous)
+      return Promise.resolve(previous)
+    }
+    const pending = this.documentLoads.get(key)
+    if (pending && !refresh) return pending.promise
+    // An event describes a newer disk state, not another consumer of the old read.
+    pending?.abort.abort()
+    const abort = new AbortController()
+    const epoch = previous?.epoch
+    const current = (): boolean => !this.disposed && !abort.signal.aborted && sameVault(this.snapshot.vault, vault)
+      && this.documents.get(key) === previous && previous?.epoch === epoch
+      && (previous === undefined || previous.state.saveStatus === 'saved')
+    const promise = (async (): Promise<RouteDocument | undefined> => {
+      try {
+        const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, abort.signal))
+        if (!current() || opened.path !== path || opened.generation !== vault.generation || !boundedSource(opened.content)) return undefined
+        let content = opened.content
+        if (documentKind(path) === 'markdown') {
+          try {
+            const draft = remoteValue(await this.remote.tocktutorWorkbench.readDraft({ expectedVault: vault, path }, abort.signal))
+            if (!current() || draft.generation !== vault.generation) return undefined
+            if (draft.draft && (draft.draft.revision === undefined || draft.draft.revision === opened.revision) && boundedSource(draft.draft.content)) content = draft.draft.content
+          } catch { if (!current()) return undefined }
+        }
+        if (!current()) return undefined
+        const document: RouteDocument = previous ?? { key, vault, path, state: {}, epoch: 0, saving: null, saveAbort: null, draftTimer: null, draftFlight: null }
+        document.relationshipsAbort?.abort()
+        document.embedsAbort?.abort()
+        document.baseAbort?.abort()
+        document.hydration = undefined
+        if (document.state.source !== content || document.state.revision !== opened.revision) document.epoch += 1
+        const recovered = content !== opened.content
+        if (recovered) document.durableEpoch = document.epoch
+        document.state = { source: content, documentUnavailable: false, revision: opened.revision, documentKind: documentKind(path), draftRecovered: recovered, saveStatus: recovered ? 'unsaved' : 'saved', embeds: [], links: null, outline: null, baseFiles: [], message: recovered ? `${path} opened with its recovered draft.` : `${path} opened.` }
+        document.hydratedEpoch = undefined
+        this.documents.set(key, document)
+        if (this.activeDocument() === document) this.update(document.state)
+        this.markDocumentDirty(path, recovered)
+        void this.hydrateDocument(document)
+        return document
+      } catch (error) {
+        if (current()) {
+          if (previous && this.shellSession.groups.some(group => group.linkedView?.path === path)) this.publishDocument(previous, { documentUnavailable: true })
+          const message = this.failureMessage(error, `${path} could not be loaded.`)
+          if (backgroundOperation === undefined) this.update({ message })
+          else this.update({ warnings: Object.freeze([...this.snapshot.warnings, message].slice(-32)) })
+        }
+        return undefined
+      }
+    })()
+    const flight = { abort, promise }
+    this.documentLoads.set(key, flight)
+    void promise.finally(() => {
+      if (this.documentLoads.get(key) === flight) this.documentLoads.delete(key)
+      this.pruneDocuments()
+    })
+    return promise
+  }
+
+  private invalidateLinkedPath(path: string): void {
+    const vault = this.snapshot.vault
+    if (!vault) return
+    const key = this.documentKey(vault, path)
+    this.documentLoads.get(key)?.abort.abort()
+    this.documentLoads.delete(key)
+    const document = this.documents.get(key)
+    if (document) {
+      document.relationshipsAbort?.abort()
+      document.hydratedEpoch = undefined
+      document.hydration = undefined
+      this.publishDocument(document, { documentUnavailable: true, links: null, outline: null })
+    }
+    for (const pane of this.snapshot.panes) {
+      if (!pane.linkedView || pane.activePath !== path) continue
+      this.linkedLoads.get(pane.id)?.abort.abort()
+      this.linkedLoads.set(pane.id, { abort: new AbortController(), lifetime: this.paneLifetimeFor(pane.id), state: { linkedLoading: false, linkedError: 'This note is unavailable. Any local draft has been retained.', graph: null, graphLayout: [] } })
+    }
+    this.update({})
+  }
+
+  private refreshRelationships(vault: VaultReference): void {
+    // Cache validity is vault-wide; live query ownership stays with each represented document.
+    const paths = new Set(this.snapshot.panes.filter(pane => pane.linkedView).map(pane => pane.activePath))
+    const active = this.snapshot.settings?.backlinksInDocument ? this.activeDocument() : undefined
+    for (const document of this.documents.values()) {
+      if (!sameVault(document.vault, vault) || document.state.documentKind !== 'markdown' || document.state.documentUnavailable) continue
+      if (this.pendingRename?.fromPath === document.path && sameVault(this.pendingRename.vault, vault)) continue
+      document.hydratedEpoch = undefined
+      document.hydration = undefined
+      if (paths.has(document.path) || document === active) {
+        document.relationshipsAbort?.abort()
+        this.publishDocument(document, { links: null, linksLoading: false })
+        void this.hydrateDocument(document)
+      }
     }
   }
 
@@ -2073,22 +2511,54 @@ export class WorkbenchRouteController {
       return
     }
     if (!sameVault(this.snapshot.vault, value.vault)) return
+    // Every inventory change can affect aliases or referrers, including unopened notes.
+    this.mergeReviewAbort?.abort(new Error('The vault changed. Create a new merge review.'))
+    // Owned merge publications settle as one authoritative result, like an owned rename.
+    if (this.pendingMerge && sameVault(this.pendingMerge.vault, value.vault)
+      && (value.kind === 'tree' || this.pendingMerge.paths.has(value.path) || ('fromPath' in value && this.pendingMerge.paths.has(value.fromPath)))) return
     if (value.kind === 'entry'
       && value.action === 'moved'
       && this.pendingRename !== null
       && sameVault(this.pendingRename.vault, value.vault)
       && value.fromPath === this.pendingRename.fromPath
       && value.path === this.pendingRename.toPath) return
+    if (value.kind === 'entry' && value.action === 'moved' && supportedDocument(value.path)
+      && this.shellSession.groups.some(group => group.linkedView?.path === value.fromPath)) {
+      const document = this.documents.get(this.documentKey(value.vault, value.fromPath))
+      if (!document || (document.state.saveStatus === 'saved' && !document.saving && !document.draftFlight)) {
+        this.shellSession = renameNoteTabPath(this.shellSession, value.fromPath, value.path)
+        this.workspaces = this.workspaces.map(workspace => ({ ...workspace, session: renameNoteTabPath(workspace.session, value.fromPath, value.path) }))
+        this.syncShell()
+      } else {
+        // An external move cannot safely migrate an in-flight save or recovery draft.
+        this.invalidateLinkedPath(value.fromPath)
+      }
+    }
+    if (value.kind === 'entry' && value.action === 'trashed') this.invalidateLinkedPath(value.fromPath)
+    this.refreshRelationships(value.vault)
     if (value.kind === 'tree') {
-      void this.refreshTree(value.vault)
+      void this.refreshTree(value.vault, true)
       return
+    }
+    // Watcher echoes can precede the move result and its referrer rewrites.
+    // Refresh the tree, but let the owned rename reconcile these document paths.
+    if (this.pendingRename && sameVault(this.pendingRename.vault, value.vault)
+      && (value.path === this.pendingRename.fromPath || value.path === this.pendingRename.toPath)) {
+      void this.refreshTree(value.vault, true)
+      return
+    }
+    for (const document of this.documents.values()) {
+      if (sameVault(document.vault, value.vault) && document.path !== this.snapshot.path
+        && (document.path === value.path || ('fromPath' in value && document.path === value.fromPath))) {
+        void this.loadPaneDocument(value.vault, document.path, true, this.operation)
+      }
     }
     const selected = this.snapshot.path
     if (selected !== null
       && this.snapshot.saveStatus !== 'saved'
       && (value.path === selected || ('fromPath' in value && value.fromPath === selected))) {
       this.update({ message: 'External Change: The active file changed on disk. Your local draft remains unsaved.' })
-      void this.refreshTree(value.vault)
+      void this.refreshTree(value.vault, true)
       return
     }
     if (selected !== null
@@ -2096,23 +2566,28 @@ export class WorkbenchRouteController {
       && (value.path === selected || ('fromPath' in value && value.fromPath === selected))) {
       const nextPath = value.path === selected ? selected : value.path
       if (supportedDocument(nextPath)) {
-        void this.select(nextPath, false)
+        if (nextPath === selected && !('fromPath' in value)) {
+          void this.loadPaneDocument(value.vault, selected, true, this.operation)
+          return
+        }
+        void this.select(nextPath, false, undefined, true, false, true)
       } else {
         const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, selected)
         this.shellSession = closed.session
         this.syncShell()
         this.clearDocument()
         this.navigate(ROUTE_PREFIX, 'replace')
-        void this.refreshTree(value.vault)
+        void this.refreshTree(value.vault, true)
       }
     } else {
-      void this.refreshTree(value.vault)
+      void this.refreshTree(value.vault, true)
     }
   }
 
   private async loadTreePages(
     vault: VaultReference,
-    operation: { id: number; signal: AbortSignal },
+    signal: AbortSignal,
+    requestCurrent: () => boolean,
   ): Promise<LoadedTree | null> {
     const entries = new Map<string, VaultTreeEntry>()
     const warnings: string[] = []
@@ -2120,12 +2595,14 @@ export class WorkbenchRouteController {
     let cursor: string | null = null
     let scanTruncated = false
     for (let pageIndex = 0; pageIndex < MAX_TREE_PAGES; pageIndex += 1) {
-      const page: VaultTreePage = remoteValue(await this.remote.tocktutorWorkbench.listTree({
+      if (!requestCurrent()) return null
+      const result = await this.remote.tocktutorWorkbench.listTree({
         expectedVault: vault,
         limit: TREE_LIMIT,
         ...(cursor === null ? {} : { cursor }),
-      }, operation.signal))
-      if (!this.current(operation.id) || (this.snapshot.vault !== null && !sameVault(this.snapshot.vault, vault))) return null
+      }, signal)
+      if (!requestCurrent()) return null
+      const page: VaultTreePage = remoteValue(result)
       if (!validTreePage(page)) throw new RemoteCallError('invalid-result', 'The vault tree response was invalid.')
       if (page.generation !== vault.generation) return null
       for (const entry of page.entries) entries.set(entry.path, entry)
@@ -2151,19 +2628,26 @@ export class WorkbenchRouteController {
     }
   }
 
-  private async refreshTree(vault: VaultReference): Promise<boolean> {
-    const operation = this.nextOperation()
+  private async refreshTree(vault: VaultReference, background = false): Promise<boolean> {
+    if (this.disposed || !sameVault(this.snapshot.vault, vault)) return false
+    this.cancelTreeRefresh()
+    const abort = new AbortController()
+    this.treeAbort = abort
+    const generation = this.treeGeneration
+    const requestCurrent = (): boolean => !this.disposed && !abort.signal.aborted
+      && generation === this.treeGeneration && sameVault(this.snapshot.vault, vault)
     try {
-      const tree = await this.loadTreePages(vault, operation)
-      if (tree === null) return false
+      const tree = await this.loadTreePages(vault, abort.signal, requestCurrent)
+      if (tree === null || !requestCurrent()) return false
       this.treeComplete = !tree.truncated
       const entries = Object.freeze(tree.entries.toSorted((left, right) => left.path.localeCompare(right.path)))
       const searchQuery = this.snapshot.searchQuery.trim()
       this.update({
         entries,
-        warnings: tree.warnings,
-        message: tree.truncated ? 'The vault tree is truncated to a bounded result.' : this.snapshot.message,
-        ...(this.snapshot.searchOpen ? {
+        warnings: background && tree.truncated
+          ? Object.freeze([...tree.warnings, 'The vault tree is truncated to a bounded result.'].slice(-32)) : tree.warnings,
+        ...(!background && tree.truncated ? { message: 'The vault tree is truncated to a bounded result.' } : {}),
+        ...(!background && this.snapshot.searchOpen ? {
           searchActiveIndex: null,
           searchCursor: null,
           searchLoading: searchQuery !== '',
@@ -2173,18 +2657,29 @@ export class WorkbenchRouteController {
           searchPreviewLoading: false,
         } : {}),
       })
-      if (this.snapshot.searchOpen && searchQuery !== '') this.scheduleSearch()
+      if (!background && this.snapshot.searchOpen && searchQuery !== '') this.scheduleSearch()
+      if (!background) this.refreshRelationships(vault)
+      for (const pane of this.snapshot.panes) {
+        if (!pane.linkedView || !pane.activePath) continue
+        // The move is committed, but its response still owns path/tab reconciliation.
+        if (this.pendingRename?.fromPath === pane.activePath && sameVault(this.pendingRename.vault, vault)) continue
+        if (!tree.truncated && !entries.some(entry => entry.path === pane.activePath && entry.kind === 'document')) this.invalidateLinkedPath(pane.activePath)
+        else void this.loadLinkedView(pane.id)
+      }
       return true
     } catch (error) {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
-        this.update({ message: this.failureMessage(error, 'The vault tree could not be refreshed.') })
+      if (requestCurrent()) {
+        const message = this.failureMessage(error, 'The vault tree could not be refreshed.')
+        this.update(background ? { warnings: Object.freeze([...this.snapshot.warnings, message].slice(-32)) } : { message })
       }
       return false
+    } finally {
+      if (this.treeAbort === abort) this.treeAbort = null
     }
   }
 
   async createManagedVault(name: string): Promise<boolean> {
-    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    if (!await this.saveAll()) return false
     const operation = this.nextOperation()
     const expectedGeneration = this.vaultGeneration
     try {
@@ -2198,7 +2693,7 @@ export class WorkbenchRouteController {
   }
 
   async openSandboxVault(): Promise<boolean> {
-    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    if (!await this.saveAll()) return false
     const operation = this.nextOperation()
     const expectedGeneration = this.vaultGeneration
     try {
@@ -2316,7 +2811,7 @@ export class WorkbenchRouteController {
         || restored.generation !== identity.vault.generation
         || restored.path !== identity.path) return false
       this.clearDocument()
-      return await this.select(identity.path, false)
+      return await this.select(identity.path, false, undefined, true, false, true)
     } catch {
       return false
     }
@@ -2363,6 +2858,7 @@ export class WorkbenchRouteController {
       const trashed = remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedRevision: identity.revision, expectedVault: identity.vault, path: identity.path }, operation.signal))
       if (!this.recoveryCurrent(operation.id, identity)
         || !validTrashMutationResult(trashed, identity.vault, identity.path)) return false
+      this.invalidateLinkedPath(identity.path)
       const closed = closeNoteTab(this.shellSession, this.shellSession.focusedGroupId, identity.path)
       this.shellSession = closed.session
       this.syncShell()
@@ -2414,48 +2910,67 @@ export class WorkbenchRouteController {
     return true
   }
 
-  async focusPane(id: string, pathOverride?: string): Promise<boolean> {
+  async focusPane(id: string, pathOverride?: string, ownerCurrent?: () => boolean): Promise<boolean> {
     const target = this.pane(id)
-    if (target === undefined || this.snapshot.phase !== 'ready') return false
+    if (target === undefined || this.snapshot.phase !== 'ready' || ownerCurrent?.() === false) return false
+    // Linked focus never becomes editor-navigation authority.
+    if (target.linkedView) return true
     const path = pathOverride ?? target.activePath
-    if (id === this.snapshot.focusedPaneId && path === this.snapshot.path) return true
-    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    if (id === this.snapshot.focusedPaneId && path === this.snapshot.path && this.snapshot.revision !== null) return true
+    const projection = this.getPaneSnapshot(id)
+    this.invalidateDispatch()
+    this.nextOperation()
     this.shellSession = focusPaneGroup(this.shellSession, id)
     if (path === null) this.shellSession = setActiveNoteTab(this.shellSession, id, null)
+    // Switch the projection atomically; never write the old source into the new document.
+    this.snapshot = Object.freeze({ ...projection, focusedPaneId: id })
     this.syncShell()
-    this.clearDocument()
-    if (path === null) {
-      this.navigate(ROUTE_PREFIX)
+    if (path === null) { this.navigate(ROUTE_PREFIX); return true }
+    if (projection.path === path && projection.revision !== null) {
+      this.embedTargets = embedTargetSources(projection.source, path)
+      const document = this.activeDocument()
+      if (document) void this.hydrateDocument(document)
+      this.navigate(routeForPath(path))
       return true
     }
-    return this.select(path)
+    return this.select(path, true, undefined, true, false, false, ownerCurrent)
   }
 
   async closePane(id: string): Promise<boolean> {
-    if (this.snapshot.phase !== 'ready' || this.shellSession.groups.length <= 1) return false
+    if (this.snapshot.phase !== 'ready') return false
     const target = this.shellSession.groups.find(group => group.id === id)
-    if (target === undefined) return false
-    if (target.tabs.some(tab => tab.dirty)) {
-      const active = id === this.shellSession.focusedGroupId && target.tabs.some(tab => tab.path === this.snapshot.path)
-      if (!active) {
-        this.update({ message: 'Save the pane before closing it.' })
-        return false
-      }
-      if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    if (target === undefined || (this.shellSession.groups.length <= 1 && !target.linkedView)) return false
+    const lifetime = this.paneLifetimeFor(id)
+    const vault = this.snapshot.vault
+    if (target.linkedView?.path && !this.shellSession.groups.some(group => group.id !== id && (group.linkedView?.path === target.linkedView!.path || group.tabs.some(tab => tab.path === target.linkedView!.path)))) {
+      const document = vault && this.documents.get(this.documentKey(vault, target.linkedView.path))
+      if (document && !await this.saveDocumentRecord(document)) return false
+    }
+    for (const tab of target.tabs) {
+      if (this.shellSession.groups.some(group => group.id !== id && group.tabs.some(other => other.path === tab.path))) continue
+      const document = vault && this.documents.get(this.documentKey(vault, tab.path))
+      if (document && !await this.saveDocumentRecord(document)) return false
+    }
+    if (this.paneLifetimeFor(id) !== lifetime || vault === null || !sameVault(this.snapshot.vault, vault) || !this.shellSession.groups.some(group => group.id === id && group.activeTabId === target.activeTabId)) return false
+    if (this.shellSession.groups.length === 1) {
+      delete target.linkedView
+      this.syncShell()
+      this.clearDocument()
+      this.navigate(ROUTE_PREFIX)
+      return true
     }
     const active = id === this.shellSession.focusedGroupId
     const result = closePaneGroup(this.shellSession, id)
     if (result.closed === null) return false
     this.shellSession = result.session
-    this.syncShell()
-    if (!active) return true
-    this.clearDocument()
-    const nextPath = this.pane()?.activePath ?? null
-    if (nextPath === null) {
+    if (!active) { this.syncShell(); return true }
+    if (this.shellSession.groups.find(group => group.id === this.shellSession.focusedGroupId)?.linkedView) {
+      this.clearDocument()
+      this.syncShell()
       this.navigate(ROUTE_PREFIX)
       return true
     }
-    return await this.select(nextPath)
+    return this.focusPane(this.shellSession.focusedGroupId)
   }
 
   async activateTab(paneId: string, path: string): Promise<boolean> {
@@ -2479,8 +2994,13 @@ export class WorkbenchRouteController {
     const pane = this.pane(paneId)
     const tab = pane?.tabs.find(candidate => candidate.path === path)
     if (tab === undefined) return false
+    const lifetime = this.paneLifetimeFor(paneId)
+    const vault = this.snapshot.vault
+    const document = vault && this.documents.get(this.documentKey(vault, path))
+    const shared = this.shellSession.groups.some(group => group.id !== paneId && group.tabs.some(tab => tab.path === path))
+    if (!shared && document && !await this.saveDocumentRecord(document)) return false
+    if (this.paneLifetimeFor(paneId) !== lifetime || vault === null || !sameVault(this.snapshot.vault, vault) || this.pane(paneId)?.tabs.some(tab => tab.path === path) !== true) return false
     const active = paneId === this.snapshot.focusedPaneId && path === this.snapshot.path
-    if (active && this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
     const result = closeNoteTab(this.shellSession, paneId, path)
     if (result.closed === null) return false
     this.shellSession = result.session
@@ -2496,6 +3016,7 @@ export class WorkbenchRouteController {
       ...this.recentlyClosed.filter(candidate => candidate.path !== result.closed?.path),
     )
     this.recentlyClosed.length = Math.min(this.recentlyClosed.length, MAX_NOTE_TABS)
+    if (active && this.shellSession.focusedGroupId !== paneId) return this.focusPane(this.shellSession.focusedGroupId)
     this.syncShell()
     if (!active) return true
     this.clearDocument()
@@ -2563,6 +3084,7 @@ export class WorkbenchRouteController {
     const settings = saveTockTutorSettings(this.storage, vault.id, change)
     this.nextOperation()
     this.update({ searchAnswer: { status: 'idle', answer: '', citations: [] }, settings })
+    if (settings.backlinksInDocument) void this.loadRelationships()
     return true
   }
 
@@ -2581,19 +3103,34 @@ export class WorkbenchRouteController {
     return true
   }
 
-  addActiveBookmark(): boolean {
+  addActiveBookmark(title = noteTitle(this.snapshot.path), groupId: string | null = null): boolean {
     const vault = this.snapshot.vault
     const path = this.snapshot.path
-    if (vault === null || path === null || this.storage === null) return false
+    if (vault === null || path === null || this.storage === null || hasNoteBookmark(this.bookmarks, path)) return false
     try {
-      this.bookmarks = addBookmark(this.bookmarks, {
-        id: `note-${this.now().getTime().toString(36)}`,
-        kind: 'note',
-        path,
-        title: noteTitle(path),
-      })
-      if (!saveBookmarks(this.storage, vault.id, this.bookmarks)) return false
-      this.update({ bookmarks: Object.freeze(this.bookmarks.map(bookmark => Object.freeze({ ...bookmark }))) })
+      const base = `note-${this.now().getTime().toString(36)}`
+      let id = base
+      let suffix = 1
+      while (bookmarkIds(this.bookmarks).has(id)) id = `${base}-${String(suffix++)}`
+      let next = addBookmark(this.bookmarks, { id, kind: 'note', path, title })
+      if (groupId) next = updateBookmark(next, id, title, groupId)
+      if (!saveBookmarks(this.storage, vault.id, next)) return false
+      this.bookmarks = next
+      this.update({ bookmarks: Object.freeze(next.map(bookmark => Object.freeze({ ...bookmark }))) })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  editActiveBookmark(id: string, title: string, groupId: string | null): boolean {
+    const vault = this.snapshot.vault
+    if (vault === null || this.storage === null || getBookmark(this.bookmarks, id) === null) return false
+    try {
+      const next = updateBookmark(this.bookmarks, id, title, groupId)
+      if (!saveBookmarks(this.storage, vault.id, next)) return false
+      this.bookmarks = next
+      this.update({ bookmarks: Object.freeze(next.map(bookmark => Object.freeze({ ...bookmark }))) })
       return true
     } catch {
       return false
@@ -2604,14 +3141,19 @@ export class WorkbenchRouteController {
     const vault = this.snapshot.vault
     if (vault === null || this.storage === null) return false
     try {
-      this.bookmarks = addBookmark(this.bookmarks, {
-        id: `link-${this.now().getTime().toString(36)}`,
+      const base = `link-${this.now().getTime().toString(36)}`
+      let id = base
+      let suffix = 1
+      while (bookmarkIds(this.bookmarks).has(id)) id = `${base}-${String(suffix++)}`
+      const next = addBookmark(this.bookmarks, {
+        id,
         kind: 'link',
         title: title.trim().slice(0, 200) || 'Web Link',
         url,
       })
-      if (!saveBookmarks(this.storage, vault.id, this.bookmarks)) return false
-      this.update({ bookmarks: Object.freeze(this.bookmarks.map(bookmark => Object.freeze({ ...bookmark }))) })
+      if (!saveBookmarks(this.storage, vault.id, next)) return false
+      this.bookmarks = next
+      this.update({ bookmarks: Object.freeze(next.map(bookmark => Object.freeze({ ...bookmark }))) })
       return true
     } catch {
       return false
@@ -2621,16 +3163,16 @@ export class WorkbenchRouteController {
   removeBookmark(id: string): boolean {
     const vault = this.snapshot.vault
     if (vault === null || this.storage === null) return false
-    const next = this.bookmarks.filter(bookmark => bookmark.id !== id)
-    if (next.length === this.bookmarks.length || !saveBookmarks(this.storage, vault.id, next)) return false
+    const next = removeStoredBookmark(this.bookmarks, id)
+    if (next === null || !saveBookmarks(this.storage, vault.id, next)) return false
     this.bookmarks = next
     this.update({ bookmarks: Object.freeze(next.map(bookmark => Object.freeze({ ...bookmark }))) })
     return true
   }
 
   async openBookmark(id: string): Promise<boolean> {
-    const bookmark = this.bookmarks.find(candidate => candidate.id === id)
-    if (bookmark === undefined) return false
+    const bookmark = getBookmark(this.bookmarks, id)
+    if (bookmark === null) return false
     if (bookmark.kind === 'note' || bookmark.kind === 'heading' || bookmark.kind === 'block') {
       if (!await this.select(bookmark.path)) return false
       if (bookmark.kind === 'heading') this.jumpToLine(bookmark.line)
@@ -2653,7 +3195,7 @@ export class WorkbenchRouteController {
     const workspace = this.workspaces.find(candidate => candidate.id === id)
     const vault = this.snapshot.vault
     if (workspace === undefined || vault === null) return false
-    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    if (!await this.saveAll()) return false
     const openable = new Set(this.snapshot.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path)).map(entry => entry.path))
     this.shellSession = hydrateWorkbenchSession({
       ...workspace.session,
@@ -2663,11 +3205,13 @@ export class WorkbenchRouteController {
     this.syncShell({ focusMode: workspace.focusMode })
     const path = this.pane()?.activePath ?? null
     this.clearDocument()
-    if (path === null) {
-      this.navigate(ROUTE_PREFIX)
-      return true
-    }
-    return await this.select(path)
+    const opened = path === null || this.pane()?.linkedView ? true : await this.select(path)
+    if (path === null) this.navigate(ROUTE_PREFIX)
+    await Promise.all(this.shellSession.groups.map(group => {
+      const path = group.linkedView?.path ?? group.tabs.find(tab => tab.id === group.activeTabId)?.path
+      return path ? this.loadPaneDocument(vault, path) : Promise.resolve()
+    }))
+    return opened
   }
 
   async renameActiveTitle(title: string): Promise<boolean> {
@@ -2800,13 +3344,19 @@ export class WorkbenchRouteController {
     dispatchRevision?: number,
     recordHistory = true,
     newTab = false,
+    refresh = false,
+    ownerCurrent?: () => boolean,
   ): Promise<boolean> {
     const activeVault = this.snapshot.vault
-    if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== 'ready') return false
+    if (!supportedDocument(path) || activeVault === null || this.snapshot.phase !== 'ready' || ownerCurrent?.() === false) return false
     const previousPath = this.snapshot.path
     if (dispatchRevision === undefined) this.invalidateDispatch()
     else if (!this.dispatchCurrent(dispatchRevision, activeVault)) return false
-    if (path === this.snapshot.path && navigate) return true
+    if (path === this.snapshot.path && !refresh && this.snapshot.revision !== null) {
+      const document = this.activeDocument()
+      if (document) void this.hydrateDocument(document)
+      return true
+    }
     const recoveryWasOpen = this.snapshot.recoveryOpen === true
     this.cancelRecoveryOperations()
     this.update({ selectedSnapshot: null, snapshots: Object.freeze([]) })
@@ -2817,81 +3367,64 @@ export class WorkbenchRouteController {
       this.update({ message: `This pane is limited to ${String(MAX_NOTE_TABS)} note tabs.` })
       return false
     }
-    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) {
+    if (path !== this.snapshot.path && this.snapshot.saveStatus !== 'saved' && !await this.save()) {
       if (this.snapshot.path !== null) this.navigate(routeForPath(this.snapshot.path), 'replace')
       return false
     }
+    if (ownerCurrent?.() === false) return false
     if (newTab && path !== this.snapshot.path && !pane.tabs.some(tab => tab.path === path)) {
       this.shellSession = openNoteTab(this.shellSession, this.shellSession.focusedGroupId, path)
       this.syncShell()
     }
-    const vault = activeVault
     const operation = this.nextOperation()
-    const sourceAtOpen = this.snapshot.source
-    this.update({ message: `Opening ${path}.` })
+    const sourceDocumentAtOpen = this.activeDocument()
+    const key = this.documentKey(activeVault, path)
+    this.documentSelections.set(key, (this.documentSelections.get(key) ?? 0) + 1)
     try {
-      const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal))
-      if (!this.current(operation.id, vault)
-        || opened.generation !== vault.generation
-        || opened.path !== path) return false
-      if (!boundedSource(opened.content)) {
-        this.update({ message: `${path} exceeds the editor size limit.` })
+      const document = await this.loadPaneDocument(activeVault, path, refresh)
+      const sourceDraftChanged = sourceDocumentAtOpen !== document
+        && sourceDocumentAtOpen !== undefined
+        && this.documents.get(sourceDocumentAtOpen.key) === sourceDocumentAtOpen
+        && sourceDocumentAtOpen.state.saveStatus !== 'saved'
+      if (!document || ownerCurrent?.() === false || !this.current(operation.id, activeVault) || sourceDraftChanged) {
+        this.pruneDocuments()
         return false
       }
-      let content = opened.content
-      let draftRecovered = false
-      if (documentKind(path) === 'markdown') {
-        try {
-          const draft = remoteValue(await this.remote.tocktutorWorkbench.readDraft({ expectedVault: vault, path }, operation.signal))
-          if (!this.current(operation.id, vault) || draft.generation !== vault.generation) return false
-          if (draft.draft !== null
-            && (draft.draft.revision === undefined || draft.draft.revision === opened.revision)
-            && boundedSource(draft.draft.content)) {
-            content = draft.draft.content
-            draftRecovered = content !== opened.content
-          }
-        } catch {
-          if (!this.current(operation.id, vault) || operation.signal.aborted) return false
-        }
-      }
-      if (this.snapshot.source !== sourceAtOpen) return false
+      if (this.documents.get(document.key) !== document || document.state.revision == null) return false
       const mode = pane.tabs.find(tab => tab.path === path)?.mode
         ?? (documentKind(path) === 'markdown' ? this.snapshot.settings?.defaultEditingMode ?? 'live-preview' : 'reading')
-      this.cancelEmbedOperation()
-      this.embedTargets = embedTargetSources(content, path)
-      this.update({
-        documentKind: documentKind(path),
-        embeds: Object.freeze([]),
-        draftRecovered,
-        message: draftRecovered ? `${path} opened with its recovered draft.` : `${path} opened.`,
-        mode,
-        path,
-        revision: opened.revision,
-        saveStatus: draftRecovered ? 'unsaved' : 'saved',
-        selectionEnd: 0,
-        selectionRequest: null,
-        selectionStart: 0,
-        source: content,
-      })
+      this.embedTargets = embedTargetSources(document.state.source ?? '', path)
+      this.update({ ...document.state, path, mode, selectionStart: 0, selectionEnd: 0, selectionRequest: null })
       this.recordOpen(path, recordHistory, previousPath)
-      if (draftRecovered) this.recordDirty(true)
+      this.markDocumentDirty(path, document.state.saveStatus !== 'saved')
       if (navigate) this.navigate(routeForPath(path))
-      if (documentKind(path) === 'markdown') {
-        void (async () => {
-          if (await this.loadRelationships() && this.snapshot.path === path && this.snapshot.source === content) await this.loadEmbeds()
-        })()
-      } else if (documentKind(path) === 'base') void this.hydrateBaseRows(path)
+      void this.hydrateDocument(document)
       if (recoveryWasOpen) void this.setRecoveryOpen(true)
       return true
-    } catch (error) {
-      if (this.current(operation.id, vault) && !operation.signal.aborted) {
-        this.update({ message: this.failureMessage(error, `${path} could not be opened.`) })
-      }
-      return false
+    } finally {
+      const remaining = (this.documentSelections.get(key) ?? 1) - 1
+      if (remaining > 0) this.documentSelections.set(key, remaining)
+      else this.documentSelections.delete(key)
+      this.pruneDocuments()
     }
   }
 
-  edit(source: string): void {
+  async revealActiveFile(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    const path = this.snapshot.path
+    if (vault === null || path === null || this.snapshot.phase !== 'ready' || !isSafeVaultRelativePath(path)) return false
+    const pane = this.snapshot.focusedPaneId
+    if (!await this.refreshTree(vault) || this.snapshot.focusedPaneId !== pane || this.snapshot.path !== path || !sameVault(this.snapshot.vault, vault)) return false
+    const found = this.snapshot.entries.some(entry => entry.kind === 'document' && entry.path === path)
+    if (!found) {
+      this.update({ message: `${path} is not available in the bounded vault tree.` })
+      return false
+    }
+    this.syncShell({ focusMode: false, message: `Revealed ${path} in Files.` })
+    return true
+  }
+
+  edit(source: string, originPaneId = this.snapshot.focusedPaneId): void {
     if (this.snapshot.path === null || this.snapshot.phase !== 'ready') return
     if (!boundedSource(source)) {
       this.update({ message: 'The edit exceeds the bounded source limit.' })
@@ -2907,10 +3440,16 @@ export class WorkbenchRouteController {
     const embedsChanged = !sameStrings(this.embedTargets, nextEmbedTargets)
     this.embedTargets = nextEmbedTargets
     if (embedsChanged) this.cancelEmbedOperation()
+    // Only the originating view may treat this as an undoable local command.
+    const localEditRevision = (this.paneViews.get(originPaneId)?.localEditRevision ?? 0) + 1
+    if (originPaneId !== this.snapshot.focusedPaneId) {
+      this.paneViews.set(originPaneId, { ...this.paneViews.get(originPaneId), localEditRevision })
+    }
     this.update({
       ...(embedsChanged ? { embeds: Object.freeze([]) } : {}),
       message: 'Unsaved changes.',
       saveStatus: 'unsaved',
+      ...(originPaneId === this.snapshot.focusedPaneId ? { localEditRevision } : {}),
       source,
     })
     this.recordDirty(true)
@@ -2923,7 +3462,7 @@ export class WorkbenchRouteController {
   }
 
   setSelection(start: number, end: number): void {
-    if (this.snapshot.path === null || this.snapshot.mode !== 'source') return
+    if (this.snapshot.path === null || this.snapshot.mode === 'reading') return
     const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0
     const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart
     this.update({ selectionEnd, selectionRequest: null, selectionStart })
@@ -2942,7 +3481,7 @@ export class WorkbenchRouteController {
   }
 
   runEditorCommand(command: EditorCommandId): void {
-    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source') return
+    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return
     const result = applyEditorCommand(
       this.snapshot.source,
       command,
@@ -3002,7 +3541,7 @@ export class WorkbenchRouteController {
     const path = this.snapshot.path
     const start = this.snapshot.selectionStart ?? 0
     const end = this.snapshot.selectionEnd ?? 0
-    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source' || end <= start) return false
+    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading' || end <= start) return false
     const identity = this.recoveryIdentity()!
     const routeOperation = this.operation
     const destinationPath = `Extracted/${noteTitle(path)} Extract.md`
@@ -3050,7 +3589,7 @@ export class WorkbenchRouteController {
   }
 
   insertCurrentDateTime(kind: 'date' | 'time'): boolean {
-    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source') return false
+    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return false
     const start = this.snapshot.selectionStart ?? this.snapshot.source.length
     const end = this.snapshot.selectionEnd ?? start
     const value = expandTemplate(kind === 'date' ? '{{date}}' : '{{time}}', { now: this.now(), title: noteTitle(this.snapshot.path) })
@@ -3112,44 +3651,47 @@ export class WorkbenchRouteController {
     }
   }
 
-  async loadEmbeds(): Promise<boolean> {
-    const vault = this.snapshot.vault
-    const sourcePath = this.snapshot.path
-    if (vault === null || sourcePath === null || this.snapshot.documentKind !== 'markdown') return false
-    const source = this.snapshot.source
+  async loadEmbeds(document = this.activeDocument()): Promise<boolean> {
+    if (!document || document.state.documentKind !== 'markdown' || !this.documentCurrent(document)) return false
+    const { vault, path: sourcePath, epoch } = document
+    const revision = document.state.revision
+    const source = document.state.source ?? ''
+    document.embedsAbort?.abort()
+    const abort = new AbortController()
+    document.embedsAbort = abort
+    const current = (): boolean => this.documentCurrent(document, epoch) && document.state.revision === revision && !abort.signal.aborted
     let targets: EmbedTarget[]
     try { targets = collectEmbedTargets(source, sourcePath) } catch {
-      this.cancelEmbedOperation()
-      this.update({ embeds: Object.freeze([]) })
+      document.embedsAbort = undefined
+      this.publishDocument(document, { embeds: Object.freeze([]) })
       return false
     }
-    this.embedTargets = Object.freeze(targets.map(target => target.source))
+    if (this.activeDocument() === document) this.embedTargets = Object.freeze(targets.map(target => target.source))
     if (targets.length === 0) {
-      this.cancelEmbedOperation()
-      this.update({ embeds: Object.freeze([]) })
+      document.embedsAbort = undefined
+      this.publishDocument(document, { embeds: Object.freeze([]) })
       return true
     }
-    const operation = this.nextEmbedOperation()
     try {
       const result = await resolveEmbedGraph({
         entries: this.snapshot.entries,
-        isCurrent: () => this.currentEmbed(operation.id, vault, sourcePath),
+        isCurrent: current,
         readAttachment: async path => {
-          const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, operation.signal))
+          const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, abort.signal))
           if (preview.path !== path || preview.generation !== vault.generation) throw new Error('Embed attachment identity changed.')
           return preview
         },
         readDocument: async path => {
-          const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, operation.signal))
+          const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(path, vault, abort.signal))
           if (opened.path !== path || opened.generation !== vault.generation) throw new Error('Embed document identity changed.')
           return opened
         },
-        signal: operation.signal,
+        signal: abort.signal,
         source,
         sourcePath,
       })
-      if (result.status !== 'ready' || !this.currentEmbed(operation.id, vault, sourcePath)) return false
-      this.update({
+      if (result.status !== 'ready' || !current()) return false
+      this.publishDocument(document, {
         embeds: Object.freeze(result.embeds.map(embed => Object.freeze({
           content: embed.content,
           ...(embed.depth === 0 ? {} : { depth: embed.depth }),
@@ -3157,25 +3699,37 @@ export class WorkbenchRouteController {
           ...(embed.parentPath === undefined ? {} : { parentPath: embed.parentPath }),
           target: Object.freeze({ ...embed.target }),
         }))),
-        warnings: Object.freeze([...this.snapshot.warnings, ...result.warnings].slice(-32)),
       })
+      if (result.warnings.length) this.update({ warnings: Object.freeze([...this.snapshot.warnings, ...result.warnings].slice(-32)) })
       return true
     } catch {
       return false
+    } finally {
+      if (document.embedsAbort === abort) {
+        document.embedsAbort = undefined
+        // Coalesce edits while a read is pending into one read of the latest source.
+        if (this.documentCurrent(document) && (document.epoch !== epoch || document.state.revision !== revision)
+          && this.shellSession.groups.some(group => group.tabs.some(tab => tab.path === sourcePath))) void this.loadEmbeds(document)
+      }
     }
   }
 
   async hydrateBaseRows(basePath: string): Promise<boolean> {
     const vault = this.snapshot.vault
-    if (vault === null || this.snapshot.path !== basePath || this.snapshot.documentKind !== 'base') return false
+    const document = vault && this.documents.get(this.documentKey(vault, basePath))
+    if (!vault || !document || document.state.documentKind !== 'base' || !this.documentCurrent(document)) return false
+    const epoch = document.epoch
+    const revision = document.state.revision
+    document.baseAbort?.abort()
+    const abort = new AbortController()
+    document.baseAbort = abort
     const entries = this.snapshot.entries.filter((entry): entry is Extract<VaultTreeEntry, { kind: 'document' }> => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path)).slice(0, 2_000)
-    const operation = this.nextOperation()
     const files: BaseHydratedFile[] = []
     try {
       for (let index = 0; index < entries.length; index += 8) {
         const batch = entries.slice(index, index + 8)
-        const opened = await Promise.all(batch.map(entry => this.remote.tocktutorWorkbench.openDocument(entry.path, vault, operation.signal).then(remoteValue)))
-        if (!this.current(operation.id, vault) || this.snapshot.path !== basePath) return false
+        const opened = await Promise.all(batch.map(entry => this.remote.tocktutorWorkbench.openDocument(entry.path, vault, abort.signal).then(remoteValue)))
+        if (!this.documentCurrent(document, epoch) || document.state.revision !== revision || abort.signal.aborted) return false
         for (let offset = 0; offset < opened.length; offset += 1) {
           const document = opened[offset]!
           const entry = batch[offset]!
@@ -3183,11 +3737,11 @@ export class WorkbenchRouteController {
           files.push({ createdAt: entry.createdAt, modifiedAt: entry.modifiedAt, path: entry.path, revision: document.revision, sizeBytes: entry.size, source: document.content })
         }
       }
-      this.update({ baseFiles: Object.freeze(files.map(file => Object.freeze({ ...file }))) })
+      this.publishDocument(document, { baseFiles: Object.freeze(files.map(file => Object.freeze({ ...file }))) })
       return true
     } catch {
       return false
-    }
+    } finally { if (document.baseAbort === abort) document.baseAbort = undefined }
   }
 
   async applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> {
@@ -3307,67 +3861,227 @@ export class WorkbenchRouteController {
     return false
   }
 
+  async prepareNoteMerge(destinationPath: string, callerSignal: AbortSignal): Promise<PreparedNoteMerge> {
+    callerSignal.throwIfAborted()
+    const vault = this.snapshot.vault, sourcePath = this.snapshot.path
+    if (!vault || !sourcePath || this.snapshot.phase !== 'ready' || this.disposed
+      || !isSafeVaultRelativePath(destinationPath) || !/\.(?:md|markdown)$/iu.test(sourcePath) || !/\.(?:md|markdown)$/iu.test(destinationPath)
+      || sourcePath.normalize('NFC').toLowerCase() === destinationPath.normalize('NFC').toLowerCase()) throw new Error('Choose two distinct Markdown notes in the current vault.')
+    const read = this.remote.tocktutorWorkbench.previewMergeLinks
+    if (!read) throw new Error('Merge preview is unavailable.')
+    const pane = this.snapshot.focusedPaneId, lifetime = this.paneLifetimeFor(pane), operation = this.nextOperation()
+    const invalid = new AbortController(), signal = AbortSignal.any([callerSignal, operation.signal, invalid.signal])
+    const watched = new Map<RouteDocument, { epoch: number; revision?: string }>()
+    for (const path of [sourcePath, destinationPath]) {
+      const document = this.documents.get(this.documentKey(vault, path))
+      if (document) watched.set(document, { epoch: document.epoch })
+    }
+    let saved: OpenDocumentResult[] = []
+    const current = (): boolean => this.current(operation.id, vault) && this.snapshot.phase === 'ready'
+      && this.snapshot.focusedPaneId === pane && this.paneLifetimeFor(pane) === lifetime && this.snapshot.path === sourcePath
+      && [...watched].every(([document, captured]) => this.documents.get(document.key) === document && document.epoch === captured.epoch
+        && (captured.revision === undefined || (document.state.saveStatus === 'saved' && document.state.revision === captured.revision)))
+      && saved.every(opened => {
+        const document = this.documents.get(this.documentKey(vault, opened.path))
+        return !document || (document.state.saveStatus === 'saved' && document.state.revision === opened.revision && document.state.source === opened.content)
+      })
+    const check = (): void => { if (!current()) invalid.abort(new Error('The notes or their view changed. Create a new merge review.')); signal.throwIfAborted() }
+    const unsubscribe = this.subscribe(() => { if (!current()) invalid.abort(new Error('The notes or their view changed. Create a new merge review.')) })
+    signal.addEventListener('abort', () => {
+      unsubscribe()
+      if (this.mergeReviewAbort === invalid) this.mergeReviewAbort = null
+    }, { once: true })
+    try {
+      check()
+      for (const document of watched.keys()) {
+        if (!await this.saveDocumentRecord(document)) throw new Error('Save both notes before reviewing their merge.')
+        check()
+      }
+      // Arm after owned draft saves; from this point the full inventory must stay current.
+      this.mergeReviewAbort = invalid
+      const opened = await Promise.all([sourcePath, destinationPath].map(path => this.remote.tocktutorWorkbench.openDocument(path, vault, signal).then(remoteValue)))
+      check()
+      if (opened.some((document, index) => document.path !== [sourcePath, destinationPath][index] || document.generation !== vault.generation)) throw new Error('The merge documents changed while being read.')
+      const source = Object.freeze({ ...opened[0]! }), destination = Object.freeze({ ...opened[1]! })
+      saved = [source, destination]
+      check()
+      let approved: { preview: NoteMergePreview; id: string } | null = null
+      const gateway = this.remote.tocktutorWorkbench
+      return { source, destination, signal,
+        ...(gateway.prepareMerge && gateway.applyMerge ? { apply: async (preview: NoteMergePreview, applySignal: AbortSignal) => {
+          check(); applySignal.throwIfAborted()
+          if (!approved || approved.preview !== preview || this.pendingMerge) throw new Error('Create a new merge preview before confirming.')
+          const id = approved.id; approved = null
+          const pending = { vault, paths: new Set([sourcePath, destinationPath, ...preview.plan.updates.map(update => update.path)]) }
+          unsubscribe(); this.mergeReviewAbort = null; this.pendingMerge = pending
+          let sourceReconciled = false
+          try {
+            const result = remoteValue(await gateway.applyMerge!.call(gateway, { id, expectedVault: vault, confirmed: true }, AbortSignal.any([operation.signal, applySignal])))
+            if (result.id !== id || result.generation !== vault.generation || result.sourcePath !== sourcePath || result.destinationPath !== destinationPath) throw new Error('The merge returned an invalid result. Check Merge Recovery.')
+            if (this.current(operation.id, vault)) {
+              if (result.status === 'applied' && result.sourceDisposition === 'trash') {
+                const original = this.documents.get(this.documentKey(vault, sourcePath))
+                if (!original || original.state.saveStatus === 'saved') {
+                  this.shellSession = mergeNoteTabPath(this.shellSession, sourcePath, destinationPath)
+                  this.workspaces = this.workspaces.map(workspace => ({ ...workspace, session: mergeNoteTabPath(workspace.session, sourcePath, destinationPath) }))
+                  this.bookmarks = remapBookmarks(this.bookmarks, sourcePath, destinationPath)
+                  if (this.storage && !saveBookmarks(this.storage, vault.id, this.bookmarks)) this.update({ message: 'Merge applied, but bookmarks could not be saved.' })
+                  for (const history of [this.historyBack, this.historyForward]) for (let index = 0; index < history.length; index++) if (history[index] === sourcePath) history[index] = destinationPath
+                  this.syncShell()
+                  sourceReconciled = true
+                  await this.select(destinationPath, true, undefined, false, false, true)
+                }
+              }
+              if (sameVault(this.snapshot.vault, vault)) this.update({ ...(result.status === 'recovery-required' ? { mergeRecoveryPending: true } : {}), message: result.status === 'applied' ? 'Merge applied. Originals remain available in Merge Recovery.' : 'Merge interrupted. Open Merge Recovery to restore originals as new notes.' })
+            }
+            return result
+          } catch (error) {
+            if (sameVault(this.snapshot.vault, vault)) this.update({ message: 'Merge did not finish. Check Merge Recovery before trying again.' })
+            throw error
+          } finally {
+            if (this.pendingMerge === pending) this.pendingMerge = null
+            if (sameVault(this.snapshot.vault, vault)) {
+              const refreshed = await this.refreshTree(vault)
+              if (sameVault(this.snapshot.vault, vault)) {
+                if (!sourceReconciled && this.documents.has(this.documentKey(vault, sourcePath))) {
+                  if (refreshed && this.treeComplete) {
+                    if (!this.snapshot.entries.some(entry => entry.kind === 'document' && entry.path === sourcePath)) this.invalidateLinkedPath(sourcePath)
+                  } else {
+                    // A bounded tree cannot prove absence; probe without replacing a local draft.
+                    try { remoteValue(await gateway.openDocument(sourcePath, vault, this.operationAbort?.signal)) }
+                    catch (error) {
+                      if (error instanceof RemoteCallError && error.code === 'not-found' && sameVault(this.snapshot.vault, vault)) this.invalidateLinkedPath(sourcePath)
+                    }
+                  }
+                }
+                if (sameVault(this.snapshot.vault, vault)) for (const path of pending.paths) if (this.documents.has(this.documentKey(vault, path)) && !(path === sourcePath && sourceReconciled)) void this.loadPaneDocument(vault, path, true, this.operation)
+              }
+            }
+          }
+        } } : {}), preview: async (options, requestSignal) => {
+        approved = null
+        check()
+        const previewSignal = AbortSignal.any([signal, requestSignal])
+        const result = await previewNoteMerge({ ...options, source, destination, expectedVault: vault }, async (request, readSignal) => {
+          check()
+          const page = remoteValue(await read.call(this.remote.tocktutorWorkbench, request, readSignal))
+          check()
+          return page
+        }, previewSignal)
+        check()
+        for (const update of result.plan.updates) {
+          const document = this.documents.get(this.documentKey(vault, update.path))
+          if (!document) continue
+          if (!update.revision || document.state.saveStatus !== 'saved' || document.state.revision !== update.revision) throw new Error(`Save or reload ${update.path} before reviewing the merge.`)
+          watched.set(document, { epoch: document.epoch, revision: update.revision })
+        }
+        if (gateway.prepareMerge && (!result.plan.requiresKeepSource || result.sourceDisposition === 'keep')) {
+          const grant = remoteValue(await gateway.prepareMerge.call(gateway, { ...result.request, fingerprint: result.plan.fingerprint!, sourceDisposition: result.sourceDisposition, sourceContent: result.sourceContent }, previewSignal))
+          check(); previewSignal.throwIfAborted()
+          if (grant.generation !== vault.generation) throw new Error('The merge review changed.')
+          approved = { preview: result, id: grant.id }
+        }
+        return result
+      } }
+    } catch (error) {
+      invalid.abort(error)
+      unsubscribe()
+      throw error
+    }
+  }
+
+  async listMergeRecovery(signal: AbortSignal, cursor?: string): Promise<import('./types.ts').MergeListResult> {
+    const vault = this.snapshot.vault, list = this.remote.tocktutorWorkbench.listMerges
+    if (!vault || !list) throw new Error('Merge Recovery is unavailable.')
+    const result = remoteValue(await list.call(this.remote.tocktutorWorkbench, { expectedVault: vault, ...(cursor ? { cursor } : {}) }, signal))
+    if (!sameVault(this.snapshot.vault, vault) || result.generation !== vault.generation) throw new Error('The vault changed.')
+    // A partial page cannot prove that all retained journals are settled.
+    this.update({ mergeRecoveryPending: result.merges.some(merge => merge.status === 'recovery-required') || result.cursor !== undefined || (cursor !== undefined && this.snapshot.mergeRecoveryPending === true) })
+    return result
+  }
+
+  async recoverNoteMerge(id: string, signal: AbortSignal): Promise<import('./types.ts').MergeResult> {
+    const vault = this.snapshot.vault, recover = this.remote.tocktutorWorkbench.recoverMerge
+    if (!vault || !recover) throw new Error('Merge Recovery is unavailable.')
+    const result = remoteValue(await recover.call(this.remote.tocktutorWorkbench, { id, expectedVault: vault }, signal))
+    if (!sameVault(this.snapshot.vault, vault) || result.generation !== vault.generation) throw new Error('The vault changed.')
+    await this.refreshTree(vault, true)
+    await this.listMergeRecovery(signal)
+    return result
+  }
+
   save(): Promise<boolean> {
-    if (this.saving !== null) return this.saving
-    if (this.snapshot.saveStatus === 'saved') return Promise.resolve(true)
+    const document = this.activeDocument()
+    const pane = this.snapshot.focusedPaneId
+    const lifetime = this.paneLifetimeFor(pane)
+    return document ? this.saveDocumentRecord(document).then(saved => saved && !this.disposed
+      && this.activeDocument() === document && this.snapshot.focusedPaneId === pane && this.paneLifetimeFor(pane) === lifetime)
+      : Promise.resolve(this.snapshot.saveStatus === 'saved')
+  }
+
+  async saveAll(): Promise<boolean> {
     const vault = this.snapshot.vault
-    const path = this.snapshot.path
-    const revision = this.snapshot.revision
-    if (vault === null || path === null || revision === null) return Promise.resolve(false)
-    const source = this.snapshot.source
+    const pane = this.snapshot.focusedPaneId
+    const lifetime = this.paneLifetimeFor(pane)
+    const documents = [...this.documents.values()].map(document => ({ document, epoch: document.epoch }))
+    const results = await Promise.all(documents.map(({ document }) => this.saveDocumentRecord(document)))
+    return results.every(Boolean) && this.documents.size === documents.length
+      && documents.every(({ document, epoch }) => this.documents.get(document.key) === document && document.epoch === epoch && document.state.saveStatus === 'saved')
+      && !this.disposed && (vault === null ? this.snapshot.vault === null : sameVault(this.snapshot.vault, vault))
+      && this.snapshot.focusedPaneId === pane && this.paneLifetimeFor(pane) === lifetime
+  }
+
+  private saveDocumentRecord(document: RouteDocument): Promise<boolean> {
+    if (document.saving) return document.saving
+    if (document.state.saveStatus === 'saved') return Promise.resolve(true)
+    const { vault, path } = document
+    const revision = document.state.revision
+    if (revision == null) return Promise.resolve(false)
+    const source = document.state.source ?? ''
+    const epoch = document.epoch
     const abort = new AbortController()
-    this.saveAbort?.abort()
-    this.saveAbort = abort
-    if (this.snapshot.recoveryOpen === true) {
-      this.cancelRecoveryOperations()
-      this.update({ message: `Saving ${path}.`, saveStatus: 'saving', selectedSnapshot: null, snapshots: Object.freeze([]) })
-    } else {
-      this.update({ message: `Saving ${path}.`, saveStatus: 'saving' })
-    }
-    const request: SaveDocumentRequest = {
-      content: source,
-      expectedRevision: revision,
-      expectedVault: vault,
-      path,
-    }
-    this.saving = this.remote.tocktutorWorkbench.saveDocument(request, abort.signal)
-      .then(result => {
+    document.saveAbort = abort
+    document.state = { ...document.state, saveStatus: 'saving', message: `Saving ${path}.` }
+    if (this.activeDocument() === document) this.update(document.state)
+    else this.update({})
+    const flight = this.remote.tocktutorWorkbench.saveDocument({ content: source, expectedRevision: revision, expectedVault: vault, path }, abort.signal)
+      .then(async result => {
         const saved = remoteValue(result)
-        if (this.disposed || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== path) return false
-        if (saved.status !== 'saved' || saved.generation !== vault.generation || saved.path !== path) {
-          throw new RemoteCallError('invalid-result', 'The save response did not match the active note.')
-        }
-        const unchanged = this.snapshot.source === source
-        this.update({
-          draftRecovered: unchanged ? false : this.snapshot.draftRecovered === true,
-          message: unchanged ? `${path} saved.` : 'Newer changes remain unsaved.',
-          revision: saved.revision,
-          saveStatus: unchanged ? 'saved' : 'unsaved',
-        })
-        this.recordDirty(!unchanged)
+        if (saved.status !== 'saved' || saved.generation !== vault.generation || saved.path !== path) throw new Error('The save response did not match its document.')
+        if (this.documents.get(document.key) !== document) return false
+        const unchanged = document.epoch === epoch
+        document.state = { ...document.state, revision: saved.revision, saveStatus: unchanged ? 'saved' : 'unsaved',
+          draftRecovered: unchanged ? false : document.state.draftRecovered === true,
+          message: unchanged ? `${path} saved.` : 'Newer changes remain unsaved.' }
+        if (!this.disposed && this.activeDocument() === document) this.update(document.state)
         if (unchanged) {
-          if (this.draftTimer !== null) clearTimeout(this.draftTimer)
-          this.draftTimer = null
-          this.draftAbort?.abort()
-          this.draftAbort = null
-          void this.remote.tocktutorWorkbench.clearDraft({ expectedVault: vault, path }).catch(() => undefined)
+          if (document.draftTimer !== null) clearTimeout(document.draftTimer)
+          document.draftTimer = null
+          // Serialize recovery cleanup with draft writes, then re-check newer edits.
+          const cleanup = (document.draftFlight ?? Promise.resolve()).catch(() => undefined).then(async () => {
+            if (document.epoch !== epoch) return
+            remoteValue(await this.remote.tocktutorWorkbench.clearDraft({ expectedVault: vault, path }))
+          })
+          document.draftFlight = cleanup
+          await cleanup.catch(() => undefined)
+          if (document.draftFlight === cleanup) document.draftFlight = null
+        } else this.scheduleDocumentDraft(document)
+        if (!this.disposed && sameVault(this.snapshot.vault, vault)) {
+          if (this.activeDocument() === document) this.update(document.state)
+          this.markDocumentDirty(path, document.state.saveStatus !== 'saved')
+          this.refreshRelationships(vault)
         }
-        return unchanged
+        return unchanged && document.epoch === epoch
       })
       .catch(error => {
-        if (!this.disposed && !abort.signal.aborted && sameVault(this.snapshot.vault, vault) && this.snapshot.path === path) {
-          this.update({
-            message: this.failureMessage(error, `${path} could not be saved.`),
-            saveStatus: 'save-failed',
-          })
-        }
+        document.state = { ...document.state, saveStatus: 'save-failed', message: this.failureMessage(error, `${path} could not be saved.`) }
+        if (!this.disposed && this.activeDocument() === document) this.update(document.state)
+        else this.update({})
         return false
       })
-      .finally(() => {
-        if (this.saveAbort === abort) this.saveAbort = null
-        this.saving = null
-      })
-    return this.saving
+      .finally(() => { document.saving = null; document.saveAbort = null; this.pruneDocuments() })
+    document.saving = flight
+    return flight
   }
 
   private failureMessage(error: unknown, fallback: string): string {
@@ -3382,18 +4096,28 @@ export class WorkbenchRouteController {
 
   dispose(): Promise<void> {
     if (this.disposal !== null) return this.disposal
-    const flush = this.flushPendingDraft()
+    const flush = Promise.all([...this.documents.values()].map(document => document.saving)).then(() => this.flushPendingDraft())
     this.settlePendingDispatch('stale')
     if (this.searchTimer !== null) clearTimeout(this.searchTimer)
     this.searchTimer = null
     this.disposed = true
+    this.cancelTreeRefresh()
+    this.sidebarSearchAbort?.abort()
     this.dispatchRevision += 1
     this.operation += 1
     this.operationAbort?.abort()
     this.cancelRecoveryOperations()
     this.cancelEmbedOperation()
-    this.saveAbort?.abort()
-    if (this.draftAbort === null) this.draftTimer = null
+    for (const load of this.linkedLoads.values()) load.abort.abort()
+    this.linkedLoads.clear()
+    for (const load of this.documentLoads.values()) load.abort.abort()
+    for (const document of this.documents.values()) {
+      document.relationshipsAbort?.abort()
+      document.embedsAbort?.abort()
+      document.baseAbort?.abort()
+      if (document.draftTimer !== null) clearTimeout(document.draftTimer)
+      document.draftTimer = null
+    }
     this.eventDispose?.()
     this.listeners.clear()
     this.disposal = flush ?? Promise.resolve()
@@ -3402,10 +4126,24 @@ export class WorkbenchRouteController {
   }
 }
 
+export interface BookmarkDraft {
+  group: string | null
+  title: string
+}
+
 export interface TockTutorRouteViewProps {
+  paneController?: WorkbenchRouteController
+  paneOnly?: boolean
+  panePanel?: 'assistant' | WorkbenchUtilityView | null
+  onPanePanel?(panel: 'assistant' | WorkbenchUtilityView | null): void
+  onPaneReveal?(path: string): void
+  onSplitPane?(id: string, axis: 'horizontal' | 'vertical'): void
   assistantPanel?: ReactNode
   nativeActions?: ReactNode
-  onAddBookmark?(): void
+  nativeNoteActions?: TockTutorNativeNoteActions | null
+  onAddBookmark?(title?: string, group?: string | null): boolean | void
+  onEditBookmark?(id: string, title: string, group: string | null): boolean | void
+  onRevealFile?(): Promise<boolean> | boolean
   onAttachFiles?(files: FileList): void
   onActivateTab(paneId: string, path: string): void
   onApplyOrganization?(): void
@@ -3444,6 +4182,9 @@ export interface TockTutorRouteViewProps {
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onMode(mode: RouteEditorMode): void
   onMoveNote?(folder: string): Promise<boolean> | boolean
+  onPrepareNoteMerge?(path: string, signal: AbortSignal): Promise<PreparedNoteMerge>
+  onListMergeRecovery?(signal: AbortSignal, cursor?: string): Promise<import('./types.ts').MergeListResult>
+  onRecoverNoteMerge?(id: string, signal: AbortSignal): Promise<import('./types.ts').MergeResult>
   onNewNote?(): void
   onOpenBookmark?(id: string): void
   onOpenCommandPalette?(): void
@@ -3453,11 +4194,12 @@ export interface TockTutorRouteViewProps {
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenExternalUrl?(url: string): void
   onOpenSearch?(): void
+  onOpenSidebarSearch?(): void
   onPrepareOrganization?(): void
   onPreviewAttachment?(path: string): void
   onReadSnapshot?(id: string): void
   onRenameTitle?(title: string): Promise<boolean>
-  onRemoveBookmark?(id: string): void
+  onRemoveBookmark?(id: string): boolean | void
   onReopenClosedTab?(): void
   onRestoreSnapshot?(id: string): void
   onRestoreSnapshotOverwrite?(id: string): void
@@ -3552,6 +4294,110 @@ function NativeDispatchDialog(props: {
   )
 }
 
+function BookmarkDialog(props: {
+  bookmarks: readonly TockTutorBookmark[]
+  groups: readonly TockTutorBookmark[]
+  initialBookmarkId: string | null
+  mode: 'create' | 'edit'
+  onCancel(): void
+  onRemove(id: string): boolean | void
+  onSubmit(id: string | null, title: string, group: string | null): boolean | void
+  path: string
+}): ReactNode {
+  const initial = props.bookmarks.find(bookmark => bookmark.id === props.initialBookmarkId) ?? props.bookmarks[0]
+  const [selectedId, setSelectedId] = useState<string | null>(initial?.id ?? null)
+  const [title, setTitle] = useState(initial?.title ?? noteTitle(props.path))
+  const [groupId, setGroupId] = useState(() => {
+    const group = initial === undefined ? null : props.groups.find(candidate => candidate.kind === 'group' && candidate.children.some(child => child.id === initial.id))
+    return group?.id ?? ''
+  })
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  const selected = props.bookmarks.find(bookmark => bookmark.id === selectedId)
+  const selectBookmark = (id: string): void => {
+    const next = props.bookmarks.find(bookmark => bookmark.id === id)
+    if (next === undefined) return
+    setSelectedId(next.id)
+    setTitle(next.title)
+    setGroupId(props.groups.find(group => group.kind === 'group' && group.children.some(child => child.id === next.id))?.id ?? '')
+    setError(null)
+  }
+  const submit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    if (pending) return
+    const normalizedTitle = title.trim()
+    if (normalizedTitle.length === 0 || normalizedTitle.length > 200) {
+      setError('Enter a bookmark title under 200 characters.')
+      return
+    }
+    const group = props.groups.find(candidate => candidate.kind === 'group' && candidate.id === groupId)
+    setPending(true)
+    setError(null)
+    void Promise.resolve(props.onSubmit(selected?.id ?? null, normalizedTitle, group?.id ?? null))
+      .then(success => {
+        if (success === false) setError('The bookmark could not be saved.')
+        else props.onCancel()
+      }, () => { setError('The bookmark could not be saved.') })
+      .finally(() => { setPending(false) })
+  }
+  const remove = (): void => {
+    if (pending || selectedId === null) return
+    setPending(true)
+    setError(null)
+    void Promise.resolve(props.onRemove(selectedId))
+      .then(success => {
+        if (success === false) setError('The bookmark could not be removed.')
+        else props.onCancel()
+      }, () => { setError('The bookmark could not be removed.') })
+      .finally(() => { setPending(false) })
+  }
+  const label = props.mode === 'create' ? 'Bookmark Note' : 'Edit Bookmark'
+  return (
+    <Dialog open onOpenChange={open => { if (!open && !pending) props.onCancel() }}>
+      <DialogContent
+        unstyled
+        className="fixed top-1/2 left-1/2 z-[2147483647] grid w-[calc(100%-48px)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 gap-3.5 overflow-hidden rounded-lg border border-[var(--tt-border)] bg-[var(--tt-panel)] p-5 text-[var(--tt-text)] shadow-xl [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--dsw-alias-label-primary,#27272a)_28%,transparent)]"
+        showCloseButton={false}
+      >
+        <form className="grid gap-3" onSubmit={submit}>
+          <DialogTitle className="m-0 text-[17px]">{label}</DialogTitle>
+          {props.bookmarks.length > 1 && (
+            <Label unstyled className="grid gap-1.5 text-sm font-[650]">
+              Bookmark
+              <NativeSelect unstyled aria-label="Bookmark" disabled={pending} onChange={event => { selectBookmark(event.target.value) }} value={selectedId ?? ''}>
+                {props.bookmarks.map(bookmark => <NativeSelectOption key={bookmark.id} value={bookmark.id}>{bookmark.title}</NativeSelectOption>)}
+              </NativeSelect>
+            </Label>
+          )}
+          <Label unstyled className="grid gap-1.5 text-sm font-[650]">
+            Path
+            <Input unstyled aria-label="Bookmark Path" disabled value={props.path} />
+          </Label>
+          <Label unstyled className="grid gap-1.5 text-sm font-[650]">
+            Title
+            <Input unstyled aria-label="Bookmark Title" autoFocus disabled={pending} maxLength={200} onChange={event => { setTitle(event.target.value); setError(null) }} value={title} />
+          </Label>
+          <Label unstyled className="grid gap-1.5 text-sm font-[650]">
+            Bookmark Group
+            <NativeSelect unstyled aria-label="Bookmark Group" disabled={pending} onChange={event => { setGroupId(event.target.value); setError(null) }} value={groupId}>
+              <NativeSelectOption value="">No Group</NativeSelectOption>
+              {props.groups.filter((group): group is Extract<TockTutorBookmark, { kind: 'group' }> => group.kind === 'group').map(group => <NativeSelectOption key={group.id} value={group.id}>{group.title}</NativeSelectOption>)}
+            </NativeSelect>
+          </Label>
+          {error !== null && <p className="m-0 text-xs text-[var(--dsw-alias-state-error-primary,#dc2626)]" role="alert">{error}</p>}
+          <div className="flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
+            {props.mode === 'edit' && <Button unstyled disabled={pending} onClick={remove} type="button">Remove</Button>}
+            <span className="flex-1" />
+            <Button unstyled disabled={pending} onClick={props.onCancel} type="button">Cancel</Button>
+            <Button unstyled disabled={pending} type="submit">Save</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 const SEARCH_OPTIONS = [
   { description: 'match path of the file', label: 'path:', value: 'path:' },
   { description: 'match file name', label: 'file:', value: 'file:' },
@@ -3568,11 +4414,12 @@ const SEARCH_OPTIONS = [
   { description: 'match property', label: '[property]', value: '[]' },
 ] as const
 
-function NotePathDialog(props: {
+function NoteValueDialog(props: {
   initialValue: string
-  kind: 'move' | 'rename'
+  kind: 'move' | 'rename' | 'property'
   onCancel(): void
   onSubmit(value: string): Promise<boolean> | boolean
+  validate?(value: string): string | null
 }): ReactNode {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -3582,18 +4429,26 @@ function NotePathDialog(props: {
     setError(null)
   }, [props.initialValue])
   const rename = props.kind === 'rename'
-  const label = rename ? 'Rename Note' : 'Move Note'
+  const property = props.kind === 'property'
+  const label = property ? 'Add Property' : rename ? 'Rename Note' : 'Move Note'
+  const fieldLabel = property ? 'Property Name' : rename ? 'Note Title' : 'Note Folder'
+  const failure = property ? 'That property could not be added.' : `The note could not be ${rename ? 'renamed' : 'moved'}.`
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault()
     if (pending) return
+    const validationError = props.validate?.(value)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
     setPending(true)
     setError(null)
     void Promise.resolve()
       .then(() => props.onSubmit(value))
       .then(success => {
         if (success === true) props.onCancel()
-        else setError(`The note could not be ${rename ? 'renamed' : 'moved'}.`)
-      }, () => { setError(`The note could not be ${rename ? 'renamed' : 'moved'}.`) })
+        else setError(failure)
+      }, () => { setError(failure) })
       .finally(() => { setPending(false) })
   }
   return (
@@ -3607,19 +4462,19 @@ function NotePathDialog(props: {
         <form className="grid gap-3" onSubmit={submit}>
           <DialogTitle className="m-0 text-[17px]">{label}</DialogTitle>
           <Label unstyled className="grid gap-1.5 text-sm font-[650]">
-            {rename ? 'Note Title' : 'Note Folder'}
+            {fieldLabel}
             <Input
               unstyled
-              aria-label={rename ? 'Note Title' : 'Note Folder'}
+              aria-label={fieldLabel}
               autoFocus
               disabled={pending}
               maxLength={4_096}
               onChange={event => { setValue(event.target.value); setError(null) }}
-              placeholder={rename ? undefined : 'Folder/Subfolder (optional)'}
+              placeholder={props.kind === 'move' ? 'Folder/Subfolder (optional)' : undefined}
               value={value}
             />
           </Label>
-          {!rename && <p className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Leave the folder empty to move the note to the vault root.</p>}
+          {props.kind === 'move' && <p className="m-0 text-xs text-[var(--dsw-alias-label-secondary,#71717a)]">Leave the folder empty to move the note to the vault root.</p>}
           {error !== null && <p className="m-0 text-xs text-[var(--dsw-alias-state-error-primary,#dc2626)]" role="alert">{error}</p>}
           <div className="flex justify-end gap-2 [&_button]:cursor-pointer [&_button]:rounded-[5px] [&_button]:border [&_button]:border-[var(--tt-border)] [&_button]:bg-[var(--tt-panel)] [&_button]:px-2.5 [&_button]:py-[7px] [&_button]:text-inherit">
             <Button unstyled disabled={pending} onClick={props.onCancel} type="button">Cancel</Button>
@@ -3689,6 +4544,61 @@ function highlightSearchText(text: string, query: string): ReactNode {
   const escaped = needle.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
   const parts = text.split(new RegExp(`(${escaped})`, 'iu'))
   return parts.map((part, index) => index % 2 === 0 ? part : <mark className="rounded-sm bg-[var(--tt-selected)] text-inherit" key={`${part}:${String(index)}`}>{part}</mark>)
+}
+
+function SidebarSearch(props: {
+  snapshot: WorkbenchRouteSnapshot
+  onChange: ((query: string) => void) | undefined
+  onRun: (() => void) | undefined
+  onLoadMore: (() => void) | undefined
+  onSelect: ((match: VaultSearchMatch, newTab: boolean) => Promise<boolean> | boolean | void) | undefined
+}): ReactNode {
+  const { snapshot } = props
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => { input.current?.focus() }, [])
+  const hasQuery = snapshot.searchQuery.trim() !== ''
+  return <section aria-label="Search Vault Results" className="flex min-h-0 flex-col gap-3 px-1.5 py-2 [&_mark]:bg-[color-mix(in_srgb,var(--tt-accent)_30%,transparent)]">
+    <form className="flex items-center gap-1" onSubmit={event => { event.preventDefault(); props.onRun?.() }} role="search">
+      <Input unstyled ref={input} aria-label="Search Vault Query" className="min-w-0 flex-1 rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)] px-2 py-1.5 text-sm outline-none focus-visible:border-[var(--tt-accent)] [&::-webkit-search-cancel-button]:appearance-none" disabled={snapshot.phase !== 'ready'} maxLength={1000} onChange={event => { props.onChange?.(event.target.value) }} placeholder="Search vault…" type="search" value={snapshot.searchQuery} />
+      <Button unstyled aria-label="Clear Vault Search" className="shrink-0 rounded border-0 bg-transparent p-1 text-[var(--tt-muted)] hover:bg-[var(--tt-selected)]" disabled={!hasQuery} onClick={() => { props.onChange?.(''); input.current?.focus() }} title="Clear search" type="button"><X aria-hidden="true" className="size-4" /></Button>
+    </form>
+    <SidebarSearchResults snapshot={snapshot} onLoadMore={props.onLoadMore} onSelect={props.onSelect} />
+  </section>
+}
+
+function SidebarSearchResults(props: {
+  snapshot: WorkbenchRouteSnapshot
+  onLoadMore: (() => void) | undefined
+  onSelect: ((match: VaultSearchMatch, newTab: boolean) => Promise<boolean> | boolean | void) | undefined
+}): ReactNode {
+  const { snapshot } = props
+  const matches = snapshot.searchMatches ?? []
+  const groups = new Map<string, VaultSearchMatch[]>()
+  for (const match of matches) {
+    const group = groups.get(match.path) ?? []
+    group.push(match)
+    groups.set(match.path, group)
+  }
+  return snapshot.searchLoading ? <Alert unstyled role="status" className="text-xs text-[var(--tt-muted)]">Searching notes…</Alert>
+      : snapshot.searchError ? <Alert unstyled role="alert" className="text-xs text-[var(--tt-muted)]">{snapshot.searchError}</Alert>
+        : snapshot.searchQuery.trim() === '' ? <p className="m-0 text-xs text-[var(--tt-muted)]">Search across your vault. Open a match to read it alongside these results.</p>
+          : <>
+            <p aria-live="polite" className="m-0 text-xs text-[var(--tt-muted)]">{groups.size} {groups.size === 1 ? 'note' : 'notes'} · {matches.length} {matches.length === 1 ? 'match' : 'matches'}</p>
+            {groups.size === 0 ? <p className="m-0 text-sm text-[var(--tt-muted)]">No matches found.</p> : <div className="flex flex-col gap-3">
+              {[...groups].sort(([a], [b]) => a.localeCompare(b)).map(([path, group]) => <details key={path} open className="group">
+                <summary className="cursor-pointer rounded px-1 py-1 text-sm hover:bg-[var(--tt-selected)] focus-visible:outline-[var(--tt-accent)]" title={path}>
+                  <span className="inline-flex max-w-[calc(100%-18px)] items-center gap-2 align-middle"><span className="truncate">{noteTitle(path)}</span><span className="text-xs text-[var(--tt-muted)]">{group.length}</span></span>
+                </summary>
+                {path.includes('/') && <p className="my-0.5 truncate px-2 text-[11px] text-[var(--tt-muted)]" title={path}>{path.slice(0, path.lastIndexOf('/'))}</p>}
+                <div className="overflow-hidden rounded-md border border-[var(--tt-border)] bg-[var(--tt-panel)]">
+                  {group.map(match => <Button unstyled aria-label={`${path}, ${match.line === null ? 'title' : `line ${String(match.line)}`}: ${match.preview}`} className="block w-full border-0 border-b border-solid border-[var(--tt-border)] bg-transparent px-2 py-2 text-left text-xs leading-relaxed last:border-b-0 hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)] focus-visible:outline-[var(--tt-accent)]" key={match.id ?? `${match.path}:${match.kind}:${String(match.line)}:${match.preview}`} onClick={event => { void props.onSelect?.(match, event.metaKey || event.ctrlKey) }} type="button">
+                    {highlightSearchText(match.preview, snapshot.searchQuery)}
+                  </Button>)}
+                </div>
+              </details>)}
+            </div>}
+            {snapshot.searchCursor && <Button unstyled className="rounded-md border border-[var(--tt-border)] p-2 text-xs" onClick={props.onLoadMore} type="button">Load More Results</Button>}
+          </>
 }
 
 function NoteSearchResultList(props: {
@@ -4033,7 +4943,7 @@ function WorkbenchCommandPalette(props: {
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
         unstyled
-        className="fixed top-[42%] left-1/2 -ml-[5px] z-[2147483647] grid h-[520px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[640px] -translate-x-1/2 -translate-y-[42%] grid-rows-[60px_minmax(0,1fr)_44px] overflow-hidden rounded-[12px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
+        className="fixed top-[42%] left-1/2 -ml-[5px] z-[2147483647] grid h-[520px] max-h-[calc(100vh-48px)] w-[calc(100%-32px)] max-w-[640px] -translate-x-1/2 -translate-y-[42%] grid-rows-[60px_minmax(0,1fr)_32px] overflow-hidden rounded-[12px] border border-border bg-[var(--tt-panel)] text-[var(--tt-text)] shadow-xl outline-none [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--tockteam-shell-chrome,var(--dsw-alias-bg-base,#fff))] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)]"
         onCloseAutoFocus={props.onCloseAutoFocus}
         onOpenAutoFocus={props.onOpenAutoFocus}
         overlayClassName="z-[2147483646] !bg-transparent"
@@ -4076,9 +4986,10 @@ function WorkbenchCommandPalette(props: {
               </CommandList>
             </section>
           </div>
-          <footer className="flex items-center gap-5 border-t border-[var(--tt-border)] px-4 text-xs text-[var(--tt-muted)]">
-            <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Enter</kbd> Run</span>
-            <span className="flex items-center gap-1.5"><kbd className="rounded border border-[var(--tt-border)] bg-[var(--tt-panel)] px-1.5 py-0.5 font-[inherit] text-[var(--tt-text)] shadow-sm">Esc</kbd> Dismiss</span>
+          <footer className="flex items-center justify-center gap-3 px-3 text-xs text-[var(--tt-muted)]">
+            <span className="flex items-center gap-1"><kbd aria-label="Up and Down Arrows" className="font-[inherit] font-semibold">↑↓</kbd> to navigate</span>
+            <span className="flex items-center gap-1"><kbd aria-label="Enter" className="font-[inherit] font-semibold">↵</kbd> to use</span>
+            <span className="flex items-center gap-1"><kbd aria-label="Escape" className="font-[inherit] font-semibold">esc</kbd> to dismiss</span>
           </footer>
         </Command>
       </DialogContent>
@@ -4094,6 +5005,42 @@ function noteTitle(path: string | null): string {
   return path === null ? 'TockTutor' : fileName(path).replace(/\.(?:base|canvas|markdown|md)$/iu, '')
 }
 
+function bookmarkIds(bookmarks: readonly TockTutorBookmark[]): Set<string> {
+  const ids = new Set<string>()
+  for (const bookmark of bookmarks) {
+    ids.add(bookmark.id)
+    if (bookmark.kind === 'group') for (const child of bookmark.children) ids.add(child.id)
+  }
+  return ids
+}
+
+function bookmarkPath(bookmark: TockTutorBookmark): string | null {
+  return 'path' in bookmark ? bookmark.path : null
+}
+
+function hasNoteBookmark(bookmarks: readonly TockTutorBookmark[], path: string): boolean {
+  return bookmarks.some(bookmark => bookmark.kind === 'group'
+    ? bookmark.children.some(child => bookmarkPath(child) === path && child.kind === 'note')
+    : bookmark.kind === 'note' && bookmark.path === path)
+}
+
+function noteBookmarksForPath(bookmarks: readonly TockTutorBookmark[], path: string | null): TockTutorBookmark[] {
+  if (path === null) return []
+  const matches: TockTutorBookmark[] = []
+  for (const bookmark of bookmarks) {
+    if (bookmark.kind === 'group') {
+      matches.push(...bookmark.children.filter(child => child.kind === 'note' && child.path === path))
+    } else if (bookmark.kind === 'note' && bookmark.path === path) {
+      matches.push(bookmark)
+    }
+  }
+  return matches
+}
+
+function bookmarkGroups(bookmarks: readonly TockTutorBookmark[]): TockTutorBookmark[] {
+  return bookmarks.filter(bookmark => bookmark.kind === 'group')
+}
+
 function searchProvenanceLabel(provenance: NonNullable<VaultSearchMatch['provenance']>): string {
   return provenance === 'frontmatter' ? 'Frontmatter' : `${provenance.slice(0, 1).toUpperCase()}${provenance.slice(1)}`
 }
@@ -4103,6 +5050,7 @@ function TreeEntries(props: {
   onSelect(path: string): void
   path: string | null
   prefix?: string
+  revealPath: string | null | undefined
 }): ReactNode {
   const prefix = props.prefix ?? ''
   const children = props.entries
@@ -4115,15 +5063,13 @@ function TreeEntries(props: {
     })
   return children.map(entry => entry.kind === 'directory' ? (
     <li className="tocktutor-tree-directory" key={entry.path}>
-      <details className="group" open>
-        <summary className="tocktutor-tree-row grid min-h-8 w-full cursor-pointer list-none grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] [&::-webkit-details-marker]:hidden [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:first-child]:transition-transform group-open:[&>svg:first-child]:rotate-90 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80" title={entry.path}>
+      <details className="group/folder" data-tree-directory={entry.path} open>
+        <summary className="tocktutor-tree-row grid min-h-7 w-full cursor-pointer list-none grid-cols-[12px_minmax(0,1fr)] items-center gap-[7px] rounded bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [&::-webkit-details-marker]:hidden [&>svg]:size-3 group-open/folder:[&>svg]:rotate-90" title={entry.path}>
           <WorkbenchGlyph kind="collapse" />
-          <WorkbenchGlyph kind="folder" />
-          <span>{fileName(entry.path)}</span>
-          <WorkbenchGlyph kind="more" />
+          <span className="truncate">{fileName(entry.path)}</span>
         </summary>
-        <ul className="m-0 list-none p-0 pl-4">
-          <TreeEntries entries={props.entries} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} />
+        <ul className="my-0 mr-0 ml-[11px] list-none border-l border-[var(--tt-border)] py-0 pr-0 pl-1">
+          <TreeEntries entries={props.entries} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} revealPath={props.revealPath} />
         </ul>
       </details>
     </li>
@@ -4131,54 +5077,255 @@ function TreeEntries(props: {
     <li key={entry.path}>
       <Button unstyled
         aria-current={entry.path === props.path ? 'page' : undefined}
-        className="tocktutor-tree-row grid min-h-8 w-full grid-cols-[12px_16px_minmax(0,1fr)_16px] items-center gap-[7px] overflow-hidden rounded border-0 bg-transparent px-[5px] py-1 text-left font-medium text-inherit hover:bg-[color-mix(in_srgb,var(--tt-text)_5%,transparent)] aria-current:bg-[var(--tt-selected)] aria-current:[&>svg:last-child]:text-[var(--tt-text)] [&>span:not(.tocktutor-tree-indent)]:truncate [&>svg:first-child]:size-3 [&>svg:last-child]:ml-auto [&>svg:last-child]:size-3.5 [&>svg:last-child]:text-[var(--tt-muted)] [&>svg:last-child]:opacity-80"
+        aria-label={entry.path}
+        data-tree-path={entry.path}
+        className="tocktutor-tree-row grid min-h-7 w-full grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-[7px] rounded border-0 bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] aria-[current=page]:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)]"
         onClick={() => { props.onSelect(entry.path) }}
         title={entry.path}
         type="button"
       >
         <span className="tocktutor-tree-indent w-3" />
-        <WorkbenchGlyph kind="document" />
-        <span>{fileName(entry.path)}</span>
-        <WorkbenchGlyph kind="more" />
+        <span className="truncate">{noteTitle(entry.path)}</span>
+        {/\.(?:base|canvas)$/iu.test(entry.path) && <span aria-hidden="true" className="text-[10px] font-medium tracking-wide text-[var(--tt-muted)]">{entry.path.split('.').at(-1)?.toUpperCase()}</span>}
       </Button>
     </li>
   ))
 }
 
-const NOTE_ACTION_CLASS = "min-h-7 w-full gap-2 rounded-[5px] px-2 py-1 text-[13px] text-inherit focus:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus:text-inherit data-[highlighted]:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[highlighted]:text-inherit [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate"
+const NOTE_SUBMENU_CLASS = "z-[1002] min-w-[196px] rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_[data-slot=dropdown-menu-item]]:h-[25px] [&_[data-slot=dropdown-menu-item]]:min-h-0 [&_[data-slot=dropdown-menu-item]]:py-0 [&_[data-slot=dropdown-menu-item]]:leading-[17px] [&_[data-slot=dropdown-menu-item]>svg]:size-4"
+
+const NOTE_ACTION_CLASS = "h-[25px] min-h-0 w-full gap-2 rounded-[5px] px-2 py-0 text-[13px] leading-[17px] text-inherit focus:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus:text-inherit data-[highlighted]:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[highlighted]:text-inherit [&>svg]:size-4 [&>svg]:shrink-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate"
+
+function NoteFindReplaceStrip(props: {
+  mode: 'find' | 'replace'
+  onClose(): void
+  onQueryChange(query: string): void
+  onRequest(action: EditorSearchAction, replacement?: string): void
+  onReplacementChange(replacement: string): void
+  query: string
+  replacement: string
+  state: EditorSearchState
+  transitionNotice?: string
+}): ReactNode {
+  const findInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { findInputRef.current?.focus() }, [props.mode])
+  const cappedSuffix = props.state.truncated ? '+' : ''
+  const count = props.state.current === null
+    ? props.state.total === 0 ? (props.query === '' ? 'Type to find' : 'No matches') : `${String(props.state.total)}${cappedSuffix} matches`
+    : `${String(props.state.current + 1)} / ${String(props.state.total)}${cappedSuffix}`
+  return (
+    <div aria-label={props.mode === 'replace' ? 'Find and Replace in Note' : 'Find in Note'} className="tocktutor-find-strip grid min-h-10 grid-cols-[minmax(120px,1fr)_auto_auto_minmax(0,auto)_auto] items-center gap-1.5 border-b border-[var(--tt-border)] bg-[var(--tt-panel)] px-2.5 py-1.5 text-xs" role="search">
+      <Input
+        aria-label="Find in Note"
+        autoFocus
+        className="h-7 min-w-0 rounded-[5px] border-[var(--tt-border)] bg-transparent px-2 text-xs"
+        maxLength={MAX_EDITOR_SEARCH_QUERY_LENGTH + 1}
+        onChange={event => { props.onQueryChange(event.currentTarget.value) }}
+        onKeyDown={event => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            props.onClose()
+          } else if (event.key === 'Enter') {
+            event.preventDefault()
+            props.onRequest(event.shiftKey ? 'previous' : 'next')
+          }
+        }}
+        placeholder="Find in note…"
+        ref={findInputRef}
+        type="search"
+        value={props.query}
+      />
+      <output aria-live="polite" className={`min-w-[4.5rem] text-center tabular-nums ${props.state.error === undefined && props.transitionNotice === undefined ? 'text-[var(--tt-muted)]' : 'text-[var(--dsw-alias-state-error-primary)]'}`} role={props.state.error === undefined && props.transitionNotice === undefined ? 'status' : 'alert'}>{props.transitionNotice ?? props.state.error ?? count}</output>
+      <div className="flex items-center gap-0.5">
+        <Button aria-label="Previous Match" className="size-7" disabled={props.state.total === 0} onClick={() => { props.onRequest('previous') }} size="icon-xs" type="button" variant="ghost"><ChevronLeft aria-hidden="true" /></Button>
+        <Button aria-label="Next Match" className="size-7" disabled={props.state.total === 0} onClick={() => { props.onRequest('next') }} size="icon-xs" type="button" variant="ghost"><ChevronRight aria-hidden="true" /></Button>
+      </div>
+      {props.mode === 'replace' ? (
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Input
+            aria-label="Replace in Note"
+            className="h-7 min-w-24 rounded-[5px] border-[var(--tt-border)] bg-transparent px-2 text-xs"
+            maxLength={100_000}
+            onChange={event => { props.onReplacementChange(event.currentTarget.value) }}
+            onKeyDown={event => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                event.stopPropagation()
+                props.onClose()
+              } else if (event.key === 'Enter') {
+                event.preventDefault()
+                props.onRequest('replace', props.replacement)
+              }
+            }}
+            placeholder="Replace with…"
+            value={props.replacement}
+          />
+          <Button className="h-7 px-2 text-xs" disabled={props.state.total === 0} onClick={() => { props.onRequest('replace', props.replacement) }} type="button" variant="outline">Replace</Button>
+          <Button className="h-7 px-2 text-xs" disabled={props.state.total === 0} onClick={() => { props.onRequest('replace-all', props.replacement) }} type="button" variant="outline">Replace All</Button>
+        </div>
+      ) : <span />}
+      <Button aria-label="Exit Find" className="size-7" onClick={props.onClose} size="icon-xs" type="button" variant="ghost"><X aria-hidden="true" /></Button>
+    </div>
+  )
+}
+
+function snapshotPalette(snapshot: WorkbenchRouteSnapshot): 'notes' | 'commands' | null {
+  if (snapshot.searchOpen && snapshot.searchPresentation !== 'sidebar') return 'notes'
+  return snapshot.commandPaletteOpen === true ? 'commands' : null
+}
+
+function boundPaneProps(props: TockTutorRouteViewProps, id: string): TockTutorRouteViewProps {
+  const controller = props.paneController!
+  const snapshot = controller.getPaneSnapshot(id)
+  const lifetime = controller.paneLifetimeFor(id)
+  const bound = { ...props, snapshot, nativeNoteActions: id === props.snapshot.focusedPaneId ? props.nativeNoteActions ?? null : null }
+  // Delayed editor/menu callbacks may act only for the exact focused view that rendered them.
+  const owns = (): boolean => {
+    const current = controller.getSnapshot()
+    return controller.paneLifetimeFor(id) === lifetime && current.focusedPaneId === id && current.path === snapshot.path && snapshot.vault !== null && sameVault(current.vault, snapshot.vault)
+  }
+  for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onCanvasChange', 'onBaseEdit', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery'] as const) {
+    const callback = props[name]
+    if (callback) Object.assign(bound, { [name]: (...args: never[]) => owns() ? (callback as (...args: never[]) => unknown)(...args) : false })
+  }
+  return { ...bound, onEdit: controller.bindPaneEdit(id), onSplitPane: (owner, axis) => { if (owns()) void controller.splitPane(owner, axis) } }
+}
 
 /** Semantic, authority-free view for the route state machine. */
 export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const { snapshot } = props
   const active = props.active !== false
+  const ownerLifetime = props.paneController?.paneLifetimeFor(snapshot.focusedPaneId)
   const previewLabel = snapshot.documentKind === 'canvas'
     ? 'Canvas'
     : snapshot.documentKind === 'base' ? 'Base' : 'Reading'
   const sourceLabel = snapshot.documentKind === 'canvas'
     ? 'Canvas Source'
     : snapshot.documentKind === 'base' ? 'Base Source' : 'Markdown Source'
-  const query = snapshot.searchQuery.trim().toLocaleLowerCase()
   const backlinkCount = snapshot.links?.backlinkDetails.length ?? 0
   const backlinkLabel = `${String(backlinkCount)} backlink${backlinkCount === 1 ? '' : 's'}`
-  const documents = snapshot.entries.filter(entry => entry.kind === 'document'
-    && supportedDocument(entry.path)
-    && (query === '' || entry.path.toLocaleLowerCase().includes(query)))
+  const documents = snapshot.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path))
   const focusedPane = snapshot.panes.find(pane => pane.id === snapshot.focusedPaneId)
-  const visibleTreeEntries = query === ''
-    ? snapshot.entries.filter(entry => entry.kind === 'directory'
-      || (entry.kind === 'document' && supportedDocument(entry.path)))
-    : snapshot.entries.filter(entry => entry.kind === 'directory'
-      ? documents.some(document => document.path.startsWith(`${entry.path}/`))
-      : documents.includes(entry))
-  const [panel, setPanel] = useState<'assistant' | WorkbenchUtilityView | null>(null)
-  const [noteAction, setNoteAction] = useState<'move' | 'rename' | null>(null)
+  const visibleTreeEntries = snapshot.entries.filter(entry => entry.kind === 'directory'
+    || (entry.kind === 'document' && supportedDocument(entry.path)))
+  const [localPanel, setLocalPanel] = useState<'assistant' | WorkbenchUtilityView | null>(null)
+  const panel = props.panePanel === undefined ? localPanel : props.panePanel
+  const setPanel = (value: typeof panel | ((current: typeof panel) => typeof panel)): void => {
+    const next = typeof value === 'function' ? value(panel) : value
+    if (props.onPanePanel) props.onPanePanel(next)
+    else setLocalPanel(next)
+  }
+  const [noteAction, setNoteAction] = useState<'move' | 'rename' | 'property' | null>(null)
+  const [bookmarkDialog, setBookmarkDialog] = useState<{ mode: 'create' } | { id: string; mode: 'edit' } | null>(null)
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergeRecoveryOpen, setMergeRecoveryOpen] = useState(false)
+  const [revealPath, setRevealPath] = useState<string | null>(null)
   const [paletteView, setPaletteView] = useState<'commands' | 'notes' | null>(null)
-  const visiblePalette = paletteView ?? (snapshot.searchOpen ? 'notes' : snapshot.commandPaletteOpen === true ? 'commands' : null)
+  const [sidebarSearch, setSidebarSearch] = useState(true)
+  const showSidebarSearch = sidebarSearch && snapshot.searchOpen && snapshot.searchPresentation === 'sidebar'
+  const visiblePalette = paletteView ?? snapshotPalette(snapshot)
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
   const [baseView, setBaseView] = useState<string | null>(null)
   const [baseSearches, setBaseSearches] = useState<Record<string, string>>({})
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  const [noteSearchMode, setNoteSearchMode] = useState<'find' | 'replace' | null>(null)
+  const [noteSearchQuery, setNoteSearchQuery] = useState('')
+  const [noteSearchReplacement, setNoteSearchReplacement] = useState('')
+  const [noteSearchState, setNoteSearchState] = useState<EditorSearchState>({ current: null, query: '', total: 0 })
+  type OwnedSearchRequest = { request: EditorSearchRequest; owner: string; query: string; mode: RouteEditorMode; source: string }
+  const [noteSearchRequest, setNoteSearchRequest] = useState<OwnedSearchRequest | null>(null)
+  const [noteSearchTransition, setNoteSearchTransition] = useState<string | undefined>(undefined)
+  const treeRef = useRef<HTMLElement>(null)
+  const noteSearchOwner = JSON.stringify([snapshot.vault, snapshot.focusedPaneId, snapshot.path])
+  const noteSearchOwnerRef = useRef(noteSearchOwner)
+  const noteSearchContextRef = useRef({ owner: noteSearchOwner, mode: snapshot.mode, query: noteSearchQuery, source: snapshot.source })
+  useLayoutEffect(() => {
+    noteSearchContextRef.current = { owner: noteSearchOwner, mode: snapshot.mode, query: noteSearchQuery, source: snapshot.source }
+  }, [noteSearchOwner, snapshot.mode, noteSearchQuery, snapshot.source])
+  const consumedNoteSearchIdRef = useRef<number | null>(null)
+  const noteSearchRequestIdRef = useRef(0)
+  const pendingNoteSearchRequestRef = useRef<OwnedSearchRequest | null>(null)
+  const lastEditingModeRef = useRef<RouteEditorMode>(snapshot.mode === 'source'
+    ? 'source'
+    : snapshot.mode === 'live-preview'
+      ? 'live-preview'
+      : snapshot.settings?.defaultEditingMode === 'source' ? 'source' : 'live-preview')
+  const activeBookmarks = noteBookmarksForPath(snapshot.bookmarks ?? [], snapshot.path)
+  const bookmarkGroupOptions = bookmarkGroups(snapshot.bookmarks ?? [])
+  const bookmarkActionLabel = activeBookmarks.length > 0 ? 'Edit Bookmark…' : 'Bookmark Note…'
+  const nativeNoteActionAvailable = props.nativeNoteActions != null
+    && !props.nativeNoteActions.disabled
+    && snapshot.path !== null
+    && snapshot.vault !== null
+    && props.nativeNoteActions.activePath === snapshot.path
+    && sameVault(props.nativeNoteActions.vault, snapshot.vault)
+  const noteSearchAvailable = snapshot.documentKind === 'markdown' && snapshot.path !== null
+  const openNoteSearch = (mode: 'find' | 'replace'): void => {
+    if (!noteSearchAvailable) return
+    setNoteSearchMode(mode)
+    setNoteSearchTransition(undefined)
+  }
+  const closeNoteSearch = (): void => {
+    pendingNoteSearchRequestRef.current = null
+    noteSearchRequestIdRef.current += 1
+    setNoteSearchRequest(null)
+    setNoteSearchMode(null)
+    setNoteSearchTransition(undefined)
+    props.onFocusEditor?.()
+  }
+  const requestNoteSearch = (action: EditorSearchAction, replacement?: string): void => {
+    if (!noteSearchAvailable) return
+    const handoff = snapshot.mode === 'reading' && (action === 'replace' || action === 'replace-all')
+    const mode = handoff ? lastEditingModeRef.current : snapshot.mode
+    const id = noteSearchRequestIdRef.current += 1
+    const owned: OwnedSearchRequest = {
+      owner: noteSearchOwner, query: noteSearchQuery, mode, source: snapshot.source,
+      request: {
+        action, id, ...(replacement === undefined ? {} : { replacement }),
+        consume: () => {
+          const current = noteSearchContextRef.current
+          if (consumedNoteSearchIdRef.current === id || id !== noteSearchRequestIdRef.current
+            || current.owner !== owned.owner || current.query !== owned.query
+            || current.mode !== owned.mode || current.source !== owned.source) return false
+          consumedNoteSearchIdRef.current = id
+          setNoteSearchRequest(current => current?.request.id === id ? null : current)
+          return true
+        },
+      },
+    }
+    if (handoff) {
+      pendingNoteSearchRequestRef.current = owned
+      setNoteSearchTransition(`Switching to ${mode === 'source' ? 'Source' : 'Live Preview'} to replace.`)
+      props.onMode(mode)
+      return
+    }
+    setNoteSearchRequest(owned)
+  }
+  const activeNoteSearchRequest = noteSearchRequest !== null
+    && noteSearchRequest.owner === noteSearchOwner && noteSearchRequest.query === noteSearchQuery
+    && noteSearchRequest.mode === snapshot.mode && noteSearchRequest.source === snapshot.source
+    ? noteSearchRequest.request : null
+
+  const onNoteSearchState = useCallback((state: EditorSearchState): void => {
+    if (state.query !== noteSearchQuery) return
+    setNoteSearchState(current => current.current === state.current && current.error === state.error && current.query === state.query && current.total === state.total && current.truncated === state.truncated ? current : state)
+    if (noteSearchTransition !== undefined && snapshot.mode !== 'reading') setNoteSearchTransition(undefined)
+  }, [noteSearchQuery, noteSearchTransition, snapshot.mode])
+  const openBookmarkEditor = (): void => {
+    const first = activeBookmarks[0]
+    setBookmarkDialog(first === undefined ? { mode: 'create' } : { id: first.id, mode: 'edit' })
+  }
+  const requestReveal = (): void => {
+    const path = snapshot.path
+    if (path === null || props.onRevealFile === undefined) return
+    setSidebarOpen(true)
+    setSidebarSearch(false)
+    void Promise.resolve(props.onRevealFile()).then(success => {
+      if (success !== false && path === snapshot.path) { if (props.onPaneReveal) props.onPaneReveal(path); else setRevealPath(path) }
+    })
+  }
   const activePalette = useRef(visiblePalette)
   useEffect(() => { activePalette.current = visiblePalette }, [visiblePalette])
   const paletteOpener = useRef<HTMLElement | null>(null)
@@ -4215,7 +5362,57 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   useEffect(() => {
     setBaseView(null)
     setBaseSearches({})
+    setRevealPath(null)
+    setBookmarkDialog(null)
+    setMergeOpen(false)
+    setMergeRecoveryOpen(false)
   }, [snapshot.path])
+  useEffect(() => {
+    if (snapshot.mode === 'source' || snapshot.mode === 'live-preview') lastEditingModeRef.current = snapshot.mode
+  }, [snapshot.mode])
+  useEffect(() => {
+    const owner = noteSearchOwner
+    if (noteSearchOwnerRef.current === owner) return
+    noteSearchOwnerRef.current = owner
+    noteSearchRequestIdRef.current += 1
+    pendingNoteSearchRequestRef.current = null
+    setNoteSearchMode(null)
+    setNoteSearchRequest(null)
+    setNoteSearchQuery('')
+    setNoteSearchReplacement('')
+    setNoteSearchState({ current: null, query: '', total: 0 })
+    setNoteSearchTransition(undefined)
+  }, [noteSearchOwner])
+  useEffect(() => {
+    if (noteSearchRequest !== null && activeNoteSearchRequest === null) setNoteSearchRequest(null)
+  }, [noteSearchRequest, activeNoteSearchRequest])
+  useEffect(() => {
+    const pending = pendingNoteSearchRequestRef.current
+    if (pending === null || snapshot.mode === 'reading') return
+    pendingNoteSearchRequestRef.current = null
+    if (pending.owner === noteSearchOwner && pending.query === noteSearchQuery && pending.mode === snapshot.mode && pending.source === snapshot.source) setNoteSearchRequest(pending)
+  }, [snapshot.mode, noteSearchOwner, noteSearchQuery, snapshot.source])
+  useEffect(() => {
+    if (revealPath === null) return
+    const path = revealPath
+    const tree = treeRef.current
+    if (tree === null) return
+    for (const directory of Array.from(tree.querySelectorAll<HTMLElement>('[data-tree-directory]'))) {
+      const directoryPath = directory.dataset.treeDirectory
+      if (directoryPath !== undefined && path.startsWith(`${directoryPath}/`)) {
+        if (directory instanceof HTMLDetailsElement) directory.open = true
+      }
+    }
+    const timer = window.setTimeout(() => {
+      const row = Array.from(tree.querySelectorAll<HTMLElement>('[data-tree-path]'))
+        .find(candidate => candidate.dataset.treePath === path)
+      if (row === undefined) return
+      row.scrollIntoView({ block: 'nearest' })
+      row.focus()
+      setRevealPath(null)
+    }, 0)
+    return () => { window.clearTimeout(timer) }
+  }, [revealPath, snapshot.entries])
   const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true
   const previousSidebarOpen = useRef(effectiveSidebarOpen)
   const shouldAnimateSidebarColumns = previousSidebarOpen.current !== effectiveSidebarOpen
@@ -4300,17 +5497,17 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       <div className="tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 border-r border-[var(--tt-border)] pr-1 pl-[46px] [&>button]:inline-flex [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]">
         {effectiveSidebarOpen && (
           <>
-            <span className="tocktutor-titlebar-document rounded-[5px] bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)] text-[var(--tt-text)]"><WorkbenchGlyph kind="document" /></span>
-            <span><WorkbenchGlyph kind="document" /></span>
+            <Button unstyled aria-label="Show Files" aria-pressed={!showSidebarSearch} className="h-7 w-[22px] rounded-[5px] aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" onClick={() => { setSidebarSearch(false) }} title="Files" type="button"><FolderOpen aria-hidden="true" /></Button>
+            <Button unstyled aria-label="Search Vault" aria-pressed={showSidebarSearch} className="h-7 w-[22px] rounded-[5px] aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" disabled={props.onOpenSidebarSearch === undefined} onClick={() => { setSidebarSearch(true); props.onOpenSidebarSearch?.() }} title="Search vault in sidebar" type="button"><Search aria-hidden="true" /></Button>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
-                  <Button unstyled aria-label="Search Notes" className="border-0 bg-transparent p-0" disabled={props.onOpenSearch === undefined} onClick={event => { openSearch(event.currentTarget); }} type="button"><Search aria-hidden="true" /></Button>
+                  <Button unstyled aria-label="Search Notes" className="border-0 bg-transparent p-0" disabled={props.onOpenSearch === undefined} onClick={event => { openSearch(event.currentTarget); }} type="button"><SlidersHorizontal aria-hidden="true" /></Button>
                 </span>
               </TooltipTrigger>
               <TooltipContent>Search Notes</TooltipContent>
             </Tooltip>
-            <Button unstyled aria-label="Bookmark Active Note" className="h-7 w-[22px] border-0 bg-transparent p-0" disabled={snapshot.path === null || props.onAddBookmark === undefined} onClick={props.onAddBookmark} type="button"><WorkbenchGlyph kind="bookmark" /></Button>
+            <Button unstyled aria-label="Bookmark Active Note" className="h-7 w-[22px] border-0 bg-transparent p-0" disabled={snapshot.path === null || (activeBookmarks.length === 0 ? props.onAddBookmark === undefined : props.onEditBookmark === undefined)} onClick={openBookmarkEditor} type="button"><WorkbenchGlyph kind="bookmark" /></Button>
           </>
         )}
         <Tooltip>
@@ -4354,7 +5551,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length]
                   if (next !== undefined) props.onActivateTab(focusedPane.id, next.path)
                 }}
-                aria-controls="tocktutor-note-editor"
+                aria-controls={props.paneController ? `tocktutor-note-editor-${focusedPane.id}` : 'tocktutor-note-editor'}
                 role="tab"
                 tabIndex={tab.path === focusedPane.activePath ? 0 : -1}
                 title={tab.path}
@@ -4390,10 +5587,377 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       </div>
     </section>
   ) : null
+  const noteDialogs = <>      {noteAction !== null && snapshot.path !== null && (
+        <NoteValueDialog
+          key={`${snapshot.path}:${noteAction}`}
+          initialValue={noteAction === 'property' ? '' : noteAction === 'rename'
+            ? noteTitle(snapshot.path)
+            : snapshot.path.includes('/') ? snapshot.path.slice(0, snapshot.path.lastIndexOf('/')) : ''}
+          kind={noteAction}
+          onCancel={() => { setNoteAction(null) }}
+          validate={value => {
+            if (noteAction !== 'property') return null
+            const key = value.trim()
+            if (key === '') return 'Enter a property name.'
+            return parseFrontmatterProperties(snapshot.source).some(property => property.key.toLocaleLowerCase() === key.toLocaleLowerCase())
+              ? 'A property with this name already exists.' : null
+          }}
+          onSubmit={value => noteAction === 'property'
+            ? props.onSetProperty?.(value.trim(), '') ?? false
+            : noteAction === 'rename'
+            ? props.onRenameTitle?.(value) ?? false
+            : props.onMoveNote?.(value) ?? false}
+        />
+      )}
+      {mergeOpen && snapshot.path && props.onPrepareNoteMerge && <NoteMergeReview key={`${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`} sourcePath={snapshot.path} paths={documents.map(entry => entry.path)} onPrepare={props.onPrepareNoteMerge} onClose={() => setMergeOpen(false)} />}
+      {mergeRecoveryOpen && props.onListMergeRecovery && props.onRecoverNoteMerge && <MergeRecoveryDialog key={`${snapshot.vault?.id}:${snapshot.vault?.generation}`} onList={props.onListMergeRecovery} onRecover={props.onRecoverNoteMerge} onClose={() => setMergeRecoveryOpen(false)} />}
+      {bookmarkDialog !== null && snapshot.path !== null && (
+        <BookmarkDialog
+          key={`${snapshot.path}:${bookmarkDialog.mode}:${bookmarkDialog.mode === 'edit' ? bookmarkDialog.id : 'new'}`}
+          bookmarks={activeBookmarks}
+          groups={bookmarkGroupOptions}
+          initialBookmarkId={bookmarkDialog.mode === 'edit' ? bookmarkDialog.id : null}
+          mode={bookmarkDialog.mode}
+          path={snapshot.path}
+          onCancel={() => { setBookmarkDialog(null) }}
+          onRemove={id => props.onRemoveBookmark?.(id) ?? false}
+          onSubmit={(id, title, group) => id === null
+            ? props.onAddBookmark?.(title, group) ?? false
+            : props.onEditBookmark?.(id, title, group) ?? false}
+        />
+      )}
+</>
+  const editor = (<section aria-label="Note Editor" className={`tocktutor-editor grid h-full min-h-0 min-w-0 ${noteSearchMode === null ? 'grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)]' : 'grid-rows-[40px_auto_minmax(0,1fr)_var(--tt-footer-height)]'} overflow-hidden bg-[var(--tt-panel)]`} id={props.paneOnly ? `tocktutor-note-editor-${snapshot.focusedPaneId}` : 'tocktutor-note-editor'} role="tabpanel">
+          <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5">
+            <h2 className="m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
+            <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[26px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)]">
+              {snapshot.documentKind === 'markdown' ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      unstyled
+                      aria-label={snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View'}
+                      disabled={snapshot.path === null}
+                      onClick={() => { props.onMode(snapshot.mode === 'reading' ? 'live-preview' : 'reading') }}
+                      type="button"
+                    >{snapshot.mode === 'reading' ? <Pencil aria-hidden="true" /> : <FileText aria-hidden="true" />}</Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View'}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button unstyled
+                  aria-label={snapshot.mode === 'source' ? previewLabel : sourceLabel}
+                  onClick={() => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source') }}
+                  type="button"
+                ><WorkbenchGlyph kind="pencil" /></Button>
+              )}
+              <DropdownMenu modal={false}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        unstyled
+                        aria-label="More Note Actions"
+                        className="inline-flex h-7 w-[26px] items-center justify-center border-0 bg-transparent p-0 text-[var(--tt-muted)]"
+                        type="button"
+                      ><WorkbenchGlyph kind="more" /></Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>More Note Actions</TooltipContent>
+                </Tooltip>
+                {/* Existing Desktop shell metric: 40px titlebar + 8px edge gap keeps the menu below it. */}
+                <DropdownMenuContent
+                  align="end"
+                  alignOffset={26}
+                  className="max-h-(--radix-dropdown-menu-content-available-height) w-max min-w-[196px] max-w-[min(360px,calc(100vw-16px))] overflow-y-auto rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]"
+                  collisionPadding={{ bottom: 8, left: 8, right: 8, top: 48 }}
+                  onCloseAutoFocus={event => {
+                    const current = props.paneController?.getSnapshot()
+                    if (current && current.focusedPaneId !== snapshot.focusedPaneId) event.preventDefault()
+                  }}
+                  portalled={false}
+                  sideOffset={6}
+                  unstyled
+                >
+                  {snapshot.documentKind === 'markdown' && (
+                    <>
+                      <DropdownMenuCheckboxItem checked={snapshot.settings?.backlinksInDocument ?? false} className={NOTE_ACTION_CLASS} disabled={snapshot.settings === undefined} onSelect={() => { props.onSettingsChange?.({ backlinksInDocument: !(snapshot.settings?.backlinksInDocument ?? false) }) }}><Link2 aria-hidden="true" /><span>Backlinks in Document</span></DropdownMenuCheckboxItem>
+                      <DropdownMenuRadioGroup aria-label="Editor Mode" value={snapshot.mode}>
+                        {([
+                          ['reading', 'Reading View', FileText],
+                          ['live-preview', 'Live Preview', Pencil],
+                          ['source', 'Source Mode', FileCode2],
+                        ] as const).map(([mode, label, Icon]) => (
+                          <DropdownMenuRadioItem className={NOTE_ACTION_CLASS} key={mode} onSelect={() => { props.onMode(mode) }} value={mode}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || snapshot.panes.length >= MAX_PANE_GROUPS || props.onSplitPane === undefined} onSelect={() => { props.onSplitPane?.(snapshot.focusedPaneId, 'horizontal') }}><PanelsTopLeft aria-hidden="true" /><span>Split Right</span></DropdownMenuItem>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || snapshot.panes.length >= MAX_PANE_GROUPS || props.onSplitPane === undefined} onSelect={() => { props.onSplitPane?.(snapshot.focusedPaneId, 'vertical') }}><PanelsTopLeft aria-hidden="true" /><span>Split Down</span></DropdownMenuItem>
+                    {snapshot.panes.length > 1 && <DropdownMenuItem className={NOTE_ACTION_CLASS} onSelect={() => { props.onClosePane?.(snapshot.focusedPaneId) }}><X aria-hidden="true" /><span>Close Pane</span></DropdownMenuItem>}
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  {props.nativeNoteActions != null && <>
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={props.nativeNoteActions.disabled || snapshot.path === null || snapshot.vault === null || props.nativeNoteActions.activePath !== snapshot.path || !sameVault(props.nativeNoteActions.vault, snapshot.vault)} onSelect={() => { props.nativeNoteActions?.run('open-window') }}><ExternalLink aria-hidden="true" /><span>Open in New Window</span></DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                  </>}
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem aria-label="Rename Note" className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || props.onRenameTitle === undefined} onSelect={() => { setNoteAction('rename') }}><Pencil aria-hidden="true" /><span>Rename Note…</span></DropdownMenuItem>
+                    <DropdownMenuItem aria-label="Move Note" className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || props.onMoveNote === undefined} onSelect={() => { setNoteAction('move') }}><FolderInput aria-hidden="true" /><span>Move Note…</span></DropdownMenuItem>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || (activeBookmarks.length === 0 ? props.onAddBookmark === undefined : props.onEditBookmark === undefined)} onSelect={openBookmarkEditor}><BookmarkPlus aria-hidden="true" /><span>{bookmarkActionLabel}</span></DropdownMenuItem>
+                    {props.onPrepareNoteMerge && <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || snapshot.documentKind !== 'markdown'} onSelect={() => setMergeOpen(true)}><Merge aria-hidden="true" /><span>Merge Entire File With…</span></DropdownMenuItem>}
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || snapshot.path === null || props.onSetProperty === undefined} onSelect={() => { setNoteAction('property') }}><Plus aria-hidden="true" /><span>Add Property</span></DropdownMenuItem>
+                    {props.nativeNoteActions != null && <DropdownMenuItem aria-label="Export PDF" className={NOTE_ACTION_CLASS} disabled={props.nativeNoteActions.disabled || snapshot.path === null || snapshot.vault === null || props.nativeNoteActions.activePath !== snapshot.path || !sameVault(props.nativeNoteActions.vault, snapshot.vault)} onSelect={() => { props.nativeNoteActions?.run('export-pdf') }}><FileDown aria-hidden="true" /><span>Export PDF…</span></DropdownMenuItem>}
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={!noteSearchAvailable} onSelect={() => { openNoteSearch('find') }}><Search aria-hidden="true" /><span>Find…</span></DropdownMenuItem>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={!noteSearchAvailable} onSelect={() => { openNoteSearch('replace') }}><Pencil aria-hidden="true" /><span>Replace…</span></DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || (props.onCopyGraphPath === undefined && !nativeNoteActionAvailable)}><Copy aria-hidden="true" /><span>Copy Path</span></DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent unstyled className={NOTE_SUBMENU_CLASS}>
+                        <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || props.onCopyGraphPath === undefined} onSelect={() => { if (snapshot.path !== null) props.onCopyGraphPath?.(snapshot.path) }}><Copy aria-hidden="true" /><span>Copy Relative Path</span></DropdownMenuItem>
+                        <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={!nativeNoteActionAvailable} onSelect={() => { props.nativeNoteActions?.run('copy-absolute') }}><Copy aria-hidden="true" /><span>Copy Absolute Path</span></DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || !props.paneController || snapshot.panes.length >= MAX_PANE_GROUPS}><Link2 aria-hidden="true" /><span>Open Linked View</span></DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent unstyled className={NOTE_SUBMENU_CLASS} collisionPadding={{ top: 48, bottom: 8, left: 8, right: 8 }}>
+                        <DropdownMenuGroup>
+                          {LINKED_VIEW_KINDS.map(kind => <DropdownMenuItem key={kind} className={NOTE_ACTION_CLASS} onSelect={() => {
+                            const controller = props.paneController
+                            if (controller && controller.paneLifetimeFor(snapshot.focusedPaneId) === ownerLifetime && snapshot.vault && sameVault(controller.getSnapshot().vault, snapshot.vault) && controller.getPaneSnapshot(snapshot.focusedPaneId).path === snapshot.path) void controller.openLinkedView(snapshot.focusedPaneId, kind)
+                          }}>{kind === 'graph' ? <Network aria-hidden="true" /> : kind === 'outline' || kind === 'properties' ? <ListTree aria-hidden="true" /> : <Link2 aria-hidden="true" />}<span>{LINKED_VIEW_TITLES[kind]}</span></DropdownMenuItem>)}
+                        </DropdownMenuGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    {props.nativeNoteActions != null && <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={!nativeNoteActionAvailable || snapshot.documentUnavailable || !['markdown', 'canvas', 'base'].includes(snapshot.documentKind ?? '')} onSelect={() => { props.nativeNoteActions?.run('open-default') }}><ExternalLink aria-hidden="true" /><span>Open in Default App</span></DropdownMenuItem>}
+                    {props.nativeNoteActions != null && <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={props.nativeNoteActions.disabled || snapshot.path === null || snapshot.vault === null || props.nativeNoteActions.activePath !== snapshot.path || !sameVault(props.nativeNoteActions.vault, snapshot.vault)} onSelect={() => { props.nativeNoteActions?.run('reveal') }}><FolderOpen aria-hidden="true" /><span>Reveal in Finder</span></DropdownMenuItem>}
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || props.onRevealFile === undefined} onSelect={requestReveal}><FolderOpen aria-hidden="true" /><span>Reveal File in Navigation</span></DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    {([
+                      ['recovery', 'File Recovery', FileClock],
+                      ['outline', 'Outline', ListTree],
+                      ['properties', 'Properties', ListTree],
+                      ['backlinks', 'Backlinks', Link2],
+                      ['graph', 'Graph View', Network],
+                      ['web', 'Web Viewer', Globe2],
+                      ['bookmarks', 'Bookmarks', BookmarkPlus],
+                      ['tags', 'Tags', Tags],
+                      ['attachments', 'Attachments and Embeds', Paperclip],
+                      ['tools', 'Note Tools', Wrench],
+                      ['workspace', 'Workspaces and Panes', PanelsTopLeft],
+                      ['extensions', 'Reviews and Actions', MessageSquare],
+                    ] as const).map(([view, label, Icon]) => (
+                      <DropdownMenuItem className={NOTE_ACTION_CLASS} key={view} onSelect={() => {
+                        setPanel(view)
+                        if (view === 'properties' || view === 'tags') props.onLoadFacets?.()
+                        if (view === 'backlinks') props.onLoadRelationships?.()
+                        if (view === 'recovery') props.onOpenRecovery?.()
+                      }}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    {props.onListMergeRecovery && props.onRecoverNoteMerge && <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.vault === null} onSelect={() => setMergeRecoveryOpen(true)}><FileClock aria-hidden="true" /><span>Merge Recovery</span></DropdownMenuItem>}
+                    <DropdownMenuItem className={`${NOTE_ACTION_CLASS} text-[color:var(--dsw-alias-state-error-primary,#dc2626)]!`} disabled={snapshot.path === null || props.onTrashCurrent === undefined} onSelect={() => { props.onTrashCurrent?.() }}><Trash2 aria-hidden="true" /><span>Move File to Trash</span></DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+          {noteSearchMode !== null && (
+            <NoteFindReplaceStrip
+              mode={noteSearchMode}
+              onClose={closeNoteSearch}
+              onQueryChange={query => {
+                pendingNoteSearchRequestRef.current = null
+                noteSearchRequestIdRef.current += 1
+                setNoteSearchQuery(query)
+                setNoteSearchState({ current: null, query, total: 0 })
+                setNoteSearchRequest(null)
+              }}
+              onRequest={requestNoteSearch}
+              onReplacementChange={setNoteSearchReplacement}
+              query={noteSearchQuery}
+              replacement={noteSearchReplacement}
+              state={noteSearchState}
+              {...(noteSearchTransition === undefined ? {} : { transitionNotice: noteSearchTransition })}
+            />
+          )}
+          <div
+            aria-label="Editor Attachment Drop Zone"
+            data-document-backlinks={snapshot.settings?.backlinksInDocument === true}
+            className="tocktutor-editor-body relative min-h-0 overflow-auto data-[document-backlinks=true]:[&>section]:min-h-0"
+            onDrop={event => {
+              if (event.dataTransfer.files.length === 0) return
+              event.preventDefault()
+              props.onAttachFiles?.(event.dataTransfer.files)
+            }}
+            onPaste={event => {
+              if (event.clipboardData.files.length === 0) return
+              props.onAttachFiles?.(event.clipboardData.files)
+            }}
+          >
+            {snapshot.mergeRecoveryPending && props.onListMergeRecovery && <Alert><p>Merge Recovery Needs Attention</p><Button variant="outline" onClick={() => setMergeRecoveryOpen(true)}>Review Merge Recovery</Button></Alert>}
+            {snapshot.message.startsWith('This pane changed in another view.') && <Alert role="alert">{snapshot.message}</Alert>}
+            {snapshot.path === null ? (
+              <Empty unstyled className="tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center">
+                <EmptyHeader unstyled>
+                  <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Ready When You Are</p>
+                  <EmptyTitle unstyled aria-level={2} className="text-xl font-bold" role="heading">Select a Note</EmptyTitle>
+                  <EmptyDescription unstyled className="text-[var(--tt-muted)]">Choose a Markdown note from the vault to read or edit its exact source.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : props.paneOnly && snapshot.revision === null ? <Alert unstyled>Loading this note…</Alert> : snapshot.mode === 'source' ? (
+              <div className="flex h-full min-h-0 flex-col">
+                <SourceEditor
+                  ariaLabel={sourceLabel}
+                  className="h-full"
+                  content={snapshot.source}
+                  localEditRevision={snapshot.localEditRevision}
+                  key={`${snapshot.path}:${snapshot.editorReset ?? 0}`}
+                  onContentChange={props.onEdit}
+                  {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}
+                  {...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState })}
+                  onSelectionChange={selection => { props.onSelectionChange?.(selection.main.from, selection.main.to) }}
+                  {...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest })}
+                  selectionRequest={snapshot.selectionRequest}
+                  {...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds })}
+                  spellCheck
+                  title={noteTitle(snapshot.path)}
+                />
+              </div>
+            ) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (
+              <LivePreviewView
+                key={`${snapshot.path}:${snapshot.editorReset ?? 0}`}
+                documentKey={snapshot.path}
+                localEditRevision={snapshot.localEditRevision}
+                embeds={snapshot.embeds}
+                onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
+                onEdit={props.onEdit}
+                onEditSource={() => { props.onMode('source') }}
+                {...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl })}
+                {...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState })}
+                onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
+                {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })}
+                {...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest })}
+                onToggleTask={props.onToggleTask}
+                source={snapshot.source}
+                title={noteTitle(snapshot.path)}
+              />
+            ) : snapshot.documentKind === 'canvas' ? (
+              <CanvasBoard
+                disabled={snapshot.revision === null || props.onCanvasChange === undefined}
+                onChange={change => { props.onCanvasChange?.(change) }}
+                revision={snapshot.revision ?? 'unavailable'}
+                source={snapshot.source}
+              />
+            ) : snapshot.documentKind === 'base' ? (
+              <ExecutableBaseView
+                activeView={baseView}
+                files={snapshot.baseFiles ?? []}
+                onActiveViewChange={setBaseView}
+                onSearchChange={(view, search) => { setBaseSearches(current => ({ ...current, [view]: search })) }}
+                searches={baseSearches}
+                {...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy })}
+                {...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit })}
+                {...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport })}
+                source={snapshot.source}
+              />
+            ) : snapshot.documentKind === 'markdown' ? (
+              <RichReadingView
+                embeds={snapshot.embeds}
+                key={snapshot.path}
+                onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
+                {...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl })}
+                {...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink })}
+                {...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState, searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest })}
+                {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })}
+                onToggleTask={props.onToggleTask}
+                source={snapshot.source}
+                title={noteTitle(snapshot.path)}
+              />
+            ) : (
+              <Alert unstyled>Reading view is unavailable.</Alert>
+            )}
+            {snapshot.path !== null && snapshot.documentKind === 'markdown' && snapshot.settings?.backlinksInDocument && (
+              <section aria-label="Backlinks in Document" className="mx-auto mt-6 w-[calc(100%-48px)] max-w-[700px] border-t border-[var(--tt-border)] py-6 text-[var(--tt-text)]">
+                <h2 className="mb-3 text-sm font-medium">Backlinks</h2>
+                <NoteBacklinks key={`${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`} links={snapshot.links?.path === snapshot.path && snapshot.links?.generation === snapshot.vault?.generation ? snapshot.links : null} loading={snapshot.linksLoading === true} onRetry={props.onLoadRelationships} onSelect={props.onSelect} />
+              </section>
+            )}
+          </div>
+          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]" role="group">
+            <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
+            {props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && <output aria-live="polite" className="mr-3 min-w-0 truncate">{props.nativeNoteActions.message}</output>}
+            <div className="tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
+              {snapshot.path !== null && (
+                <>
+                  <span>{backlinkLabel}</span>
+                  <span>{snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source'}</span>
+                </>
+              )}
+              <span>{String(words)} words</span>
+              <span>{String(characters)} characters</span>
+              {snapshot.path !== null && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button unstyled
+                      aria-label="Open Assistant"
+                      aria-expanded={panel === 'assistant'}
+                      onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
+                      type="button"
+                      className="border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]"
+                    ><WorkbenchGlyph kind="chat" /></Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Open Assistant</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </footer>
+        </section>)
+  if (props.paneOnly) return <TooltipProvider><div className="h-full min-h-0 min-w-0" data-pane-id={snapshot.focusedPaneId}
+    onPointerDownCapture={() => { props.onFocusPane?.(snapshot.focusedPaneId) }}
+    onFocusCapture={() => { props.onFocusPane?.(snapshot.focusedPaneId) }}
+    onKeyDown={event => {
+      const primary = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '') ? event.metaKey : event.ctrlKey
+      if (event.defaultPrevented || !primary || event.altKey || event.shiftKey || !noteSearchAvailable) return
+      if (event.key.toLowerCase() !== 'f' && event.key.toLowerCase() !== 'h') return
+      event.preventDefault()
+      openNoteSearch(event.key.toLowerCase() === 'h' ? 'replace' : 'find')
+    }}
+  >{noteDialogs}{editor}</div></TooltipProvider>
   return (
     <TooltipProvider>
       <main
         aria-label="TockTutor Workbench"
+        onKeyDown={event => {
+          if (event.defaultPrevented) return
+          const isMac = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '')
+          const primary = isMac ? event.metaKey : event.ctrlKey
+          if (!primary || event.altKey || event.shiftKey || !noteSearchAvailable) return
+          const key = event.key.toLocaleLowerCase()
+          if (key !== 'f' && key !== 'h') return
+          event.preventDefault()
+          openNoteSearch(key === 'h' ? 'replace' : 'find')
+        }}
       className="tocktutor-workbench h-full min-h-0 box-border bg-[var(--tt-bg)] pt-0 text-[var(--tt-text)] [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-bg:var(--dsw-alias-bg-base,#fff)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-footer-height:28px] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-selected:color-mix(in_srgb,var(--tt-accent)_14%,var(--tt-panel))] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_[hidden]]:!hidden [&_button]:text-inherit [&_button]:[font:inherit] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[var(--tt-accent)] [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-offset-2 [&_input:focus-visible]:outline-[var(--tt-accent)] [&_svg]:block [&_svg]:size-4 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-offset-2 [&_textarea:focus-visible]:outline-[var(--tt-accent)] motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!delay-0 motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!delay-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!delay-0 motion-reduce:[&_*::before]:!duration-0"
       data-focus-mode={snapshot.focusMode === true}
       data-phase={snapshot.phase}
@@ -4407,18 +5971,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onSubmit={draft => { props.onSubmitDispatch?.(draft) }}
         />
       )}
-      {noteAction !== null && snapshot.path !== null && (
-        <NotePathDialog
-          initialValue={noteAction === 'rename'
-            ? noteTitle(snapshot.path)
-            : snapshot.path.includes('/') ? snapshot.path.slice(0, snapshot.path.lastIndexOf('/')) : ''}
-          kind={noteAction}
-          onCancel={() => { setNoteAction(null) }}
-          onSubmit={value => noteAction === 'rename'
-            ? props.onRenameTitle?.(value) ?? false
-            : props.onMoveNote?.(value) ?? false}
-        />
-      )}
+      {noteDialogs}
       {visiblePalette === 'commands' && (
         <WorkbenchCommandPalette
           canGoBack={snapshot.canGoBack === true}
@@ -4469,24 +6022,24 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       >
         <aside
           aria-hidden={!effectiveSidebarOpen}
-          aria-label="Files"
+          aria-label={showSidebarSearch ? 'Vault Search' : 'Files'}
           className="tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]"
           data-open={effectiveSidebarOpen}
           {...(effectiveSidebarOpen ? {} : { inert: '' })}
         >
           <header className="tocktutor-sidebar-header flex items-center border-b border-[var(--tt-border)] px-2.5">
-            <h1 className="m-0 text-sm font-semibold">Files</h1>
+            <h1 className="m-0 text-sm font-semibold">{showSidebarSearch ? 'Search' : 'Files'}</h1>
           </header>
           <div className="tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]">
-            <nav aria-label="Vault Notes">
+            {showSidebarSearch ? <SidebarSearch snapshot={snapshot} onChange={props.onSearchChange} onRun={props.onRunSearch} onLoadMore={props.onLoadMoreSearch} onSelect={props.onSelectSearchMatch} /> : <nav aria-label="Vault Notes" ref={treeRef}>
               {snapshot.phase === 'loading' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">Loading notes…</p>}
               {snapshot.phase === 'inactive' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">No Active Vault</Alert>}
               {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">{snapshot.message}</Alert>}
               {snapshot.phase === 'ready' && documents.length === 0 && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No supported notes found.</p>}
               <ul className="tocktutor-tree m-0 list-none p-0">
-                <TreeEntries entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} />
+                <TreeEntries entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} revealPath={revealPath} />
               </ul>
-            </nav>
+            </nav>}
           </div>
           <WorkbenchVaultDialog
             onCreateManagedVault={props.onCreateManagedVault}
@@ -4506,209 +6059,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           title="Drag or Use Left and Right Arrow Keys"
           type="button"
         />
-        <section aria-label="Note Editor" className="tocktutor-editor grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden bg-[var(--tt-panel)]" id="tocktutor-note-editor" role="tabpanel">
-          <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5">
-            <h2 className="m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
-            <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[26px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)]">
-              {snapshot.documentKind === 'markdown' ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      unstyled
-                      aria-label={snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View'}
-                      disabled={snapshot.path === null}
-                      onClick={() => { props.onMode(snapshot.mode === 'reading' ? 'live-preview' : 'reading') }}
-                      type="button"
-                    >{snapshot.mode === 'reading' ? <Pencil aria-hidden="true" /> : <FileText aria-hidden="true" />}</Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View'}</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Button unstyled
-                  aria-label={snapshot.mode === 'source' ? previewLabel : sourceLabel}
-                  onClick={() => { props.onMode(snapshot.mode === 'source' ? 'reading' : 'source') }}
-                  type="button"
-                ><WorkbenchGlyph kind="pencil" /></Button>
-              )}
-              <DropdownMenu modal={false}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        unstyled
-                        aria-label="More Note Actions"
-                        className="inline-flex h-7 w-[26px] items-center justify-center border-0 bg-transparent p-0 text-[var(--tt-muted)]"
-                        type="button"
-                      ><WorkbenchGlyph kind="more" /></Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>More Note Actions</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent
-                  align="end"
-                  alignOffset={26}
-                  className="w-[260px] rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]"
-                  portalled={false}
-                  sideOffset={6}
-                  unstyled
-                >
-                  {snapshot.documentKind === 'markdown' && (
-                    <>
-                      <DropdownMenuRadioGroup aria-label="Editor Mode" value={snapshot.mode}>
-                        {([
-                          ['reading', 'Reading View', FileText],
-                          ['live-preview', 'Live Preview', Pencil],
-                          ['source', 'Source Mode', FileCode2],
-                        ] as const).map(([mode, label, Icon]) => (
-                          <DropdownMenuRadioItem className={NOTE_ACTION_CLASS} key={mode} onSelect={() => { props.onMode(mode) }} value={mode}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || props.onRenameTitle === undefined} onSelect={() => { setNoteAction('rename') }}><Pencil aria-hidden="true" /><span>Rename Note</span></DropdownMenuItem>
-                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || props.onMoveNote === undefined} onSelect={() => { setNoteAction('move') }}><FolderInput aria-hidden="true" /><span>Move Note</span></DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuCheckboxItem checked={snapshot.settings?.backlinksInDocument ?? false} className={NOTE_ACTION_CLASS} disabled={snapshot.settings === undefined} onSelect={() => { props.onSettingsChange?.({ backlinksInDocument: !(snapshot.settings?.backlinksInDocument ?? false) }) }}><Link2 aria-hidden="true" /><span>Backlinks in Document</span></DropdownMenuCheckboxItem>
-                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || props.onAddBookmark === undefined} onSelect={() => { props.onAddBookmark?.() }}><BookmarkPlus aria-hidden="true" /><span>Bookmark Note</span></DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    {([
-                      ['recovery', 'File Recovery', FileClock],
-                      ['properties', 'Properties', ListTree],
-                      ['backlinks', 'Backlinks', Link2],
-                      ['graph', 'Graph View', Network],
-                      ['web', 'Web Viewer', Globe2],
-                      ['bookmarks', 'Bookmarks', BookmarkPlus],
-                      ['tags', 'Tags', Tags],
-                      ['attachments', 'Attachments and Embeds', Paperclip],
-                      ['tools', 'Note Tools', Wrench],
-                      ['workspace', 'Workspaces and Panes', PanelsTopLeft],
-                      ['extensions', 'Reviews and Actions', MessageSquare],
-                    ] as const).map(([view, label, Icon]) => (
-                      <DropdownMenuItem className={NOTE_ACTION_CLASS} key={view} onSelect={() => {
-                        setPanel(view)
-                        if (view === 'properties' || view === 'tags') props.onLoadFacets?.()
-                        if (view === 'backlinks') props.onLoadRelationships?.()
-                        if (view === 'recovery') props.onOpenRecovery?.()
-                      }}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuItem>
-                    ))}
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem className={`${NOTE_ACTION_CLASS} text-[var(--dsw-alias-state-error-primary,#dc2626)]`} disabled={snapshot.path === null || props.onTrashCurrent === undefined} onSelect={() => { props.onTrashCurrent?.() }}><Trash2 aria-hidden="true" /><span>Move File to Trash</span></DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </header>
-          <div
-            aria-label="Editor Attachment Drop Zone"
-            className="tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-3xl [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none"
-            onDrop={event => {
-              if (event.dataTransfer.files.length === 0) return
-              event.preventDefault()
-              props.onAttachFiles?.(event.dataTransfer.files)
-            }}
-            onPaste={event => {
-              if (event.clipboardData.files.length === 0) return
-              props.onAttachFiles?.(event.clipboardData.files)
-            }}
-          >
-            {snapshot.path === null ? (
-              <Empty unstyled className="tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center">
-                <EmptyHeader unstyled>
-                  <p className="tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase">Ready When You Are</p>
-                  <EmptyTitle unstyled aria-level={2} className="text-xl font-bold" role="heading">Select a Note</EmptyTitle>
-                  <EmptyDescription unstyled className="text-[var(--tt-muted)]">Choose a Markdown note from the vault to read or edit its exact source.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : snapshot.mode === 'source' ? (
-              <div className="flex h-full min-h-0 flex-col">
-                <SourceEditor
-                  ariaLabel={sourceLabel}
-                  className="h-full"
-                  content={snapshot.source}
-                  key={snapshot.path}
-                  onContentChange={props.onEdit}
-                  {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}
-                  onSelectionChange={selection => { props.onSelectionChange?.(selection.main.from, selection.main.to) }}
-                  selectionRequest={snapshot.selectionRequest}
-                  {...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds })}
-                  spellCheck
-                  title={noteTitle(snapshot.path)}
-                />
-              </div>
-            ) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (
-              <LivePreviewView
-                documentKey={snapshot.path}
-                embeds={snapshot.embeds}
-                onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
-                onEdit={props.onEdit}
-                onOpenExternalUrl={props.onOpenExternalUrl}
-                onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
-                onSetProperty={props.onSetProperty}
-                onToggleTask={props.onToggleTask}
-                source={snapshot.source}
-                title={noteTitle(snapshot.path)}
-              />
-            ) : snapshot.documentKind === 'canvas' ? (
-              <CanvasBoard
-                disabled={snapshot.revision === null || props.onCanvasChange === undefined}
-                onChange={change => { props.onCanvasChange?.(change) }}
-                revision={snapshot.revision ?? 'unavailable'}
-                source={snapshot.source}
-              />
-            ) : snapshot.documentKind === 'base' ? (
-              <ExecutableBaseView
-                activeView={baseView}
-                files={snapshot.baseFiles ?? []}
-                onActiveViewChange={setBaseView}
-                onSearchChange={(view, search) => { setBaseSearches(current => ({ ...current, [view]: search })) }}
-                searches={baseSearches}
-                {...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy })}
-                {...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit })}
-                {...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport })}
-                source={snapshot.source}
-              />
-            ) : snapshot.documentKind === 'markdown' ? (
-              <RichReadingView embeds={snapshot.embeds} key={snapshot.path} onAddProperty={key => props.onSetProperty?.(key, '') ?? false} onOpenExternalUrl={props.onOpenExternalUrl} onOpenInternalLink={props.onOpenInternalLink} onSetProperty={props.onSetProperty} onToggleTask={props.onToggleTask} source={snapshot.source} title={noteTitle(snapshot.path)} />
-            ) : (
-              <Alert unstyled>Reading view is unavailable.</Alert>
-            )}
-          </div>
-          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]" role="group">
-            <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
-            <div className="tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
-              {snapshot.path !== null && (
-                <>
-                  <span>{backlinkLabel}</span>
-                  <span>{snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source'}</span>
-                </>
-              )}
-              <span>{String(words)} words</span>
-              <span>{String(characters)} characters</span>
-              {snapshot.path !== null && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button unstyled
-                      aria-label="Open Assistant"
-                      aria-expanded={panel === 'assistant'}
-                      onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
-                      type="button"
-                      className="border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]"
-                    ><WorkbenchGlyph kind="chat" /></Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Open Assistant</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          </footer>
-        </section>
+        {props.paneController && snapshot.layout ? <PaneLayoutView layout={snapshot.layout} onResize={(path, ratio) => { props.paneController!.resizeSplit(path, ratio) }} renderPane={id => (
+          snapshot.panes.find(pane => pane.id === id)?.linkedView ? <LinkedNotePane controller={props.paneController!} id={id} /> : <TockTutorRouteView {...boundPaneProps(props, id)} paneOnly panePanel={panel} onPanePanel={setPanel} onPaneReveal={path => { setSidebarOpen(true); setSidebarSearch(false); setRevealPath(path) }} />
+        )} /> : editor}
         <aside
           aria-hidden={panel !== 'assistant'}
           aria-label="Assistant Panel"
@@ -4804,7 +6157,11 @@ function TockTutorWebViewerOutlet(props: {
 
 function TockTutorNativeActionsOutlet(props: {
   activePath: string | null
+  noteSource: string
+  noteOwnerKey: string
+  saveNote(): Promise<boolean>
   handleDispatch: TockTutorNativeActionsOwnerProps['handleDispatch']
+  publishNoteActions: NonNullable<TockTutorNativeActionsOwnerProps['publishNoteActions']>
   renderSlot: TockTutorRouteProps['renderSlot']
   saveCurrent(): Promise<boolean>
   storeAudio(fileName: string, dataBase64: string): Promise<boolean>
@@ -4813,6 +6170,10 @@ function TockTutorNativeActionsOutlet(props: {
   return props.renderSlot(TOCKTUTOR_NATIVE_ACTIONS_SLOT, {
     activePath: props.activePath,
     handleDispatch: props.handleDispatch,
+    publishNoteActions: props.publishNoteActions,
+    noteSource: props.noteSource,
+    noteOwnerKey: props.noteOwnerKey,
+    saveNote: props.saveNote,
     saveCurrent: props.saveCurrent,
     storeAudio: props.storeAudio,
     vault: props.vault,
@@ -4857,6 +6218,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const root = useRef<HTMLDivElement>(null)
   const [externalUrl, setExternalUrl] = useState<string | null>(null)
+  const [nativeNoteActions, publishNoteActions] = useState<TockTutorNativeNoteActions | null>(null)
   useEffect(() => {
     if (!active) return
     void controller.syncLocation(props.location.pathname)
@@ -4869,7 +6231,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     pendingEditorFocus.current?.()
     const container = root.current
     if (!active || snapshot.path === null || container === null) return
-    const selector = snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]'
+    const selector = snapshot.mode === 'source' || snapshot.mode === 'live-preview' ? '.cm-content' : '[aria-label$="View"]'
     const stop = (): void => {
       observer.disconnect()
       container.ownerDocument.removeEventListener('pointerdown', stop, true)
@@ -4877,7 +6239,8 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
       pendingEditorFocus.current = null
     }
     const focus = (): void => {
-      const editor = container.querySelector<HTMLElement>(selector)
+      const seat = Array.from(container.querySelectorAll<HTMLElement>('[data-pane-id]')).find(node => node.dataset.paneId === snapshot.focusedPaneId) ?? container
+      const editor = seat.querySelector<HTMLElement>(selector)
       if (editor === null) return
       stop()
       editor.focus()
@@ -4890,11 +6253,12 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     container.ownerDocument.addEventListener('pointerdown', stop, true)
     container.ownerDocument.addEventListener('keydown', stop, true)
     focus()
-  }, [active, snapshot.mode, snapshot.path])
+  }, [active, snapshot.focusedPaneId, snapshot.mode, snapshot.path])
   useEffect(() => {
-    focusEditor()
+    const focused = root.current?.ownerDocument.activeElement
+    if (!(focused instanceof HTMLElement) || focused.closest('[data-pane-id]')?.getAttribute('data-pane-id') !== snapshot.focusedPaneId) focusEditor()
     return () => { pendingEditorFocus.current?.() }
-  }, [focusEditor])
+  }, [focusEditor, snapshot.focusedPaneId])
   useEffect(() => {
     if (!active || snapshot.documentKind !== 'markdown' || snapshot.path === null || snapshot.settings === undefined) return
     const timer = setInterval(() => { void controller.captureRecoverySnapshot() }, snapshot.settings.recoveryIntervalMinutes * 60_000)
@@ -4904,28 +6268,30 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     const node = root.current
     if (node === null) return
     const onKeyDown = (event: KeyboardEvent): void => {
+      // This native listener runs before the linked leaf's delegated React handler.
+      const linkedOrigin = event.target instanceof Element && event.target.closest('[data-linked-kind]') !== null
       const isMac = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '')
       const primary = isMac ? event.metaKey : event.ctrlKey
       if (primary && !event.altKey && event.key.toLocaleLowerCase() === 'p') {
         event.preventDefault()
-        controller.setCommandPaletteOpen(true)
+        if (!linkedOrigin) controller.setCommandPaletteOpen(true)
         return
       }
       if (primary && event.shiftKey && !event.altKey && event.key.toLocaleLowerCase() === 't') {
         event.preventDefault()
-        void controller.reopenClosedTab()
+        if (!linkedOrigin) void controller.reopenClosedTab()
         return
       }
       const editorCommand = resolvePlatformEditorCommand(event, isMac)
       if (editorCommand !== null) {
         event.preventDefault()
-        controller.runEditorCommand(editorCommand)
+        if (!linkedOrigin) controller.runEditorCommand(editorCommand)
         return
       }
       const shortcut = resolveEditorShortcut(event, isMac)
       if (shortcut !== 'save') return
       event.preventDefault()
-      void controller.save()
+      if (!linkedOrigin) void controller.save()
     }
     node.addEventListener('keydown', onKeyDown)
     return () => { node.removeEventListener('keydown', onKeyDown) }
@@ -4933,6 +6299,8 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
   return (
     <div className="tocktutor-root h-full min-h-0" ref={root}>
       <TockTutorRouteView
+        paneController={controller}
+        onSplitPane={(id, axis) => { void controller.splitPane(id, axis) }}
         assistantPanel={(
           <TockTutorAssistantPanelOutlet
             activePath={snapshot.path}
@@ -4943,18 +6311,24 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
             vault={snapshot.vault}
           />
         )}
+        nativeNoteActions={nativeNoteActions}
         nativeActions={(
           <TockTutorNativeActionsOutlet
+            noteOwnerKey={controller.nativeNoteOwnerKey()}
             activePath={snapshot.path}
+            noteSource={snapshot.source}
+            saveNote={() => controller.save()}
             handleDispatch={event => controller.handleDispatch(event)}
+            publishNoteActions={publishNoteActions}
             renderSlot={props.renderSlot}
-            saveCurrent={() => controller.save()}
+            saveCurrent={() => controller.saveAll()}
             storeAudio={(fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64)}
             vault={snapshot.vault}
           />
         )}
         onActivateTab={(paneId, path) => { void controller.activateTab(paneId, path) }}
-        onAddBookmark={() => { controller.addActiveBookmark() }}
+        onAddBookmark={(title, group) => controller.addActiveBookmark(title, group ?? null)}
+        onEditBookmark={(id, title, group) => controller.editActiveBookmark(id, title, group)}
         onAttachFiles={files => { void controller.attachFiles(Array.from(files).slice(0, 16)) }}
         onApplyOrganization={() => { void controller.applyOrganization() }}
         onAddPane={() => { void controller.addPane() }}
@@ -5006,13 +6380,18 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenGraphNode={(path, mode) => controller.openGraphNode(path, mode)}
         onOpenInternalLink={target => controller.openInternalLink(target)}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true) }}
-        onOpenSearch={() => { controller.openSearch('') }}
+        onOpenSearch={() => { controller.openSearch(snapshot.searchQuery) }}
+        onOpenSidebarSearch={() => { controller.openSidebarSearch() }}
         onOpenSmartView={kind => { void controller.openSmartView(kind) }}
+        onPrepareNoteMerge={(path, signal) => controller.prepareNoteMerge(path, signal)}
+        onListMergeRecovery={(signal, cursor) => controller.listMergeRecovery(signal, cursor)}
+        onRecoverNoteMerge={(id, signal) => controller.recoverNoteMerge(id, signal)}
         onPrepareOrganization={() => { void controller.prepareOrganization() }}
         onPreviewAttachment={path => { void controller.previewAttachment(path) }}
         onReadSnapshot={id => { void controller.readRecoverySnapshot(id) }}
         onRenameTitle={title => controller.renameActiveTitle(title)}
-        onRemoveBookmark={id => { controller.removeBookmark(id) }}
+        onRemoveBookmark={id => controller.removeBookmark(id)}
+        onRevealFile={() => controller.revealActiveFile()}
         onReopenClosedTab={() => { void controller.reopenClosedTab() }}
         onRestoreSnapshot={id => { void controller.restoreRecoverySnapshot(id) }}
         onRestoreSnapshotOverwrite={id => { void controller.restoreRecoverySnapshotOverwrite(id) }}
@@ -5056,7 +6435,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
             placement={placement}
             renderMenuItem={renderMenuItem}
             renderSlot={props.renderSlot}
-            saveCurrent={() => controller.save()}
+            saveCurrent={() => controller.saveAll()}
             vault={snapshot.vault}
             vaultName={snapshot.vaultName ?? null}
           />

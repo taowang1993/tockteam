@@ -18,6 +18,7 @@ import {
 } from './launcher-workflow-contract.ts'
 import { LAUNCHER_TERMINALS, type LauncherTerminalId, type LauncherTerminalPlatform } from './launcher-terminal-config.ts'
 import { launcherFixedText } from './launcher-i18n.ts'
+import { useLauncherDirtyState } from './launcher-settings-dirty.ts'
 
 const ACTION_TYPES = Object.freeze([
   ['OpenFile', 'Open File'],
@@ -126,6 +127,7 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
   const dirtyRef = useRef(false)
+  useLauncherDirtyState(dirtyRef.current)
   const selectedIdRef = useRef(selectedId)
   const saveWorkflow = useMemo(() => createLauncherWorkflowSaveGate(save), [save])
 

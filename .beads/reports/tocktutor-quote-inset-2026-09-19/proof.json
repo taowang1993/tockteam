@@ -1,0 +1,614 @@
+{
+  "capturedAt": "2026-09-19T06:13:58.054Z",
+  "captures": [
+    {
+      "name": "live-preview.png",
+      "mode": "Live Preview",
+      "quote": false,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+      "scroll": [],
+      "sha256": "5049dab8f9ba1193b47f545bab5a104c2b08ff4f4b160798941263bcbb26a9b3",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "live-preview-quote.png",
+      "mode": "Live Preview",
+      "quote": true,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+      "scroll": [
+        {
+          "className": "tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-[700px] [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none",
+          "top": 392.5
+        }
+      ],
+      "sha256": "4c13679b129313e0d3851f8e21af1b57fa1f458a3346cf2d923cde8b49ebab81",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "reading.png",
+      "mode": "Reading View",
+      "quote": false,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n Completed task\n Pending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses E = mc^2, while a footnote keeps context nearby.[1]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\nFootnotes should remain readable without dominating the page.\nUIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters",
+      "scroll": [],
+      "sha256": "edf1aff594552c880c5d0d5bf901c9fbdb3297800ad1eb76191630f1cb569fc8",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "reading-quote.png",
+      "mode": "Reading View",
+      "quote": true,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n Completed task\n Pending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses E = mc^2, while a footnote keeps context nearby.[1]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\nFootnotes should remain readable without dominating the page.\nUIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters",
+      "scroll": [
+        {
+          "className": "tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-[700px] [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none",
+          "top": 392.5
+        }
+      ],
+      "sha256": "d6e7a27fa2a8cf716944b45fd3e3aa4d701163ae6b733c9c23681bd764501cf3",
+      "pixels": [
+        3024,
+        1898
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "wide": {
+        "live": {
+          "overflow": false,
+          "quotes": [
+            {
+              "padding": "24px",
+              "border": "2px",
+              "width": 700,
+              "overflow": false,
+              "paragraphs": [
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "0px",
+                  "mb": "0px"
+                },
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "16px",
+                  "mb": "0px"
+                }
+              ]
+            }
+          ],
+          "tasks": [
+            true,
+            false
+          ]
+        },
+        "reading": {
+          "overflow": false,
+          "quotes": [
+            {
+              "padding": "24px",
+              "border": "2px",
+              "width": 700,
+              "overflow": false,
+              "paragraphs": [
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "0px",
+                  "mb": "0px"
+                },
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "16px",
+                  "mb": "0px"
+                }
+              ]
+            }
+          ],
+          "tasks": [
+            true,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "narrow": {
+        "live": {
+          "overflow": false,
+          "quotes": [
+            {
+              "padding": "24px",
+              "border": "2px",
+              "width": 444,
+              "overflow": false,
+              "paragraphs": [
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "0px",
+                  "mb": "0px"
+                },
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "16px",
+                  "mb": "0px"
+                }
+              ]
+            }
+          ],
+          "tasks": [
+            true,
+            false
+          ]
+        },
+        "reading": {
+          "overflow": false,
+          "quotes": [
+            {
+              "padding": "24px",
+              "border": "2px",
+              "width": 444,
+              "overflow": false,
+              "paragraphs": [
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "0px",
+                  "mb": "0px"
+                },
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "16px",
+                  "mb": "0px"
+                }
+              ]
+            }
+          ],
+          "tasks": [
+            true,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "readingNestedQuoteCount": 1,
+      "readingQuoteHtml": "<blockquote><p>A long quote stays readable as its lines wrap within a narrow note column. A long quote stays readable as its lines wrap within a narrow note column. A long quote stays readable as its lines wrap within a narrow note column. A long quote stays readable as its lines wrap within a narrow note column. A long quote stays readable as its lines wrap within a narrow note column.</p><p>A separate paragraph.</p><p>&gt; A nested quotation with <a class=\"internal-link\" data-target=\"Welcome\" href=\"#\">Welcome</a> and <strong>bold text</strong>.<br>&gt;<br>&gt; Another nested paragraph.</p></blockquote>"
+    },
+    {
+      "wrappedNestedQuotesAt820": {
+        "live": {
+          "overflow": false,
+          "quotes": [
+            {
+              "padding": "24px",
+              "border": "2px",
+              "width": 452,
+              "overflow": false,
+              "paragraphs": [
+                {
+                  "left": 26,
+                  "height": 168,
+                  "mt": "0px",
+                  "mb": "0px"
+                },
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "16px",
+                  "mb": "0px"
+                }
+              ]
+            },
+            {
+              "padding": "24px",
+              "border": "2px",
+              "width": 426,
+              "overflow": false,
+              "paragraphs": [
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "0px",
+                  "mb": "0px"
+                },
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "16px",
+                  "mb": "0px"
+                }
+              ]
+            }
+          ],
+          "tasks": []
+        },
+        "reading": {
+          "overflow": false,
+          "quotes": [
+            {
+              "padding": "24px",
+              "border": "2px",
+              "width": 452,
+              "overflow": false,
+              "paragraphs": [
+                {
+                  "left": 26,
+                  "height": 168,
+                  "mt": "0px",
+                  "mb": "0px"
+                },
+                {
+                  "left": 26,
+                  "height": 24,
+                  "mt": "16px",
+                  "mb": "0px"
+                },
+                {
+                  "left": 26,
+                  "height": 72,
+                  "mt": "16px",
+                  "mb": "0px"
+                }
+              ]
+            }
+          ],
+          "tasks": []
+        }
+      }
+    },
+    "Keyboard link navigation from quoted text works"
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "sources": [
+    {
+      "name": "editor-surface.tsx",
+      "sha256": "3c24ac615dd64f5f591351c9f45996d3b0a0a559f1b2194916e6a201079b129b"
+    },
+    {
+      "name": "live-preview-editor-runtime.tsx",
+      "sha256": "83168afb6cd24fc80cfee69c5062be6fa2d6dfe4f96b74c2d7d1400740d6c84b"
+    }
+  ],
+  "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+  "before": {
+    "info": {
+      "root": "/tmp/tutor-inset-3CqCNw",
+      "repo": "/Users/taowang/projects/worktrees/tutor",
+      "port": 62743,
+      "data": "/tmp/tutor-inset-3CqCNw/data",
+      "vault": "/tmp/tutor-inset-3CqCNw/Comparison Vault",
+      "pid": 87132
+    },
+    "live": {
+      "overflow": false,
+      "quotes": [
+        {
+          "padding": "12px",
+          "border": "2px",
+          "width": 700,
+          "overflow": false,
+          "paragraphs": [
+            {
+              "left": 14,
+              "height": 24,
+              "mt": "0px",
+              "mb": "0px"
+            },
+            {
+              "left": 14,
+              "height": 24,
+              "mt": "16px",
+              "mb": "0px"
+            }
+          ]
+        }
+      ],
+      "tasks": [
+        true,
+        false
+      ]
+    },
+    "reading": {
+      "overflow": false,
+      "quotes": [
+        {
+          "padding": "12px",
+          "border": "2px",
+          "width": 700,
+          "overflow": false,
+          "paragraphs": [
+            {
+              "left": 14,
+              "height": 24,
+              "mt": "0px",
+              "mb": "0px"
+            },
+            {
+              "left": 14,
+              "height": 24,
+              "mt": "16px",
+              "mb": "0px"
+            }
+          ]
+        }
+      ],
+      "tasks": [
+        true,
+        false
+      ]
+    },
+    "captures": [
+      {
+        "name": "live-preview.png",
+        "mode": "Live Preview",
+        "quote": false,
+        "geometry": {
+          "width": 1512,
+          "height": 949,
+          "deviceScaleFactor": 2
+        },
+        "colorScheme": "dark",
+        "skinId": null,
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+        "scroll": [],
+        "sha256": "209af11311881f01f84c99e686c9cf0c13b17ced6a2f0fccd9aeee01f247e969",
+        "pixels": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "name": "live-preview-quote.png",
+        "mode": "Live Preview",
+        "quote": true,
+        "geometry": {
+          "width": 1512,
+          "height": 949,
+          "deviceScaleFactor": 2
+        },
+        "colorScheme": "dark",
+        "skinId": null,
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+        "scroll": [
+          {
+            "className": "tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-[700px] [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none",
+            "top": 392.5
+          }
+        ],
+        "sha256": "3aeec583cc938e1b99a2af2616d87d088c2bd792f3239167da451c79f5f5f7c3",
+        "pixels": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "name": "reading.png",
+        "mode": "Reading View",
+        "quote": false,
+        "geometry": {
+          "width": 1512,
+          "height": 949,
+          "deviceScaleFactor": 2
+        },
+        "colorScheme": "dark",
+        "skinId": null,
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n Completed task\n Pending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses E = mc^2, while a footnote keeps context nearby.[1]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\nFootnotes should remain readable without dominating the page.\nUIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters",
+        "scroll": [],
+        "sha256": "78ab0db100695ef47f268cd53809a92b791c6f33265b0536dbe0a09fe4b5f064",
+        "pixels": [
+          3024,
+          1898
+        ]
+      },
+      {
+        "name": "reading-quote.png",
+        "mode": "Reading View",
+        "quote": true,
+        "geometry": {
+          "width": 1512,
+          "height": 949,
+          "deviceScaleFactor": 2
+        },
+        "colorScheme": "dark",
+        "skinId": null,
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n Completed task\n Pending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses E = mc^2, while a footnote keeps context nearby.[1]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\nFootnotes should remain readable without dominating the page.\nUIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters",
+        "scroll": [
+          {
+            "className": "tocktutor-editor-body relative min-h-0 overflow-auto [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-[700px] [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none",
+            "top": 392.5
+          }
+        ],
+        "sha256": "fb608dfd0c00cadf15953df32509f233f02cda7f01478617fb410ab25c7c2eb5",
+        "pixels": [
+          3024,
+          1898
+        ]
+      }
+    ]
+  },
+  "cleanup": [
+    {
+      "path": "/tmp/tutor-inset-WaPPJV/cleanup.json",
+      "rootPid": 96369,
+      "pids": [
+        96369,
+        96381,
+        96382,
+        96385,
+        96399,
+        96413,
+        96426,
+        96481,
+        96482,
+        96483,
+        96484,
+        96485,
+        96486,
+        96487,
+        96562,
+        96689,
+        96690,
+        96691,
+        96692,
+        96693,
+        96694,
+        96695,
+        96696
+      ],
+      "verified": true,
+      "remaining": []
+    },
+    {
+      "path": "/tmp/tutor-inset-LLPaQC/cleanup.json",
+      "rootPid": 93858,
+      "pids": [
+        93858,
+        93871,
+        93872,
+        93873,
+        93886,
+        93887,
+        93914,
+        94027,
+        94213,
+        94214,
+        94215,
+        94219,
+        94226,
+        94229,
+        94230,
+        94231,
+        94314,
+        94738,
+        94739,
+        94740,
+        94741,
+        94744,
+        94746,
+        94747,
+        94748
+      ],
+      "verified": true,
+      "remaining": []
+    },
+    {
+      "path": "/tmp/tutor-inset-730UrG/cleanup.json",
+      "rootPid": 95554,
+      "pids": [
+        95554,
+        95566,
+        95567,
+        95570,
+        95585,
+        95600,
+        95613,
+        95635,
+        95636,
+        95637,
+        95638,
+        95639,
+        95640,
+        95641,
+        95642,
+        95749,
+        95842,
+        95843,
+        95844,
+        95845,
+        95846,
+        95847,
+        95848,
+        95849
+      ],
+      "verified": true,
+      "remaining": []
+    },
+    {
+      "path": "/tmp/tutor-inset-3CqCNw/cleanup.json",
+      "rootPid": 87132,
+      "pids": [
+        87132,
+        87144,
+        87145,
+        87146,
+        87159,
+        87162,
+        87242,
+        87255,
+        87309,
+        87310,
+        87311,
+        87312,
+        87313,
+        87314,
+        87315,
+        87316,
+        87399,
+        87508,
+        87509,
+        87510,
+        87511,
+        87512,
+        87513,
+        87514,
+        87515
+      ],
+      "verified": true,
+      "remaining": []
+    }
+  ],
+  "visualInspection": "Fresh Reading and Live Preview top-of-note and quote-focused screenshots inspected. Quote text has a clearer inset from the leading bar; paragraphs remain aligned, and adjacent lists/table remain readable.",
+  "runtimeLogWarnings": []
+}

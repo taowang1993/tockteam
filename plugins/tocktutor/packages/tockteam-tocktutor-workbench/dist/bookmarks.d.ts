@@ -34,6 +34,10 @@ export type Bookmark = (BookmarkBase & {
 export declare function loadBookmarks(storage: KeyValueStorage, vaultId: string): Bookmark[];
 export declare function saveBookmarks(storage: KeyValueStorage, vaultId: string, bookmarks: readonly Bookmark[]): boolean;
 export declare function addBookmark(bookmarks: readonly Bookmark[], bookmark: Bookmark): Bookmark[];
+export declare function getBookmark(bookmarks: readonly Bookmark[], id: string): Bookmark | null;
+export declare function removeBookmark(bookmarks: readonly Bookmark[], id: string): Bookmark[] | null;
+/** Updates one bookmark record while retaining its ID and moving it between existing groups. */
+export declare function editBookmark(bookmarks: readonly Bookmark[], id: string, title: string, groupId?: string | null): Bookmark[];
 export declare function remapBookmarks(bookmarks: readonly Bookmark[], fromPath: string, toPath: string): Bookmark[];
 export {};
 //# sourceMappingURL=bookmarks.d.ts.map

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 import {
   inferPropertyType,
@@ -7,6 +8,16 @@ import {
   renamePropertiesRecoverably,
   setFrontmatterProperty,
 } from '../dist/properties.js'
+
+test('malformed flat lists have bounded parse time', () => {
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    import { parseFrontmatterProperties } from ${JSON.stringify(new URL('../dist/properties.js', import.meta.url).href)};
+    const source = '---\\ntags: [one' + ' '.repeat(200_000) + "'two']\\n---\\n";
+    assert.notEqual(parseFrontmatterProperties(source)[0]?.type, 'list');
+  `], { timeout: 2_000, encoding: 'utf8' })
+  assert.equal(result.status, 0, result.error?.message ?? result.stderr)
+})
 
 test('round-trips supported property types without corrupting the Markdown body', () => {
   const source = '---\ntitle: "Lesson: one"\ntags:\n  - class\naliases: [one, "two words"]\npoints: 3\ndone: false\ndate: 2026-08-26\nwhen: 2026-08-26T10:30:00Z\n---\n# Body\n'
@@ -86,4 +97,47 @@ test('rolls back earlier property renames when a later save fails', async () => 
   assert.equal(result.status, 'rolled-back')
   assert.deepEqual(writes, ['A.md', 'B.md'])
   assert.deepEqual(rollbacks, ['A.md'])
+})
+
+test('property editing rejects bounded or structured values rather than producing duplicate or invalid frontmatter', async () => {
+  const { setFrontmatterProperty } = await import('../src/properties.ts')
+  for (const source of ['---\nnested:\n  child: value\n---\nBody\n', '---\nnested: |\n  multiline\n---\nBody\n', '---\nnested: {child: value}\n---\nBody\n']) {
+    assert.throws(() => setFrontmatterProperty(source, 'nested', 'replacement'), /Source Mode/)
+  }
+  assert.throws(() => setFrontmatterProperty('---\nname: Kept\n---\n' + 'x'.repeat(1_000_001), 'name', 'Changed'), /large/)
+})
+
+
+test('rejects authored structured or non-string lists without flattening them, preserving supported string lists', async () => {
+  const { parseFrontmatterProperties, setFrontmatterProperty } = await import('../src/properties.ts')
+  for (const authored of ['\n  - child: original', '\n  - [nested, list]', '\n  - {child: original}', ' [[nested], plain]', ' [{child: original}]', '\n  - 3', '\n  - true', '\n  - null', ' [one, 3]', ' [false, null]', ' [2026-09-21]', ' [0x10, .nan]', '\n- child: original', '\n  \t- value', '\n  - -', '\n  - first\n    - nested']) {
+    const source = `---\nitems:${authored}\nkeep: original\n---\nBody\n`
+    assert.notEqual(parseFrontmatterProperties(source)[0]?.type, 'list', authored)
+    assert.throws(() => setFrontmatterProperty(source, 'items', ['replacement']), /Source Mode/, authored)
+    assert.equal(source, `---\nitems:${authored}\nkeep: original\n---\nBody\n`)
+    assert.equal(setFrontmatterProperty(source, 'keep', 'changed'), source.replace('keep: original', 'keep: changed'))
+  }
+  for (const authored of [' [one, "two, three", "true", "3", "2026-09-21", "[nested]"]', "\n  - one\n  - 'child: original'\n  - 'null'\n  - 'it''s text'", ' []']) {
+    const source = `---\nitems:${authored}\n---\nBody\n`
+    const parsed = parseFrontmatterProperties(source)[0]!
+    assert.equal(parsed.type, 'list')
+    assert.deepEqual(parseFrontmatterProperties(setFrontmatterProperty(source, 'items', parsed.value))[0], parsed)
+  }
+})
+
+
+test('quotes ambiguous user-entered string-list values so supported edits remain string lists', async () => {
+  const { parseFrontmatterProperties, setFrontmatterProperty } = await import('../src/properties.ts')
+  const values = ['0x10', '.nan', 'TRUE', 'null', '1e3', '-', '?', 'first\nsecond', 'a\tb', 'normal-tag', '2026-review', '123tag']
+  const source = setFrontmatterProperty('# Body\n', 'items', values)
+  assert.deepEqual(parseFrontmatterProperties(source)[0], { key: 'items', type: 'list', value: values })
+})
+
+
+test('keeps ordinary numeric-prefixed tag names editable rather than mistaking them for numeric scalars', async () => {
+  const { parseFrontmatterProperties, setFrontmatterProperty } = await import('../src/properties.ts')
+  const source = '---\ntags: [2026-review, 123tag, normal-tag]\n---\n'
+  const property = { key: 'tags', type: 'list', value: ['2026-review', '123tag', 'normal-tag'] }
+  assert.deepEqual(parseFrontmatterProperties(source)[0], property)
+  assert.deepEqual(parseFrontmatterProperties(setFrontmatterProperty(source, 'tags', property.value))[0], property)
 })

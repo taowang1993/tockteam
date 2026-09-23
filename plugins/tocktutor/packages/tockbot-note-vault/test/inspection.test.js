@@ -645,24 +645,29 @@ test('rewrite planning fails closed on validation, revisions, output bytes, work
     (_, index) => `Text <span data-index="${String(index)}">`,
   ).join('\n')}\n[T](./Target.md)\n`
   const htmlInspection = makeInspection(manyUnclosedTags, 'rev:html', largeLimits)
-  const htmlStarted = performance.now()
+  // Bound scanner work, not runner scheduling: CI can pause a linear scan for >250 ms.
+  let htmlWork = 0
+  const htmlWorkSignal = { throwIfAborted() {
+    if (++htmlWork > manyUnclosedTags.length * 4) assert.fail('unclosed HTML scan exceeded linear work bound')
+  } }
   const htmlResult = await htmlInspection.planPathRewrite({
     oldPath: 'Target.md',
     newPath: 'Archive/Target.md',
     isDirectory: false,
-  })
-  assert.equal(performance.now() - htmlStarted < 250, true)
+  }, htmlWorkSignal)
   assert.equal(htmlResult.updates.length, 1)
 
   const nestedBlock = `${'<div>\n'.repeat(20_000)}${'body\n'.repeat(20_000)}\n`
   const nestedInspection = makeInspection(nestedBlock, 'rev:nested', largeLimits)
-  const nestedStarted = performance.now()
+  let nestedWork = 0
+  const nestedWorkSignal = { throwIfAborted() {
+    if (++nestedWork > nestedBlock.length * 4) assert.fail('nested HTML scan exceeded linear work bound')
+  } }
   const nestedResult = await nestedInspection.planPathRewrite({
     oldPath: 'Target.md',
     newPath: 'Archive/Target.md',
     isDirectory: false,
-  })
-  assert.equal(performance.now() - nestedStarted < 250, true)
+  }, nestedWorkSignal)
   assert.deepEqual(nestedResult.updates, [])
   assert.equal(nestedResult.complete, true)
 
@@ -1660,4 +1665,633 @@ test('private Markdown-only search filters document kinds before result paginati
     inspection.search({ query: 'needle', limit: 1, cursor: allKinds.cursor, [markdownOnly]: true }, signal),
     /cursor does not match this operation/u,
   )
+})
+
+test('rewrites resolved wikilinks and embeds while preserving authored syntax and protected bytes', async () => {
+  const contents = new Map([
+    ['Notes/Sibling.md', [
+      '# Sibling',
+      '',
+      '[[中文 Source]]',
+      '[[Notes/中文 Source|Authored alias]]',
+      '[[Notes/中文 Source.md]]',
+      '![[Notes/中文 Source#Heading|Embedded alias]]',
+      '![[Notes/中文 Source#^block]]',
+      'Unresolved [[Missing 中文 Source]]',
+      '`[[中文 Source]]`',
+      '```md',
+      '[[中文 Source]]',
+      '```',
+      '',
+    ].join('\r\n')],
+    ['Notes/中文 Source.md', [
+      '---',
+      'related: [[中文 Source]]',
+      '---',
+      '# Source',
+      'Nearby [[./Sibling]]',
+      'Self [[中文 Source#Heading|Source alias]]',
+      '',
+    ].join('\r\n')],
+    ['Other.md', '# Other\r\n'],
+  ])
+  const entries = [...contents].map(([path, content]) => ({
+    path,
+    kind: 'document',
+    createdMs: 1,
+    modifiedMs: 1,
+    size: Buffer.byteLength(content),
+    revision: `revision:${path}`,
+  })).sort((left, right) => left.path.localeCompare(right.path))
+  const inspection = createVaultInspection({
+    async list() {
+      return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path) { return { path, content: contents.get(path) } },
+  }, limits)
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Notes/中文 Source.md',
+    newPath: 'Archive/Renamed 中文 Source.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.equal(result.truncated, false)
+  const updates = new Map(result.updates.map(update => [update.path, update.newContent]))
+  assert.equal(updates.get('Archive/Renamed 中文 Source.md'), [
+    '---',
+    'related: [[中文 Source]]',
+    '---',
+    '# Source',
+    'Nearby [[../Notes/Sibling]]',
+    'Self [[Renamed 中文 Source#Heading|Source alias]]',
+    '',
+  ].join('\r\n'))
+  assert.equal(updates.get('Notes/Sibling.md'), [
+    '# Sibling',
+    '',
+    '[[Renamed 中文 Source]]',
+    '[[Archive/Renamed 中文 Source|Authored alias]]',
+    '[[Archive/Renamed 中文 Source.md]]',
+    '![[Archive/Renamed 中文 Source#Heading|Embedded alias]]',
+    '![[Archive/Renamed 中文 Source#^block]]',
+    'Unresolved [[Missing 中文 Source]]',
+    '`[[中文 Source]]`',
+    '```md',
+    '[[中文 Source]]',
+    '```',
+    '',
+  ].join('\r\n'))
+})
+
+test('leaves ambiguous wikilinks untouched while rewriting unambiguous path-qualified targets', async () => {
+  const contents = new Map([
+    ['Notes/中文 Source.md', '# Source\n'],
+    ['Other/中文 Source.md', '# Other source\n'],
+    ['Else/Sibling.md', [
+      '[[中文 Source]]',
+      '[[Notes/中文 Source]]',
+      '[[Missing 中文 Source]]',
+      '',
+    ].join('\n')],
+  ])
+  const entries = [...contents].map(([path, content]) => ({
+    path,
+    kind: 'document',
+    createdMs: 1,
+    modifiedMs: 1,
+    size: Buffer.byteLength(content),
+    revision: `revision:${path}`,
+  })).sort((left, right) => left.path.localeCompare(right.path))
+  const inspection = createVaultInspection({
+    async list() {
+      return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path) { return { path, content: contents.get(path) } },
+  }, limits)
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Notes/中文 Source.md',
+    newPath: 'Notes/Renamed 中文 Source.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.equal(result.updates.length, 1)
+  assert.equal(result.updates[0].newContent, [
+    '[[中文 Source]]',
+    '[[Notes/Renamed 中文 Source]]',
+    '[[Missing 中文 Source]]',
+    '',
+  ].join('\n'))
+  assert.equal(result.updates[0].path, 'Else/Sibling.md')
+})
+
+function rewriteInspection(contents, configuredLimits = limits) {
+  const entries = [...contents].map(([path, content]) => ({
+    path,
+    kind: 'document',
+    createdMs: 1,
+    modifiedMs: 1,
+    size: Buffer.byteLength(content),
+    revision: `revision:${path}`,
+  })).sort((left, right) => left.path.localeCompare(right.path))
+  return createVaultInspection({
+    async list() {
+      return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path) { return { path, content: contents.get(path) } },
+  }, configuredLimits)
+}
+
+test('merge and rename planning reject content read at a different revision than its inventory', async () => {
+  for (const changedPath of ['Source.md', 'Dest.md', 'Ref.md']) {
+    const contents = new Map([['Source.md', '# Source\n'], ['Dest.md', '# Dest\n'], ['Ref.md', '[[Source]]\n']])
+    const inspection = createVaultInspection({
+      async list() {
+        return { entries: [...contents].map(([path, content]) => ({ path, kind: 'document', createdMs: 1, modifiedMs: 1,
+          size: Buffer.byteLength(content), revision: `before:${path}` })).sort((left, right) => left.path.localeCompare(right.path)),
+          cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+      },
+      async read(path) {
+        return { path, content: contents.get(path), revision: `${path === changedPath ? 'after' : 'before'}:${path}` }
+      },
+    }, limits)
+    await assert.rejects(inspection.planMergeLinks({ sourcePath: 'Source.md', destinationPath: 'Dest.md', mergedContent: '# Dest\n# Source\n', keepSource: false }), /changed.*read/iu)
+    await assert.rejects(inspection.planPathRewrite({ oldPath: 'Source.md', newPath: 'Moved.md', isDirectory: false }), /changed.*read/iu)
+  }
+})
+
+test('merge link planning rebases the source and referrers without moving sidecar assets or writing files', async () => {
+  const contents = new Map([
+    ['Notes/Source.md', '# Heading\n[Image](Source-md-images/pic.png)\n[[Source#Heading|Self]]\n[Source](Source.md?mode=read#Heading)\n```md\n[[Source]]\n```\n'],
+    ['Archive/Dest.md', '# Destination\n'],
+    ['Index.md', '[[Notes/Source|Alias]]\n[Source](Notes/Source.md)\n'],
+  ])
+  const before = [...contents]
+  const result = await rewriteInspection(contents).planMergeLinks({ sourcePath: 'Notes/Source.md', destinationPath: 'Archive/Dest.md', mergedContent: '# Destination\n\n# Heading\n', keepSource: false })
+  assert.equal(result.complete, true)
+  assert.equal(result.requiresKeepSource, false)
+  assert.equal(typeof result.fingerprint, 'string')
+  assert.deepEqual(result.source, { path: 'Notes/Source.md', revision: 'revision:Notes/Source.md', content: '# Heading\n[Image](../Notes/Source-md-images/pic.png)\n[[Dest#Heading|Self]]\n[Source](./Dest.md?mode=read#Heading)\n```md\n[[Source]]\n```\n' })
+  assert.deepEqual(result.destination, { path: 'Archive/Dest.md', revision: 'revision:Archive/Dest.md', content: '# Destination\n' })
+  assert.deepEqual(result.updates, [{ path: 'Index.md', revision: 'revision:Index.md', newContent: '[[Archive/Dest|Alias]]\n[Source](./Archive/Dest.md)\n' }])
+  assert.deepEqual([...contents], before)
+})
+
+test('keeping the source preserves inbound targets while rebasing copied source content', async () => {
+  const contents = new Map([
+    ['Notes/Source.md', '[Self](Source.md)\n'], ['Archive/Dest.md', '# Destination\n'], ['Index.md', '[[Notes/Source]]\n'],
+  ])
+  const result = await rewriteInspection(contents).planMergeLinks({ sourcePath: 'Notes/Source.md', destinationPath: 'Archive/Dest.md', mergedContent: '# Destination\n', keepSource: true })
+  assert.equal(result.complete, true)
+  assert.equal(result.source.content, '[Self](../Notes/Source.md)\n')
+  assert.deepEqual(result.updates, [])
+})
+
+test('merge planning requires keeping the source when links are ambiguous or non-Markdown references are unverified', async () => {
+  for (const extra of [[['Other/Source.md', '# Other\n'], ['Index.md', '[[Source]]\n']], [['Board.canvas', '{"nodes":[],"edges":[]}']]]) {
+    const contents = new Map([['Notes/Source.md', '# Source\n'], ['Dest.md', '# Dest\n'], ...extra])
+    const result = await rewriteInspection(contents).planMergeLinks({ sourcePath: 'Notes/Source.md', destinationPath: 'Dest.md', mergedContent: '# Dest\n# Source\n', keepSource: false })
+    assert.equal(result.complete, true)
+    assert.equal(result.requiresKeepSource, true)
+    assert.ok(result.warnings.length)
+  }
+})
+
+test('merge plans preserve encoded query targets and valid Markdown parentheses', async () => {
+  const contents = new Map([
+    ['Notes/Source #One.md', '[Self](Source%20%23One.md?mode=read#Heading)\n[Image](picture%28one%29.png)\n'],
+    ['Archive/Dest).md', '# Destination\n'],
+  ])
+  const result = await rewriteInspection(contents).planMergeLinks({ sourcePath: 'Notes/Source #One.md', destinationPath: 'Archive/Dest).md', mergedContent: '# Heading\n', keepSource: false })
+  assert.equal(result.complete, true)
+  assert.equal(result.source.content, '[Self](./Dest%29.md?mode=read#Heading)\n[Image](../Notes/picture%28one%29.png)\n')
+})
+
+test('merge and rename keep literal attachment URLs distinct from note aliases', async () => {
+  for (const target of ['photo.png', 'photo%2Epng', 'photo.png?download=1#Preview']) {
+    const contents = new Map([
+      ['Source.md', '# Source\n'], ['Dest.md', '# Dest\n'],
+      ['Ref.md', `[asset](${target})\n`],
+      ['Other.md', '---\naliases: [photo.png]\n---\n# Other\n'],
+    ])
+    const inspection = rewriteInspection(contents)
+    const merge = await inspection.planMergeLinks({ sourcePath: 'Source.md', destinationPath: 'Dest.md', mergedContent: '# Dest\n# Source\n', keepSource: false })
+    const rename = await inspection.planPathRewrite({ oldPath: 'Source.md', newPath: 'Moved/Source.md', isDirectory: false })
+    for (const result of [merge, rename]) {
+      assert.equal(result.complete, true)
+      assert.equal(result.updates.find(update => update.path === 'Ref.md').newContent, `[asset](./${target.replace('%2E', '.')})\n`)
+    }
+    assert.equal(merge.requiresKeepSource, false)
+  }
+})
+
+test('merge and rename encode bare reference spaces while preserving angle destinations and titles', async () => {
+  const ref = '[bare]: Source.md "Bare Title"\r\n[angle]: <Source.md> \'Angle Title\'\r\n\r\n[x][bare] [y][angle]\r\n'
+  const expected = '[bare]: ./New%20Name.md "Bare Title"\r\n[angle]: <./New Name.md> \'Angle Title\'\r\n\r\n[x][bare] [y][angle]\r\n'
+  const source = ['Source.md', '# Source\n']
+  const merge = await rewriteInspection(new Map([source, ['New Name.md', '# Dest\n'], ['Ref.md', ref]])).planMergeLinks({ sourcePath: 'Source.md', destinationPath: 'New Name.md', mergedContent: '# Dest\n# Source\n', keepSource: false })
+  const rename = await rewriteInspection(new Map([source, ['Ref.md', ref]])).planPathRewrite({ oldPath: 'Source.md', newPath: 'New Name.md', isDirectory: false })
+  for (const result of [merge, rename]) {
+    assert.equal(result.complete, true)
+    assert.equal(result.updates.find(update => update.path === 'Ref.md').newContent, expected)
+  }
+})
+
+test('merge requires keeping the source for unresolved note URLs but not literal attachments or resolved notes', async () => {
+  for (const target of ['Missing.md', 'Missing.MARKDOWN', 'Missing.canvas', 'Missing.base', 'Missing', '%4Dissing.md?view=1#Section', 'photo.png', 'Source']) {
+    const contents = new Map([['Source.md', '# Source\n'], ['Dest.md', '# Dest\n'], ['Ref.md', `[link](${target})\n`]])
+    const result = await rewriteInspection(contents).planMergeLinks({ sourcePath: 'Source.md', destinationPath: 'Dest.md', mergedContent: '# Dest\n# Source\n', keepSource: false })
+    const unresolved = target !== 'photo.png' && target !== 'Source'
+    assert.equal(result.complete, true)
+    assert.equal(result.requiresKeepSource, unresolved, target)
+    assert.equal(result.warnings.some(warning => warning.includes('unresolved or ambiguous')), unresolved, target)
+  }
+})
+
+test('merge planning keeps URI-encoded leading spaces distinct from another note name', async () => {
+  const contents = new Map([
+    ['Notes/ Source.md', '[Self](%20Source.md)\n'], ['Notes/Source.md', '# Other\n'], ['Dest.md', '# Destination\n'],
+  ])
+  const result = await rewriteInspection(contents).planMergeLinks({ sourcePath: 'Notes/ Source.md', destinationPath: 'Dest.md', mergedContent: '# Destination\n', keepSource: false })
+  assert.equal(result.complete, true)
+  assert.equal(result.source.content, '[Self](./Dest.md)\n')
+})
+
+test('merge retirement is blocked by protected HTML, property links, or conflicting heading/block targets', async () => {
+  for (const source of ['<a href="Source.md">Source</a>\n', '---\nrelated: "[[Source]]"\n---\nBody\n', '# Shared Heading\nSource ^shared\n', '# Source ^shared\n', 'Shared Heading\n===\n']) {
+    const contents = new Map([['Source.md', source], ['Dest.md', '# Shared Heading\nDestination ^shared\n']])
+    const result = await rewriteInspection(contents).planMergeLinks({ sourcePath: 'Source.md', destinationPath: 'Dest.md', mergedContent: contents.get('Dest.md') + source, keepSource: false })
+    assert.equal(result.complete, true)
+    assert.equal(result.requiresKeepSource, true, source)
+    assert.ok(result.warnings.length)
+  }
+})
+
+test('merge plan pagination binds both the proposed content and the complete input inventory', async () => {
+  const contents = new Map([['Source.md', '# Source\n'], ['Dest.md', '# Dest\n'], ['A.md', '[[Source]]\n'], ['B.md', '[[Source]]\n']])
+  const inspection = rewriteInspection(contents, { ...limits, maxSearchResults: 1 })
+  const args = { sourcePath: 'Source.md', destinationPath: 'Dest.md', mergedContent: '# Dest\n# Source\n', keepSource: false }
+  const first = await inspection.planMergeLinks(args)
+  assert.equal(first.complete, false)
+  assert.equal(typeof first.cursor, 'string')
+  const second = await inspection.planMergeLinks({ ...args, cursor: first.cursor })
+  assert.equal(second.complete, true)
+  assert.equal(first.fingerprint, second.fingerprint)
+  assert.deepEqual([...first.updates, ...second.updates].map(update => update.path), ['A.md', 'B.md'])
+  assert.deepEqual(first.source, second.source)
+  await assert.rejects(inspection.planMergeLinks({ ...args, mergedContent: '# Different\n', cursor: first.cursor }), /cursor/u)
+  contents.set('B.md', '[[Source|Changed]]\n')
+  await assert.rejects(inspection.planMergeLinks({ ...args, cursor: first.cursor }), /changed during pagination/u)
+})
+
+test('merge planning fails closed on bounded scans, invalid inputs and cancellation', async () => {
+  const contents = new Map([['Source.md', '# Source\n'], ['Dest.md', '# Dest\n']])
+  const args = { sourcePath: 'Source.md', destinationPath: 'Dest.md', mergedContent: '# Merged\n', keepSource: false }
+  const capped = await rewriteInspection(contents, { ...limits, maxSearchBytes: 3 }).planMergeLinks(args)
+  assert.equal(capped.complete, false)
+  assert.equal(capped.requiresKeepSource, true)
+  assert.equal(capped.source, null)
+  assert.deepEqual(capped.updates, [])
+  const inspection = rewriteInspection(contents)
+  for (const overrides of [{ destinationPath: 'source.MD' }, { destinationPath: '../Dest.md' }, { sourcePath: 'Source.canvas' }, { keepSource: undefined }, { mergedContent: 'x'.repeat(1025) }]) {
+    await assert.rejects(inspection.planMergeLinks({ ...args, ...overrides }))
+  }
+  await assert.rejects(inspection.planMergeLinks(args, AbortSignal.abort()), error => error.name === 'AbortError')
+})
+
+test('preserves authored frontmatter aliases when an unrelated note is renamed', async () => {
+  const inspection = rewriteInspection(new Map([
+    ['Notes/Actual.md', '---\naliases: [Nickname]\n---\n# Actual\n'],
+    ['Other/Actual.md', '# Other\n'],
+    ['Index.md', '[[Nickname]]\n'],
+    ['Unrelated.md', '# Unrelated\n'],
+  ]))
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Unrelated.md',
+    newPath: 'Moved/Unrelated.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.deepEqual(result.updates, [])
+})
+
+test('qualifies stationary basename links when a moved third file captures the basename', async () => {
+  const inspection = rewriteInspection(new Map([
+    ['Else/Old.md', '# Intended\n'],
+    ['Notes/Index.md', '[[Old]]\n'],
+    ['Incoming/Other.md', '# Incoming\n'],
+  ]))
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Incoming/Other.md',
+    newPath: 'Notes/Old.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.deepEqual(result.updates.map(update => update.path), ['Notes/Index.md'])
+  assert.equal(result.updates[0].newContent, '[[../Else/Old]]\n')
+})
+
+test('keeps links resolving to Canvas targets when a Markdown basename is renamed', async () => {
+  const contents = new Map([
+    ['Refs/Topic.canvas', '{}'],
+    ['Notes/Topic.md', '# Markdown topic\n'],
+    ['Refs/Index.md', '[[Topic]]\n'],
+  ])
+  const entries = [
+    ...[...contents].map(([path, content]) => ({
+      path,
+      kind: 'document',
+      createdMs: 1,
+      modifiedMs: 1,
+      size: Buffer.byteLength(content),
+      revision: `revision:${path}`,
+    })),
+  ].sort((left, right) => left.path.localeCompare(right.path))
+  const inspection = createVaultInspection({
+    async list() {
+      return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path) { return { path, content: contents.get(path) } },
+  }, limits)
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Notes/Topic.md',
+    newPath: 'Notes/Renamed Topic.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.deepEqual(result.updates, [])
+})
+
+test('qualifies captured Canvas and Base links with their explicit extensions', async () => {
+  for (const extension of ['canvas', 'base']) {
+    const inspection = rewriteInspection(new Map([
+      [`Refs/Topic.${extension}`, '{}'],
+      ['Refs/Index.md', '[[Topic#Heading|Shown]]\n'],
+      ['Incoming/Other.md', '# Incoming\n'],
+    ]))
+    const result = await inspection.planPathRewrite({
+      oldPath: 'Incoming/Other.md', newPath: 'Refs/Topic.md', isDirectory: false,
+    })
+    assert.equal(result.complete, true)
+    assert.equal(result.updates[0]?.newContent, `[[./Topic.${extension}#Heading|Shown]]\n`, extension)
+  }
+})
+
+test('refuses a complete plan for an ambiguous post-move inventory', async () => {
+  const inspection = rewriteInspection(new Map([
+    ['Index.md', '[[Notes/Topic.md]]\n'],
+    ['Notes/Topic.md', '# Intended\n'],
+    ['Zed.md', '# Incoming\n'],
+  ]))
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Zed.md', newPath: 'Notes/TOPIC.md', isDirectory: false,
+  })
+  assert.equal(result.complete, false)
+  assert.equal(result.truncated, true)
+  assert.deepEqual(result.updates, [])
+  assert.match(result.warnings.join(' '), /post-move resolution inventory is ambiguous/u)
+})
+
+test('binds non-Markdown resolution metadata into rewrite cursors', async () => {
+  const contents = new Map([
+    ['Index.md', '[[./Target]]\n'],
+    ['Other.md', '[[./Target]]\n'],
+    ['Refs/Topic.canvas', '{}'],
+    ['Target.md', '# Target\n'],
+  ])
+  const revisions = new Map([...contents].map(([path]) => [path, `revision:${path}`]))
+  const entries = [...contents].map(([path, content]) => ({
+    path,
+    kind: 'document',
+    createdMs: 1,
+    modifiedMs: 1,
+    size: Buffer.byteLength(content),
+    get revision() { return revisions.get(path) },
+  })).sort((left, right) => left.path.localeCompare(right.path))
+  const inspection = createVaultInspection({
+    async list() {
+      return { entries, cursor: null, complete: true, truncated: false, truncationReason: null, warnings: [] }
+    },
+    async read(path) { return { path, content: contents.get(path) } },
+  }, { ...limits, maxSearchResults: 1 })
+  const args = { oldPath: 'Target.md', newPath: 'Moved/Target.md', isDirectory: false }
+  const first = await inspection.planPathRewrite(args)
+  assert.equal(first.updates[0].path, 'Index.md')
+  assert.equal(first.complete, false)
+  assert.notEqual(first.cursor, null)
+
+  revisions.set('Refs/Topic.canvas', 'revision:changed')
+  await assert.rejects(
+    inspection.planPathRewrite({ ...args, cursor: first.cursor }),
+    /source changed during pagination/u,
+  )
+})
+
+test('encodes reserved destination filename delimiters and preserves the authored suffix', async () => {
+  const inspection = rewriteInspection(new Map([
+    ['Old.md', '# Old\n'],
+    ['Index.md', '[[Old#Heading|Shown]]\n'],
+  ]))
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Old.md',
+    newPath: 'New#Part.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.equal(result.updates[0].newContent, '[[New%23Part#Heading|Shown]]\n')
+})
+
+test('keeps inline Markdown destinations and titles literal while rewriting adjacent wikilinks', async () => {
+  for (const inline of [
+    '[label](https://example.com "[[Old]]")',
+    '[label](https://example.com "literal ) [[Old]]")',
+    '[label](https://example.com\n"literal ) [[Old]]")',
+    '[label](https://example.com\r\n"literal ) [[Old]]")',
+    '[label](https://example.com "literal ( [[Old]]")',
+    "![image](https://example.com 'literal ) [[Old]]')",
+    '[label](https://example.com "escaped \\" ) [[Old]]")',
+    "![image](https://example.com '[[Old]]')",
+    '[label](https://example.com ([[Old]]))',
+    '[label](https://example.com/[[Old]])',
+    '[label](<https://example.com/literal ) [[Old]]> "title [[Old]]")',
+    "[label](<https://example.com/literal ' ) [[Old]]>)",
+  ]) {
+    const inspection = rewriteInspection(new Map([
+      ['Old.md', '# Old\n'],
+      ['Index.md', `${inline} then [[Old]]\r\n`],
+    ]))
+    const result = await inspection.planPathRewrite({
+      oldPath: 'Old.md', newPath: 'New.md', isDirectory: false,
+    })
+    assert.equal(result.complete, true)
+    assert.equal(result.updates[0]?.newContent, `${inline} then [[New]]\r\n`, inline)
+    const links = await inspection.links({ path: 'Index.md' })
+    assert.deepEqual(links.outgoingDetails.filter(link => link.kind === 'wiki').map(link => link.authoredTarget), ['Old'])
+  }
+})
+
+test('rewrites inline destinations without changing quoted titles or their escaping', async () => {
+  for (const title of ['"literal ) [[Old]]"', '"literal ( [[Old]]"', '"escaped \\" ) [[Old]]"']) {
+    const inspection = rewriteInspection(new Map([
+      ['Old.md', '# Old\n'],
+      ['Index.md', `[label](Old.md ${title}) then [[Old]]\r\n`],
+    ]))
+    const result = await inspection.planPathRewrite({
+      oldPath: 'Old.md', newPath: 'New.md', isDirectory: false,
+    })
+    assert.equal(result.complete, true)
+    assert.equal(result.updates[0]?.newContent, `[label](./New.md ${title}) then [[New]]\r\n`)
+    const links = await inspection.links({ path: 'Index.md' })
+    assert.equal(links.outgoingDetails.find(link => link.kind === 'markdown')?.authoredTarget, 'Old.md')
+  }
+})
+
+test('preserves angle delimiters when rebasing local inline Markdown destinations', async () => {
+  const inspection = rewriteInspection(new Map([
+    ['Old Name.md', '# Old\n'],
+    ['Index.md', '[label](<Old Name.md> "literal ) [[Old Name]]")\r\n'],
+    ['Protected.md', [
+      '<span>[label](<Old Name.md>) [[Old Name]]</span>',
+      '<span title="[label](<Old Name.md>)">[[Old Name]]</span>',
+      '<span>[[Old Name]] [label](https://example.com "</span>")',
+      '<span>[[Old Name]]',
+      '[label](https://example.com "</span>")',
+      '<span>[[Old Name]] [label](https://example.com "<b></b></span>")',
+      '<span><unclosed>[[Old Name]]</span>',
+      '<span><span>[label](<Old Name.md>)</span>[[Old Name]]</span>',
+      '<span></unmatched>[[Old Name]]</span>',
+      '<span>[label](https://example.com "<span>")</span>[[Old Name]]</span>',
+      '<span>'.repeat(512) + '<unclosed>' + '</span>'.repeat(511) + '[[Old Name]]</span>',
+      '<span>'.repeat(512) + '</unmatched>'.repeat(512) + '[[Old Name]]' + '</span>'.repeat(512),
+    ].join('\n')],
+  ]), { ...limits, maxReadBytes: 64 * 1024, maxSearchBytes: 64 * 1024, maxSearchFileBytes: 64 * 1024 })
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Old Name.md', newPath: 'New Name.md', isDirectory: false,
+  })
+  assert.equal(result.complete, true)
+  assert.deepEqual(result.updates.map(update => update.path), ['Index.md'], JSON.stringify(result.updates))
+  assert.equal(result.updates[0]?.newContent, '[label](<./New Name.md> "literal ) [[Old Name]]")\r\n')
+})
+
+test('does not rewrite wiki-looking text in multiline reference titles', async () => {
+  const inspection = rewriteInspection(new Map([
+    ['Old.md', '# Old\n'],
+    ['Index.md', '[ref]: https://example.com\n"[[Old]]"\n'],
+  ]))
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Old.md',
+    newPath: 'New.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.deepEqual(result.updates, [])
+})
+
+test('preserves URI-encoded wiki path spelling when rewriting a destination', async () => {
+  const inspection = rewriteInspection(new Map([
+    ['Old Name.md', '# Old\n'],
+    ['Index.md', '[[Old%20Name]]\n'],
+  ]))
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Old Name.md',
+    newPath: 'New Name.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.equal(result.updates[0].newContent, '[[New%20Name]]\n')
+})
+
+test('rewrites URI-encoded targets to reserved filenames without double encoding', async () => {
+  for (const [name, encoded] of [
+    ['New#Part', 'New%23Part'],
+    ['New?Part', 'New%3FPart'],
+    ['New%Part', 'New%25Part'],
+    ['New|Part', 'New%7CPart'],
+    ['New[Part]', 'New%5BPart%5D'],
+  ]) {
+    const inspection = rewriteInspection(new Map([
+      ['Old Name.md', '# Old\n'],
+      ['Index.md', '[[Old%20Name?view=1#Heading|Shown]]\r\n'],
+    ]))
+    const result = await inspection.planPathRewrite({
+      oldPath: 'Old Name.md', newPath: `${name}.md`, isDirectory: false,
+    })
+    assert.equal(result.complete, true)
+    assert.equal(result.updates[0]?.newContent, `[[${encoded}?view=1#Heading|Shown]]\r\n`, name)
+  }
+})
+
+test('malformed angle destinations cannot rescan an entire suffix per link candidate', async () => {
+  const source = '[x](<'.repeat(2_000)
+  const inspection = rewriteInspection(new Map([['Old.md', '# Old'], ['Index.md', source]]), { ...limits, maxSearchFileBytes: 64 * 1024 })
+  let checks = 0
+  const signal = { throwIfAborted() { if (++checks > source.length * 30) throw new Error('Parser work exceeded linear bound') } }
+  const result = await inspection.planPathRewrite({ oldPath: 'Old.md', newPath: 'New.md', isDirectory: false }, signal)
+  assert.equal(result.complete, true)
+  assert.deepEqual(result.updates, [])
+})
+
+test('keeps multiline malformed wiki syntax negative and cancellation bounded', async () => {
+  const malformed = Array.from({ length: 2_000 }, () => '[[').join('\n')
+  const inspection = rewriteInspection(new Map([
+    ['Old.md', '# Old\n'],
+    ['Index.md', `[[Old\n]]\n${malformed}\n`],
+  ]), { ...limits, maxSearchFileBytes: 128 * 1024 })
+  const completed = await inspection.planPathRewrite({
+    oldPath: 'Old.md',
+    newPath: 'New.md',
+    isDirectory: false,
+  })
+  assert.equal(completed.complete, true)
+  assert.deepEqual(completed.updates, [])
+
+  let wikiChecks = 0
+  const signal = {
+    throwIfAborted() {
+      if (new Error().stack?.includes('scanWikiLinkSpans')) {
+        wikiChecks += 1
+        if (wikiChecks > 1) throw new DOMException('cancel wiki scan', 'AbortError')
+      }
+    },
+  }
+  await assert.rejects(
+    inspection.planPathRewrite({ oldPath: 'Old.md', newPath: 'New.md', isDirectory: false }, signal),
+    error => error?.name === 'AbortError',
+  )
+})
+
+test('ignores reference-looking text in definition titles without hiding real uses', async () => {
+  for (const definition of [
+    '[a]: ./Target.md "[literal][a]"',
+    '[a]: ./Target.md\n"[literal][a]"',
+  ]) {
+    const inspection = rewriteInspection(new Map([
+      ['Target.md', '# Target\n'],
+      ['Index.md', `${definition}\n\n[real][a]\n`],
+    ]))
+    const links = await inspection.links({ path: 'Index.md' })
+    assert.deepEqual(links.outgoingDetails.filter(link => link.kind === 'reference').map(link => link.displayText), ['real'])
+  }
+})
+
+test('does not rewrite wiki-looking text in reference definition titles', async () => {
+  const inspection = rewriteInspection(new Map([
+    ['Old.md', '# Old\n'],
+    ['Index.md', '[ref]: https://example.com "[[Old]]"\n'],
+  ]))
+  const result = await inspection.planPathRewrite({
+    oldPath: 'Old.md',
+    newPath: 'New.md',
+    isDirectory: false,
+  })
+
+  assert.equal(result.complete, true)
+  assert.deepEqual(result.updates, [])
 })

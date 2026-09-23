@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Database, Globe2, KeyRound, Keyboard, Palette, RefreshCw, RotateCcw, Search, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { Check, Database, Globe2, KeyRound, Keyboard, Palette, RefreshCw, RotateCcw, ShieldCheck, Trash2, Upload, Download, MonitorCog } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@tockteam/ui/alert-dialog'
 import { Badge } from '@tockteam/ui/badge'
@@ -12,6 +12,13 @@ import { Slider } from '@tockteam/ui/slider'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@tockteam/ui/accordion'
 import { Switch } from '@tockteam/ui/switch'
 import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
+import { LauncherSettingsDraftBoundary } from './launcher-settings-draft-boundary.tsx'
+import { useLauncherDirtyState } from './launcher-settings-dirty.ts'
+import { LauncherTrustedExtensionSettings } from './launcher-trusted-extension-settings.tsx'
+import { TRUSTED_RAYCAST_EXTENSION_IDS } from './trusted-raycast-descriptors.ts'
+import { LauncherExtensionSettings } from './launcher-extension-settings.tsx'
+import { launcherExtensionPages, launcherSettingsPlatform } from './launcher-extension-settings.ts'
+import { createLauncherSettingsNavigation, LauncherSettingsSidebar, type LauncherSettingsNavigation } from './launcher-settings-navigation.tsx'
 import { LauncherLocalSettings } from './launcher-local-settings.tsx'
 import { LauncherDiscoverySettings } from './launcher-discovery-settings.tsx'
 import { LauncherFileSearchSettings, type LauncherSimpleFileSearchDraft } from './launcher-file-search-settings.tsx'
@@ -23,11 +30,10 @@ import { LauncherSettingField as Field } from './launcher-setting-field.tsx'
 import { launcherCountText, launcherFixedText } from './launcher-i18n.ts'
 import { launcherWorkflowSnapshotToken } from './launcher-workflow-contract.ts'
 import type { DesktopBridge } from './contracts.ts'
-import { LAUNCHER_SENSITIVE_SETTING_KEYS, type LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
-import { mergeLauncherDirtyValues, readPersistedLauncherState } from './launcher-settings-model.ts'
+import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
+import { readPersistedLauncherState } from './launcher-settings-model.ts'
 import { useLauncherDraft } from './launcher-settings-drafts.ts'
 import { LAUNCHER_SETTING_CATALOG_COUNT } from './launcher-setting-catalog.ts'
-import { launcherSettingRequiresProviderRescan } from './launcher-setting-keys.ts'
 import { createLauncherSettingsWriteQueue } from './launcher-settings-write-queue.ts'
 import { localeTag } from '../plugins/shared/i18n.ts'
 import { useTranslate } from '../plugins/shared/use-i18n.ts'
@@ -91,6 +97,7 @@ const MESSAGES = {
 interface SettingsSectionProps {
   close: () => void
   locale: LocaleService
+  navigation: LauncherSettingsNavigation
 }
 
 interface SettingsSlots {
@@ -135,33 +142,6 @@ function SectionCard({ icon, title, description, children, testId }: Readonly<{ 
   )
 }
 
-const LAUNCHER_EXTENSION_LABELS: Readonly<Record<string, string>> = Object.freeze({
-  AppearanceSwitcher: 'Appearance Switcher',
-  ApplicationSearch: 'Application Search',
-  Base64Conversion: 'Base64 Conversion',
-  BrowserBookmarks: 'Browser Bookmarks',
-  Calculator: 'Calculator',
-  ColorConverter: 'Color Converter',
-  CurrencyConversion: 'Currency Conversion',
-  CustomWebSearch: 'Custom Web Search',
-  DeeplTranslator: 'DeepL Translator',
-  FileSearch: 'File Search',
-  JetBrainsToolbox: 'JetBrains Toolbox',
-  PasswordGenerator: 'Password Generator',
-  QuickFormatter: 'Quick Formatter',
-  RowlandTextEditor: 'Rowland Text Editor',
-  SimpleFileSearch: 'Simple File Search',
-  SystemCommands: 'System Commands',
-  SystemSettings: 'System Settings',
-  TerminalLauncher: 'Terminal Launcher',
-  UeliCommand: 'Ueli Commands',
-  UuidGenerator: 'UUID Generator',
-  VSCode: 'VS Code',
-  WebSearch: 'Web Search',
-  WindowsControlPanel: 'Windows Control Panel',
-  Workflow: 'Workflow',
-})
-
 const LAUNCHER_UPDATER_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
   idle: 'Idle',
   checking: 'Checking',
@@ -183,10 +163,6 @@ function statusLabel(snapshot: LauncherSettingsSnapshot): string {
   return snapshot.recoveredSettings ? 'Managed source recovered from backup' : 'Managed source active'
 }
 
-function launcherExtensionLabel(extensionId: string): string {
-  return launcherFixedText(LAUNCHER_EXTENSION_LABELS[extensionId] ?? extensionId)
-}
-
 function launcherUpdaterStatusLabel(status: string): string {
   return launcherFixedText(LAUNCHER_UPDATER_STATUS_LABELS[status] ?? status)
 }
@@ -195,14 +171,23 @@ function launcherCustomBrowserStatusLabel(status: string): string {
   return launcherFixedText(LAUNCHER_CUSTOM_BROWSER_STATUS_LABELS[status] ?? status)
 }
 
-function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): ReactNode {
+function LauncherSettingsPage(props: SettingsSectionProps): ReactNode {
+  return <LauncherSettingsDraftBoundary close={props.close}><LauncherSettingsContents {...props} /></LauncherSettingsDraftBoundary>
+}
+
+function LauncherSettingsContents({ locale, navigation }: SettingsSectionProps): ReactNode {
   const translate = useTranslate(locale, locale.bind('tockteam.launcher'))
   const t = (key: keyof typeof MESSAGES.en): string => translate(key)
   document.documentElement.lang = localeTag(locale)
   const bridge = window.dshDesktop
   const settings = bridge?.launcher.settings
+  const destination = useSyncExternalStore(navigation.subscribe, navigation.getSnapshot)
+  const showGlobal = destination === 'general'
+  const selectedExtension = showGlobal ? undefined : destination
+  const selectedPage = launcherExtensionPages.find(page => page.id === selectedExtension)
+  const pageRoot = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => { pageRoot.current?.scrollIntoView({ block: 'start' }) }, [destination])
   const [snapshot, setSnapshot] = useState<LauncherSettingsSnapshot | null>(null)
-  const pendingValues = useRef(new Map<string, unknown>())
   const [workflowSnapshotRevision, setWorkflowSnapshotRevision] = useState(0)
   const workflowSnapshotValue = useRef<string | undefined>(undefined)
   const [status, setStatus] = useState('Loading TockLauncher settings…')
@@ -214,6 +199,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const [launchOnStart, setLaunchOnStart] = useState<boolean | null>(null)
   const [updater, setUpdater] = useState<UpdaterState | null>(null)
   const [simpleFileSearchDraft, setSimpleFileSearchDraft] = useState<readonly LauncherSimpleFileSearchDraft[] | null>(null)
+  useLauncherDirtyState(secret.length > 0 || activeSaves.current > 0 || (simpleFileSearchDraft !== null && JSON.stringify(simpleFileSearchDraft) !== JSON.stringify(snapshot?.values['extension[SimpleFileSearch].folders'] ?? [])))
   const simpleFileSearchDraftRevision = useRef(0)
   const settingsOwnershipRef = useRef<string | undefined>(undefined)
   const updateSimpleFileSearchDraft = useCallback((folders: readonly LauncherSimpleFileSearchDraft[]): void => {
@@ -236,17 +222,14 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       workflowSnapshotValue.current = serializedWorkflow
       setWorkflowSnapshotRevision(revision => revision + 1)
     }
-    const dirtyValues = pendingValues.current
-    setSnapshot(mergeLauncherDirtyValues(next, dirtyValues))
+    setSnapshot(next)
     return next
   }, [clearSimpleFileSearchDraft, settings])
   const writeQueue = useMemo(() => settings === undefined ? null : createLauncherSettingsWriteQueue({
     getOwnershipToken: () => settingsOwnershipRef.current,
     updateSetting: async (key, value) => { await settings.updateSetting(key, value) },
     reload: async () => { await reload() },
-    clearPendingValue: (key, value, onlyIfCurrent) => {
-      if (!onlyIfCurrent || Object.is(pendingValues.current.get(key), value)) pendingValues.current.delete(key)
-    },
+    clearPendingValue: () => { /* Drafts are acknowledged by persisted snapshots, never optimistic values. */ },
   }), [reload, settings])
 
   useEffect(() => {
@@ -283,30 +266,17 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   const state = useMemo(() => snapshot ? readPersistedLauncherState(snapshot, LAUNCHER_COMPOSITION.extensionIds) : null, [snapshot])
   const [fuzzinessDraft, setFuzzinessDraft] = useLauncherDraft(state?.preferences.fuzziness ?? 0.5)
   const enabled = useMemo(() => new Set(state?.enabledExtensionIds ?? []), [state?.enabledExtensionIds])
-  const rendererIsLinux = typeof navigator !== 'undefined' && !/Macintosh|Mac OS|Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`)
-  const rendererPlatform = rendererIsLinux ? 'Linux' as const : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' as const : 'macOS' as const
+  const rendererPlatform = launcherSettingsPlatform()
 
   const save = useCallback((key: string, value: unknown): Promise<boolean> => {
     if (!settings || writeQueue === null) return Promise.resolve(false)
-    const requiresProviderRescan = launcherSettingRequiresProviderRescan(key)
-    if (requiresProviderRescan) {
-      activeSaves.current += 1
-      setBusy(true)
-    }
+    activeSaves.current += 1
+    setBusy(true)
     setStatus(t('saving'))
     const isSimpleFileSearchFolders = key === 'extension[SimpleFileSearch].folders'
     const draftRevision = simpleFileSearchDraftRevision.current
-    const trackPendingValue = !LAUNCHER_SENSITIVE_SETTING_KEYS.includes(key as never)
-    if (trackPendingValue) pendingValues.current.set(key, value)
-    if (trackPendingValue && !isSimpleFileSearchFolders) {
-      setSnapshot(previous => previous === null ? previous : Object.freeze({
-        ...previous,
-        values: Object.freeze({ ...previous.values, [key]: value }),
-      }))
-    }
     const operation = writeQueue.enqueue(key, value)
     return operation.then(saved => {
-      if (pendingValues.current.get(key) === value) pendingValues.current.delete(key)
       if (!saved) {
         setStatus(launcherFixedText('TockLauncher settings could not be saved.'))
         return false
@@ -317,15 +287,12 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
       setStatus(t('saved'))
       return true
     }, () => {
-      if (pendingValues.current.get(key) === value) pendingValues.current.delete(key)
       if (!isSimpleFileSearchFolders) void reload().catch(() => {})
       setStatus(launcherFixedText('TockLauncher settings could not be saved.'))
       return false
     }).finally(() => {
-      if (requiresProviderRescan) {
-        activeSaves.current = Math.max(0, activeSaves.current - 1)
-        if (activeSaves.current === 0) setBusy(false)
-      }
+      activeSaves.current = Math.max(0, activeSaves.current - 1)
+      if (activeSaves.current === 0) setBusy(false)
     })
   }, [reload, settings, writeQueue])
 
@@ -380,15 +347,15 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5" data-testid="tocklauncher-settings">
-      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="m-0 text-lg font-semibold leading-6 text-foreground">{t('title')}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t('description')}</p>
-        </div>
-        <Badge variant="secondary">{t('badge')}</Badge>
+    <div ref={pageRoot} className="box-border flex w-full min-w-0 flex-col gap-5" data-testid="tocklauncher-settings">
+      <div hidden={!showGlobal}>
+        <h2 className="m-0 text-lg font-semibold leading-6 text-foreground">{launcherFixedText('General')}</h2>
       </div>
-
+      <div hidden={showGlobal}>
+        <LauncherExtensionSettings selected={selectedExtension} enabled={enabled} onEnable={setExtension} busy={busy} platform={rendererPlatform} />
+      </div>
+      {TRUSTED_RAYCAST_EXTENSION_IDS.map(id => <LauncherTrustedExtensionSettings key={id} id={id} active={!showGlobal && selectedExtension === id} settings={settings} />)}
+      <div hidden={!showGlobal}><div className="flex flex-col gap-5">
       <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionSearch')} description="Tune the matching surface without exposing launcher internals.">
         <Field title="Search Engine" description="The selected matcher is applied to the next search.">
           <NativeSelect aria-label={launcherFixedText('Search Engine')} size="sm" value={state.preferences.searchEngineId} disabled={busy} onChange={event => { void save('searchEngine.id', event.target.value) }}>
@@ -448,40 +415,33 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         </Field>
       </SectionCard>
 
-      <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title={t('sectionExtensions')} description="Enablement is serialized through main before the next scan. Provider controls remain with their owning slices." testId="tocklauncher-extension-toggles">
-        <div className="grid min-w-0 grid-cols-1 gap-x-6 sm:grid-cols-2">
-          {LAUNCHER_COMPOSITION.extensionIds.map(extensionId => (
-            <Field key={extensionId} title={launcherExtensionLabel(extensionId)}>
-              <Switch aria-label={`${launcherFixedText('Enable')} ${launcherExtensionLabel(extensionId)}`} checked={enabled.has(extensionId)} disabled={busy} onCheckedChange={checked => setExtension(extensionId, checked)} />
-            </Field>
-          ))}
-        </div>
-      </SectionCard>
+      </div></div>
 
-      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionLocal')} description="Configure the seven local transformation providers without exposing renderer authority.">
-        <LauncherLocalSettings busy={busy} save={save} snapshot={snapshot} />
-      </SectionCard>
+      <div hidden={showGlobal || selectedPage?.editor !== 'local'}>
+        <LauncherLocalSettings extensionId={selectedExtension ?? ''} busy={busy} save={save} snapshot={snapshot} />
+      </div>
 
-      <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title={t('sectionDiscovery')} description="Configure bounded applications, bookmarks, JetBrains projects, and VS Code recents.">
-        <LauncherDiscoverySettings busy={busy} save={save} snapshot={snapshot} />
-      </SectionCard>
+      <div hidden={showGlobal || selectedPage?.editor !== 'discovery'}>
+        <LauncherDiscoverySettings extensionId={selectedExtension ?? ''} busy={busy} save={save} snapshot={snapshot} />
+      </div>
 
-      <SectionCard icon={<Search aria-hidden="true" className="size-4" />} title={t('sectionFile')} description="Configure bounded indexed and home-contained file search providers.">
-        <LauncherFileSearchSettings busy={busy} draftFolders={simpleFileSearchDraft} onDraftFoldersChange={updateSimpleFileSearchDraft} save={save} snapshot={snapshot} />
-      </SectionCard>
+      <div hidden={showGlobal || selectedPage?.editor !== 'file'}>
+        <LauncherFileSearchSettings extensionId={selectedExtension ?? ''} busy={busy} draftFolders={simpleFileSearchDraft} onDraftFoldersChange={updateSimpleFileSearchDraft} save={save} snapshot={snapshot} />
+      </div>
 
-      <SectionCard icon={<MonitorCog aria-hidden="true" className="size-4" />} title={t('sectionTerminal')} description="Configure the finite native terminal catalog. Commands always require main-process approval.">
+      <div hidden={showGlobal || selectedPage?.editor !== 'terminal'}>
         <LauncherTerminalSettings busy={busy} save={save} snapshot={snapshot} />
-      </SectionCard>
+      </div>
 
-      <SectionCard icon={<ShieldCheck aria-hidden="true" className="size-4" />} title={t('sectionWorkflow')} description="Compose a bounded ordered sequence of exact native actions. Commands always use a fixed shell policy and trusted Desktop home.">
+      <div hidden={showGlobal || selectedPage?.editor !== 'workflow'}>
         <LauncherWorkflowSettings key={workflowSnapshotRevision} busy={busy} save={save} snapshot={snapshot} />
-      </SectionCard>
+      </div>
 
-      <SectionCard icon={<Globe2 aria-hidden="true" className="size-4" />} title={t('sectionNetwork')} description="Configure fixed, bounded network providers without exposing renderer network authority.">
-        <LauncherNetworkSettings busy={busy} save={save} snapshot={snapshot} />
-      </SectionCard>
+      <div hidden={showGlobal || selectedPage?.editor !== 'network'}>
+        <LauncherNetworkSettings extensionId={selectedExtension ?? ''} busy={busy} save={save} snapshot={snapshot} />
+      </div>
 
+      <div hidden={!showGlobal}>
       <SectionCard icon={<Database aria-hidden="true" className="size-4" />} title={t('sectionStorage')} description="Managed files and external grants are owned by Electron main; no filesystem path crosses this page.">
         <Field title="Settings Source" description={launcherFixedText(statusLabel(snapshot))}><Badge variant={snapshot.settingsSource === 'external' ? 'default' : 'secondary'}>{launcherFixedText(snapshot.settingsSource === 'external' ? 'External' : 'Managed')}</Badge></Field>
         <Field title="External Write Capability" description="Unsupported platforms stay readable and revocable but reject writes before touching the file."><Badge variant={snapshot.externalWriteAvailable === false ? 'outline' : 'secondary'}>{launcherFixedText(snapshot.externalWriteAvailable === false ? 'Read-Only' : 'Available')}</Badge></Field>
@@ -518,7 +478,9 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         </Field>
       </SectionCard>
 
-      <SectionCard icon={<KeyRound aria-hidden="true" className="size-4" />} title={t('sectionSecurity')} description="Secrets are write-only. A missing or unavailable key is never represented by ciphertext or an error payload.">
+      </div>
+      <div hidden={showGlobal || selectedExtension !== 'DeeplTranslator'}>
+      <SectionCard icon={<KeyRound aria-hidden="true" className="size-4" />} title={launcherFixedText('DeepL API Key')} description="Secrets are write-only. A missing or unavailable key is never represented by ciphertext or an error payload.">
         <Field title="DeepL API Key" description="Enter a new key to encrypt it with the operating system secure-storage backend.">
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <Label htmlFor="tocklauncher-deepl-key" className="sr-only">{launcherFixedText('DeepL API Key')}</Label>
@@ -529,6 +491,8 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <Alert role="status" aria-live="polite"><ShieldCheck aria-hidden="true" /><AlertTitle>{launcherFixedText('Protected Secret')}</AlertTitle><AlertDescription>{snapshot.missingSensitiveKeys.includes('extension[DeeplTranslator].apiKey') ? launcherFixedText('No usable DeepL key is stored.') : launcherFixedText('A usable DeepL key is stored with secure storage.')}</AlertDescription></Alert>
       </SectionCard>
 
+      </div>
+      <div hidden={!showGlobal}><div className="flex flex-col gap-5">
       <SectionCard icon={<RefreshCw aria-hidden="true" className="size-4" />} title={t('sectionUpdates')} description="Automatic updates remain owned by the existing Electron updater state machine.">
         {updater ? <>
           <Field title="Update Status" description={updater.message === null ? `${launcherFixedText('Current Version')} ${updater.currentVersion}` : launcherFixedText(updater.message)}><Badge variant={updater.status === 'error' ? 'destructive' : 'secondary'}>{launcherUpdaterStatusLabel(updater.status)}</Badge></Field>
@@ -544,6 +508,7 @@ function LauncherSettingsPage({ close: _close, locale }: SettingsSectionProps): 
         <LauncherSurfaceSettingsSection busy={busy} platform={rendererPlatform} save={save} section="compatibility" snapshot={snapshot} />
       </SectionCard>
 
+      </div></div>
       <p aria-live="polite" className="px-1 text-sm text-muted-foreground" role="status">{status}</p>
     </div>
   )
@@ -558,6 +523,7 @@ export function apply(ctx: Readonly<{
   const locale = ctx.get('locale') as LocaleService
   const slots = ctx.get('slots') as SettingsSlots
   const translate = locale.bind('tockteam.launcher')
+  const navigation = createLauncherSettingsNavigation()
   ctx.effect(() => {
     const removeLocale = locale.register('tockteam.launcher', MESSAGES)
     const removeSlot = slots.inject('settings.section', () => slots.register({
@@ -566,8 +532,12 @@ export function apply(ctx: Readonly<{
       locale: 'tockteam.launcher',
       name: 'settings.section',
       order: 60,
-    }, props => <LauncherSettingsPage {...props} locale={locale} />)) as (() => void) | undefined
+    }, props => <LauncherSettingsPage {...props} locale={locale} navigation={navigation} />)) as (() => void) | undefined
+    const removeNavigation = slots.inject('settings.action', () => slots.register({
+      id: 'tocklauncher-navigation', label: () => translate('title'), locale: 'tockteam.launcher', name: 'settings.action', order: 60,
+    }, () => <LauncherSettingsSidebar locale={locale} navigation={navigation} />)) as (() => void) | undefined
     return () => {
+      removeNavigation?.()
       removeSlot?.()
       removeLocale?.()
     }

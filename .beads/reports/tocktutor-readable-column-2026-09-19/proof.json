@@ -1,0 +1,505 @@
+{
+  "capturedAt": "2026-09-19T05:28:49.361Z",
+  "captures": [
+    {
+      "name": "live-preview.png",
+      "mode": "Live Preview",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+      "sha256": "9a5f999fa1e341366aa02974d90513dabc05424b0c05ebd1b926b836fe766c34",
+      "pixels": [
+        3024,
+        1898
+      ]
+    },
+    {
+      "name": "reading.png",
+      "mode": "Reading View",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "visibleText": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n Completed task\n Pending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses E = mc^2, while a footnote keeps context nearby.[1]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\nFootnotes should remain readable without dominating the page.\nUIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters",
+      "sha256": "ea4575e32622aa03f04cd443f31a49056bde554ccaf0480473759b62e2f0a28f",
+      "pixels": [
+        3024,
+        1898
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "wide": {
+        "live": {
+          "left": 562,
+          "width": 700,
+          "overflow": false,
+          "header": {
+            "left": 562,
+            "width": 700
+          },
+          "headings": [
+            {
+              "text": "Markdown Rendering Lab",
+              "size": "26px",
+              "height": "31px",
+              "weight": "700"
+            },
+            {
+              "text": "Structure",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Lists",
+              "size": "20px",
+              "height": "28px",
+              "weight": "700"
+            },
+            {
+              "text": "Data",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Code and Notes",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            }
+          ]
+        },
+        "reading": {
+          "left": 562,
+          "width": 700,
+          "overflow": false,
+          "header": {
+            "left": 562,
+            "width": 700
+          },
+          "headings": [
+            {
+              "text": "Markdown Rendering Lab",
+              "size": "26px",
+              "height": "31px",
+              "weight": "700"
+            },
+            {
+              "text": "Structure",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Lists",
+              "size": "20px",
+              "height": "28px",
+              "weight": "700"
+            },
+            {
+              "text": "Data",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Code and Notes",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "narrow": {
+        "live": {
+          "left": 344,
+          "width": 444,
+          "overflow": false,
+          "header": {
+            "left": 344,
+            "width": 444
+          },
+          "headings": [
+            {
+              "text": "Markdown Rendering Lab",
+              "size": "26px",
+              "height": "31px",
+              "weight": "700"
+            },
+            {
+              "text": "Structure",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Lists",
+              "size": "20px",
+              "height": "28px",
+              "weight": "700"
+            },
+            {
+              "text": "Data",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Code and Notes",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            }
+          ]
+        },
+        "reading": {
+          "left": 344,
+          "width": 444,
+          "overflow": false,
+          "header": {
+            "left": 344,
+            "width": 444
+          },
+          "headings": [
+            {
+              "text": "Markdown Rendering Lab",
+              "size": "26px",
+              "height": "31px",
+              "weight": "700"
+            },
+            {
+              "text": "Structure",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Lists",
+              "size": "20px",
+              "height": "28px",
+              "weight": "700"
+            },
+            {
+              "text": "Data",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Code and Notes",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            }
+          ]
+        }
+      }
+    },
+    "Nested-list folding still works with keyboard in the narrow gutter",
+    {
+      "sidebarClosed": {
+        "live": {
+          "left": 422,
+          "width": 700,
+          "overflow": false,
+          "header": {
+            "left": 422,
+            "width": 700
+          },
+          "headings": [
+            {
+              "text": "Markdown Rendering Lab",
+              "size": "26px",
+              "height": "31px",
+              "weight": "700"
+            },
+            {
+              "text": "Structure",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Lists",
+              "size": "20px",
+              "height": "28px",
+              "weight": "700"
+            },
+            {
+              "text": "Data",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Code and Notes",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            }
+          ]
+        },
+        "reading": {
+          "left": 422,
+          "width": 700,
+          "overflow": false,
+          "header": {
+            "left": 422,
+            "width": 700
+          },
+          "headings": [
+            {
+              "text": "Markdown Rendering Lab",
+              "size": "26px",
+              "height": "31px",
+              "weight": "700"
+            },
+            {
+              "text": "Structure",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Lists",
+              "size": "20px",
+              "height": "28px",
+              "weight": "700"
+            },
+            {
+              "text": "Data",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            },
+            {
+              "text": "Code and Notes",
+              "size": "24px",
+              "height": "32px",
+              "weight": "700"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "longHeading": {
+        "live": {
+          "width": 452,
+          "height": 93,
+          "scroll": 452,
+          "client": 452,
+          "size": "26px",
+          "line": "31px"
+        },
+        "reading": {
+          "width": 452,
+          "height": 93,
+          "scroll": 452,
+          "client": 452,
+          "size": "26px",
+          "line": "31px"
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "sources": [
+    {
+      "name": "live-preview-editor-runtime.tsx",
+      "sha256": "c03b32f30bc9001158ddd7614a6a33d5733d905cc81597b13debe89812fe99dc"
+    },
+    {
+      "name": "live-preview-editor.tsx",
+      "sha256": "52271a3e95dc695dc35c50ad55390c86fa9b9dba74cb4eca2e33bf9ef984f2e0"
+    },
+    {
+      "name": "route.tsx",
+      "sha256": "3d1eece6bc5e7a4a9ca3b898e210ac5114ccb7ff0e84865ff16a3387734ebe97"
+    }
+  ],
+  "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+  "before": {
+    "live": {
+      "left": 528,
+      "width": 768,
+      "headings": [
+        {
+          "text": "Markdown Rendering Lab",
+          "size": "30px",
+          "height": "37.5px",
+          "weight": "700"
+        },
+        {
+          "text": "Structure",
+          "size": "24px",
+          "height": "32px",
+          "weight": "700"
+        },
+        {
+          "text": "Lists",
+          "size": "20px",
+          "height": "28px",
+          "weight": "700"
+        },
+        {
+          "text": "Data",
+          "size": "24px",
+          "height": "32px",
+          "weight": "700"
+        },
+        {
+          "text": "Code and Notes",
+          "size": "24px",
+          "height": "32px",
+          "weight": "700"
+        }
+      ]
+    },
+    "reading": {
+      "left": 562,
+      "width": 700,
+      "headings": [
+        {
+          "text": "Markdown Rendering Lab",
+          "size": "26px",
+          "height": "31px",
+          "weight": "700"
+        },
+        {
+          "text": "Structure",
+          "size": "24px",
+          "height": "32px",
+          "weight": "700"
+        },
+        {
+          "text": "Lists",
+          "size": "20px",
+          "height": "28px",
+          "weight": "700"
+        },
+        {
+          "text": "Data",
+          "size": "24px",
+          "height": "32px",
+          "weight": "700"
+        },
+        {
+          "text": "Code and Notes",
+          "size": "24px",
+          "height": "32px",
+          "weight": "700"
+        }
+      ]
+    }
+  },
+  "cleanup": [
+    {
+      "path": "/tmp/tutor-column-WDszGc/cleanup.json",
+      "rootPid": 50230,
+      "pids": [
+        50230,
+        50242,
+        50243,
+        50244,
+        50257,
+        50260,
+        50290,
+        50302,
+        50303,
+        50501,
+        50539,
+        50540,
+        50541,
+        50542,
+        50543
+      ],
+      "verified": true,
+      "remaining": []
+    },
+    {
+      "path": "/tmp/tutor-column-Rv1G6i/cleanup.json",
+      "rootPid": 57797,
+      "pids": [
+        57797,
+        57809,
+        57810,
+        57812,
+        57813,
+        57827,
+        57852,
+        57876,
+        57914,
+        58000,
+        58087,
+        58088,
+        58089,
+        58090,
+        58091,
+        58092,
+        58093,
+        58097
+      ],
+      "verified": true,
+      "remaining": []
+    },
+    {
+      "path": "/tmp/tutor-column-NAa3K6/cleanup.json",
+      "rootPid": 56887,
+      "pids": [
+        56887,
+        56898,
+        56899,
+        56902,
+        56915,
+        56919,
+        56930,
+        56952,
+        57070,
+        57071,
+        57073,
+        57280
+      ],
+      "verified": true,
+      "remaining": []
+    },
+    {
+      "path": "/tmp/tutor-column-HIkzs4/cleanup.json",
+      "rootPid": 55137,
+      "pids": [
+        55137,
+        55149,
+        55150,
+        55151,
+        55164,
+        55184,
+        55217,
+        55281,
+        55282,
+        55418,
+        55472
+      ],
+      "verified": true,
+      "remaining": []
+    }
+  ],
+  "visualInspection": "Both images visually inspected: property/header and body start at the same horizontal position across modes; heading scale matches; lists, links and quote content remain legible without clipping. Existing vertical spacing differences remain.",
+  "runtimeLogWarnings": []
+}

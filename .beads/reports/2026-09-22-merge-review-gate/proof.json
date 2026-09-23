@@ -1,0 +1,101 @@
+{
+  "geometry": {
+    "width": 1512,
+    "height": 949,
+    "dpr": 2,
+    "theme": "dark",
+    "skin": null
+  },
+  "candidates": [
+    "Archive/Dest.md",
+    "Other/Dest.markdown"
+  ],
+  "content": "---\nstatus: draft\n---\n# Source\n\n[Diagram](../assets/diagram.png)\n\n# Destination\n",
+  "leftover": "[[Archive/Dest.md|Archive/Dest]]\n",
+  "narrow": {
+    "width": 358,
+    "scrollWidth": 356,
+    "clientWidth": 356,
+    "viewport": 390
+  },
+  "light": {
+    "color": "rgb(15, 17, 21)",
+    "background": "rgb(255, 255, 255)"
+  },
+  "errors": [],
+  "route": "http://127.0.0.1:65430/",
+  "mode": "read-only component harness",
+  "checks": [
+    "explicit property choice",
+    "Shift+Enter prepend",
+    "relative-link rebasing",
+    "inbound review",
+    "unsafe source warning",
+    "link leftover",
+    "keep source",
+    "decision invalidation",
+    "no apply control",
+    "Cancel and focus restoration",
+    "Escape",
+    "outside dismissal",
+    "narrow layout",
+    "light theme",
+    "reduced motion"
+  ],
+  "limitation": "Fixture read-only transport; not production menu/apply or full Desktop acceptance",
+  "screenshots": [
+    {
+      "name": "choices.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "52cd478da90836daabd8525f4eefc8ed7ac578a743d16d700aeda0fda541e79c"
+    },
+    {
+      "name": "preview.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "4f46b4c6e23d1ea8bd08fc2f9225a17d3d610b96c5717c01699522783aa31d8c"
+    }
+  ],
+  "fileHashesUnchanged": true,
+  "cleanup": {
+    "source": "extended_display.stop responses; shell ps independently denied",
+    "runs": [
+      {
+        "id": "af6c7a06-2ac8-4759-a05b-8fa1258e3901",
+        "rootPid": 36611,
+        "recordedPids": [
+          36611,
+          36613,
+          36614,
+          36615
+        ],
+        "remaining": []
+      },
+      {
+        "id": "1f469870-85e4-477d-be45-afec0922a135",
+        "rootPid": 37176,
+        "recordedPids": [
+          37176,
+          37178,
+          37179,
+          37180
+        ],
+        "remaining": []
+      },
+      {
+        "id": "1454d942-af00-4c7a-baae-8c26774c92ca",
+        "rootPid": 38789,
+        "recordedPids": [
+          38789,
+          38791,
+          38792,
+          38793
+        ],
+        "remaining": []
+      }
+    ]
+  },
+  "displayId": 11,
+  "visibleWithoutFocus": true
+}

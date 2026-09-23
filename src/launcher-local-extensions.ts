@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import Color from 'color'
 import { XMLBuilder, XMLParser } from 'fast-xml-parser'
-import { create, all, parse, type FunctionNode, type SymbolNode } from 'mathjs'
+import { create, all, parse, smallerEq, largerEq, type ConstantNode, type FunctionNode, type MathNode, type OperatorNode, type RangeNode, type SymbolNode } from 'mathjs'
 import { v4 as uuidv4, v6 as uuidv6, v7 as uuidv7, validate as uuidValidate } from 'uuid'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
 import {
@@ -101,6 +101,33 @@ function numericArguments(value: string): number[] | undefined {
   return values.every(part => Number.isFinite(part) && part >= 0) ? values : undefined
 }
 
+function calculatorRangeNumber(node: MathNode): number {
+  if (node.type === 'ConstantNode') {
+    const value = (node as ConstantNode).value
+    return typeof value === 'number' ? value : NaN
+  }
+  if (node.type === 'OperatorNode') {
+    const operator = node as OperatorNode
+    if (operator.args.length === 1 && (operator.fn === 'unaryMinus' || operator.fn === 'unaryPlus')) {
+      return (operator.fn === 'unaryMinus' ? -1 : 1) * calculatorRangeNumber(operator.args[0]!)
+    }
+  }
+  return NaN
+}
+
+function isCalculatorRangeBounded(start: number, end: number, step: number): boolean {
+  if (![start, end, step].every(Number.isFinite) || step === 0
+    || Math.ceil(Math.abs(end - start) / Math.abs(step)) > MAX_CALCULATOR_COLLECTION_ITEMS) return false
+  // Expression ranges include the endpoint and use mathjs's tolerant comparisons.
+  // Count without allocating, rejecting any step that stops advancing in IEEE-754.
+  const ongoing = step > 0 ? smallerEq : largerEq
+  let count = 0
+  for (let value = start; ongoing(value, end); value += step) {
+    if (++count > MAX_CALCULATOR_COLLECTION_ITEMS || value + step === value) return false
+  }
+  return true
+}
+
 export function isLauncherCalculatorExpressionBounded(expression: string): boolean {
   if (expression.length > 512 || CALCULATOR_DISALLOWED_CALL.test(expression)) return false
   try {
@@ -108,6 +135,10 @@ export function isLauncherCalculatorExpressionBounded(expression: string): boole
     let valid = true
     root.traverse((node, _path, parent) => {
       if (!CALCULATOR_NODE_TYPES.has(node.type)) valid = false
+      if (node.type === 'RangeNode') {
+        const range = node as RangeNode
+        if (!isCalculatorRangeBounded(calculatorRangeNumber(range.start), calculatorRangeNumber(range.end), range.step ? calculatorRangeNumber(range.step) : 1)) valid = false
+      }
       if (node.type === 'SymbolNode' && CALCULATOR_COLLECTION_FUNCTIONS.has((node as SymbolNode).name) && _path !== 'fn') valid = false
       const call = node.type === 'FunctionNode' ? node as FunctionNode : undefined
       if (call && (call.fn.type !== 'SymbolNode' || (!CALCULATOR_SCALAR_FUNCTIONS.has(call.fn.name) && !CALCULATOR_COLLECTION_FUNCTIONS.has(call.fn.name)))) valid = false
@@ -127,18 +158,14 @@ export function isLauncherCalculatorExpressionBounded(expression: string): boole
     if (values === undefined) return false
     if (name === 'range') {
       const [start = 0, end, step = 1] = values
-      if (end === undefined || step === 0 || Math.ceil(Math.abs(end - start) / Math.abs(step)) > MAX_CALCULATOR_COLLECTION_ITEMS) return false
+      if (end === undefined || !isCalculatorRangeBounded(start, end, step)) return false
     } else {
       const dimensions = name === 'identity' && values.length === 1 ? [values[0]!, values[0]!] : values
-      if (dimensions.reduce((size, dimension) => size * dimension, 1) > MAX_CALCULATOR_COLLECTION_ITEMS) return false
+      const scalarRandom = (name === 'random' || name === 'randomInt') && !call[2]!.trim().startsWith('[')
+      // Empty inner dimensions still require allocating every outer array.
+      const allocationDimensions = scalarRandom ? dimensions : dimensions.map(dimension => Math.max(1, dimension))
+      if (allocationDimensions.reduce((size, dimension) => size * dimension, 1) > MAX_CALCULATOR_COLLECTION_ITEMS) return false
     }
-  }
-  const rangeExpressions = [...expression.matchAll(/(-?\d+(?:\.\d+)?)\s*:\s*(?:(-?\d+(?:\.\d+)?)\s*:\s*)?(-?\d+(?:\.\d+)?)(?=\s*(?:[\],)]|$))/gu)]
-  const colonCount = [...expression].filter(character => character === ':').length
-  if (rangeExpressions.reduce((count, range) => count + (range[2] === undefined ? 1 : 2), 0) !== colonCount) return false
-  for (const range of rangeExpressions) {
-    const start = Number(range[1]); const step = range[2] === undefined ? 1 : Number(range[2]); const end = Number(range[3])
-    if (step === 0 || Math.ceil(Math.abs(end - start) / Math.abs(step)) > MAX_CALCULATOR_COLLECTION_ITEMS) return false
   }
   const factorials = [...expression.matchAll(/(\d+(?:\.\d+)?)!/gu)]
   return factorials.length === [...expression].filter(character => character === '!').length
@@ -159,7 +186,7 @@ function calculate(expression: string, precision: number, decimalSeparator: stri
     if (kind === 'Unit' && (value as { value?: unknown }).value === null) return undefined
     if (kind === 'Function' || kind === 'string' || kind === 'boolean' || kind === 'undefined') return undefined
     const calculation = String(value)
-    const match = calculation.match(/^([\d,.]+)(\s*)(.*)$/u)
+    const match = calculation.match(/^(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)(\s*)(.*)$/u)
     const rounded = match
       ? `${math.round(math.bignumber(match[1]), precision)}${match[2]}${match[3]}`
       : calculation

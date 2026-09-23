@@ -11,9 +11,7 @@ import {
   realpathSync,
   renameSync,
   unlinkSync,
-  watch,
   writeSync,
-  type FSWatcher,
 } from 'node:fs'
 import { copyFile, link, lstat, mkdir, open, opendir, readlink, realpath, rename, rm, symlink, unlink, type FileHandle } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -21,6 +19,7 @@ import path from 'node:path'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-typert-protocol'
 import Schema from '@deepseek-ai/schemastery'
+import { watch, type FSWatcher } from 'chokidar'
 import { SearchIndexProcess, ISOLATED_SEARCH_SCHEMA, type SearchIndexProcessOptions } from './search-index-process.ts'
 import { adoptSearchIndex, retireSearchIndex, awaitSearchIndexSettlement, searchIndexOwnershipFailure } from './search-index-ownership.ts'
 import {
@@ -42,6 +41,8 @@ import {
   type VaultListResult,
   type VaultOutlineArgs,
   type VaultOutlineResult,
+  type VaultMergeLinkArgs,
+  type VaultMergeLinkResult,
   type VaultPathRewriteArgs,
   type VaultPathRewriteResult,
   type VaultPathRewriteUpdate,
@@ -55,6 +56,8 @@ import {
 declare module '@deepseek-ai/cordis' {
   interface Context {
     noteVault: NoteVaultRuntime
+    tockTeamDesktopOpenPath: TockTeamDesktopOpenPath
+    tockTeamDesktopCopyPath: TockTeamDesktopCopyPath
     tockTeamDesktopReveal: TockTeamDesktopReveal
     tockTeamDesktopVaultSelection: TockTeamDesktopVaultSelection
   }
@@ -161,6 +164,54 @@ export type TockTeamDesktopRevealStatus =
 export interface TockTeamDesktopRevealResult {
   operationId: string
   status: TockTeamDesktopRevealStatus
+}
+
+export interface TockTeamDesktopCopyPathIdentity {
+  dev: string
+  ino: string
+}
+
+export interface TockTeamDesktopCopyPathInput {
+  canonicalPath: string
+  identity: TockTeamDesktopCopyPathIdentity
+  kind: 'file'
+  operationId: string
+  vaultGeneration: number
+  vaultId: string
+}
+
+export type TockTeamDesktopCopyPathStatus =
+  | 'cancelled'
+  | 'copied'
+  | 'denied'
+  | 'stale'
+  | 'unavailable'
+
+export interface TockTeamDesktopCopyPathResult {
+  operationId: string
+  status: TockTeamDesktopCopyPathStatus
+}
+
+export abstract class TockTeamDesktopCopyPath extends Service {
+  constructor(ctx: Context) {
+    super(ctx, 'tockTeamDesktopCopyPath')
+  }
+
+  abstract copy(
+    input: TockTeamDesktopCopyPathInput,
+    signal: AbortSignal,
+  ): Promise<TockTeamDesktopCopyPathResult>
+}
+
+export type TockTeamDesktopOpenPathInput = TockTeamDesktopCopyPathInput
+export interface TockTeamDesktopOpenPathResult {
+  operationId: string
+  status: 'cancelled' | 'denied' | 'opened' | 'stale' | 'unavailable'
+}
+
+export abstract class TockTeamDesktopOpenPath extends Service {
+  constructor(ctx: Context) { super(ctx, 'tockTeamDesktopOpenPath') }
+  abstract open(input: TockTeamDesktopOpenPathInput, signal: AbortSignal): Promise<TockTeamDesktopOpenPathResult>
 }
 
 export abstract class TockTeamDesktopReveal extends Service {
@@ -316,6 +367,12 @@ export interface RevealEntryResult {
   generation: number
   path: string
   status: 'revealed'
+}
+
+export interface CopyEntryPathResult {
+  generation: number
+  path: string
+  status: 'copied'
 }
 
 export interface RevealVaultResult {
@@ -650,6 +707,48 @@ export interface DraftMutationResult {
 }
 
 export type VaultInspectionRuntimeResult<Result> = Result & { generation: number }
+
+export interface MergeLinkPreviewRequest extends VaultMergeLinkArgs {
+  expectedVault: VaultReference
+  expectedSourceRevision: string
+  expectedDestinationRevision: string
+}
+
+export type MergeLinkPreviewResult = VaultInspectionRuntimeResult<VaultMergeLinkResult>
+
+export interface PrepareMergeRequest extends MergeLinkPreviewRequest {
+  fingerprint: string
+  sourceDisposition: 'keep' | 'trash' | 'link' | 'embed'
+  sourceContent: string | null
+}
+export interface MergeRequest { id: string; expectedVault: VaultReference }
+export interface ApplyMergeRequest extends MergeRequest { confirmed: boolean }
+export interface PreparedMergeResult { id: string; generation: number }
+export interface MergeResult extends PreparedMergeResult {
+  status: 'applied' | 'recovery-required' | 'recovered'
+  sourcePath: string
+  destinationPath: string
+  sourceDisposition: PrepareMergeRequest['sourceDisposition']
+  paths: string[]
+  recoveryPath: string
+}
+export interface MergeListRequest { expectedVault: VaultReference; cursor?: string }
+export interface MergeListResult { generation: number; merges: MergeResult[]; cursor?: string }
+interface MergeRecord {
+  version: 1
+  id: string
+  vaultId: string
+  createdAt: number
+  status: MergeResult['status']
+  sourcePath: string
+  destinationPath: string
+  sourceDisposition: PrepareMergeRequest['sourceDisposition']
+  files: Array<{ path: string; revision: string; content: string; newContent: string | null; digest: string }>
+  inventory: Array<{ path: string; revision: string }>
+}
+const validMergeId = (id: unknown): id is string => typeof id === 'string' && /^merge-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(id)
+const mergeDigest = (content: string): string => `sha256:${createHash('sha256').update(content).digest('hex')}`
+const mergeRecoveryPath = (id: string): string => `Recovered Merge ${id.slice(6)}`
 
 export type {
   VaultCanvasArgs,
@@ -1092,7 +1191,7 @@ async function assertDesktopVaultSelectionTargetBound(
 type RevealTargetBinding = {
   candidate: string
   canonicalPath: string
-  identity: FileIdentity
+  identity: FileIdentity & { mode: bigint }
   kind: 'directory' | 'file'
   relativePath: string
 }
@@ -3163,16 +3262,23 @@ type ActiveRevealOperation = {
   controller: AbortController
 }
 
+type ActiveFileActionOperation = {
+  controller: AbortController
+  provider: 'tockTeamDesktopCopyPath' | 'tockTeamDesktopOpenPath'
+}
+
 export class NoteVaultRuntime extends Service {
   static Config = Config
 
   private activeDesktopSelectionClaim: ActiveDesktopSelectionClaim | null = null
   private readonly activeDesktopSelectionOperations = new Set<ActiveDesktopSelectionOperation>()
   private readonly activeRevealOperations = new Set<ActiveRevealOperation>()
+  private readonly activeFileActionOperations = new Set<ActiveFileActionOperation>()
   private readonly desktopSelectionCleanupOperations = new Set<Promise<void>>()
   private readonly context: Context
   private currentState: NoteVaultState
   private readonly draftOperations = new Map<string, Promise<void>>()
+  private readonly mergeReviews = new Map<string, { record: MergeRecord; request: PrepareMergeRequest; expires: number; bytes: number }>()
   private readonly maxAttachmentBytes: number
   private readonly maxDraftBytes: number
   private readonly maxFolderBytes: number
@@ -3199,6 +3305,8 @@ export class NoteVaultRuntime extends Service {
   private vaultRoot: string | null
   private vaultTransitionPending = false
   private watcher: FSWatcher | null = null
+  private readonly watcherStartup = new WeakMap<FSWatcher, PromiseWithResolvers<void>>()
+  private readonly watcherCleanup = new Set<Promise<void>>()
   private watcherActive = false
   private watcherToken = 0
 
@@ -3268,15 +3376,17 @@ export class NoteVaultRuntime extends Service {
     ctx.on('internal/service', (name) => {
       const operations = name === 'tockTeamDesktopReveal'
         ? this.activeRevealOperations
-        : name === 'tockTeamDesktopVaultSelection'
-          ? this.activeDesktopSelectionOperations
-          : null
+        : name === 'tockTeamDesktopCopyPath' || name === 'tockTeamDesktopOpenPath'
+          ? [...this.activeFileActionOperations].filter(operation => operation.provider === name)
+          : name === 'tockTeamDesktopVaultSelection'
+            ? this.activeDesktopSelectionOperations
+            : null
       if (operations === null) return
       for (const operation of operations) {
         if (!operation.controller.signal.aborted) {
           operation.controller.abort(new NoteVaultError(
             'unavailable',
-            `The Desktop ${name === 'tockTeamDesktopReveal' ? 'reveal' : 'vault selection'} provider became unavailable`,
+            `The Desktop ${name === 'tockTeamDesktopReveal' ? 'reveal' : name === 'tockTeamDesktopCopyPath' ? 'copy-path' : name === 'tockTeamDesktopOpenPath' ? 'open-path' : 'vault selection'} provider became unavailable`,
           ))
         }
       }
@@ -3295,6 +3405,7 @@ export class NoteVaultRuntime extends Service {
         for (const operation of [
           ...this.activeDesktopSelectionOperations,
           ...this.activeRevealOperations,
+          ...this.activeFileActionOperations,
         ]) {
           if (!operation.controller.signal.aborted) {
             operation.controller.abort(new NoteVaultError(
@@ -3307,7 +3418,7 @@ export class NoteVaultRuntime extends Service {
         this.watcherToken += 1
         const watcher = this.watcher
         this.watcher = null
-        watcher?.close()
+        this.closeWatcher(watcher)
         const searchIndex = this.searchIndex
         this.searchIndex = null
         this.searchIndexDisposed = true
@@ -3321,11 +3432,16 @@ export class NoteVaultRuntime extends Service {
         if (activeSelectionClaim !== null) this.queueDesktopSelectionClaimRelease(activeSelectionClaim)
         await Promise.allSettled([...this.desktopSelectionCleanupOperations])
         await Promise.allSettled([...this.draftOperations.values()])
+        await Promise.all([...this.watcherCleanup])
         // Cordis logs disposer rejections; the ownership latch is set before this point.
         if (this.searchIndexFailure) throw new Error('Search-index ownership could not be verified; indexing remains disabled.')
       }
     })
     this.replaceSearchIndex()
+  }
+
+  protected async [Service.init](): Promise<void> {
+    if (this.watcher) await this.watcherStartup.get(this.watcher)?.promise
   }
 
   private emitVaultDeactivation(vault: VaultReference): void {
@@ -3369,15 +3485,29 @@ export class NoteVaultRuntime extends Service {
     state: Extract<NoteVaultState, { active: true }>,
     token: number,
   ): FSWatcher {
+    // Node's Linux recursive watcher remains bound to the old inode after atomic saves.
     const watcher = watch(root, {
-      encoding: 'utf8',
       persistent: false,
-      recursive: true,
-    }, (eventType, filename) => {
-      void this.emitWatcherChange(root, state, token, eventType, filename)
+      followSymlinks: false,
+      ignoreInitial: true,
+      // Keep the final edit in a burst; the default leading-edge throttle can drop it.
+      awaitWriteFinish: { stabilityThreshold: 50, pollInterval: 10 },
+      ignored: candidate => {
+        const relative = path.relative(root, candidate)
+        return relative !== '' && normalizeWatcherPath(relative) === undefined
+      }
+    }).on('all', (event, filename) => {
+      void this.emitWatcherChange(root, state, token, event === 'change' ? 'change' : 'rename', path.relative(root, filename))
         .catch(() => undefined)
     })
+    const startup = Promise.withResolvers<void>()
+    this.watcherStartup.set(watcher, startup)
+    watcher.once('ready', () => {
+      startup.resolve()
+      void this.emitWatcherChange(root, state, token, 'change', null).catch(() => undefined)
+    })
     watcher.on('error', () => {
+      startup.resolve()
       if (
         this.watcherActive
         && this.watcherToken === token
@@ -3394,6 +3524,29 @@ export class NoteVaultRuntime extends Service {
       }
     })
     return watcher
+  }
+
+  private closeWatcher(watcher: FSWatcher | null): void {
+    if (watcher === null) return
+    this.watcherStartup.get(watcher)?.resolve()
+    const cleanup = watcher.close()
+    this.watcherCleanup.add(cleanup)
+    // Retain failures for the Cordis disposer rather than dropping rejected cleanup.
+    void cleanup.then(() => this.watcherCleanup.delete(cleanup), () => undefined)
+  }
+
+  private async awaitWatcherStartup(signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted()
+    if (!this.watcherActive) throw new NoteVaultError('unavailable', 'The note vault runtime became unavailable')
+    const startup = this.watcher && this.watcherStartup.get(this.watcher)?.promise
+    if (!startup) return
+    const cancelled = Promise.withResolvers<void>()
+    const onAbort = (): void => cancelled.reject(signal.reason)
+    signal.addEventListener('abort', onAbort, { once: true })
+    try { await Promise.race([startup, cancelled.promise]) }
+    finally { signal.removeEventListener('abort', onAbort) }
+    signal.throwIfAborted()
+    if (!this.watcherActive) throw new NoteVaultError('unavailable', 'The note vault runtime became unavailable')
   }
 
   private async emitWatcherChange(
@@ -3436,8 +3589,8 @@ export class NoteVaultRuntime extends Service {
       || this.vaultRoot !== root
     ) return
     const vault = { id: state.id, generation: state.generation }
+    this.invalidateSearchIndex(vault, relativePath === null || fullIndexReconcile ? undefined : relativePath)
     if (relativePath !== null) {
-      this.invalidateSearchIndex(vault, fullIndexReconcile ? undefined : relativePath)
       this.context.emit('note-vault/change', {
         action: eventType === 'rename' ? 'external-rename' : 'external-change',
         kind: 'entry',
@@ -3509,6 +3662,7 @@ export class NoteVaultRuntime extends Service {
     for (const operation of [
       ...this.activeDesktopSelectionOperations,
       ...this.activeRevealOperations,
+      ...this.activeFileActionOperations,
     ]) {
       if (!operation.controller.signal.aborted) operation.controller.abort(invalidated)
     }
@@ -3522,7 +3676,7 @@ export class NoteVaultRuntime extends Service {
     this.watcherToken += 1
     const watcher = this.watcher
     this.watcher = null
-    watcher?.close()
+    this.closeWatcher(watcher)
     this.replaceSearchIndex()
     if (this.stateRoot !== null) {
       try { unlinkSync(path.join(vaultStateDirectorySync(this.stateRoot), 'selection.json')) } catch { /* fail closed in memory */ }
@@ -3993,7 +4147,7 @@ export class NoteVaultRuntime extends Service {
     try {
       if (this.stateRoot !== null) persistVaultSelection(this.stateRoot, binding.root, nextRecent)
     } catch {
-      nextWatcher?.close()
+      this.closeWatcher(nextWatcher)
       throw new NoteVaultError('recovery-unavailable', 'Could not persist the active vault selection')
     }
     for (const operation of this.activeDesktopSelectionOperations) {
@@ -4004,11 +4158,11 @@ export class NoteVaultRuntime extends Service {
         ))
       }
     }
-    for (const operation of this.activeRevealOperations) {
+    for (const operation of [...this.activeRevealOperations, ...this.activeFileActionOperations]) {
       if (!operation.controller.signal.aborted) {
         operation.controller.abort(new NoteVaultError(
           'stale-vault',
-          'The active vault changed before the reveal could finish',
+          'The active vault changed before the Desktop path effect could finish',
         ))
       }
     }
@@ -4019,7 +4173,7 @@ export class NoteVaultRuntime extends Service {
     this.recentVaults = nextRecent
     this.watcherToken = nextToken
     this.watcher = nextWatcher
-    previousWatcher?.close()
+    this.closeWatcher(previousWatcher)
     this.replaceSearchIndex()
     if (!preserveDesktopSelectionClaim) {
       const activeSelectionClaim = this.activeDesktopSelectionClaim
@@ -4146,7 +4300,7 @@ export class NoteVaultRuntime extends Service {
     this.watcherToken = nextToken
     const previousWatcher = this.watcher
     this.watcher = null
-    previousWatcher?.close()
+    this.closeWatcher(previousWatcher)
     let moved = false
     let nextWatcher: FSWatcher | null = null
     try {
@@ -4165,7 +4319,7 @@ export class NoteVaultRuntime extends Service {
       nextWatcher = this.watcherActive ? this.openWatcher(binding.root, nextState, nextToken) : null
       persistVaultSelection(this.stateRoot, binding.root, nextRecent)
 
-      for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations]) {
+      for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations, ...this.activeFileActionOperations]) {
         if (operation !== excludedOperation && !operation.controller.signal.aborted) {
           operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault moved'))
         }
@@ -4185,7 +4339,7 @@ export class NoteVaultRuntime extends Service {
       try { unlinkSync(path.join(vaultStateDirectorySync(this.stateRoot), 'relocation.json')) } catch { /* recovery is idempotent */ }
       return nextState
     } catch (error) {
-      nextWatcher?.close()
+      this.closeWatcher(nextWatcher)
       if (moved) {
         try { renameSync(targetRoot, root) } catch {
           this.invalidateActiveVault(state, root)
@@ -4224,7 +4378,7 @@ export class NoteVaultRuntime extends Service {
     const nextState = Object.freeze({ active: false, generation: state.generation + 1 } as const)
     const nextRecent = this.recentVaults.filter(record => record.id !== state.id)
     if (this.stateRoot !== null) persistVaultSelection(this.stateRoot, null, nextRecent)
-    for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations]) {
+    for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations, ...this.activeFileActionOperations]) {
       if (!operation.controller.signal.aborted) {
         operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault was removed from the list'))
       }
@@ -4238,7 +4392,7 @@ export class NoteVaultRuntime extends Service {
     this.watcherToken += 1
     const watcher = this.watcher
     this.watcher = null
-    watcher?.close()
+    this.closeWatcher(watcher)
     this.replaceSearchIndex()
     this.vaultTransitionPending = true
     if (selectionClaim !== null) await this.queueDesktopSelectionClaimRelease(selectionClaim)
@@ -4312,6 +4466,107 @@ export class NoteVaultRuntime extends Service {
     } finally {
       this.activeRevealOperations.delete(operation)
     }
+  }
+
+  private async fileActionTarget(
+    root: string,
+    state: Extract<NoteVaultState, { active: true }>,
+    target: RevealTargetBinding,
+    signal: AbortSignal,
+    action: 'copy' | 'open',
+    operationId: string = randomUUID(),
+  ): Promise<void> {
+    const controller = new AbortController()
+    const providerName = action === 'open' ? 'tockTeamDesktopOpenPath' : 'tockTeamDesktopCopyPath'
+    const operation = { controller, provider: providerName } as const
+    const operationSignal = AbortSignal.any([signal, controller.signal])
+    this.activeFileActionOperations.add(operation)
+    try {
+      operationSignal.throwIfAborted()
+      this.assertCapturedVault(state, root)
+      if (target.kind !== 'file') throw new NoteVaultError('unsupported-type', 'Desktop file actions require a regular file')
+      if (action === 'open' && (!['.md', '.markdown', '.canvas', '.base'].includes(path.extname(target.relativePath).toLowerCase())
+        || (target.identity.mode & 0o111n) !== 0n)) {
+        throw new NoteVaultError('unsupported-type', 'Only non-executable Markdown, Canvas and Base documents can open externally')
+      }
+      const provider = this.context.get(providerName)
+      if (provider === undefined) {
+        throw new NoteVaultError('unavailable', `Desktop ${action} is unavailable in this runtime`)
+      }
+      const invoke = action === 'open'
+        ? (provider as TockTeamDesktopOpenPath).open.bind(provider)
+        : (provider as TockTeamDesktopCopyPath).copy.bind(provider)
+      await assertRevealTargetBound(root, target)
+      operationSignal.throwIfAborted()
+      let result: TockTeamDesktopCopyPathResult | TockTeamDesktopOpenPathResult
+      try {
+        result = await awaitWithAbort<TockTeamDesktopCopyPathResult | TockTeamDesktopOpenPathResult>(invoke({
+          canonicalPath: target.canonicalPath,
+          identity: {
+            dev: target.identity.dev.toString(10),
+            ino: target.identity.ino.toString(10),
+          },
+          kind: 'file',
+          operationId,
+          vaultGeneration: state.generation,
+          vaultId: state.id,
+        }, operationSignal), operationSignal)
+      } catch {
+        operationSignal.throwIfAborted()
+        this.assertCapturedVault(state, root)
+        throw new NoteVaultError('unavailable', `The Desktop ${action} provider failed`)
+      }
+      operationSignal.throwIfAborted()
+      this.assertCapturedVault(state, root)
+      await assertRevealTargetBound(root, target)
+      operationSignal.throwIfAborted()
+      if (result?.operationId !== operationId) {
+        throw new NoteVaultError('unavailable', `The Desktop ${action} provider returned an invalid operation`)
+      }
+      switch (result.status) {
+        case 'cancelled':
+        case 'denied':
+        case 'unavailable':
+          throw new NoteVaultError(result.status, `Desktop ${action} failed with status ${result.status}`)
+        case 'stale':
+          throw new NoteVaultError('stale-vault', `Desktop ${action} failed with status stale`)
+        case 'opened':
+        case 'copied':
+          if (result.status === (action === 'open' ? 'opened' : 'copied')) return
+          // A provider must report the exact requested effect, not another native action.
+        default:
+          throw new NoteVaultError('unavailable', `The Desktop ${action} provider returned an invalid status`)
+      }
+    } catch (error) {
+      operationSignal.throwIfAborted()
+      this.assertCapturedVault(state, root)
+      if (error instanceof NoteVaultError) throw error
+      throw new NoteVaultError('unavailable', `Desktop ${action} failed safely`)
+    } finally {
+      this.activeFileActionOperations.delete(operation)
+    }
+  }
+
+  async copyEntryPath(
+    request: RevealEntryRequest & { operationId?: string },
+    signal: AbortSignal,
+  ): Promise<CopyEntryPathResult> {
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    signal.throwIfAborted()
+    const target = await resolveRevealTarget(root, request.path)
+    if (target.kind !== 'file') {
+      throw new NoteVaultError('unsupported-type', 'Desktop absolute path copying requires a regular file')
+    }
+    await this.fileActionTarget(root, state, target, signal, 'copy', request.operationId)
+    return { generation: state.generation, path: target.relativePath, status: 'copied' }
+  }
+
+  async openEntry(request: RevealEntryRequest & { operationId?: string }, signal: AbortSignal): Promise<{ generation: number; path: string; status: 'opened' }> {
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    signal.throwIfAborted()
+    const target = await resolveRevealTarget(root, request.path)
+    await this.fileActionTarget(root, state, target, signal, 'open', request.operationId)
+    return { generation: state.generation, path: target.relativePath, status: 'opened' }
   }
 
   async revealEntry(
@@ -4579,6 +4834,7 @@ export class NoteVaultRuntime extends Service {
     signal: AbortSignal,
     operation: (inspection: VaultInspection) => Promise<Result>,
   ): Promise<VaultInspectionRuntimeResult<Result>> {
+    await this.awaitWatcherStartup(signal)
     const { root, state } = this.captureExpectedVault(expectedVault)
     signal.throwIfAborted()
     try {
@@ -4598,6 +4854,234 @@ export class NoteVaultRuntime extends Service {
     signal: AbortSignal,
   ): Promise<VaultInspectionRuntimeResult<VaultSearchResult>> {
     return await this.runInspection(expectedVault, signal, inspection => inspection.search(args, signal))
+  }
+
+  async previewMergeLinks(
+    request: MergeLinkPreviewRequest,
+    signal: AbortSignal,
+  ): Promise<MergeLinkPreviewResult> {
+    for (const revision of [request?.expectedSourceRevision, request?.expectedDestinationRevision]) {
+      if (typeof revision !== 'string' || !/^file:[0-9a-f]{64}$/u.test(revision)) {
+        throw new NoteVaultError('conflict', 'Merge preview requires both file revisions')
+      }
+    }
+    const { expectedVault, expectedSourceRevision, expectedDestinationRevision, ...args } = request
+    return this.runInspection(expectedVault, signal, async inspection => {
+      const result = await inspection.planMergeLinks(args, signal)
+      if ((result.source && result.source.revision !== expectedSourceRevision)
+        || (result.destination && result.destination.revision !== expectedDestinationRevision)) {
+        throw new NoteVaultError('conflict', 'A merge document changed; create a new preview')
+      }
+      if (result.source && result.destination && result.source.revision === result.destination.revision) {
+        throw new NoteVaultError('invalid-path', 'Merge documents must be different files')
+      }
+      return result
+    })
+  }
+
+  private async mergeInventory(root: string, signal: AbortSignal): Promise<MergeRecord['inventory']> {
+    const scan = await scanVaultTree(root, this.treeConfig, signal)
+    if (scan.truncationReason !== null) throw new NoteVaultError('too-large', 'Merge requires a complete vault inventory')
+    return scan.entries.filter(entry => entry.kind !== 'directory').map(entry => ({ path: entry.path, revision: entry.revision }))
+  }
+
+  async prepareMerge(input: PrepareMergeRequest, signal: AbortSignal): Promise<PreparedMergeResult> {
+    const request = structuredClone(input)
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    if (this.stateRoot === null) throw new NoteVaultError('recovery-unavailable', 'Merge requires persistent recovery storage')
+    if (!['keep', 'trash', 'link', 'embed'].includes(request.sourceDisposition)
+      || request.keepSource !== (request.sourceDisposition === 'keep') || request.cursor !== undefined
+      || typeof request.fingerprint !== 'string' || request.fingerprint.length > 256
+      || (request.sourceDisposition === 'keep' || request.sourceDisposition === 'trash' ? request.sourceContent !== null : typeof request.sourceContent !== 'string')) {
+      throw new NoteVaultError('invalid-content', 'Merge decisions are invalid')
+    }
+    encodeDocumentContent(request.mergedContent, this.maxReadBytes)
+    if (request.sourceContent !== null) encodeDocumentContent(request.sourceContent, this.maxReadBytes)
+    const inventory = await this.mergeInventory(root, signal)
+    const updates: VaultPathRewriteUpdate[] = [], cursors = new Set<string>()
+    let cursor: string | undefined
+    for (let page = 0; ; page++) {
+      const plan = await this.previewMergeLinks({ ...request, ...(cursor ? { cursor } : {}) }, signal)
+      if (plan.fingerprint !== request.fingerprint || !plan.source || !plan.destination
+        || (plan.requiresKeepSource && request.sourceDisposition !== 'keep')) throw new NoteVaultError('conflict', 'Review changed or requires keeping the original note')
+      updates.push(...plan.updates)
+      if (updates.length > 500) throw new NoteVaultError('too-large', 'Merge affects more than 500 other notes')
+      if (plan.complete && !plan.truncated && plan.cursor === null) break
+      if (page >= 199 || !plan.cursor || plan.truncationReason !== 'result-limit' || cursors.has(plan.cursor)) throw new NoteVaultError('conflict', 'Merge link review is incomplete')
+      cursors.add(plan.cursor); cursor = plan.cursor
+    }
+    const files: MergeRecord['files'] = []
+    const paths = new Set<string>()
+    for (const item of [
+      { path: request.destinationPath, revision: request.expectedDestinationRevision, newContent: request.mergedContent },
+      ...updates,
+      { path: request.sourcePath, revision: request.expectedSourceRevision, newContent: request.sourceContent },
+    ]) {
+      const target = await resolveDocumentTarget(root, item.path)
+      if (target.alias || target.targetEntry.nlink !== 1n || paths.has(item.path)) throw new NoteVaultError('unsafe-target', 'Merge requires distinct regular files without aliases or hard links')
+      paths.add(item.path)
+      const document = await this.openDocument(item.path, request.expectedVault, signal)
+      if (document.revision !== item.revision) throw new NoteVaultError('conflict', 'A merge note changed')
+      if (mergeDigest(document.content) !== document.digest) throw new NoteVaultError('invalid-content', 'Merge requires lossless UTF-8 originals')
+      const newContent = item.path === request.sourcePath && request.sourceDisposition === 'keep' ? document.content : item.newContent
+      if (newContent !== null) encodeDocumentContent(newContent, this.maxReadBytes)
+      files.push({ path: item.path, revision: document.revision, content: document.content, digest: document.digest, newContent })
+    }
+    if (JSON.stringify(inventory) !== JSON.stringify(await this.mergeInventory(root, signal))) throw new NoteVaultError('conflict', 'The vault changed during merge preparation')
+    this.assertCapturedVault(state, root); signal.throwIfAborted()
+    const record: MergeRecord = { version: 1, id: `merge-${randomUUID()}`, vaultId: state.id, createdAt: Date.now(),
+      status: 'recovery-required', sourcePath: request.sourcePath, destinationPath: request.destinationPath,
+      sourceDisposition: request.sourceDisposition, files, inventory }
+    const bytes = encodeDocumentContent(JSON.stringify(record), DEFAULT_MAX_INSPECTION_BYTES).byteLength
+    for (const [id, review] of this.mergeReviews) if (review.expires < Date.now()) this.mergeReviews.delete(id)
+    if (this.mergeReviews.size >= 32 || [...this.mergeReviews.values()].reduce((total, review) => total + review.bytes, bytes) > DEFAULT_MAX_INSPECTION_BYTES) throw new NoteVaultError('unavailable', 'Too many merge reviews. Wait for unused reviews to expire.')
+    this.mergeReviews.set(record.id, { record, request, bytes, expires: Date.now() + 5 * 60_000 })
+    return { id: record.id, generation: state.generation }
+  }
+
+  private async mergeDirectory(vault: VaultReference, create = false): Promise<string | null> {
+    if (this.stateRoot === null) throw new NoteVaultError('recovery-unavailable', 'Merge recovery storage is unavailable')
+    return stateDirectory(this.stateRoot, ['merges', createHash('sha256').update(vault.id).digest('hex')], create)
+  }
+
+  private async readMerge(request: MergeRequest, signal: AbortSignal): Promise<MergeRecord | null> {
+    if (!validMergeId(request.id)) throw new NoteVaultError('invalid-path', 'Invalid merge identifier')
+    const directory = await this.mergeDirectory(request.expectedVault)
+    if (!directory) return null
+    let data: Buffer
+    try { data = await readStateBytes(path.join(directory, `${request.id}.json`), DEFAULT_MAX_INSPECTION_BYTES, signal) }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error }
+    const record = JSON.parse(data.toString('utf8')) as MergeRecord
+    if (record.version !== 1 || record.id !== request.id || record.vaultId !== request.expectedVault.id
+      || !Number.isFinite(record.createdAt) || !['applied', 'recovery-required', 'recovered'].includes(record.status)
+      || !['keep', 'trash', 'link', 'embed'].includes(record.sourceDisposition)
+      || !Array.isArray(record.files) || record.files.length < 2 || record.files.length > 502
+      || record.files[0]?.path !== record.destinationPath || record.files.at(-1)?.path !== record.sourcePath) throw new NoteVaultError('recovery-unavailable', 'Invalid merge recovery record')
+    const paths = new Set<string>()
+    for (const file of record.files) {
+      if (!file || typeof file.path !== 'string' || normalizeDocumentPath(file.path) !== file.path || !/\.(?:md|markdown)$/iu.test(file.path)
+        || paths.has(file.path) || typeof file.content !== 'string' || mergeDigest(file.content) !== file.digest
+        || !/^file:[0-9a-f]{64}$/u.test(file.revision)) throw new NoteVaultError('recovery-unavailable', 'Invalid merge original')
+      encodeDocumentContent(file.content, this.maxReadBytes); paths.add(file.path)
+    }
+    return record
+  }
+
+  private mergeResult(record: MergeRecord, generation: number): MergeResult {
+    return { id: record.id, generation, status: record.status, sourcePath: record.sourcePath,
+      destinationPath: record.destinationPath, sourceDisposition: record.sourceDisposition,
+      paths: record.files.map(file => file.path), recoveryPath: mergeRecoveryPath(record.id) }
+  }
+
+  async listMerges(request: MergeListRequest, signal: AbortSignal): Promise<MergeListResult> {
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    if (request.cursor !== undefined && !validMergeId(request.cursor)) throw new NoteVaultError('invalid-path', 'Invalid merge cursor')
+    const directory = await this.mergeDirectory(request.expectedVault)
+    const ids: string[] = []
+    // ponytail: scan journal names per page; add an index only if retained-journal volume warrants it.
+    if (directory) for await (const entry of await opendir(directory)) {
+      signal.throwIfAborted()
+      const id = entry.name.slice(0, -5)
+      if (!entry.name.endsWith('.json') || !validMergeId(id) || (request.cursor && id <= request.cursor)) continue
+      const before = ids.findIndex(candidate => candidate > id)
+      ids.splice(before < 0 ? ids.length : before, 0, id)
+      if (ids.length > 101) ids.pop()
+    }
+    const cursor = ids.length > 100 ? ids[99] : undefined
+    const merges: MergeResult[] = []
+    for (const id of ids.slice(0, 100)) {
+      const record = await this.readMerge({ expectedVault: request.expectedVault, id }, signal)
+      if (record) merges.push(this.mergeResult(record, state.generation))
+    }
+    signal.throwIfAborted(); this.assertCapturedVault(state, root)
+    return { generation: state.generation, merges, ...(cursor ? { cursor } : {}) }
+  }
+
+  async applyMerge(request: ApplyMergeRequest, signal: AbortSignal): Promise<MergeResult> {
+    request = structuredClone(request)
+    if (request.confirmed !== true || !validMergeId(request.id)) throw new NoteVaultError('invalid-content', 'Confirm the exact reviewed merge before applying it')
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    // ponytail: serialize merges per vault; ordinary edits still use revision checks, not this lock.
+    return this.runDraftOperation(`merge:${state.id}`, async () => {
+      signal.throwIfAborted(); this.assertCapturedVault(state, root)
+      const existing = await this.readMerge(request, signal)
+      if (existing) return this.mergeResult(existing, state.generation)
+      const review = this.mergeReviews.get(request.id)
+      if (!review || review.expires < Date.now() || review.request.expectedVault.generation !== state.generation
+        || review.record.vaultId !== state.id) throw new NoteVaultError('conflict', 'Merge review expired. Create a new review.')
+      const { record } = review
+      const fresh = await this.previewMergeLinks(review.request, signal)
+      if (fresh.fingerprint !== review.request.fingerprint) throw new NoteVaultError('conflict', 'The vault changed. Create a new merge review.')
+      const expected = new Map(record.inventory.map(entry => [entry.path, entry.revision]))
+      const verifyInventory = async (): Promise<void> => {
+        const current = await this.mergeInventory(root, signal)
+        if (current.length !== expected.size || current.some(entry => expected.get(entry.path) !== entry.revision)) throw new NoteVaultError('conflict', 'The vault changed during merge')
+        this.assertCapturedVault(state, root); signal.throwIfAborted()
+      }
+      await verifyInventory()
+      const directory = (await this.mergeDirectory(request.expectedVault, true))!
+      const journal = path.join(directory, `${record.id}.json`)
+      const check = async (): Promise<void> => { signal.throwIfAborted(); this.assertCapturedVault(state, root); await this.mergeDirectory(request.expectedVault) }
+      // Durable originals and an interrupted phase precede every vault mutation. A retry never appends twice.
+      await writeDocumentAtomic(journal, encodeDocumentContent(JSON.stringify(record), DEFAULT_MAX_INSPECTION_BYTES), true, check)
+      this.mergeReviews.delete(record.id)
+      try {
+        for (const file of record.files.filter(file => file.path !== record.sourcePath)) {
+          const result = await this.saveDocument({ path: file.path, content: file.newContent!, expectedRevision: file.revision, expectedVault: request.expectedVault }, signal)
+          if (result.digest !== mergeDigest(file.newContent!)) throw new NoteVaultError('partial', 'Merge publication could not be verified')
+          expected.set(file.path, result.revision)
+        }
+        await verifyInventory()
+        const source = record.files.at(-1)!
+        if (record.sourceDisposition === 'trash') {
+          const trashPath = `.trash/${record.id}${path.posix.extname(record.sourcePath)}`
+          await ensureDestinationParent(root, path.join(root, ...trashPath.split('/')))
+          const moved = await this.moveFileInternal({ fromPath: source.path, toPath: trashPath, expectedRevision: source.revision, expectedVault: request.expectedVault }, signal, false)
+          const trash: TrashRecord = { id: `trash-${record.id.slice(6)}`, createdAt: record.createdAt, kind: 'document', originalPath: source.path, trashPath, revision: moved.revision }
+          await writeTrashRecord(this.stateRoot!, request.expectedVault, trash, signal, () => this.assertCapturedVault(state, root))
+          this.emitFileMutation('trashed', source.path, source.path, state)
+          expected.delete(source.path)
+        } else if (record.sourceDisposition !== 'keep') {
+          const replaced = await this.saveDocument({ path: source.path, content: source.newContent!, expectedRevision: source.revision, expectedVault: request.expectedVault }, signal)
+          if (replaced.digest !== mergeDigest(source.newContent!)) throw new NoteVaultError('partial', 'Source replacement could not be verified')
+          expected.set(source.path, replaced.revision)
+        }
+        await verifyInventory()
+        const completed = { ...record, status: 'applied' as const }
+        await writeDocumentAtomic(journal, encodeDocumentContent(JSON.stringify(completed), DEFAULT_MAX_INSPECTION_BYTES), false, check)
+        return this.mergeResult(completed, state.generation)
+      } catch {
+        // Never roll back over newer user edits. Recovery creates exclusive copies from durable originals.
+        return this.mergeResult(record, state.generation)
+      }
+    })
+  }
+
+  async recoverMerge(request: MergeRequest, signal: AbortSignal): Promise<MergeResult> {
+    request = structuredClone(request)
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    return this.runDraftOperation(`merge:${state.id}`, async () => {
+      const record = await this.readMerge(request, signal)
+      if (!record) throw new NoteVaultError('not-found', 'Merge recovery record not found')
+      const recoveryPath = mergeRecoveryPath(record.id)
+      for (const file of record.files) {
+        const restoredPath = `${recoveryPath}/${file.path}`
+        try {
+          const created = await this.createDocument({ path: restoredPath, content: file.content, expectedVault: request.expectedVault }, signal)
+          if (created.digest !== file.digest) throw new NoteVaultError('conflict', 'A recovered copy changed during publication. It will not be overwritten.')
+        }
+        catch (error) {
+          if (!(error instanceof NoteVaultError) || error.code !== 'exists') throw error
+          const current = await this.openDocument(restoredPath, request.expectedVault, signal)
+          if (current.digest !== file.digest) throw new NoteVaultError('conflict', 'A recovered copy was edited. It will not be overwritten.')
+        }
+      }
+      const recovered = { ...record, status: 'recovered' as const }
+      const directory = (await this.mergeDirectory(request.expectedVault))!
+      await writeDocumentAtomic(path.join(directory, `${record.id}.json`), encodeDocumentContent(JSON.stringify(recovered), DEFAULT_MAX_INSPECTION_BYTES), false,
+        async () => { this.assertCapturedVault(state, root); signal.throwIfAborted(); await this.mergeDirectory(request.expectedVault) })
+      return this.mergeResult(recovered, state.generation)
+    })
   }
 
   async read(
@@ -4769,6 +5253,7 @@ export class NoteVaultRuntime extends Service {
     expectedVault: VaultReference,
     signal: AbortSignal,
   ): Promise<OpenDocumentResult> {
+    await this.awaitWatcherStartup(signal)
     const { root, state } = this.captureExpectedVault(expectedVault)
     let document: { content: string; digest: string; modifiedAt: number; path: string; revision: string }
     try {
@@ -4776,6 +5261,11 @@ export class NoteVaultRuntime extends Service {
     } catch (error) {
       if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) {
         throw error
+      }
+      const filesystemError = error as NodeJS.ErrnoException
+      // Missing entries are unavailable; failed alias resolution remains unsafe-target.
+      if (filesystemError?.code === 'ENOENT' && (filesystemError.syscall === 'lstat' || filesystemError.syscall === 'open')) {
+        throw new NoteVaultError('not-found', 'Vault document not found')
       }
       throw new NoteVaultError('unsafe-target', 'Vault document could not be opened safely')
     }
@@ -4789,6 +5279,7 @@ export class NoteVaultRuntime extends Service {
     request: ListTreeRequest,
     signal: AbortSignal,
   ): Promise<VaultTreePage> {
+    await this.awaitWatcherStartup(signal)
     const { root, state } = this.captureExpectedVault(request.expectedVault)
     signal.throwIfAborted()
     const requestedLimit = request.limit ?? this.maxTreeResults

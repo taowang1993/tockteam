@@ -46,7 +46,10 @@ export async function buildTrustedRaycast(dist, artifact, extensionId = 'google-
       '@tockteam/trusted-raycast-projection': projectionSource,
       '@raycast/api': join(repository, 'src/trusted-raycast-compat-api.ts'),
       '@raycast/utils': extensionId === 'google-translate' ? join(repository, 'src/trusted-raycast-translate-compat-utils.ts') : join(repository, 'src/trusted-raycast-compat-utils.ts'),
-      ...(extensionId === 'google-translate' ? { '@tockteam/trusted-raycast-translate-catalog': join(source, 'src/languages.ts') } : {}),
+      ...(extensionId === 'google-translate' ? {
+        '@tockteam/trusted-raycast-translate-catalog': join(source, 'src/languages.ts'),
+        undici: join(repository, 'src/trusted-raycast-translate-network.ts'),
+      } : {}),
     }, ...(extensionId === 'can-i-use' ? { jsx: 'automatic', plugins: [trustedRaycastCanIUseAliases()] } : {}), logLevel: 'silent' })
     await build({ entryPoints: [join(repository, 'src/trusted-raycast-resolution.ts')], outfile: join(output, 'resolution.mjs'), bundle: true, format: 'esm', platform: 'node', target: 'node24', logLevel: 'silent' })
     // esbuild annotates every bundled file with its path; normalize the build-work prefix so rebuilds are byte-identical.

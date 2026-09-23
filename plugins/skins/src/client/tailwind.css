@@ -6,6 +6,7 @@
 @source '../../../../src/launcher.html';
 @source '../../../../src/launcher.ts';
 @source '../../../../src/launcher-settings.tsx';
+@source '../../../../src/launcher-settings-navigation.tsx';
 @source '../../../../src/launcher-workflow-settings.tsx';
 @source '../../../../src/launcher-local-tools.ts';
 @source '../../../../src/launcher-file-search-tool.ts';
@@ -38,9 +39,9 @@
   --color-input: var(--dsw-alias-border-l2);
   --color-ring: var(--dsw-alias-brand-primary);
   --color-brand: var(--dsw-alias-brand-primary);
-  --color-brand-foreground: var(--dsw-alias-label-primary-inverted);
-  --color-primary: var(--dsw-alias-brand-primary);
-  --color-primary-foreground: var(--dsw-alias-label-primary-inverted);
+  --color-brand-foreground: var(--dsw-alias-brand-primary-invert);
+  --color-primary: var(--dsw-alias-button-primary-fill);
+  --color-primary-foreground: var(--dsw-alias-label-primary-foreground);
   --color-secondary: var(--dsw-alias-bg-layer-2);
   --color-secondary-foreground: var(--dsw-alias-label-primary);
   --color-muted: var(--dsw-alias-bg-layer-2);
@@ -61,8 +62,64 @@
   --radius-xl: 12px;
 }
 
+/* Decorative only: keep the outbound cue out of editable Markdown and link names. */
+@utility tocktutor-note-links {
+  & a:is([href^="http://" i], [href^="https://" i])::after {
+    content: '';
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    margin-inline-start: 0.2em;
+    vertical-align: -0.05em;
+    background-color: var(--tt-muted);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E") center / contain no-repeat;
+    pointer-events: none;
+  }
+}
+
 /* The Desktop bridge has no component seam for the inherited DSH shell. */
 /* TockLauncher command views share Raycast-like density and material without sharing behavior or authority. */
+/* The pinned shell owns activation; TockLauncher owns only its nested navigation. */
+[data-tocklauncher-settings-trigger] { display: none !important; }
+[role='dialog'] > nav:has([data-tocklauncher-navigation]) {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding-bottom: 16px;
+  @media (max-width: 600px) { max-width: 42vw; padding-inline: 6px; }
+}
+
+/* Reserve the pinned shell's content scrollbar space across long and short settings pages. */
+[role='dialog'] > nav:has([data-tocklauncher-navigation]) + div > div:last-child {
+  scrollbar-gutter: stable;
+}
+
+@utility launcher-settings-nav-row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+  & > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  & > svg { width: 16px; height: 16px; flex: none; }
+  &:hover { background: var(--dsw-specific-sidebar-nav-item-hover, var(--dsw-alias-interactive-bg-hover)); }
+  &[aria-current='page'] { background: var(--dsw-specific-sidebar-nav-item-active, var(--dsw-alias-interactive-bg-hover)); }
+  &:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: -2px; }
+}
+
 @utility launcher-command-surface {
   box-sizing: border-box;
   position: relative;
@@ -1029,4 +1086,51 @@
   & #tockteam-embedded-layout > #root [data-phase='hero'] [data-composer-seat] svg[viewBox='0 0 1051 468'] {
     display: none;
   }
+}
+
+/* CodeMirror owns this generated DOM; presentation stays in the shared Tailwind layer. */
+@utility tocktutor-live-preview-styles {
+  outline: none !important;
+  & .cm-editor { font-family: inherit !important; font-size: 16px !important; line-height: 1.5 !important; }
+  & .cm-scroller { font-family: inherit !important; line-height: 1.5; }
+  & .cm-content { max-width: 700px !important; }
+  & .cm-line { padding: 0; }
+  & .cm-live-heading-1 { font-size: 1.802em; font-weight: 700; line-height: 1.3; }
+  & .cm-live-heading-2 { font-size: 1.602em; font-weight: 700; line-height: 1.3; }
+  & .cm-live-heading-3 { font-size: 1.424em; font-weight: 600; line-height: 1.3; }
+  & .cm-live-heading-4 { font-size: 1.266em; font-weight: 600; }
+  & .cm-live-heading-5 { font-size: 1.125em; font-weight: 600; }
+  & .cm-live-heading-6 { font-weight: 600; }
+  & .cm-live-strong { font-weight: 700; }
+  & .cm-live-emphasis { font-style: italic; }
+  & .cm-live-strike { text-decoration: line-through; }
+  & .cm-live-inline-code { font-family: ui-monospace, monospace; background: var(--dsw-specific-markdown-inline-code); border-radius: 3px; }
+  & .cm-live-link, & .cm-live-link *, & a { color: var(--dsw-specific-markdown-accent) !important; text-decoration: underline; }
+  & .cm-live-internal-link, & .cm-live-internal-link * { color: var(--dsw-specific-markdown-accent) !important; }
+  & .cm-line[class*='cm-live-heading-'] * { text-decoration: none !important; color: inherit !important; }
+  & .cm-live-highlight, & mark { background: var(--dsw-specific-markdown-highlight); color: inherit; }
+  & .cm-live-comment, & .cm-live-list-mark { color: var(--tt-muted); }
+  & .cm-live-code { font-family: ui-monospace, monospace; background: var(--dsw-alias-markdown-code-block); }
+  & .cm-live-quote { border-left: 2px solid var(--dsw-specific-markdown-accent); padding-left: 12px; }
+  & input[type='checkbox'] { accent-color: var(--dsw-specific-markdown-accent); margin-right: 6px; }
+  & .tocktutor-live-rendered { white-space: normal; overflow-wrap: anywhere; }
+  & .tocktutor-live-rendered > :first-child { margin-top: 0; }
+  & .tocktutor-live-rendered > :last-child { margin-bottom: 0; }
+  & .tocktutor-live-image { display: inline-block; max-width: 100%; }
+  & .tocktutor-live-rendered img, & .tocktutor-inline-image { display: block; max-width: 100%; height: auto; max-height: none; border-radius: 3px; }
+  & .tocktutor-inline-image:not([src]) { min-height: 24px; }
+  & .callout { padding: 12px 16px; border-radius: 4px; background: color-mix(in srgb, var(--dsw-specific-markdown-accent) 10%, var(--tt-panel)); }
+  & .callout > strong { display: block; color: var(--dsw-specific-markdown-accent); margin-bottom: 8px; }
+  & .callout > summary { color: var(--dsw-specific-markdown-accent); font-weight: 600; cursor: pointer; }
+  & .callout[open] > summary { margin-bottom: 8px; }
+  & ul { list-style: disc; padding-left: 24px; }
+  & ol { list-style: decimal; padding-left: 24px; }
+  & li > ul, & li > ol, & li > details > ul, & li > details > ol { padding-left: 16px; border-left: 1px solid var(--tt-border); }
+  & .task-list { list-style: none; padding-left: 4px; }
+  & .task-list li:has(> input:checked) { color: var(--tt-muted); text-decoration: line-through; }
+  & .tocktutor-live-rendered > ul, & .tocktutor-live-rendered > ol { margin: 0; }
+  & blockquote { margin: 0; border-left: 2px solid var(--dsw-specific-markdown-accent); padding-left: 12px; }
+  & pre { overflow: auto; padding: 12px; border-radius: 4px; background: var(--dsw-alias-markdown-code-block); }
+  & table { border-collapse: collapse; }
+  & th, & td { border: 1px solid var(--tt-border); padding: 4px 8px; }
 }

@@ -1,0 +1,10 @@
+{
+  "attempt": "Initial Desktop Harness Run",
+  "id": "a121183f-d150-4f4a-a4c3-8647a842fa4b",
+  "rootPid": 45727,
+  "recordedPids": [45727, 45729, 45730, 45731, 45734, 45737, 45743, 45756, 45877, 45879, 45880, 45881],
+  "stopped": true,
+  "remaining": [],
+  "placement": { "displayId": 11, "focused": false, "bounds": { "x": 1512, "y": 30, "width": 1366, "height": 994 } },
+  "verdict": "Not a passing Desktop gate: saved-state timing and linked-menu selectors in the verification driver required correction. Initial evidence retained separately. No product source changes occurred."
+}

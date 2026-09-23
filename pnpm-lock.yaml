@@ -58,6 +58,9 @@ overrides:
   '@deepseek-ai/dsh-workspace': 0.1.2-rc.1
   dsh-working-activity>@deepseek-ai/dsh-client-ui-slots: 0.1.2-rc.1
 
+patchedDependencies:
+  chokidar@5.0.0: 135665604472560fdea01cd2ccbff5a05c7a5134666c5ada3d5f8908ed8ffb50
+
 importers:
 
   .:
@@ -117,6 +120,9 @@ importers:
       '@types/react':
         specifier: ~18.3.31
         version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
       electron:
         specifier: 42.3.0
         version: 42.3.0(supports-color@7.2.0)
@@ -3970,6 +3976,10 @@ packages:
   character-entities@2.0.2:
     resolution: {integrity: sha512-shx7oQ0Awen/BRIdkjkvz54PnEEI/EjwXDSIZp86/KKdbafHh1Df/RYGBhn4hbe2+uKC9FnT5UCEdyPz3ai9hQ==}
 
+  chokidar@5.0.0:
+    resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
+    engines: {node: '>= 20.19.0'}
+
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
 
@@ -5731,6 +5741,10 @@ packages:
   readable-stream@3.6.2:
     resolution: {integrity: sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==}
     engines: {node: '>= 6'}
+
+  readdirp@5.1.1:
+    resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
+    engines: {node: '>= 20.19.0'}
 
   remark-gfm@4.0.1:
     resolution: {integrity: sha512-1quofZ2RQ9EWdeN34S79+KExV1764+wCUGop5CPL1WGdD0ocPpu91lzPGbwWMECpEpd42kJGQwzRfyov9j4yNg==}
@@ -10472,6 +10486,10 @@ snapshots:
 
   character-entities@2.0.2: {}
 
+  chokidar@5.0.0(patch_hash=135665604472560fdea01cd2ccbff5a05c7a5134666c5ada3d5f8908ed8ffb50):
+    dependencies:
+      readdirp: 5.1.1
+
   chownr@1.1.4: {}
 
   chownr@2.0.0: {}
@@ -12559,6 +12577,8 @@ snapshots:
       string_decoder: 1.1.1
       util-deprecate: 1.0.2
 
+  readdirp@5.1.1: {}
+
   remark-gfm@4.0.1(supports-color@7.2.0):
     dependencies:
       '@types/mdast': 4.0.4
@@ -13007,6 +13027,7 @@ snapshots:
       '@deepseek-ai/cordis': 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
       '@deepseek-ai/dsh-typert-protocol': 0.1.2-rc.1(@deepseek-ai/cordis@4.0.2)
       '@deepseek-ai/schemastery': 3.18.1
+      chokidar: 5.0.0(patch_hash=135665604472560fdea01cd2ccbff5a05c7a5134666c5ada3d5f8908ed8ffb50)
       flexsearch: 0.8.212
       sqlite3: 5.1.7(bluebird@3.7.2)(supports-color@7.2.0)
       tockbot-note-vault: file:plugins/tocktutor/packages/tockbot-note-vault

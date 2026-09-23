@@ -30,6 +30,7 @@ This document is the canonical local design guidance for browser-rendered TockTe
 - Use `--dsw-alias-*` and `--dsw-specific-*` tokens for ordinary UI color. Color-valued TockTeam aliases such as `--tockteam-*` and TockTutor aliases such as `--tt-*` must derive from those semantic tokens; layout and measurement variables may remain feature-owned.
 - Use Lucide for interface icons. Product marks are the only routine custom-SVG exception.
 - Use semantic HTML, preserve keyboard behavior, label icon-only controls, show keyboard focus, and honor `prefers-reduced-motion`.
+- New or changed expandable sidebar menus must use the shared animated disclosure pattern in [Expandable Sidebar Menus](#expandable-sidebar-menus). Reuse its owning component; do not implement instant show/hide or duplicate animation styles per menu.
 - Keep Host, browser-client, Electron, and TUI ownership separate. A visual change must not widen IPC, filesystem, process, workspace, or plugin authority.
 - Tailwind CSS v4 is the first-party browser styling layer. React surfaces reuse the shared shadcn source components in `@tockteam/ui`; the imperative TockLauncher search shell uses semantic native markup while its settings surface is React. Keep inherited-shell compatibility rules as named custom utilities in `plugins/skins/src/client/tailwind.css`; do not add feature stylesheets or embedded CSS strings.
 - Import shared controls through the public `@tockteam/ui/<component>` exports. Keep React and ReactDOM as peer/singleton dependencies across the root and nested TockTutor workspaces, and keep them external in browser bundles.
@@ -230,6 +231,18 @@ Treat these as compatibility metrics, not a general spacing scale.
 - Honor `prefers-reduced-motion: reduce` by removing nonessential transitions and animation.
 - Do not animate layout continuously during pointer resizing.
 
+### Expandable Sidebar Menus
+
+This is the default for expandable sidebar navigation groups on Desktop and Web, including nested groups. It does not replace the distinct motion or keyboard semantics of dropdown action menus, popovers, or dialogs.
+
+- Animate both opening and closing with a **200 ms ease-out** content-height reveal and opacity transition. Rotate one chevron **90 degrees** between right-facing (closed) and down-facing (open); do not swap icons abruptly.
+- Keep activation immediate. Rapid toggles must reverse from the current visible state without waiting for completion or restarting from an endpoint. Avoid per-item stagger and fixed maximum-height guesses.
+- Reuse `LauncherSettingsMenu` in `src/launcher-settings-navigation.tsx` for TockLauncher Settings. For other features, reuse the closest suitable shared owner; if this recipe needs a cross-feature React component, extract the reusable part through `@tockteam/ui` rather than importing a Desktop feature into Web or copying its animation markup.
+- Preserve `aria-expanded`, `aria-controls`, native keyboard activation, and drafts. Closed descendants must immediately leave the accessibility tree and become noninteractive, including during the exit transition; keep visibility and `inert` consistent. Do not unmount content or apply `display: none` before its closing animation can run.
+- Under `prefers-reduced-motion: reduce`, settle immediately to the requested state without the reveal or chevron animation. Keep the same semantics and operability.
+- Keep sidebar and content widths stable as disclosure content begins or ceases to overflow; reserve scrollbar space at the owning scroll container when needed.
+- Verify both directions, an intermediate frame, rapid reversal, keyboard access, closed-content focus exclusion, reduced motion, and overflow geometry in the owning browser proof. New sibling or nested menus must be included, not assumed correct because another menu passed.
+
 ## 8. Accessibility
 
 - Preserve native semantics before adding ARIA.
@@ -268,6 +281,12 @@ For shared shadcn or consuming React surface changes, run:
 ```sh
 node --test tests/shadcn-migration.test.ts tests/ui-ref-contract.test.ts
 pnpm --filter @tockteam/ui run typecheck
+```
+
+For TockLauncher Settings sidebar changes, run the existing bounded Electron proof after runtime staging/build. It exercises both disclosure levels and their motion/accessibility/layout contracts:
+
+```sh
+node scripts/launcher-extension-settings-proof.mts
 ```
 
 For TockTutor UI changes, verify the nested workspace and rebuild its tracked outputs; never hand-edit `lib/` or `dist/`:

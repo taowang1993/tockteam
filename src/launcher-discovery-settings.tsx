@@ -25,6 +25,7 @@ const DISCOVERY_RENDERER_DEFAULTS = Object.freeze({
 
 type DiscoverySettingsProps = Readonly<{
   busy: boolean
+  extensionId?: string
   save: (key: string, value: unknown) => Promise<boolean>
   snapshot: LauncherSettingsSnapshot
 }>
@@ -46,7 +47,7 @@ function parseStringArray(value: string): readonly string[] | undefined {
   } catch { return undefined }
 }
 
-export function LauncherDiscoverySettings({ busy, save, snapshot }: DiscoverySettingsProps): ReactNode {
+export function LauncherDiscoverySettings({ busy, extensionId, save, snapshot }: DiscoverySettingsProps): ReactNode {
   const defaults = DISCOVERY_RENDERER_DEFAULTS
   const application = defaults.ApplicationSearch
   const fixed = launcherFixedText
@@ -96,10 +97,13 @@ export function LauncherDiscoverySettings({ busy, save, snapshot }: DiscoverySet
       setBrowserSelection(snapshotBrowserSelection)
     })
   }
+  const isHidden = (id: string): boolean => extensionId !== undefined && extensionId !== id
+  const [expanded, setExpanded] = useState([extensionId ?? 'ApplicationSearch'])
+  useEffect(() => { if (extensionId !== undefined) setExpanded([extensionId]) }, [extensionId])
   return <section className="flex min-w-0 flex-col gap-3" data-testid="tocklauncher-discovery-settings">
-    <div><h2 className="text-base font-semibold text-foreground">{fixed('Application, Bookmark, and IDE Discovery')}</h2><p className="mt-1 text-xs text-muted-foreground">{fixed('Discover bounded local applications and recent projects in Electron main. The renderer receives display data and opaque actions only.')}</p></div>
-    <Accordion type="multiple" defaultValue={['applications']}>
-    <AccordionItem value="applications"><AccordionTrigger><Search aria-hidden="true" />{fixed('Application Search')}</AccordionTrigger><AccordionContent forceMount><div className="pl-3">
+    <div hidden={extensionId !== undefined}><h2 className="text-base font-semibold text-foreground">{fixed('Application, Bookmark, and IDE Discovery')}</h2><p className="mt-1 text-xs text-muted-foreground">{fixed('Discover bounded local applications and recent projects in Electron main. The renderer receives display data and opaque actions only.')}</p></div>
+    <Accordion type="multiple" value={expanded} onValueChange={setExpanded}>
+    <AccordionItem value="ApplicationSearch" hidden={isHidden('ApplicationSearch')}><AccordionTrigger><Search aria-hidden="true" />{fixed('Application Search')}</AccordionTrigger><AccordionContent forceMount><div className="pl-3">
       <Field label="Include Windows Store Apps"><Switch aria-label={fixed('Include Windows Store Apps')} disabled={busy} checked={stored(snapshot, 'extension[ApplicationSearch].includeWindowsStoreApps', true)} onCheckedChange={checked => { void save('extension[ApplicationSearch].includeWindowsStoreApps', checked) }} /></Field>
       {arrayField('macOS Application Folders', 'extension[ApplicationSearch].macOsFolders', 3, stored(snapshot, 'extension[ApplicationSearch].macOsFolders', application.macOsFolders))}
       {arrayField('Linux Application Folders', 'extension[ApplicationSearch].linuxFolders', 3, stored(snapshot, 'extension[ApplicationSearch].linuxFolders', application.linuxFolders))}
@@ -107,13 +111,13 @@ export function LauncherDiscoverySettings({ busy, save, snapshot }: DiscoverySet
       {arrayField('Windows File Extensions', 'extension[ApplicationSearch].windowsFileExtensions', 2, stored(snapshot, 'extension[ApplicationSearch].windowsFileExtensions', application.windowsFileExtensions))}
       <Field label="macOS Search Filter"><LauncherSyncedNativeSelect aria-label={fixed('macOS Search Filter')} size="sm" disabled={busy} defaultValue={stored(snapshot, 'extension[ApplicationSearch].mdfindFilterOption', application.mdfindFilterOption)} onChange={event => { void save('extension[ApplicationSearch].mdfindFilterOption', event.target.value) }}><NativeSelectOption value="kind:application">kind:application</NativeSelectOption><NativeSelectOption value="kMDItemKind=='Application'">{fixed('Application Kind')}</NativeSelectOption><NativeSelectOption value="kMDItemContentType=='com.apple.application-bundle'">{fixed('Application Bundle')}</NativeSelectOption></LauncherSyncedNativeSelect></Field>
     </div></AccordionContent></AccordionItem>
-    <AccordionItem value="bookmarks"><AccordionTrigger><Globe2 aria-hidden="true" />{fixed('Browser Bookmarks')}</AccordionTrigger><AccordionContent forceMount><div className="pl-3">
+    <AccordionItem value="BrowserBookmarks" hidden={isHidden('BrowserBookmarks')}><AccordionTrigger><Globe2 aria-hidden="true" />{fixed('Browser Bookmarks')}</AccordionTrigger><AccordionContent forceMount><div className="pl-3">
       <Field label="Browsers"><div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">{BROWSERS.map(browser => <span key={browser} className="flex items-center gap-2 py-1"><Switch aria-label={`${fixed('Enable')} ${browser} ${fixed('Bookmarks')}`} disabled={busy} checked={browserSelection.includes(browser)} onCheckedChange={checked => toggleBrowser(browser, checked)} /><span className="text-xs text-foreground">{browser}</span></span>)}</div></Field>
       <Field label="Search Result Style"><LauncherSyncedNativeSelect aria-label={fixed('Bookmark Search Result Style')} size="sm" disabled={busy} defaultValue={stored(snapshot, 'extension[BrowserBookmarks].searchResultStyle', 'nameOnly')} onChange={event => { void save('extension[BrowserBookmarks].searchResultStyle', event.target.value) }}><NativeSelectOption value="nameOnly">{fixed('Name Only')}</NativeSelectOption><NativeSelectOption value="urlOnly">{fixed('URL Only')}</NativeSelectOption><NativeSelectOption value="nameAndUrl">{fixed('Name and URL')}</NativeSelectOption></LauncherSyncedNativeSelect></Field>
       <Field label="Icon Type"><LauncherSyncedNativeSelect aria-label={fixed('Bookmark Icon Type')} size="sm" disabled={busy} defaultValue={stored(snapshot, 'extension[BrowserBookmarks].iconType', 'favicon')} onChange={event => { void save('extension[BrowserBookmarks].iconType', event.target.value) }}><NativeSelectOption value="favicon">{fixed('Packaged Favicon')}</NativeSelectOption><NativeSelectOption value="browserIcon">{fixed('Browser Icon')}</NativeSelectOption></LauncherSyncedNativeSelect></Field>
     </div></AccordionContent></AccordionItem>
-    <AccordionItem value="jetbrains"><AccordionTrigger><Laptop aria-hidden="true" />{fixed('JetBrains Toolbox')}</AccordionTrigger><AccordionContent forceMount><div className="pl-3"><p className="py-2 text-xs leading-5 text-muted-foreground">{fixed('Recent JetBrains projects are read from the platform Toolbox state and bounded recentProjects.xml. No additional setting is required; project and executable targets are revalidated before launch.')}</p></div></AccordionContent></AccordionItem>
-    <AccordionItem value="vscode"><AccordionTrigger><Route aria-hidden="true" />{fixed('Visual Studio Code')}</AccordionTrigger><AccordionContent forceMount><div className="pl-3">
+    <AccordionItem value="JetBrainsToolbox" hidden={isHidden('JetBrainsToolbox')}><AccordionTrigger><Laptop aria-hidden="true" />{fixed('JetBrains Toolbox')}</AccordionTrigger><AccordionContent forceMount><div className="pl-3"><p className="py-2 text-xs leading-5 text-muted-foreground">{fixed('Recent JetBrains projects are read from the platform Toolbox state and bounded recentProjects.xml. No additional setting is required; project and executable targets are revalidated before launch.')}</p></div></AccordionContent></AccordionItem>
+    <AccordionItem value="VSCode" hidden={isHidden('VSCode')}><AccordionTrigger><Route aria-hidden="true" />{fixed('Visual Studio Code')}</AccordionTrigger><AccordionContent forceMount><div className="pl-3">
       <Field label="Prefix"><LauncherSyncedInput aria-label={fixed('VS Code Prefix')} maxLength={64} disabled={busy} defaultValue={stored(snapshot, 'extension[VSCode].prefix', 'vscode')} onBlur={event => { void save('extension[VSCode].prefix', event.target.value) }} /></Field>
       <Field label="Command Template"><LauncherSyncedInput aria-label={fixed('VS Code Command Template')} maxLength={1024} disabled={busy} defaultValue={stored(snapshot, 'extension[VSCode].command', 'code %s')} onBlur={event => { void save('extension[VSCode].command', event.target.value) }} /></Field>
       <Field label="Show Path"><Switch aria-label={fixed('Show VS Code Path')} disabled={busy} checked={stored(snapshot, 'extension[VSCode].showPath', false)} onCheckedChange={checked => { void save('extension[VSCode].showPath', checked) }} /></Field>

@@ -32,6 +32,8 @@ export type PropertyRenameResult = {
     paths: string[];
     rollbackFailures: string[];
 };
+export declare const MAX_FRONTMATTER_BYTES = 1000000;
+export declare const MAX_PROPERTIES = 1000;
 export declare function inferPropertyType(value: unknown): PropertyType;
 export declare function parseFrontmatterProperties(source: string): FrontmatterProperty[];
 export declare function setFrontmatterProperty(source: string, key: string, value: PropertyValue): string;

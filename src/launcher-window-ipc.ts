@@ -1,4 +1,7 @@
 import type { IpcMain } from 'electron'
+import { isLauncherExtensionId, type LauncherExtensionId } from './launcher-extension-settings.ts'
+import type { TrustedRaycastSettings } from './trusted-raycast-settings.ts'
+import { TRUSTED_SETTINGS_CHANNELS, parseTrustedSettingsId, parseTrustedSettingsUpdate, parseTrustedSettingsResult, parseTrustedSettingsSnapshot } from './trusted-raycast-settings-contract.ts'
 import { parseLauncherLocale } from './launcher-contract.ts'
 import type {
   DesktopLauncherState,
@@ -92,7 +95,7 @@ export function registerLauncherWindowIpcHandlers(args: Readonly<{
   getTheme?: () => LauncherThemeProjection
   guard: LauncherIpcGuard
   ipcMain: LauncherIpcMain
-  openSettings?: () => Promise<void> | void
+  openSettings?: (extensionId?: LauncherExtensionId) => Promise<void> | void
 }>): () => void {
   const registrations: Array<[string, LauncherIpcHandler]> = [[
     LAUNCHER_WINDOW_IPC_CHANNELS.dismiss,
@@ -115,9 +118,9 @@ export function registerLauncherWindowIpcHandlers(args: Readonly<{
     LAUNCHER_WINDOW_IPC_CHANNELS.openSettings,
     async (event: unknown, ...rawArgs: unknown[]): Promise<LauncherWindowAcknowledgement> => {
       args.guard.assert(event, 'launcher')
-      assertNoLauncherIpcArguments(rawArgs)
+      if (rawArgs.length > 1 || (rawArgs.length === 1 && !isLauncherExtensionId(rawArgs[0]))) throw new Error('Invalid extension settings destination')
       args.controller.hide()
-      await args.openSettings?.()
+      await args.openSettings?.(rawArgs[0] as LauncherExtensionId | undefined)
       return Object.freeze({ ok: true })
     },
   ])
@@ -142,6 +145,7 @@ export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
   ipcMain: LauncherIpcMain
   onRouteReady?: (event: unknown) => void
   settings?: LauncherSettingsIpcOperations
+  extensionSettings?: TrustedRaycastSettings
   syncLocale?: (event: unknown, locale: LauncherLocale) => LauncherWindowAcknowledgement
   syncTheme?: (event: unknown, source: LauncherThemeSource) => LauncherWindowAcknowledgement
 }>): () => void {
@@ -189,6 +193,33 @@ export function registerWorkbenchLauncherIpcHandlers(args: Readonly<{
       return args.syncTheme?.(event, parseLauncherThemeSource(raw)) ?? Object.freeze({ ok: true })
     },
   ])
+  const extensions = args.extensionSettings
+  if (extensions) {
+    registrations.push(
+      [TRUSTED_SETTINGS_CHANNELS.get, (event: unknown, id: unknown, ...extra: unknown[]) => {
+        args.assertTrustedMainIpc(event)
+        assertNoLauncherIpcArguments(extra)
+        const extensionId = parseTrustedSettingsId(id)
+        try { return parseTrustedSettingsSnapshot(extensions.get(extensionId)) }
+        catch { throw new Error('Extension settings are unavailable') }
+      }],
+      [TRUSTED_SETTINGS_CHANNELS.update, async (event: unknown, raw: unknown, ...extra: unknown[]) => {
+        args.assertTrustedMainIpc(event)
+        assertNoLauncherIpcArguments(extra)
+        const request = parseTrustedSettingsUpdate(raw)
+        try { return parseTrustedSettingsResult(await extensions.update(request)) }
+        catch { throw new Error('Extension settings could not be saved') }
+      }],
+      [TRUSTED_SETTINGS_CHANNELS.enable, async (event: unknown, id: unknown, enabled: unknown, ...extra: unknown[]) => {
+        args.assertTrustedMainIpc(event)
+        assertNoLauncherIpcArguments(extra)
+        const extensionId = parseTrustedSettingsId(id)
+        if (typeof enabled !== 'boolean') throw new Error('Invalid extension enablement')
+        try { return parseTrustedSettingsSnapshot(await extensions.setEnabled(extensionId, enabled)) }
+        catch { throw new Error('Extension enablement could not be changed') }
+      }],
+    )
+  }
   const settings = args.settings
   if (settings !== undefined) {
     const operationFailure = (): Error => new Error('TockLauncher settings operation failed')

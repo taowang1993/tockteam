@@ -461,3 +461,43 @@ test('core search rejects slow instant results from a superseded index generatio
   assert.deepEqual(current.after.map(value => value.id), ['new'])
   assert.equal(current.status.lastError, undefined)
 })
+
+test('excluding a pinned item does not restore it when another item is pinned', async () => {
+  const persisted: Array<Readonly<Record<string, unknown>>> = []
+  const core = createLauncherCoreSearch({
+    initialFavoriteItemIds: ['a', 'c'],
+    loadIndexedItems: async () => [item('a', 'A'), item('b', 'B'), item('c', 'C')],
+    persistSettings: async values => { persisted.push(values) },
+  })
+  const record = {
+    actionId: 'launcher-action:core', expiresAt: 2_000, hideWindowAfterInvocation: false,
+    owner: { role: 'launcher' as const, webContentsId: 1 }, requiresConfirmation: false,
+    resultSetId: 'launcher-results:1', sourceExtension: 'TockTeam',
+  }
+  try {
+    await core.search('', { ...options, maxSearchResultItems: 50 })
+    await core.executeAction({ ...record, argument: 'a', handlerKey: LAUNCHER_CORE_ACTION_HANDLERS.exclude })
+    await core.search('', { ...options, maxSearchResultItems: 50 })
+    await core.executeAction({ ...record, argument: 'b', handlerKey: LAUNCHER_CORE_ACTION_HANDLERS.addFavorite })
+    assert.deepEqual(persisted, [
+      { favorites: ['c'], 'searchEngine.excludedItems': ['a'] },
+      { favorites: ['c', 'b'] },
+    ])
+    assert.deepEqual((await core.search('', { ...options, maxSearchResultItems: 50 })).before.map(value => value.id), ['c', 'b'])
+  } finally { await core.close() }
+})
+
+test('invalidating the first search cannot publish unvalidated cached items', async () => {
+  let release!: (items: readonly LauncherInternalResultItem[]) => void
+  const core = createLauncherCoreSearch({
+    initialIndexedItems: [item('cached', 'Cached')],
+    loadIndexedItems: async () => await new Promise(resolve => { release = resolve }),
+  })
+  try {
+    const pending = core.search('', { ...options, maxSearchResultItems: 50 })
+    const rejected = assert.rejects(pending, /superseded|invalidated/u)
+    core.invalidate('owner cleared during initial scan')
+    release([item('fresh', 'Fresh')])
+    await rejected
+  } finally { await core.close() }
+})

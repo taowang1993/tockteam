@@ -4,6 +4,6 @@ export interface DesktopVaultReference {
     id: string;
 }
 export interface NativeActionResult {
-    status: NativeFailureStatus | 'activated' | 'closed' | 'exported' | 'focused' | 'granted' | 'moved' | 'opened' | 'printed' | 'renamed' | 'revealed';
+    status: NativeFailureStatus | 'activated' | 'closed' | 'copied' | 'exported' | 'focused' | 'granted' | 'moved' | 'opened' | 'printed' | 'renamed' | 'revealed';
 }
 //# sourceMappingURL=types.d.ts.map

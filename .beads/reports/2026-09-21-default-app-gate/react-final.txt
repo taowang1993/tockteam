@@ -1,0 +1,78 @@
+The `--diff` flag is deprecated; use `--scope changed` (add `--base <ref>` to pin the base) instead.
+✔ Select projects › tockbot-note-desktop, tockbot-web-clip, @tockteam/tocktutor, @tockteam/tocktutor-assistant, @tockteam/tocktutor-import-export, @tockteam/tocktutor-workbench, @tockteam/ui
+Scanning changes: tutor → origin/main
+
+No changed source files in /Users/taowang/projects/worktrees/tutor/plugins/tocktutor/packages/tockteam-tocktutor, skipping.
+
+No changed source files in /Users/taowang/projects/worktrees/tutor/plugins/ui, skipping.
+
+✔ Scanned 79 files in 14.8s
+
+React Doctor — tocktutor
+Score: 47 / 100 Critical
+
+40 issues
+Bugs: 30 warnings
+Maintainability: 7 warnings
+Accessibility: 1 warning
+Performance: 2 warnings
+
+⚠ Live state pushed to parent via effect ×2
+  react-doctor/no-pass-live-state-to-parent
+  dist/client-actions.js:601
+  src/client-actions.tsx:860
+⚠ Parent kept in sync with a callback effect ×2
+  react-doctor/no-prop-callback-in-effect
+  dist/client-actions.js:601
+  src/client-actions.tsx:860
+⚠ Data passed to parent via effect ×4
+  react-doctor/no-pass-data-to-parent
+  dist/editor-surface.js:151
+  dist/editor-surface.js:181
+  src/editor-surface.tsx:202
+  src/editor-surface.tsx:229
+⚠ Missing effect dependencies ×4
+  react-doctor/exhaustive-deps
+  dist/live-preview-editor-runtime.js:353
+  dist/live-preview-editor-runtime.js:452
+  src/live-preview-editor-runtime.tsx:361
+  src/live-preview-editor-runtime.tsx:452
+⚠ React function has high control-flow complexity ×5
+  react-doctor/no-high-complexity-react-function
+  dist/route.js:4228
+  src/live-preview-editor.tsx:76
+  src/route.tsx:4388
+  src/route.tsx:5015
+  src/utility-panel.tsx:53
+⚠ Large component is hard to read and change ×2
+  react-doctor/no-giant-component
+  dist/route.js:4228
+  src/live-preview-editor-runtime.tsx:157
+⚠ State adjusted after a prop changes ×18
+  react-doctor/no-adjust-state-on-prop-change
+  dist/route.js:4411
+  dist/route.js:4412
+  dist/route.js:4425
+  dist/route.js:4426
+  dist/route.js:4427
+  dist/route.js:4428
+  dist/route.js:4429
+  dist/route.js:4430
+  dist/route.js:4434
+  src/route.tsx:5182
+  src/route.tsx:5183
+  src/route.tsx:5194
+  src/route.tsx:5195
+  src/route.tsx:5196
+  src/route.tsx:5197
+  src/route.tsx:5198
+  src/route.tsx:5199
+  src/route.tsx:5202
+⚠ Role used instead of HTML tag
+  react-doctor/prefer-tag-over-role
+  src/route.tsx:4936
+⚠ JSON parse/stringify deep clone ×2
+  react-doctor/no-json-parse-stringify-clone
+  tests/session.test.ts:162 (test file)
+  tests/session.test.ts:218 (test file)
+  Full diagnostics written to /var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/react-doctor-47dc8659-c831-41c7-8c9e-6eda476f11a2

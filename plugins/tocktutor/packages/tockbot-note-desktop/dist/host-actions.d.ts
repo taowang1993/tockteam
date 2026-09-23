@@ -40,6 +40,8 @@ export declare class TockTutorDesktopGateway extends TypertRemoteService {
     printNote(authorization: string, path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     exportNote(authorization: string, format: 'html' | 'pdf', path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     requestMicrophone(authorization: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
+    openInDefaultApp(authorization: string, path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
+    copyAbsolutePath(authorization: string, path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     revealEntry(authorization: string, path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     revealVault(authorization: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;
     renameVault(authorization: string, name: string, expectedVault: VaultReference, signal: AbortSignal): Promise<NativeActionResult>;

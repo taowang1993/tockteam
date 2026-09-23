@@ -90,6 +90,8 @@ export type DesktopCallerOperation =
   | 'move-vault'
   | 'remove-vault'
   | 'rename-vault'
+  | 'open-default-app'
+  | 'copy-absolute-path'
   | 'reveal-entry'
   | 'reveal-vault'
   | 'popout-open'

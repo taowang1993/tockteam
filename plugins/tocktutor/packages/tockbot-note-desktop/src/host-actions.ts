@@ -625,6 +625,57 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
   }
 
   @Remote
+  async openInDefaultApp(
+    authorization: string,
+    path: string,
+    expectedVault: VaultReference,
+    signal: AbortSignal,
+  ): Promise<NativeActionResult> {
+    assertAuthorization(authorization)
+    assertPath(path)
+    assertVault(expectedVault)
+    assertCurrentVault(this.ctx.noteVault, expectedVault)
+    return this.lifetime.run(async ownerSignal => {
+      const identity = await this.claimForVault(authorization, 'open-default-app', expectedVault, ownerSignal)
+      const fingerprint = `open-default-app:${expectedVault.id}:${String(expectedVault.generation)}:${path}`
+      const recovered = this.recoverResult(authorization, fingerprint, identity)
+      if (recovered !== undefined) return recovered
+      // Keep the claimed operation ID through retries: native dispatch is at most once.
+      const result = await this.ctx.noteVault.openEntry({ expectedVault, path, operationId: identity.operationId }, ownerSignal)
+      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      if (result.generation !== expectedVault.generation || result.path !== path || result.status !== 'opened') {
+        throw new Error('Desktop default-app opening completed with stale state.')
+      }
+      return this.rememberResult(authorization, fingerprint, identity, { status: 'opened' })
+    }, signal)
+  }
+
+  @Remote
+  async copyAbsolutePath(
+    authorization: string,
+    path: string,
+    expectedVault: VaultReference,
+    signal: AbortSignal,
+  ): Promise<NativeActionResult> {
+    assertAuthorization(authorization)
+    assertPath(path)
+    assertVault(expectedVault)
+    assertCurrentVault(this.ctx.noteVault, expectedVault)
+    return this.lifetime.run(async ownerSignal => {
+      const identity = await this.claimForVault(authorization, 'copy-absolute-path', expectedVault, ownerSignal)
+      const fingerprint = `copy-absolute-path:${expectedVault.id}:${String(expectedVault.generation)}:${path}`
+      const recovered = this.recoverResult(authorization, fingerprint, identity)
+      if (recovered !== undefined) return recovered
+      const result = await this.ctx.noteVault.copyEntryPath({ expectedVault, path, operationId: identity.operationId }, ownerSignal)
+      assertClaim(this.ctx.noteVault, expectedVault, identity)
+      if (result.generation !== expectedVault.generation || result.path !== path || result.status !== 'copied') {
+        throw new Error('Desktop copy-path completed with stale state.')
+      }
+      return this.rememberResult(authorization, fingerprint, identity, { status: 'copied' })
+    }, signal)
+  }
+
+  @Remote
   async revealEntry(
     authorization: string,
     path: string,

@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import type { ResolvedEmbedNode } from './embeds.ts';
 import { type LivePreviewSelection } from './live-preview-editor.tsx';
+import { type EditorSearchRequest, type EditorSearchState } from './editor-search.ts';
 import type { PropertyValue } from './properties.ts';
 export interface ReadingLinkResult {
     fragment: string | null;
@@ -19,20 +20,30 @@ export declare function RichReadingView(props: {
     onAddProperty?: ((key: string) => boolean) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
     onOpenInternalLink?: ((target: string) => void | Promise<ReadingLinkResult | null>) | undefined;
+    onSearchState?: ((state: EditorSearchState) => void) | undefined;
     onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined;
     onToggleTask(index: number): void;
+    searchCurrentIndex?: number | null;
+    searchQuery?: string;
+    searchRequest?: EditorSearchRequest | null;
     source: string;
     title: string;
 }): ReactNode;
 export declare function LivePreviewView(props: {
     documentKey: string;
+    localEditRevision?: number | undefined;
     embeds?: readonly ResolvedEmbedNode[] | undefined;
     onAddProperty?: ((key: string) => boolean) | undefined;
     onEdit(source: string): void;
+    onEditSource?: (() => void) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
+    onSearchState?: ((state: EditorSearchState) => void) | undefined;
     onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined;
     onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined;
     onToggleTask(index: number): void;
+    searchCurrentIndex?: number | null;
+    searchQuery?: string;
+    searchRequest?: EditorSearchRequest | null;
     source: string;
     title: string;
 }): ReactNode;

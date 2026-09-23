@@ -140,6 +140,44 @@ test('renders ordinary blockquotes and wikilink aliases as semantic content', ()
   assert.doesNotMatch(html, /&gt; First line|\[\[Study Guide/u)
 })
 
+test('preserves nested quote paragraphs and returns to their enclosing quote', () => {
+  const html = renderMarkdownHtml([
+    '> Outer paragraph.',
+    '> > Inner **quotation**.',
+    '> >',
+    '> > Another paragraph with [[Welcome|a note]].',
+    '> >> Deep quotation.',
+    '>',
+    '> Back in the outer quote.',
+    '>',
+    '> > A sibling quotation.',
+    '',
+    'Outside the quote.',
+  ].join('\n'))
+  assert.match(html, /<blockquote><p>Outer paragraph\.<\/p>\s*<blockquote><p>Inner <strong>quotation<\/strong>\.<\/p><p>Another paragraph with <a class="internal-link" data-target="Welcome" href="#">a note<\/a>\.<\/p>\s*<blockquote><p>Deep quotation\.<\/p><\/blockquote><\/blockquote>\s*<p>Back in the outer quote\.<\/p>\s*<blockquote><p>A sibling quotation\.<\/p><\/blockquote><\/blockquote>\s*<p>Outside the quote\.<\/p>/u)
+  assert.doesNotMatch(html, /&gt;/u)
+})
+
+test('nested quotations retain line-break settings, footnotes and inert link boundaries', () => {
+  const source = '> > First line  \n> > second line with [^one], `> literal` and [unsafe](javascript:alert).\n> > Third line.\n> >\n> > ![Remote](https://example.com/image.png)\n\n[^one]: Shared definition.\n'
+  const html = renderMarkdownHtml(source, { strictLineBreaks: true, externalEmbedMode: 'viewer' })
+  assert.match(html, /First line<br>second line/u)
+  assert.match(html, /Third line\./u)
+  assert.match(html, /<code>&gt; literal<\/code>/u)
+  assert.match(html, /href="#fn-1"/u)
+  assert.equal(html.match(/class="footnotes"/gu)?.length, 1)
+  assert.match(html, /data-external-embed-kind="image"/u)
+  assert.doesNotMatch(html, /href="javascript:|<(?:img|iframe|script)\b/u)
+})
+
+test('bounds quote nesting and preserves excess markers as inert text', () => {
+  const html = renderMarkdownHtml(`${'> '.repeat(10000)}Deep text`)
+  assert.equal(html.match(/<blockquote>/gu)?.length, 32)
+  assert.equal(html.match(/<\/blockquote>/gu)?.length, 32)
+  assert.match(html, /&gt;.*Deep text/u)
+  assert.equal(renderMarkdownHtml('>\n> >\n>\n'), '<blockquote><blockquote></blockquote></blockquote>')
+})
+
 test('groups contiguous and nested list items into semantic lists', () => {
   const html = renderMarkdownHtml([
     '1. First',

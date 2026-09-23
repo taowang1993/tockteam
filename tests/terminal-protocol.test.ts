@@ -8,13 +8,13 @@ test('desktop terminal uses the Better Sidebar host endpoint', () => {
   assert.equal(BETTER_SIDEBAR_TERMINAL_WS_PATH, '/sidebar/ws/terminal')
 })
 
-test('Better Sidebar adapter frames session exits without changing agent terminals', () => {
+for (const newline of ['\n', '\r\n']) test(`Better Sidebar adapter frames session exits without changing agent terminals (${newline === '\n' ? 'LF' : 'CRLF'})`, () => {
   const manifest = JSON.parse(readFileSync(
     new URL('../upstream/DSH-better-sidebar/package.json', import.meta.url),
     'utf8',
   )) as { version?: string }
   assert.equal(manifest.version, '0.18.0')
-  const source = readFileSync(new URL('../upstream/DSH-better-sidebar/src/index.ts', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../upstream/DSH-better-sidebar/src/index.ts', import.meta.url), 'utf8').replaceAll('\r\n', '\n').replaceAll('\n', newline)
   assert.match(source, /'open\.external'/u)
   const adapted = adaptBetterSidebarHost(source)
   assert.doesNotMatch(adapted, /launchExternal|'open\.external'/u)
@@ -30,7 +30,10 @@ test('Better Sidebar adapter frames session exits without changing agent termina
   assert.equal((adapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)
   assert.equal((adapted.match(/\[process exited with code/g) ?? []).length, 1)
   const crlfSource = source.replaceAll('\r\n', '\n').replaceAll('\n', '\r\n')
-  assert.equal((adaptBetterSidebarHost(crlfSource).match(/tockteam-terminal-exit/g) ?? []).length, 1)
+  const crlfAdapted = adaptBetterSidebarHost(crlfSource)
+  assert.equal((crlfAdapted.match(/tockteam-terminal-exit/g) ?? []).length, 1)
+  assert.ok(crlfAdapted.includes(crlfSource.slice(crlfSource.indexOf('    // Side Chat:'), crlfSource.indexOf('const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24'))),
+    'CRLF adaptation must preserve the following host routes byte-for-byte')
   assert.throws(() => adaptBetterSidebarHost(adapted), /seam changed upstream/u)
 })
 

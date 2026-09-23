@@ -92,6 +92,7 @@ export function adaptBetterSidebarFs(source) {
 }
 
 export function adaptBetterSidebarHost(source) {
+  const newline = source.includes('\r\n') ? '\r\n' : '\n'
   let adapted = source.replaceAll('\r\n', '\n')
   const fsImport = "import { mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'"
   const writeStart = adapted.indexOf("    'fs.write': async (payload) => {")
@@ -181,5 +182,5 @@ async function resolveGitPath(cwd: string, raw: string, selected?: string): Prom
   if (start < 0 || end < 0) throw new Error('Better Sidebar session terminal seam changed upstream')
   const section = adapted.slice(start, end)
   if (!section.includes(TEXT_EXIT)) throw new Error('Better Sidebar session exit seam changed upstream')
-  return `${adapted.slice(0, start)}${section.replace(TEXT_EXIT, BINARY_EXIT)}${adapted.slice(end)}`
+  return `${adapted.slice(0, start)}${section.replace(TEXT_EXIT, BINARY_EXIT)}${adapted.slice(end)}`.replaceAll('\n', newline)
 }

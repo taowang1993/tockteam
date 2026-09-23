@@ -523,9 +523,16 @@ const HTML_BLOCK_TAGS = new Set([
   'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'title', 'tr', 'ul',
 ])
 
-function* scanHtmlTags(text, signal) {
-  for (let start = text.indexOf('<'); start !== -1; start = text.indexOf('<', start + 1)) {
+function* scanHtmlTags(text, signal, stack) {
+  const firstStart = text.indexOf('<')
+  if (firstStart < 0) return
+  const inlineSpans = scanInlineLinkSpans(text, signal)
+  let inlineSpan = inlineSpans.next().value
+  for (let start = firstStart; start !== -1; start = text.indexOf('<', start + 1)) {
     signal?.throwIfAborted()
+    while (inlineSpan && inlineSpan.end <= start) inlineSpan = inlineSpans.next().value
+    // Markdown destinations/titles are literal, unless an HTML region already owns them.
+    if (!stack.entries.length && inlineSpan && inlineSpan.destinationStart <= start) continue
     let cursor = start + 1
     const closing = text[cursor] === '/'
     if (closing) cursor += 1
@@ -575,28 +582,47 @@ function maskHtmlRanges(text, ranges, signal) {
   return output.join('')
 }
 
-function closeHtmlStack(stack, name) {
-  return stack.at(-1)?.name === name ? stack.pop() : null
+function createHtmlStack() {
+  return { entries: [], counts: new Map() }
+}
+
+function pushHtmlStack(stack, entry) {
+  stack.entries.push(entry)
+  stack.counts.set(entry.name, (stack.counts.get(entry.name) ?? 0) + 1)
+}
+
+function closeHtmlStack(stack, name, signal) {
+  // Reject unmatched closes without rescanning ancestors; each entry is popped only once.
+  if (!stack.counts.has(name)) return null
+  while (stack.entries.length) {
+    signal?.throwIfAborted()
+    const entry = stack.entries.pop()
+    const count = stack.counts.get(entry.name) - 1
+    if (count) stack.counts.set(entry.name, count)
+    else stack.counts.delete(entry.name)
+    if (entry.name === name) return entry
+  }
+  return null
 }
 
 function maskOneHtmlLine(text, signal) {
-  const stack = []
+  const stack = createHtmlStack()
   const ranges = []
-  for (const tag of scanHtmlTags(text, signal)) {
+  for (const tag of scanHtmlTags(text, signal, stack)) {
     ranges.push({ start: tag.start, end: tag.end, tag: true })
     if (tag.selfClosing || HTML_VOID_TAGS.has(tag.name)) continue
     if (!tag.closing) {
-      stack.push({ name: tag.name, start: tag.start })
+      pushHtmlStack(stack, { name: tag.name, start: tag.start })
       continue
     }
-    const opening = closeHtmlStack(stack, tag.name)
+    const opening = closeHtmlStack(stack, tag.name, signal)
     if (!opening) continue
-    if (!stack.length) ranges.push({ start: opening.start, end: tag.end, tag: false })
+    if (!stack.entries.length) ranges.push({ start: opening.start, end: tag.end, tag: false })
   }
   let pending = null
-  if (stack.length) {
+  if (stack.entries.length) {
     const containerPrefix = /^(?: {0,3}>[ \t]?)+/u.exec(text)?.[0].length ?? 0
-    const opening = stack[0]
+    const opening = stack.entries[0]
     pending = {
       blankLineBlock: opening.start <= containerPrefix + 3
         && (HTML_BLOCK_TAGS.has(opening.name) || opening.name.includes('-')),
@@ -609,13 +635,13 @@ function maskOneHtmlLine(text, signal) {
 }
 
 function pairedHtmlStarts(lines, signal) {
-  const stack = []
+  const stack = createHtmlStack()
   const paired = new Set()
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     signal?.throwIfAborted()
-    for (const tag of scanHtmlTags(lines[lineIndex].text, signal)) {
+    for (const tag of scanHtmlTags(lines[lineIndex].text, signal, stack)) {
       if (!tag.closing && !tag.selfClosing && !HTML_VOID_TAGS.has(tag.name)) {
-        stack.push({
+        pushHtmlStack(stack, {
           key: `${String(lineIndex)}:${String(tag.start)}`,
           name: tag.name,
           start: tag.start,
@@ -623,14 +649,14 @@ function pairedHtmlStarts(lines, signal) {
         continue
       }
       if (!tag.closing) continue
-      const opening = closeHtmlStack(stack, tag.name)
+      const opening = closeHtmlStack(stack, tag.name, signal)
       if (opening) paired.add(opening.key)
     }
   }
   return paired
 }
 
-function maskHtmlVisibleLines(lines, signal) {
+function maskHtmlVisibleLines(lines, signal, onHtml) {
   const output = lines.map(line => ({ ...line }))
   const paired = pairedHtmlStarts(output, signal)
   let block = null
@@ -652,13 +678,13 @@ function maskHtmlVisibleLines(lines, signal) {
     if (block) {
       const stack = block.stack
       let closeEnd = null
-      for (const tag of scanHtmlTags(line.text, signal)) {
+      for (const tag of scanHtmlTags(line.text, signal, stack)) {
         if (!tag.closing && !tag.selfClosing && !HTML_VOID_TAGS.has(tag.name)) {
-          stack.push({ name: tag.name, start: tag.start })
+          pushHtmlStack(stack, { name: tag.name, start: tag.start })
           continue
         }
-        if (!tag.closing || !closeHtmlStack(stack, tag.name)) continue
-        if (!stack.length) {
+        if (!tag.closing || !closeHtmlStack(stack, tag.name, signal)) continue
+        if (!stack.entries.length) {
           closeEnd = tag.end
           break
         }
@@ -680,10 +706,11 @@ function maskHtmlVisibleLines(lines, signal) {
   if (block?.blankLineBlock) {
     maskPending(output.length - 1, output.at(-1)?.text.length ?? 0)
   }
+  if (onHtml && output.some((line, index) => line.text !== lines[index].text)) onHtml()
   return output
 }
 
-function visibleMarkdownLines(lines, bodyStart, signal) {
+function visibleMarkdownLines(lines, bodyStart, signal, onHtml) {
   const visible = []
   let fence = null
   const state = { region: null }
@@ -709,7 +736,7 @@ function visibleMarkdownLines(lines, bodyStart, signal) {
     if (!activeRegion && /^(?: {4}|\t)/u.test(containerLine)) continue
     visible.push({ index, line: index + 1, text: maskMarkdownLine(line, state, signal) })
   }
-  return maskHtmlVisibleLines(visible, signal)
+  return maskHtmlVisibleLines(visible, signal, onHtml)
 }
 
 function inlineMarkdownTags(visibleLines) {
@@ -733,7 +760,7 @@ function collectMarkdownHeadings(lines, bodyStart, visibleLines = visibleMarkdow
   })
 }
 
-function markdownDetails(content, relativePath, signal) {
+function markdownDetails(content, relativePath, signal, onHtml) {
   const lines = content.split(/\r?\n/u)
   let bodyStart = 0
   let propertyLines = []
@@ -747,7 +774,7 @@ function markdownDetails(content, relativePath, signal) {
       if (titleLine) title = unquote(titleLine.text.replace(/^title\s*:/iu, ''))
     }
   }
-  const visibleLines = visibleMarkdownLines(lines, bodyStart, signal)
+  const visibleLines = visibleMarkdownLines(lines, bodyStart, signal, onHtml)
   if (!title) title = collectMarkdownHeadings(lines, bodyStart, visibleLines)[0]?.title ?? ''
   if (!title) title = path.basename(relativePath, path.extname(relativePath))
   const properties = frontmatterProperties(propertyLines)
@@ -787,13 +814,13 @@ function* scanInlineLinkSpans(source, signal) {
     cursor >= 0 && cursor < source.length - 3;
     cursor = source.indexOf('[', cursor + 1)
   ) {
-    signal.throwIfAborted()
+    signal?.throwIfAborted()
     const image = source[cursor - 1] === '!'
     const start = image ? cursor - 1 : cursor
     let labelEnd = cursor + 1
     const labelLimit = Math.min(source.length, cursor + MAX_INLINE_DESTINATION_CHARS + 1)
     while (labelEnd < labelLimit) {
-      signal.throwIfAborted()
+      signal?.throwIfAborted()
       if (source[labelEnd] === '\\') {
         labelEnd += 2
         continue
@@ -808,11 +835,45 @@ function* scanInlineLinkSpans(source, signal) {
     const destinationStart = labelEnd + 2
     let depth = 0
     let closing = -1
-    for (let index = destinationStart; index < source.length; index += 1) {
-      signal.throwIfAborted()
+    let quote = null
+    let quotedTitleStart = -1
+    let quotedTitleEnd = -1
+    let destinationSeen = false
+    let angleDestination = false
+    const destinationLimit = Math.min(source.length, destinationStart + MAX_INLINE_DESTINATION_CHARS + 1)
+    for (let index = destinationStart; index < destinationLimit; index += 1) {
+      signal?.throwIfAborted()
       const character = source[index]
       if (character === '\\') {
         index += 1
+        continue
+      }
+      if (quote !== null) {
+        if (character === quote) {
+          quote = null
+          quotedTitleEnd = index + 1
+        }
+        continue
+      }
+      if (angleDestination) {
+        // CommonMark forbids unescaped '<' and line breaks inside an angle destination.
+        // Stop here instead of rescanning its entire malformed suffix for every candidate.
+        if (character === '<' || character === '\n' || character === '\r') break
+        if (character === '>') angleDestination = false
+        continue
+      }
+      if (!destinationSeen && !/\s/u.test(character)) {
+        destinationSeen = true
+        if (character === '<') {
+          angleDestination = true
+          continue
+        }
+      }
+      if (depth === 0 && (character === '"' || character === "'")
+        && index > destinationStart && /[ \t\r\n]/u.test(source[index - 1])) {
+        quote = character
+        quotedTitleStart = index
+        quotedTitleEnd = -1
         continue
       }
       if (character === '(') {
@@ -825,12 +886,13 @@ function* scanInlineLinkSpans(source, signal) {
         }
         depth -= 1
       }
-      if (index - destinationStart > MAX_INLINE_DESTINATION_CHARS) break
     }
     if (closing < 0) continue
     const raw = source.slice(destinationStart, closing)
     const title = raw.match(/[ \t]+(?:"[^"\n]*"|'[^'\n]*'|\([^()\n]*\))[ \t]*$/u)
-    const destinationEnd = title?.index ?? raw.length
+    const destinationEnd = quotedTitleEnd >= 0 && !source.slice(quotedTitleEnd, closing).trim()
+      ? source.slice(destinationStart, quotedTitleStart).trimEnd().length
+      : title?.index ?? raw.length
     const destination = raw.slice(0, destinationEnd).trim()
     if (!destination || destination.length > MAX_INLINE_DESTINATION_CHARS) continue
     yield {
@@ -946,6 +1008,143 @@ function* scanReferenceDestinationSpans(source, signal) {
     }
     if (newline < 0) break
     lineStart = newline + 1
+  }
+}
+
+function referenceDefinitionLines(source, signal) {
+  const lines = new Set()
+  const spansByLine = new Map()
+  let spanLine = 1
+  let spanNewline = source.indexOf('\n')
+  for (const span of scanReferenceDestinationSpans(source, signal)) {
+    while (spanNewline !== -1 && spanNewline < span.destinationStart) {
+      spanLine += 1
+      spanNewline = source.indexOf('\n', spanNewline + 1)
+    }
+    spansByLine.set(spanLine, span)
+    lines.add(spanLine)
+  }
+
+  let lineStart = 0
+  let line = 1
+  let pendingTitleDepth = null
+  let title = null
+  while (lineStart <= source.length) {
+    signal.throwIfAborted()
+    const newline = source.indexOf('\n', lineStart)
+    const lineEnd = newline < 0 ? source.length : newline
+    const contentEnd = source[lineEnd - 1] === '\r' ? lineEnd - 1 : lineEnd
+    const text = source.slice(lineStart, contentEnd)
+    const container = referenceContainer(text)
+    const containerText = text.slice(container.contentStart)
+    if (title) {
+      if (container.depth === title.depth && title.lines < 64) {
+        lines.add(line)
+        title.lines += 1
+        if (hasUnescapedTitleClose(containerText, title.close, 0)) title = null
+        if (newline < 0) break
+        lineStart = newline + 1
+        line += 1
+        continue
+      }
+      title = null
+    }
+    if (pendingTitleDepth != null) {
+      const possibleTitle = referenceTitleStart(containerText)
+      if (container.depth === pendingTitleDepth && possibleTitle) {
+        lines.add(line)
+        if (!hasUnescapedTitleClose(containerText, possibleTitle.close, possibleTitle.offset + 1)) {
+          title = { close: possibleTitle.close, depth: container.depth, lines: 1 }
+        }
+        pendingTitleDepth = null
+        if (newline < 0) break
+        lineStart = newline + 1
+        line += 1
+        continue
+      }
+      pendingTitleDepth = null
+    }
+    const span = spansByLine.get(line)
+    if (span) {
+      const suffix = source.slice(span.destinationEnd, contentEnd)
+      const titleStart = referenceTitleStart(suffix)
+      if (titleStart) {
+        if (!hasUnescapedTitleClose(suffix, titleStart.close, titleStart.offset + 1)) {
+          title = { close: titleStart.close, depth: container.depth, lines: 1 }
+        }
+      } else if (!suffix.trim()) {
+        pendingTitleDepth = container.depth
+      }
+    }
+    if (newline < 0) break
+    lineStart = newline + 1
+    line += 1
+  }
+  return lines
+}
+
+function* scanWikiLinkSpans(source, signal) {
+  const inlineSpans = scanInlineLinkSpans(source, signal)
+  let inlineSpan = inlineSpans.next().value
+  let lineStart = 0
+  let line = 1
+  while (lineStart <= source.length) {
+    signal.throwIfAborted()
+    const newline = source.indexOf('\n', lineStart)
+    const lineEnd = newline < 0 ? source.length : newline
+    const contentEnd = source[lineEnd - 1] === '\r' ? lineEnd - 1 : lineEnd
+    const text = source.slice(lineStart, contentEnd)
+    let cursor = 0
+    while (cursor < text.length - 1) {
+      signal.throwIfAborted()
+      const opening = text.indexOf('[[', cursor)
+      if (opening < 0) break
+      while (inlineSpan && inlineSpan.end <= lineStart + opening) inlineSpan = inlineSpans.next().value
+      if (inlineSpan && inlineSpan.destinationStart <= lineStart + opening) {
+        cursor = inlineSpan.end - lineStart
+        continue
+      }
+      const start = opening > 0 && text[opening - 1] === '!' ? opening - 1 : opening
+      if (isEscapedSyntax(text, start)) {
+        cursor = opening + 2
+        continue
+      }
+      const limit = Math.min(text.length - 1, opening + 2 + MAX_INLINE_DESTINATION_CHARS)
+      let closing = -1
+      for (let index = opening + 2; index < limit; index += 1) {
+        if ((index - opening) % 1_024 === 0) signal.throwIfAborted()
+        if (text[index] === ']' && text[index + 1] === ']') {
+          closing = index
+          break
+        }
+      }
+      if (closing < 0) {
+        yield { line, malformed: true, start: lineStart + start }
+        break
+      }
+      const body = text.slice(opening + 2, closing)
+      const divider = body.indexOf('|')
+      const rawTarget = divider < 0 ? body : body.slice(0, divider)
+      const authoredTarget = rawTarget.trim()
+      if (authoredTarget) {
+        const targetStart = lineStart + opening + 2
+          + rawTarget.length - rawTarget.trimStart().length
+        yield {
+          authoredTarget,
+          displayText: (divider < 0 ? rawTarget : body.slice(divider + 1)).trim(),
+          kind: text[opening - 1] === '!' ? 'embed' : 'wiki',
+          line,
+          malformed: false,
+          start: lineStart + start,
+          targetStart,
+          targetEnd: targetStart + authoredTarget.length,
+        }
+      }
+      cursor = closing + 2
+    }
+    if (newline < 0) break
+    lineStart = newline + 1
+    line += 1
   }
 }
 
@@ -2584,17 +2783,33 @@ function relativeRewritePath(fromDirectory, targetPath) {
   return relative.startsWith('..') ? relative : `./${relative}`
 }
 
-function rewriteRelativeUrl(url, oldDirectory, newDirectory, oldPath, newPath, isDirectory) {
-  if (url.startsWith('#') || url.startsWith('/') || /^[A-Za-z][A-Za-z\d+.-]*:/u.test(url)) {
-    return null
+function rewriteRelativeUrl(url, sourcePath, mapping, beforeIndex) {
+  if (url.startsWith('#') || url.startsWith('/') || /^[A-Za-z][A-Za-z\d+.-]*:/u.test(url)) return null
+  const { authoredPath, fragment, querySuffix } = splitWikiTarget(url)
+  if (!authoredPath) return null
+  let decoded
+  try { decoded = decodeURIComponent(authoredPath) } catch { mapping.unresolved?.(sourcePath); return null }
+  if (path.posix.isAbsolute(decoded) || /^[A-Za-z][A-Za-z\d+.-]*:/u.test(decoded)) { mapping.unresolved?.(sourcePath); return null }
+  const noteTarget = !path.posix.extname(decoded) || isVaultDocument(decoded)
+  const resolved = noteTarget ? resolveLinkTarget(sourcePath, url, beforeIndex) : null
+  if (resolved && resolved.status !== 'resolved') {
+    mapping.unresolved?.(sourcePath)
+    if (resolved.status === 'ambiguous') return null
   }
-  const hash = url.indexOf('#')
-  const pathPart = hash < 0 ? url : url.slice(0, hash)
-  const fragment = hash < 0 ? '' : url.slice(hash)
-  if (!pathPart) return null
-  const oldTarget = path.posix.normalize(path.posix.join(oldDirectory || '.', pathPart))
-  const newTarget = mapRewrittenPath(oldTarget, oldPath, newPath, isDirectory)
-  const rewritten = `${relativeRewritePath(newDirectory, newTarget)}${fragment}`
+  const oldTarget = resolved?.resolvedPath ?? path.posix.normalize(path.posix.join(path.posix.dirname(sourcePath), decoded))
+  if (oldTarget === '..' || oldTarget.startsWith('../') || path.posix.isAbsolute(oldTarget)) { mapping.unresolved?.(sourcePath); return null }
+  const newTarget = mapping.target(oldTarget)
+  const relative = relativeRewritePath(path.posix.dirname(mapping.source(sourcePath)), newTarget)
+  let depth = 0
+  let balanced = true
+  for (const character of relative) {
+    if (character === '(') depth += 1
+    if (character === ')' && --depth < 0) balanced = false
+  }
+  const encodedSpelling = /%[0-9a-f]{2}/iu.test(authoredPath)
+  const delimiters = balanced && depth === 0 && !encodedSpelling ? /["'<>]/gu : /[()"'<>]/gu
+  const encoded = encodeWikiPath(relative, encodedSpelling).replace(delimiters, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
+  const rewritten = `${encoded}${querySuffix}${fragment}`
   return rewritten === url ? null : rewritten
 }
 
@@ -2607,11 +2822,90 @@ function parseReferenceDestination(value) {
   return value && !/[\s<>]/u.test(value) ? { angle: false, url: value } : null
 }
 
-function rewriteMarkdownPathLinks(content, sourcePath, oldPath, newPath, isDirectory, work, signal) {
-  const masked = maskedMarkdownSource(content, sourcePath, signal)
-  const oldDirectory = path.posix.dirname(sourcePath)
-  const mappedSourcePath = mapRewrittenPath(sourcePath, oldPath, newPath, isDirectory)
-  const newDirectory = path.posix.dirname(mappedSourcePath)
+function encodeWikiPath(value, preserveUriEncoding) {
+  return preserveUriEncoding
+    ? value.split('/').map(part => encodeURIComponent(part)).join('/')
+    : value.replace(/[%#?|\[\]]/gu, character => encodeURIComponent(character))
+}
+
+function splitWikiTarget(authoredTarget) {
+  const hash = authoredTarget.indexOf('#')
+  const pathAndQuery = hash < 0 ? authoredTarget : authoredTarget.slice(0, hash)
+  const fragment = hash < 0 ? '' : authoredTarget.slice(hash)
+  const query = pathAndQuery.indexOf('?')
+  return {
+    authoredPath: query < 0 ? pathAndQuery : pathAndQuery.slice(0, query),
+    fragment,
+    querySuffix: query < 0 ? '' : pathAndQuery.slice(query),
+  }
+}
+
+function wikiCandidatePath(pathValue, authoredPath, explicitExtension) {
+  let rewrittenPath = pathValue
+  if (!explicitExtension && !path.posix.extname(authoredPath)) {
+    const extension = path.posix.extname(rewrittenPath)
+    if (extension) rewrittenPath = rewrittenPath.slice(0, -extension.length)
+  }
+  return encodeWikiPath(rewrittenPath, /%[0-9a-f]{2}/iu.test(authoredPath))
+}
+
+function rewriteWikiLinkTarget(
+  authoredTarget,
+  sourcePath,
+  mapping,
+  beforeIndex,
+  afterIndex,
+) {
+  const resolved = resolveLinkTarget(sourcePath, authoredTarget, beforeIndex)
+  if (resolved.status !== 'resolved' || !resolved.resolvedPath) {
+    if (!authoredTarget.startsWith('#')) mapping.unresolved?.(sourcePath)
+    return null
+  }
+  const { authoredPath, fragment, querySuffix } = splitWikiTarget(authoredTarget)
+  if (!authoredPath) return null
+  let normalizedPath
+  try {
+    normalizedPath = decodeURIComponent(authoredPath).replaceAll('\\', '/')
+  } catch {
+    return null
+  }
+  const mappedSourcePath = mapping.source(sourcePath)
+  const mappedTarget = mapping.target(resolved.resolvedPath)
+  const postResolution = resolveLinkTarget(mappedSourcePath, authoredTarget, afterIndex)
+  if (postResolution.status === 'resolved' && postResolution.resolvedPath === mappedTarget) return null
+
+  const candidateTarget = (candidatePath, explicitExtension = false) => {
+    const candidate = `${wikiCandidatePath(candidatePath, authoredPath, explicitExtension)}${querySuffix}${fragment}`
+    if (candidate === authoredTarget) return null
+    const candidateResolution = resolveLinkTarget(mappedSourcePath, candidate, afterIndex)
+    return candidateResolution.status === 'resolved' && candidateResolution.resolvedPath === mappedTarget
+      ? candidate
+      : null
+  }
+
+  const relative = /^(?:\.\/|\.\.\/)/u.test(normalizedPath)
+  const simplePath = relative
+    ? relativeRewritePath(path.posix.dirname(mappedSourcePath), mappedTarget)
+    : normalizedPath.includes('/')
+      ? mappedTarget
+      : path.posix.basename(mappedTarget)
+  const simpleCandidate = candidateTarget(simplePath)
+  if (simpleCandidate) return simpleCandidate
+
+  const relativePath = relativeRewritePath(path.posix.dirname(mappedSourcePath), mappedTarget)
+  const qualifiedCandidate = candidateTarget(relativePath)
+    ?? candidateTarget(mappedTarget)
+    ?? candidateTarget(relativePath, true)
+    ?? candidateTarget(mappedTarget, true)
+  if (qualifiedCandidate) return qualifiedCandidate
+  throw new Error(`Could not preserve a resolved wikilink in ${sourcePath} during the move.`)
+}
+
+function rewriteMarkdownPathLinks(content, sourcePath, mapping, work, signal, beforeIndex, afterIndex) {
+  const details = markdownDetails(content, sourcePath, signal, mapping.unresolved && (() => mapping.unresolved(sourcePath, 'protected HTML')))
+  if (details.propertyLines.some(({ text }) => text.includes('[[') || text.includes(']('))) mapping.unresolved?.(sourcePath, 'links in note properties')
+  const masked = maskedMarkdownSource(content, sourcePath, signal, details)
+  const definitionLines = referenceDefinitionLines(masked, signal)
   const replacements = []
   const takeWork = () => {
     signal.throwIfAborted()
@@ -2624,20 +2918,18 @@ function rewriteMarkdownPathLinks(content, sourcePath, oldPath, newPath, isDirec
   }
   for (const span of scanInlineLinkSpans(masked, signal)) {
     if (!takeWork()) return { capped: true, content }
-    const decoded = span.destination.replaceAll('%20', ' ')
+    const destination = parseReferenceDestination(span.destination)
     const rewritten = rewriteRelativeUrl(
-      decoded,
-      oldDirectory,
-      newDirectory,
-      oldPath,
-      newPath,
-      isDirectory,
+      destination?.url ?? span.destination,
+      sourcePath,
+      mapping,
+      beforeIndex,
     )
     if (rewritten == null) continue
     replacements.push({
       end: span.destinationEnd,
       start: span.destinationStart,
-      value: rewritten.replaceAll(' ', '%20'),
+      value: destination?.angle ? `<${rewritten.replaceAll('%20', ' ')}>` : rewritten.replaceAll(' ', '%20'),
     })
   }
   for (const span of scanReferenceDestinationSpans(masked, signal)) {
@@ -2646,17 +2938,32 @@ function rewriteMarkdownPathLinks(content, sourcePath, oldPath, newPath, isDirec
     if (!destination) continue
     const rewritten = rewriteRelativeUrl(
       destination.url,
-      oldDirectory,
-      newDirectory,
-      oldPath,
-      newPath,
-      isDirectory,
+      sourcePath,
+      mapping,
+      beforeIndex,
     )
     if (rewritten == null) continue
     replacements.push({
       end: span.destinationEnd,
       start: span.destinationStart,
-      value: destination.angle ? `<${rewritten}>` : rewritten,
+      value: destination.angle ? `<${rewritten.replaceAll('%20', ' ')}>` : rewritten.replaceAll(' ', '%20'),
+    })
+  }
+  for (const span of scanWikiLinkSpans(masked, signal)) {
+    if (!takeWork()) return { capped: true, content }
+    if (span.malformed || definitionLines.has(span.line)) continue
+    const rewritten = rewriteWikiLinkTarget(
+      span.authoredTarget,
+      sourcePath,
+      mapping,
+      beforeIndex,
+      afterIndex,
+    )
+    if (rewritten == null) continue
+    replacements.push({
+      end: span.targetEnd,
+      start: span.targetStart,
+      value: rewritten,
     })
   }
   if (!replacements.length) return { capped: false, content }
@@ -2687,20 +2994,13 @@ function markdownLinkRecords(content, relativePath, signal, budget = null) {
   const details = markdownDetails(content, relativePath, signal)
   const masked = maskedMarkdownSource(content, relativePath, signal, details)
   const definitions = new Map()
-  const definitionLines = new Set()
-  let definitionLine = 1
-  let definitionNewline = masked.indexOf('\n')
   for (const span of scanReferenceDestinationSpans(masked, signal)) {
-    while (definitionNewline !== -1 && definitionNewline < span.destinationStart) {
-      definitionLine += 1
-      definitionNewline = masked.indexOf('\n', definitionNewline + 1)
-    }
     if (!consumeLinkWork(budget)) break
     const destination = parseReferenceDestination(span.destination)
     if (!destination) continue
     definitions.set(span.label.trim().toLowerCase(), destination.url)
-    definitionLines.add(definitionLine)
   }
+  const definitionLines = referenceDefinitionLines(masked, signal)
   const records = []
   let inlineLine = 1
   let inlineNewline = masked.indexOf('\n')
@@ -2718,22 +3018,20 @@ function markdownLinkRecords(content, relativePath, signal, budget = null) {
       line: inlineLine,
     })
   }
+  for (const span of scanWikiLinkSpans(masked, signal)) {
+    if (!consumeLinkWork(budget)) break
+    if (span.malformed || definitionLines.has(span.line)) continue
+    records.push({
+      authoredTarget: span.authoredTarget,
+      displayText: span.displayText,
+      kind: span.kind,
+      line: span.line,
+    })
+  }
   linkLineLoop: for (const line of details.visibleLines) {
     signal.throwIfAborted()
     if (budget?.capped) break
     if (definitionLines.has(line.line)) continue
-    for (const match of line.text.matchAll(/(!?)\[\[([^\]]+)\]\]/gu)) {
-      signal.throwIfAborted()
-      if (isEscapedSyntax(line.text, match.index)) continue
-      if (!consumeLinkWork(budget)) break linkLineLoop
-      const [target, display] = match[2].split('|', 2)
-      records.push({
-        authoredTarget: target.trim(),
-        displayText: (display ?? target).trim(),
-        kind: match[1] ? 'embed' : 'wiki',
-        line: line.line,
-      })
-    }
     for (const match of line.text.matchAll(/(!?)\[([^\]]+)\]\[([^\]]*)\]/gu)) {
       signal.throwIfAborted()
       if (isEscapedSyntax(line.text, match.index)) continue
@@ -3975,7 +4273,7 @@ function rewritePlannerWarning(state, warning) {
   }
 }
 
-async function planVaultPathRewrite(input, config, args, signal) {
+async function planVaultPathRewrite(input, config, args, signal, merge = null) {
   const oldPath = safeInspectionPath(args?.oldPath)
   const newPath = safeInspectionPath(args?.newPath)
   if (!oldPath || !newPath) {
@@ -3991,7 +4289,7 @@ async function planVaultPathRewrite(input, config, args, signal) {
   if (args.isDirectory && isPathOrUnder(newPath, oldPath)) {
     throw new Error('Vault rewrite destination must not be inside its source directory.')
   }
-  const key = JSON.stringify({ isDirectory: args.isDirectory, newPath, oldPath })
+  const key = JSON.stringify({ isDirectory: args.isDirectory, newPath, oldPath, ...(merge ? { merge } : {}) })
   const position = decodeCursor(args.cursor, 'path-rewrite', key)
   const state = {
     bytes: 0,
@@ -4029,11 +4327,19 @@ async function planVaultPathRewrite(input, config, args, signal) {
   }
 
   const sources = []
+  const resolutionDocuments = []
   const fingerprint = createHash('sha256')
+  let missingNonMarkdownRevision = false
   for (const item of collection.entries) {
     signal.throwIfAborted()
-    if (!isMarkdown(item.path)) continue
+    if (!isVaultDocument(item.path)) continue
     state.files += 1
+    fingerprint.update(item.path).update('\0').update(item.revision ?? '').update('\0')
+    if (!isMarkdown(item.path)) {
+      if (item.revision === undefined) missingNonMarkdownRevision = true
+      resolutionDocuments.push({ ...item })
+      continue
+    }
     if (item.size > config.maxSearchFileBytes) {
       state.truncated = true
       state.truncationReason = 'file-limit'
@@ -4062,6 +4368,9 @@ async function planVaultPathRewrite(input, config, args, signal) {
       rewritePlannerWarning(state, `${item.path}: omitted from path rewrite because it could not be opened safely`)
       return rewritePlannerResult(state)
     }
+    if (document.revision !== undefined && document.revision !== item.revision) {
+      throw new Error('Vault rewrite source changed between inventory and read.')
+    }
     const bytes = Buffer.byteLength(document.content)
     state.bytes += bytes
     const digest = createHash('sha256').update(document.content).digest('base64url')
@@ -4072,26 +4381,93 @@ async function planVaultPathRewrite(input, config, args, signal) {
       .update('\0')
       .update(digest)
       .update('\0')
-    sources.push({ ...item, content: document.content })
+    const source = { ...item, content: document.content }
+    sources.push(source)
+    resolutionDocuments.push(source)
   }
   const sourceFingerprint = fingerprint.digest('base64url')
   if (args.cursor != null && position.path !== sourceFingerprint) {
     throw new Error('Vault rewrite source changed during pagination.')
   }
+  if (missingNonMarkdownRevision) {
+    state.truncated = true
+    state.truncationReason = 'metadata-limit'
+    rewritePlannerWarning(state, 'path rewrite omitted sources because a non-Markdown resolution path has no revision')
+    return rewritePlannerResult(state)
+  }
+  const linkIndex = linkPathIndex(resolutionDocuments, signal, true, state)
+  if (state.truncated) return rewritePlannerResult(state)
+  let requiresKeepSource = false
+  const mappedPath = entry => mapRewrittenPath(entry, oldPath, newPath, args.isDirectory)
+  const mapping = merge ? {
+    source: entry => entry === oldPath ? newPath : entry,
+    target: entry => !merge.keepSource && entry === oldPath ? newPath : entry,
+    unresolved: (entry, reason = 'unresolved or ambiguous links') => {
+      requiresKeepSource = true
+      rewritePlannerWarning(state, `${entry}: ${reason} require keeping the source`)
+    },
+  } : { source: mappedPath, target: mappedPath }
+  if (merge && (!sources.some(document => document.path === oldPath) || !sources.some(document => document.path === newPath))) {
+    throw new Error('Merge source and destination must be existing Markdown documents.')
+  }
+  if (merge) {
+    const anchors = new Set()
+    for (const document of sources.filter(document => document.path === oldPath || document.path === newPath)) {
+      const details = markdownDetails(document.content, document.path, signal)
+      const documentAnchors = new Set()
+      const headings = new Map(collectMarkdownHeadings(details.lines, details.bodyStart, details.visibleLines).map(heading => [heading.index, heading.title]))
+      for (const line of details.visibleLines) {
+        signal.throwIfAborted()
+        const heading = headings.get(line.index)
+        if ((heading !== undefined && /[\\`\[\]_*]/u.test(details.lines[line.index]))
+          || (heading === undefined && /#\s/u.test(line.text))
+          || /^ {0,3}(?:=+|-+)[ \t]*$/u.test(line.text)) mapping.unresolved(document.path, 'unverified heading syntax')
+        const block = line.text.match(/(?:^|[ \t])\^([A-Za-z0-9-]+)[ \t]*$/u)
+        if (heading !== undefined) documentAnchors.add(`heading:${heading.replace(/\s+/gu, ' ').normalize('NFC').toLowerCase()}`)
+        if (block) documentAnchors.add(`block:${block[1].toLowerCase()}`)
+      }
+      for (const anchor of documentAnchors) {
+        if (anchors.has(anchor)) mapping.unresolved(document.path, 'conflicting heading or block targets')
+        anchors.add(anchor)
+      }
+    }
+  }
+  if (merge && resolutionDocuments.some(document => !isMarkdown(document.path))) {
+    requiresKeepSource = true
+    rewritePlannerWarning(state, 'Canvas and Base references are not rewritten; keep the source.')
+  }
+  const postResolutionDocuments = merge
+    ? resolutionDocuments.filter(document => merge.keepSource || document.path !== oldPath).map(document => document.path === newPath ? { ...document, content: merge.content } : document)
+    : resolutionDocuments.map(document => ({ ...document, path: mappedPath(document.path) }))
+  const postPaths = new Set()
+  for (const document of postResolutionDocuments) {
+    const key = document.path.toLowerCase()
+    if (postPaths.has(key)) {
+      state.truncated = true
+      state.truncationReason = 'metadata-limit'
+      rewritePlannerWarning(state, 'path rewrite omitted sources because the post-move resolution inventory is ambiguous')
+      return rewritePlannerResult(state)
+    }
+    postPaths.add(key)
+  }
+  const postLinkIndex = linkPathIndex(postResolutionDocuments, signal, true, state)
+  if (state.truncated) return rewritePlannerResult(state)
 
   const work = { count: 0, limit: MAX_PATH_REWRITE_WORK, capped: false }
   const planned = []
+  let mergeSource = null
+  let mergeDestination = null
   let updateBytes = 0
   for (const source of sources) {
     signal.throwIfAborted()
     const rewritten = rewriteMarkdownPathLinks(
       source.content,
       source.path,
-      oldPath,
-      newPath,
-      args.isDirectory,
+      mapping,
       work,
       signal,
+      linkIndex,
+      postLinkIndex,
     )
     if (rewritten.capped) {
       state.truncated = true
@@ -4102,7 +4478,8 @@ async function planVaultPathRewrite(input, config, args, signal) {
       )
       return rewritePlannerResult(state)
     }
-    if (rewritten.content === source.content) continue
+    const mergeEndpoint = merge && (source.path === oldPath || source.path === newPath)
+    if (!mergeEndpoint && rewritten.content === source.content) continue
     updateBytes += Buffer.byteLength(rewritten.content)
     if (updateBytes > config.maxSearchBytes) {
       state.truncated = true
@@ -4110,9 +4487,14 @@ async function planVaultPathRewrite(input, config, args, signal) {
       rewritePlannerWarning(state, 'path rewrite updates exceeded the aggregate byte limit')
       return rewritePlannerResult(state)
     }
-    const mappedPath = mapRewrittenPath(source.path, oldPath, newPath, args.isDirectory)
+    if (mergeEndpoint) {
+      const document = { path: source.path, content: rewritten.content, ...(source.revision === undefined ? {} : { revision: source.revision }) }
+      if (source.path === oldPath) mergeSource = document
+      else mergeDestination = document
+      continue
+    }
     planned.push({
-      path: mappedPath,
+      path: mapping.source(source.path),
       newContent: rewritten.content,
       ...(source.revision === undefined ? {} : { revision: source.revision }),
     })
@@ -4122,6 +4504,7 @@ async function planVaultPathRewrite(input, config, args, signal) {
   const updates = planned.slice(position.offset, pageEnd)
   const hasMore = pageEnd < planned.length
   const missingRevision = planned.some(update => update.revision === undefined)
+    || Boolean(merge && (!mergeSource?.revision || !mergeDestination?.revision))
   if (missingRevision) {
     for (const update of planned) {
       if (update.revision === undefined) {
@@ -4133,12 +4516,15 @@ async function planVaultPathRewrite(input, config, args, signal) {
     ? encodeCursor('path-rewrite', key, { path: sourceFingerprint, offset: pageEnd })
     : null
   const truncationReason = hasMore ? 'result-limit' : missingRevision ? 'metadata-limit' : null
-  return rewritePlannerResult(state, updates, {
-    complete: !hasMore && !missingRevision,
-    cursor,
-    truncated: hasMore || missingRevision,
-    truncationReason,
-  })
+  return {
+    ...rewritePlannerResult(state, updates, {
+      complete: !hasMore && !missingRevision,
+      cursor,
+      truncated: hasMore || missingRevision,
+      truncationReason,
+    }),
+    ...(merge ? { source: mergeSource, destination: mergeDestination, fingerprint: sourceFingerprint, requiresKeepSource: requiresKeepSource || missingRevision } : {}),
+  }
 }
 
 function boundedLimit(requested, maximum) {
@@ -4332,6 +4718,17 @@ export function createVaultInspection(input, config) {
 
     async planPathRewrite(args, signal) {
       return await planVaultPathRewrite(input, limits, args, operationSignal(signal))
+    },
+
+    async planMergeLinks(args, signal) {
+      const sourcePath = safeInspectionPath(args?.sourcePath)
+      const destinationPath = safeInspectionPath(args?.destinationPath)
+      if (!sourcePath || !destinationPath || !isMarkdown(sourcePath) || !isMarkdown(destinationPath)
+        || sourcePath.normalize('NFC').toLowerCase() === destinationPath.normalize('NFC').toLowerCase()
+        || typeof args?.keepSource !== 'boolean' || typeof args?.mergedContent !== 'string'
+        || Buffer.byteLength(args.mergedContent) > limits.maxSearchFileBytes) throw new Error('Merge link plan input is invalid or exceeds its bounds.')
+      const result = await planVaultPathRewrite(input, limits, { oldPath: sourcePath, newPath: destinationPath, isDirectory: false, cursor: args.cursor }, operationSignal(signal), { content: args.mergedContent, keepSource: args.keepSource })
+      return { source: null, destination: null, fingerprint: null, requiresKeepSource: true, ...result }
     },
 
     async facets(args = {}, signal) {

@@ -31,6 +31,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
   const { default: remote } = await import('../dist/typert.remote-client.js')
   assert.equal(remote.package, '@tockteam/tocktutor-workbench')
   assert.deepEqual(remote.descriptors.map(descriptor => descriptor.method), [
+    'applyMerge',
     'captureSnapshot',
     'clearDraft',
     'clearSnapshots',
@@ -41,15 +42,19 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'graph',
     'inspectAttachment',
     'links',
+    'listMerges',
     'listSnapshots',
     'listTrash',
     'listTree',
     'openDocument',
     'openSandboxVault',
     'outline',
+    'prepareMerge',
     'previewAttachment',
+    'previewMergeLinks',
     'readDraft',
     'readSnapshot',
+    'recoverMerge',
     'renameDocument',
     'restoreSnapshot',
     'restoreSnapshotAsNew',

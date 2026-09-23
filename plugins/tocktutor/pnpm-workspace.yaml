@@ -20,3 +20,6 @@ overrides:
   '@deepseek-ai/cordis-plugin-group': 1.0.1
   '@tockteam/desktop': link:../..
   vite: 6.4.3
+
+patchedDependencies:
+  chokidar@5.0.0: patches/chokidar@5.0.0.patch
