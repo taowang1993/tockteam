@@ -204,6 +204,18 @@
         "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       "sameBytes": true
+    },
+    "comparison.md": {
+      "tocktutor": {
+        "bytes": 1324,
+        "sha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
+      },
+      "obsidian": {
+        "bytes": 1324,
+        "sha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
+      },
+      "sameBytes": true,
+      "note": "Both new isolated vault copies contain comparison.md. Only TockTutor was captured; the published Obsidian reference retains its historical filename."
     }
   },
   "structuredPairs": [
@@ -267,7 +279,7 @@
         "tocktutor-note-actions-menu.png",
         "obsidian-note-actions.png"
       ],
-      "contentComparison": "byte-identical Markdown"
+      "contentComparison": "byte-identical Markdown; refreshed TockTutor filename comparison.md, historical Obsidian filename UIUX Comparison.md"
     },
     {
       "surface": "command-palette",
@@ -526,7 +538,7 @@
       "surface": "note-actions",
       "tocktutor": {
         "screenshot": "tocktutor-note-actions-menu.png",
-        "path": "UIUX Comparison.md",
+        "path": "comparison.md",
         "mode": "live-preview",
         "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
       },
@@ -535,7 +547,8 @@
         "path": "UIUX Comparison.md",
         "mode": "live-preview",
         "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      }
+      },
+      "referenceStatus": "historical-filename"
     },
     {
       "surface": "command-palette",
@@ -985,23 +998,24 @@
         "height": 949,
         "deviceScaleFactor": 2
       },
-      "theme": "dark",
-      "skin": null,
-      "route": "/tocktutor/UIUX%20Comparison.md",
       "runtimeErrors": [],
-      "path": "UIUX Comparison.md",
       "mode": "live-preview",
-      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 370202,
-      "sha256": "cfc6ed288c0880256e9eb06437fc8a30d23ed75faebfe1277c8a9615281226a1",
-      "capturedAt": "2026-09-20T00:36:17.559Z",
+      "path": "comparison.md",
+      "capturedAt": "2026-09-23T23:50:21.107Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
-        "textSha256": "28b9879a5c3fb3735de66e4783f80c0c8eb4b1f5e4a643222175eb174de61342",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nComparison Vault\nUIUX Comparison\nReading View\nLive Preview\nSource Mode\nAdd Property\nRename Note\nMove Note\nBacklinks in Document\nBookmark Note\nFile Recovery\nOutline\nProperties\nBacklinks\nGraph View\nWeb Viewer\nBookmarks\nTags\nAttachments and Embeds\nNote Tools\nWorkspaces and Panes\nReviews and Actions\nMove File to Trash\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nInternal Testing Notice\n\nDeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek H"
+        "textExcerpt": "Workspaces\nNo sessions yet\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\ncomparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\ncomparison\nMention\nStudy Guide\nComparison Vault\ncomparison\nBacklinks in Document\nReading View\nSource Mode\nSplit Right\nSplit Down\nOpen in New Window\nRename Note…\nMove Note…\nBookmark Note…\nMerge Entire File With…\nAdd Property\nExport PDF…\nFind…\nReplace…\nCopy Path\nOpen Linked View\nOpen in Default App\nReveal in Finder\nReveal File in Navigation\nFile Recovery\nOutline\nProperties\nBacklinks\nGraph View\nWeb Viewer\nBookmarks\nTags\nAttachments and Embeds\nNote Tools\nWorkspaces and Panes\nReviews and Actions\nMerge Recovery\nMove File to Trash\ncomparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\n\nStructure\n\n\nLists\n\n\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n\n\n Completed task\n Pending task with Welcome\n\n\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\n\n\nData\n\n\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\n\n\nCode and Notes\n\n\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.[^context]\n\n\nA soft line ends here.\nThis sentence follows without a blank line.\ncomparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nAdd an API key to get started\n\nConfigure the official DeepSeek provider to start building.\n\nAPI key\nConfigure later\nSave and continue",
+        "textSha256": "899759736adc62b3fb74057515b15ac3a5567350558fbac079f24d472c4328a5"
       },
-      "runtimeErrorMonitoring": "Playwright pageerror and console listeners from initial Desktop loading through Note Actions capture. Existing TockCoder startup error recorded in refresh proof.",
-      "refreshProof": ".beads/reports/tocktutor-trash-action-2026-09-20.json"
+      "runtimeErrorMonitoring": "Playwright pageerror and console error listeners installed before full Desktop route reload through capture.",
+      "route": "/tocktutor/comparison.md",
+      "theme": "dark",
+      "skin": null,
+      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+      "bytes": 383591,
+      "sha256": "bf46aa1e4e853651e66d73bce4b5d7d90f8f0f307f006d42c2e39490b43c656c",
+      "captureScope": "real-desktop",
+      "sourceCommit": "858abe8e"
     },
     "obsidian-note-actions.png": {
       "geometry": {
@@ -2349,5 +2363,57 @@
       "globalSearch": "-file:Lessons.base"
     },
     "reason": "Obsidian otherwise includes an unresolved Ignored Link and the Base file, and defaults to one local hop. Native graph settings align its nodes with TockTutor without editing either app or deleting vault content."
+  },
+  "menuRefresh": {
+    "capturedAt": "2026-09-23T23:50:21.107Z",
+    "sourceCommit": "858abe8e",
+    "screenshotAllowlist": [
+      "tocktutor-note-actions-menu.png"
+    ],
+    "sharedNote": ".agents/uiux/tocktutor/comparison.md",
+    "referenceDecision": "User selected Update TockTutor Now: retain the earlier Obsidian reference with its former filename explicitly labeled.",
+    "obsidianBlocker": "protocol.registerSchemesAsPrivileged should be called before app is ready",
+    "failedObsidianLaunch": {
+      "pid": 12229,
+      "remaining": [],
+      "verified": true
+    },
+    "cleanup": {
+      "verified": true,
+      "remaining": [],
+      "extendedDisplayRun": "37dd460a-ebdb-4172-b844-f58cd41cf066",
+      "pids": [
+        11894,
+        11896,
+        11897,
+        11898,
+        11901,
+        11902,
+        11909,
+        11917,
+        12033,
+        12050,
+        12051,
+        12052,
+        12053,
+        12055,
+        12056,
+        12057,
+        12058,
+        12545,
+        12673
+      ]
+    },
+    "verification": [
+      "real Desktop /tocktutor/comparison.md route",
+      "exact shared Markdown bytes on disk",
+      "selected comparison.md tab and live-preview editor",
+      "Reading View action and Source Mode checkbox; no Live Preview menu choice",
+      "Rename Note and Move Note enabled",
+      "dark scheme and no skin",
+      "3024x1898 PNG from 1512x949 CSS @2x",
+      "no renderer error or console error during route reload/capture"
+    ],
+    "publication": "Single allowlisted PNG staged and atomically renamed after geometry, content, runtime and cleanup verification."
   }
 }

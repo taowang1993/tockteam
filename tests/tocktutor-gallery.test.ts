@@ -51,7 +51,8 @@ test('refreshes supplemental captures with verified pixels and honest runtime ev
 })
 
 test('binds shared Markdown and structured documents to the captured content', () => {
-  const sharedHash = sha256(readFileSync(resolve(root, 'shared-note.md')))
+  const sharedHash = sha256(readFileSync(resolve(root, 'comparison.md')))
+  assert.equal(proof.fixtures['comparison.md'].tocktutor.sha256, sharedHash)
   assert.equal(proof.fixtures['UIUX Comparison.md'].tocktutor.sha256, sharedHash)
   assert.equal(proof.fixtures['UIUX Comparison.md'].obsidian.sha256, sharedHash)
   for (const [name, value] of Object.entries(proof.fixtures)) {
@@ -76,6 +77,6 @@ test('binds shared Markdown and structured documents to the captured content', (
   assert.equal(proof.graphAlignment.obsidianSettings.globalSearch, '-file:Lessons.base')
   assert.ok(proof.pairs.length >= 23)
   for (const pair of proof.pairs) {
-    if (pair.tocktutor.path === 'UIUX Comparison.md') assert.equal(pair.tocktutor.contentSha256, sharedHash, pair.surface)
+    if (['comparison.md', 'UIUX Comparison.md'].includes(pair.tocktutor.path)) assert.equal(pair.tocktutor.contentSha256, sharedHash, pair.surface)
   }
 })

@@ -1,6 +1,12 @@
 # TockTutor and Obsidian Content Alignment
 
-## Result
+## Note Menu Refresh — 2026-09-24
+
+Replaced the temporary component-test image with a real TockTutor Desktop capture of the isolated Comparison Vault. The shared note is now named `comparison.md` (including the gallery’s canonical Markdown file), with the original 1,324 bytes and SHA-256 unchanged. The menu offers Reading View and Source Mode, without a Live Preview item; note actions are connected to the real Host. Capture geometry is 1512 × 949 CSS pixels at 2×, built-in dark/no skin, with no renderer errors during monitored route reload and capture.
+
+The user approved retaining Obsidian’s earlier screenshot with the former `UIUX Comparison.md` filename. Its content hash is identical, but its filename is explicitly not claimed to match. Refreshing Obsidian through the required guarded launcher failed before creating a window (`protocol.registerSchemesAsPrivileged should be called before app is ready`); no alternate launch or user-app attachment was attempted. Its failed-launch PID was verified absent. TockTutor’s complete observed process tree was stopped with no remaining PIDs. The JSON proof’s `menuRefresh` records the capture, approval, and cleanup. All other screenshots and their historical filename evidence remain unchanged.
+
+## Original Capture Result
 
 Retook all 32 existing TockTutor screenshots and all 25 existing Obsidian references. Added four captures: Claudian, expanded Obsidian unlinked mentions, and a dedicated Reading Embed pair. The gallery now contains **55 distinct images**, with **6 supplemental images** retained and refreshed (61 total).
 
@@ -14,7 +20,7 @@ Retook all 32 existing TockTutor screenshots and all 25 existing Obsidian refere
 
 | Surfaces | Shared Content and State |
 | --- | --- |
-| Workspace, Polish, Live Preview, Reading, Source | `UIUX Comparison.md`, copied from `shared-note.md`; matching editor modes and top-of-note state |
+| Workspace, Polish, Live Preview, Reading, Source | `UIUX Comparison.md`, copied from the shared Markdown file (now `comparison.md`); matching editor modes and top-of-note state |
 | Note Actions, Commands, Note Tools | The same note underneath each real menu/command surface; empty command query, or `Note composer` for Obsidian’s closest Note Tools reference |
 | Properties, Backlinks, Tags, Bookmarks, Panes | The same vault and `UIUX Comparison.md`; one linked source (`Study Guide.md`), one unlinked mention (`Mention.md`), and the same bookmarked note |
 | Expanded Unlinked Mentions | Both apps expand the mention from `Mention.md`; no longer compared against a collapsed reference |

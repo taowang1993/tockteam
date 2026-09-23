@@ -29,7 +29,20 @@ test('compares matching content and includes the installed Claudian assistant', 
     assert.equal(right.path, pair.obsidian.path, pair.surface)
     assert.equal(left.contentSha256, pair.tocktutor.contentSha256, pair.surface)
     assert.equal(right.contentSha256, pair.obsidian.contentSha256, pair.surface)
-    assert.equal(pair.tocktutor.path, pair.obsidian.path, pair.surface)
+    if (pair.surface === 'note-actions') {
+      assert.equal(pair.tocktutor.path, 'comparison.md')
+      assert.equal(pair.obsidian.path, 'UIUX Comparison.md')
+      assert.equal(pair.referenceStatus, 'historical-filename')
+      assert.equal(left.captureScope, 'real-desktop')
+      assert.equal(left.route, '/tocktutor/comparison.md')
+      assert.equal(left.contentSha256, createHash('sha256').update(readFileSync(`${root}/comparison.md`)).digest('hex'))
+      assert.equal(proof.menuRefresh.cleanup.verified, true)
+      assert.deepEqual(proof.menuRefresh.cleanup.remaining, [])
+      assert.match(html, /Obsidian · Note Actions<\/span><span class="badge">Earlier Reference/u)
+      assert.doesNotMatch(html, /Focused Capture:|Unwired fixture actions/u)
+    } else {
+      assert.equal(pair.tocktutor.path, pair.obsidian.path, pair.surface)
+    }
     assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256, pair.surface)
     assert.equal(pair.tocktutor.mode, pair.obsidian.mode, pair.surface)
   }
