@@ -3,7 +3,7 @@ import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@tockteam/ui/command'
 import { Dialog, DialogContent, DialogTitle } from '@tockteam/ui/dialog'
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@tockteam/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@tockteam/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@tockteam/ui/empty'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
@@ -5252,6 +5252,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     : snapshot.mode === 'live-preview'
       ? 'live-preview'
       : snapshot.settings?.defaultEditingMode === 'source' ? 'source' : 'live-preview')
+  const toggleReadingView = (): void => { props.onMode(snapshot.mode === 'reading' ? lastEditingModeRef.current : 'reading') }
   const activeBookmarks = noteBookmarksForPath(snapshot.bookmarks ?? [], snapshot.path)
   const bookmarkGroupOptions = bookmarkGroups(snapshot.bookmarks ?? [])
   const bookmarkActionLabel = activeBookmarks.length > 0 ? 'Edit Bookmark…' : 'Bookmark Note…'
@@ -5636,13 +5637,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   <TooltipTrigger asChild>
                     <Button
                       unstyled
-                      aria-label={snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View'}
+                      aria-label={snapshot.mode === 'reading' ? 'Switch to Editing View' : 'Switch to Reading View'}
                       disabled={snapshot.path === null}
-                      onClick={() => { props.onMode(snapshot.mode === 'reading' ? 'live-preview' : 'reading') }}
+                      onClick={toggleReadingView}
                       type="button"
                     >{snapshot.mode === 'reading' ? <Pencil aria-hidden="true" /> : <FileText aria-hidden="true" />}</Button>
                   </TooltipTrigger>
-                  <TooltipContent>{snapshot.mode === 'reading' ? 'Switch to Live Preview' : 'Switch to Reading View'}</TooltipContent>
+                  <TooltipContent>{snapshot.mode === 'reading' ? 'Switch to Editing View' : 'Switch to Reading View'}</TooltipContent>
                 </Tooltip>
               ) : (
                 <Button unstyled
@@ -5682,15 +5683,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   {snapshot.documentKind === 'markdown' && (
                     <>
                       <DropdownMenuCheckboxItem checked={snapshot.settings?.backlinksInDocument ?? false} className={NOTE_ACTION_CLASS} disabled={snapshot.settings === undefined} onSelect={() => { props.onSettingsChange?.({ backlinksInDocument: !(snapshot.settings?.backlinksInDocument ?? false) }) }}><Link2 aria-hidden="true" /><span>Backlinks in Document</span></DropdownMenuCheckboxItem>
-                      <DropdownMenuRadioGroup aria-label="Editor Mode" value={snapshot.mode}>
-                        {([
-                          ['reading', 'Reading View', FileText],
-                          ['live-preview', 'Live Preview', Pencil],
-                          ['source', 'Source Mode', FileCode2],
-                        ] as const).map(([mode, label, Icon]) => (
-                          <DropdownMenuRadioItem className={NOTE_ACTION_CLASS} key={mode} onSelect={() => { props.onMode(mode) }} value={mode}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
+                      <DropdownMenuGroup aria-label="Editor Mode">
+                        <DropdownMenuItem className={NOTE_ACTION_CLASS} onSelect={toggleReadingView}>{snapshot.mode === 'reading' ? <Pencil aria-hidden="true" /> : <FileText aria-hidden="true" />}<span>{snapshot.mode === 'reading' ? 'Editing View' : 'Reading View'}</span></DropdownMenuItem>
+                        <DropdownMenuCheckboxItem checked={snapshot.mode === 'source'} className={NOTE_ACTION_CLASS} onSelect={() => { props.onMode(snapshot.mode === 'source' ? 'live-preview' : 'source') }}><FileCode2 aria-hidden="true" /><span>Source Mode</span></DropdownMenuCheckboxItem>
+                      </DropdownMenuGroup>
                       <DropdownMenuSeparator />
                     </>
                   )}

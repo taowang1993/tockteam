@@ -154,7 +154,7 @@ it('switches only the protected pane to Source Mode after another pane was focus
     expect(controller.getSnapshot().focusedPaneId).toBe(other)
     const ownerActions = within(ownerSeat()).getByRole('button', { name: 'More Note Actions' })
     fireEvent.keyDown(ownerActions, { key: 'Enter' })
-    const sourceMode = await screen.findByRole('menuitemradio', { name: 'Source Mode' })
+    const sourceMode = await screen.findByRole('menuitemcheckbox', { name: 'Source Mode' })
     fireEvent.click(sourceMode)
     await waitFor(() => expect(controller.getPaneSnapshot(owner).mode).toBe('source'))
     expect(controller.getPaneSnapshot(owner).source).toBe(protectedSource)
