@@ -111,7 +111,11 @@ it('renders five real linked panes, edits represented Properties and navigates o
     fireEvent.click(within(outgoing).getByRole('button', { name: 'Two · Two.md' }))
     await waitFor(() => expect(controller.getPaneSnapshot(source).path).toBe('Two.md'))
     await waitFor(() => expect(within(screen.getByRole('region', { name: 'Properties Linked View' })).queryByText('No properties.')).toBeTruthy())
+    // The destination opens in Live Preview; settle its lazy module before counting editors.
+    await act(async () => { await import('../src/live-preview-editor-runtime.tsx') })
     await waitFor(() => expect(view.container.querySelectorAll('.cm-editor, .ProseMirror')).toHaveLength(1))
+    expect(controller.getPaneSnapshot(source).mode).toBe('live-preview')
+    expect(view.container.querySelector('.ProseMirror')?.textContent).toContain('Two')
     fireEvent.click(screen.getByRole('button', { name: 'Close Properties Linked View' }))
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Properties Linked View' })).toBeNull())
     expect(controller.getSnapshot().panes.some(pane => pane.id === source)).toBe(true)

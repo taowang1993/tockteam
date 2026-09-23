@@ -29,4 +29,12 @@ Verified **1512 × 949 CSS pixels**, **2× scale**, **3024 × 1898 PNG pixels**,
 
 Initial review run `7dede8b8-f96b-406f-b3fe-5934c7c6b2b4`; accepted correction review `118271af-8c53-4228-9129-0e1054df3573`. See `independent-review.md`; acceptance is bounded to the three findings and does not claim independent execution.
 
-At this local evidence checkpoint, the new cross-platform/Runtime CI and refreshed Nix dependency hash are pending. Final CI disposition is tracked in Beads `tockteam-yoam.26` and the branch workflow. No local Nix, installed executable smoke, real OS association, clipboard mutation, or native-open certification is claimed. No PR creation or merge is authorized.
+## First Published CI and Follow-Up
+
+[CI 35829595004](https://github.com/taowang1993/tockteam/actions/runs/35829595004) on `81fbad9d` passed all four OS core jobs, including the new packaged-watcher regression. Linux Runtime passed 209 checks (one existing macOS-only Host-death skip) and all 359 Workbench Node checks, including real vault-event delivery. Its component suite reached 577/578 before a cold Live Preview import exceeded the linked-pane test's editor-count wait.
+
+A temporary 1.5-second delay around the real lazy-module factory reproduced exactly zero editors with mode `live-preview` and `Loading Live Preview…` still visible. Awaiting that actual import inside React `act` made the same probe pass without increasing the assertion timeout or replacing the editor. The final test retains the one-editor assertion and additionally verifies Live Preview mode and the destination's `Two` content. Delay and diagnostic logging were removed; the full **578/578** component suite and Workbench typecheck pass. No production renderer code changed.
+
+The Nix job supplied `sha256-pTPfxwvVIG+VbI/WPkb7I+IRxxlQfcU5HGARC1tN9wc=` for the changed pnpm dependency closure; the follow-up pins that observed hash.
+
+At this follow-up checkpoint, final Runtime/Nix CI remains pending. Final CI disposition is tracked in Beads `tockteam-yoam.26` and the branch workflow. No local Nix, installed executable smoke, real OS association, clipboard mutation, or native-open certification is claimed. No PR creation or merge is authorized.
