@@ -2,6 +2,8 @@
 
 ## Result
 
+**Later Update:** [The note-local search gate](../2026-09-23-note-local-search-gate/report.md) closes the fresh Find/Undo evidence gap, restores React Doctor to 58, and records approved integration commits. The [lease follow-up](../2026-09-23-index-lease-gate/report.md) diagnoses and fixes the additional concurrent-lease failure; runtime now passes 207/208 with only the pre-existing Host-death `EPERM` remaining. The checkpoint below is historical, not the latest release verdict.
+
 All P1/P2 findings from the full-diff review were corrected. Four retained independent reviewers accepted the fixes: runtime, controller, editors, and native boundaries. A fresh verifier drove the production Desktop through file revealing, split-pane merging, recovery-history inspection, and authenticated reload.
 
 This is **not** a fully green release gate. Six existing environment-blocked tests, Nix, installed/native verification, and warning-level React Doctor findings remain. No PR was opened and nothing was pushed.
