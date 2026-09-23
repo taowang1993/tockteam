@@ -7,6 +7,8 @@ export const DESKTOP_CALLER_OPERATIONS = [
   'move-vault',
   'remove-vault',
   'rename-vault',
+  'open-default-app',
+  'copy-absolute-path',
   'reveal-entry',
   'reveal-vault',
   'popout-open',

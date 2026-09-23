@@ -22,6 +22,8 @@ import {
   TOCKTEAM_DESKTOP_POPOUT_SERVICE,
   TOCKTEAM_DESKTOP_PRINT_EXPORT_SERVICE,
 } from './host-contract.ts'
+import { DesktopOpenPathProvider } from './desktop-open-path-provider.ts'
+import { DesktopCopyPathProvider } from './desktop-copy-path-provider.ts'
 import { DesktopRevealProvider } from './desktop-reveal-provider.ts'
 import { mountDesktopPageRoutes, type DesktopPageContext } from './desktop-page-routes.ts'
 
@@ -96,6 +98,8 @@ function desktopPrompt(capability: DesktopHostCapability): string {
 /** Mount the native desktop capability in the DSH graph. */
 export function apply(ctx: HostContext): void {
   const capability = environmentCapability()
+  const openPathProvider = new DesktopOpenPathProvider(ctx)
+  const copyPathProvider = new DesktopCopyPathProvider(ctx)
   const revealProvider = new DesktopRevealProvider(ctx)
   const pickerProvider = new DesktopPickerProvider(undefined, fetch, () => {
     return (ctx.get('noteVault') as NoteVaultStateService | undefined)?.state
@@ -111,6 +115,8 @@ export function apply(ctx: HostContext): void {
   const printExportProvider = new DesktopPrintExportProvider(undefined, fetch, currentVault)
   // The runtime Service base registers the exact `tockTeamDesktopReveal` key.
   ctx.effect(() => async () => {
+    openPathProvider.close()
+    copyPathProvider.close()
     revealProvider.close()
     await Promise.all([
       pickerProvider.dispose(),
