@@ -1,0 +1,50 @@
+{
+  "head": "1bae820991ed89158b397f7e07e39f66f0769d76",
+  "publishedBase": "fe080d15e2059d95106b3b5d4a234590914e0ded",
+  "localMain": "ce91d652053a63a7a10e10d00e12e51ef9392c69",
+  "commitsAhead": 22,
+  "unchangedBoundaries": [
+    {
+      "path": "scripts/trusted-raycast-focus-proof-client.ts",
+      "baseBlob": "366d70276d8c938d3e2c5ae5e12a33eac0324ef7",
+      "headBlob": "366d70276d8c938d3e2c5ae5e12a33eac0324ef7"
+    },
+    {
+      "path": "scripts/trusted-raycast-proof-cleanup.ts",
+      "baseBlob": "c4b55b473b3475a2907ec566c51ff93db7227852",
+      "headBlob": "c4b55b473b3475a2907ec566c51ff93db7227852"
+    },
+    {
+      "path": "plugins/tocktutor/packages/tockbot-note-runtime/tests/search-index-host-death.test.ts",
+      "baseBlob": "d24d2c4e4509d91c0fe534a90bac023296dd923f",
+      "headBlob": "d24d2c4e4509d91c0fe534a90bac023296dd923f"
+    }
+  ],
+  "probes": [
+    {
+      "file": "/bin/ps",
+      "args": [
+        "-p",
+        "70033",
+        "-o",
+        "pid="
+      ],
+      "passed": false,
+      "code": "EPERM",
+      "status": null,
+      "stderr": ""
+    },
+    {
+      "file": "/usr/bin/sandbox-exec",
+      "args": [
+        "-p",
+        "(version 1)(deny default)(allow process*)(allow file-read*)",
+        "/usr/bin/true"
+      ],
+      "passed": false,
+      "code": null,
+      "status": 71,
+      "stderr": "sandbox-exec: sandbox_apply: Operation not permitted\n"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+✔ binds a new caller request to the browser-observed vault for later Host revalidation (0.711667ms)
+✔ claims one trusted-main authorization with a fully main-derived native identity (0.198666ms)
+✔ wrong kind consumes once and expiry, window close, and disposal fail closed (0.222417ms)
+✔ authorization is bound to the vault generation captured by trusted main (0.064084ms)
+✔ replayable identity is revoked when its issuing frame is replaced (0.090166ms)
+✔ bounds pending and replayable claims under one authorization cap (0.105875ms)
+✔ rejects malformed issue and malformed derived identity without retaining authority (0.078ms)
+✔ isolated preload exposes only bounded TockTutor caller and dispatch methods (0.771166ms)
+✔ main issues caller authorization only after the trusted-main IPC guard (0.689667ms)
+✔ runtime and window teardown revoke caller leases on every owned lifecycle (0.542958ms)
+✔ arbitrary caller abort closes a response-gated pop-out (18.020917ms)
+✔ arbitrary caller abort revokes a response-gated microphone grant (7.408375ms)
+✔ admitted print returns its committed result despite caller abort (4.027417ms)
+✔ caller abort closes a response-gated pop-out after a vault transition (3.034083ms)
+✔ Desktop page reloads retain authentication, index rendering, asset misses and lifecycle (36.973042ms)
+✔ extends the pinned runtime reveal service instead of duplicating its key (0.3535ms)
+✔ validates the locked reveal transport shape and rejects path/control abuse (0.475584ms)
+✔ revalidates canonical path and file-directory identity before reveal (2.836083ms)
+✔ Host provider forwards the locked operation and fails closed on disposal (0.405291ms)
+✔ channel stop aborts an in-flight reveal before the native effect (12.673292ms)
+✔ client cancellation aborts the pending native reveal (5.120125ms)
+✔ reveal channel bounds request bodies and shutdown during body ingestion (2.795ms)
+✔ reveal channel serializes starts and terminates unexpected handler errors (1.474458ms)
+✔ child-to-main reveal channel authenticates and consumes each operation once (2.997375ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3125.23575
