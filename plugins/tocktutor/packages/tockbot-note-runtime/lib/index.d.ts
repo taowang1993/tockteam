@@ -1,9 +1,11 @@
 import { Service, type Context } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
-import { type VaultCanvasArgs, type VaultCanvasResult, type VaultFacetsArgs, type VaultFacetsResult, type VaultGraphArgs, type VaultGraphResult, type VaultInspection, type VaultLinksArgs, type VaultLinksResult, type VaultListArgs, type VaultListResult, type VaultOutlineArgs, type VaultOutlineResult, type VaultReadArgs, type VaultSearchArgs, type VaultSearchResult } from 'tockbot-note-vault/inspection';
+import { type VaultCanvasArgs, type VaultCanvasResult, type VaultFacetsArgs, type VaultFacetsResult, type VaultGraphArgs, type VaultGraphResult, type VaultInspection, type VaultLinksArgs, type VaultLinksResult, type VaultListArgs, type VaultListResult, type VaultOutlineArgs, type VaultOutlineResult, type VaultMergeLinkArgs, type VaultMergeLinkResult, type VaultReadArgs, type VaultSearchArgs, type VaultSearchResult } from 'tockbot-note-vault/inspection';
 declare module '@deepseek-ai/cordis' {
     interface Context {
         noteVault: NoteVaultRuntime;
+        tockTeamDesktopOpenPath: TockTeamDesktopOpenPath;
+        tockTeamDesktopCopyPath: TockTeamDesktopCopyPath;
         tockTeamDesktopReveal: TockTeamDesktopReveal;
         tockTeamDesktopVaultSelection: TockTeamDesktopVaultSelection;
     }
@@ -55,6 +57,36 @@ export type TockTeamDesktopRevealStatus = 'cancelled' | 'denied' | 'revealed' | 
 export interface TockTeamDesktopRevealResult {
     operationId: string;
     status: TockTeamDesktopRevealStatus;
+}
+export interface TockTeamDesktopCopyPathIdentity {
+    dev: string;
+    ino: string;
+}
+export interface TockTeamDesktopCopyPathInput {
+    canonicalPath: string;
+    identity: TockTeamDesktopCopyPathIdentity;
+    kind: 'file';
+    operationId: string;
+    vaultGeneration: number;
+    vaultId: string;
+}
+export type TockTeamDesktopCopyPathStatus = 'cancelled' | 'copied' | 'denied' | 'stale' | 'unavailable';
+export interface TockTeamDesktopCopyPathResult {
+    operationId: string;
+    status: TockTeamDesktopCopyPathStatus;
+}
+export declare abstract class TockTeamDesktopCopyPath extends Service {
+    constructor(ctx: Context);
+    abstract copy(input: TockTeamDesktopCopyPathInput, signal: AbortSignal): Promise<TockTeamDesktopCopyPathResult>;
+}
+export type TockTeamDesktopOpenPathInput = TockTeamDesktopCopyPathInput;
+export interface TockTeamDesktopOpenPathResult {
+    operationId: string;
+    status: 'cancelled' | 'denied' | 'opened' | 'stale' | 'unavailable';
+}
+export declare abstract class TockTeamDesktopOpenPath extends Service {
+    constructor(ctx: Context);
+    abstract open(input: TockTeamDesktopOpenPathInput, signal: AbortSignal): Promise<TockTeamDesktopOpenPathResult>;
 }
 export declare abstract class TockTeamDesktopReveal extends Service {
     constructor(ctx: Context);
@@ -157,6 +189,11 @@ export interface RevealEntryResult {
     generation: number;
     path: string;
     status: 'revealed';
+}
+export interface CopyEntryPathResult {
+    generation: number;
+    path: string;
+    status: 'copied';
 }
 export interface RevealVaultResult {
     generation: number;
@@ -429,6 +466,45 @@ export interface DraftMutationResult {
 export type VaultInspectionRuntimeResult<Result> = Result & {
     generation: number;
 };
+export interface MergeLinkPreviewRequest extends VaultMergeLinkArgs {
+    expectedVault: VaultReference;
+    expectedSourceRevision: string;
+    expectedDestinationRevision: string;
+}
+export type MergeLinkPreviewResult = VaultInspectionRuntimeResult<VaultMergeLinkResult>;
+export interface PrepareMergeRequest extends MergeLinkPreviewRequest {
+    fingerprint: string;
+    sourceDisposition: 'keep' | 'trash' | 'link' | 'embed';
+    sourceContent: string | null;
+}
+export interface MergeRequest {
+    id: string;
+    expectedVault: VaultReference;
+}
+export interface ApplyMergeRequest extends MergeRequest {
+    confirmed: boolean;
+}
+export interface PreparedMergeResult {
+    id: string;
+    generation: number;
+}
+export interface MergeResult extends PreparedMergeResult {
+    status: 'applied' | 'recovery-required' | 'recovered';
+    sourcePath: string;
+    destinationPath: string;
+    sourceDisposition: PrepareMergeRequest['sourceDisposition'];
+    paths: string[];
+    recoveryPath: string;
+}
+export interface MergeListRequest {
+    expectedVault: VaultReference;
+    cursor?: string;
+}
+export interface MergeListResult {
+    generation: number;
+    merges: MergeResult[];
+    cursor?: string;
+}
 export type { VaultCanvasArgs, VaultCanvasResult, VaultFacetsArgs, VaultFacetsResult, VaultGraphArgs, VaultGraphResult, VaultLinksArgs, VaultLinksResult, VaultListArgs, VaultListResult, VaultOutlineArgs, VaultOutlineResult, VaultPathRewriteArgs, VaultPathRewriteResult, VaultPathRewriteUpdate, VaultReadArgs, VaultSearchArgs, VaultSearchResult, } from 'tockbot-note-vault/inspection';
 export type NoteVaultErrorCode = 'cancelled' | 'changed' | 'conflict' | 'denied' | 'exists' | 'inactive' | 'invalid-content' | 'invalid-path' | 'invalid-vault' | 'not-found' | 'partial' | 'recovery-unavailable' | 'stale-vault' | 'too-large' | 'unavailable' | 'unsafe-target' | 'unsupported-type';
 declare module '@deepseek-ai/dsh-typert-protocol' {
@@ -447,10 +523,12 @@ export declare class NoteVaultRuntime extends Service {
     private activeDesktopSelectionClaim;
     private readonly activeDesktopSelectionOperations;
     private readonly activeRevealOperations;
+    private readonly activeFileActionOperations;
     private readonly desktopSelectionCleanupOperations;
     private readonly context;
     private currentState;
     private readonly draftOperations;
+    private readonly mergeReviews;
     private readonly maxAttachmentBytes;
     private readonly maxDraftBytes;
     private readonly maxFolderBytes;
@@ -508,6 +586,17 @@ export declare class NoteVaultRuntime extends Service {
     moveVault(destinationParent: string, expectedVault: VaultReference): NoteVaultState;
     removeVault(expectedVault: VaultReference): Promise<NoteVaultState>;
     private revealTarget;
+    private fileActionTarget;
+    copyEntryPath(request: RevealEntryRequest & {
+        operationId?: string;
+    }, signal: AbortSignal): Promise<CopyEntryPathResult>;
+    openEntry(request: RevealEntryRequest & {
+        operationId?: string;
+    }, signal: AbortSignal): Promise<{
+        generation: number;
+        path: string;
+        status: 'opened';
+    }>;
     revealEntry(request: RevealEntryRequest, signal: AbortSignal): Promise<RevealEntryResult>;
     revealVault(expectedVault: VaultReference, signal: AbortSignal): Promise<RevealVaultResult>;
     activateRecentVault(id: string, expectedGeneration: number): NoteVaultState;
@@ -521,6 +610,15 @@ export declare class NoteVaultRuntime extends Service {
     private createInspection;
     private runInspection;
     search(args: VaultSearchArgs, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultInspectionRuntimeResult<VaultSearchResult>>;
+    previewMergeLinks(request: MergeLinkPreviewRequest, signal: AbortSignal): Promise<MergeLinkPreviewResult>;
+    private mergeInventory;
+    prepareMerge(input: PrepareMergeRequest, signal: AbortSignal): Promise<PreparedMergeResult>;
+    private mergeDirectory;
+    private readMerge;
+    private mergeResult;
+    listMerges(request: MergeListRequest, signal: AbortSignal): Promise<MergeListResult>;
+    applyMerge(request: ApplyMergeRequest, signal: AbortSignal): Promise<MergeResult>;
+    recoverMerge(request: MergeRequest, signal: AbortSignal): Promise<MergeResult>;
     read(args: VaultReadArgs, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultInspectionRuntimeResult<Awaited<ReturnType<VaultInspection['read']>>>>;
     list(args: VaultListArgs, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultInspectionRuntimeResult<VaultListResult>>;
     links(args: VaultLinksArgs, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultInspectionRuntimeResult<VaultLinksResult>>;

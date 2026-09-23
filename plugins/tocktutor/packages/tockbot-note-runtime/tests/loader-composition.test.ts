@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, renameSync, writeFileSync } from 'node:fs'
-import { appendFile, lstat, mkdir, mkdtemp, open as openFile, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { existsSync, mkdirSync, readdirSync, renameSync, writeFileSync } from 'node:fs'
+import { appendFile, link, lstat, mkdir, mkdtemp, open as openFile, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -15,6 +15,12 @@ import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import NoteVaultRuntime, {
   NoteVaultError,
   TockTeamDesktopReveal,
+  TockTeamDesktopOpenPath,
+  TockTeamDesktopCopyPath,
+  type TockTeamDesktopCopyPathInput,
+  type TockTeamDesktopCopyPathResult,
+  type TockTeamDesktopOpenPathInput,
+  type TockTeamDesktopOpenPathResult,
   TockTeamDesktopVaultSelection,
   type NoteVaultChangeEvent,
   type TockTeamDesktopRevealInput,
@@ -62,6 +68,213 @@ function useInProcessIndex(t: TestContext): void {
 
 const packageName = 'tockbot-note-runtime'
 const desktopClaim = (value: string) => value as TockTeamDesktopVaultSelectionClaim
+
+test('confirmed merges retain originals, retire source last, and retry without duplication after restart', async () => {
+  const vaultRoot = await mkdtemp(join(tmpdir(), 'note-merge-'))
+  const stateRoot = await mkdtemp(join(tmpdir(), 'note-merge-state-'))
+  await writeFile(join(vaultRoot, 'Source.md'), '# Source\n')
+  await writeFile(join(vaultRoot, 'Dest.md'), '# Destination\n')
+  await writeFile(join(vaultRoot, 'Ref.md'), '[[Source]]\n')
+  let loaded = await load(`vaultRoot: ${JSON.stringify(vaultRoot)}\nstateRoot: ${JSON.stringify(stateRoot)}`)
+  try {
+    const runtime = loaded.context.noteVault, signal = new AbortController().signal
+    const vault = runtime.state; assert.ok(vault.active)
+    const source = await runtime.openDocument('Source.md', vault, signal)
+    const destination = await runtime.openDocument('Dest.md', vault, signal)
+    const request = { expectedVault: vault, sourcePath: source.path, destinationPath: destination.path,
+      expectedSourceRevision: source.revision, expectedDestinationRevision: destination.revision,
+      mergedContent: '# Destination\n\n# Source\n', keepSource: false }
+    const preview = await runtime.previewMergeLinks(request, signal)
+    const prepared = await runtime.prepareMerge({ ...request, fingerprint: preview.fingerprint!, sourceDisposition: 'trash', sourceContent: null }, signal)
+    assert.equal(await readFile(join(vaultRoot, 'Dest.md'), 'utf8'), '# Destination\n', 'preparation never writes notes')
+    await assert.rejects(runtime.applyMerge({ id: prepared.id, expectedVault: vault, confirmed: false }, signal))
+    const result = await runtime.applyMerge({ id: prepared.id, expectedVault: vault, confirmed: true }, signal)
+    assert.equal(result.status, 'applied')
+    assert.equal(await readFile(join(vaultRoot, 'Dest.md'), 'utf8'), request.mergedContent)
+    assert.equal(await readFile(join(vaultRoot, 'Ref.md'), 'utf8'), '[[Dest]]\n')
+    await assert.rejects(readFile(join(vaultRoot, 'Source.md')), { code: 'ENOENT' })
+    assert.equal((await runtime.listTrash({ expectedVault: vault }, signal)).entries.length, 1)
+    await dispose(loaded.context, loaded.root)
+    loaded = await load(`vaultRoot: ${JSON.stringify(vaultRoot)}\nstateRoot: ${JSON.stringify(stateRoot)}`)
+    const restarted = loaded.context.noteVault, nextVault = restarted.state; assert.ok(nextVault.active)
+    assert.equal((await restarted.applyMerge({ id: prepared.id, expectedVault: nextVault, confirmed: true }, signal)).status, 'applied')
+    assert.equal(await readFile(join(vaultRoot, 'Dest.md'), 'utf8'), request.mergedContent)
+    await writeFile(join(vaultRoot, 'Dest.md'), '# Newer user edit\n')
+    const recovered = await restarted.recoverMerge({ id: prepared.id, expectedVault: nextVault }, signal)
+    assert.equal(recovered.status, 'recovered')
+    assert.equal(await readFile(join(vaultRoot, `${recovered.recoveryPath}/Dest.md`), 'utf8'), '# Destination\n')
+    assert.equal(await readFile(join(vaultRoot, `${recovered.recoveryPath}/Source.md`), 'utf8'), '# Source\n')
+    assert.equal(await readFile(join(vaultRoot, 'Dest.md'), 'utf8'), '# Newer user edit\n')
+    assert.equal((await restarted.recoverMerge({ id: prepared.id, expectedVault: nextVault }, signal)).status, 'recovered')
+    const mergesRoot = join(stateRoot, 'merges')
+    const directory = join(mergesRoot, (await readdir(mergesRoot))[0]!)
+    const record = JSON.parse(await readFile(join(directory, `${prepared.id}.json`), 'utf8'))
+    for (let index = 0; index < 1_001; index++) {
+      const id = `merge-00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`
+      await writeFile(join(directory, `${id}.json`), JSON.stringify({ ...record, id }))
+    }
+    const seen = new Set<string>()
+    let cursor: string | undefined
+    do {
+      const page = await restarted.listMerges({ expectedVault: nextVault, ...(cursor ? { cursor } : {}) }, signal)
+      assert.ok(page.merges.length <= 100)
+      for (const item of page.merges) { assert.equal(seen.has(item.id), false); seen.add(item.id) }
+      cursor = page.cursor
+    } while (cursor)
+    assert.equal(seen.size, 1_002)
+    assert.ok(seen.has(prepared.id))
+    await assert.rejects(restarted.listMerges({ expectedVault: nextVault, cursor: '../escape' }, signal), { code: 'invalid-path' })
+  } finally {
+    await dispose(loaded.context, loaded.root)
+    await rm(vaultRoot, { recursive: true, force: true }); await rm(stateRoot, { recursive: true, force: true })
+  }
+})
+
+for (const failure of ['before-destination', 'after-destination', 'after-referrer', 'cancel-after-destination', 'external-edit'] as const) test(`merge recovery preserves originals after ${failure}`, async t => {
+  const vaultRoot = await mkdtemp(join(tmpdir(), 'note-merge-fault-'))
+  const stateRoot = await mkdtemp(join(tmpdir(), 'note-merge-fault-state-'))
+  for (const [name, body] of [['Source.md', 'Source\n'], ['Dest.md', 'Dest\n'], ['Ref.md', '[[Source]]\n']]) await writeFile(join(vaultRoot, name!), body!)
+  let loaded = await load(`vaultRoot: ${JSON.stringify(vaultRoot)}\nstateRoot: ${JSON.stringify(stateRoot)}`)
+  try {
+    const runtime = loaded.context.noteVault, abort = new AbortController(), signal = abort.signal
+    const vault = runtime.state; assert.ok(vault.active)
+    const source = await runtime.openDocument('Source.md', vault, signal), destination = await runtime.openDocument('Dest.md', vault, signal)
+    const request = { expectedVault: vault, sourcePath: source.path, destinationPath: destination.path, expectedSourceRevision: source.revision, expectedDestinationRevision: destination.revision, mergedContent: 'Dest\n\nSource\n', keepSource: false }
+    const preview = await runtime.previewMergeLinks(request, signal)
+    const prepared = await runtime.prepareMerge({ ...request, fingerprint: preview.fingerprint!, sourceDisposition: 'trash', sourceContent: null }, signal)
+    const save = runtime.saveDocument.bind(runtime)
+    let writes = 0
+    t.mock.method(runtime, 'saveDocument', async (request: Parameters<typeof save>[0], signal: AbortSignal) => {
+      if (failure === 'before-destination') throw Error('injected')
+      const result = await save(request, signal); writes++
+      if ((failure === 'after-destination' && writes === 1) || (failure === 'after-referrer' && writes === 2)) throw Error('injected')
+      if (failure === 'cancel-after-destination' && writes === 1) abort.abort()
+      if (failure === 'external-edit' && writes === 2) await writeFile(join(vaultRoot, 'Dest.md'), 'Newer edit\n')
+      return result
+    })
+    assert.equal((await runtime.applyMerge({ id: prepared.id, expectedVault: vault, confirmed: true }, signal)).status, 'recovery-required')
+    assert.equal(await readFile(join(vaultRoot, 'Source.md'), 'utf8'), 'Source\n', 'source is never retired before verified publication')
+    t.mock.restoreAll()
+    await dispose(loaded.context, loaded.root)
+    loaded = await load(`vaultRoot: ${JSON.stringify(vaultRoot)}\nstateRoot: ${JSON.stringify(stateRoot)}`)
+    const restarted = loaded.context.noteVault, nextVault = restarted.state; assert.ok(nextVault.active)
+    const nextSignal = new AbortController().signal
+    assert.equal((await restarted.listMerges({ expectedVault: nextVault }, nextSignal)).merges[0]?.status, 'recovery-required')
+    const before = await readFile(join(vaultRoot, 'Dest.md'), 'utf8')
+    assert.equal((await restarted.applyMerge({ id: prepared.id, expectedVault: nextVault, confirmed: true }, nextSignal)).status, 'recovery-required')
+    assert.equal(await readFile(join(vaultRoot, 'Dest.md'), 'utf8'), before)
+    const recovered = await restarted.recoverMerge({ id: prepared.id, expectedVault: nextVault }, nextSignal)
+    assert.equal(await readFile(join(vaultRoot, `${recovered.recoveryPath}/Dest.md`), 'utf8'), 'Dest\n')
+    assert.equal(await readFile(join(vaultRoot, `${recovered.recoveryPath}/Source.md`), 'utf8'), 'Source\n')
+    assert.equal(await readFile(join(vaultRoot, 'Dest.md'), 'utf8'), before)
+    await writeFile(join(vaultRoot, `${recovered.recoveryPath}/Dest.md`), 'Edited recovery\n')
+    await assert.rejects(restarted.recoverMerge({ id: prepared.id, expectedVault: nextVault }, nextSignal), { code: 'conflict' })
+  } finally { t.mock.restoreAll(); await dispose(loaded.context, loaded.root); await rm(vaultRoot, { recursive: true, force: true }); await rm(stateRoot, { recursive: true, force: true }) }
+})
+
+test('merge grants reject stale inventories, unsafe aliases and replayed decisions', async () => {
+  const vaultRoot = await mkdtemp(join(tmpdir(), 'note-merge-guard-'))
+  await writeFile(join(vaultRoot, 'Source.md'), 'Source\n'); await writeFile(join(vaultRoot, 'Dest.md'), 'Dest\n')
+  const loaded = await load(`vaultRoot: ${JSON.stringify(vaultRoot)}`)
+  try {
+    const runtime = loaded.context.noteVault, signal = new AbortController().signal, vault = runtime.state; assert.ok(vault.active)
+    const source = await runtime.openDocument('Source.md', vault, signal), destination = await runtime.openDocument('Dest.md', vault, signal)
+    const request = { expectedVault: vault, sourcePath: source.path, destinationPath: destination.path, expectedSourceRevision: source.revision, expectedDestinationRevision: destination.revision, mergedContent: 'Dest\n\nSource\n', keepSource: true }
+    const preview = await runtime.previewMergeLinks(request, signal)
+    const prepare = { ...request, fingerprint: preview.fingerprint!, sourceDisposition: 'keep' as const, sourceContent: null }
+    await assert.rejects(runtime.prepareMerge({ ...prepare, sourceDisposition: 'trash' }, signal))
+    await assert.rejects(runtime.prepareMerge({ ...prepare, fingerprint: 'wrong' }, signal))
+    const grant = await runtime.prepareMerge(prepare, signal)
+    await writeFile(join(vaultRoot, 'New.md'), '[[Source]]')
+    await assert.rejects(runtime.applyMerge({ id: grant.id, expectedVault: vault, confirmed: true }, signal), { code: 'conflict' })
+    assert.equal(await readFile(join(vaultRoot, 'Dest.md'), 'utf8'), 'Dest\n')
+    await assert.rejects(runtime.applyMerge({ id: '../invalid', expectedVault: vault, confirmed: true }, signal))
+    await assert.rejects(runtime.prepareMerge(prepare, AbortSignal.abort()), { name: 'AbortError' })
+    await link(join(vaultRoot, 'Source.md'), join(vaultRoot, 'Alias.md'))
+    const revised = await runtime.openDocument('Source.md', vault, signal)
+    const next = { ...request, expectedSourceRevision: revised.revision }
+    const nextPreview = await runtime.previewMergeLinks(next, signal)
+    await assert.rejects(runtime.prepareMerge({ ...prepare, ...next, fingerprint: nextPreview.fingerprint! }, signal), { code: 'unsafe-target' })
+  } finally { await dispose(loaded.context, loaded.root); await rm(vaultRoot, { recursive: true, force: true }) }
+})
+
+for (const invalidPath of ['Source.md', 'Dest.md', 'Ref.md']) test(`merge rejects lossy UTF-8 originals in ${invalidPath}`, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'merge-utf8-'))
+  for (const [name, text] of [['Source.md', 'Source'], ['Dest.md', 'Dest'], ['Ref.md', '[[Source]]']]) await writeFile(join(root, name!), Buffer.concat([Buffer.from(text!), name === invalidPath ? Buffer.from([0xff]) : Buffer.alloc(0)]))
+  const loaded = await load(`vaultRoot: ${JSON.stringify(root)}`)
+  try {
+    const runtime = loaded.context.noteVault, vault = runtime.state, signal = new AbortController().signal; assert.ok(vault.active)
+    const source = await runtime.openDocument('Source.md', vault, signal), dest = await runtime.openDocument('Dest.md', vault, signal)
+    const request = { expectedVault: vault, sourcePath: source.path, destinationPath: dest.path, expectedSourceRevision: source.revision, expectedDestinationRevision: dest.revision, mergedContent: 'Dest\n\nSource\n', keepSource: false }
+    const preview = await runtime.previewMergeLinks(request, signal)
+    await assert.rejects(runtime.prepareMerge({ ...request, fingerprint: preview.fingerprint!, sourceDisposition: 'trash', sourceContent: null }, signal), /UTF-8/u)
+    assert.equal((await readFile(join(root, invalidPath))).at(-1), 0xff)
+    assert.deepEqual((await runtime.listMerges({ expectedVault: vault }, signal)).merges, [])
+  } finally { await dispose(loaded.context, loaded.root); await rm(root, { recursive: true, force: true }) }
+})
+
+for (const disposition of ['link', 'embed'] as const) test(`merge verifies ${disposition} publication and fresh recovery bytes`, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'merge-publication-'))
+  await writeFile(join(root, 'Source.md'), 'Source\n'); await writeFile(join(root, 'Dest.md'), 'Dest\n')
+  const loaded = await load(`vaultRoot: ${JSON.stringify(root)}`)
+  try {
+    const runtime = loaded.context.noteVault, vault = runtime.state, signal = new AbortController().signal; assert.ok(vault.active)
+    const source = await runtime.openDocument('Source.md', vault, signal), dest = await runtime.openDocument('Dest.md', vault, signal)
+    const request = { expectedVault: vault, sourcePath: source.path, destinationPath: dest.path, expectedSourceRevision: source.revision, expectedDestinationRevision: dest.revision, mergedContent: 'Dest\n\nSource\n', keepSource: false }
+    const preview = await runtime.previewMergeLinks(request, signal)
+    const grant = await runtime.prepareMerge({ ...request, fingerprint: preview.fingerprint!, sourceDisposition: disposition, sourceContent: `${disposition === 'embed' ? '!' : ''}[[Dest.md]]\n` }, signal)
+    const save = runtime.saveDocument.bind(runtime)
+    t.mock.method(runtime, 'saveDocument', async (request: Parameters<typeof save>[0], signal: AbortSignal) => {
+      const result = await save(request, signal)
+      if (request.path === 'Source.md') {
+        await writeFile(join(root, request.path), 'Newer source\n')
+        return { ...result, ...await runtime.openDocument(request.path, vault, signal) }
+      }
+      return result
+    })
+    assert.equal((await runtime.applyMerge({ id: grant.id, expectedVault: vault, confirmed: true }, signal)).status, 'recovery-required')
+    assert.equal(await readFile(join(root, 'Source.md'), 'utf8'), 'Newer source\n')
+    t.mock.restoreAll()
+    const create = runtime.createDocument.bind(runtime)
+    t.mock.method(runtime, 'createDocument', async (request: Parameters<typeof create>[0], signal: AbortSignal) => {
+      const result = await create(request, signal)
+      await writeFile(join(root, request.path), 'Edited recovery\n')
+      return { ...result, ...await runtime.openDocument(request.path, vault, signal) }
+    })
+    await assert.rejects(runtime.recoverMerge({ id: grant.id, expectedVault: vault }, signal), { code: 'conflict' })
+    assert.equal((await runtime.listMerges({ expectedVault: vault }, signal)).merges[0]?.status, 'recovery-required')
+  } finally { t.mock.restoreAll(); await dispose(loaded.context, loaded.root); await rm(root, { recursive: true, force: true }) }
+})
+
+for (const stage of ['trash-metadata', 'completion-journal']) test(`merge recovery survives failure at ${stage}`, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'merge-retirement-'))
+  await writeFile(join(root, 'Source.md'), 'Source\n'); await writeFile(join(root, 'Dest.md'), 'Dest\n')
+  const loaded = await load(`vaultRoot: ${JSON.stringify(root)}`)
+  try {
+    const runtime = loaded.context.noteVault, vault = runtime.state, signal = new AbortController().signal; assert.ok(vault.active)
+    const source = await runtime.openDocument('Source.md', vault, signal), dest = await runtime.openDocument('Dest.md', vault, signal)
+    const request = { expectedVault: vault, sourcePath: source.path, destinationPath: dest.path, expectedSourceRevision: source.revision, expectedDestinationRevision: dest.revision, mergedContent: 'Dest\n\nSource\n', keepSource: false }
+    const preview = await runtime.previewMergeLinks(request, signal)
+    const grant = await runtime.prepareMerge({ ...request, fingerprint: preview.fingerprint!, sourceDisposition: 'trash', sourceContent: null }, signal)
+    const probe = await openFile(join(root, 'Dest.md'), 'r')
+    const prototype = Object.getPrototypeOf(probe) as { sync(): Promise<void> }
+    const sync = prototype.sync; await probe.close()
+    let injected = false
+    t.mock.method(prototype, 'sync', async function (this: import('node:fs/promises').FileHandle) {
+      await sync.call(this)
+      const metadata = join(loaded.root, 'state', 'trash')
+      const recorded = existsSync(metadata) && readdirSync(metadata, { recursive: true }).some(name => String(name).endsWith(`trash-${grant.id.slice(6)}.json`))
+      if (!injected && (await this.stat()).isFile() && !existsSync(join(root, 'Source.md')) && (stage === 'trash-metadata' || recorded)) { injected = true; throw Error('Injected durable phase failure') }
+    })
+    assert.equal((await runtime.applyMerge({ id: grant.id, expectedVault: vault, confirmed: true }, signal)).status, 'recovery-required')
+    assert.equal(injected, true)
+    t.mock.restoreAll()
+    const recovered = await runtime.recoverMerge({ id: grant.id, expectedVault: vault }, signal)
+    assert.equal(await readFile(join(root, `${recovered.recoveryPath}/Source.md`), 'utf8'), 'Source\n')
+    assert.equal(await readFile(join(root, 'Dest.md'), 'utf8'), request.mergedContent)
+    assert.equal((await runtime.applyMerge({ id: grant.id, expectedVault: vault, confirmed: true }, signal)).status, 'recovered')
+  } finally { t.mock.restoreAll(); await dispose(loaded.context, loaded.root); await rm(root, { recursive: true, force: true }) }
+})
 
 test('NoteVaultError preserves its code across the DSH Remote boundary', () => {
   const error = new NoteVaultError('conflict', 'changed')
@@ -1453,6 +1666,79 @@ test('Desktop vault selection releases a claim returned after cancellation', asy
   }
 })
 
+test('absolute-path copy retains the caller operation ID across the runtime boundary', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-copy-identity-'))
+  await writeFile(join(fixture, 'Note.md'), '# Note')
+  const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+  try {
+    class CopyOwner extends TockTeamDesktopCopyPath {
+      async copy(input: TockTeamDesktopCopyPathInput): Promise<TockTeamDesktopCopyPathResult> {
+        assert.equal(input.operationId, 'caller-operation')
+        return { operationId: input.operationId, status: 'copied' }
+      }
+    }
+    await loaded.context.plugin(CopyOwner)
+    const runtime = loaded.context.noteVault, state = runtime.state
+    assert.ok(state.active)
+    const result = await runtime.copyEntryPath({ expectedVault: state, path: 'Note.md', operationId: 'caller-operation' }, new AbortController().signal)
+    assert.equal(result.status, 'copied')
+  } finally { await dispose(loaded.context, loaded.root); await rm(fixture, { recursive: true, force: true }) }
+})
+
+for (const extension of ['md', 'markdown']) test(`default-app opening confines .${extension} documents, hides paths, and cancels on provider/vault/runtime loss`, async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-open-app-'))
+  let loaded: Awaited<ReturnType<typeof load>> | undefined
+  try {
+    const vault = join(fixture, 'Vault'), other = join(fixture, 'Other')
+    await mkdir(vault); await mkdir(other)
+    const note = `中文 #Note.${extension}`
+    await writeFile(join(vault, note), '# Saved\n')
+    await writeFile(join(vault, 'Danger.command'), 'exit 0')
+    await writeFile(join(other, 'Secret.md'), '# Outside')
+    await symlink(join(other, 'Secret.md'), join(vault, 'Escape.md'))
+    loaded = await load(`vaultRoot: ${JSON.stringify(vault)}`)
+    const runtime = loaded.context.noteVault
+    const state = runtime.state
+    assert.ok(state.active)
+    const expectedVault = { id: state.id, generation: state.generation }
+    const signal = new AbortController().signal
+    await assert.rejects(runtime.openEntry({ expectedVault, path: note }, signal), { code: 'unavailable' })
+    let pending = false, entered = () => {}, effects = 0
+    class OpenOwner extends TockTeamDesktopOpenPath {
+      async open(input: TockTeamDesktopOpenPathInput, ownerSignal: AbortSignal): Promise<TockTeamDesktopOpenPathResult> {
+        assert.equal(input.canonicalPath, await realpath(join(vault, note)))
+        entered()
+        if (pending) return await new Promise(resolve => ownerSignal.addEventListener('abort', () => resolve({ operationId: input.operationId, status: 'cancelled' }), { once: true }))
+        ownerSignal.throwIfAborted(); effects++
+        return { operationId: input.operationId, status: 'opened' }
+      }
+    }
+    let provider = loaded.context.plugin(OpenOwner); await provider
+    assert.deepEqual(await runtime.openEntry({ expectedVault, path: note }, signal), { generation: state.generation, path: note, status: 'opened' })
+    for (const path of ['Danger.command', '../Other/Secret.md', 'Escape.md', 'Missing.md']) {
+      await assert.rejects(runtime.openEntry({ expectedVault, path }, signal))
+    }
+    assert.equal(effects, 1)
+    pending = true
+    for (const cause of ['provider', 'cancel', 'vault', 'runtime'] as const) {
+      const controller = new AbortController()
+      const started = new Promise<void>(resolve => { entered = resolve })
+      const request = runtime.openEntry({ expectedVault, path: note }, controller.signal)
+      const rejected = assert.rejects(request)
+      await started
+      if (cause === 'provider') { await provider.dispose(); await rejected; provider = loaded.context.plugin(OpenOwner); await provider }
+      else if (cause === 'cancel') controller.abort()
+      else if (cause === 'vault') { runtime.activate(other, expectedVault.generation); await rejected; const restored = runtime.activate(vault, expectedVault.generation + 1); assert.ok(restored.active); expectedVault.generation = restored.generation }
+      else await loaded.context.fiber.dispose()
+      await rejected
+    }
+    assert.equal(effects, 1)
+  } finally {
+    if (loaded) await dispose(loaded.context, loaded.root)
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
 test('Desktop reveal delegates only confined file and directory identities without leaking a Host path', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-reveal-'))
   const vault = join(fixture, 'Vault')
@@ -1833,6 +2119,10 @@ test('document open rejects inactive or stale vaults and unsafe paths', async ()
               /safe vault-relative document path|stay inside/i,
             )
           }
+          for (const missing of ['missing.md', 'missing-parent/note.md']) await assert.rejects(
+            consumer.noteVault.openDocument(missing, expected, signal),
+            error => error instanceof NoteVaultError && error.code === 'not-found',
+          )
           await assert.rejects(
             consumer.noteVault.openDocument('Plan.txt', expected, signal),
             /Markdown, Canvas, or Base/i,
@@ -2570,6 +2860,135 @@ test('shared vault inspection runs all eight contracts through generation-bound 
   }
 })
 
+test('merge link previews bind vault and endpoint revisions without writing files', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-merge-preview-'))
+  const originals = new Map([['Source.md', '# Source\n'], ['Dest.md', '# Dest\n'], ['Ref.md', '[[Source]]\n']])
+  for (const [path, content] of originals) await writeFile(join(fixture, path), content)
+  const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+  try {
+    const runtime = loaded.context.noteVault
+    const state = runtime.state
+    assert.ok(state.active)
+    const expectedVault = { id: state.id, generation: state.generation }
+    const signal = new AbortController().signal
+    const source = await runtime.openDocument('Source.md', expectedVault, signal)
+    const destination = await runtime.openDocument('Dest.md', expectedVault, signal)
+    const request = { sourcePath: source.path, destinationPath: destination.path, expectedVault,
+      expectedSourceRevision: source.revision, expectedDestinationRevision: destination.revision,
+      mergedContent: '# Dest\n\n# Source\n', keepSource: false }
+    const result = await runtime.previewMergeLinks(request, signal)
+    assert.equal(result.generation, state.generation)
+    assert.equal(result.complete, true)
+    assert.equal(result.source?.revision, source.revision)
+    assert.equal(result.destination?.revision, destination.revision)
+    assert.equal(result.updates[0]?.newContent, '[[Dest]]\n')
+    for (const [path, content] of originals) assert.equal(await readFile(join(fixture, path), 'utf8'), content)
+    assert.deepEqual((await readdir(fixture)).sort(), [...originals.keys()].sort())
+    await assert.rejects(runtime.previewMergeLinks({ ...request, expectedVault: { ...expectedVault, generation: state.generation + 1 } }, signal), { code: 'stale-vault' })
+    await assert.rejects(runtime.previewMergeLinks(request, AbortSignal.abort()), { name: 'AbortError' })
+    for (const field of ['expectedSourceRevision', 'expectedDestinationRevision']) {
+      await assert.rejects(runtime.previewMergeLinks({ ...request, [field]: 'invalid' }, signal), /revision/iu)
+      await assert.rejects(runtime.previewMergeLinks({ ...request, [field]: `file:${'0'.repeat(64)}` }, signal), { code: 'conflict' })
+    }
+    await assert.rejects(runtime.previewMergeLinks({ ...request, destinationPath: source.path }, signal))
+    await assert.rejects(runtime.previewMergeLinks({ ...request, sourcePath: '../Source.md' }, signal))
+    await assert.rejects(runtime.previewMergeLinks({ ...request, destinationPath: 'Other.canvas' }, signal))
+    await writeFile(join(fixture, 'Dest.md'), '# A later user edit\n')
+    await assert.rejects(runtime.previewMergeLinks(request, signal), { code: 'conflict' })
+    assert.equal(await readFile(join(fixture, 'Dest.md'), 'utf8'), '# A later user edit\n')
+    assert.equal(await readFile(join(fixture, 'Source.md'), 'utf8'), originals.get('Source.md'))
+    await link(join(fixture, 'Source.md'), join(fixture, 'Alias.md'))
+    const linked = await runtime.openDocument('Alias.md', expectedVault, signal)
+    const original = await runtime.openDocument('Source.md', expectedVault, signal)
+    assert.equal(linked.revision, original.revision)
+    await assert.rejects(runtime.previewMergeLinks({ ...request, destinationPath: linked.path,
+      expectedSourceRevision: original.revision, expectedDestinationRevision: linked.revision }, signal), { code: 'invalid-path' })
+  } finally {
+    await dispose(loaded.context, loaded.root)
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('merge link previews reject endpoint and referrer changes between inventory and read', async () => {
+  for (const changedPath of ['Source.md', 'Dest.md', 'Ref.md']) {
+    const fixture = await mkdtemp(join(tmpdir(), 'note-vault-merge-preview-read-race-'))
+    for (const [path, content] of [['Source.md', '# Source\n'], ['Dest.md', '# Dest\n'], ['Ref.md', '[[Source]]\n']]) await writeFile(join(fixture, path!), content!)
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}\nstateRoot: null`)
+    const runtime = loaded.context.noteVault
+    const listTree = runtime.listTree
+    try {
+      const state = runtime.state
+      assert.ok(state.active)
+      const expectedVault = { id: state.id, generation: state.generation }
+      const signal = new AbortController().signal
+      const source = await runtime.openDocument('Source.md', expectedVault, signal)
+      const destination = await runtime.openDocument('Dest.md', expectedVault, signal)
+      let changed = false
+      runtime.listTree = async function (...args) {
+        const page = await listTree.apply(this, args)
+        if (!changed) {
+          changed = true
+          await writeFile(join(fixture, changedPath), '# Later user edit\n')
+        }
+        return page
+      }
+      await assert.rejects(runtime.previewMergeLinks({ expectedVault, sourcePath: source.path, destinationPath: destination.path,
+        expectedSourceRevision: source.revision, expectedDestinationRevision: destination.revision,
+        mergedContent: '# Dest\n\n# Source\n', keepSource: false }, signal), /changed.*read/iu)
+      assert.equal(changed, true)
+      assert.equal(await readFile(join(fixture, changedPath), 'utf8'), '# Later user edit\n')
+    } finally {
+      runtime.listTree = listTree
+      await dispose(loaded.context, loaded.root)
+      await rm(fixture, { recursive: true, force: true })
+    }
+  }
+})
+
+test('merge link previews reject stale pages and cancel vault-switch races under runtime bounds', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-merge-preview-pages-'))
+  const otherVault = join(fixture, 'Other Vault')
+  await mkdir(otherVault)
+  for (const [path, content] of [['Source.md', '# Source\n'], ['Dest.md', '# Dest\n'], ['A.md', '[[Source]]\n'], ['B.md', '[[Source]]\n']]) await writeFile(join(fixture, path!), content!)
+  const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}\nmaxTreeResults: 1\nmaxReadBytes: 128`)
+  try {
+    const runtime = loaded.context.noteVault
+    const state = runtime.state
+    assert.ok(state.active)
+    const expectedVault = { id: state.id, generation: state.generation }
+    const signal = new AbortController().signal
+    const source = await runtime.openDocument('Source.md', expectedVault, signal)
+    const destination = await runtime.openDocument('Dest.md', expectedVault, signal)
+    const request = { sourcePath: source.path, destinationPath: destination.path, expectedVault,
+      expectedSourceRevision: source.revision, expectedDestinationRevision: destination.revision,
+      mergedContent: '# Dest\n\n# Source\n', keepSource: false }
+    const first = await runtime.previewMergeLinks(request, signal)
+    assert.equal(first.complete, false)
+    assert.ok(first.cursor)
+    const second = await runtime.previewMergeLinks({ ...request, cursor: first.cursor }, signal)
+    assert.equal(second.complete, true)
+    assert.equal(second.fingerprint, first.fingerprint)
+    assert.deepEqual([...first.updates, ...second.updates].map(update => update.path), ['A.md', 'B.md'])
+    assert.equal(JSON.stringify(second).includes(fixture), false)
+    await assert.rejects(runtime.previewMergeLinks({ ...request, mergedContent: 'x'.repeat(129) }, signal), /bounds/iu)
+    await writeFile(join(fixture, 'B.md'), 'A later referrer edit\n')
+    await assert.rejects(runtime.previewMergeLinks({ ...request, cursor: first.cursor }, signal), /changed|cursor/iu)
+    const cancellation = new AbortController()
+    await duringFirstFileRead(join(fixture, 'Source.md'), () => cancellation.abort(), async () => {
+      await assert.rejects(runtime.previewMergeLinks(request, cancellation.signal), { name: 'AbortError' })
+    })
+    await duringFirstFileRead(join(fixture, 'Source.md'), () => { runtime.activate(otherVault, state.generation) }, async () => {
+      await assert.rejects(runtime.previewMergeLinks(request, signal), { code: 'stale-vault' })
+    })
+    assert.equal(await readFile(join(fixture, 'Source.md'), 'utf8'), source.content)
+    assert.equal(await readFile(join(fixture, 'Dest.md'), 'utf8'), destination.content)
+    assert.equal(await readFile(join(fixture, 'B.md'), 'utf8'), 'A later referrer edit\n')
+  } finally {
+    await dispose(loaded.context, loaded.root)
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
 test('shared inspection drains fingerprinted runtime inventory pages', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-inspection-pages-'))
   try {
@@ -2811,6 +3230,89 @@ test('file moves apply shared link plans with recovery evidence', async () => {
         }, new AbortController().signal)
         assert.equal(listed.snapshots.some(entry => entry.id === snapshot.snapshotId), true)
       }
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('file moves rewrite real inbound Chinese wikilinks, aliases, fragments, and embeds', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-wikilink-rewrite-'))
+  try {
+    await mkdir(join(fixture, 'Notes'))
+    await writeFile(join(fixture, 'Notes', '中文 Source.md'), '# Source\n')
+    const sibling = [
+      '# Sibling',
+      '',
+      '[[中文 Source|Authored alias]]',
+      '![[Notes/中文 Source#Heading|Embedded alias]]',
+      '![[Notes/中文 Source#^block]]',
+      '',
+    ].join('\r\n')
+    await writeFile(join(fixture, 'Notes', 'Sibling.md'), sibling)
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    try {
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      const source = await loaded.context.noteVault.openDocument(
+        'Notes/中文 Source.md', expectedVault, new AbortController().signal,
+      )
+      const result = await loaded.context.noteVault.moveFileWithLinkRewrite({
+        expectedRevision: source.revision,
+        expectedVault,
+        fromPath: 'Notes/中文 Source.md',
+        toPath: 'Notes/Renamed 中文 Source.md',
+      }, new AbortController().signal)
+      assert.equal(result.status, 'moved')
+      assert.equal(result.rewriteError, undefined)
+      assert.deepEqual(result.rewrittenPaths, ['Notes/Sibling.md'])
+      assert.deepEqual(result.rewriteSnapshots.map(entry => entry.path), ['Notes/Sibling.md'])
+      assert.equal(await readFile(join(fixture, 'Notes', 'Sibling.md'), 'utf8'), [
+        '# Sibling',
+        '',
+        '[[Renamed 中文 Source|Authored alias]]',
+        '![[Notes/Renamed 中文 Source#Heading|Embedded alias]]',
+        '![[Notes/Renamed 中文 Source#^block]]',
+        '',
+      ].join('\r\n'))
+      await assert.rejects(lstat(join(fixture, 'Notes', '中文 Source.md')), { code: 'ENOENT' })
+      assert.equal((await lstat(join(fixture, 'Notes', 'Renamed 中文 Source.md'))).isFile(), true)
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('file moves preserve encoded inbound links and literal titles for reserved filenames', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-encoded-wiki-'))
+  try {
+    await writeFile(join(fixture, 'Old Name.md'), '# Source\n')
+    const literal = '[label](https://example.com "[[Old Name]]")\r\n'
+    const before = literal + '[[Old%20Name#Heading|Shown]]\r\n'
+    await writeFile(join(fixture, 'Index.md'), before)
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    try {
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      const signal = new AbortController().signal
+      const source = await loaded.context.noteVault.openDocument('Old Name.md', expectedVault, signal)
+      const result = await loaded.context.noteVault.moveFileWithLinkRewrite({
+        expectedRevision: source.revision, expectedVault,
+        fromPath: 'Old Name.md', toPath: 'New#Part.md',
+      }, signal)
+      assert.equal(result.status, 'moved')
+      assert.equal(result.rewriteError, undefined)
+      assert.deepEqual(result.rewrittenPaths, ['Index.md'])
+      assert.deepEqual(result.rewriteSnapshots.map(entry => entry.path), ['Index.md'])
+      assert.equal(await readFile(join(fixture, 'Index.md'), 'utf8'), literal + '[[New%23Part#Heading|Shown]]\r\n')
+      await assert.rejects(lstat(join(fixture, 'Old Name.md')), { code: 'ENOENT' })
+      assert.equal(await readFile(join(fixture, 'New#Part.md'), 'utf8'), '# Source\n')
     } finally {
       await dispose(loaded.context, loaded.root)
     }

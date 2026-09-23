@@ -54,6 +54,14 @@ export const Config = Schema.object({
         Schema.const(null),
     ]).default(null),
 });
+export class TockTeamDesktopCopyPath extends Service {
+    constructor(ctx) {
+        super(ctx, 'tockTeamDesktopCopyPath');
+    }
+}
+export class TockTeamDesktopOpenPath extends Service {
+    constructor(ctx) { super(ctx, 'tockTeamDesktopOpenPath'); }
+}
 export class TockTeamDesktopReveal extends Service {
     constructor(ctx) {
         super(ctx, 'tockTeamDesktopReveal');
@@ -68,6 +76,9 @@ export class TockTeamDesktopVaultSelection extends Service {
         return { operationId: typeof input?.operationId === 'string' ? input.operationId : '', status: 'unavailable' };
     }
 }
+const validMergeId = (id) => typeof id === 'string' && /^merge-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(id);
+const mergeDigest = (content) => `sha256:${createHash('sha256').update(content).digest('hex')}`;
+const mergeRecoveryPath = (id) => `Recovered Merge ${id.slice(6)}`;
 export class NoteVaultError extends Error {
     code;
     details = {};
@@ -2184,10 +2195,12 @@ export class NoteVaultRuntime extends Service {
     activeDesktopSelectionClaim = null;
     activeDesktopSelectionOperations = new Set();
     activeRevealOperations = new Set();
+    activeFileActionOperations = new Set();
     desktopSelectionCleanupOperations = new Set();
     context;
     currentState;
     draftOperations = new Map();
+    mergeReviews = new Map();
     maxAttachmentBytes;
     maxDraftBytes;
     maxFolderBytes;
@@ -2275,14 +2288,16 @@ export class NoteVaultRuntime extends Service {
         ctx.on('internal/service', (name) => {
             const operations = name === 'tockTeamDesktopReveal'
                 ? this.activeRevealOperations
-                : name === 'tockTeamDesktopVaultSelection'
-                    ? this.activeDesktopSelectionOperations
-                    : null;
+                : name === 'tockTeamDesktopCopyPath' || name === 'tockTeamDesktopOpenPath'
+                    ? [...this.activeFileActionOperations].filter(operation => operation.provider === name)
+                    : name === 'tockTeamDesktopVaultSelection'
+                        ? this.activeDesktopSelectionOperations
+                        : null;
             if (operations === null)
                 return;
             for (const operation of operations) {
                 if (!operation.controller.signal.aborted) {
-                    operation.controller.abort(new NoteVaultError('unavailable', `The Desktop ${name === 'tockTeamDesktopReveal' ? 'reveal' : 'vault selection'} provider became unavailable`));
+                    operation.controller.abort(new NoteVaultError('unavailable', `The Desktop ${name === 'tockTeamDesktopReveal' ? 'reveal' : name === 'tockTeamDesktopCopyPath' ? 'copy-path' : name === 'tockTeamDesktopOpenPath' ? 'open-path' : 'vault selection'} provider became unavailable`));
                 }
             }
         });
@@ -2299,6 +2314,7 @@ export class NoteVaultRuntime extends Service {
                 for (const operation of [
                     ...this.activeDesktopSelectionOperations,
                     ...this.activeRevealOperations,
+                    ...this.activeFileActionOperations,
                 ]) {
                     if (!operation.controller.signal.aborted) {
                         operation.controller.abort(new NoteVaultError('unavailable', 'The note vault runtime became unavailable'));
@@ -2496,6 +2512,7 @@ export class NoteVaultRuntime extends Service {
         for (const operation of [
             ...this.activeDesktopSelectionOperations,
             ...this.activeRevealOperations,
+            ...this.activeFileActionOperations,
         ]) {
             if (!operation.controller.signal.aborted)
                 operation.controller.abort(invalidated);
@@ -2968,9 +2985,9 @@ export class NoteVaultRuntime extends Service {
                 operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault changed before Desktop activation could finish'));
             }
         }
-        for (const operation of this.activeRevealOperations) {
+        for (const operation of [...this.activeRevealOperations, ...this.activeFileActionOperations]) {
             if (!operation.controller.signal.aborted) {
-                operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault changed before the reveal could finish'));
+                operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault changed before the Desktop path effect could finish'));
             }
         }
         const previousWatcher = this.watcher;
@@ -3128,7 +3145,7 @@ export class NoteVaultRuntime extends Service {
             const nextState = activeVaultState(binding.root, state.generation + 1, state.id);
             nextWatcher = this.watcherActive ? this.openWatcher(binding.root, nextState, nextToken) : null;
             persistVaultSelection(this.stateRoot, binding.root, nextRecent);
-            for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations]) {
+            for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations, ...this.activeFileActionOperations]) {
                 if (operation !== excludedOperation && !operation.controller.signal.aborted) {
                     operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault moved'));
                 }
@@ -3198,7 +3215,7 @@ export class NoteVaultRuntime extends Service {
         const nextRecent = this.recentVaults.filter(record => record.id !== state.id);
         if (this.stateRoot !== null)
             persistVaultSelection(this.stateRoot, null, nextRecent);
-        for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations]) {
+        for (const operation of [...this.activeDesktopSelectionOperations, ...this.activeRevealOperations, ...this.activeFileActionOperations]) {
             if (!operation.controller.signal.aborted) {
                 operation.controller.abort(new NoteVaultError('stale-vault', 'The active vault was removed from the list'));
             }
@@ -3285,6 +3302,100 @@ export class NoteVaultRuntime extends Service {
         finally {
             this.activeRevealOperations.delete(operation);
         }
+    }
+    async fileActionTarget(root, state, target, signal, action, operationId = randomUUID()) {
+        const controller = new AbortController();
+        const providerName = action === 'open' ? 'tockTeamDesktopOpenPath' : 'tockTeamDesktopCopyPath';
+        const operation = { controller, provider: providerName };
+        const operationSignal = AbortSignal.any([signal, controller.signal]);
+        this.activeFileActionOperations.add(operation);
+        try {
+            operationSignal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            if (target.kind !== 'file')
+                throw new NoteVaultError('unsupported-type', 'Desktop file actions require a regular file');
+            if (action === 'open' && (!['.md', '.markdown', '.canvas', '.base'].includes(path.extname(target.relativePath).toLowerCase())
+                || (target.identity.mode & 73n) !== 0n)) {
+                throw new NoteVaultError('unsupported-type', 'Only non-executable Markdown, Canvas and Base documents can open externally');
+            }
+            const provider = this.context.get(providerName);
+            if (provider === undefined) {
+                throw new NoteVaultError('unavailable', `Desktop ${action} is unavailable in this runtime`);
+            }
+            const invoke = action === 'open'
+                ? provider.open.bind(provider)
+                : provider.copy.bind(provider);
+            await assertRevealTargetBound(root, target);
+            operationSignal.throwIfAborted();
+            let result;
+            try {
+                result = await awaitWithAbort(invoke({
+                    canonicalPath: target.canonicalPath,
+                    identity: {
+                        dev: target.identity.dev.toString(10),
+                        ino: target.identity.ino.toString(10),
+                    },
+                    kind: 'file',
+                    operationId,
+                    vaultGeneration: state.generation,
+                    vaultId: state.id,
+                }, operationSignal), operationSignal);
+            }
+            catch {
+                operationSignal.throwIfAborted();
+                this.assertCapturedVault(state, root);
+                throw new NoteVaultError('unavailable', `The Desktop ${action} provider failed`);
+            }
+            operationSignal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            await assertRevealTargetBound(root, target);
+            operationSignal.throwIfAborted();
+            if (result?.operationId !== operationId) {
+                throw new NoteVaultError('unavailable', `The Desktop ${action} provider returned an invalid operation`);
+            }
+            switch (result.status) {
+                case 'cancelled':
+                case 'denied':
+                case 'unavailable':
+                    throw new NoteVaultError(result.status, `Desktop ${action} failed with status ${result.status}`);
+                case 'stale':
+                    throw new NoteVaultError('stale-vault', `Desktop ${action} failed with status stale`);
+                case 'opened':
+                case 'copied':
+                    if (result.status === (action === 'open' ? 'opened' : 'copied'))
+                        return;
+                // A provider must report the exact requested effect, not another native action.
+                default:
+                    throw new NoteVaultError('unavailable', `The Desktop ${action} provider returned an invalid status`);
+            }
+        }
+        catch (error) {
+            operationSignal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            if (error instanceof NoteVaultError)
+                throw error;
+            throw new NoteVaultError('unavailable', `Desktop ${action} failed safely`);
+        }
+        finally {
+            this.activeFileActionOperations.delete(operation);
+        }
+    }
+    async copyEntryPath(request, signal) {
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        signal.throwIfAborted();
+        const target = await resolveRevealTarget(root, request.path);
+        if (target.kind !== 'file') {
+            throw new NoteVaultError('unsupported-type', 'Desktop absolute path copying requires a regular file');
+        }
+        await this.fileActionTarget(root, state, target, signal, 'copy', request.operationId);
+        return { generation: state.generation, path: target.relativePath, status: 'copied' };
+    }
+    async openEntry(request, signal) {
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        signal.throwIfAborted();
+        const target = await resolveRevealTarget(root, request.path);
+        await this.fileActionTarget(root, state, target, signal, 'open', request.operationId);
+        return { generation: state.generation, path: target.relativePath, status: 'opened' };
     }
     async revealEntry(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
@@ -3552,6 +3663,271 @@ export class NoteVaultRuntime extends Service {
     async search(args, expectedVault, signal) {
         return await this.runInspection(expectedVault, signal, inspection => inspection.search(args, signal));
     }
+    async previewMergeLinks(request, signal) {
+        for (const revision of [request?.expectedSourceRevision, request?.expectedDestinationRevision]) {
+            if (typeof revision !== 'string' || !/^file:[0-9a-f]{64}$/u.test(revision)) {
+                throw new NoteVaultError('conflict', 'Merge preview requires both file revisions');
+            }
+        }
+        const { expectedVault, expectedSourceRevision, expectedDestinationRevision, ...args } = request;
+        return this.runInspection(expectedVault, signal, async (inspection) => {
+            const result = await inspection.planMergeLinks(args, signal);
+            if ((result.source && result.source.revision !== expectedSourceRevision)
+                || (result.destination && result.destination.revision !== expectedDestinationRevision)) {
+                throw new NoteVaultError('conflict', 'A merge document changed; create a new preview');
+            }
+            if (result.source && result.destination && result.source.revision === result.destination.revision) {
+                throw new NoteVaultError('invalid-path', 'Merge documents must be different files');
+            }
+            return result;
+        });
+    }
+    async mergeInventory(root, signal) {
+        const scan = await scanVaultTree(root, this.treeConfig, signal);
+        if (scan.truncationReason !== null)
+            throw new NoteVaultError('too-large', 'Merge requires a complete vault inventory');
+        return scan.entries.filter(entry => entry.kind !== 'directory').map(entry => ({ path: entry.path, revision: entry.revision }));
+    }
+    async prepareMerge(input, signal) {
+        const request = structuredClone(input);
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        if (this.stateRoot === null)
+            throw new NoteVaultError('recovery-unavailable', 'Merge requires persistent recovery storage');
+        if (!['keep', 'trash', 'link', 'embed'].includes(request.sourceDisposition)
+            || request.keepSource !== (request.sourceDisposition === 'keep') || request.cursor !== undefined
+            || typeof request.fingerprint !== 'string' || request.fingerprint.length > 256
+            || (request.sourceDisposition === 'keep' || request.sourceDisposition === 'trash' ? request.sourceContent !== null : typeof request.sourceContent !== 'string')) {
+            throw new NoteVaultError('invalid-content', 'Merge decisions are invalid');
+        }
+        encodeDocumentContent(request.mergedContent, this.maxReadBytes);
+        if (request.sourceContent !== null)
+            encodeDocumentContent(request.sourceContent, this.maxReadBytes);
+        const inventory = await this.mergeInventory(root, signal);
+        const updates = [], cursors = new Set();
+        let cursor;
+        for (let page = 0;; page++) {
+            const plan = await this.previewMergeLinks({ ...request, ...(cursor ? { cursor } : {}) }, signal);
+            if (plan.fingerprint !== request.fingerprint || !plan.source || !plan.destination
+                || (plan.requiresKeepSource && request.sourceDisposition !== 'keep'))
+                throw new NoteVaultError('conflict', 'Review changed or requires keeping the original note');
+            updates.push(...plan.updates);
+            if (updates.length > 500)
+                throw new NoteVaultError('too-large', 'Merge affects more than 500 other notes');
+            if (plan.complete && !plan.truncated && plan.cursor === null)
+                break;
+            if (page >= 199 || !plan.cursor || plan.truncationReason !== 'result-limit' || cursors.has(plan.cursor))
+                throw new NoteVaultError('conflict', 'Merge link review is incomplete');
+            cursors.add(plan.cursor);
+            cursor = plan.cursor;
+        }
+        const files = [];
+        const paths = new Set();
+        for (const item of [
+            { path: request.destinationPath, revision: request.expectedDestinationRevision, newContent: request.mergedContent },
+            ...updates,
+            { path: request.sourcePath, revision: request.expectedSourceRevision, newContent: request.sourceContent },
+        ]) {
+            const target = await resolveDocumentTarget(root, item.path);
+            if (target.alias || target.targetEntry.nlink !== 1n || paths.has(item.path))
+                throw new NoteVaultError('unsafe-target', 'Merge requires distinct regular files without aliases or hard links');
+            paths.add(item.path);
+            const document = await this.openDocument(item.path, request.expectedVault, signal);
+            if (document.revision !== item.revision)
+                throw new NoteVaultError('conflict', 'A merge note changed');
+            if (mergeDigest(document.content) !== document.digest)
+                throw new NoteVaultError('invalid-content', 'Merge requires lossless UTF-8 originals');
+            const newContent = item.path === request.sourcePath && request.sourceDisposition === 'keep' ? document.content : item.newContent;
+            if (newContent !== null)
+                encodeDocumentContent(newContent, this.maxReadBytes);
+            files.push({ path: item.path, revision: document.revision, content: document.content, digest: document.digest, newContent });
+        }
+        if (JSON.stringify(inventory) !== JSON.stringify(await this.mergeInventory(root, signal)))
+            throw new NoteVaultError('conflict', 'The vault changed during merge preparation');
+        this.assertCapturedVault(state, root);
+        signal.throwIfAborted();
+        const record = { version: 1, id: `merge-${randomUUID()}`, vaultId: state.id, createdAt: Date.now(),
+            status: 'recovery-required', sourcePath: request.sourcePath, destinationPath: request.destinationPath,
+            sourceDisposition: request.sourceDisposition, files, inventory };
+        const bytes = encodeDocumentContent(JSON.stringify(record), DEFAULT_MAX_INSPECTION_BYTES).byteLength;
+        for (const [id, review] of this.mergeReviews)
+            if (review.expires < Date.now())
+                this.mergeReviews.delete(id);
+        if (this.mergeReviews.size >= 32 || [...this.mergeReviews.values()].reduce((total, review) => total + review.bytes, bytes) > DEFAULT_MAX_INSPECTION_BYTES)
+            throw new NoteVaultError('unavailable', 'Too many merge reviews. Wait for unused reviews to expire.');
+        this.mergeReviews.set(record.id, { record, request, bytes, expires: Date.now() + 5 * 60_000 });
+        return { id: record.id, generation: state.generation };
+    }
+    async mergeDirectory(vault, create = false) {
+        if (this.stateRoot === null)
+            throw new NoteVaultError('recovery-unavailable', 'Merge recovery storage is unavailable');
+        return stateDirectory(this.stateRoot, ['merges', createHash('sha256').update(vault.id).digest('hex')], create);
+    }
+    async readMerge(request, signal) {
+        if (!validMergeId(request.id))
+            throw new NoteVaultError('invalid-path', 'Invalid merge identifier');
+        const directory = await this.mergeDirectory(request.expectedVault);
+        if (!directory)
+            return null;
+        let data;
+        try {
+            data = await readStateBytes(path.join(directory, `${request.id}.json`), DEFAULT_MAX_INSPECTION_BYTES, signal);
+        }
+        catch (error) {
+            if (error.code === 'ENOENT')
+                return null;
+            throw error;
+        }
+        const record = JSON.parse(data.toString('utf8'));
+        if (record.version !== 1 || record.id !== request.id || record.vaultId !== request.expectedVault.id
+            || !Number.isFinite(record.createdAt) || !['applied', 'recovery-required', 'recovered'].includes(record.status)
+            || !['keep', 'trash', 'link', 'embed'].includes(record.sourceDisposition)
+            || !Array.isArray(record.files) || record.files.length < 2 || record.files.length > 502
+            || record.files[0]?.path !== record.destinationPath || record.files.at(-1)?.path !== record.sourcePath)
+            throw new NoteVaultError('recovery-unavailable', 'Invalid merge recovery record');
+        const paths = new Set();
+        for (const file of record.files) {
+            if (!file || typeof file.path !== 'string' || normalizeDocumentPath(file.path) !== file.path || !/\.(?:md|markdown)$/iu.test(file.path)
+                || paths.has(file.path) || typeof file.content !== 'string' || mergeDigest(file.content) !== file.digest
+                || !/^file:[0-9a-f]{64}$/u.test(file.revision))
+                throw new NoteVaultError('recovery-unavailable', 'Invalid merge original');
+            encodeDocumentContent(file.content, this.maxReadBytes);
+            paths.add(file.path);
+        }
+        return record;
+    }
+    mergeResult(record, generation) {
+        return { id: record.id, generation, status: record.status, sourcePath: record.sourcePath,
+            destinationPath: record.destinationPath, sourceDisposition: record.sourceDisposition,
+            paths: record.files.map(file => file.path), recoveryPath: mergeRecoveryPath(record.id) };
+    }
+    async listMerges(request, signal) {
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        if (request.cursor !== undefined && !validMergeId(request.cursor))
+            throw new NoteVaultError('invalid-path', 'Invalid merge cursor');
+        const directory = await this.mergeDirectory(request.expectedVault);
+        const ids = [];
+        // ponytail: scan journal names per page; add an index only if retained-journal volume warrants it.
+        if (directory)
+            for await (const entry of await opendir(directory)) {
+                signal.throwIfAborted();
+                const id = entry.name.slice(0, -5);
+                if (!entry.name.endsWith('.json') || !validMergeId(id) || (request.cursor && id <= request.cursor))
+                    continue;
+                const before = ids.findIndex(candidate => candidate > id);
+                ids.splice(before < 0 ? ids.length : before, 0, id);
+                if (ids.length > 101)
+                    ids.pop();
+            }
+        const cursor = ids.length > 100 ? ids[99] : undefined;
+        const merges = [];
+        for (const id of ids.slice(0, 100)) {
+            const record = await this.readMerge({ expectedVault: request.expectedVault, id }, signal);
+            if (record)
+                merges.push(this.mergeResult(record, state.generation));
+        }
+        signal.throwIfAborted();
+        this.assertCapturedVault(state, root);
+        return { generation: state.generation, merges, ...(cursor ? { cursor } : {}) };
+    }
+    async applyMerge(request, signal) {
+        request = structuredClone(request);
+        if (request.confirmed !== true || !validMergeId(request.id))
+            throw new NoteVaultError('invalid-content', 'Confirm the exact reviewed merge before applying it');
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        // ponytail: serialize merges per vault; ordinary edits still use revision checks, not this lock.
+        return this.runDraftOperation(`merge:${state.id}`, async () => {
+            signal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            const existing = await this.readMerge(request, signal);
+            if (existing)
+                return this.mergeResult(existing, state.generation);
+            const review = this.mergeReviews.get(request.id);
+            if (!review || review.expires < Date.now() || review.request.expectedVault.generation !== state.generation
+                || review.record.vaultId !== state.id)
+                throw new NoteVaultError('conflict', 'Merge review expired. Create a new review.');
+            const { record } = review;
+            const fresh = await this.previewMergeLinks(review.request, signal);
+            if (fresh.fingerprint !== review.request.fingerprint)
+                throw new NoteVaultError('conflict', 'The vault changed. Create a new merge review.');
+            const expected = new Map(record.inventory.map(entry => [entry.path, entry.revision]));
+            const verifyInventory = async () => {
+                const current = await this.mergeInventory(root, signal);
+                if (current.length !== expected.size || current.some(entry => expected.get(entry.path) !== entry.revision))
+                    throw new NoteVaultError('conflict', 'The vault changed during merge');
+                this.assertCapturedVault(state, root);
+                signal.throwIfAborted();
+            };
+            await verifyInventory();
+            const directory = (await this.mergeDirectory(request.expectedVault, true));
+            const journal = path.join(directory, `${record.id}.json`);
+            const check = async () => { signal.throwIfAborted(); this.assertCapturedVault(state, root); await this.mergeDirectory(request.expectedVault); };
+            // Durable originals and an interrupted phase precede every vault mutation. A retry never appends twice.
+            await writeDocumentAtomic(journal, encodeDocumentContent(JSON.stringify(record), DEFAULT_MAX_INSPECTION_BYTES), true, check);
+            this.mergeReviews.delete(record.id);
+            try {
+                for (const file of record.files.filter(file => file.path !== record.sourcePath)) {
+                    const result = await this.saveDocument({ path: file.path, content: file.newContent, expectedRevision: file.revision, expectedVault: request.expectedVault }, signal);
+                    if (result.digest !== mergeDigest(file.newContent))
+                        throw new NoteVaultError('partial', 'Merge publication could not be verified');
+                    expected.set(file.path, result.revision);
+                }
+                await verifyInventory();
+                const source = record.files.at(-1);
+                if (record.sourceDisposition === 'trash') {
+                    const trashPath = `.trash/${record.id}${path.posix.extname(record.sourcePath)}`;
+                    await ensureDestinationParent(root, path.join(root, ...trashPath.split('/')));
+                    const moved = await this.moveFileInternal({ fromPath: source.path, toPath: trashPath, expectedRevision: source.revision, expectedVault: request.expectedVault }, signal, false);
+                    const trash = { id: `trash-${record.id.slice(6)}`, createdAt: record.createdAt, kind: 'document', originalPath: source.path, trashPath, revision: moved.revision };
+                    await writeTrashRecord(this.stateRoot, request.expectedVault, trash, signal, () => this.assertCapturedVault(state, root));
+                    this.emitFileMutation('trashed', source.path, source.path, state);
+                    expected.delete(source.path);
+                }
+                else if (record.sourceDisposition !== 'keep') {
+                    const replaced = await this.saveDocument({ path: source.path, content: source.newContent, expectedRevision: source.revision, expectedVault: request.expectedVault }, signal);
+                    if (replaced.digest !== mergeDigest(source.newContent))
+                        throw new NoteVaultError('partial', 'Source replacement could not be verified');
+                    expected.set(source.path, replaced.revision);
+                }
+                await verifyInventory();
+                const completed = { ...record, status: 'applied' };
+                await writeDocumentAtomic(journal, encodeDocumentContent(JSON.stringify(completed), DEFAULT_MAX_INSPECTION_BYTES), false, check);
+                return this.mergeResult(completed, state.generation);
+            }
+            catch {
+                // Never roll back over newer user edits. Recovery creates exclusive copies from durable originals.
+                return this.mergeResult(record, state.generation);
+            }
+        });
+    }
+    async recoverMerge(request, signal) {
+        request = structuredClone(request);
+        const { root, state } = this.captureExpectedVault(request.expectedVault);
+        return this.runDraftOperation(`merge:${state.id}`, async () => {
+            const record = await this.readMerge(request, signal);
+            if (!record)
+                throw new NoteVaultError('not-found', 'Merge recovery record not found');
+            const recoveryPath = mergeRecoveryPath(record.id);
+            for (const file of record.files) {
+                const restoredPath = `${recoveryPath}/${file.path}`;
+                try {
+                    const created = await this.createDocument({ path: restoredPath, content: file.content, expectedVault: request.expectedVault }, signal);
+                    if (created.digest !== file.digest)
+                        throw new NoteVaultError('conflict', 'A recovered copy changed during publication. It will not be overwritten.');
+                }
+                catch (error) {
+                    if (!(error instanceof NoteVaultError) || error.code !== 'exists')
+                        throw error;
+                    const current = await this.openDocument(restoredPath, request.expectedVault, signal);
+                    if (current.digest !== file.digest)
+                        throw new NoteVaultError('conflict', 'A recovered copy was edited. It will not be overwritten.');
+                }
+            }
+            const recovered = { ...record, status: 'recovered' };
+            const directory = (await this.mergeDirectory(request.expectedVault));
+            await writeDocumentAtomic(path.join(directory, `${record.id}.json`), encodeDocumentContent(JSON.stringify(recovered), DEFAULT_MAX_INSPECTION_BYTES), false, async () => { this.assertCapturedVault(state, root); signal.throwIfAborted(); await this.mergeDirectory(request.expectedVault); });
+            return this.mergeResult(recovered, state.generation);
+        });
+    }
     async read(args, expectedVault, signal) {
         return await this.runInspection(expectedVault, signal, inspection => inspection.read(args, signal));
     }
@@ -3658,6 +4034,11 @@ export class NoteVaultRuntime extends Service {
         catch (error) {
             if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) {
                 throw error;
+            }
+            const filesystemError = error;
+            // Missing entries are unavailable; failed alias resolution remains unsafe-target.
+            if (filesystemError?.code === 'ENOENT' && (filesystemError.syscall === 'lstat' || filesystemError.syscall === 'open')) {
+                throw new NoteVaultError('not-found', 'Vault document not found');
             }
             throw new NoteVaultError('unsafe-target', 'Vault document could not be opened safely');
         }
