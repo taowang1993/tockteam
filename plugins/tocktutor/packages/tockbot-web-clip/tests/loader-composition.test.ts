@@ -103,6 +103,7 @@ test('Loader rejects invalid or effectively unbounded limits', async () => {
     'connectTimeoutMs',
     'maxAddresses',
     'maxConcurrentRequests',
+    'maxImageResponseBytes',
     'maxParserInputChars',
     'maxParserTokens',
     'maxReaderOutputChars',

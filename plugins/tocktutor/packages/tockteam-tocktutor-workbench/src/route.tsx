@@ -310,6 +310,7 @@ export interface WorkbenchSearchPreview {
 }
 
 export interface WorkbenchRouteSnapshot {
+  localEditRevision?: number | undefined
   mergeRecoveryPending?: boolean
   linkedLoading?: boolean
   linkedError?: string | null
@@ -778,7 +779,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
 
 /** Bounded route state machine shared by the React contribution and focused tests. */
 const DOCUMENT_FIELDS = ['source', 'revision', 'saveStatus', 'documentKind', 'documentUnavailable', 'draftRecovered', 'embeds', 'links', 'linksLoading', 'outline', 'baseFiles', 'message'] as const
-const VIEW_FIELDS = ['mode', 'selectionStart', 'selectionEnd', 'selectionRequest', 'editorReset'] as const
+const VIEW_FIELDS = ['mode', 'selectionStart', 'selectionEnd', 'selectionRequest', 'editorReset', 'localEditRevision'] as const
 interface RouteDocument {
   key: string
   vault: VaultReference
@@ -1785,7 +1786,7 @@ export class WorkbenchRouteController {
     const mode = pane?.tabs.find(tab => tab.path === path)?.mode ?? 'live-preview'
     const empty = pane?.linkedView ? initialSnapshot() : null
     return { ...this.snapshot, ...(empty ? { ...Object.fromEntries(DOCUMENT_FIELDS.map(field => [field, empty[field]])), graph: null, graphLayout: [], graphMode: 'local' as const } : {}), source: '', revision: null, documentKind: null, documentUnavailable: false, saveStatus: 'saved',
-      ...document?.state, ...this.paneViews.get(id), ...(pane?.linkedView ? this.linkedLoads.get(id)?.state : {}), mode, path, focusedPaneId: id }
+      ...document?.state, ...this.paneViews.get(id), ...(pane?.linkedView ? this.linkedLoads.get(id)?.state : {}), localEditRevision: this.paneViews.get(id)?.localEditRevision ?? 0, mode, path, focusedPaneId: id }
   }
 
   paneLifetimeFor(id: string): number | undefined { return this.paneLifetimes.get(id)?.epoch }
@@ -1814,7 +1815,7 @@ export class WorkbenchRouteController {
       }
       if (!boundedSource(source)) return false
       if (document.state.source === source) return true
-      if (this.activeDocument() === document) this.edit(source)
+      if (this.activeDocument() === document) this.edit(source, id)
       else {
         document.state = { ...document.state, source, saveStatus: 'unsaved', message: 'Unsaved changes.' }
         document.epoch += 1
@@ -3423,7 +3424,7 @@ export class WorkbenchRouteController {
     return true
   }
 
-  edit(source: string): void {
+  edit(source: string, originPaneId = this.snapshot.focusedPaneId): void {
     if (this.snapshot.path === null || this.snapshot.phase !== 'ready') return
     if (!boundedSource(source)) {
       this.update({ message: 'The edit exceeds the bounded source limit.' })
@@ -3439,10 +3440,16 @@ export class WorkbenchRouteController {
     const embedsChanged = !sameStrings(this.embedTargets, nextEmbedTargets)
     this.embedTargets = nextEmbedTargets
     if (embedsChanged) this.cancelEmbedOperation()
+    // Only the originating view may treat this as an undoable local command.
+    const localEditRevision = (this.paneViews.get(originPaneId)?.localEditRevision ?? 0) + 1
+    if (originPaneId !== this.snapshot.focusedPaneId) {
+      this.paneViews.set(originPaneId, { ...this.paneViews.get(originPaneId), localEditRevision })
+    }
     this.update({
       ...(embedsChanged ? { embeds: Object.freeze([]) } : {}),
       message: 'Unsaved changes.',
       saveStatus: 'unsaved',
+      ...(originPaneId === this.snapshot.focusedPaneId ? { localEditRevision } : {}),
       source,
     })
     this.recordDirty(true)
@@ -3455,7 +3462,7 @@ export class WorkbenchRouteController {
   }
 
   setSelection(start: number, end: number): void {
-    if (this.snapshot.path === null || this.snapshot.mode !== 'source') return
+    if (this.snapshot.path === null || this.snapshot.mode === 'reading') return
     const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0
     const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart
     this.update({ selectionEnd, selectionRequest: null, selectionStart })
@@ -3474,7 +3481,7 @@ export class WorkbenchRouteController {
   }
 
   runEditorCommand(command: EditorCommandId): void {
-    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source') return
+    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return
     const result = applyEditorCommand(
       this.snapshot.source,
       command,
@@ -3534,7 +3541,7 @@ export class WorkbenchRouteController {
     const path = this.snapshot.path
     const start = this.snapshot.selectionStart ?? 0
     const end = this.snapshot.selectionEnd ?? 0
-    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source' || end <= start) return false
+    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading' || end <= start) return false
     const identity = this.recoveryIdentity()!
     const routeOperation = this.operation
     const destinationPath = `Extracted/${noteTitle(path)} Extract.md`
@@ -3582,7 +3589,7 @@ export class WorkbenchRouteController {
   }
 
   insertCurrentDateTime(kind: 'date' | 'time'): boolean {
-    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source') return false
+    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return false
     const start = this.snapshot.selectionStart ?? this.snapshot.source.length
     const end = this.snapshot.selectionEnd ?? start
     const value = expandTemplate(kind === 'date' ? '{{date}}' : '{{time}}', { now: this.now(), title: noteTitle(this.snapshot.path) })
@@ -5797,7 +5804,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <div
             aria-label="Editor Attachment Drop Zone"
             data-document-backlinks={snapshot.settings?.backlinksInDocument === true}
-            className="tocktutor-editor-body relative min-h-0 overflow-auto data-[document-backlinks=true]:[&>section]:min-h-0 [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-[700px] [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none"
+            className="tocktutor-editor-body relative min-h-0 overflow-auto data-[document-backlinks=true]:[&>section]:min-h-0"
             onDrop={event => {
               if (event.dataTransfer.files.length === 0) return
               event.preventDefault()
@@ -5824,6 +5831,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   ariaLabel={sourceLabel}
                   className="h-full"
                   content={snapshot.source}
+                  localEditRevision={snapshot.localEditRevision}
                   key={`${snapshot.path}:${snapshot.editorReset ?? 0}`}
                   onContentChange={props.onEdit}
                   {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}
@@ -5840,6 +5848,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <LivePreviewView
                 key={`${snapshot.path}:${snapshot.editorReset ?? 0}`}
                 documentKey={snapshot.path}
+                localEditRevision={snapshot.localEditRevision}
                 embeds={snapshot.embeds}
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
                 onEdit={props.onEdit}
@@ -6222,7 +6231,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     pendingEditorFocus.current?.()
     const container = root.current
     if (!active || snapshot.path === null || container === null) return
-    const selector = snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]'
+    const selector = snapshot.mode === 'source' || snapshot.mode === 'live-preview' ? '.cm-content' : '[aria-label$="View"]'
     const stop = (): void => {
       observer.disconnect()
       container.ownerDocument.removeEventListener('pointerdown', stop, true)

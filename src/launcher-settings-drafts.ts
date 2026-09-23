@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLauncherDirtyState } from './launcher-settings-dirty.ts'
 import { launcherDraftValueEquals } from './launcher-settings-draft-value.ts'
 
 export { launcherDraftValueEquals }
@@ -11,6 +12,7 @@ export function useLauncherDraft<T>(value: T, equals: (left: T, right: T) => boo
   const draftRef = useRef(value)
   const dirtyRef = useRef(false)
   const [draft, setDraftState] = useState(value)
+  useLauncherDirtyState(dirtyRef.current && !equals(draft, value))
 
   useEffect(() => {
     if (dirtyRef.current && !equalsRef.current(draftRef.current, value)) return

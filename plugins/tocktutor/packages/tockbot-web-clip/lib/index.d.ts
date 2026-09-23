@@ -1,7 +1,7 @@
 import { Service, type Context } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
 import type { WriteDocumentResult } from 'tockbot-note-runtime';
-import { type PublicFetchLimits, type PublicTextResult } from './fetch.ts';
+import { type PublicImageResult, type PublicFetchLimits, type PublicTextResult } from './fetch.ts';
 import { type ReaderViewLimits, type ReaderViewResult } from './reader.ts';
 import { type ClipApproval, type ClipPreview, type ClipPreviewInput, type ClipVaultReference, type ConsumedClipCreate } from './review.ts';
 import { type ViewerPageResult } from './server.ts';
@@ -17,6 +17,8 @@ declare module '@deepseek-ai/cordis' {
 }
 export interface Config extends PublicFetchLimits, ReaderViewLimits {
     maxConcurrentRequests: number;
+    /** Raster image budget, independent of the HTML/text response budget. */
+    maxImageResponseBytes?: number;
 }
 export type ClipRuntimeErrorCode = 'capacity' | 'runtime-result' | 'runtime-unavailable' | 'stale-vault';
 export declare class ClipRuntimeError extends Error {
@@ -32,6 +34,7 @@ export declare class WebClipHost extends Service {
     private closing;
     private readonly fetchLimits;
     private readonly maxConcurrentRequests;
+    private readonly maxImageResponseBytes;
     private readonly readerLimits;
     private runtime;
     private runtimeEpoch;
@@ -54,6 +57,9 @@ export declare class WebClipHost extends Service {
     fetchText(url: string, options?: {
         signal?: AbortSignal;
     }): Promise<PublicTextResult>;
+    fetchImage(url: string, options?: {
+        signal?: AbortSignal;
+    }): Promise<PublicImageResult>;
     readerView(url: string, options?: {
         signal?: AbortSignal;
     }): Promise<ReaderViewResult>;

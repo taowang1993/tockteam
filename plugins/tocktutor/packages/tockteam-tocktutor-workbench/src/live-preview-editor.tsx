@@ -23,10 +23,6 @@ export interface LivePreviewSelection {
   to: number
 }
 
-export function isLivePreviewSourceProtected(source: string): boolean {
-  return /(?:^|\n)\s*>\s*\[![A-Za-z][\w-]*\][+-]?|%%|\$\$|!\[\[|(?:^|\n) {0,3}(?:`{3,}|~{3,})\s*(?:base|mermaid)\b|<\/?[A-Za-z][^>]*>/u.test(source)
-}
-
 export function splitLivePreviewSource(source: string): { body: string; prefix: string } {
   const normalized = source.replace(/\r\n?/gu, '\n')
   const match = normalized.match(/^---\n[\s\S]*?\n(?:---|\.\.\.)(?:\n|$)/u)
@@ -37,6 +33,7 @@ export interface LivePreviewEditorProps {
   ariaLabel?: string
   className?: string
   content: string
+  localEditRevision?: number | undefined
   editorViewRef?: MutableRefObject<unknown | null>
   onAddProperty?: (key: string) => boolean
   onMarkdownChange: (markdown: string) => void

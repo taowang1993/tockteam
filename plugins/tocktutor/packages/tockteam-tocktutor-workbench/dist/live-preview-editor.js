@@ -6,9 +6,6 @@ import { AlignLeft, CalendarDays, CheckSquare, ChevronRight, Hash, List, Plus, T
 import { lazy, Suspense, useId, useMemo, useState, } from 'react';
 import { MAX_FRONTMATTER_BYTES, MAX_PROPERTIES, parseFrontmatterProperties } from "./properties.js";
 const propertyIcons = { text: AlignLeft, list: List, number: Hash, checkbox: CheckSquare, date: CalendarDays, datetime: CalendarDays, mixed: List };
-export function isLivePreviewSourceProtected(source) {
-    return /(?:^|\n)\s*>\s*\[![A-Za-z][\w-]*\][+-]?|%%|\$\$|!\[\[|(?:^|\n) {0,3}(?:`{3,}|~{3,})\s*(?:base|mermaid)\b|<\/?[A-Za-z][^>]*>/u.test(source);
-}
 export function splitLivePreviewSource(source) {
     const normalized = source.replace(/\r\n?/gu, '\n');
     const match = normalized.match(/^---\n[\s\S]*?\n(?:---|\.\.\.)(?:\n|$)/u);

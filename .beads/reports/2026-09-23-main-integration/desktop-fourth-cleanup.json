@@ -1,0 +1,9 @@
+{
+  "attempt": "Linked Owner-Title Locator Run",
+  "id": "0f992ed7-a6a7-47ca-973e-1e0c99789c80",
+  "rootPid": 58551,
+  "recordedPids": [58551, 58553, 58554, 58557, 58561, 58565, 58568, 58569, 58570, 58571, 58572, 58573, 58574, 58575, 58576, 58693, 58766, 58767, 58768, 58769, 58770, 58771, 58772, 58773],
+  "stopped": true,
+  "remaining": [],
+  "verdict": "85 assertions passed, no failed assertions or runtime errors. Gate incomplete because generic Destination heading locator matched both pane header and note body. No product source change was made."
+}

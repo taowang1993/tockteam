@@ -1,5 +1,3 @@
-import { Alert, AlertDescription, AlertTitle } from '@tockteam/ui/alert'
-import { Button } from '@tockteam/ui/button'
 import {
   useEffect,
   useMemo,
@@ -8,10 +6,11 @@ import {
   type ReactNode,
 } from 'react'
 import type { ResolvedEmbedNode } from './embeds.ts'
-import { isLivePreviewSourceProtected, LivePreviewEditor, MarkdownDocumentHeader, type LivePreviewSelection } from './live-preview-editor.tsx'
+import { LivePreviewEditor, MarkdownDocumentHeader, type LivePreviewSelection } from './live-preview-editor.tsx'
 import { clampEditorSearchIndex, MAX_EDITOR_SEARCH_MATCHES, moveEditorSearchIndex, searchEditorMatches, type EditorSearchRequest, type EditorSearchState } from './editor-search.ts'
 import type { PropertyValue } from './properties.ts'
 import { buildMarkdownSlides, renderMarkdownHtml } from './rich-markdown.ts'
+import { attachInlineImages } from './inline-images.ts'
 
 function embedLabel(embed: ResolvedEmbedNode): string {
   return `${embed.target.path}${embed.target.fragment === null ? '' : `#${embed.target.fragment}`}`
@@ -250,6 +249,8 @@ export function RichReadingView(props: {
       props.onSearchState?.({ current: marks.findIndex(mark => mark.classList.contains('tocktutor-find-current')), error: queryError ?? 'Switch to Source or Live Preview to replace text.', query, total: marks.length, ...(truncated ? { truncated: true } : {}) })
     }
   }, [props.onSearchState, props.searchQuery, props.searchRequest])
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => contentRef.current ? attachInlineImages(contentRef.current) : undefined, [html])
   const onClick = (event: ReactMouseEvent<HTMLElement>): void => {
     const target = event.target
     if (target instanceof HTMLInputElement && target.dataset.taskIndex !== undefined) {
@@ -277,7 +278,7 @@ export function RichReadingView(props: {
         onClick={onClick}
         ref={readingRef}
       >
-        <div dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="[&_img]:h-auto [&_img]:max-h-none [&_img]:max-w-full" dangerouslySetInnerHTML={{ __html: html }} ref={contentRef} />
       </article>
     </section>
   )
@@ -285,6 +286,7 @@ export function RichReadingView(props: {
 
 export function LivePreviewView(props: {
   documentKey: string
+  localEditRevision?: number | undefined
   embeds?: readonly ResolvedEmbedNode[] | undefined
   onAddProperty?: ((key: string) => boolean) | undefined
   onEdit(source: string): void
@@ -302,21 +304,11 @@ export function LivePreviewView(props: {
 }): ReactNode {
   return (
     <section aria-label="Live Preview" className="flex min-h-full flex-col" tabIndex={-1}>
-      {isLivePreviewSourceProtected(props.source) && (
-        <div className="mx-auto mt-3 w-[calc(100%-48px)] max-w-3xl">
-          <Alert role="note">
-            <AlertTitle>Editing Is Limited</AlertTitle>
-            <AlertDescription>
-              <p>Typing and pasting are disabled in Live Preview because this note contains formatting it cannot safely preserve. Use Source Mode to edit without changing that formatting.</p>
-              {props.onEditSource !== undefined && <Button className="mt-2" onClick={props.onEditSource} size="sm" type="button" variant="outline">Edit in Source Mode</Button>}
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
       <LivePreviewEditor
         ariaLabel="Live Preview Editor"
         className="min-h-[20rem]"
         content={props.source}
+        localEditRevision={props.localEditRevision}
         key={props.documentKey}
         onMarkdownChange={props.onEdit}
         {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })}

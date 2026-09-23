@@ -417,7 +417,7 @@ function initialSnapshot() {
 }
 /** Bounded route state machine shared by the React contribution and focused tests. */
 const DOCUMENT_FIELDS = ['source', 'revision', 'saveStatus', 'documentKind', 'documentUnavailable', 'draftRecovered', 'embeds', 'links', 'linksLoading', 'outline', 'baseFiles', 'message'];
-const VIEW_FIELDS = ['mode', 'selectionStart', 'selectionEnd', 'selectionRequest', 'editorReset'];
+const VIEW_FIELDS = ['mode', 'selectionStart', 'selectionEnd', 'selectionRequest', 'editorReset', 'localEditRevision'];
 export class WorkbenchRouteController {
     remote;
     navigate;
@@ -1443,7 +1443,7 @@ export class WorkbenchRouteController {
         const mode = pane?.tabs.find(tab => tab.path === path)?.mode ?? 'live-preview';
         const empty = pane?.linkedView ? initialSnapshot() : null;
         return { ...this.snapshot, ...(empty ? { ...Object.fromEntries(DOCUMENT_FIELDS.map(field => [field, empty[field]])), graph: null, graphLayout: [], graphMode: 'local' } : {}), source: '', revision: null, documentKind: null, documentUnavailable: false, saveStatus: 'saved',
-            ...document?.state, ...this.paneViews.get(id), ...(pane?.linkedView ? this.linkedLoads.get(id)?.state : {}), mode, path, focusedPaneId: id };
+            ...document?.state, ...this.paneViews.get(id), ...(pane?.linkedView ? this.linkedLoads.get(id)?.state : {}), localEditRevision: this.paneViews.get(id)?.localEditRevision ?? 0, mode, path, focusedPaneId: id };
     }
     paneLifetimeFor(id) { return this.paneLifetimes.get(id)?.epoch; }
     nativeNoteOwnerKey() {
@@ -1475,7 +1475,7 @@ export class WorkbenchRouteController {
             if (document.state.source === source)
                 return true;
             if (this.activeDocument() === document)
-                this.edit(source);
+                this.edit(source, id);
             else {
                 document.state = { ...document.state, source, saveStatus: 'unsaved', message: 'Unsaved changes.' };
                 document.epoch += 1;
@@ -3225,7 +3225,7 @@ export class WorkbenchRouteController {
         this.syncShell({ focusMode: false, message: `Revealed ${path} in Files.` });
         return true;
     }
-    edit(source) {
+    edit(source, originPaneId = this.snapshot.focusedPaneId) {
         if (this.snapshot.path === null || this.snapshot.phase !== 'ready')
             return;
         if (!boundedSource(source)) {
@@ -3244,10 +3244,16 @@ export class WorkbenchRouteController {
         this.embedTargets = nextEmbedTargets;
         if (embedsChanged)
             this.cancelEmbedOperation();
+        // Only the originating view may treat this as an undoable local command.
+        const localEditRevision = (this.paneViews.get(originPaneId)?.localEditRevision ?? 0) + 1;
+        if (originPaneId !== this.snapshot.focusedPaneId) {
+            this.paneViews.set(originPaneId, { ...this.paneViews.get(originPaneId), localEditRevision });
+        }
         this.update({
             ...(embedsChanged ? { embeds: Object.freeze([]) } : {}),
             message: 'Unsaved changes.',
             saveStatus: 'unsaved',
+            ...(originPaneId === this.snapshot.focusedPaneId ? { localEditRevision } : {}),
             source,
         });
         this.recordDirty(true);
@@ -3259,7 +3265,7 @@ export class WorkbenchRouteController {
         this.setSelection(authoredSourceOffset(this.snapshot.source, start), authoredSourceOffset(this.snapshot.source, end));
     }
     setSelection(start, end) {
-        if (this.snapshot.path === null || this.snapshot.mode !== 'source')
+        if (this.snapshot.path === null || this.snapshot.mode === 'reading')
             return;
         const selectionStart = Number.isSafeInteger(start) ? Math.max(0, Math.min(start, this.snapshot.source.length)) : 0;
         const selectionEnd = Number.isSafeInteger(end) ? Math.max(selectionStart, Math.min(end, this.snapshot.source.length)) : selectionStart;
@@ -3280,7 +3286,7 @@ export class WorkbenchRouteController {
         }
     }
     runEditorCommand(command) {
-        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source')
+        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading')
             return;
         const result = applyEditorCommand(this.snapshot.source, command, this.snapshot.selectionStart ?? this.snapshot.source.length, this.snapshot.selectionEnd ?? this.snapshot.source.length);
         if (result.source === this.snapshot.source)
@@ -3338,7 +3344,7 @@ export class WorkbenchRouteController {
         const path = this.snapshot.path;
         const start = this.snapshot.selectionStart ?? 0;
         const end = this.snapshot.selectionEnd ?? 0;
-        if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source' || end <= start)
+        if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading' || end <= start)
             return false;
         const identity = this.recoveryIdentity();
         const routeOperation = this.operation;
@@ -3391,7 +3397,7 @@ export class WorkbenchRouteController {
         }
     }
     insertCurrentDateTime(kind) {
-        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source')
+        if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading')
             return false;
         const start = this.snapshot.selectionStart ?? this.snapshot.source.length;
         const end = this.snapshot.selectionEnd ?? start;
@@ -4826,7 +4832,7 @@ export function TockTutorRouteView(props) {
                     setNoteSearchQuery(query);
                     setNoteSearchState({ current: null, query, total: 0 });
                     setNoteSearchRequest(null);
-                }, onRequest: requestNoteSearch, onReplacementChange: setNoteSearchReplacement, query: noteSearchQuery, replacement: noteSearchReplacement, state: noteSearchState, ...(noteSearchTransition === undefined ? {} : { transitionNotice: noteSearchTransition }) })), _jsxs("div", { "aria-label": "Editor Attachment Drop Zone", "data-document-backlinks": snapshot.settings?.backlinksInDocument === true, className: "tocktutor-editor-body relative min-h-0 overflow-auto data-[document-backlinks=true]:[&>section]:min-h-0 [&_.ProseMirror]:mx-auto [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-[calc(100%-48px)] [&_.ProseMirror]:max-w-[700px] [&_.ProseMirror]:pt-[18px] [&_.ProseMirror]:pb-[72px] [&_.ProseMirror]:outline-none", onDrop: event => {
+                }, onRequest: requestNoteSearch, onReplacementChange: setNoteSearchReplacement, query: noteSearchQuery, replacement: noteSearchReplacement, state: noteSearchState, ...(noteSearchTransition === undefined ? {} : { transitionNotice: noteSearchTransition }) })), _jsxs("div", { "aria-label": "Editor Attachment Drop Zone", "data-document-backlinks": snapshot.settings?.backlinksInDocument === true, className: "tocktutor-editor-body relative min-h-0 overflow-auto data-[document-backlinks=true]:[&>section]:min-h-0", onDrop: event => {
                     if (event.dataTransfer.files.length === 0)
                         return;
                     event.preventDefault();
@@ -4835,7 +4841,7 @@ export function TockTutorRouteView(props) {
                     if (event.clipboardData.files.length === 0)
                         return;
                     props.onAttachFiles?.(event.clipboardData.files);
-                }, children: [snapshot.mergeRecoveryPending && props.onListMergeRecovery && _jsxs(Alert, { children: [_jsx("p", { children: "Merge Recovery Needs Attention" }), _jsx(Button, { variant: "outline", onClick: () => setMergeRecoveryOpen(true), children: "Review Merge Recovery" })] }), snapshot.message.startsWith('This pane changed in another view.') && _jsx(Alert, { role: "alert", children: snapshot.message }), snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : props.paneOnly && snapshot.revision === null ? _jsx(Alert, { unstyled: true, children: "Loading this note\u2026" }) : snapshot.mode === 'source' ? (_jsx("div", { className: "flex h-full min-h-0 flex-col", children: _jsx(SourceEditor, { ariaLabel: sourceLabel, className: "h-full", content: snapshot.source, onContentChange: props.onEdit, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.main.from, selection.main.to); }, ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), selectionRequest: snapshot.selectionRequest, ...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds }), spellCheck: true, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`) })) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (_jsx(LivePreviewView, { documentKey: snapshot.path, embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, onEdit: props.onEdit, onEditSource: () => { props.onMode('source'); }, ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.from, selection.to); }, ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`)) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasBoard, { disabled: snapshot.revision === null || props.onCanvasChange === undefined, onChange: change => { props.onCanvasChange?.(change); }, revision: snapshot.revision ?? 'unavailable', source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(ExecutableBaseView, { activeView: baseView, files: snapshot.baseFiles ?? [], onActiveViewChange: setBaseView, onSearchChange: (view, search) => { setBaseSearches(current => ({ ...current, [view]: search })); }, searches: baseSearches, ...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy }), ...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit }), ...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport }), source: snapshot.source })) : snapshot.documentKind === 'markdown' ? (_jsx(RichReadingView, { embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState, searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, snapshot.path)) : (_jsx(Alert, { unstyled: true, children: "Reading view is unavailable." })), snapshot.path !== null && snapshot.documentKind === 'markdown' && snapshot.settings?.backlinksInDocument && (_jsxs("section", { "aria-label": "Backlinks in Document", className: "mx-auto mt-6 w-[calc(100%-48px)] max-w-[700px] border-t border-[var(--tt-border)] py-6 text-[var(--tt-text)]", children: [_jsx("h2", { className: "mb-3 text-sm font-medium", children: "Backlinks" }), _jsx(NoteBacklinks, { links: snapshot.links?.path === snapshot.path && snapshot.links?.generation === snapshot.vault?.generation ? snapshot.links : null, loading: snapshot.linksLoading === true, onRetry: props.onLoadRelationships, onSelect: props.onSelect }, `${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`)] }))] }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && _jsx("output", { "aria-live": "polite", className: "mr-3 min-w-0 truncate", children: props.nativeNoteActions.message }), _jsxs("div", { className: "tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [snapshot.path !== null && (_jsxs(_Fragment, { children: [_jsx("span", { children: backlinkLabel }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source' })] })), _jsxs("span", { children: [String(words), " words"] }), _jsxs("span", { children: [String(characters), " characters"] }), snapshot.path !== null && (_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] }))] })] })] }));
+                }, children: [snapshot.mergeRecoveryPending && props.onListMergeRecovery && _jsxs(Alert, { children: [_jsx("p", { children: "Merge Recovery Needs Attention" }), _jsx(Button, { variant: "outline", onClick: () => setMergeRecoveryOpen(true), children: "Review Merge Recovery" })] }), snapshot.message.startsWith('This pane changed in another view.') && _jsx(Alert, { role: "alert", children: snapshot.message }), snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : props.paneOnly && snapshot.revision === null ? _jsx(Alert, { unstyled: true, children: "Loading this note\u2026" }) : snapshot.mode === 'source' ? (_jsx("div", { className: "flex h-full min-h-0 flex-col", children: _jsx(SourceEditor, { ariaLabel: sourceLabel, className: "h-full", content: snapshot.source, localEditRevision: snapshot.localEditRevision, onContentChange: props.onEdit, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.main.from, selection.main.to); }, ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), selectionRequest: snapshot.selectionRequest, ...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds }), spellCheck: true, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`) })) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (_jsx(LivePreviewView, { documentKey: snapshot.path, localEditRevision: snapshot.localEditRevision, embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, onEdit: props.onEdit, onEditSource: () => { props.onMode('source'); }, ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.from, selection.to); }, ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`)) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasBoard, { disabled: snapshot.revision === null || props.onCanvasChange === undefined, onChange: change => { props.onCanvasChange?.(change); }, revision: snapshot.revision ?? 'unavailable', source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(ExecutableBaseView, { activeView: baseView, files: snapshot.baseFiles ?? [], onActiveViewChange: setBaseView, onSearchChange: (view, search) => { setBaseSearches(current => ({ ...current, [view]: search })); }, searches: baseSearches, ...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy }), ...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit }), ...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport }), source: snapshot.source })) : snapshot.documentKind === 'markdown' ? (_jsx(RichReadingView, { embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState, searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, snapshot.path)) : (_jsx(Alert, { unstyled: true, children: "Reading view is unavailable." })), snapshot.path !== null && snapshot.documentKind === 'markdown' && snapshot.settings?.backlinksInDocument && (_jsxs("section", { "aria-label": "Backlinks in Document", className: "mx-auto mt-6 w-[calc(100%-48px)] max-w-[700px] border-t border-[var(--tt-border)] py-6 text-[var(--tt-text)]", children: [_jsx("h2", { className: "mb-3 text-sm font-medium", children: "Backlinks" }), _jsx(NoteBacklinks, { links: snapshot.links?.path === snapshot.path && snapshot.links?.generation === snapshot.vault?.generation ? snapshot.links : null, loading: snapshot.linksLoading === true, onRetry: props.onLoadRelationships, onSelect: props.onSelect }, `${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`)] }))] }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && _jsx("output", { "aria-live": "polite", className: "mr-3 min-w-0 truncate", children: props.nativeNoteActions.message }), _jsxs("div", { className: "tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [snapshot.path !== null && (_jsxs(_Fragment, { children: [_jsx("span", { children: backlinkLabel }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source' })] })), _jsxs("span", { children: [String(words), " words"] }), _jsxs("span", { children: [String(characters), " characters"] }), snapshot.path !== null && (_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] }))] })] })] }));
     if (props.paneOnly)
         return _jsx(TooltipProvider, { children: _jsxs("div", { className: "h-full min-h-0 min-w-0", "data-pane-id": snapshot.focusedPaneId, onPointerDownCapture: () => { props.onFocusPane?.(snapshot.focusedPaneId); }, onFocusCapture: () => { props.onFocusPane?.(snapshot.focusedPaneId); }, onKeyDown: event => {
                     const primary = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '') ? event.metaKey : event.ctrlKey;
@@ -4945,7 +4951,7 @@ export function TockTutorRoute(props) {
         const container = root.current;
         if (!active || snapshot.path === null || container === null)
             return;
-        const selector = snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.ProseMirror' : '[aria-label$="View"]';
+        const selector = snapshot.mode === 'source' || snapshot.mode === 'live-preview' ? '.cm-content' : '[aria-label$="View"]';
         const stop = () => {
             observer.disconnect();
             container.ownerDocument.removeEventListener('pointerdown', stop, true);

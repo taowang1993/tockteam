@@ -1,0 +1,38 @@
+
+ RUN  v4.1.8 /Users/taowang/projects/worktrees/tutor/plugins/tocktutor/packages/tockteam-tocktutor-workbench
+
+ ❯ tests/merged-editor.test.tsx (6 tests | 2 failed | 4 skipped) 4178ms
+   × processes bounded bulk replacements without rescanning the source for every match: "b" 2971ms
+   × processes bounded bulk replacements without rescanning the source for every match: "b\n" 1206ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/merged-editor.test.tsx > processes bounded bulk replacements without rescanning the source for every match: "b"
+AssertionError: expected 30013000000 to be less than 200000000
+ ❯ tests/merged-editor.test.tsx:21:31
+     19|     const scannedCharacters = matches.mock.contexts.reduce((total, val…
+     20|     expect(edited).toBe((replacement + 'x'.repeat(spacing - 1)).repeat…
+     21|     expect(scannedCharacters).toBeLessThan(source.length * 100)
+       |                               ^
+     22|   } finally {
+     23|     matches.mockRestore()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/merged-editor.test.tsx > processes bounded bulk replacements without rescanning the source for every match: "b\n"
+AssertionError: expected 29862945000 to be less than 199000000
+ ❯ tests/merged-editor.test.tsx:21:31
+     19|     const scannedCharacters = matches.mock.contexts.reduce((total, val…
+     20|     expect(edited).toBe((replacement + 'x'.repeat(spacing - 1)).repeat…
+     21|     expect(scannedCharacters).toBeLessThan(source.length * 100)
+       |                               ^
+     22|   } finally {
+     23|     matches.mockRestore()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 skipped (6)
+   Start at  19:08:09
+   Duration  7.15s (transform 2.13s, setup 11ms, import 2.70s, tests 4.18s, environment 208ms)

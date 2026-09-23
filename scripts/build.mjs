@@ -279,6 +279,7 @@ await Promise.all(builds)
 writeFileSync(join(dist, 'launcher.css'), launcherTailwindCss)
 copyFileSync(join(root, 'src', 'launcher.html'), join(dist, 'launcher.html'))
 mkdirSync(join(dist, 'launcher-assets'), { recursive: true })
+copyFileSync(join(root, 'assets', 'tockteam-logo.svg'), join(dist, 'launcher-assets', 'tockteam-logo.svg'))
 for (const [extensionId, imageKey] of Object.entries(LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS)) {
   const asset = `${imageKey}.png`
   const source = join(root, 'assets', 'launcher', 'Extensions', extensionId, asset)

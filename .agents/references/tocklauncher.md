@@ -2,12 +2,12 @@
 audience: agent
 canonical: .agents/references/tocklauncher.md
 owner: TockTeam
-last_reviewed: 2026-09-12
+last_reviewed: 2026-09-19
 ---
 
 # TockLauncher
 
-_Last reviewed: 2026-09-12_
+_Last reviewed: 2026-09-19_
 
 TockLauncher is TockTeam Desktop's native keystroke launcher. It selectively ports the reviewed Ueli `v9.29.0` behavior while keeping the Electron lifecycle, renderer, persistence, security boundary, platform effects, and product routing under TockTeam ownership.
 
@@ -138,7 +138,7 @@ The settings shortcut opens the canonical workbench settings page. There is no s
 
 | Family | Extensions | Behavior |
 | --- | --- | --- |
-| Local transformations | Base64 Conversion, Calculator, Color Converter, Password Generator, Quick Formatter, Rowland Text Editor, UUID / GUID Generator | Pure transformations; copy effects remain main-owned. Calculator validates normalized mathjs syntax against finite node/function sets before evaluation, rejecting assignments, indirect/evaluator calls, and collection algebra; bounded collections are display-only. |
+| Local transformations | Base64 Conversion, Calculator, Color Converter, Password Generator, Quick Formatter, Rowland Text Editor, UUID / GUID Generator | Pure transformations; copy effects remain main-owned. Calculator validates normalized mathjs syntax against finite node/function sets before evaluation, rejecting assignments, indirect/evaluator calls, and collection algebra; bounded collections are display-only, and allocation limits account for outer arrays even when an inner dimension is zero. Ranges validate parsed numeric endpoints and count the inclusive, tolerance-aware progression before evaluation, rejecting non-advancing floating-point steps and more than 10,000 items. Decimal-place precision applies to signed values and full scientific-notation values, including unit magnitudes, before display and copying. |
 | Discovery | Application Search, Browser Bookmarks, JetBrains Toolbox, Visual Studio Code | Bounded platform scans, identity capture, SQLite workers, packaged/native icons, and immediate action revalidation. |
 | File search | File Search, Simple File Search | macOS `mdfind`, an allowlisted Windows Everything executable, and home-contained bounded directory scans. |
 | Network | Currency Conversion, Custom Web Search, DeepL Translator, Web Search | Fixed provider requests, browser search actions, bounded bodies/responses, cancellation, deadlines, and main-owned secrets. |
@@ -151,6 +151,8 @@ The settings shortcut opens the canonical workbench settings page. There is no s
 The distribution contains three reviewed Raycast compatibility artifacts. Google Translate is `plugins/trusted-raycast/vendor/google-translate.tar`, SHA-256 `7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac`; Kaomoji Search and Can I Use have their exact pins in `src/trusted-raycast-descriptors.ts`. Each preserves its reviewed source and dependency closure, and each is admitted before it can run.
 
 These trusted children are not OS sandboxes. They have the launching account's filesystem, network, and process authority. The security boundary is instead finite admission and ownership: exact archive and derived-file hashes, isolated preview, journaled current/previous rotation, recovery, authenticated owner/session/generation/revision IPC, bounded messages, main-owned native effects, private process-group cleanup, and renderers that receive no extension functions, HTML, React, Node, or generic RPC. New bytes require a new reviewed TockTeam build. Bundled features install and enable automatically after that release-time review; user disablement remains persistent, and selected text never falls back to Clipboard.
+
+Translate resolves Google's fixed origin through Electron main's system proxy settings on each command launch. An explicit extension proxy takes precedence; HTTP/HTTPS proxies and direct connections are supported, while unsupported proxy rules fail without silently bypassing them. The first-party network adapter applies the same route to the unchanged source's token lookup and translation requests, with a 10-second deadline covering each request and response body. Proxy configuration stays in the trusted child, not renderer projections or persisted preference defaults.
 
 Compatibility extends only to these exact artifacts and their reviewed API subsets:
 
@@ -197,7 +199,7 @@ Windows shortcut elevation is scan-bound and confirmation-gated. Only a bounded 
 
 ## Search and Action Authorization
 
-`createLauncherCoreSearch()` supports `fuzzysort` and `Fuse.js`, bounded fuzziness and result counts, alphabetical empty-search behavior, instant providers, favorites, exclusions, history, rescan status, and isolated provider failures. Whitespace-only queries follow empty-search behavior.
+`createLauncherCoreSearch()` supports `fuzzysort` and `Fuse.js`, bounded fuzziness and result counts, alphabetical empty-search behavior, instant providers, favorites, exclusions, history, rescan status, and isolated provider failures. Whitespace-only queries follow empty-search behavior. A cancelled or superseded initial scan cannot publish the inert cached index. Excluding an item removes it from both favorite membership and ordering before later favorite writes.
 
 `LauncherActionStore` is the execution boundary:
 
@@ -233,6 +235,24 @@ Host resolution must contain only public addresses and is capped at 32 results. 
 DeepL keys stay encrypted and main-owned. They never enter renderer snapshots, logs, exports, result labels, or error payloads.
 
 ## Settings and Persistence
+
+### Per-Extension Settings
+
+Expand **TockLauncher** in the Settings sidebar. **General** opens shared search, appearance, lifecycle, browser, storage and update controls. **Extensions** lists installed, platform-supported compatibility extensions, including disabled ones so they can be re-enabled. **Built-In Tools** is a separate, initially collapsed group of platform-supported `LAUNCHER_COMPOSITION` tools; Windows Control Panel is hidden on macOS. Each group has its own search field for names and setting labels. Installation visibility comes from existing read-only settings snapshots and refreshes when Extensions is toggled or the window regains focus; reading this list never installs or starts an extension. Loading, empty, and failed reads are distinguished. All 27 destination identities remain registered for existing deep links, unavailable-state explanations, and saved settings; hiding an entry never deletes its data. Deep links open the relevant group and clear its search. The sidebar and forms are localized in English and Chinese. Provider editors and DeepL's write-only key belong to their individual pages. There is no second set of navigation tabs or oversized extension list inside the content area.
+
+**Extension Settings** in a launcher's result action menu or active compatibility-command header opens that exact canonical page. Ctrl/Cmd+, still opens TockLauncher settings. Navigation accepts only finite identities; it grants no command, filesystem or installation authority. Unavailable and no-options extensions keep their destinations and saved compatibility values.
+
+Editors stay mounted while moving between extensions or General. Rejected text/JSON, workflow and folder drafts remain editable; Escape or leaving Settings offers **Keep Editing** or **Discard and Leave** when changes remain unsaved. A pending write is not an accepted snapshot. Existing storage/import/export/reset scope is unchanged and does not include the separate compatibility preference files.
+
+Google Translate exposes **Languages**, **Behavior** and **Network**. **Advanced → Proxy Override** accepts only an explicit HTTP/HTTPS URL without credentials; **Use System Proxy** clears it. Detected system proxies never enter settings snapshots. Legacy private overrides are redacted and retained unless explicitly cleared or replaced. Language defaults do not reset saved language sets. Kaomoji exposes **Display Mode** and **Primary Action**. Can I Use exposes display preferences and pinned exact **Browser Targets**, not automatic/workspace selectors.
+
+Compatibility reads and writes use the workbench-guarded `getExtension`, `updateExtension` and `setExtensionEnabled` methods. Main selects the existing stores. Opening a page neither starts a child nor installs/enables an artifact. Enablement remains an explicit operation over approved installed trust state. Canonical and command-inline writers share serialized, opaque revision-fenced updates; conflicts preserve drafts and **Refresh Settings** merges unchanged fields before another save. Changing enablement never acknowledges a newer preference revision. Preference changes take effect on the next command invocation.
+
+All expandable TockLauncher Settings sidebar menus must use `LauncherSettingsMenu` from `src/launcher-settings-navigation.tsx`, including future nested menus. It provides the shared 200 ms reversible reveal and rotating arrow, skips motion under `prefers-reduced-motion: reduce`, and keeps closed content mounted but inert and hidden from assistive technology. Do not duplicate disclosure markup or add per-menu animation styles.
+
+`src/launcher-extension-settings.ts` is an inert finite presentation/ownership catalog, not a plugin loader or form engine. `scripts/trusted-raycast-settings-catalog.mjs --check` verifies language and browser-target choices against admitted pinned data. The pinned DSH shell exposes flat section slots. `src/launcher-settings-navigation.tsx` contributes a lifecycle-owned sidebar portal through `settings.action`, preserving the original shell button as its activation owner and keeping all editors in the one `settings.section` draft boundary. No installed DSH code is modified. Run `node scripts/launcher-extension-settings-proof.mts` after the build/runtime staging for the actual pinned Settings shell in hidden Electron, real preload/IPC, isolated persistence, sidebar/draft recovery, locale/theme/layout and next-invocation proofs. It never takes foreground control and cleans its full process trees.
+
+### Storage Ownership
 
 The generated catalog contains 100 reviewed settings rows plus two internal keys (`favorites` and `searchEngine.excludedItems`), for 102 runtime keys. `launcher-setting-keys.ts` and `launcher-settings-contract.ts` accept only these keys and typed, bounded values. `launcher-settings-model.ts` distinguishes editable, status-only, and internal values: compatibility hotkey spelling, automatic-rescan/interval, language, and theme rows are not independent runtime controls. Lifecycle/custom-browser controls disable inapplicable platforms; discovery folder fields remain editable compatibility data even for another platform.
 
@@ -288,7 +308,7 @@ Persistence rules:
 
 Node has no portable descriptor-relative compare-and-replace primitive. External publication is therefore not an atomic replacement with uninterrupted destination availability: displacement plus no-overwrite publication preserves conflicting versions rather than claiming a race-free save. Keep this confined to the user-selected file in its user-writable parent; never widen it to privileged/shared-directory mutation.
 
-Preferences for all three compatibility features are validated and saved through main. Translate/Kaomoji cached state is different: the trusted child writes a main-selected state path through `useCachedState`. Kaomoji has a bounded validated state loader; legacy Translate cached-state reads are not covered by the repository's blanket bounded-storage guarantee.
+Preferences for all three compatibility features are validated and saved through main. Translate/Kaomoji cached state is different: the trusted child writes a main-selected state path through `useCachedState`. Both use bounded regular-file reads and validated atomic writes. Translate uses its dedicated compatibility module, a 512 KiB serialized limit, and at most 128 saved language sets validated against the pinned language catalog; invalid cached files are ignored without being rewritten on load.
 
 ## Lifecycle
 

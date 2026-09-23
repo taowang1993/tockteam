@@ -1,6 +1,6 @@
 // @ts-nocheck -- CodeMirror's declaration graph is not consumable by the pinned Typert NodeNext analyzer; the public adapter remains runtime-typed by CodeMirror.
 import { minimalSetup } from 'codemirror'
-import { isolateHistory } from '@codemirror/commands'
+import { invertedEffects, isolateHistory } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { yamlFrontmatter } from '@codemirror/lang-yaml'
 import { Tag, tags } from '@lezer/highlight'
@@ -23,6 +23,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  buildSourceChange,
   preserveEditorLineEndings,
   shouldAddEditorSelectionRange,
   shouldStartEditorRectangularSelection,
@@ -33,6 +34,7 @@ import { buildSourceEmbedWidgetExtension, refreshSourceEmbedWidgets } from './so
 import { applyEditorCommandToSelections, type EditorCommandId } from './editor-commands.ts'
 import { clampEditorSearchIndex, moveEditorSearchIndex, searchEditorMatches, type EditorSearchState } from './editor-search.ts'
 import firaCodeUrl from './fonts/FiraCode-VF.woff2'
+import { buildLivePreviewExtension, refreshLivePreview } from './live-preview-decorations.ts'
 
 const firaCode = typeof FontFace === 'undefined'
   ? null
@@ -41,6 +43,41 @@ const firaCode = typeof FontFace === 'undefined'
 function normalizeEditorSource(source: string): string {
   return source.replace(/\r\n?/gu, '\n')
 }
+
+const restoreSeparators = StateEffect.define<readonly string[]>()
+const separators = (source: string): string[] => source.match(/\r\n|\r|\n/gu) ?? []
+const authoredSource = StateField.define<string>({
+  create: state => state.doc.toString(),
+  update(source, transaction) {
+    const restore = transaction.effects.filter(effect => effect.is(restoreSeparators)).at(-1)
+    if (restore) {
+      let index = 0
+      return transaction.newDoc.toString().replace(/\n/gu, () => restore.value[index++] ?? '\n')
+    }
+    if (!transaction.docChanged) return source
+    let raw = 0, canonical = 0, copied = 0
+    const parts: string[] = []
+    const offset = (position: number): number => {
+      while (canonical < position && raw < source.length) {
+        if (source[raw] === '\r' && source[raw + 1] === '\n') raw++
+        raw++; canonical++
+      }
+      return raw
+    }
+    transaction.changes.iterChanges((from, to, _newFrom, _newTo, inserted) => {
+      const start = offset(from), end = offset(to)
+      const original = source.slice(start, end)
+      const text = inserted.toString()
+      // Bulk replacements must not rescan the remaining document per match.
+      const basis = inserted.lines > 1 && !original
+        ? source.slice(start).match(/\r\n|\r|\n/u)?.[0] ?? separators(source).at(-1) ?? '\n'
+        : original
+      parts.push(source.slice(copied, start), inserted.lines > 1 ? preserveEditorLineEndings(basis, text) : text)
+      copied = end
+    })
+    return parts.join('') + source.slice(copied)
+  },
+})
 
 const EMPTY_EXTENSIONS: readonly unknown[] = Object.freeze([])
 const searchDecorationsEffect = StateEffect.define<{ current: number | null; query: string }>()
@@ -208,6 +245,7 @@ function sourceDecorations(state: EditorState) {
 
 function buildEditorExtensions(props: {
   editable: boolean
+  livePreview: boolean
   extraExtensions: Extension[]
   onContentChangeRef: { current: SourceEditorProps['onContentChange'] }
   onSelectionChangeRef: { current: SourceEditorProps['onSelectionChange'] }
@@ -232,7 +270,7 @@ function buildEditorExtensions(props: {
     const result = applyEditorCommandToSelections(view.state.doc.toString(), command, view.state.selection.ranges)
     if (result.source === view.state.doc.toString()) return false
     view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: result.source },
+      changes: buildSourceChange(view.state.doc.toString(), result.source),
       selection: EditorSelection.create(result.ranges.map(range => EditorSelection.range(range.from, range.to)), view.state.selection.mainIndex),
     })
     return true
@@ -240,6 +278,14 @@ function buildEditorExtensions(props: {
   let plainTextPaste = false
   const extensions: Extension[] = [
     minimalSetup,
+    authoredSource.init(() => props.sourceRef.current),
+    // Undo retains only changed newline metadata, never whole-note snapshots.
+    invertedEffects.of(transaction => {
+      if (!transaction.docChanged) return []
+      const before = separators(transaction.startState.field(authoredSource))
+      const after = separators(transaction.state.field(authoredSource))
+      return before.join('\0') === after.join('\0') ? [] : [restoreSeparators.of(before)]
+    }),
     EditorView.theme({
       '.cm-content': { caretColor: 'var(--tt-text)' },
       '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--tt-text)' },
@@ -253,7 +299,7 @@ function buildEditorExtensions(props: {
       { tag: highlightTag, backgroundColor: 'var(--dsw-specific-markdown-highlight)' },
     ])),
     ...(props.showFoldGutter ? [foldGutter()] : []),
-    scrollPastEnd(),
+    ...(props.livePreview ? [] : [scrollPastEnd()]),
     EditorState.readOnly.of(!props.editable),
     EditorView.editable.of(props.editable),
     ...(props.editable ? [
@@ -273,14 +319,13 @@ function buildEditorExtensions(props: {
     EditorView.contentAttributes.of({
       spellcheck: props.spellCheck ? 'true' : 'false',
     }),
-    EditorView.decorations.compute(['doc'], sourceDecorations),
+    ...(props.livePreview ? [] : [EditorView.decorations.compute(['doc'], sourceDecorations)]),
     EditorView.updateListener.of((update: ViewUpdate) => {
-      if (update.docChanged) {
-        const canonical = update.state.doc.toString()
-        props.sourceRef.current = preserveEditorLineEndings(props.sourceRef.current, canonical)
+      if (update.docChanged && props.sourceRef.current !== update.state.field(authoredSource)) {
+        props.sourceRef.current = update.state.field(authoredSource)
         props.onContentChangeRef.current?.(props.sourceRef.current)
         const query = props.searchQueryRef.current
-        const result = searchEditorMatches(canonical, query)
+        const result = searchEditorMatches(update.state.doc.toString(), query)
         const matches = result.matches
         const current = clampEditorSearchIndex(matches.length, props.searchCurrentIndexRef.current)
         props.searchCurrentIndexRef.current = current
@@ -343,6 +388,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   const parentRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<EditorView | null>(null)
   const sourceRef = useRef(props.content)
+  const localEditRevisionRef = useRef(props.localEditRevision)
   const embedsRef = useRef(props.resolvedEmbeds ?? [])
   const onContentChangeRef = useRef(props.onContentChange)
   const onSelectionChangeRef = useRef(props.onSelectionChange)
@@ -356,7 +402,12 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   const lastFoldIdRef = useRef<number | null>(null)
   const lastSelectionRequestIdRef = useRef<number | null>(null)
   const appliedSelectionViewRef = useRef<EditorView | null>(null)
+  const selectionRequestRef = useRef(props.selectionRequest)
+  useEffect(() => { selectionRequestRef.current = props.selectionRequest }, [props.selectionRequest])
   const editable = props.editable !== false
+  const livePreview = props.livePreview === true
+  const openUrlRef = useRef(props.onOpenExternalUrl)
+  useEffect(() => { openUrlRef.current = props.onOpenExternalUrl }, [props.onOpenExternalUrl])
   const showFoldGutter = props.showFoldGutter === true
   useEffect(() => {
     if (firaCode === null) return
@@ -364,14 +415,15 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     void firaCode.load().catch(() => undefined)
   }, [])
   const userExtensions = props.extraExtensions ?? EMPTY_EXTENSIONS
-  const chromeExtensions = useMemo(() => [
-    ...buildSourceEmbedWidgetExtension(() => embedsRef.current),
-  ], [])
+  const chromeExtensions = useMemo(() => livePreview
+    ? buildLivePreviewExtension(() => embedsRef.current, url => openUrlRef.current?.(url))
+    : buildSourceEmbedWidgetExtension(() => embedsRef.current), [livePreview])
   const extraExtensions = useMemo(() => [...chromeExtensions, ...userExtensions], [chromeExtensions, userExtensions])
   useEffect(() => {
     embedsRef.current = props.resolvedEmbeds ?? []
-    refreshSourceEmbedWidgets(editorRef.current)
-  }, [props.resolvedEmbeds])
+    if (livePreview) editorRef.current?.dispatch({ effects: refreshLivePreview.of(undefined) })
+    else refreshSourceEmbedWidgets(editorRef.current)
+  }, [livePreview, props.resolvedEmbeds])
   useEffect(() => { onContentChangeRef.current = props.onContentChange }, [props.onContentChange])
   useEffect(() => { onSelectionChangeRef.current = props.onSelectionChange }, [props.onSelectionChange])
   useEffect(() => { onWidgetStateRef.current = props.onWidgetState }, [props.onWidgetState])
@@ -379,6 +431,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
 
   const extensions = useMemo(() => buildEditorExtensions({
     editable,
+    livePreview,
     extraExtensions,
     onContentChangeRef,
     onSearchStateRef,
@@ -389,19 +442,22 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     showFoldGutter,
     sourceRef,
     spellCheck: props.spellCheck !== false,
-  }), [editable, extraExtensions, showFoldGutter, props.spellCheck])
+  }), [editable, livePreview, extraExtensions, showFoldGutter, props.spellCheck])
 
   useEffect(() => {
     const parent = parentRef.current
     if (!parent) return
     const view = new EditorView({
       parent,
-      state: EditorState.create({ doc: normalizeEditorSource(sourceRef.current), extensions }),
+      state: EditorState.create({
+        doc: normalizeEditorSource(sourceRef.current), extensions,
+        selection: { anchor: livePreview ? (normalizeEditorSource(sourceRef.current).match(/^---\n[\s\S]*?\n(?:---|\.\.\.)(?:\n|$)/u)?.[0].length ?? 0) : 0 },
+      }),
     })
     editorRef.current = view
     if (props.editorViewRef) props.editorViewRef.current = view
     appliedSelectionViewRef.current = null
-    const selectionRequest = props.selectionRequest
+    const selectionRequest = selectionRequestRef.current
     if (selectionRequest !== null && selectionRequest !== undefined
       && Number.isSafeInteger(selectionRequest.id)
       && selectionRequest.id >= 0
@@ -409,6 +465,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
       lastSelectionRequestIdRef.current = selectionRequest.id
       if (applySelectionRequest(view, selectionRequest)) appliedSelectionViewRef.current = view
     }
+    onSelectionChangeRef.current?.(selectionSnapshot(view))
     onWidgetStateRef.current?.(projectEditorWidgets(sourceRef.current, selectionSnapshot(view).main))
     return () => {
       onWidgetStateRef.current?.([])
@@ -416,7 +473,7 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
       if (editorRef.current === view) editorRef.current = null
       if (props.editorViewRef?.current === view) props.editorViewRef.current = null
     }
-  }, [extensions, props.editorViewRef, showFoldGutter])
+  }, [extensions, livePreview, props.editorViewRef, showFoldGutter])
 
   const publishSearch = (view: EditorView, query: string, requestedIndex: number | null, error?: string): EditorSearchState => {
     const result = searchEditorMatches(view.state.doc.toString(), query)
@@ -437,20 +494,32 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
 
   useEffect(() => {
     const view = editorRef.current
-    if (view === null || sourceRef.current === props.content) return
-    // Synchronize peer content before consuming commands from the same render.
-    const content = normalizeEditorSource(props.content)
-    const selection = view.state.selection.main
+    if (!view) return
+    const localEdit = localEditRevisionRef.current !== props.localEditRevision
+    localEditRevisionRef.current = props.localEditRevision
+    const change = buildSourceChange(view.state.doc.toString(), normalizeEditorSource(props.content))
+    if (!change && view.state.field(authoredSource) === props.content) return
     sourceRef.current = props.content
-    const { scrollTop, scrollLeft } = view.scrollDOM
-    view.setState(EditorState.create({ doc: content, extensions, selection: {
-      anchor: Math.min(selection.anchor, content.length), head: Math.min(selection.head, content.length),
-    } }))
-    view.scrollDOM.scrollTop = scrollTop
-    view.scrollDOM.scrollLeft = scrollLeft
+    if (localEdit) {
+      view.dispatch({ changes: change ?? [], effects: restoreSeparators.of(separators(props.content)), annotations: isolateHistory.of('full') })
+    } else {
+      // Synchronize authoritative peer content before consuming same-render commands.
+      const { scrollTop, scrollLeft } = view.scrollDOM
+      const focused = view.hasFocus
+      const selection = view.state.selection.main
+      const content = normalizeEditorSource(props.content)
+      view.setState(EditorState.create({ doc: content, extensions, selection: {
+        anchor: Math.min(selection.anchor, content.length), head: Math.min(selection.head, content.length),
+      } }))
+      if (livePreview) view.dispatch({ effects: refreshLivePreview.of(focused) })
+      view.scrollDOM.scrollTop = scrollTop
+      view.scrollDOM.scrollLeft = scrollLeft
+      onSelectionChangeRef.current?.(selectionSnapshot(view))
+      onWidgetStateRef.current?.(projectEditorWidgets(props.content, selectionSnapshot(view).main))
+    }
     view.dispatch({ effects: searchDecorationsEffect.of({ query: searchQueryRef.current, current: searchCurrentIndexRef.current }) })
     publishSearch(view, searchQueryRef.current, searchCurrentIndexRef.current)
-  }, [props.content, extensions])
+  }, [extensions, livePreview, props.content, props.localEditRevision])
 
   useEffect(() => {
     const view = editorRef.current
@@ -520,13 +589,19 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
       publishSearch(view, query, current, 'Replacement exceeds the editor size limit.')
       return
     }
-    if (request.action === 'replace-all') {
-      view.dispatch({ annotations: isolateHistory.of('full'), changes: selectedMatches.map(match => ({ from: match.from, to: match.to, insert: replacement })) })
-    } else {
-      const match = selectedMatches[0]!
-      view.dispatch({ annotations: isolateHistory.of('full'), changes: { from: match.from, to: match.to, insert: replacement }, scrollIntoView: true, selection: { anchor: match.from, head: match.from + replacement.length } })
-      view.focus()
+    const match = selectedMatches[0]!
+    const transaction = view.state.update({
+      annotations: isolateHistory.of('full'),
+      changes: selectedMatches.map(match => ({ from: match.from, to: match.to, insert: replacement })),
+      ...(request.action === 'replace-all' ? {} : { scrollIntoView: true, selection: { anchor: match.from, head: match.from + replacement.length } }),
+    })
+    // Canonical offsets exclude CRLF bytes; check the authored candidate before dispatch.
+    if (new TextEncoder().encode(transaction.state.field(authoredSource)).byteLength > 2_000_000) {
+      publishSearch(view, query, current, 'Replacement exceeds the editor size limit.')
+      return
     }
+    view.dispatch(transaction)
+    if (request.action !== 'replace-all') view.focus()
     publishSearch(view, query, current)
   }, [props.searchRequest])
 

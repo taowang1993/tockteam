@@ -182,7 +182,7 @@ try {
   await run(`
     if ((await launcher.evaluate(() => window.__canProofViolations)).length) throw Error('Can I Use violated the launcher CSP');
     await launcher.keyboard.press('Escape');
-    for (const [query, id, label] of [['Translate', 'google-translate:translate', 'Google Translate'], ['Search Kaomoji', 'kaomoji-search:index', 'Kaomoji Search']]) {
+    for (const [query, id, label] of [['Translate', 'google-translate:translate', 'Google Translate'], ['Kaomoji Search', 'kaomoji-search:index', 'Kaomoji Search']]) {
       await launcher.locator('#launcher-search').fill(query); await launcher.locator('[data-result-id="trusted-raycast:' + id + '"]').waitFor(); await launcher.locator('#launcher-search').press('Enter');
       await launcher.locator('section[aria-label="' + label + '"]').waitFor(); await launcher.keyboard.press('Escape');
     }

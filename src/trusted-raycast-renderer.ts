@@ -1,4 +1,4 @@
-import { Check, CircleHelp, CircleX, ChevronDown, ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
+import { Settings, Check, CircleHelp, CircleX, ChevronDown, ChevronLeft, Hourglass, SearchX, type IconNode } from 'lucide'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import { isTrustedRaycastKaomojiSvg, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewNode } from './trusted-raycast-contract.ts'
 
@@ -64,7 +64,9 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   const close = document.createElement('button'); close.type = 'button'; close.className = 'launcher-command-footer-action !size-8 !min-h-8 !px-0'; close.append(icon(ChevronLeft, 'size-5')); close.setAttribute('aria-label', zh ? '返回结果' : 'Back to Results'); close.addEventListener('click', () => current?.root?.props.languageCollection === true ? popNavigation() : onClose())
   const titleIcon = document.createElement('img'); titleIcon.setAttribute('src', './trusted-raycast/google-translate.png'); titleIcon.setAttribute('alt', ''); titleIcon.className = 'size-6 rounded-md'
   const title = document.createElement('h2'); title.textContent = 'Google Translate'; title.className = 'm-0 min-w-0 truncate text-sm font-semibold'
-  header.append(close, titleIcon, title)
+  const settingsButton = document.createElement('button'); settingsButton.type = 'button'; settingsButton.className = 'launcher-command-footer-action ml-auto'; settingsButton.setAttribute('aria-label', zh ? '扩展设置' : 'Extension Settings'); settingsButton.title = zh ? '扩展设置' : 'Extension Settings'; settingsButton.append(icon(Settings, 'size-[18px]'))
+  settingsButton.addEventListener('click', () => { if (current) void bridge.openSettings(current.extensionId).catch(() => { error.textContent = zh ? '无法打开设置。' : 'Settings could not be opened.' }) })
+  header.append(close, titleIcon, title, settingsButton)
   const hero = document.createElement('div'); hero.className = 'flex flex-col items-center px-6 pb-2 text-center'; hero.hidden = true
   const logoFrame = document.createElement('div'); logoFrame.className = 'launcher-preference-logo mb-5 flex size-16 items-center justify-center rounded-full'
   const logo = document.createElement('img'); logo.setAttribute('src', './trusted-raycast/google-translate.png'); logo.setAttribute('alt', 'Google Translate'); logo.className = 'size-8'; logoFrame.append(logo)
@@ -528,6 +530,14 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
       button.addEventListener('click', () => invoke(action)); (preferenceSetup ? footerActions : formArea).append(button)
     }
   }
+  // Setup is a window-level command: clicking blank space or replacing fields can leave focus on body.
+  const onPreferenceShortcut = (event: KeyboardEvent): void => {
+    if (!element.isConnected || !preferenceSetup || event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.repeat) return
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
+      event.preventDefault(); invoke(submitAction)
+    }
+  }
+  document.defaultView?.addEventListener('keydown', onPreferenceShortcut)
   element.addEventListener('keydown', event => {
     // Do not cancel native IME behavior; stop Escape before the owning launcher closes this view.
     if (event.isComposing || event.keyCode === 229) { event.stopPropagation(); return }
@@ -555,7 +565,6 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && (target === input || target === row?.item) && !event.metaKey && !event.ctrlKey && !event.altKey && rows.length) {
       event.preventDefault(); selected = (selected + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length; syncPrimaryFooter(); rows[selected]!.item.focus(); return
     }
-    if (preferenceSetup && event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) { event.preventDefault(); invoke(submitAction); return }
     if (event.key === 'Enter' && (event.target === input || event.target === row?.item) && !event.altKey && !event.shiftKey) { event.preventDefault(); invoke(row?.actions[event.metaKey || event.ctrlKey ? 1 : 0]); return }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && actionOwner) { event.preventDefault(); actionOwner.menu.open = !actionOwner.menu.open; if (actionOwner.menu.open) actionOwner.buttons.find(button => !button.disabled)?.focus(); else actionOwner.item.focus(); return }
     for (const action of actionOwner?.actions ?? []) {
@@ -578,7 +587,7 @@ export function createTrustedRaycastView(document: Document, bridge: LauncherPre
   })
   const focus = (): void => { if (firstFormControl && !formArea.hidden) firstFormControl.focus({ focusVisible: false }); else if (!searchRow.hidden) input.focus(); else rows[selected]?.item.focus() }
   return {
-    dispose() { current = undefined; navigationPending = undefined; themeImages = [] },
+    dispose() { document.defaultView?.removeEventListener('keydown', onPreferenceShortcut); current = undefined; navigationPending = undefined; themeImages = [] },
     element,
     focus,
     refreshTheme,

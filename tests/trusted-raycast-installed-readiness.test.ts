@@ -34,15 +34,17 @@ for (const extensionId of ['google-translate', 'kaomoji-search', 'can-i-use'] as
       view.update(ready)
       assert.equal(installedCommandReady(document, extensionId), true, 'healthy real renderer must pass')
       if (extensionId === 'google-translate') {
-        view.update({ type: 'toast', extensionId, sessionId: 's', generation: 'g', revision: 0, style: 'failure', title: 'Selected Text Unavailable', message: 'Selected text is disabled in the bounded visual proof. Manual input is available.' })
-        assert.equal(installedCommandReady(document, extensionId), false)
-        await waitForInstalledCommand({ evaluate: async (expression: string) => dom.window.eval(expression) }, async (fetch: () => Promise<unknown>, predicate: (value: unknown) => boolean) => {
+        const wait = async (fetch: () => Promise<unknown>, predicate: (value: unknown) => boolean) => {
           for (let attempt = 0; attempt < 10; attempt++) { const value = await fetch(); if (predicate(value)) return value; await new Promise(resolve => setImmediate(resolve)) }
-          throw new Error('Command did not recover through manual input')
-        }, extensionId)
-        assert.equal(events.at(-1)?.kind, 'searchChanged')
-        assert.equal(events.at(-1)?.value, '', 'denied selection must not trigger a translation request')
-        assert.equal(installedCommandReady(document, extensionId), true)
+          throw new Error('Command is not ready')
+        }
+        const launcher = { evaluate: async (expression: string) => dom.window.eval(expression) }
+        await waitForInstalledCommand(launcher, wait, extensionId)
+        assert.deepEqual(events, [], 'the idle command is ready without synthetic input')
+        view.update({ type: 'toast', extensionId, sessionId: 's', generation: 'g', revision: 0, style: 'failure', title: 'Selected Text Unavailable', message: 'Selected text is disabled in the bounded visual proof. Manual input is available.' })
+        await assert.rejects(waitForInstalledCommand(launcher, wait, extensionId), /Command is not ready/)
+        assert.deepEqual(events, [], 'the smoke must not hide a regressed startup error')
+        view.update({ ...ready, type: 'patch', revision: 1 })
       }
       const section = view.element
       const input = document.querySelector('input')!

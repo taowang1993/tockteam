@@ -102,6 +102,7 @@ export interface WorkbenchSearchPreview {
     revision: string;
 }
 export interface WorkbenchRouteSnapshot {
+    localEditRevision?: number | undefined;
     mergeRecoveryPending?: boolean;
     linkedLoading?: boolean;
     linkedError?: string | null;
@@ -386,7 +387,7 @@ export declare class WorkbenchRouteController {
     private renameActivePath;
     select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean, newTab?: boolean, refresh?: boolean, ownerCurrent?: () => boolean): Promise<boolean>;
     revealActiveFile(): Promise<boolean>;
-    edit(source: string): void;
+    edit(source: string, originPaneId?: string): void;
     setSourceEditorSelection(start: number, end: number): void;
     setSelection(start: number, end: number): void;
     setProperty(key: string, value: PropertyValue): boolean;

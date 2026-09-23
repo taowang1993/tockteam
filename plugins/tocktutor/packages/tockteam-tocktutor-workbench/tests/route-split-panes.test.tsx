@@ -10,7 +10,7 @@ const revision = `file:${'a'.repeat(64)}`
 const ok = <T,>(value: T) => Promise.resolve({ ok: true as const, value })
 afterEach(cleanup)
 
-it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent editors and keeps their seats through nested splits: %s', async check => {
+it.each(['editors', 'assistant', 'tabs', 'live-preview'] as const)('mounts real independent editors and keeps their seats through nested splits: %s', async check => {
   const values = new Map<string, string>()
   const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) }, removeItem: (key: string) => { values.delete(key) } }
   const files = new Map([['One.md', 'alpha\n'], ['Two.md', 'second\n']])
@@ -24,7 +24,7 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
   } } as unknown as WorkbenchRouteRemote
   const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), storage)
   await controller.syncLocation('/tocktutor/One.md')
-  controller.setMode('source')
+  controller.setMode(check === 'live-preview' ? 'live-preview' : 'source')
   const left = controller.getSnapshot().focusedPaneId
   function Harness() {
     const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
@@ -113,12 +113,12 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
   expect(restored.getSnapshot().layout).toEqual(layout)
   expect(restored.getPaneSnapshot(left).source).toBe('left\n')
   expect(restored.getPaneSnapshot(right).source).toBe('right\n')
-  expect(restored.getPaneSnapshot(left).mode).toBe('source')
+  expect(restored.getPaneSnapshot(left).mode).toBe(check === 'live-preview' ? 'live-preview' : 'source')
   expect(restored.getPaneSnapshot(right).mode).toBe('source')
   await restored.dispose()
 })
 
-it('switches only the protected pane to Source Mode from its notice after another pane was focused', async () => {
+it('switches only the protected pane to Source Mode after another pane was focused', async () => {
   const protectedSource = '> [!note]\n> Keep this exact.\n'
   const otherSource = '# Other\n'
   const otherDraft = '# Other draft\n'
@@ -140,7 +140,7 @@ it('switches only the protected pane to Source Mode from its notice after anothe
   }
   const view = render(<Harness />)
   try {
-    await waitFor(() => expect(view.container.querySelectorAll('.ProseMirror')).toHaveLength(1), { timeout: 15_000 })
+    await waitFor(() => expect(view.container.querySelectorAll('.cm-editor')).toHaveLength(1), { timeout: 15_000 })
     await act(async () => { await controller.splitPane(owner, 'horizontal') })
     const other = controller.getSnapshot().focusedPaneId
     await act(async () => { await controller.select('Other.md'); controller.edit(otherDraft) })
@@ -150,10 +150,12 @@ it('switches only the protected pane to Source Mode from its notice after anothe
     expect(controller.getPaneSnapshot(other).mode).toBe('live-preview')
 
     const ownerSeat = () => Array.from(view.container.querySelectorAll<HTMLElement>('[data-pane-id]')).find(node => node.dataset.paneId === owner)!
-    await waitFor(() => expect(within(ownerSeat()).getByRole('button', { name: 'Edit in Source Mode' })).toBeTruthy(), { timeout: 15_000 })
+    await waitFor(() => expect(within(ownerSeat()).getByRole('button', { name: 'More Note Actions' })).toBeTruthy(), { timeout: 15_000 })
     expect(controller.getSnapshot().focusedPaneId).toBe(other)
-    fireEvent.pointerDown(within(ownerSeat()).getByRole('button', { name: 'Edit in Source Mode' }), { button: 0, pointerId: 1 })
-    fireEvent.click(within(ownerSeat()).getByRole('button', { name: 'Edit in Source Mode' }))
+    const ownerActions = within(ownerSeat()).getByRole('button', { name: 'More Note Actions' })
+    fireEvent.keyDown(ownerActions, { key: 'Enter' })
+    const sourceMode = await screen.findByRole('menuitemradio', { name: 'Source Mode' })
+    fireEvent.click(sourceMode)
     await waitFor(() => expect(controller.getPaneSnapshot(owner).mode).toBe('source'))
     expect(controller.getPaneSnapshot(owner).source).toBe(protectedSource)
     expect(controller.getPaneSnapshot(owner).saveStatus).toBe('saved')

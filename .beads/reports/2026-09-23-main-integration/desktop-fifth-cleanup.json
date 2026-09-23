@@ -1,0 +1,9 @@
+{
+  "attempt": "Linked Tab Ownership Check",
+  "id": "f8ba65a8-13c1-4ce1-8efb-ea523d095ed6",
+  "rootPid": 63579,
+  "recordedPids": [63579, 63581, 63582, 63585, 63589, 63593, 63596, 63605, 63606, 63607, 63608, 63609, 63610, 63611, 63612, 63721, 63804, 63805, 63806, 63807, 63808, 63809, 63810, 63811],
+  "stopped": true,
+  "remaining": [],
+  "verdict": "85 assertions passed, no runtime errors. Gate incomplete: the verifier expected an unpinned linked view to retain an old path after its source tab was reused. Existing session contract and component tests require pinning the source tab for that retention scenario. No production source change was made."
+}

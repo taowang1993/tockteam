@@ -31,6 +31,7 @@ export declare function RichReadingView(props: {
 }): ReactNode;
 export declare function LivePreviewView(props: {
     documentKey: string;
+    localEditRevision?: number | undefined;
     embeds?: readonly ResolvedEmbedNode[] | undefined;
     onAddProperty?: ((key: string) => boolean) | undefined;
     onEdit(source: string): void;

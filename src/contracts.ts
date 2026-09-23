@@ -5,7 +5,10 @@ import type {
 } from './desktop-app-update.ts'
 import type { DesktopLauncherState } from './launcher-window-contract.ts'
 import type { LauncherThemeSource } from './launcher-theme.ts'
+import type { LauncherExtensionId } from './launcher-extension-settings.ts'
 import type { LauncherLocale } from './launcher-contract.ts'
+import type { TrustedSettingsUpdate, TrustedSettingsResult, TrustedSettingsSnapshot } from './trusted-raycast-settings-contract.ts'
+import type { TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 import type { LauncherSettingsSnapshot } from './launcher-settings-contract.ts'
 import type { LauncherWorkbenchRoute, TockTeamDestination } from './launcher-navigation.ts'
 
@@ -21,7 +24,7 @@ export type DesktopCommand =
   | { type: 'focus-composer' }
   | { type: 'new-session' }
   | { type: 'open-paths'; paths: string[] }
-  | { section?: 'tocklauncher'; type: 'show-settings' }
+  | { section?: 'tocklauncher'; extensionId?: LauncherExtensionId; type: 'show-settings' }
   | { type: 'toggle-bottom-panel' }
   | { type: 'toggle-panel-maximized' }
   | { type: 'toggle-pinned-summary' }
@@ -89,6 +92,9 @@ export interface TockTutorDesktopCallerBridge {
 export type LauncherSettingsOperationResult = Readonly<{ canceled?: boolean; ok: true }>
 
 export interface DesktopLauncherSettingsBridge {
+  getExtension(id: TrustedRaycastExtensionId): Promise<TrustedSettingsSnapshot>
+  updateExtension(request: TrustedSettingsUpdate): Promise<TrustedSettingsResult>
+  setExtensionEnabled(id: TrustedRaycastExtensionId, enabled: boolean): Promise<TrustedSettingsSnapshot>
   exportSettings(): Promise<LauncherSettingsOperationResult>
   getSnapshot(): Promise<LauncherSettingsSnapshot>
   importSettings(): Promise<LauncherSettingsOperationResult>

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { undo as undoCodeMirror, redo as redoCodeMirror } from '@codemirror/commands'
 import { EditorSelection } from '@codemirror/state'
-import { undo as undoMilkdown, redo as redoMilkdown, closeHistory, history as nativeHistory, undoDepth, redoDepth } from '@milkdown/prose/history'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   SourceEditor,
@@ -13,9 +12,6 @@ import {
 import { LivePreviewEditor, splitLivePreviewSource } from '../src/live-preview-editor.tsx'
 import { MarkdownSlidesView, RichReadingView } from '../src/editor-surface.tsx'
 import { projectEditorStaticWidgets, projectEditorWidgets } from '../src/editor-widgets.ts'
-import { EditorState as ProseEditorState } from '@milkdown/prose/state'
-import { Schema } from '@milkdown/prose/model'
-import { AuthoredSourceStep, authoredHistoryKey, buildAuthoredHistory } from '../src/live-preview-authored-history.ts'
 import { MAX_EDITOR_SEARCH_MATCHES } from '../src/editor-search.ts'
 
 afterEach(() => {
@@ -291,8 +287,8 @@ describe('selection-aware editor widgets', () => {
   })
 })
 
-describe('Milkdown Live Preview editor', () => {
-  it('keeps frontmatter outside Milkdown serialization and presents Obsidian-style tag properties', async () => {
+describe('Live Preview editor', () => {
+  it('preserves frontmatter and presents Obsidian-style tag properties', async () => {
     const source = '---\r\nstatus: active\r\ntags: [one, two]\r\n---\r\n# Lesson\r\n'
     const onSetProperty = vi.fn(() => true)
     expect(splitLivePreviewSource(source)).toEqual({
@@ -411,7 +407,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(screen.getByRole('link', { name: '[1]' }).textContent).toBe('[1]')
   })
 
-  it('mounts one editable ProseMirror surface and keeps source untouched until edited', { timeout: 20_000 }, async () => {
+  it('mounts one editable Markdown surface and keeps source untouched until edited', { timeout: 20_000 }, async () => {
     const source = '# Lesson\r\n\r\n- [ ] Review\r\n'
     const onChange = vi.fn()
     const onSelection = vi.fn()
@@ -419,90 +415,98 @@ describe('Milkdown Live Preview editor', () => {
       <LivePreviewEditor content={source} onMarkdownChange={onChange} onSelectionChange={onSelection} />,
     )
 
-    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 15_000 })
-    expect(container.querySelector('.ProseMirror')?.textContent).toContain('Lesson')
+    await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 15_000 })
+    expect(container.querySelector('.cm-content')?.textContent).toContain('Lesson')
     expect(onChange).not.toHaveBeenCalled()
-    expect(container.querySelector<HTMLElement>('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
+    expect(container.querySelector<HTMLElement>('.cm-content')?.getAttribute('contenteditable')).toBe('true')
     await waitFor(() => expect(onSelection).toHaveBeenCalled())
   })
 
-  it('finds formatted Live Preview text and replaces it with one native history step', async () => {
+  it('finds formatted Live Preview text and replaces it with one native undo step', async () => {
     const source = 'alpha **alpha**\r\n'
     const onChange = vi.fn()
     const onSearchState = vi.fn()
-    const editorViewRef = { current: null }
+    const editorViewRef = { current: null as any }
     const { container, rerender } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} onSearchState={onSearchState} searchQuery="alpha" />)
-    await waitFor(() => expect(container.querySelector('.tocktutor-find-match')).toBeTruthy(), { timeout: 15_000 })
-    expect(container.querySelectorAll('.tocktutor-find-match')).toHaveLength(2)
+    await waitFor(() => expect(container.querySelector('.cm-tock-find-match')).toBeTruthy(), { timeout: 15_000 })
+    expect(container.querySelectorAll('.cm-tock-find-match')).toHaveLength(2)
     expect(onSearchState).toHaveBeenLastCalledWith({ current: 0, query: 'alpha', total: 2 })
     rerender(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} onSearchState={onSearchState} searchCurrentIndex={0} searchQuery="alpha" searchRequest={{ action: 'replace-all', id: 1, replacement: 'omega' }} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith('omega **omega**\r\n'))
-    expect((editorViewRef.current as { state: { doc: { textContent: string } } }).state.doc.textContent).toBe('omega omega')
-    const liveView = editorViewRef.current as { dispatch: (transaction: unknown) => void; state: unknown }
-    expect(undoMilkdown(liveView.state, liveView.dispatch)).toBe(true)
-    expect((editorViewRef.current as { state: { doc: { textContent: string } } }).state.doc.textContent).toBe('alpha alpha')
-    expect(redoMilkdown(liveView.state, liveView.dispatch)).toBe(true)
-    expect((editorViewRef.current as { state: { doc: { textContent: string } } }).state.doc.textContent).toBe('omega omega')
+    const view = editorViewRef.current
+    expect(view.state.doc.toString()).toBe('omega **omega**\n')
+    expect(undoCodeMirror(view)).toBe(true)
+    expect(view.state.doc.toString()).toBe('alpha **alpha**\n')
+    expect(redoCodeMirror(view)).toBe(true)
+    expect(view.state.doc.toString()).toBe('omega **omega**\n')
   })
 
-  it('publishes exact authored source around Live Preview replacements and history', async () => {
+  it('publishes exact authored source around frontmatter and raw-link replacements', async () => {
     const source = '---\r\ntags: [alpha]\r\n---\r\nalpha **alpha**\r\n\r\n[[Destination]] and [Sibling](Sibling.md).\r\n'
-    const replacement = 'omega'
     const onChange = vi.fn()
     const onSearchState = vi.fn()
-    const editorViewRef = { current: null }
+    const editorViewRef = { current: null as any }
     const { container, rerender } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} onSearchState={onSearchState} searchQuery="alpha" />)
-    await waitFor(() => expect(container.querySelectorAll('.tocktutor-find-match')).toHaveLength(2), { timeout: 15_000 })
-    rerender(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} onSearchState={onSearchState} searchCurrentIndex={0} searchQuery="alpha" searchRequest={{ action: 'replace-all', id: 1, replacement }} />)
-    const edited = '---\r\ntags: [alpha]\r\n---\r\nomega **omega**\r\n\r\n[[Destination]] and [Sibling](Sibling.md).\r\n'
-    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(edited), { timeout: 15_000 })
+    await waitFor(() => expect(container.querySelectorAll('.cm-tock-find-match')).toHaveLength(2), { timeout: 15_000 })
+    const first = source.replaceAll('alpha', 'omega')
+    rerender(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} onSearchState={onSearchState} searchCurrentIndex={0} searchQuery="alpha" searchRequest={{ action: 'replace-all', id: 1, replacement: 'omega' }} />)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(first), { timeout: 15_000 })
     expect(onChange).not.toHaveBeenLastCalledWith(expect.stringContaining('\\[\\[Destination]]'))
-    const liveView = editorViewRef.current as { dispatch: (transaction: unknown) => void; state: unknown }
-    expect(undoMilkdown(liveView.state, liveView.dispatch)).toBe(true)
-    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(source), { timeout: 5_000 })
-    expect(redoMilkdown(liveView.state, liveView.dispatch)).toBe(true)
-    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(edited), { timeout: 5_000 })
+    const second = first.replace('Destination', 'Renamed')
+    rerender(<LivePreviewEditor content={first} editorViewRef={editorViewRef} onMarkdownChange={onChange} onSearchState={onSearchState} searchCurrentIndex={0} searchQuery="Destination" searchRequest={{ action: 'replace-all', id: 2, replacement: 'Renamed' }} />)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(second), { timeout: 15_000 })
+    const view = editorViewRef.current
+    expect(undoCodeMirror(view)).toBe(true)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(first))
+    expect(undoCodeMirror(view)).toBe(true)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(source))
+    expect(redoCodeMirror(view)).toBe(true)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(first))
+    expect(redoCodeMirror(view)).toBe(true)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(second))
   })
 
   it('keeps a list folded across parent renders without changing authored Markdown', async () => {
     const source = '1. Parent\n   - Child\n'
     const onChange = vi.fn()
-    const { rerender } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
-    const collapse = await screen.findByRole('button', { name: 'Collapse List' })
-    collapse.focus()
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Collapse List' }), { key: 'Enter' })
-    expect(screen.getByRole('button', { name: 'Expand List' }).getAttribute('aria-expanded')).toBe('false')
+    const { container, rerender } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
+    const list = () => container.querySelector<HTMLDetailsElement>('details')
+    await waitFor(() => expect(list()).toBeTruthy())
+    expect(list()!.open).toBe(true)
+    fireEvent.click(list()!.querySelector('summary')!)
+    await waitFor(() => expect(list()!.open).toBe(false))
 
     rerender(<LivePreviewEditor content={source} onMarkdownChange={onChange} title="Parent rendered again" />)
-    expect(screen.getByRole('button', { name: 'Expand List' }).getAttribute('aria-expanded')).toBe('false')
+    await waitFor(() => expect(list()!.open).toBe(false))
     rerender(<LivePreviewEditor content={`---\nstatus: review\n---\n${source}`} onMarkdownChange={onChange} />)
-    expect(screen.getByRole('button', { name: 'Expand List' }).getAttribute('aria-expanded')).toBe('false')
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Expand List' }), { key: ' ' })
-    expect(screen.getByRole('button', { name: 'Collapse List' }).getAttribute('aria-expanded')).toBe('true')
+    await waitFor(() => expect(list()!.open).toBe(true))
     expect(onChange).not.toHaveBeenCalled()
 
     rerender(<LivePreviewEditor content={'# Updated externally\n'} onMarkdownChange={onChange} />)
-    await screen.findByRole('heading', { name: 'Updated externally' })
-    expect(screen.queryByText('Child')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Collapse List' })).toBeNull()
+    await waitFor(() => expect(container.querySelector('.cm-content')?.textContent).toContain('Updated externally'))
+    expect(container.querySelector('.cm-content')?.textContent).not.toContain('Child')
+    expect(container.querySelector('details')).toBeNull()
   })
 
   it('accepts edited Markdown echoed by the parent and later external changes', async () => {
     const source = '---\r\nstatus: draft\r\n---\r\n1. Parent\r\n   - Child\r\n'
     const onChange = vi.fn()
-    const editorViewRef = { current: null }
-    const { rerender } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
-    await screen.findByRole('button', { name: 'Collapse List' })
+    const editorViewRef = { current: null as any }
+    const { container, rerender } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(container.querySelector('details')).toBeTruthy())
     const view = editorViewRef.current
-    view.dispatch(view.state.tr.insertText('Edited ', 3))
+    const parent = source.replace(/\r\n?/gu, '\n').indexOf('Parent')
+    view.dispatch({ changes: { from: parent, insert: 'Edited ' } })
     await waitFor(() => expect(onChange).toHaveBeenCalled())
     const edited = onChange.mock.lastCall![0] as string
     expect(edited).toContain('Edited Parent')
     expect(edited.startsWith('---\r\nstatus: draft\r\n---\r\n')).toBe(true)
     rerender(<LivePreviewEditor content={edited} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Collapse List' }), { key: 'Enter' })
+    await waitFor(() => expect(container.querySelector('details')).toBeTruthy())
+    fireEvent.click(container.querySelector<HTMLDetailsElement>('details')!.querySelector('summary')!)
+    await waitFor(() => expect(container.querySelector<HTMLDetailsElement>('details')!.open).toBe(false))
     rerender(<LivePreviewEditor content={edited} editorViewRef={editorViewRef} onMarkdownChange={onChange} title="Edited note" />)
-    expect(screen.getByRole('button', { name: 'Expand List' }).getAttribute('aria-expanded')).toBe('false')
+    await waitFor(() => expect(container.querySelector<HTMLDetailsElement>('details')!.open).toBe(false))
     expect(screen.getByText('Edited Parent')).toBeTruthy()
     rerender(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
     await screen.findByText('Parent')
@@ -514,9 +518,7 @@ describe('Milkdown Live Preview editor', () => {
 
     await waitFor(() => expect(live.container.querySelector('blockquote')).toBeTruthy(), { timeout: 5_000 })
     const liveSurface = screen.getByLabelText('Live Preview Editor')
-    expect(liveSurface.className).toContain('text-base')
-    expect(liveSurface.className).toContain('[&_blockquote]:border-l-2')
-    expect(liveSurface.className).toContain('[&_blockquote]:pl-6')
+    expect(liveSurface.className).toContain('tocktutor-live-preview-styles')
     live.unmount()
 
     render(<RichReadingView source={'> Quoted lesson\n'} onToggleTask={() => {}} title="Quote" />)
@@ -577,12 +579,9 @@ describe('Milkdown Live Preview editor', () => {
   it('presents wikilinks without source brackets and shares Reading View link styling', async () => {
     const live = render(<LivePreviewEditor content={'Review [[Welcome]] and [[Guide|start here]].\n'} onMarkdownChange={() => {}} />)
 
-    await waitFor(() => expect(live.container.querySelectorAll('.tocktutor-live-internal-link')).toHaveLength(2), { timeout: 5_000 })
-    expect([...live.container.querySelectorAll('.tocktutor-live-internal-link')].map(link => link.textContent)).toEqual(['Welcome', 'start here'])
-    expect([...live.container.querySelectorAll('.tocktutor-live-link-markup')].map(markup => markup.textContent).join('')).toBe('[[]][[Guide|]]')
-    const liveSurface = screen.getByLabelText('Live Preview Editor')
-    expect(liveSurface.className).toContain('[&_.tocktutor-live-internal-link]:text-[var(--dsw-specific-markdown-accent)]')
-    expect(liveSurface.className).toContain('[&_.tocktutor-live-internal-link]:underline')
+    await waitFor(() => expect(live.container.querySelectorAll('.cm-live-internal-link')).toHaveLength(2), { timeout: 5_000 })
+    expect([...live.container.querySelectorAll('.cm-live-internal-link')].map(link => link.textContent)).toEqual(['Welcome', 'start here'])
+    expect(live.container.querySelector('.cm-content')?.textContent).not.toContain('[[')
     live.unmount()
 
     render(<RichReadingView source={'Review [[Welcome]].\n'} onToggleTask={() => {}} title="Links" />)
@@ -605,29 +604,23 @@ describe('Milkdown Live Preview editor', () => {
   it('renders highlights and nested lists with compact Live Preview flow', async () => {
     const { container } = render(<LivePreviewEditor content={'Read ==carefully==.\n\n1. First\n2. Second\n   - Nested\n'} onMarkdownChange={() => {}} />)
 
-    await waitFor(() => expect(container.querySelector('.tocktutor-live-highlight')?.textContent).toBe('carefully'), { timeout: 5_000 })
-    expect([...container.querySelectorAll('.tocktutor-live-highlight-markup')].map(markup => markup.textContent).join('')).toBe('====')
-    const editor = screen.getByLabelText('Live Preview Editor')
-    expect(editor.className).toContain('[&_.tocktutor-live-highlight]:bg-[var(--dsw-specific-markdown-highlight)]')
-    expect(editor.className).toContain('[&_li>p]:m-0')
-    expect(editor.className).toContain('[&_ul]:list-disc')
-    expect(editor.className).toContain('[&_code]:bg-[var(--dsw-specific-markdown-inline-code)]')
-    expect(editor.className).toContain('[&_code]:rounded-sm')
-    expect(editor.className).toContain('[&_code]:py-0.5')
-    expect(editor.className).toContain('[&_pre_code]:p-0')
-    expect(editor.className).toContain('[&_.tocktutor-live-fold]:absolute')
-    expect(editor.className).toContain('[&_li>ul]:!pl-8')
+    await waitFor(() => expect(container.querySelector('.cm-live-highlight')?.textContent).toBe('carefully'), { timeout: 5_000 })
+    expect(container.querySelector('.cm-content')?.textContent).not.toContain('==')
+    expect(container.querySelector('.cm-content')?.textContent).toContain('Nested')
+    expect(screen.getByLabelText('Live Preview Editor').className).toContain('tocktutor-live-preview-styles')
   })
 
   it('renders compact Obsidian-style task rows in Live Preview', async () => {
-    const { container } = render(<LivePreviewEditor content={'- [x] Done\n- [ ] Next\n'} onMarkdownChange={() => {}} />)
+    const onChange = vi.fn()
+    const { container } = render(<LivePreviewEditor content={'- [x] Done\n- [ ] Next\n'} onMarkdownChange={onChange} />)
 
-    await waitFor(() => expect(container.querySelector('li[data-item-type="task"]')).toBeTruthy(), { timeout: 5_000 })
-    const editor = screen.getByLabelText('Live Preview Editor')
-    expect(editor.className).toContain('[&_ul:has(li[data-item-type=task])]:list-none')
-    expect(editor.className).toContain('[&_li[data-item-type=task]>p]:inline')
-    expect(editor.className).toContain('[&_li[data-checked=true]>p]:line-through')
-    expect(container.querySelector<HTMLInputElement>('.tocktutor-live-task')?.className).toContain('accent-[var(--dsw-specific-markdown-accent)]')
+    await waitFor(() => expect(container.querySelectorAll('input[data-live-task-from]')).toHaveLength(2), { timeout: 5_000 })
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Mark Task as Incomplete' }).checked).toBe(true)
+    const next = screen.getByRole<HTMLInputElement>('checkbox', { name: 'Mark Task as Complete' })
+    expect(next.checked).toBe(false)
+    fireEvent.mouseDown(next)
+    fireEvent.click(next)
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('- [x] Done\n- [x] Next\n')
   })
 
   it('renders bordered tables without a persistent command strip', async () => {
@@ -635,11 +628,9 @@ describe('Milkdown Live Preview editor', () => {
 
     await waitFor(() => expect(container.querySelector('table')).toBeTruthy(), { timeout: 5_000 })
     expect(screen.queryByLabelText('Live Preview Table Commands')).toBeNull()
-    const editor = screen.getByLabelText('Live Preview Editor')
-    expect(editor.className).toContain('[&_th]:border')
-    expect(editor.className).toContain('[&_td]:border')
-    expect(editor.className).toContain('border-[var(--dsw-alias-border-l2,var(--tt-border))]')
-    expect(editor.className).toContain('[&_table_p]:m-0')
+    expect(container.querySelector('th')?.textContent).toBe('Surface')
+    expect(container.querySelector('td')?.textContent).toBe('Editor')
+    expect(screen.getByLabelText('Live Preview Editor').className).toContain('tocktutor-live-preview-styles')
   })
 
   it('keeps Reading tables compact and uses the same visible borders', () => {
@@ -672,13 +663,48 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.className).toContain('[&_li>ol]:border-l')
   })
 
-  it('routes external Live Preview images through the isolated viewer callback', async () => {
+  it('loads external Live Preview images through the Host, never a renderer network resource', async () => {
+    const request = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ mimeType: 'image/png', dataBase64: 'iVBORw0KGgo=' })))
+    try {
+      const editorViewRef = { current: null as any }
+      const { container, unmount } = render(<LivePreviewEditor content="![Remote](https://example.com/image.png)\n" editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
+      await waitFor(() => expect(container.querySelector('img[src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy())
+      expect(container.querySelector('img[src^="http"]')).toBeNull()
+      expect(request).toHaveBeenCalledWith('/web-clip/api/image', expect.objectContaining({ method: 'POST', body: JSON.stringify({ url: 'https://example.com/image.png' }) }))
+      expect(screen.queryByRole('button', { name: /External Image/u })).toBeNull()
+      const image = container.querySelector<HTMLImageElement>('img.tocktutor-inline-image')!
+      editorViewRef.current.dispatch({ changes: { from: 0, insert: 'Before\n\n' } })
+      await waitFor(() => expect(container.querySelector('img.tocktutor-inline-image')).toBe(image))
+      expect(request).toHaveBeenCalledTimes(1)
+      expect(image.closest('[data-preview-from]')?.getAttribute('data-preview-from')).toBe('8')
+      fireEvent.error(image)
+      expect(image.dataset.loadError).toBe('true')
+      expect(image.alt).toBe('Image Unavailable: Remote')
+      const signal = request.mock.calls[0]?.[1]?.signal
+      unmount()
+      expect(signal?.aborted).toBe(true)
+    } finally { request.mockRestore() }
+  })
+
+  it('rejects active and malformed image payloads without assigning an image URL', async () => {
+    for (const payload of [{ mimeType: 'image/svg+xml', dataBase64: 'PHN2Zz4=' }, { mimeType: 'image/png', dataBase64: 'invalid value' }]) {
+      const request = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(payload)))
+      try {
+        const { container, unmount } = render(<LivePreviewEditor content="![Remote](https://example.com/a.png)" onMarkdownChange={() => {}} />)
+        await waitFor(() => expect(container.querySelector<HTMLImageElement>('img.tocktutor-inline-image')?.dataset.loadError).toBe('true'))
+        expect(container.querySelector('img.tocktutor-inline-image')?.getAttribute('src')).toBeNull()
+        unmount()
+      } finally { request.mockRestore() }
+    }
+  })
+
+  it('keeps video embeds on the isolated viewer path rather than requesting image bytes', async () => {
     const onOpenExternalUrl = vi.fn()
-    const { container } = render(<LivePreviewEditor content="![Remote](https://example.com/image.png)\n" onMarkdownChange={() => {}} onOpenExternalUrl={onOpenExternalUrl} />)
-    const button = await screen.findByRole('button', { name: 'External Image: Remote' }, { timeout: 5_000 })
-    expect(container.querySelector('img[src^="http"]')).toBeNull()
+    render(<LivePreviewEditor content="![Video](https://www.youtube.com/watch?v=NnTvZWp5Q7o)" onMarkdownChange={() => {}} onOpenExternalUrl={onOpenExternalUrl} />)
+    const button = await screen.findByRole('button', { name: /YouTube/u })
+    fireEvent.mouseDown(button)
     fireEvent.click(button)
-    expect(onOpenExternalUrl).toHaveBeenCalledWith('https://example.com/image.png')
+    expect(onOpenExternalUrl).toHaveBeenCalledExactlyOnceWith('https://www.youtube-nocookie.com/embed/NnTvZWp5Q7o')
   })
 
   it('opens external embeds from Slides through the isolated viewer callback', () => {
@@ -706,7 +732,7 @@ describe('Milkdown Live Preview editor', () => {
       expect(value).toBeTruthy()
       return value!
     }, { timeout: 5_000 })
-    expect(widget.getAttribute('role')).toBe('button')
+    expect(widget.getAttribute('aria-label')).toBe('Edit Preview')
     expect(widget.querySelector('img[alt="8x8"][height="8"][width="8"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
     expect(widget.textContent).not.toContain(nestedSource)
   })
@@ -722,8 +748,8 @@ describe('Milkdown Live Preview editor', () => {
     const { container, rerender } = render(
       <LivePreviewEditor editorViewRef={editorViewRef} content={source} onMarkdownChange={() => {}} onWidgetState={onWidgetState} resolvedEmbeds={resolvedEmbeds} />,
     )
-    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
-    const editor = container.querySelector('.ProseMirror')
+    await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
+    const editor = container.querySelector('.cm-content')
     const widget = await waitFor(() => {
       const value = container.querySelector<HTMLElement>('.tocktutor-live-embed-widget')
       expect(value).toBeTruthy()
@@ -735,11 +761,11 @@ describe('Milkdown Live Preview editor', () => {
     fireEvent.mouseDown(audio)
     expect(container.querySelector('.tocktutor-live-embed-widget')).toBe(widget)
     rerender(<LivePreviewEditor editorViewRef={editorViewRef} content={source} onMarkdownChange={() => {}} onWidgetState={onWidgetState} resolvedEmbeds={resolvedEmbeds} />)
-    expect(container.querySelector('.ProseMirror')).toBe(editor)
+    expect(container.querySelector('.cm-content')).toBe(editor)
     expect(onWidgetState).toHaveBeenCalled()
     fireEvent.mouseDown(widget)
     await waitFor(() => expect(container.querySelector('.tocktutor-live-embed-widget')).toBeNull())
-    expect(container.querySelector('.ProseMirror')?.textContent).toContain('![[Target.md]]')
+    expect(container.querySelector('.cm-content')?.textContent).toContain('![[Target.md]]')
     const nextSource = 'Before ![[Second.md]] after'
     const nextEmbeds = [{
       content: '# Second\nBody\n',
@@ -749,9 +775,9 @@ describe('Milkdown Live Preview editor', () => {
     // Peer replacements retain this view's revealed-source selection. Move the
     // selection away before expecting the updated embed preview to reappear.
     const view = editorViewRef.current
-    act(() => view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.create(view.state.doc, 1))))
+    act(() => view.dispatch({ selection: { anchor: 1 } }))
     await waitFor(() => expect(container.querySelector('.tocktutor-live-embed-widget')?.textContent).toContain('Second'))
-    expect(container.querySelector('.ProseMirror')).toBe(editor)
+    expect(container.querySelector('.cm-content')).toBe(editor)
     expect(screen.getByLabelText('Live Preview Editor')).toBeTruthy()
   })
 })
@@ -786,42 +812,40 @@ describe('search integrity regressions', () => {
     expect(container.querySelector('strong')?.textContent).toBe('two')
   })
 
-  it.each(['al**pha** [x](alpha.md)', 'alpha [alpha](alpha.md)\n\n[[Destination]]\n'])('rejects unverifiable authored ranges: %s', async source => {
+  it.each(['al**pha** [x](alpha.md)', 'alpha [alpha](alpha.md)\n\n[[Destination]]\n'])('replaces only literal authored matches: %s', async source => {
     const onChange = vi.fn()
     const onSearchState = vi.fn()
-    const editorViewRef = { current: null }
+    const editorViewRef = { current: null as any }
     const props = { content: source, editorViewRef, onMarkdownChange: onChange, onSearchState, searchQuery: 'alpha' }
     const { rerender } = render(<LivePreviewEditor {...props} />)
     await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 15_000 })
-    const view = editorViewRef.current as any
-    const before = view.state.doc.toJSON()
     rerender(<LivePreviewEditor {...props} searchRequest={{ action: 'replace-all', id: 1, replacement: 'omega' }} />)
-    await waitFor(() => expect(onSearchState).toHaveBeenLastCalledWith(expect.objectContaining({ error: expect.stringContaining('Source') })))
-    expect(onChange).not.toHaveBeenCalled()
-    expect(view.state.doc.toJSON()).toEqual(before)
-    expect(undoMilkdown(view.state, view.dispatch)).toBe(false)
+    const expected = source.replaceAll('alpha', 'omega')
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expected))
+    expect(editorViewRef.current.state.doc.toString()).toBe(expected.replace(/\r\n?/gu, '\n'))
+    expect(onSearchState).toHaveBeenLastCalledWith(expect.objectContaining({ current: null, query: 'alpha', total: 0 }))
   })
 
   it('keeps exact authored source for two replacements, two undos and two redos', async () => {
     const source = '---\r\ntags: [alpha]\r\n---\r\nalpha **alpha**\r\n\r\n[[Destination]]\r\n'
-    const first = source.replace('alpha **alpha**', 'omega **omega**')
-    const second = first.replace('omega **omega**', 'delta **delta**')
+    const first = source.replaceAll('alpha', 'omega')
+    const second = first.replaceAll('omega', 'delta')
     const onChange = vi.fn()
-    const editorViewRef = { current: null }
+    const editorViewRef = { current: null as any }
     const props = { content: source, editorViewRef, onMarkdownChange: onChange }
     const { rerender } = render(<LivePreviewEditor {...props} searchQuery="alpha" />)
     await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 15_000 })
-    const view = editorViewRef.current as any
+    const view = editorViewRef.current
     rerender(<LivePreviewEditor {...props} searchQuery="alpha" searchRequest={{ action: 'replace-all', id: 1, replacement: 'omega' }} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(first))
     rerender(<LivePreviewEditor {...props} searchQuery="omega" searchRequest={{ action: 'replace-all', id: 2, replacement: 'delta' }} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(second))
     for (const expected of [first, source]) {
-      expect(undoMilkdown(view.state, view.dispatch)).toBe(true)
+      expect(undoCodeMirror(view)).toBe(true)
       await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expected))
     }
     for (const expected of [first, second]) {
-      expect(redoMilkdown(view.state, view.dispatch)).toBe(true)
+      expect(redoCodeMirror(view)).toBe(true)
       await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expected))
     }
   })
@@ -840,20 +864,20 @@ describe('search integrity regressions', () => {
 })
 
 
-describe('authored native history ownership', () => {
+describe('CodeMirror history ownership', () => {
   it('restores replacement boundaries around interleaved typing without duplicate callbacks', async () => {
     const source = 'alpha\r\n\r\n[[Destination]]\r\n'
     const first = source.replace('alpha', 'omega')
     const onChange = vi.fn()
-    const editorViewRef = { current: null }
+    const editorViewRef = { current: null as any }
     const props = { content: source, editorViewRef, onMarkdownChange: onChange }
     const { rerender } = render(<LivePreviewEditor {...props} searchQuery="alpha" />)
     await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 15_000 })
-    const view = editorViewRef.current as any
+    const view = editorViewRef.current
     rerender(<LivePreviewEditor {...props} searchQuery="alpha" searchRequest={{ action: 'replace', id: 1, replacement: 'omega' }} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(first))
     expect(onChange).toHaveBeenCalledTimes(1)
-    view.dispatch(view.state.tr.insertText('!', 6))
+    view.dispatch({ changes: { from: 5, insert: '!' } })
     const typed = onChange.mock.lastCall![0] as string
     expect(typed).toContain('omega!')
     expect(onChange).toHaveBeenCalledTimes(2)
@@ -862,88 +886,55 @@ describe('authored native history ownership', () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(second))
     let callbacks = 3
     for (const expected of [typed, first, source]) {
-      expect(undoMilkdown(view.state, view.dispatch)).toBe(true)
+      expect(undoCodeMirror(view)).toBe(true)
       expect(onChange).toHaveBeenLastCalledWith(expected)
       expect(onChange).toHaveBeenCalledTimes(++callbacks)
     }
     for (const expected of [first, typed, second]) {
-      expect(redoMilkdown(view.state, view.dispatch)).toBe(true)
+      expect(redoCodeMirror(view)).toBe(true)
       expect(onChange).toHaveBeenLastCalledWith(expected)
       expect(onChange).toHaveBeenCalledTimes(++callbacks)
     }
   })
 
-  it('clears native and authored history for an authoritative replacement, including equivalent Markdown', async () => {
+  it('clears native history for an authoritative replacement while preserving an equivalent echo', async () => {
     const source = 'alpha\n\n[[Destination]]\n'
     const onChange = vi.fn()
-    const editorViewRef = { current: null }
+    const editorViewRef = { current: null as any }
     const props = { content: source, editorViewRef, onMarkdownChange: onChange }
     const { rerender } = render(<LivePreviewEditor {...props} searchQuery="alpha" />)
     await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 15_000 })
-    const view = editorViewRef.current as any
+    const view = editorViewRef.current
     rerender(<LivePreviewEditor {...props} searchQuery="alpha" searchRequest={{ action: 'replace', id: 1, replacement: 'omega' }} />)
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1))
     const echo = source.replace('alpha', 'omega')
     rerender(<LivePreviewEditor {...props} content={echo} />)
-    expect(undoMilkdown(view.state, view.dispatch)).toBe(true)
+    expect(undoCodeMirror(view)).toBe(true)
     expect(onChange).toHaveBeenLastCalledWith(source)
     rerender(<LivePreviewEditor {...props} content={source + '\n'} />)
-    expect(undoMilkdown(view.state, view.dispatch)).toBe(false)
-    expect(redoMilkdown(view.state, view.dispatch)).toBe(false)
+    expect(undoCodeMirror(view)).toBe(false)
+    expect(redoCodeMirror(view)).toBe(false)
     rerender(<LivePreviewEditor {...props} content={'External note\n'} />)
-    expect(view.state.doc.textContent.trim()).toBe('External note')
-    expect(undoMilkdown(view.state, view.dispatch)).toBe(false)
+    expect(view.state.doc.toString().trim()).toBe('External note')
+    expect(undoCodeMirror(view)).toBe(false)
     expect(onChange).toHaveBeenCalledTimes(2)
   })
 
-  it('groups ordinary typing natively and retains compact deltas on a large note', async () => {
+  it('groups ordinary typing natively on a large note', async () => {
     const source = 'x'.repeat(100_000) + '\n'
     const onChange = vi.fn()
-    const editorViewRef = { current: null }
+    const editorViewRef = { current: null as any }
     render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
     await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 15_000 })
-    const view = editorViewRef.current as any
-    const deltas: AuthoredSourceStep[] = []
-    // Observe the public applied-transaction result, not private history storage.
-    // Each appended step is precisely the object handed to native history.
-    for (let index = 0; index < 40; index += 1) {
-      const result = view.state.applyTransaction(view.state.tr.insertText('a', 1 + index).setTime(1000 + index))
-      for (const transaction of result.transactions) for (const step of transaction.steps) if (step instanceof AuthoredSourceStep) deltas.push(step)
-      view.updateState(result.state)
-    }
-    expect(deltas).toHaveLength(40)
-    expect(deltas.reduce((bytes, delta) => bytes + delta.removed.length + delta.inserted.length, 0)).toBe(40)
+    const view = editorViewRef.current
+    for (let index = 0; index < 40; index += 1) view.dispatch({ changes: { from: 0, insert: 'a' } })
     expect(onChange).toHaveBeenCalledTimes(40)
-    expect(undoMilkdown(view.state, view.dispatch)).toBe(true)
-    expect(onChange).toHaveBeenLastCalledWith(source)
-    expect(undoMilkdown(view.state, view.dispatch)).toBe(false)
-    expect(redoMilkdown(view.state, view.dispatch)).toBe(true)
-    expect(onChange).toHaveBeenLastCalledWith('a'.repeat(40) + source)
+    expect(view.state.doc.toString()).toBe('a'.repeat(40) + source)
+    expect(undoCodeMirror(view)).toBe(true)
+    expect(view.state.doc.toString()).toBe(source)
+    expect(redoCodeMirror(view)).toBe(true)
+    expect(view.state.doc.toString()).toBe('a'.repeat(40) + source)
   })
-})
-
-
-it('prunes authored deltas with the installed native history event depth', () => {
-  const schema = new Schema({ nodes: { doc: { content: 'text*' }, text: {} } })
-  let state = ProseEditorState.create({ doc: schema.node('doc', null, [schema.text('seed')]), plugins: [nativeHistory({ depth: 2 }), buildAuthoredHistory(() => 'seed', doc => doc.textContent)] })
-  const dispatch = transaction => { state = state.applyTransaction(transaction).state }
-  for (let index = 0; index < 30; index += 1) dispatch(closeHistory(state.tr).insertText('x', state.doc.content.size))
-  let undos = 0
-  while (undoMilkdown(state, dispatch)) {
-    undos += 1
-    expect(authoredHistoryKey.getState(state)).toBe(state.doc.textContent)
-  }
-  // Installed native history permits up to 20 overflow events before pruning.
-  expect(undos).toBeGreaterThanOrEqual(2)
-  expect(undos).toBeLessThanOrEqual(22)
-  expect(undos).toBeLessThan(30)
-  let redos = 0
-  while (redoMilkdown(state, dispatch)) {
-    redos += 1
-    expect(authoredHistoryKey.getState(state)).toBe(state.doc.textContent)
-  }
-  expect(redos).toBe(undos)
-  expect(authoredHistoryKey.getState(state)).toBe('seed' + 'x'.repeat(30))
 })
 
 it('runs a replacement against the current external document, not the previous editor state', async () => {
@@ -955,63 +946,38 @@ it('runs a replacement against the current external document, not the previous e
   rerender(<LivePreviewEditor {...props} content="bravo" searchQuery="bravo" searchRequest={{ action: 'replace', id: 1, replacement: 'gamma' }} />)
   await waitFor(() => expect(onChange).toHaveBeenLastCalledWith('gamma'))
   const view = editorViewRef.current as any
-  expect(undoMilkdown(view.state, view.dispatch)).toBe(true)
+  expect(undoCodeMirror(view)).toBe(true)
   expect(onChange).toHaveBeenLastCalledWith('bravo')
-  expect(undoMilkdown(view.state, view.dispatch)).toBe(false)
+  expect(undoCodeMirror(view)).toBe(false)
 })
 
 
-describe('Desktop generated heading IDs', () => {
-  it.each(['ids only', 'heading level', 'link URL', 'strong marker'] as const)('compares all authored attributes except heading IDs: %s', async difference => {
+describe('source-preserving Live Preview search', () => {
+  it('does not rewrite Markdown structure while replacing authored text', async () => {
     const source = '---\r\ntags: [alpha]\r\n---\r\n# Search Proof\r\n\r\nalpha **alpha** ALPHA\r\n\r\nEmoji 🙂 and 中文 alpha.\r\n\r\n## Second Heading\r\n\r\n[Sibling](Sibling.md) and [[Destination]].\r\n'
-    const edited = source.replace('alpha **alpha**', 'omega **omega**').replace('中文 alpha.', '中文 omega.')
+    const edited = source.replaceAll('alpha', 'omega')
     const onChange = vi.fn()
-    const onSearchState = vi.fn()
-    const editorViewRef = { current: null }
-    const props = { content: source, editorViewRef, onMarkdownChange: onChange, onSearchState, searchQuery: 'alpha' }
-    const { rerender } = render(<LivePreviewEditor {...props} />)
+    const editorViewRef = { current: null as any }
+    const { rerender } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} searchQuery="alpha" />)
     await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 15_000 })
-    const view = editorViewRef.current as any
-    const json = view.state.doc.toJSON()
-    // Emulate the native document after browser parseDOM adopts generated IDs,
-    // without editing the authored Markdown or manufacturing a serialization.
-    const seed = node => {
-      if (node.type === 'heading') node.attrs.id = node.content[0].text.toLowerCase().replaceAll(' ', '-')
-      if (difference === 'heading level' && node.type === 'heading') node.attrs.level = 3
-      for (const mark of node.marks ?? []) {
-        if (difference === 'link URL' && mark.type === 'link') mark.attrs.href = 'Other.md'
-        if (difference === 'strong marker' && mark.type === 'strong') mark.attrs.marker = '_'
-      }
-      for (const child of node.content ?? []) seed(child)
-    }
-    seed(json)
-    view.updateState(ProseEditorState.create({ doc: view.state.schema.nodeFromJSON(json), plugins: view.state.plugins }))
-    expect(view.state.doc.firstChild.attrs.id).toBe('search-proof')
-    expect(onChange).not.toHaveBeenCalled()
-    const before = view.state.doc.toJSON()
-    rerender(<LivePreviewEditor {...props} searchRequest={{ action: 'replace-all', id: 1, replacement: 'omega' }} />)
-    if (difference !== 'ids only') {
-      await waitFor(() => expect(onSearchState).toHaveBeenLastCalledWith(expect.objectContaining({ error: expect.stringContaining('Source') })))
-      expect(onChange).not.toHaveBeenCalled()
-      expect(view.state.doc.toJSON()).toEqual(before)
-      expect(undoMilkdown(view.state, view.dispatch)).toBe(false)
-      return
-    }
+    rerender(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} searchQuery="alpha" searchRequest={{ action: 'replace-all', id: 1, replacement: 'omega' }} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(edited))
-    expect(view.state.doc.firstChild.attrs.id).toBe('search-proof')
-    expect(undoMilkdown(view.state, view.dispatch)).toBe(true)
+    expect(editorViewRef.current.state.doc.toString()).toBe(edited.replace(/\r\n?/gu, '\n'))
+    expect(editorViewRef.current.state.doc.toString()).toContain('# Search Proof')
+    expect(editorViewRef.current.state.doc.toString()).toContain('[Sibling](Sibling.md) and [[Destination]]')
+    expect(undoCodeMirror(editorViewRef.current)).toBe(true)
     expect(onChange).toHaveBeenLastCalledWith(source)
-    expect(redoMilkdown(view.state, view.dispatch)).toBe(true)
+    expect(redoCodeMirror(editorViewRef.current)).toBe(true)
     expect(onChange).toHaveBeenLastCalledWith(edited)
   })
 })
 
 
-describe('native DOM heading history', () => {
+describe('CodeMirror source history', () => {
   const source = '---\r\ntitle: Retained Title\r\ntags: [keep]\r\n---\r\n\r\n# Search Proof\r\n\r\nalpha **alpha** ALPHA\r\n\r\nEmoji 🙂 and 中文 alpha.\r\n\r\n## Second Heading\r\n\r\n[Sibling](Sibling.md) and [[Destination]].\r\n'
 
-  it.each(['native sync only', 'before replacements', 'between replacements', 'after second undo'] as const)('preserves exact saves and both history branches with ID adoption %s', async phase => {
-    const editorViewRef = { current: null }
+  it('preserves exact saves and both replacement history branches', async () => {
+    const editorViewRef = { current: null as any }
     const onChange = vi.fn()
     const saved: string[] = []
     function Harness({ query, request }: { query: string; request?: any }) {
@@ -1022,82 +988,59 @@ describe('native DOM heading history', () => {
     }
     const { rerender } = render(<Harness query="alpha" />)
     await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 15_000 })
-    const view = editorViewRef.current as any
-    const adoptIds = () => {
-      const beforeUndo = undoDepth(view.state)
-      const beforeRedo = redoDepth(view.state)
-      const calls = onChange.mock.calls.length
-      const ids: string[] = []
-      let transaction = view.state.tr
-      view.state.doc.descendants((node, position) => {
-        if (node.type.name !== 'heading') return
-        ids.push(node.textContent.toLowerCase().replaceAll(' ', '-'))
-        // Undo can restore empty IDs. The installed commonmark view plugin
-        // immediately adopts its generated IDs again via a nested transaction.
-        transaction = transaction.setNodeMarkup(position, undefined, { ...node.attrs, id: '' })
-      })
-      act(() => view.dispatch(transaction))
-      const actual: string[] = []
-      view.state.doc.descendants(node => { if (node.type.name === 'heading') actual.push(node.attrs.id) })
-      expect(onChange).toHaveBeenCalledTimes(calls)
-      expect(actual).toEqual(ids)
-      expect(undoDepth(view.state)).toBe(beforeUndo)
-      expect(redoDepth(view.state)).toBe(beforeRedo)
-    }
+    const view = editorViewRef.current
+    const first = source.replaceAll('alpha', 'omega')
+    const second = first.replaceAll('omega', 'sigma')
     const save = (expected: string) => {
       fireEvent.click(screen.getByRole('button', { name: 'Save Fixture' }))
       expect(saved.at(-1)).toBe(expected)
     }
-    if (phase === 'before replacements') { adoptIds(); save(source) }
-    const first = source.replaceAll('alpha', 'omega')
-    const second = first.replaceAll('omega', 'sigma')
     rerender(<Harness query="alpha" request={{ action: 'replace-all', id: 1, replacement: 'omega' }} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(first))
     save(first)
-    if (phase === 'between replacements') { adoptIds(); save(first) }
-    act(() => view.dispatch(closeHistory(view.state.tr)))
     rerender(<Harness query="omega" request={{ action: 'replace-all', id: 2, replacement: 'sigma' }} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(second))
     save(second)
     for (const expected of [first, source]) {
-      act(() => expect(undoMilkdown(view.state, view.dispatch)).toBe(true))
-      if (phase !== 'native sync only' && (phase !== 'after second undo' || expected === source)) adoptIds()
+      act(() => expect(undoCodeMirror(view)).toBe(true))
+      expect(onChange).toHaveBeenLastCalledWith(expected)
       save(expected)
     }
-    expect(undoDepth(view.state)).toBe(0)
+    expect(undoCodeMirror(view)).toBe(false)
     for (const expected of [first, second]) {
-      act(() => expect(redoMilkdown(view.state, view.dispatch)).toBe(true))
-      if (phase !== 'native sync only') adoptIds()
+      act(() => expect(redoCodeMirror(view)).toBe(true))
+      expect(onChange).toHaveBeenLastCalledWith(expected)
       save(expected)
     }
-    expect(redoDepth(view.state)).toBe(0)
+    expect(redoCodeMirror(view)).toBe(false)
     expect(onChange).toHaveBeenCalledTimes(6)
   })
 
   it.each(['heading level', 'link URL', 'text'] as const)('still records real %s edits and their undo/redo', async change => {
-    const editorViewRef = { current: null }
+    const editorViewRef = { current: null as any }
     const onChange = vi.fn()
     render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
     await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 15_000 })
-    const view = editorViewRef.current as any
-    let transaction = view.state.tr.setNodeMarkup(0, undefined, { ...view.state.doc.firstChild.attrs, id: 'search-proof', ...(change === 'heading level' ? { level: 3 } : {}) })
-    if (change === 'text') transaction = transaction.insertText('!', 1)
-    if (change === 'link URL') view.state.doc.descendants((node, position) => {
-      const link = node.marks.find(mark => mark.type.name === 'link')
-      if (link) transaction = transaction.addMark(position, position + node.nodeSize, link.type.create({ ...link.attrs, href: 'Other.md' }))
-    })
-    act(() => view.dispatch(transaction))
+    const view = editorViewRef.current
+    const normalizedSource = source.replace(/\r\n?/gu, '\n')
+    const heading = normalizedSource.indexOf('# Search Proof')
+    const changes = change === 'heading level'
+      ? { from: heading, to: heading + 1, insert: '###' }
+      : change === 'link URL'
+        ? { from: normalizedSource.indexOf('Sibling.md'), to: normalizedSource.indexOf('Sibling.md') + 'Sibling.md'.length, insert: 'Other.md' }
+        : { from: heading + 2, insert: '!' }
+    act(() => view.dispatch({ changes }))
     expect(onChange).toHaveBeenCalledTimes(1)
     const changed = onChange.mock.lastCall![0]
     expect(changed).not.toBe(source)
-    expect(changed).toContain(change === 'heading level' ? '### Search Proof' : change === 'link URL' ? '(Other.md)' : '!Search Proof')
-    act(() => expect(undoMilkdown(view.state, view.dispatch)).toBe(true))
+    expect(changed).toContain(change === 'heading level' ? '### Search Proof' : change === 'link URL' ? '(Other.md)' : '# !Search Proof')
+    act(() => expect(undoCodeMirror(view)).toBe(true))
     expect(onChange).toHaveBeenLastCalledWith(source)
-    act(() => expect(redoMilkdown(view.state, view.dispatch)).toBe(true))
+    act(() => expect(redoCodeMirror(view)).toBe(true))
     expect(onChange).toHaveBeenLastCalledWith(changed)
-    act(() => expect(undoMilkdown(view.state, view.dispatch)).toBe(true))
-    act(() => view.dispatch(view.state.tr.insertText('Real edit', 1)))
-    expect(redoDepth(view.state)).toBe(0)
+    act(() => expect(undoCodeMirror(view)).toBe(true))
+    act(() => view.dispatch({ changes: { from: 0, insert: 'Real edit' } }))
+    expect(redoCodeMirror(view)).toBe(false)
   })
 })
 
@@ -1114,19 +1057,19 @@ it('Source peer replacements reset native undo without emitting edits or losing 
   expect(editorViewRef.current.state.selection.main.head).toBe(2)
 })
 
-it('Live Preview peer replacement preserves local selection while resetting both histories', async () => {
-  const editorViewRef = { current: null }
+it('Live Preview peer replacement preserves local selection while resetting history', async () => {
+  const editorViewRef = { current: null as any }
   const onChange = vi.fn()
   const { rerender } = render(<LivePreviewEditor content="alpha beta" editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
   await waitFor(() => expect(editorViewRef.current).toBeTruthy())
   const view = editorViewRef.current
-  act(() => { const transaction = view.state.tr.insertText('x', 2); view.dispatch(transaction.setSelection(view.state.selection.constructor.create(transaction.doc, 3))) })
+  act(() => view.dispatch({ changes: { from: 2, insert: 'x' }, selection: { anchor: 3 } }))
   const calls = onChange.mock.calls.length
   rerender(<LivePreviewEditor content="omega beta" editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
-  await waitFor(() => expect(view.state.doc.textContent).toBe('omega beta'))
-  expect(view.state.selection.from).toBe(3)
-  expect(undoDepth(view.state)).toBe(0)
-  expect(redoDepth(view.state)).toBe(0)
+  await waitFor(() => expect(view.state.doc.toString()).toBe('omega beta'))
+  expect(view.state.selection.main.from).toBe(3)
+  expect(undoCodeMirror(view)).toBe(false)
+  expect(redoCodeMirror(view)).toBe(false)
   expect(onChange).toHaveBeenCalledTimes(calls)
 })
 

@@ -2988,17 +2988,26 @@ for (const change of ['navigate', 'edit'] as const) {
   })
 }
 
-test('Live Preview positions cannot drive authored-source mutations', async () => {
+test('Live Preview uses authored Markdown offsets for commands while Reading remains non-editable', async () => {
   const remote = new FakeRemote()
-  const controller = new WorkbenchRouteController(remote, () => {})
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(2026, 7, 26, 10, 0))
   await controller.syncLocation('/tocktutor/Second.md')
   controller.setMode('live-preview')
-  controller.setSelection(1, 6)
   const source = controller.getSnapshot().source
+  controller.setSourceEditorSelection(1, 6)
+  controller.runEditorCommand('bold')
+  assert.equal(controller.getSnapshot().source, source.slice(0, 1) + '**' + source.slice(1, 6) + '**' + source.slice(6))
+  controller.edit(source)
+  controller.setSourceEditorSelection(1, 6)
+  assert.equal(await controller.extractActiveSelection(), true)
+  assert.equal(controller.insertCurrentDateTime('date'), true)
+  controller.setMode('reading')
+  const readingSource = controller.getSnapshot().source
+  controller.setSourceEditorSelection(1, 6)
   assert.equal(await controller.extractActiveSelection(), false)
   assert.equal(controller.insertCurrentDateTime('date'), false)
   controller.runEditorCommand('bold')
-  assert.equal(controller.getSnapshot().source, source)
+  assert.equal(controller.getSnapshot().source, readingSource)
   controller.dispose()
 })
 
