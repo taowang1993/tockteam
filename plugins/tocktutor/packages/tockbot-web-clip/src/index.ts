@@ -8,7 +8,10 @@ import type {
 } from 'tockbot-note-runtime'
 import {
   defaultPublicFetchLimits,
+  defaultPublicImageMaxBytes,
   fetchPublicText,
+  fetchPublicImage,
+  type PublicImageResult,
   readBoundedText,
   responseHeaderBytes,
   maximumPublicFetchLimits,
@@ -37,6 +40,8 @@ import {
   WEB_CLIP_READER_API_PATH,
   WEB_CLIP_REVIEW_API_PATH,
   WEB_CLIP_VIEWER_API_PATH,
+  WEB_CLIP_IMAGE_API_PATH,
+  createImageHandler,
   createClipApplyHandler,
   createClipCancelHandler,
   createClipReviewHandler,
@@ -59,6 +64,8 @@ declare module '@deepseek-ai/cordis' {
 
 export interface Config extends PublicFetchLimits, ReaderViewLimits {
   maxConcurrentRequests: number
+  /** Raster image budget, independent of the HTML/text response budget. */
+  maxImageResponseBytes?: number
 }
 
 export type ClipRuntimeErrorCode = 'capacity' | 'runtime-result' | 'runtime-unavailable' | 'stale-vault'
@@ -81,6 +88,7 @@ export const Config: Schema<Config> = Schema.object({
   connectTimeoutMs: positiveInteger(defaultPublicFetchLimits.connectTimeoutMs, maximumPublicFetchLimits.connectTimeoutMs),
   maxAddresses: positiveInteger(defaultPublicFetchLimits.maxAddresses, maximumPublicFetchLimits.maxAddresses),
   maxConcurrentRequests: positiveInteger(8, 64),
+  maxImageResponseBytes: positiveInteger(defaultPublicImageMaxBytes, maximumPublicFetchLimits.maxResponseBytes),
   maxRedirects: Schema.number().step(1).min(0).max(maximumPublicFetchLimits.maxRedirects).default(defaultPublicFetchLimits.maxRedirects),
   maxResponseBytes: positiveInteger(defaultPublicFetchLimits.maxResponseBytes, maximumPublicFetchLimits.maxResponseBytes),
   maxResponseHeadersBytes: positiveInteger(defaultPublicFetchLimits.maxResponseHeadersBytes, maximumPublicFetchLimits.maxResponseHeadersBytes),
@@ -128,6 +136,7 @@ export class WebClipHost extends Service {
   private closing = false
   private readonly fetchLimits: PublicFetchLimits
   private readonly maxConcurrentRequests: number
+  private readonly maxImageResponseBytes: number
   private readonly readerLimits: ReaderViewLimits
   private runtime: NoteVaultRuntime | undefined
   private runtimeEpoch = 0
@@ -145,6 +154,7 @@ export class WebClipHost extends Service {
       timeoutMs: config.timeoutMs,
     }
     this.maxConcurrentRequests = config.maxConcurrentRequests
+    this.maxImageResponseBytes = config.maxImageResponseBytes ?? defaultPublicImageMaxBytes
     this.readerLimits = {
       maxParserInputChars: config.maxParserInputChars,
       maxParserTokens: config.maxParserTokens,
@@ -191,6 +201,11 @@ export class WebClipHost extends Service {
           if (errors.length > 0) throw new AggregateError(errors, 'Web Clip routes could not be removed')
         }
         try {
+          removers.push(webServer.register({
+            handler: createImageHandler(async (url, signal) => await this.fetchImage(url, { signal })),
+            kind: 'exact',
+            path: WEB_CLIP_IMAGE_API_PATH,
+          }))
           removers.push(webServer.register({
             handler: createViewerHandler(async (url, signal) => await this.viewerPage(url, { signal })),
             kind: 'exact',
@@ -393,6 +408,24 @@ export class WebClipHost extends Service {
     this.activeFetches += 1
     try {
       return await this.trackOperation(options.signal, async signal => await this.loadPublicText(url, signal))
+    } finally {
+      this.activeFetches -= 1
+    }
+  }
+
+  async fetchImage(url: string, options: { signal?: AbortSignal } = {}): Promise<PublicImageResult> {
+    if (this.activeFetches >= this.maxConcurrentRequests) throw new ClipRuntimeError('capacity', 'Too many Web Clip requests are active')
+    this.activeFetches += 1
+    try {
+      return await this.trackOperation(options.signal, async signal => {
+        const { epoch, runtime, vault } = this.activeRuntime()
+        const image = await fetchPublicImage(url, { limits: { ...this.fetchLimits, maxResponseBytes: this.maxImageResponseBytes }, signal })
+        signal.throwIfAborted()
+        if (epoch !== this.runtimeEpoch || !runtime.state.active || runtime.state.id !== vault.id || runtime.state.generation !== vault.generation) {
+          throw new ClipRuntimeError('stale-vault', 'The active vault changed while loading the image')
+        }
+        return image
+      })
     } finally {
       this.activeFetches -= 1
     }

@@ -47,6 +47,18 @@ test('writes and reads deterministic confined ZIP entries', () => {
   )
 })
 
+test('reads ZIP comments containing an incidental end-record signature', () => {
+  const original = Buffer.from(createDeterministicZip([
+    { bytes: new TextEncoder().encode('# Note\n'), path: 'Note.md' },
+  ]))
+  const comment = Buffer.alloc(32, 0x61)
+  comment.writeUInt32LE(0x06054b50, 0)
+  const archive = Buffer.concat([original, comment])
+  archive.writeUInt16LE(comment.length, original.length - 2)
+  assert.deepEqual(parseZip(archive, limits), parseZip(original, limits))
+  assert.throws(() => parseZip(archive.subarray(0, archive.length - 1), limits), ImportExportError)
+})
+
 test('rejects traversal, absolute, drive, NUL, dot, nested archive, and aliases', () => {
   const base = createDeterministicZip([
     { bytes: new Uint8Array([1]), path: 'safe.md' },

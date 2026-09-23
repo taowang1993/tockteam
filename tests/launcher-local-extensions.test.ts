@@ -252,3 +252,61 @@ test('local window-clear invalidation aborts a consumed copy effect', async () =
   await local.waitForIdle()
   await local.close()
 })
+
+test('calculator bounds intermediate arrays even when a later dimension is zero', () => {
+  for (const expression of [
+    'zeros(1000000000, 0)', 'ones(10000, 10000, 0)',
+    'identity(1000000000, 0)', 'random([10000, 10000, 0])', 'randomInt([10000, 10000, 0])',
+  ]) assert.equal(isLauncherCalculatorExpressionBounded(expression), false, expression)
+  for (const expression of ['zeros(2, 0)', 'ones(2, 3)', 'random(0, 1000000000)', 'randomInt(0, 1000000000)']) {
+    assert.equal(isLauncherCalculatorExpressionBounded(expression), true, expression)
+  }
+})
+
+test('calculator rejects ranges that cannot advance and bounds inclusive output', () => {
+  for (const expression of [
+    '100000000000000000:100000000000000000',
+    'range(100000000000000000, 100000000000000016)',
+    '9007199254740990:9007199254740992',
+    '-100000000000000000:-1:-100000000000000000',
+    '0:10000', 'range(0, 10000)',
+  ]) assert.equal(isLauncherCalculatorExpressionBounded(expression), false, expression)
+  for (const expression of ['1:10000', 'range(1, 10000)', '0:0.1:0.3', '3:-1:1', '3:1']) {
+    assert.equal(isLauncherCalculatorExpressionBounded(expression), true, expression)
+  }
+})
+
+test('calculator validates full range endpoints rather than exponent suffixes', () => {
+  for (const expression of ['1e20:-1:0', '[1e20:-1:0]', '0:1e-100:1', '1e20:1e20']) {
+    assert.equal(isLauncherCalculatorExpressionBounded(expression), false, expression)
+  }
+  for (const expression of ['1e1:-1:0', '0:1e-1:0.3', '0xA:-1:0']) {
+    assert.equal(isLauncherCalculatorExpressionBounded(expression), true, expression)
+  }
+})
+
+test('calculator precision rounds signed and scientific values before copying', async () => {
+  const cases: ReadonlyArray<readonly [string, number, string]> = [
+    ['-1/3', 3, '-0.333'],
+    ['-1m/3', 3, '-0.333 m'],
+    ['0.000000123456789', 8, '1.2e-7'],
+    ['-0.000000123456789', 8, '-1.2e-7'],
+    ['1.23456789e-7 m in m', 8, '1.2e-7 m'],
+    ['-1.23456789e-7 m in m', 8, '-1.2e-7 m'],
+  ]
+  for (const [query, precision, expected] of cases) {
+    let copied = ''
+    const local = createLauncherLocalExtensions({
+      ...options,
+      enabledExtensionIds: () => ['Calculator'],
+      getSetting: <T>(key: string, fallback: T) => (key === 'extension[Calculator].precision' ? precision : fallback) as T,
+      copyText: text => { copied = text },
+    })
+    try {
+      const item = (await local.searchInstant(query)).after[0]!
+      assert.equal(item?.name, expected, query)
+      await local.executeAction(action({ sourceExtension: 'Calculator', argument: item.defaultAction.argument }))
+      assert.equal(copied, expected, query)
+    } finally { await local.close() }
+  }
+})

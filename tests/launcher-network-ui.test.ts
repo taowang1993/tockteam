@@ -134,7 +134,7 @@ test('network settings expose all nine settings without hydrating the DeepL key'
     'extension[WebSearch].searchEngine', 'extension[WebSearch].showInstantSearchResult',
   ]) assert.match(settings, new RegExp(key.replace(/[.[\]]/gu, '\\$&'), 'u'), key)
   assert.match(page, /extension\[DeeplTranslator\]\.apiKey/u)
-  assert.match(settings, /write-only|write only|encrypted/u)
+  assert.match(page, /write-only|write only|encrypted/u)
   assert.match(settings, /aria-invalid/u)
   assert.match(settings, /aria-describedby/u)
   assert.match(settings, /<FieldError/u)

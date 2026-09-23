@@ -78,7 +78,8 @@ test('Can I Use opens preferences with the current Host-owned action handle', as
 
 test('Can I Use sends the full browser-target draft before keyboard submission', async () => {
   const nodes: Element[] = []; const sent: TrustedRaycastViewEvent[] = []
-  const document = { createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
+  const window = Object.assign(new EventTarget(), { requestAnimationFrame() {} })
+  const document = { defaultView: window, createElement() { const node = new Element(); nodes.push(node); return node } } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async (event: TrustedRaycastViewEvent) => { sent.push(event) } } as unknown as LauncherPreloadBridge, () => {})
   const root = createTrustedRaycastCanIUsePreferenceForm({ defaultQuery: 'chrome 100', showReleaseDate: true, showPartialSupport: false, briefMode: false, path: '', environment: 'production' }, { defaultQuery: 'query', showReleaseDate: 'date', showPartialSupport: 'partial', briefMode: 'brief' }, 'save')
   view.update({ type: 'ready', extensionId: 'can-i-use', sessionId: 's', generation: 'g', revision: 0, root })
@@ -88,7 +89,7 @@ test('Can I Use sends the full browser-target draft before keyboard submission',
   assert.equal(sent.at(-1)?.value, query.value, 'do not silently truncate to the legacy 128-character field limit')
   assert.equal(sent.at(-1)?.eventId, 'query')
   const submit = new Event('keydown', { cancelable: true }); Object.assign(submit, { key: 'Enter', metaKey: true })
-  view.element.dispatchEvent(submit); await flush()
+  window.dispatchEvent(submit); await flush()
   assert.equal(sent.at(-1)?.eventId, 'save')
   assert.equal(sent.at(-1)?.kind, 'action')
   view.dispose()
@@ -400,11 +401,12 @@ test('EmptyView renders explicit Hourglass and neutral implicit search icons', (
   } as unknown as Document
   const view = createTrustedRaycastView(document, { trustedRaycastEvent: async () => {} } as unknown as LauncherPreloadBridge, () => {})
   const chromePaths = nodes.filter(node => node.getAttribute('tag') === 'path').length
+  const chromeCircles = nodes.filter(node => node.getAttribute('tag') === 'circle').length
   view.update({ ...projection(0), root: { type: 'raycast-list', props: { searchEventId: 'search' }, children: [{ type: 'raycast-empty', props: { title: 'Translating…', icon: 'Hourglass' }, children: [] }] } })
   assert.equal(nodes.filter(node => node.getAttribute('tag') === 'path').length - chromePaths, 4)
-  assert.equal(nodes.some(node => node.getAttribute('tag') === 'circle'), false)
+  assert.equal(nodes.filter(node => node.getAttribute('tag') === 'circle').length, chromeCircles)
   view.update({ ...projection(1), root: { type: 'raycast-list', props: { searchEventId: 'search-1' }, children: [{ type: 'raycast-empty', props: { title: 'No Results' }, children: [] }] } })
-  assert.equal(nodes.some(node => node.getAttribute('tag') === 'circle'), true)
+  assert.ok(nodes.filter(node => node.getAttribute('tag') === 'circle').length > chromeCircles)
 })
 
 test('result accessories are bounded text and malformed values stay inert', () => {
@@ -553,7 +555,9 @@ test('language set dropdown change sends a bounded fieldChanged event', async ()
 test('first-run preferences use the Raycast-like centered hierarchy and keyboard submit', async () => {
   const nodes: Element[] = []
   const sent: TrustedRaycastViewEvent[] = []
+  const window = Object.assign(new EventTarget(), { requestAnimationFrame() {} })
   const document = {
+    defaultView: window,
     createElement() { const node = new Element(); nodes.push(node); return node },
     createElementNS() { const node = new Element(); nodes.push(node); return node },
   } as unknown as Document
@@ -607,7 +611,7 @@ test('first-run preferences use the Raycast-like centered hierarchy and keyboard
   assert.ok(keycaps.every(node => node.className.includes('box-border') && node.className.includes('size-5') && node.className.includes('text-sm') && node.className.includes('justify-center')), 'setup keycaps are smaller while their glyphs are larger and centered')
   assert.ok(keycaps.every(node => node.className.includes('border-[var(--dsw-alias-border-l2,CanvasText)]')), 'setup keycaps remain distinct without changing the theme')
   const submit = Object.assign(new Event('keydown'), { key: 'Enter', isComposing: false, keyCode: 13, metaKey: true, ctrlKey: false, altKey: false, shiftKey: false })
-  view.element.dispatchEvent(submit)
+  window.dispatchEvent(submit)
   await flush()
   assert.equal(sent.at(-1)?.kind, 'action')
   assert.equal(sent.at(-1)?.eventId, 'continue')

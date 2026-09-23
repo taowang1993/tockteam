@@ -1,9 +1,11 @@
+import { isLauncherExtensionId } from './launcher-extension-settings.ts'
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
 import { createTrustedRaycastFirstUseView, createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
 import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import {
   ArrowRight,
   History as HistoryIcon,
+  Notebook,
   Search,
   Star,
   StarOff,
@@ -719,6 +721,7 @@ async function bootstrap(): Promise<void> {
       : undefined
     const packagedAsset = item.imageKey === undefined
       ? undefined
+      : item.imageKey === 'tockcoder' ? './launcher-assets/tockteam-logo.svg'
       : launcherDiscoveryAssetUrl(item.imageKey) ?? launcherFileSearchAssetUrl(item.imageKey) ?? launcherNetworkAssetUrl(item.imageKey) ?? launcherOsAssetUrl(item.imageKey, appliedThemeMode) ?? launcherTerminalAssetUrl(item.imageKey) ?? launcherWorkflowAssetUrl(item.imageKey) ?? trustedRaycastAssetUrl(item.imageKey)
     const imageUrl = isLauncherImageUrl(item.imageUrl) ? item.imageUrl : localAsset ?? packagedAsset
     const marker = imageUrl === undefined ? document.createElement('span') : document.createElement('img')
@@ -734,7 +737,8 @@ async function bootstrap(): Promise<void> {
         fallback.textContent = item.name.slice(0, 1).toLocaleUpperCase()
         marker.replaceWith(fallback)
       }
-    } else marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
+    } else if (item.imageKey === 'tocktutor') marker.append(icon(Notebook))
+    else marker.textContent = item.name.slice(0, 1).toLocaleUpperCase()
     return marker
   }
 
@@ -856,6 +860,18 @@ async function bootstrap(): Promise<void> {
         buttons[next]?.focus()
       }
     })
+    const extensionId = isLauncherExtensionId(item.sourceExtension) ? item.sourceExtension
+      : trustedRaycastCommands.find(command => command.id === item.id || trustedRaycastSetupId(command.extensionId) === item.id)?.extensionId
+    if (extensionId) {
+      const settingsAction = document.createElement('button')
+      settingsAction.type = 'button'
+      settingsAction.className = 'launcher-command-menu-item'
+      settingsAction.setAttribute('role', 'menuitem')
+      settingsAction.textContent = surfaceSettings.locale === 'zh-CN' ? '扩展设置' : 'Extension Settings'
+      settingsAction.disabled = workflowInteractionBlocked()
+      settingsAction.addEventListener('click', () => { if (!workflowInteractionBlocked()) void bridge.openSettings(extensionId).catch(() => undefined) })
+      menu.append(settingsAction)
+    }
     details.append(menu)
   }
 

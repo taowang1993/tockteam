@@ -93,6 +93,7 @@ export interface WorkbenchSearchPreview {
     revision: string;
 }
 export interface WorkbenchRouteSnapshot {
+    localEditRevision?: number | undefined;
     attachmentPreview?: AttachmentPreviewResult | null;
     baseFiles?: readonly BaseHydratedFile[];
     bookmarks?: readonly TockTutorBookmark[];

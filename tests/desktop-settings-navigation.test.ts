@@ -26,6 +26,28 @@ test('settings opening waits for the active TockCoder surface and retries bounde
   assert.equal(scheduled.length, 0)
 })
 
+test('settings opening waits for the trigger to mount before reporting success', () => {
+  const scheduled: Array<() => void> = []
+  let button: { click(): void } | undefined
+  let clicks = 0
+  let opened = 0
+  deferSettingsOpen({
+    findButton: () => button,
+    isTockCoder: () => true,
+    isTockTutorActive: () => false,
+    onOpened: () => { opened += 1 },
+    schedule: callback => { scheduled.push(callback) },
+  })
+  scheduled.shift()!()
+  assert.equal(opened, 0)
+  assert.equal(scheduled.length, 1)
+  button = { click: () => { clicks += 1 } }
+  scheduled.shift()!()
+  assert.equal(clicks, 1)
+  assert.equal(opened, 1)
+  assert.equal(scheduled.length, 0)
+})
+
 test('settings selection is idempotent when the shell is already open', () => {
   const scheduled: Array<() => void> = []
   let clicks = 0

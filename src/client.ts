@@ -2,6 +2,7 @@
 
 import type { DesktopBridge, DesktopCommand } from './contracts.ts'
 import { localeTag, type LocaleService } from '../plugins/shared/i18n.ts'
+import type { LauncherExtensionId } from './launcher-extension-settings.ts'
 import { apply as applyLauncherSettings, inject as launcherSettingsInject } from './launcher-settings.tsx'
 import { projectLauncherThemeSource } from './launcher-theme.ts'
 import { deferSettingsOpen } from './desktop-settings-navigation.ts'
@@ -229,7 +230,7 @@ function isSettingsShellOpen(): boolean {
   return document.querySelector('[role="dialog"] button[aria-current]') !== null
 }
 
-function showSettingsAfterRoute(section?: 'tocklauncher'): void {
+function showSettingsAfterRoute(section?: 'tocklauncher', extensionId?: LauncherExtensionId): void {
   const schedule = (callback: () => void): void => {
     if (typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => { queueMicrotask(callback) })
@@ -256,10 +257,18 @@ function showSettingsAfterRoute(section?: 'tocklauncher'): void {
   const selectLauncherSection = (): void => {
     let attempts = 0
     const attempt = (): void => {
-      const section = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')]
-        .find(button => button.textContent?.trim() === 'TockLauncher')
+      const section = document.querySelector<HTMLButtonElement>('[data-tocklauncher-settings-trigger]')
+        ?? [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')]
+          .find(button => button.textContent?.trim() === 'TockLauncher')
       if (section !== undefined) {
         section.click()
+        let destinationAttempts = 0
+        const selectDestination = (): void => {
+          if (document.querySelector('[data-testid="tocklauncher-settings"]')) {
+            window.dispatchEvent(new CustomEvent('tockteam-launcher-settings-destination', { detail: extensionId }))
+          } else if (destinationAttempts++ < 60) schedule(selectDestination)
+        }
+        schedule(selectDestination)
         return
       }
       if (attempts >= 60) return
@@ -329,7 +338,7 @@ function dispatch(
       })
       return
     case 'show-settings':
-      showSettingsAfterRoute(command.section)
+      showSettingsAfterRoute(command.section, command.extensionId)
       return
     case 'toggle-sidebar':
       panels.toggleSidebar()

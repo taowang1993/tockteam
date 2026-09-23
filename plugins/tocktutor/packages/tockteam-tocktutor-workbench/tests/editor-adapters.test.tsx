@@ -16,6 +16,21 @@ afterEach(() => {
 })
 
 describe('CodeMirror Source editor', () => {
+  it('uses the note text color for drawn cursors instead of the light-theme default', async () => {
+    const editorViewRef = { current: null }
+    const { container } = render(<SourceEditor content="Caret contrast" editorViewRef={editorViewRef} onContentChange={() => {}} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
+    // jsdom has no cursor geometry and preserves CSS variables. Probe the real
+    // editor's stylesheet; browser verification checks the drawn cursor and contrast.
+    for (const className of ['cm-cursor', 'cm-dropCursor']) {
+      const cursor = document.createElement('div')
+      cursor.className = className
+      container.querySelector('.cm-editor')!.append(cursor)
+      expect(getComputedStyle(cursor).borderLeftColor).toBe('var(--tt-text)')
+      cursor.remove()
+    }
+  })
+
   it('preserves exact source, reports selections, and accepts a real edit', async () => {
     const source = '---\r\nstatus: active\r\n---\r\n# Keep\r\n'
     const onChange = vi.fn()
@@ -219,8 +234,8 @@ describe('selection-aware editor widgets', () => {
   })
 })
 
-describe('Milkdown Live Preview editor', () => {
-  it('keeps frontmatter outside Milkdown serialization and presents Obsidian-style tag properties', async () => {
+describe('Live Preview editor', () => {
+  it('preserves frontmatter and presents Obsidian-style tag properties', async () => {
     const source = '---\r\nstatus: active\r\ntags: [one, two]\r\n---\r\n# Lesson\r\n'
     const onSetProperty = vi.fn(() => true)
     expect(splitLivePreviewSource(source)).toEqual({
@@ -296,7 +311,7 @@ describe('Milkdown Live Preview editor', () => {
     expect(screen.getByRole('link', { name: '[1]' }).textContent).toBe('[1]')
   })
 
-  it('mounts one editable ProseMirror surface and keeps source untouched until edited', { timeout: 20_000 }, async () => {
+  it('mounts one editable Markdown surface and keeps source untouched until edited', { timeout: 20_000 }, async () => {
     const source = '# Lesson\r\n\r\n- [ ] Review\r\n'
     const onChange = vi.fn()
     const onSelection = vi.fn()
@@ -304,10 +319,10 @@ describe('Milkdown Live Preview editor', () => {
       <LivePreviewEditor content={source} onMarkdownChange={onChange} onSelectionChange={onSelection} />,
     )
 
-    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 15_000 })
-    expect(container.querySelector('.ProseMirror')?.textContent).toContain('Lesson')
+    await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 15_000 })
+    expect(container.querySelector('.cm-content')?.textContent).toContain('Lesson')
     expect(onChange).not.toHaveBeenCalled()
-    expect(container.querySelector<HTMLElement>('.ProseMirror')?.getAttribute('contenteditable')).toBe('true')
+    expect(container.querySelector<HTMLElement>('.cm-content')?.getAttribute('contenteditable')).toBe('true')
     await waitFor(() => expect(onSelection).toHaveBeenCalled())
   })
 
@@ -316,9 +331,7 @@ describe('Milkdown Live Preview editor', () => {
 
     await waitFor(() => expect(live.container.querySelector('blockquote')).toBeTruthy(), { timeout: 5_000 })
     const liveSurface = screen.getByLabelText('Live Preview Editor')
-    expect(liveSurface.className).toContain('text-base')
-    expect(liveSurface.className).toContain('[&_blockquote]:border-l-2')
-    expect(liveSurface.className).toContain('[&_blockquote]:pl-3')
+    expect(liveSurface.className).toContain('tocktutor-live-preview-styles')
     live.unmount()
 
     render(<RichReadingView source={'> Quoted lesson\n'} onToggleTask={() => {}} title="Quote" />)
@@ -379,12 +392,9 @@ describe('Milkdown Live Preview editor', () => {
   it('presents wikilinks without source brackets and shares Reading View link styling', async () => {
     const live = render(<LivePreviewEditor content={'Review [[Welcome]] and [[Guide|start here]].\n'} onMarkdownChange={() => {}} />)
 
-    await waitFor(() => expect(live.container.querySelectorAll('.tocktutor-live-internal-link')).toHaveLength(2), { timeout: 5_000 })
-    expect([...live.container.querySelectorAll('.tocktutor-live-internal-link')].map(link => link.textContent)).toEqual(['Welcome', 'start here'])
-    expect([...live.container.querySelectorAll('.tocktutor-live-link-markup')].map(markup => markup.textContent).join('')).toBe('[[]][[Guide|]]')
-    const liveSurface = screen.getByLabelText('Live Preview Editor')
-    expect(liveSurface.className).toContain('[&_.tocktutor-live-internal-link]:text-[var(--dsw-specific-markdown-accent)]')
-    expect(liveSurface.className).not.toContain('[&_.tocktutor-live-internal-link]:underline')
+    await waitFor(() => expect(live.container.querySelectorAll('.cm-live-internal-link')).toHaveLength(2), { timeout: 5_000 })
+    expect([...live.container.querySelectorAll('.cm-live-internal-link')].map(link => link.textContent)).toEqual(['Welcome', 'start here'])
+    expect(live.container.querySelector('.cm-content')?.textContent).not.toContain('[[')
     live.unmount()
 
     render(<RichReadingView source={'Review [[Welcome]].\n'} onToggleTask={() => {}} title="Links" />)
@@ -407,29 +417,23 @@ describe('Milkdown Live Preview editor', () => {
   it('renders highlights and nested lists with compact Live Preview flow', async () => {
     const { container } = render(<LivePreviewEditor content={'Read ==carefully==.\n\n1. First\n2. Second\n   - Nested\n'} onMarkdownChange={() => {}} />)
 
-    await waitFor(() => expect(container.querySelector('.tocktutor-live-highlight')?.textContent).toBe('carefully'), { timeout: 5_000 })
-    expect([...container.querySelectorAll('.tocktutor-live-highlight-markup')].map(markup => markup.textContent).join('')).toBe('====')
-    const editor = screen.getByLabelText('Live Preview Editor')
-    expect(editor.className).toContain('[&_.tocktutor-live-highlight]:bg-[var(--dsw-specific-markdown-highlight)]')
-    expect(editor.className).toContain('[&_li>p]:m-0')
-    expect(editor.className).toContain('[&_ul]:list-disc')
-    expect(editor.className).toContain('[&_code]:bg-[var(--dsw-specific-markdown-inline-code)]')
-    expect(editor.className).toContain('[&_code]:rounded-sm')
-    expect(editor.className).toContain('[&_code]:py-0.5')
-    expect(editor.className).toContain('[&_pre_code]:p-0')
-    expect(editor.className).toContain('[&_.tocktutor-live-fold]:absolute')
-    expect(editor.className).toContain('[&_li>ul]:!pl-4')
+    await waitFor(() => expect(container.querySelector('.cm-live-highlight')?.textContent).toBe('carefully'), { timeout: 5_000 })
+    expect(container.querySelector('.cm-content')?.textContent).not.toContain('==')
+    expect(container.querySelector('.cm-content')?.textContent).toContain('Nested')
+    expect(screen.getByLabelText('Live Preview Editor').className).toContain('tocktutor-live-preview-styles')
   })
 
   it('renders compact Obsidian-style task rows in Live Preview', async () => {
-    const { container } = render(<LivePreviewEditor content={'- [x] Done\n- [ ] Next\n'} onMarkdownChange={() => {}} />)
+    const onChange = vi.fn()
+    const { container } = render(<LivePreviewEditor content={'- [x] Done\n- [ ] Next\n'} onMarkdownChange={onChange} />)
 
-    await waitFor(() => expect(container.querySelector('li[data-item-type="task"]')).toBeTruthy(), { timeout: 5_000 })
-    const editor = screen.getByLabelText('Live Preview Editor')
-    expect(editor.className).toContain('[&_ul:has(li[data-item-type=task])]:list-none')
-    expect(editor.className).toContain('[&_li[data-item-type=task]>p]:inline')
-    expect(editor.className).toContain('[&_li[data-checked=true]>p]:line-through')
-    expect(container.querySelector<HTMLInputElement>('.tocktutor-live-task')?.className).toContain('accent-[var(--dsw-specific-markdown-accent)]')
+    await waitFor(() => expect(container.querySelectorAll('input[data-live-task-from]')).toHaveLength(2), { timeout: 5_000 })
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Mark Task as Incomplete' }).checked).toBe(true)
+    const next = screen.getByRole<HTMLInputElement>('checkbox', { name: 'Mark Task as Complete' })
+    expect(next.checked).toBe(false)
+    fireEvent.mouseDown(next)
+    fireEvent.click(next)
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('- [x] Done\n- [x] Next\n')
   })
 
   it('renders bordered tables without a persistent command strip', async () => {
@@ -437,11 +441,9 @@ describe('Milkdown Live Preview editor', () => {
 
     await waitFor(() => expect(container.querySelector('table')).toBeTruthy(), { timeout: 5_000 })
     expect(screen.queryByLabelText('Live Preview Table Commands')).toBeNull()
-    const editor = screen.getByLabelText('Live Preview Editor')
-    expect(editor.className).toContain('[&_th]:border')
-    expect(editor.className).toContain('[&_td]:border')
-    expect(editor.className).toContain('border-[var(--dsw-alias-border-l2,var(--tt-border))]')
-    expect(editor.className).toContain('[&_table_p]:m-0')
+    expect(container.querySelector('th')?.textContent).toBe('Surface')
+    expect(container.querySelector('td')?.textContent).toBe('Editor')
+    expect(screen.getByLabelText('Live Preview Editor').className).toContain('tocktutor-live-preview-styles')
   })
 
   it('keeps Reading tables compact and uses the same visible borders', () => {
@@ -474,13 +476,48 @@ describe('Milkdown Live Preview editor', () => {
     expect(readingSurface.className).toContain('[&_li>ol]:border-l')
   })
 
-  it('routes external Live Preview images through the isolated viewer callback', async () => {
+  it('loads external Live Preview images through the Host, never a renderer network resource', async () => {
+    const request = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ mimeType: 'image/png', dataBase64: 'iVBORw0KGgo=' })))
+    try {
+      const editorViewRef = { current: null as any }
+      const { container, unmount } = render(<LivePreviewEditor content="![Remote](https://example.com/image.png)\n" editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
+      await waitFor(() => expect(container.querySelector('img[src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy())
+      expect(container.querySelector('img[src^="http"]')).toBeNull()
+      expect(request).toHaveBeenCalledWith('/web-clip/api/image', expect.objectContaining({ method: 'POST', body: JSON.stringify({ url: 'https://example.com/image.png' }) }))
+      expect(screen.queryByRole('button', { name: /External Image/u })).toBeNull()
+      const image = container.querySelector<HTMLImageElement>('img.tocktutor-inline-image')!
+      editorViewRef.current.dispatch({ changes: { from: 0, insert: 'Before\n\n' } })
+      await waitFor(() => expect(container.querySelector('img.tocktutor-inline-image')).toBe(image))
+      expect(request).toHaveBeenCalledTimes(1)
+      expect(image.closest('[data-preview-from]')?.getAttribute('data-preview-from')).toBe('8')
+      fireEvent.error(image)
+      expect(image.dataset.loadError).toBe('true')
+      expect(image.alt).toBe('Image Unavailable: Remote')
+      const signal = request.mock.calls[0]?.[1]?.signal
+      unmount()
+      expect(signal?.aborted).toBe(true)
+    } finally { request.mockRestore() }
+  })
+
+  it('rejects active and malformed image payloads without assigning an image URL', async () => {
+    for (const payload of [{ mimeType: 'image/svg+xml', dataBase64: 'PHN2Zz4=' }, { mimeType: 'image/png', dataBase64: 'invalid value' }]) {
+      const request = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(payload)))
+      try {
+        const { container, unmount } = render(<LivePreviewEditor content="![Remote](https://example.com/a.png)" onMarkdownChange={() => {}} />)
+        await waitFor(() => expect(container.querySelector<HTMLImageElement>('img.tocktutor-inline-image')?.dataset.loadError).toBe('true'))
+        expect(container.querySelector('img.tocktutor-inline-image')?.getAttribute('src')).toBeNull()
+        unmount()
+      } finally { request.mockRestore() }
+    }
+  })
+
+  it('keeps video embeds on the isolated viewer path rather than requesting image bytes', async () => {
     const onOpenExternalUrl = vi.fn()
-    const { container } = render(<LivePreviewEditor content="![Remote](https://example.com/image.png)\n" onMarkdownChange={() => {}} onOpenExternalUrl={onOpenExternalUrl} />)
-    const button = await screen.findByRole('button', { name: 'External Image: Remote' }, { timeout: 5_000 })
-    expect(container.querySelector('img[src^="http"]')).toBeNull()
+    render(<LivePreviewEditor content="![Video](https://www.youtube.com/watch?v=NnTvZWp5Q7o)" onMarkdownChange={() => {}} onOpenExternalUrl={onOpenExternalUrl} />)
+    const button = await screen.findByRole('button', { name: /YouTube/u })
+    fireEvent.mouseDown(button)
     fireEvent.click(button)
-    expect(onOpenExternalUrl).toHaveBeenCalledWith('https://example.com/image.png')
+    expect(onOpenExternalUrl).toHaveBeenCalledExactlyOnceWith('https://www.youtube-nocookie.com/embed/NnTvZWp5Q7o')
   })
 
   it('opens external embeds from Slides through the isolated viewer callback', () => {
@@ -508,7 +545,7 @@ describe('Milkdown Live Preview editor', () => {
       expect(value).toBeTruthy()
       return value!
     }, { timeout: 5_000 })
-    expect(widget.getAttribute('role')).toBe('button')
+    expect(widget.getAttribute('aria-label')).toBe('Edit Preview')
     expect(widget.querySelector('img[alt="8x8"][height="8"][width="8"][src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy()
     expect(widget.textContent).not.toContain(nestedSource)
   })
@@ -523,8 +560,8 @@ describe('Milkdown Live Preview editor', () => {
     const { container, rerender } = render(
       <LivePreviewEditor content={source} onMarkdownChange={() => {}} onWidgetState={onWidgetState} resolvedEmbeds={resolvedEmbeds} />,
     )
-    await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 5_000 })
-    const editor = container.querySelector('.ProseMirror')
+    await waitFor(() => expect(container.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
+    const editor = container.querySelector('.cm-content')
     const widget = await waitFor(() => {
       const value = container.querySelector<HTMLElement>('.tocktutor-live-embed-widget')
       expect(value).toBeTruthy()
@@ -536,19 +573,19 @@ describe('Milkdown Live Preview editor', () => {
     fireEvent.mouseDown(audio)
     expect(container.querySelector('.tocktutor-live-embed-widget')).toBe(widget)
     rerender(<LivePreviewEditor content={source} onMarkdownChange={() => {}} onWidgetState={onWidgetState} resolvedEmbeds={resolvedEmbeds} />)
-    expect(container.querySelector('.ProseMirror')).toBe(editor)
+    expect(container.querySelector('.cm-content')).toBe(editor)
     expect(onWidgetState).toHaveBeenCalled()
     fireEvent.mouseDown(widget)
     await waitFor(() => expect(container.querySelector('.tocktutor-live-embed-widget')).toBeNull())
-    expect(container.querySelector('.ProseMirror')?.textContent).toContain('![[Target.md]]')
+    expect(container.querySelector('.cm-content')?.textContent).toContain('![[Target.md]]')
     const nextSource = 'Before ![[Second.md]] after'
     const nextEmbeds = [{
       content: '# Second\nBody\n',
       target: { display: null, fragment: null, kind: 'note' as const, path: 'Second.md', source: '![[Second.md]]' },
     }]
     rerender(<LivePreviewEditor content={nextSource} onMarkdownChange={() => {}} onWidgetState={onWidgetState} resolvedEmbeds={nextEmbeds} />)
-    await waitFor(() => expect(container.querySelector('.tocktutor-live-embed-widget')?.textContent).toContain('Second'))
-    expect(container.querySelector('.ProseMirror')).toBe(editor)
+    await waitFor(() => expect(container.querySelector('.cm-content')?.textContent).toContain('Second.md'))
+    expect(container.querySelector('.cm-content')).toBe(editor)
     expect(screen.getByLabelText('Live Preview Editor')).toBeTruthy()
   })
 })

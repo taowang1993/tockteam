@@ -1032,6 +1032,14 @@ function WorkspacePanel({
   const [commentTarget, setCommentTarget] = useState<ReviewCommentTarget | null>(null)
   const [commentBody, setCommentBody] = useState('')
   const [commentNotice, setCommentNotice] = useState('')
+  const refreshRequest = useRef<AbortController | null>(null)
+  const diffRequest = useRef<AbortController | null>(null)
+  const commitRequest = useRef<AbortController | null>(null)
+  useEffect(() => () => {
+    refreshRequest.current?.abort()
+    diffRequest.current?.abort()
+    commitRequest.current?.abort()
+  }, [])
   const comments = useSyncExternalStore(
     reviewComments.subscribe,
     reviewComments.getSnapshot,
@@ -1062,12 +1070,17 @@ function WorkspacePanel({
       setSnapshot(null)
       return
     }
+    if (refreshRequest.current !== null) return
+    const controller = new AbortController()
+    refreshRequest.current = controller
+    const { signal } = controller
     try {
       const nextScope = { sessionId, cwd }
       const [facts, status] = await Promise.all([
-        responseJson<WorkspaceFacts>(await fetch(workspaceUrl(cwd, sessionId)), t),
-        betterSidebarApi.gitStatus(nextScope),
+        fetch(workspaceUrl(cwd, sessionId), { signal }).then(response => responseJson<WorkspaceFacts>(response, t)),
+        betterSidebarApi.gitStatus(nextScope, signal),
       ])
+      if (signal.aborted) return
       if (!status.isRepo) {
         setHistory([])
         setSelectedCommit(null)
@@ -1080,9 +1093,10 @@ function WorkspacePanel({
         })
       } else {
         const [nextBranch, nextHistory] = await Promise.all([
-          betterSidebarApi.gitBranch(nextScope),
-          betterSidebarApi.gitLog(nextScope).catch(() => []),
+          betterSidebarApi.gitBranch(nextScope, signal),
+          betterSidebarApi.gitLog(nextScope, 30, 0, signal).catch(() => []),
         ])
+        if (signal.aborted) return
         setHistory(nextHistory)
         setSnapshot({
           ...facts,
@@ -1094,7 +1108,9 @@ function WorkspacePanel({
       }
       setError('')
     } catch (nextError) {
-      setError(errorMessage(nextError))
+      if (!signal.aborted) setError(errorMessage(nextError))
+    } finally {
+      if (refreshRequest.current === controller) refreshRequest.current = null
     }
   }, [cwd, sessionId, t])
 
@@ -1109,16 +1125,6 @@ function WorkspacePanel({
       window.removeEventListener('focus', onFocus)
     }
   }, [cwd, panelState.open, panelState.view, refresh])
-
-  useEffect(() => {
-    setSelectedPath(null)
-    setDiff('')
-    setHistory([])
-    setSelectedCommit(null)
-    setCommentTarget(null)
-    setCommentBody('')
-    setCommentNotice('')
-  }, [cwd])
 
   useEffect(() => {
     if (cwd === undefined || branch === null) return
@@ -1143,6 +1149,8 @@ function WorkspacePanel({
         })
         await responseJson<WorkspaceHostMutationResponse>(response, t)
       }
+      refreshRequest.current?.abort()
+      refreshRequest.current = null
       await refresh()
       setError('')
     } catch (nextError) {
@@ -1156,11 +1164,14 @@ function WorkspacePanel({
     change: WorkspaceSnapshot['changes'][number],
   ): Promise<void> => {
     if (scope === undefined) return
+    diffRequest.current?.abort()
     if (selectedPath === change.path) {
       setSelectedPath(null)
       setDiff('')
       return
     }
+    const controller = new AbortController()
+    diffRequest.current = controller
     setSelectedPath(change.path)
     setDiff(t('workspace.loading-diff'))
     try {
@@ -1168,10 +1179,11 @@ function WorkspacePanel({
         scope,
         change.path,
         change.staged,
+        controller.signal,
       )
-      setDiff(response.diff || t('workspace.no-text-diff'))
+      if (!controller.signal.aborted) setDiff(response.diff || t('workspace.no-text-diff'))
     } catch (nextError) {
-      setDiff(errorMessage(nextError))
+      if (!controller.signal.aborted) setDiff(errorMessage(nextError))
     }
   }
 
@@ -1182,6 +1194,8 @@ function WorkspacePanel({
       setCommentTarget(null)
       return
     }
+    const controller = new AbortController()
+    commitRequest.current = controller
     setReviewLoading(true)
     setCommentTarget(null)
     setCommentBody('')
@@ -1190,13 +1204,15 @@ function WorkspacePanel({
       const result = await betterSidebarApi.gitCommitDiff(
         scope,
         entry.hashFull,
+        controller.signal,
       )
+      if (controller.signal.aborted) return
       setSelectedCommit(reviewCommitFromBetterSidebar(entry, result.diff))
       setError('')
     } catch (nextError) {
-      setError(errorMessage(nextError))
+      if (!controller.signal.aborted) setError(errorMessage(nextError))
     } finally {
-      setReviewLoading(false)
+      if (!controller.signal.aborted) setReviewLoading(false)
     }
   }
 
@@ -1724,6 +1740,7 @@ function registerBuiltinSidebarTools(options: {
       order: 10,
       render: () => (
         <WorkspacePanel
+          key={JSON.stringify(activeSidebarScope(sessions))}
           reviewComments={reviewComments}
           service={service}
           sessions={sessions}

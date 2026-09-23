@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
 import {
   parseGitReviewDiff,
   reviewCommitFromBetterSidebar,
@@ -22,6 +25,54 @@ test('Git review paths decode quoted UTF-8 names', () => {
   assert.equal(files.length, 1)
   assert.equal(files[0]?.oldPath, 'notes/测试 file.md')
   assert.equal(files[0]?.path, 'notes/测试 file.md')
+})
+
+test('Git review decodes quoted filenames without Node globals in the browser', () => {
+  const source = stripTypeScriptTypes(readFileSync(new URL(
+    '../plugins/sidebar/src/client/review-diff.ts', import.meta.url,
+  ), 'utf8')).replaceAll('export function ', 'function ')
+  const parse = runInNewContext(`${source}\nparseGitReviewDiff`, {
+    TextEncoder, TextDecoder,
+  }) as typeof parseGitReviewDiff
+  const [file] = parse('diff --git "a/\\346\\265\\213.md" "b/\\346\\265\\213.md"')
+  assert.equal(file?.path, '测.md')
+})
+
+test('Git review preserves header-like hunk content and its line numbers', () => {
+  const [file] = parseGitReviewDiff([
+    'diff --git a/note.md b/note.md',
+    '--- a/note.md',
+    '+++ b/note.md',
+    '@@ -1,3 +1,3 @@',
+    '--- old heading',
+    '----',
+    '+++ new heading',
+    '++++',
+    ' unchanged',
+  ].join('\n'))
+  assert.equal(file?.path, 'note.md')
+  assert.equal(file?.oldPath, 'note.md')
+  assert.equal(file?.additions, 2)
+  assert.equal(file?.deletions, 2)
+  assert.deepEqual(file?.lines.map(line => [line.content, line.oldLine, line.newLine]), [
+    ['-- old heading', 1, null], ['---', 2, null],
+    ['++ new heading', null, 1], ['+++', null, 2], ['unchanged', 3, 3],
+  ])
+})
+
+test('Git review accepts renames with only one quoted filename', () => {
+  for (const [from, to, oldPath, path] of [
+    ['a/plain.md', '"b/\\346\\265\\213.md"', 'plain.md', '测.md'],
+    ['"a/\\346\\265\\213.md"', 'b/plain.md', '测.md', 'plain.md'],
+  ]) {
+    const [file] = parseGitReviewDiff([
+      `diff --git ${from} ${to}`, 'similarity index 100%',
+      `rename from ${oldPath}`, `rename to ${path}`,
+    ].join('\n'))
+    assert.equal(file?.oldPath, oldPath)
+    assert.equal(file?.path, path)
+    assert.equal(file?.status, 'renamed')
+  }
 })
 
 test('Better Sidebar commit patches become line-addressable reviews', () => {

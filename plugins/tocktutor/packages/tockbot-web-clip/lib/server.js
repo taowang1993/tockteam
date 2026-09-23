@@ -1,5 +1,6 @@
 import { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH, } from "./viewer.js";
 export { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH, };
+export const WEB_CLIP_IMAGE_API_PATH = '/web-clip/api/image';
 const MAX_VIEWER_REQUEST_BYTES = 8192;
 const DEFAULT_REQUEST_BODY_TIMEOUT_MS = 5_000;
 function sendJson(response, status, value) {
@@ -175,6 +176,9 @@ function createApiHandler(parse, load, options) {
             response.removeListener('close', abortClosed);
         }
     };
+}
+export function createImageHandler(load, options = {}) {
+    return createApiHandler(urlRequest, load, options);
 }
 export function createViewerHandler(load, options = {}) {
     return createApiHandler(urlRequest, load, options);

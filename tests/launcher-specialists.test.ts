@@ -19,6 +19,19 @@ test('TockTeam launcher indexes only its finite product destinations', async () 
   assert.deepEqual((await createTockTeamDestinationResults('tockdriver')).before, [])
 })
 
+test('TockTeam workspace icons survive action publication for opening and filtered results', async () => {
+  const store = new LauncherActionStore({ execute: async () => {} })
+  const owner = { role: 'launcher' as const, webContentsId: 1 }
+  for (const query of ['', 'coder', 'tutor']) {
+    const { before } = await createTockTeamDestinationResults(query)
+    const { items } = store.publish({ items: before, owner })
+    assert.ok(items.length > 0)
+    for (const item of items) {
+      assert.equal(item.imageKey, item.id.replace('tockteam-route:', ''))
+    }
+  }
+})
+
 test('TockTeam route action validates its destination before navigating the workbench', async () => {
   let focused = 0
   let destination = ''

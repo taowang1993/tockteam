@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import { captureLauncherWorkflowPath, createLauncherWorkflow, normalizeLauncherWorkflowUrl, type LauncherWorkflow, type LauncherWorkflowEffects } from '../src/launcher-workflow.ts'
-import type { LauncherActionRecord } from '../src/launcher-actions.ts'
+import { LauncherActionStore, normalizeLauncherActionResult, type LauncherActionRecord } from '../src/launcher-actions.ts'
+import { createLauncherCoreSearch } from '../src/launcher-core-search.ts'
 
 const OWNER = Object.freeze({ role: 'launcher' as const, webContentsId: 41 })
 const HOME = Object.freeze({ dev: '1', ino: '2' })
@@ -25,7 +26,7 @@ function record(argument: string, actionId = 'launcher-action:workflow'): Launch
   return Object.freeze({ actionId, argument, expiresAt: 10_000, handlerKey: 'invoke-workflow', hideWindowAfterInvocation: true, owner: OWNER, requiresConfirmation: true, resultSetId: 'launcher-results:1', sourceExtension: 'Workflow' })
 }
 
-function harness(workflows: unknown = [WORKFLOW]) {
+function harness(workflows: unknown = [WORKFLOW], overrides: Partial<LauncherWorkflowEffects> = {}) {
   const events: string[] = []
   const effects: LauncherWorkflowEffects = {
     auditWorkflow: async audit => { events.push(`audit:${audit.outcome}`) },
@@ -34,6 +35,7 @@ function harness(workflows: unknown = [WORKFLOW]) {
     openFile: async target => { events.push(`file:${target}`) },
     openTerminal: async request => { events.push(`terminal:${request.command}`) },
     openUrl: async target => { events.push(`url:${target}`) },
+    ...overrides,
   }
   const provider = createLauncherWorkflow({
     captureHomeIdentity: async () => HOME,
@@ -92,6 +94,52 @@ test('Workflow approves all actions before effects and then executes sequentiall
   const item = (await provider.loadIndexedItems())[0]!
   await assert.doesNotReject(provider.executeAction(record(item.defaultAction.argument)))
   assert.deepEqual(events, ['confirm:OpenFile', 'confirm:OpenUrl', 'confirm:OpenTerminal', 'confirm:ExecuteCommand', 'file:/Users/max/report.txt', 'url:https://example.com/status', 'terminal:printf ok', 'execute-command', 'audit:completed'])
+})
+
+for (const outcome of ['completed', 'denied', 'failed', 'cancelled'] as const) test(`Workflow can run again with fresh action authorization after ${outcome}`, async () => {
+  let firstAttempt = true
+  const started = Promise.withResolvers<void>()
+  const { events, provider } = harness([WORKFLOW], {
+    confirmAction: async () => !firstAttempt || outcome !== 'denied',
+    executeCommand: async ({ signal }) => {
+      if (firstAttempt && outcome === 'failed') throw new Error('fixture failure')
+      if (firstAttempt && outcome === 'cancelled') {
+        started.resolve()
+        return await new Promise<never>((_resolve, reject) => {
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        })
+      }
+      return { stdoutBytes: 0, stderrBytes: 0 }
+    },
+  })
+  const core = createLauncherCoreSearch({ loadIndexedItems: signal => provider.loadIndexedItems(signal) })
+  const actions = new LauncherActionStore({
+    cancel: record => provider.cancelAction(record),
+    execute: async record => normalizeLauncherActionResult(await provider.executeAction(record)),
+  })
+  const publish = async () => {
+    const result = await core.search('Release check', { fuzziness: 0.5, maxSearchResultItems: 10, searchEngineId: 'fuzzysort' })
+    return actions.publish({ items: [...result.before, ...result.after], owner: OWNER })
+  }
+  try {
+    const first = await publish()
+    const actionId = first.items[0]!.defaultAction.actionId
+    const invocation = actions.invoke({ actionId, owner: OWNER })
+    if (outcome === 'failed' || outcome === 'cancelled') {
+      const rejected = assert.rejects(invocation, /failed|canceled/)
+      if (outcome === 'cancelled') {
+        await started.promise
+        await actions.cancel({ actionId, owner: OWNER, resultSetId: first.resultSetId })
+      }
+      await rejected
+    } else await invocation
+    assert.equal(events.at(-1), `audit:${outcome}`)
+    await assert.rejects(actions.invoke({ actionId, owner: OWNER }), /consumed/)
+    firstAttempt = false
+    const next = await publish()
+    await actions.invoke({ actionId: next.items[0]!.defaultAction.actionId, owner: OWNER })
+    assert.equal(events.at(-1), 'audit:completed')
+  } finally { await provider.close(); await core.close() }
 })
 
 test('Workflow stops sequential effects at the first failure and audits failed', async () => {

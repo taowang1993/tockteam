@@ -193,9 +193,11 @@ export class DesktopSidebarService implements DesktopSidebar {
   }
 
   async start(): Promise<void> {
-    const requestedSession = this.snapshot.sessionId
     try {
-      this.preferences = clonePreferences(await this.storage.load())
+      const preferences = await this.storage.load()
+      if (this.disposed) return
+      this.preferences = clonePreferences(preferences)
+      const requestedSession = this.snapshot.sessionId
       this.publish({
         ...this.sessionSnapshot(requestedSession),
         error: null,
@@ -210,6 +212,7 @@ export class DesktopSidebarService implements DesktopSidebar {
         width: this.preferences.defaultWidth,
       })
     } catch (error) {
+      if (this.disposed) return
       this.publish({
         ...this.snapshot,
         error: messageOf(error),

@@ -99,7 +99,8 @@ function validateLimits(limits: ArchiveLimits): void {
 function findEnd(archive: Buffer): number {
   const minimum = Math.max(0, archive.byteLength - MAX_END_SEARCH)
   for (let offset = archive.byteLength - 22; offset >= minimum; offset -= 1) {
-    if (archive.readUInt32LE(offset) === END_SIGNATURE) return offset
+    if (archive.readUInt32LE(offset) === END_SIGNATURE
+      && offset + 22 + archive.readUInt16LE(offset + 20) === archive.byteLength) return offset
   }
   return invalidArchive()
 }
