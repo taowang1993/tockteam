@@ -1,10 +1,16 @@
+import { Document, isAlias, isMap, isNode, isScalar, parseDocument, visit } from 'yaml';
 import { expandTemplate } from "./capture.js";
 import { isSafeVaultRelativePath } from "./session.js";
 function appendBlock(source, block, prepend = false) {
-    if (prepend)
-        return `${block.replace(/\s+$/u, '')}\n\n${source.replace(/^\s+/u, '')}`;
-    const separator = source === '' || /(?:\r\n|[\r\n]){2}$/u.test(source) ? '' : /(?:\r\n|[\r\n])$/u.test(source) ? '\n' : '\n\n';
-    return `${source}${separator}${block.replace(/^\s+/u, '')}`;
+    const [left, right] = prepend ? [block, source] : [source, block];
+    if (!left || !right)
+        return left + right;
+    const eol = source.match(/\r\n|\r|\n/u)?.[0] ?? block.match(/\r\n|\r|\n/u)?.[0] ?? '\n';
+    const trailing = left.match(/(?:\r\n|\r|\n)$/u)?.[0] ?? '';
+    const leading = right.match(/^(?:\r\n|\r|\n)/u)?.[0] ?? '';
+    const separated = (trailing && /[\r\n]$/u.test(left.slice(0, -trailing.length)))
+        || (leading && /^[\r\n]/u.test(right.slice(leading.length))) || (trailing && leading);
+    return `${left}${separated ? '' : eol.repeat(trailing || leading ? 1 : 2)}${right}`;
 }
 function link(path, label, kind) {
     if (kind === 'none')
@@ -33,12 +39,99 @@ export function extractSelectionToNote(input) {
         sourceContent: `${input.source.slice(0, input.start)}${replacement}${input.source.slice(input.end)}`,
     };
 }
+function mergeFrontmatter(source) {
+    if (typeof source !== 'string' || new TextEncoder().encode(source).byteLength > 2_000_000)
+        throw new Error('Composer merge content is too large or invalid.');
+    const opening = source.match(/^\uFEFF?---(?:\r\n|\r|\n)/u);
+    if (!opening)
+        return { body: source, header: '', yaml: '', document: null, properties: new Map() };
+    const rest = source.slice(opening[0].length);
+    const closing = /^(?:---|\.\.\.)(?:\r\n|\r|\n|$)/gmu.exec(rest);
+    if (!closing || closing.index > 64_000)
+        throw new Error('Note properties are unclosed or too large. Resolve them in Source Mode.');
+    const yaml = rest.slice(0, closing.index);
+    const document = parseDocument(yaml, { uniqueKeys: true, strict: true, intAsBigInt: true });
+    if (document.errors.length || document.warnings.length || (document.contents !== null && !isMap(document.contents))) {
+        throw new Error('Note properties must be a valid mapping. Resolve them in Source Mode.');
+    }
+    let nodes = 0;
+    visit(document, (_, node) => {
+        // ponytail: do not reconcile cross-document YAML anchors/tags; resolve them in Source Mode first.
+        if (++nodes > 4_000 || isAlias(node) || (isNode(node) && (node.anchor || node.tag))) {
+            throw new Error('Complex note properties must be resolved in Source Mode before merging.');
+        }
+        if (isScalar(node) && typeof node.value === 'number') {
+            const scalar = node.clone();
+            delete scalar.comment;
+            delete scalar.commentBefore;
+            if (new Document(scalar).toString().trim() !== node.source) {
+                throw new Error('Numeric properties must round-trip exactly. Quote the value in Source Mode before merging.');
+            }
+        }
+    });
+    const properties = new Map();
+    if (isMap(document.contents))
+        for (const pair of document.contents.items) {
+            if (!isScalar(pair.key) || typeof pair.key.value !== 'string' || properties.size >= 1_000)
+                throw new Error('Note property names must be bounded text.');
+            const property = new Document({});
+            property.add(pair.clone());
+            properties.set(pair.key.value, { pair, value: property.toString({ lineWidth: 0, flowCollectionPadding: false }) });
+        }
+    const end = opening[0].length + closing.index + closing[0].length;
+    return { body: source.slice(end), header: source.slice(0, end), yaml, document, properties };
+}
+export function mergePropertyConflicts(source, destination) {
+    const from = mergeFrontmatter(source), to = mergeFrontmatter(destination);
+    return [...from.properties].flatMap(([key, entry]) => {
+        const current = to.properties.get(key);
+        return current && current.value !== entry.value ? [{ key, source: entry.value, destination: current.value }] : [];
+    });
+}
 export function mergeNotes(input) {
-    if (!isSafeVaultRelativePath(input.destinationPath) || !isSafeVaultRelativePath(input.sourcePath) || input.destinationPath === input.sourcePath)
+    if (!isSafeVaultRelativePath(input.destinationPath) || !isSafeVaultRelativePath(input.sourcePath)
+        || !/\.(?:md|markdown)$/iu.test(input.destinationPath) || !/\.(?:md|markdown)$/iu.test(input.sourcePath)
+        || input.destinationPath.normalize('NFC').toLowerCase() === input.sourcePath.normalize('NFC').toLowerCase())
         throw new Error('Composer merge paths are invalid.');
+    if (!['append', 'prepend'].includes(input.placement) || !['link', 'embed', 'none'].includes(input.leftover))
+        throw new Error('Composer merge options are invalid.');
+    const source = mergeFrontmatter(input.source), destination = mergeFrontmatter(input.destination);
+    let header = destination.header || source.header;
+    if (source.document && destination.document) {
+        const document = destination.document.clone();
+        for (const [key, entry] of source.properties) {
+            const current = destination.properties.get(key);
+            const choice = input.propertyChoices && Object.hasOwn(input.propertyChoices, key) ? input.propertyChoices[key] : undefined;
+            if (current && current.value !== entry.value && choice !== 'source' && choice !== 'destination')
+                throw new Error(`Choose which value to keep for property ${key}.`);
+            if (!current || choice === 'source')
+                document.set(key, entry.pair.value && isNode(entry.pair.value) ? entry.pair.value.clone() : null);
+            if ((!current || choice === 'source') && isMap(document.contents)) {
+                const index = document.contents.items.findIndex(pair => String(pair.key) === key);
+                document.contents.items[index] = entry.pair.clone();
+            }
+        }
+        for (const field of ['commentBefore', 'comment']) {
+            if (source.document[field] && source.document[field] !== document[field])
+                document[field] = [document[field], source.document[field]].filter(Boolean).join('\n');
+        }
+        const eol = input.destination.match(/\r\n|\r|\n/u)?.[0] ?? '\n';
+        const yaml = document.contents === null ? destination.yaml + source.yaml : document.toString({ lineWidth: 0, flowCollectionPadding: false });
+        header = `---${eol}${yaml.replace(/\r\n|\r|\n/gu, eol)}---${eol}`;
+    }
+    const body = appendBlock(destination.body, source.body, input.placement === 'prepend');
+    if (header && body && !/[\r\n]$/u.test(header))
+        header += input.destination.match(/\r\n|\r|\n/u)?.[0] ?? '\n';
+    const destinationContent = header + body;
+    mergeFrontmatter(destinationContent);
+    const from = input.sourcePath.split('/').slice(0, -1), to = input.destinationPath.split('/');
+    let shared = 0;
+    while (shared < from.length && from[shared] === to[shared])
+        shared += 1;
+    const target = [...from.slice(shared).map(() => '..'), ...to.slice(shared).map(encodeURIComponent)].join('/');
     return {
-        destinationContent: appendBlock(input.destination, input.source, input.placement === 'prepend'),
-        sourceContent: `${link(input.destinationPath, input.destinationPath.replace(/\.md$/iu, ''), input.leftover)}\n`,
+        destinationContent,
+        sourceContent: `${link(target, input.destinationPath.replace(/\.(?:md|markdown)$/iu, ''), input.leftover)}\n`,
     };
 }
 function convertFrontmatter(lines) {

@@ -121,7 +121,11 @@ test('route renders an accessible Native Actions area with bounded owner props',
   assert.deepEqual(Object.keys(dispatched[3]?.owner as object).sort(), [
     'activePath',
     'handleDispatch',
+    'noteOwnerKey',
+    'noteSource',
+    'publishNoteActions',
     'saveCurrent',
+    'saveNote',
     'storeAudio',
     'vault',
   ])

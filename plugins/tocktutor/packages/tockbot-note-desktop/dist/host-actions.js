@@ -191,6 +191,8 @@ let TockTutorDesktopGateway = (() => {
     let _printNote_decorators;
     let _exportNote_decorators;
     let _requestMicrophone_decorators;
+    let _openInDefaultApp_decorators;
+    let _copyAbsolutePath_decorators;
     let _revealEntry_decorators;
     let _revealVault_decorators;
     let _renameVault_decorators;
@@ -207,6 +209,8 @@ let TockTutorDesktopGateway = (() => {
             _printNote_decorators = [Remote];
             _exportNote_decorators = [Remote];
             _requestMicrophone_decorators = [Remote];
+            _openInDefaultApp_decorators = [Remote];
+            _copyAbsolutePath_decorators = [Remote];
             _revealEntry_decorators = [Remote];
             _revealVault_decorators = [Remote];
             _renameVault_decorators = [Remote];
@@ -220,6 +224,8 @@ let TockTutorDesktopGateway = (() => {
             __esDecorate(this, null, _printNote_decorators, { kind: "method", name: "printNote", static: false, private: false, access: { has: obj => "printNote" in obj, get: obj => obj.printNote }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _exportNote_decorators, { kind: "method", name: "exportNote", static: false, private: false, access: { has: obj => "exportNote" in obj, get: obj => obj.exportNote }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _requestMicrophone_decorators, { kind: "method", name: "requestMicrophone", static: false, private: false, access: { has: obj => "requestMicrophone" in obj, get: obj => obj.requestMicrophone }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _openInDefaultApp_decorators, { kind: "method", name: "openInDefaultApp", static: false, private: false, access: { has: obj => "openInDefaultApp" in obj, get: obj => obj.openInDefaultApp }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _copyAbsolutePath_decorators, { kind: "method", name: "copyAbsolutePath", static: false, private: false, access: { has: obj => "copyAbsolutePath" in obj, get: obj => obj.copyAbsolutePath }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _revealEntry_decorators, { kind: "method", name: "revealEntry", static: false, private: false, access: { has: obj => "revealEntry" in obj, get: obj => obj.revealEntry }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _revealVault_decorators, { kind: "method", name: "revealVault", static: false, private: false, access: { has: obj => "revealVault" in obj, get: obj => obj.revealVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _renameVault_decorators, { kind: "method", name: "renameVault", static: false, private: false, access: { has: obj => "renameVault" in obj, get: obj => obj.renameVault }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -564,6 +570,45 @@ let TockTutorDesktopGateway = (() => {
                     throw new Error('Desktop microphone returned a mismatched operation.');
                 }
                 return this.rememberResult(authorization, fingerprint, identity, { status: result.status });
+            }, signal);
+        }
+        async openInDefaultApp(authorization, path, expectedVault, signal) {
+            assertAuthorization(authorization);
+            assertPath(path);
+            assertVault(expectedVault);
+            assertCurrentVault(this.ctx.noteVault, expectedVault);
+            return this.lifetime.run(async (ownerSignal) => {
+                const identity = await this.claimForVault(authorization, 'open-default-app', expectedVault, ownerSignal);
+                const fingerprint = `open-default-app:${expectedVault.id}:${String(expectedVault.generation)}:${path}`;
+                const recovered = this.recoverResult(authorization, fingerprint, identity);
+                if (recovered !== undefined)
+                    return recovered;
+                // Keep the claimed operation ID through retries: native dispatch is at most once.
+                const result = await this.ctx.noteVault.openEntry({ expectedVault, path, operationId: identity.operationId }, ownerSignal);
+                assertClaim(this.ctx.noteVault, expectedVault, identity);
+                if (result.generation !== expectedVault.generation || result.path !== path || result.status !== 'opened') {
+                    throw new Error('Desktop default-app opening completed with stale state.');
+                }
+                return this.rememberResult(authorization, fingerprint, identity, { status: 'opened' });
+            }, signal);
+        }
+        async copyAbsolutePath(authorization, path, expectedVault, signal) {
+            assertAuthorization(authorization);
+            assertPath(path);
+            assertVault(expectedVault);
+            assertCurrentVault(this.ctx.noteVault, expectedVault);
+            return this.lifetime.run(async (ownerSignal) => {
+                const identity = await this.claimForVault(authorization, 'copy-absolute-path', expectedVault, ownerSignal);
+                const fingerprint = `copy-absolute-path:${expectedVault.id}:${String(expectedVault.generation)}:${path}`;
+                const recovered = this.recoverResult(authorization, fingerprint, identity);
+                if (recovered !== undefined)
+                    return recovered;
+                const result = await this.ctx.noteVault.copyEntryPath({ expectedVault, path, operationId: identity.operationId }, ownerSignal);
+                assertClaim(this.ctx.noteVault, expectedVault, identity);
+                if (result.generation !== expectedVault.generation || result.path !== path || result.status !== 'copied') {
+                    throw new Error('Desktop copy-path completed with stale state.');
+                }
+                return this.rememberResult(authorization, fingerprint, identity, { status: 'copied' });
             }, signal);
         }
         async revealEntry(authorization, path, expectedVault, signal) {

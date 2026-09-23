@@ -37,11 +37,26 @@ export type TockTutorNativeActionsDispatchEvent = {
 
 export type TockTutorNativeActionsDispatchResult = 'handled' | 'failed' | 'stale'
 
+/** UI callbacks only; the Desktop contribution retains all native authority. */
+export interface TockTutorNativeNoteActions {
+  activePath: string | null
+  disabled: boolean
+  message: string
+  run(action: 'open-default' | 'copy-absolute' | 'open-window' | 'export-pdf' | 'reveal'): void
+  vault: VaultReference | null
+}
+
 /** Bounded route identity shared with Desktop-native action contributions. */
 export interface TockTutorNativeActionsOwnerProps {
   activePath: string | null
   handleDispatch(event: TockTutorNativeActionsDispatchEvent): Promise<TockTutorNativeActionsDispatchResult>
+  publishNoteActions?(actions: TockTutorNativeNoteActions | null): void
   saveCurrent?(): Promise<boolean>
+  /** Save only the owning note for note-local native actions. */
+  saveNote?(): Promise<boolean>
+  /** Cancels a pending note action if its authored draft changes. */
+  noteSource?: string
+  noteOwnerKey?: string
   storeAudio?(fileName: string, dataBase64: string): Promise<boolean>
   vault: VaultReference | null
 }

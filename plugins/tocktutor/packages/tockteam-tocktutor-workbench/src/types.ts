@@ -1,3 +1,26 @@
+import type {
+  PrepareMergeRequest as RuntimePrepareMergeRequest,
+  PreparedMergeResult as RuntimePreparedMergeResult,
+  ApplyMergeRequest as RuntimeApplyMergeRequest,
+  MergeRequest as RuntimeMergeRequest,
+  MergeResult as RuntimeMergeResult,
+  MergeListResult as RuntimeMergeListResult,
+  MergeListRequest as RuntimeMergeListRequest,
+  MergeLinkPreviewRequest as RuntimeMergeLinkPreviewRequest,
+  MergeLinkPreviewResult as RuntimeMergeLinkPreviewResult,
+} from 'tockbot-note-runtime'
+
+// Local declarations let Typert emit client imports while preserving the Runtime contract.
+export interface PrepareMergeRequest extends RuntimePrepareMergeRequest {}
+export interface PreparedMergeResult extends RuntimePreparedMergeResult {}
+export interface ApplyMergeRequest extends RuntimeApplyMergeRequest {}
+export interface MergeRequest extends RuntimeMergeRequest {}
+export interface MergeResult extends RuntimeMergeResult {}
+export interface MergeListResult extends RuntimeMergeListResult {}
+export interface MergeListRequest extends RuntimeMergeListRequest {}
+export interface MergeLinkPreviewRequest extends RuntimeMergeLinkPreviewRequest {}
+export interface MergeLinkPreviewResult extends RuntimeMergeLinkPreviewResult {}
+
 export interface VaultReference {
   generation: number
   id: string

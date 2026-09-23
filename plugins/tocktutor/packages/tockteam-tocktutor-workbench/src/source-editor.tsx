@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Input } from '@tockteam/ui/input'
+import type { EditorSearchRequest, EditorSearchState } from './editor-search.ts'
 
 export type SourceEditorFoldAction = 'foldAll' | 'unfoldAll' | 'foldMore' | 'foldLess'
 export interface SourceEditorFoldRequest { action: SourceEditorFoldAction; id: number }
@@ -31,7 +32,11 @@ export interface SourceEditorProps {
   insertTextRequest?: SourceEditorInsertTextRequest | null
   onContentChange?: (content: string) => void
   onRenameTitle?: (title: string) => Promise<boolean> | boolean
+  onSearchState?: (state: EditorSearchState) => void
   onSelectionChange?: (selection: SourceEditorSelection) => void
+  searchCurrentIndex?: number | null
+  searchQuery?: string
+  searchRequest?: EditorSearchRequest | null
   selectionRequest?: SourceEditorSelectionRequest | null | undefined
   onWidgetState?: (widgets: readonly import('./editor-widgets.ts').EditorWidgetTarget[]) => void
   placeholder?: string

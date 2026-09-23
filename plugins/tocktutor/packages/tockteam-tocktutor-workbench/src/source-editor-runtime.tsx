@@ -1,16 +1,18 @@
 // @ts-nocheck -- CodeMirror's declaration graph is not consumable by the pinned Typert NodeNext analyzer; the public adapter remains runtime-typed by CodeMirror.
 import { minimalSetup } from 'codemirror'
+import { isolateHistory } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { yamlFrontmatter } from '@codemirror/lang-yaml'
 import { Tag, tags } from '@lezer/highlight'
 import { defaultHighlightStyle, foldAll, foldCode, foldGutter, HighlightStyle, syntaxHighlighting, syntaxTree, unfoldAll, unfoldCode } from '@codemirror/language'
-import { EditorSelection, EditorState, type Extension, type Range } from '@codemirror/state'
+import { EditorSelection, EditorState, StateEffect, StateField, type Extension, type Range } from '@codemirror/state'
 import {
   Decoration,
   EditorView,
   keymap,
   rectangularSelection,
   scrollPastEnd,
+  type DecorationSet,
   type ViewUpdate,
 } from '@codemirror/view'
 import { projectEditorWidgets, type EditorWidgetTarget } from './editor-widgets.ts'
@@ -21,7 +23,6 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  buildSourceChange,
   preserveEditorLineEndings,
   shouldAddEditorSelectionRange,
   shouldStartEditorRectangularSelection,
@@ -30,6 +31,7 @@ import {
 } from './source-editor.tsx'
 import { buildSourceEmbedWidgetExtension, refreshSourceEmbedWidgets } from './source-embed-widgets.ts'
 import { applyEditorCommandToSelections, type EditorCommandId } from './editor-commands.ts'
+import { clampEditorSearchIndex, moveEditorSearchIndex, searchEditorMatches, type EditorSearchState } from './editor-search.ts'
 import firaCodeUrl from './fonts/FiraCode-VF.woff2'
 
 const firaCode = typeof FontFace === 'undefined'
@@ -41,6 +43,29 @@ function normalizeEditorSource(source: string): string {
 }
 
 const EMPTY_EXTENSIONS: readonly unknown[] = Object.freeze([])
+const searchDecorationsEffect = StateEffect.define<{ current: number | null; query: string }>()
+const searchDecorationsField = StateField.define<{ current: number | null; decorations: DecorationSet; query: string }>({
+  create: () => ({ current: null, decorations: Decoration.none, query: '' }),
+  update(value, transaction) {
+    let query = value.query
+    let current = value.current
+    for (const effect of transaction.effects) {
+      if (effect.is(searchDecorationsEffect)) {
+        query = effect.value.query
+        current = effect.value.current
+      }
+    }
+    if (!transaction.docChanged && query === value.query && current === value.current) return value
+    const matches = searchEditorMatches(transaction.state.doc.toString(), query).matches
+    const selected = clampEditorSearchIndex(matches.length, current)
+    return {
+      current: selected,
+      decorations: Decoration.set(matches.map((match, index) => Decoration.mark({ class: `cm-tock-find-match${index === selected ? ' cm-tock-find-current' : ''}` }).range(match.from, match.to)), true),
+      query,
+    }
+  },
+  provide: field => EditorView.decorations.from(field, value => value.decorations),
+})
 const highlightTag = Tag.define()
 const highlightDelimiter = { resolve: 'Highlight', mark: 'HighlightMark' }
 const noteInlineSyntax = {
@@ -186,7 +211,10 @@ function buildEditorExtensions(props: {
   extraExtensions: Extension[]
   onContentChangeRef: { current: SourceEditorProps['onContentChange'] }
   onSelectionChangeRef: { current: SourceEditorProps['onSelectionChange'] }
+  onSearchStateRef: { current: SourceEditorProps['onSearchState'] }
   onWidgetStateRef: { current: SourceEditorProps['onWidgetState'] }
+  searchCurrentIndexRef: { current: number | null }
+  searchQueryRef: { current: string }
   showFoldGutter: boolean
   sourceRef: { current: string }
   spellCheck: boolean
@@ -212,6 +240,11 @@ function buildEditorExtensions(props: {
   let plainTextPaste = false
   const extensions: Extension[] = [
     minimalSetup,
+    EditorView.theme({
+      '.cm-content': { caretColor: 'var(--tt-text)' },
+      '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--tt-text)' },
+    }),
+    searchDecorationsField,
     yamlFrontmatter({ content: markdown({ base: markdownLanguage, extensions: [noteInlineSyntax] }) }),
     // Keep ordinary punctuation readable; use the shared document colors for links and highlights.
     syntaxHighlighting(HighlightStyle.define([
@@ -246,6 +279,18 @@ function buildEditorExtensions(props: {
         const canonical = update.state.doc.toString()
         props.sourceRef.current = preserveEditorLineEndings(props.sourceRef.current, canonical)
         props.onContentChangeRef.current?.(props.sourceRef.current)
+        const query = props.searchQueryRef.current
+        const result = searchEditorMatches(canonical, query)
+        const matches = result.matches
+        const current = clampEditorSearchIndex(matches.length, props.searchCurrentIndexRef.current)
+        props.searchCurrentIndexRef.current = current
+        props.onSearchStateRef.current?.({
+          current,
+          query,
+          total: matches.length,
+          ...(result.error === undefined ? {} : { error: result.error }),
+          ...(result.truncated ? { truncated: true } : {}),
+        })
       }
       if (update.selectionSet || update.docChanged) {
         const selection = selectionSnapshot(update.view)
@@ -302,6 +347,11 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   const onContentChangeRef = useRef(props.onContentChange)
   const onSelectionChangeRef = useRef(props.onSelectionChange)
   const onWidgetStateRef = useRef(props.onWidgetState)
+  const onSearchStateRef = useRef(props.onSearchState)
+  const searchQueryRef = useRef(props.searchQuery ?? '')
+  const searchCurrentIndexRef = useRef<number | null>(props.searchCurrentIndex ?? null)
+  const lastSearchQueryRef = useRef(props.searchQuery ?? '')
+  const lastSearchRequestIdRef = useRef<number | null>(null)
   const lastInsertIdRef = useRef<number | null>(null)
   const lastFoldIdRef = useRef<number | null>(null)
   const lastSelectionRequestIdRef = useRef<number | null>(null)
@@ -318,7 +368,6 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     ...buildSourceEmbedWidgetExtension(() => embedsRef.current),
   ], [])
   const extraExtensions = useMemo(() => [...chromeExtensions, ...userExtensions], [chromeExtensions, userExtensions])
-  useEffect(() => { sourceRef.current = props.content }, [props.content])
   useEffect(() => {
     embedsRef.current = props.resolvedEmbeds ?? []
     refreshSourceEmbedWidgets(editorRef.current)
@@ -326,13 +375,17 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
   useEffect(() => { onContentChangeRef.current = props.onContentChange }, [props.onContentChange])
   useEffect(() => { onSelectionChangeRef.current = props.onSelectionChange }, [props.onSelectionChange])
   useEffect(() => { onWidgetStateRef.current = props.onWidgetState }, [props.onWidgetState])
+  useEffect(() => { onSearchStateRef.current = props.onSearchState }, [props.onSearchState])
 
   const extensions = useMemo(() => buildEditorExtensions({
     editable,
     extraExtensions,
     onContentChangeRef,
+    onSearchStateRef,
     onSelectionChangeRef,
     onWidgetStateRef,
+    searchCurrentIndexRef,
+    searchQueryRef,
     showFoldGutter,
     sourceRef,
     spellCheck: props.spellCheck !== false,
@@ -365,12 +418,117 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     }
   }, [extensions, props.editorViewRef, showFoldGutter])
 
+  const publishSearch = (view: EditorView, query: string, requestedIndex: number | null, error?: string): EditorSearchState => {
+    const result = searchEditorMatches(view.state.doc.toString(), query)
+    const matches = result.matches
+    const current = clampEditorSearchIndex(matches.length, requestedIndex)
+    searchCurrentIndexRef.current = current
+    const stateError = error ?? result.error
+    const state: EditorSearchState = {
+      current,
+      query,
+      total: matches.length,
+      ...(stateError === undefined ? {} : { error: stateError }),
+      ...(result.truncated ? { truncated: true } : {}),
+    }
+    onSearchStateRef.current?.(state)
+    return state
+  }
+
   useEffect(() => {
     const view = editorRef.current
-    if (!view) return
-    const change = buildSourceChange(view.state.doc.toString(), normalizeEditorSource(props.content))
-    if (change) view.dispatch({ changes: change })
-  }, [props.content])
+    if (view === null || sourceRef.current === props.content) return
+    // Synchronize peer content before consuming commands from the same render.
+    const content = normalizeEditorSource(props.content)
+    const selection = view.state.selection.main
+    sourceRef.current = props.content
+    const { scrollTop, scrollLeft } = view.scrollDOM
+    view.setState(EditorState.create({ doc: content, extensions, selection: {
+      anchor: Math.min(selection.anchor, content.length), head: Math.min(selection.head, content.length),
+    } }))
+    view.scrollDOM.scrollTop = scrollTop
+    view.scrollDOM.scrollLeft = scrollLeft
+    view.dispatch({ effects: searchDecorationsEffect.of({ query: searchQueryRef.current, current: searchCurrentIndexRef.current }) })
+    publishSearch(view, searchQueryRef.current, searchCurrentIndexRef.current)
+  }, [props.content, extensions])
+
+  useEffect(() => {
+    const view = editorRef.current
+    const query = props.searchQuery ?? ''
+    searchQueryRef.current = query
+    if (lastSearchQueryRef.current !== query) {
+      searchCurrentIndexRef.current = props.searchCurrentIndex ?? null
+      lastSearchQueryRef.current = query
+    } else if (props.searchCurrentIndex !== undefined) {
+      searchCurrentIndexRef.current = props.searchCurrentIndex
+    }
+    if (view === null) return
+    const result = searchEditorMatches(view.state.doc.toString(), query)
+    const matches = result.matches
+    const current = clampEditorSearchIndex(matches.length, searchCurrentIndexRef.current)
+    searchCurrentIndexRef.current = current
+    view.dispatch({ effects: searchDecorationsEffect.of({ current, query }) })
+    publishSearch(view, query, current)
+  }, [props.searchCurrentIndex, props.searchQuery])
+
+  useEffect(() => {
+    const view = editorRef.current
+    const request = props.searchRequest
+    if (view === null || request === null || request === undefined || request.id === lastSearchRequestIdRef.current) return
+    if (request.consume?.() === false) return
+    lastSearchRequestIdRef.current = request.id
+    const query = searchQueryRef.current
+    const source = view.state.doc.toString()
+    const result = searchEditorMatches(source, query)
+    const matches = result.matches
+    if (result.error !== undefined) {
+      publishSearch(view, query, searchCurrentIndexRef.current, result.error)
+      return
+    }
+    if (request.action === 'next' || request.action === 'previous') {
+      const current = moveEditorSearchIndex(matches.length, searchCurrentIndexRef.current, request.action === 'next' ? 1 : -1)
+      searchCurrentIndexRef.current = current
+      view.dispatch({
+        effects: searchDecorationsEffect.of({ current, query }),
+        ...(current === null ? {} : { scrollIntoView: true, selection: { anchor: matches[current]!.from, head: matches[current]!.to } }),
+      })
+      if (current !== null) view.focus()
+      publishSearch(view, query, current)
+      return
+    }
+    if (view.state.readOnly) {
+      publishSearch(view, query, searchCurrentIndexRef.current, 'This editor is read-only.')
+      return
+    }
+    if (request.action === 'replace-all' && result.truncated) {
+      publishSearch(view, query, searchCurrentIndexRef.current, 'Too many matches to replace all at once; narrow the query.')
+      return
+    }
+    const current = clampEditorSearchIndex(matches.length, searchCurrentIndexRef.current)
+    const selectedMatches = request.action === 'replace-all'
+      ? matches
+      : current === null ? [] : [matches[current]!]
+    if (selectedMatches.length === 0) {
+      publishSearch(view, query, current)
+      return
+    }
+    const replacement = (request.replacement ?? '').replace(/\r\n?/gu, '\n')
+    const originalBytes = new TextEncoder().encode(source).byteLength
+    const removedBytes = selectedMatches.reduce((total, match) => total + new TextEncoder().encode(source.slice(match.from, match.to)).byteLength, 0)
+    const replacementBytes = new TextEncoder().encode(replacement).byteLength * selectedMatches.length
+    if (originalBytes - removedBytes + replacementBytes > 2_000_000) {
+      publishSearch(view, query, current, 'Replacement exceeds the editor size limit.')
+      return
+    }
+    if (request.action === 'replace-all') {
+      view.dispatch({ annotations: isolateHistory.of('full'), changes: selectedMatches.map(match => ({ from: match.from, to: match.to, insert: replacement })) })
+    } else {
+      const match = selectedMatches[0]!
+      view.dispatch({ annotations: isolateHistory.of('full'), changes: { from: match.from, to: match.to, insert: replacement }, scrollIntoView: true, selection: { anchor: match.from, head: match.from + replacement.length } })
+      view.focus()
+    }
+    publishSearch(view, query, current)
+  }, [props.searchRequest])
 
   useEffect(() => {
     const view = editorRef.current
@@ -409,5 +567,5 @@ export function SourceEditorRuntime(props: SourceEditorProps): ReactNode {
     view.focus()
   }, [props.foldRequest])
 
-  return <div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className={`tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_'Fira_Code_VF','Fira_Code',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation_Mono','Courier_New',monospace] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-line.cm-tock-heading-1]:text-[22px] [&_.cm-line.cm-tock-heading-1]:leading-[1.35] [&_.cm-line.cm-tock-heading-2]:text-[20px] [&_.cm-line.cm-tock-heading-2]:leading-[1.35] [&_.cm-line.cm-tock-heading-3]:text-[18px] [&_.cm-line.cm-tock-heading-3]:leading-[1.4] [&_.cm-tock-heading-mark]:[color:light-dark(var(--tt-text),#fff)] [&_.cm-tock-heading-mark_*]:!text-inherit [&_.cm-tock-heading-mark]:[font-size:inherit] [&_.cm-tock-heading-line_*]:no-underline [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] ${props.className ?? ''}`} id={props.id}><div className="min-h-0 min-w-0 flex-1" ref={parentRef} /></div>
+  return <div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className={`tocktutor-source-editor flex min-h-0 min-w-0 flex-1 overflow-hidden focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-[var(--tt-accent)] [&_.cm-editor]:h-full [&_.cm-editor]:bg-[var(--tt-panel)] [&_.cm-editor]:text-[var(--tt-text)] [&_.cm-editor]:[font:16px/1.5_'Fira_Code_VF','Fira_Code',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation_Mono','Courier_New',monospace] [&_.cm-scroller]:overflow-auto [&_.cm-scroller]:leading-6 [&_.cm-gutters]:hidden [&_.cm-content]:mx-auto [&_.cm-content]:w-[calc(100%-48px)] [&_.cm-content]:max-w-3xl [&_.cm-content]:pt-[18px] [&_.cm-content]:pb-[72px] [&_.cm-line.cm-tock-heading-1]:text-[22px] [&_.cm-line.cm-tock-heading-1]:leading-[1.35] [&_.cm-line.cm-tock-heading-2]:text-[20px] [&_.cm-line.cm-tock-heading-2]:leading-[1.35] [&_.cm-line.cm-tock-heading-3]:text-[18px] [&_.cm-line.cm-tock-heading-3]:leading-[1.4] [&_.cm-tock-heading-mark]:[color:light-dark(var(--tt-text),#fff)] [&_.cm-tock-heading-mark_*]:!text-inherit [&_.cm-tock-heading-mark]:[font-size:inherit] [&_.cm-tock-heading-line_*]:no-underline [&_.cm-activeLine]:bg-transparent [&_.cm-tock-code-line]:text-[var(--tt-muted)] [&_.cm-tock-comment]:text-[var(--tt-muted)] [&_.cm-tock-find-match]:bg-[color-mix(in_srgb,var(--dsw-specific-markdown-highlight)_70%,transparent)] [&_.cm-tock-find-current]:outline [&_.cm-tock-find-current]:outline-1 [&_.cm-tock-find-current]:outline-[var(--dsw-specific-markdown-accent)] ${props.className ?? ''}`} id={props.id}><div className="min-h-0 min-w-0 flex-1" ref={parentRef} /></div>
 }

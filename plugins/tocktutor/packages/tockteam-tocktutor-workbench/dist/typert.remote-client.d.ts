@@ -3,10 +3,11 @@ import type {
   RemoteResult,
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { ActiveVaultResult, AttachmentMetadataResult, AttachmentPreviewResult, CaptureSnapshotRequest, CreateDocumentRequest, CreateManagedVaultRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
+import type { ActiveVaultResult, ApplyMergeRequest, AttachmentMetadataResult, AttachmentPreviewResult, CaptureSnapshotRequest, CreateDocumentRequest, CreateManagedVaultRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, MergeLinkPreviewRequest, MergeLinkPreviewResult, MergeListRequest, MergeListResult, MergeRequest, MergeResult, OpenDocumentResult, PreparedMergeResult, PrepareMergeRequest, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$746f636b7475746f72576f726b62656e6368 {
+    applyMerge: (request: ApplyMergeRequest, signal?: AbortSignal) => Promise<RemoteResult<MergeResult>>
     captureSnapshot: (request: CaptureSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotMutationResult>>
     clearDraft: (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
     clearSnapshots: (request: ListSnapshotsRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotMutationResult>>
@@ -17,15 +18,19 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     graph: (request: VaultGraphRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultGraphResult>>
     inspectAttachment: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentMetadataResult>>
     links: (request: VaultLinksRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultLinksResult>>
+    listMerges: (request: MergeListRequest, signal?: AbortSignal) => Promise<RemoteResult<MergeListResult>>
     listSnapshots: (request: ListSnapshotsRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotListResult>>
     listTrash: (request: ListTrashRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashListResult>>
     listTree: (request: ListTreeRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultTreePage>>
     openDocument: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<OpenDocumentResult>>
     openSandboxVault: (request: VaultGenerationRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultReference>>
     outline: (request: VaultOutlineRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultOutlineResult>>
+    prepareMerge: (request: PrepareMergeRequest, signal?: AbortSignal) => Promise<RemoteResult<PreparedMergeResult>>
     previewAttachment: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentPreviewResult>>
+    previewMergeLinks: (request: MergeLinkPreviewRequest, signal?: AbortSignal) => Promise<RemoteResult<MergeLinkPreviewResult>>
     readDraft: (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftResult>>
     readSnapshot: (request: ReadSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotContentResult>>
+    recoverMerge: (request: MergeRequest, signal?: AbortSignal) => Promise<RemoteResult<MergeResult>>
     renameDocument: (request: RenameDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<RenameDocumentResult>>
     restoreSnapshot: (request: RestoreSnapshotOverwriteRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     restoreSnapshotAsNew: (request: RestoreSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
@@ -37,6 +42,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     trashEntry: (request: TrashEntryRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashMutationResult>>
   }
   interface TypertRemoteMap {
+    'tocktutorWorkbench/applyMerge': (request: ApplyMergeRequest, signal?: AbortSignal) => Promise<RemoteResult<MergeResult>>
     'tocktutorWorkbench/captureSnapshot': (request: CaptureSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotMutationResult>>
     'tocktutorWorkbench/clearDraft': (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
     'tocktutorWorkbench/clearSnapshots': (request: ListSnapshotsRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotMutationResult>>
@@ -47,15 +53,19 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorWorkbench/graph': (request: VaultGraphRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultGraphResult>>
     'tocktutorWorkbench/inspectAttachment': (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentMetadataResult>>
     'tocktutorWorkbench/links': (request: VaultLinksRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultLinksResult>>
+    'tocktutorWorkbench/listMerges': (request: MergeListRequest, signal?: AbortSignal) => Promise<RemoteResult<MergeListResult>>
     'tocktutorWorkbench/listSnapshots': (request: ListSnapshotsRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotListResult>>
     'tocktutorWorkbench/listTrash': (request: ListTrashRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashListResult>>
     'tocktutorWorkbench/listTree': (request: ListTreeRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultTreePage>>
     'tocktutorWorkbench/openDocument': (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<OpenDocumentResult>>
     'tocktutorWorkbench/openSandboxVault': (request: VaultGenerationRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultReference>>
     'tocktutorWorkbench/outline': (request: VaultOutlineRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultOutlineResult>>
+    'tocktutorWorkbench/prepareMerge': (request: PrepareMergeRequest, signal?: AbortSignal) => Promise<RemoteResult<PreparedMergeResult>>
     'tocktutorWorkbench/previewAttachment': (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentPreviewResult>>
+    'tocktutorWorkbench/previewMergeLinks': (request: MergeLinkPreviewRequest, signal?: AbortSignal) => Promise<RemoteResult<MergeLinkPreviewResult>>
     'tocktutorWorkbench/readDraft': (request: DraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftResult>>
     'tocktutorWorkbench/readSnapshot': (request: ReadSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<SnapshotContentResult>>
+    'tocktutorWorkbench/recoverMerge': (request: MergeRequest, signal?: AbortSignal) => Promise<RemoteResult<MergeResult>>
     'tocktutorWorkbench/renameDocument': (request: RenameDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<RenameDocumentResult>>
     'tocktutorWorkbench/restoreSnapshot': (request: RestoreSnapshotOverwriteRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     'tocktutorWorkbench/restoreSnapshotAsNew': (request: RestoreSnapshotRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>

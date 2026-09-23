@@ -11,8 +11,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     activateVaultTarget: (authorization: string, target: { id: string; }, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     closeAllPopOuts: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     closePopOut: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    copyAbsolutePath: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     exportNote: (authorization: string, format: 'html' | 'pdf', path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     moveVault: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    openInDefaultApp: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     openPopOut: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     printNote: (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     removeVault: (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
@@ -26,8 +28,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorDesktop/activateVaultTarget': (authorization: string, target: { id: string; }, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/closeAllPopOuts': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/closePopOut': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    'tocktutorDesktop/copyAbsolutePath': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/exportNote': (authorization: string, format: 'html' | 'pdf', path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/moveVault': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
+    'tocktutorDesktop/openInDefaultApp': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/openPopOut': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/printNote': (authorization: string, path: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>
     'tocktutorDesktop/removeVault': (authorization: string, expectedVault: DesktopVaultReference, signal?: AbortSignal) => Promise<RemoteResult<NativeActionResult>>

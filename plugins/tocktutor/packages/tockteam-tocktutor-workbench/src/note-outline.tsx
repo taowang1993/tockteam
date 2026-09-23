@@ -43,7 +43,7 @@ const controlClass = 'flex size-7 shrink-0 items-center justify-center rounded b
 
 export function NoteOutline({ headings, onNavigate }: {
   headings: VaultHeading[]
-  onNavigate(index: number): boolean
+  onNavigate(index: number): boolean | Promise<boolean>
 }): ReactNode {
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<number | null>(null)
@@ -57,7 +57,7 @@ export function NoteOutline({ headings, onNavigate }: {
         return <li key={`${String(heading.line)}:${heading.selector}`}>
           <div className="flex min-w-0 items-center rounded hover:bg-[var(--tt-selected)]" data-outline-line={heading.line}>
             {children.length > 0 ? <Button unstyled aria-label={`${folded ? 'Expand' : 'Collapse'} ${heading.text}`} aria-expanded={!folded} className={controlClass} onClick={() => { setCollapsed(current => { const next = new Set(current); if (next.has(index)) next.delete(index); else next.add(index); return next }) }} type="button"><ChevronRight aria-hidden="true" className={folded ? '' : 'rotate-90'} /></Button> : <span aria-hidden="true" className="w-7 shrink-0" />}
-            <Button unstyled aria-current={selected === index ? 'location' : undefined} aria-label={`Go to ${heading.text}`} className="min-h-7 min-w-0 flex-1 truncate rounded border-0 bg-transparent py-1 pr-2 pl-0 text-left text-xs aria-[current=location]:bg-[var(--tt-selected)] aria-[current=location]:text-[var(--tt-accent)] focus-visible:outline focus-visible:outline-[var(--tt-accent)] disabled:opacity-50" onClick={() => { const success = onNavigate(index); setUnavailable(!success); if (success) setSelected(index) }} title={`${heading.text} · Heading ${String(heading.level)}, line ${String(heading.line)}`} type="button">{heading.text}</Button>
+            <Button unstyled aria-current={selected === index ? 'location' : undefined} aria-label={`Go to ${heading.text}`} className="min-h-7 min-w-0 flex-1 truncate rounded border-0 bg-transparent py-1 pr-2 pl-0 text-left text-xs aria-[current=location]:bg-[var(--tt-selected)] aria-[current=location]:text-[var(--tt-accent)] focus-visible:outline focus-visible:outline-[var(--tt-accent)] disabled:opacity-50" onClick={() => { const finish = (success: boolean): void => { setUnavailable(!success); if (success) setSelected(index) }; const result = onNavigate(index); if (typeof result === 'boolean') finish(result); else void result.then(finish, () => { finish(false) }) }} title={`${heading.text} · Heading ${String(heading.level)}, line ${String(heading.line)}`} type="button">{heading.text}</Button>
           </div>
           {children.length > 0 && !folded && renderNodes(children, true)}
         </li>
@@ -78,7 +78,7 @@ export function NoteOutline({ headings, onNavigate }: {
   </div>
 }
 
-export function NoteOutlinePanel({ snapshot, onJumpToLine }: { snapshot: TockTutorRouteViewProps['snapshot']; onJumpToLine: TockTutorRouteViewProps['onJumpToLine'] }): ReactNode {
+export function NoteOutlinePanel({ snapshot, onJumpToLine, onNavigateHeading }: { onNavigateHeading?: (headings: VaultHeading[], index: number) => boolean | Promise<boolean>; snapshot: TockTutorRouteViewProps['snapshot']; onJumpToLine: TockTutorRouteViewProps['onJumpToLine'] }): ReactNode {
   const projection = useMemo(() => projectLivePreview(snapshot.source), [snapshot.source])
   const headings = useMemo(() => projection.status !== 'ready' ? [] : projection.lines.flatMap(line => {
     if (line.kind !== 'heading' || line.headingLevel === undefined) return []
@@ -90,7 +90,9 @@ export function NoteOutlinePanel({ snapshot, onJumpToLine }: { snapshot: TockTut
   return <NoteOutline headings={headings} key={JSON.stringify([snapshot.vault, snapshot.path, headings])} onNavigate={index => {
     const heading = headings[index]
     if (heading === undefined) return false
+    if (onNavigateHeading) return onNavigateHeading(headings, index)
     if (snapshot.mode === 'source') { onJumpToLine?.(heading.line); return onJumpToLine !== undefined }
-    return scrollOutlineHeading(document.querySelector<HTMLElement>(snapshot.mode === 'reading' ? '[aria-label="Reading View"] .tocktutor-reading' : '.tocktutor-editor-body .ProseMirror'), headings, index)
+    const seat = Array.from(document.querySelectorAll<HTMLElement>('[data-pane-id]')).find(node => node.dataset.paneId === snapshot.focusedPaneId)
+    return scrollOutlineHeading((seat ?? document).querySelector<HTMLElement>(snapshot.mode === 'reading' ? '[aria-label="Reading View"] .tocktutor-reading' : '.tocktutor-editor-body .ProseMirror'), headings, index)
   }} />
 }

@@ -20,7 +20,7 @@ vi.mock('../src/editor-surface.tsx', async importOriginal => {
   }
 })
 
-beforeEach(() => { readiness.ready = false })
+beforeEach(() => { readiness.ready = false; localStorage.clear() })
 afterEach(() => { cleanup(); readiness.listeners.clear() })
 
 function mountRoute() {
@@ -55,6 +55,21 @@ describe('deferred route editor focus', () => {
     await waitForLoadedNote()
     readyEditor()
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Live Preview Editor')))
+  })
+
+  it.each(['Split Right', 'Split Down'])('keeps the new Live Preview focused after %s dismisses its menu', async action => {
+    mountRoute()
+    await waitForLoadedNote()
+    readyEditor()
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Live Preview Editor')))
+    const trigger = screen.getByRole('button', { name: 'More Note Actions' })
+    trigger.focus()
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false })
+    fireEvent.click(await screen.findByRole('menuitem', { name: action, exact: true }))
+    await waitFor(() => expect(screen.getAllByLabelText('Live Preview Editor')).toHaveLength(2))
+    // Radix restores trigger focus when its closing focus scope unmounts.
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
+    expect(document.activeElement).toBe(screen.getAllByLabelText('Live Preview Editor')[1])
   })
 
   it.each(['pointer', 'keyboard'])('does not steal focus after a new %s interaction', async kind => {

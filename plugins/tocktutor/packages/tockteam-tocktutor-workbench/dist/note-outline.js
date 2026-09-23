@@ -48,12 +48,15 @@ export function NoteOutline({ headings, onNavigate }) {
             return _jsxs("li", { children: [_jsxs("div", { className: "flex min-w-0 items-center rounded hover:bg-[var(--tt-selected)]", "data-outline-line": heading.line, children: [children.length > 0 ? _jsx(Button, { unstyled: true, "aria-label": `${folded ? 'Expand' : 'Collapse'} ${heading.text}`, "aria-expanded": !folded, className: controlClass, onClick: () => { setCollapsed(current => { const next = new Set(current); if (next.has(index))
                                     next.delete(index);
                                 else
-                                    next.add(index); return next; }); }, type: "button", children: _jsx(ChevronRight, { "aria-hidden": "true", className: folded ? '' : 'rotate-90' }) }) : _jsx("span", { "aria-hidden": "true", className: "w-7 shrink-0" }), _jsx(Button, { unstyled: true, "aria-current": selected === index ? 'location' : undefined, "aria-label": `Go to ${heading.text}`, className: "min-h-7 min-w-0 flex-1 truncate rounded border-0 bg-transparent py-1 pr-2 pl-0 text-left text-xs aria-[current=location]:bg-[var(--tt-selected)] aria-[current=location]:text-[var(--tt-accent)] focus-visible:outline focus-visible:outline-[var(--tt-accent)] disabled:opacity-50", onClick: () => { const success = onNavigate(index); setUnavailable(!success); if (success)
-                                    setSelected(index); }, title: `${heading.text} · Heading ${String(heading.level)}, line ${String(heading.line)}`, type: "button", children: heading.text })] }), children.length > 0 && !folded && renderNodes(children, true)] }, `${String(heading.line)}:${heading.selector}`);
+                                    next.add(index); return next; }); }, type: "button", children: _jsx(ChevronRight, { "aria-hidden": "true", className: folded ? '' : 'rotate-90' }) }) : _jsx("span", { "aria-hidden": "true", className: "w-7 shrink-0" }), _jsx(Button, { unstyled: true, "aria-current": selected === index ? 'location' : undefined, "aria-label": `Go to ${heading.text}`, className: "min-h-7 min-w-0 flex-1 truncate rounded border-0 bg-transparent py-1 pr-2 pl-0 text-left text-xs aria-[current=location]:bg-[var(--tt-selected)] aria-[current=location]:text-[var(--tt-accent)] focus-visible:outline focus-visible:outline-[var(--tt-accent)] disabled:opacity-50", onClick: () => { const finish = (success) => { setUnavailable(!success); if (success)
+                                    setSelected(index); }; const result = onNavigate(index); if (typeof result === 'boolean')
+                                    finish(result);
+                                else
+                                    void result.then(finish, () => { finish(false); }); }, title: `${heading.text} · Heading ${String(heading.level)}, line ${String(heading.line)}`, type: "button", children: heading.text })] }), children.length > 0 && !folded && renderNodes(children, true)] }, `${String(heading.line)}:${heading.selector}`);
         }) }));
     return _jsxs("div", { className: "min-w-0", children: [_jsxs("div", { className: "mb-2 flex items-center justify-between gap-2", children: [_jsxs("span", { className: "text-xs text-[var(--tt-muted)]", children: [headings.length, " headings"] }), _jsxs("div", { className: "flex gap-1", children: [_jsx(Button, { unstyled: true, "aria-label": "Expand All Headings", className: controlClass, disabled: branches.length === 0, onClick: () => { setCollapsed(new Set()); }, title: "Expand all headings", type: "button", children: _jsx(ChevronsUpDown, { "aria-hidden": "true" }) }), _jsx(Button, { unstyled: true, "aria-label": "Collapse All Headings", className: controlClass, disabled: branches.length === 0, onClick: () => { setCollapsed(new Set(branches)); }, title: "Collapse all headings", type: "button", children: _jsx(ChevronsDownUp, { "aria-hidden": "true" }) })] })] }), _jsx("nav", { "aria-label": "Note Headings", children: renderNodes(roots) }), headings.length === 0 && _jsx("p", { className: "px-2 py-4 text-xs text-[var(--tt-muted)]", children: "No headings in this note." }), unavailable && _jsx("p", { className: "px-2 text-xs text-[var(--tt-muted)]", role: "status", children: "This heading is not displayed in the current view. Open Source Mode to jump to its line." })] });
 }
-export function NoteOutlinePanel({ snapshot, onJumpToLine }) {
+export function NoteOutlinePanel({ snapshot, onJumpToLine, onNavigateHeading }) {
     const projection = useMemo(() => projectLivePreview(snapshot.source), [snapshot.source]);
     const headings = useMemo(() => projection.status !== 'ready' ? [] : projection.lines.flatMap(line => {
         if (line.kind !== 'heading' || line.headingLevel === undefined)
@@ -69,11 +72,14 @@ export function NoteOutlinePanel({ snapshot, onJumpToLine }) {
             const heading = headings[index];
             if (heading === undefined)
                 return false;
+            if (onNavigateHeading)
+                return onNavigateHeading(headings, index);
             if (snapshot.mode === 'source') {
                 onJumpToLine?.(heading.line);
                 return onJumpToLine !== undefined;
             }
-            return scrollOutlineHeading(document.querySelector(snapshot.mode === 'reading' ? '[aria-label="Reading View"] .tocktutor-reading' : '.tocktutor-editor-body .ProseMirror'), headings, index);
+            const seat = Array.from(document.querySelectorAll('[data-pane-id]')).find(node => node.dataset.paneId === snapshot.focusedPaneId);
+            return scrollOutlineHeading((seat ?? document).querySelector(snapshot.mode === 'reading' ? '[aria-label="Reading View"] .tocktutor-reading' : '.tocktutor-editor-body .ProseMirror'), headings, index);
         } }, JSON.stringify([snapshot.vault, snapshot.path, headings]));
 }
 //# sourceMappingURL=note-outline.js.map

@@ -19,12 +19,31 @@ export interface NoteTab {
     savedRevision: number;
     readonly dirty: boolean;
 }
+export declare const LINKED_VIEW_KINDS: readonly ["backlinks", "outgoing-links", "properties", "outline", "graph"];
+export type LinkedViewKind = typeof LINKED_VIEW_KINDS[number];
+export interface LinkedView {
+    kind: LinkedViewKind;
+    sourceGroupId: string | null;
+    sourceTabId: string | null;
+    path: string | null;
+    /** A detached view owns this flag; bound views derive it from their source tab. */
+    pinned: boolean;
+}
 export interface PaneGroup {
+    linkedView?: LinkedView;
     id: string;
     activeTabId: string | null;
     tabs: NoteTab[];
 }
+export type PaneLayout = {
+    groupId: string;
+} | {
+    axis: 'horizontal' | 'vertical';
+    ratio: number;
+    children: [PaneLayout, PaneLayout];
+};
 export interface WorkbenchSession {
+    layout: PaneLayout;
     routeId: string;
     vault: VaultIdentity | null;
     focusedGroupId: string;
@@ -55,6 +74,11 @@ export declare function addPaneGroup(source: WorkbenchSession, requestedId?: str
     session: WorkbenchSession;
     groupId: string;
 };
+export declare function splitPaneGroup(source: WorkbenchSession, owner: string, axis: 'horizontal' | 'vertical'): {
+    session: WorkbenchSession;
+    groupId: string;
+};
+export declare function resizePaneSplit(source: WorkbenchSession, path: readonly number[], ratio: number): WorkbenchSession;
 export interface ClosePaneGroupResult {
     closed: PaneGroup | null;
     nextGroupId: string | null;
@@ -65,6 +89,8 @@ export declare function openNoteTab(source: WorkbenchSession, groupId: string, p
     replaceActive?: boolean;
 }): WorkbenchSession;
 export declare function renameNoteTabPath(source: WorkbenchSession, fromPath: string, toPath: string): WorkbenchSession;
+/** Retire a merged source without duplicating an already-open destination tab. */
+export declare function mergeNoteTabPath(source: WorkbenchSession, fromPath: string, toPath: string): WorkbenchSession;
 export declare function markTabDirty(source: WorkbenchSession, groupId: string, path: string, dirty: boolean): WorkbenchSession;
 export declare function captureOperation(session: WorkbenchSession, groupId: string, path: string): OperationIdentity | null;
 export declare function isCurrentOperation(session: WorkbenchSession, identity: OperationIdentity | null): boolean;
@@ -80,4 +106,12 @@ export interface CloseNoteTabResult {
 }
 export declare function closeNoteTab(source: WorkbenchSession, groupId: string, path: string): CloseNoteTabResult;
 export declare function createDirtySaveGate(currentTab: () => NoteTab | undefined, save: (tab: NoteTab) => Promise<SaveResult>): () => Promise<SaveGateDecision>;
+/** Normalize bindings in an owned session copy; callers must not pass user-owned state. */
+export declare function syncLinkedViews(session: WorkbenchSession): WorkbenchSession;
+export declare function openLinkedPane(source: WorkbenchSession, owner: string, kind: LinkedViewKind): {
+    session: WorkbenchSession;
+    groupId: string;
+};
+export declare function unlinkPane(source: WorkbenchSession, id: string): WorkbenchSession;
+export declare function toggleLinkedPanePin(source: WorkbenchSession, id: string): WorkbenchSession;
 //# sourceMappingURL=session.d.ts.map

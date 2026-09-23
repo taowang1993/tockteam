@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import NoteVaultRuntime, { Config as RuntimeConfig } from 'tockbot-note-runtime'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 import { Context, Service } from '@deepseek-ai/cordis'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import * as workbench from '../dist/index.js'
@@ -13,6 +18,8 @@ import {
   type StoreAttachmentRequest,
   type StoreAttachmentResult,
   type ListTreeRequest,
+  type MergeLinkPreviewRequest,
+  type MergeLinkPreviewResult,
   type OpenDocumentResult,
   type RenameDocumentRequest,
   type RenameDocumentResult,
@@ -134,6 +141,13 @@ class FakeNoteVault extends Service {
     }
   }
 
+  async previewMergeLinks(request: MergeLinkPreviewRequest, signal: AbortSignal): Promise<MergeLinkPreviewResult> {
+    this.calls.push({ method: 'previewMergeLinks', parameters: [request, signal] })
+    return { generation: request.expectedVault.generation, source: null, destination: null, fingerprint: null,
+      complete: false, requiresKeepSource: true, updates: [], cursor: null,
+      scan: { bytes: 0, entries: 0, files: 0 }, truncated: true, truncationReason: 'entry-limit', warnings: [] }
+  }
+
   async graph(args: Omit<VaultGraphRequest, 'expectedVault'>, expectedVault: VaultReference, signal: AbortSignal): Promise<VaultGraphResult> {
     this.calls.push({ method: 'graph', parameters: [args, expectedVault, signal] })
     return { complete: true, edges: [], generation: expectedVault.generation, missing: [], nodes: [], orphans: [], path: args.path ?? null, scan: { bytes: 0, entries: 0, files: 0 }, truncated: false, truncationReason: null, warnings: [] }
@@ -193,6 +207,88 @@ async function loaded(): Promise<{
 
 const vault = Object.freeze({ generation: 7, id: `vault:${'c'.repeat(64)}` })
 
+test('real runtime missing-file classification survives the Host read transport', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tocktutor-missing-read-'))
+  const context = new Context()
+  try {
+    await writeFile(join(root, 'Present.md'), '# Present\n')
+    await symlink(join(root, 'Missing.md'), join(root, 'Broken.md'))
+    await context.plugin(NoteVaultRuntime, RuntimeConfig({ vaultRoot: root, stateRoot: null } as never))
+    await context.plugin(workbench)
+    const runtime = context.get('noteVault'), gateway = context.get('tocktutorWorkbench')
+    assert.ok(runtime instanceof NoteVaultRuntime)
+    assert.ok(gateway instanceof TockTutorWorkbenchGateway)
+    const state = runtime.state
+    assert.equal(state.active, true)
+    if (!state.active) assert.fail('The fixture vault must be active.')
+    const expected = { id: state.id, generation: state.generation }, signal = new AbortController().signal
+    assert.equal((await gateway.openDocument('Present.md', expected, signal)).content, '# Present\n')
+    for (const path of ['Missing.md', 'Missing Parent/Note.md']) await assert.rejects(gateway.openDocument(path, expected, signal), { code: 'not-found' })
+    await assert.rejects(gateway.openDocument('Broken.md', expected, signal), { code: 'unsafe-target' })
+  } finally {
+    await context.fiber.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('generated Remote declarations resolve with declaration checking enabled', () => {
+  const declaration = fileURLToPath(new URL('../dist/typert.remote-client.d.ts', import.meta.url))
+  const program = ts.createProgram([declaration], {
+    noEmit: true, skipLibCheck: false, strict: true, allowImportingTsExtensions: true,
+    target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext, jsx: ts.JsxEmit.ReactJSX,
+  })
+  const diagnostics = ts.getPreEmitDiagnostics(program)
+  assert.equal(diagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+    getCanonicalFileName: file => file, getCurrentDirectory: () => process.cwd(), getNewLine: () => '\n',
+  }))
+})
+
+test('merge preview transport validates both revisions and forwards only a bounded read-only request', async () => {
+  const state = await loaded()
+  const request = { expectedVault: vault, sourcePath: 'Source.md', destinationPath: 'Folder/Dest.md',
+    expectedSourceRevision: `file:${'a'.repeat(64)}`, expectedDestinationRevision: `file:${'b'.repeat(64)}`,
+    mergedContent: '# Dest\n# Source\n', keepSource: false }
+  const signal = new AbortController().signal
+  try {
+    const result = await state.gateway.previewMergeLinks(request, signal)
+    assert.equal(result.generation, vault.generation)
+    assert.deepEqual(state.runtime.calls, [{ method: 'previewMergeLinks', parameters: [request, signal] }])
+    for (const invalid of [
+      { expectedSourceRevision: 'invalid' }, { expectedDestinationRevision: 'invalid' },
+      { sourcePath: '../Source.md' }, { destinationPath: 'Other.canvas' }, { destinationPath: 'SOURCE.md' },
+      { mergedContent: 'x'.repeat(2_000_001) }, { keepSource: 'no' }, { cursor: '' }, { cursor: 'x'.repeat(513) },
+      { expectedVault: { ...vault, generation: -1 } },
+    ]) {
+      await assert.rejects(state.gateway.previewMergeLinks({ ...request, ...invalid } as MergeLinkPreviewRequest, signal))
+    }
+    await assert.rejects(state.gateway.previewMergeLinks(request, AbortSignal.abort()), { name: 'AbortError' })
+    assert.equal(state.runtime.calls.length, 1)
+  } finally {
+    await state.context.fiber.dispose()
+  }
+})
+
+test('merge mutation transport requires exact confirmation and bounded identifiers', async () => {
+  const state = await loaded(), signal = new AbortController().signal
+  const id = 'merge-00000000-0000-4000-8000-000000000000'
+  try {
+    for (const method of ['prepareMerge', 'applyMerge', 'recoverMerge', 'listMerges']) Object.assign(state.runtime, { [method]: async (request: unknown, signal: AbortSignal) => {
+      state.runtime.calls.push({ method, parameters: [request, signal] }); return { id, generation: 7 }
+    } })
+    const request = { id, expectedVault: vault, confirmed: true }
+    await state.gateway.applyMerge(request, signal)
+    await state.gateway.recoverMerge(request, signal)
+    await state.gateway.listMerges({ expectedVault: vault }, signal)
+    assert.equal(state.runtime.calls.length, 3)
+    await assert.rejects(state.gateway.applyMerge({ ...request, confirmed: false }, signal))
+    await assert.rejects(state.gateway.applyMerge({ ...request, id: '../x' }, signal))
+    await assert.rejects(state.gateway.recoverMerge({ ...request, expectedVault: { ...vault, generation: -1 } }, signal))
+    await assert.rejects(state.gateway.applyMerge(request, AbortSignal.abort()), { name: 'AbortError' })
+    assert.equal(state.runtime.calls.length, 3)
+  } finally { await state.context.fiber.dispose() }
+})
+
 test('registers only the accepted read/tree Remote methods and delegates exact records', async () => {
   const state = await loaded()
   try {
@@ -208,6 +304,11 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { invocation: { kind: 'direct' }, method: 'createDocument' },
       { invocation: { kind: 'direct' }, method: 'saveDocument' },
       { invocation: { kind: 'direct' }, method: 'renameDocument' },
+      { invocation: { kind: 'direct' }, method: 'previewMergeLinks' },
+      { invocation: { kind: 'direct' }, method: 'prepareMerge' },
+      { invocation: { kind: 'direct' }, method: 'applyMerge' },
+      { invocation: { kind: 'direct' }, method: 'listMerges' },
+      { invocation: { kind: 'direct' }, method: 'recoverMerge' },
       { invocation: { kind: 'direct' }, method: 'graph' },
       { invocation: { kind: 'direct' }, method: 'facets' },
       { invocation: { kind: 'direct' }, method: 'outline' },

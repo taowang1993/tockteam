@@ -6,7 +6,12 @@ import {
   TockTutorRouteView,
   type WorkbenchRouteSnapshot,
 } from '../src/route.tsx'
+import { LivePreviewView } from '../src/editor-surface.tsx'
 import { createWorkbenchSession } from '../src/session.ts'
+import { loadTockTutorSettings } from '../src/settings.ts'
+import { MAX_EDITOR_SEARCH_MATCHES } from '../src/editor-search.ts'
+
+const DEFAULT_TOCKTUTOR_SETTINGS = loadTockTutorSettings(localStorage, `vault:${'a'.repeat(64)}`)
 
 const snapshot: WorkbenchRouteSnapshot = {
   dispatchDialog: null,
@@ -32,6 +37,8 @@ afterEach(() => {
 })
 
 function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
+  nativeNoteActions?: import('../src/native-actions.ts').TockTutorNativeNoteActions | null
+  onAddBookmark?(title?: string, group?: string | null): boolean | void
   onAttachFiles?(files: FileList): void
   onBack?(): void
   onCancelDispatch?(): void
@@ -42,6 +49,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onCopyGraphPath?(path: string): void
   onCreateManagedVault?(name: string): void
   onEdit?(source: string): void
+  onFocusEditor?(): void
   onJumpToLine?(line: number): void
   onLoadFacets?(): void
   onLoadRelationships?(): void
@@ -50,10 +58,13 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
   onOpenInternalLink?(target: string): void | Promise<{ fragment: string | null } | null>
+  onEditBookmark?(id: string, title: string, group: string | null): boolean | void
+  onRevealFile?(): boolean | void | Promise<boolean>
   onOpenRecovery?(): void
   onOpenSearch?(): void
   onOpenSidebarSearch?(): void
   onReadSnapshot?(id: string): void
+  onRemoveBookmark?(id: string): void
   onReopenClosedTab?(): void
   onRestoreSnapshot?(id: string): void
   onRestoreTrash?(id: string): void
@@ -86,6 +97,7 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
     onActivateTab={() => {}}
     onAddPane={() => {}}
     onEdit={() => {}}
+    onFocusEditor={props.onFocusEditor}
     onFocusPane={() => {}}
     onMode={() => {}}
     onMoveCanvas={() => {}}
@@ -103,7 +115,251 @@ function openNoteActions(): HTMLElement {
   return trigger
 }
 
+async function openCopyPath(): Promise<HTMLElement> {
+  const trigger = screen.getByRole('menuitem', { name: 'Copy Path', exact: true })
+  fireEvent.pointerMove(trigger, { pointerType: 'mouse' })
+  await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Copy Relative Path', exact: true })).toBeTruthy())
+  return trigger
+}
+
 describe('TockTutor titlebar panel controls', () => {
+  it('keeps layout implementation comments out of the note header', () => {
+    renderRoute()
+    expect(screen.queryByText(/Existing Desktop shell metric/u)).toBeNull()
+  })
+
+  it('copies the active vault-relative path directly from note actions and restores focus', async () => {
+    const onCopyGraphPath = vi.fn()
+    const path = 'Lessons/中文 Notes #1.md'
+    renderRoute({ documentKind: 'markdown', path, phase: 'ready', source: '# Lesson\n' }, { onCopyGraphPath })
+    const trigger = openNoteActions()
+    await openCopyPath()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy Relative Path', exact: true }))
+    expect(onCopyGraphPath).toHaveBeenCalledExactlyOnceWith(path)
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(trigger))
+  })
+
+  it('opens Copy Path with keyboard and copies the Host-owned absolute path action', async () => {
+    const run = vi.fn()
+    const vault = { generation: 7, id: `vault:${'a'.repeat(64)}` }
+    renderRoute({ documentKind: 'markdown', path: 'Lessons/中文 Notes #1.md', phase: 'ready', vault }, {
+      nativeNoteActions: {
+        activePath: 'Lessons/中文 Notes #1.md',
+        disabled: false,
+        message: 'Ready.',
+        run,
+        vault,
+      },
+    })
+    const menuTrigger = openNoteActions()
+    const copyPath = screen.getByRole('menuitem', { name: 'Copy Path', exact: true })
+    copyPath.focus()
+    fireEvent.keyDown(copyPath, { key: 'ArrowRight' })
+    const absolute = await waitFor(() => screen.getByRole('menuitem', { name: 'Copy Absolute Path', exact: true }))
+    absolute.focus()
+    fireEvent.keyDown(absolute, { key: 'Enter' })
+    expect(run).toHaveBeenCalledExactlyOnceWith('copy-absolute')
+    await waitFor(() => expect(document.activeElement).toBe(menuTrigger))
+  })
+
+  it('keeps the portalled Copy Path submenu above the workbench and preserves compact hit rows', async () => {
+    const run = vi.fn()
+    const vault = { generation: 7, id: `vault:${'a'.repeat(64)}` }
+    renderRoute({ documentKind: 'markdown', path: 'Lessons/Welcome.md', phase: 'ready', vault }, {
+      nativeNoteActions: {
+        activePath: 'Lessons/Welcome.md',
+        disabled: false,
+        message: 'Ready.',
+        run,
+        vault,
+      },
+    })
+    openNoteActions()
+    await openCopyPath()
+    const submenu = screen.getByRole('menuitem', { name: 'Copy Relative Path', exact: true }).closest('[data-slot="dropdown-menu-sub-content"]')
+    expect(submenu?.className).toContain('z-[1002]')
+    expect(submenu?.className).toContain('[--tt-panel:var(--dsw-alias-bg-layer-1,#fff)]')
+    const rootMenu = document.querySelector('[data-slot="dropdown-menu-content"]')!
+    const submenuClasses = Array.from(submenu!.classList)
+    // One feature-owned background, matching the root menu; no primitive recipe
+    // may compete in the CSS cascade or override the body's shell theme owner.
+    expect(submenuClasses.filter(value => value.startsWith('bg-'))).toEqual(Array.from(rootMenu.classList).filter(value => value.startsWith('bg-')))
+    expect(submenuClasses.filter(value => value.startsWith('bg-'))).toHaveLength(1)
+    expect(submenuClasses.filter(value => value.startsWith('p-'))).toEqual(['p-1.5'])
+    for (const conflicting of ['bg-popover', 'text-popover-foreground', 'rounded-lg', 'shadow-md', 'ring-1', 'ring-foreground/10']) expect(submenu!.classList.contains(conflicting)).toBe(false)
+    expect(submenuClasses.some(value => value.startsWith('[--tockteam-shell-chrome:'))).toBe(false)
+    for (const token of ['border-[var(--dsw-alias-border-l2,CanvasText)]', 'text-[var(--dsw-alias-label-primary,#27272a)]']) {
+      expect(rootMenu.classList.contains(token)).toBe(true)
+      expect(submenu!.classList.contains(token)).toBe(true)
+    }
+    expect(submenu?.className).toContain('[&_[data-slot=dropdown-menu-item]]:h-[25px]')
+    expect(screen.getByRole('menuitem', { name: 'Copy Relative Path', exact: true }).className).toContain('h-[25px]')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy Absolute Path', exact: true }))
+    expect(run).toHaveBeenCalledExactlyOnceWith('copy-absolute')
+  })
+
+  it.each(['no note', 'no copy handler'])('disables Copy Path with %s', unavailable => {
+    const onCopyGraphPath = vi.fn()
+    renderRoute({ path: unavailable === 'no note' ? null : 'Note.md' }, unavailable === 'no copy handler' ? {} : { onCopyGraphPath })
+    openNoteActions()
+    const item = screen.getByRole('menuitem', { name: 'Copy Path', exact: true })
+    expect(item.getAttribute('aria-disabled')).toBe('true')
+    fireEvent.click(item)
+    expect(onCopyGraphPath).not.toHaveBeenCalled()
+  })
+
+  it('keeps the measured note-menu hierarchy limited to implemented actions', () => {
+    const vault = { generation: 1, id: `vault:${'a'.repeat(64)}` }
+    renderRoute({ documentKind: 'markdown', path: 'Notes/Welcome.md', phase: 'ready', vault }, {
+      nativeNoteActions: { activePath: 'Notes/Welcome.md', disabled: false, message: 'Ready.', run: vi.fn(), vault },
+      onCopyGraphPath: vi.fn(),
+      onRevealFile: vi.fn(() => true),
+    })
+    openNoteActions()
+    const menu = screen.getByRole('menu')
+    const labels = within(menu).getAllByRole('menuitem').map(item => item.textContent?.trim())
+    expect(labels).toEqual(expect.arrayContaining([
+      'Open in New Window', 'Rename Note…', 'Move Note…', 'Bookmark Note…',
+      'Add Property', 'Export PDF…', 'Find…', 'Replace…', 'Copy Path', 'Open in Default App', 'Reveal in Finder',
+      'Reveal File in Navigation', 'Move File to Trash',
+    ]))
+    expect(labels).toEqual(expect.arrayContaining(['Split Right', 'Split Down']))
+    expect(labels).not.toContain('Merge Entire File With…')
+    expect(labels.indexOf('Open in Default App')).toBeLessThan(labels.indexOf('Reveal in Finder'))
+    expect(labels.indexOf('Open in New Window')).toBeLessThan(labels.indexOf('Rename Note…'))
+    expect(labels.indexOf('Copy Path')).toBeLessThan(labels.indexOf('Reveal File in Navigation'))
+  })
+
+  it('opens note-local Find, highlights Reading matches, navigates, and restores editor focus on Escape', async () => {
+    const onFocusEditor = vi.fn()
+    const source = 'alpha **alpha**\n'
+    renderRoute({ documentKind: 'markdown', mode: 'reading', path: 'Notes/Welcome.md', phase: 'ready', source }, { onFocusEditor })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Find…', exact: true }))
+    const strip = await screen.findByRole('search', { name: 'Find in Note' })
+    const input = within(strip).getByRole('searchbox', { name: 'Find in Note' })
+    fireEvent.change(input, { target: { value: 'alpha' } })
+    await waitFor(() => expect(screen.getAllByText('alpha', { selector: 'mark[data-tocktutor-find]' })).toHaveLength(2))
+    expect(within(strip).getByRole('status').textContent).toBe('1 / 2')
+    fireEvent.click(within(strip).getByRole('button', { name: 'Next Match' }))
+    expect(within(strip).getByRole('status').textContent).toBe('2 / 2')
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(screen.queryByRole('search', { name: 'Find in Note' })).toBeNull()
+    expect(onFocusEditor).toHaveBeenCalledOnce()
+  })
+
+  it('shows an honest capped count and visible overlong-query feedback', async () => {
+    renderRoute({ documentKind: 'markdown', mode: 'source', path: 'Note.md', phase: 'ready', source: 'x'.repeat(MAX_EDITOR_SEARCH_MATCHES + 1) })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Find…', exact: true }))
+    const strip = await screen.findByRole('search', { name: 'Find in Note' })
+    const input = within(strip).getByRole('searchbox', { name: 'Find in Note' })
+    fireEvent.change(input, { target: { value: 'x' } })
+    await waitFor(() => expect(within(strip).getByRole('status').textContent).toBe('1 / 10000+'), { timeout: 15_000 })
+    fireEvent.change(input, { target: { value: 'x'.repeat(100_001) } })
+    await waitFor(() => expect(within(strip).getByRole('alert').textContent).toBe('Search query is too long.'), { timeout: 5_000 })
+  })
+
+  it('opens Find and Replace with scoped platform shortcuts', async () => {
+    renderRoute({ documentKind: 'markdown', mode: 'live-preview', path: 'Note.md', phase: 'ready', source: 'alpha\n' })
+    fireEvent.keyDown(screen.getByRole('main', { name: 'TockTutor Workbench' }), { key: 'f', ctrlKey: true })
+    expect(await screen.findByRole('search', { name: 'Find in Note' })).toBeTruthy()
+    fireEvent.keyDown(screen.getByRole('main', { name: 'TockTutor Workbench' }), { key: 'h', ctrlKey: true })
+    expect(await screen.findByRole('search', { name: 'Find and Replace in Note' })).toBeTruthy()
+  })
+
+  it('keeps Replace local to Markdown and explicitly returns Reading to the last editing mode', async () => {
+    const onMode = vi.fn()
+    renderRoute({ documentKind: 'markdown', mode: 'reading', path: 'Note.md', phase: 'ready', source: 'alpha\n' }, { onMode })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Replace…', exact: true }))
+    const strip = await screen.findByRole('search', { name: 'Find and Replace in Note' })
+    fireEvent.change(within(strip).getByRole('searchbox', { name: 'Find in Note' }), { target: { value: 'alpha' } })
+    fireEvent.change(within(strip).getByRole('textbox', { name: 'Replace in Note' }), { target: { value: 'omega' } })
+    await waitFor(() => expect(within(strip).getByRole('button', { name: 'Replace All' }).getAttribute('disabled')).toBeNull())
+    fireEvent.click(within(strip).getByRole('button', { name: 'Replace All' }))
+    expect(onMode).toHaveBeenCalledExactlyOnceWith('live-preview')
+    expect(within(strip).getByRole('alert').textContent).toContain('Switching to Live Preview')
+  })
+
+  it.each(['canvas', 'base'] as const)('disables note-local Find and Replace for %s documents', kind => {
+    renderRoute({ documentKind: kind, mode: 'reading', path: kind === 'canvas' ? 'Data.canvas' : 'Data.base', phase: 'ready', source: kind === 'canvas' ? '{"nodes":[],"edges":[]}' : 'views: []' })
+    openNoteActions()
+    expect(screen.getByRole('menuitem', { name: 'Find…', exact: true }).getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByRole('menuitem', { name: 'Replace…', exact: true }).getAttribute('aria-disabled')).toBe('true')
+  })
+
+  it('reveals an exact Unicode tree row without reopening the active draft or losing search', async () => {
+    const scrollIntoView = vi.fn()
+    const original = HTMLElement.prototype.scrollIntoView
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scrollIntoView })
+    try {
+      const path = 'Lessons/中文 Notes/Study #1.md'
+      const onRevealFile = vi.fn(() => true)
+      renderRoute({
+        documentKind: 'markdown', path, phase: 'ready', saveStatus: 'unsaved', searchOpen: true,
+        searchPresentation: 'sidebar', searchQuery: 'study', source: '# Draft',
+        entries: [
+          { kind: 'directory', path: 'Lessons' },
+          { kind: 'directory', path: 'Lessons/中文 Notes' },
+          { createdAt: 1, kind: 'document', modifiedAt: 2, path, revision: '1'.repeat(64), size: 7 },
+          { createdAt: 1, kind: 'document', modifiedAt: 2, path: 'Lessons/Other/Study #1.md', revision: '2'.repeat(64), size: 7 },
+        ],
+      }, { onRevealFile })
+      openNoteActions()
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Reveal File in Navigation', exact: true }))
+      expect(onRevealFile).toHaveBeenCalledOnce()
+      await waitFor(() => expect(screen.getByRole('navigation', { name: 'Vault Notes' })).toBeTruthy())
+      const row = screen.getByRole('button', { name: path, exact: true })
+      expect(row.getAttribute('data-tree-path')).toBe(path)
+      await waitFor(() => expect(document.activeElement).toBe(row))
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
+      expect(screen.getByRole('button', { name: 'Toggle Files Sidebar' }).getAttribute('aria-expanded')).toBe('true')
+      expect(screen.getByRole('navigation', { name: 'Vault Notes' }).textContent).toContain('Study #1')
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: original })
+    }
+  })
+
+  it('edits one stable bookmark and supports choosing a duplicate target', async () => {
+    const onEditBookmark = vi.fn(() => true)
+    const path = 'Notes/中文.md'
+    renderRoute({
+      bookmarks: [
+        { id: 'note-one', kind: 'note', path, title: 'First' },
+        { id: 'note-two', kind: 'note', path, title: 'Second' },
+        { id: 'other-group', kind: 'group', title: 'Lessons', children: [] },
+        { id: 'group', kind: 'group', title: 'Lessons', children: [] },
+      ],
+      documentKind: 'markdown', path, phase: 'ready', source: '# Note',
+    }, { onEditBookmark })
+    openNoteActions()
+    expect(screen.getByRole('menuitem', { name: 'Edit Bookmark…', exact: true })).toBeTruthy()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit Bookmark…', exact: true }))
+    const dialog = screen.getByRole('dialog', { name: 'Edit Bookmark' })
+    const bookmark = within(dialog).getByRole('combobox', { name: 'Bookmark' })
+    fireEvent.change(bookmark, { target: { value: 'note-two' } })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Bookmark Title' }), { target: { value: 'Edited' } })
+    fireEvent.change(within(dialog).getByRole('combobox', { name: 'Bookmark Group' }), { target: { value: 'group' } })
+    fireEvent.submit(within(dialog).getByRole('textbox', { name: 'Bookmark Title' }).closest('form')!)
+    await waitFor(() => expect(onEditBookmark).toHaveBeenCalledExactlyOnceWith('note-two', 'Edited', 'group'))
+    expect(screen.queryByRole('dialog', { name: 'Edit Bookmark' })).toBeNull()
+  })
+
+  it('creates a bookmark through the compact dialog and leaves cancellation untouched', () => {
+    const onAddBookmark = vi.fn(() => true)
+    renderRoute({ documentKind: 'markdown', path: 'Note.md', phase: 'ready', source: '# Note' }, { onAddBookmark })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmark Note…', exact: true }))
+    const dialog = screen.getByRole('dialog', { name: 'Bookmark Note' })
+    const title = within(dialog).getByRole('textbox', { name: 'Bookmark Title' })
+    fireEvent.change(title, { target: { value: 'Lesson' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel', exact: true }))
+    expect(onAddBookmark).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: 'Bookmark Note' })).toBeNull()
+  })
+
   it('validates property names, preserves failed input, and cancels without a write', async () => {
     const onSetProperty = vi.fn(() => false)
     renderRoute({ documentKind: 'markdown', path: 'Note.md', phase: 'ready', source: '---\nstatus: active\n---\n# Note\n' }, { onSetProperty })
@@ -617,6 +873,58 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByRole('dialog', { name: 'Search Notes' })).toBeTruthy()
   })
 
+  it('explains protected Live Preview and switches explicitly to Source Mode without changing the draft', async () => {
+    const source = '---\ntags: [draft]\n---\n# Lesson\n\n> [!note]\n> Keep this exact.\n'
+    const onEdit = vi.fn()
+    function ProtectedNote(): ReactNode {
+      const [mode, setMode] = useState<WorkbenchRouteSnapshot['mode']>('live-preview')
+      return <TockTutorRouteView
+        onActivateTab={() => {}}
+        onAddPane={() => {}}
+        onEdit={onEdit}
+        onFocusPane={() => {}}
+        onMode={setMode}
+        onMoveCanvas={() => {}}
+        onSave={() => {}}
+        onSelect={() => {}}
+        onToggleTask={() => {}}
+        snapshot={{ ...snapshot, documentKind: 'markdown', mode, path: 'Lesson.md', phase: 'ready', source, saveStatus: 'unsaved', panes: [{ activePath: 'Lesson.md', id: 'main', tabs: [{ dirty: true, mode, path: 'Lesson.md' }] }] }}
+      />
+    }
+    render(<ProtectedNote />)
+    expect(screen.getByRole('note').textContent).toContain('Typing and pasting are disabled')
+    expect(screen.getByLabelText('Live Preview')).toBeTruthy()
+    expect(screen.queryByLabelText('Markdown Source')).toBeNull()
+    expect(onEdit).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit in Source Mode' }))
+    await waitFor(() => expect(screen.getByLabelText('Markdown Source').querySelector('.cm-content')).toBeTruthy())
+    const lines = document.querySelectorAll('.cm-line')
+    expect(Array.from(lines, line => line.textContent).join('\n')).toBe(source)
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.getByLabelText('Unsaved')).toBeTruthy()
+    expect(onEdit).not.toHaveBeenCalled()
+  })
+
+  it('updates the protection notice with the source and omits unavailable actions', () => {
+    const props = { documentKey: 'Lesson.md', onEdit: vi.fn(), onToggleTask: vi.fn(), title: 'Lesson' }
+    const view = render(<LivePreviewView {...props} source={'> [!note]\n> Protected\n'} />)
+    expect(screen.getByRole('note')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
+    view.rerender(<LivePreviewView {...props} source={'# Lesson\nPlain text.\n'} />)
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(props.onEdit).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['live-preview', '---\ntitle: Lesson\n---\n# Lesson\n[[Note]]\n'],
+    ['reading', '> [!note]\n> Protected\n'],
+    ['source', '> [!note]\n> Protected\n'],
+  ] as const)('does not show a protected-edit notice in %s for an unaffected surface', (mode, source) => {
+    renderRoute({ documentKind: 'markdown', mode, path: 'Lesson.md', phase: 'ready', source })
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
+  })
+
   it('renders editable source-preserving Live Preview chrome', async () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
@@ -664,8 +972,8 @@ describe('TockTutor titlebar panel controls', () => {
     expect(editorBody.className).toContain('[&_.ProseMirror]:max-w-[700px]')
     expect(editorBody.className).toContain('[&_.ProseMirror]:w-[calc(100%-48px)]')
     expect(editorBody.className).toContain('[&_.ProseMirror]:outline-none')
-    expect(screen.queryByRole('note')).toBeNull()
-    expect(screen.queryByText(/Protected Markdown stays exact/u)).toBeNull()
+    expect(screen.getByRole('note')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Edit in Source Mode' })).toBeTruthy()
     const task = screen.getByRole('checkbox', { name: 'Mark Task as Complete' })
     expect(task.tabIndex).toBe(0)
     fireEvent.keyDown(task, { key: ' ' })
@@ -1159,6 +1467,66 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('backlinks')
     expect(screen.getByRole('region', { name: 'Backlinks' })).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Properties' })).toBeNull()
+  })
+
+  it('offers direct Desktop note actions without Claudian and disables them while busy', () => {
+    const run = vi.fn()
+    const vault = { id: `vault:${'a'.repeat(64)}`, generation: 1 }
+    const nativeNoteActions = { activePath: 'Note.md', vault, disabled: false, message: 'Ready.', run }
+    for (const [label, action] of [['Open in New Window', 'open-window'], ['Export PDF', 'export-pdf'], ['Open in Default App', 'open-default'], ['Reveal in Finder', 'reveal']] as const) {
+      renderRoute({ documentKind: 'markdown', path: 'Note.md', phase: 'ready', vault }, { nativeNoteActions })
+      openNoteActions()
+      expect(screen.queryByRole('menuitem', { name: /Claudian/ })).toBeNull()
+      fireEvent.click(screen.getByRole('menuitem', { name: label, exact: true }))
+      expect(run).toHaveBeenLastCalledWith(action)
+      cleanup()
+    }
+    renderRoute({ documentKind: 'markdown', path: 'Note.md', phase: 'ready', vault }, { nativeNoteActions: { ...nativeNoteActions, disabled: true } })
+    openNoteActions()
+    expect(screen.getByRole('menuitem', { name: 'Open in New Window' }).getAttribute('aria-disabled')).toBe('true')
+    cleanup()
+    renderRoute({ documentKind: 'markdown', path: 'Next.md', phase: 'ready', vault }, { nativeNoteActions })
+    openNoteActions()
+    expect(screen.getByRole('menuitem', { name: 'Open in New Window' }).getAttribute('aria-disabled')).toBe('true')
+  })
+
+  it('shows document backlinks only when enabled, with safe navigation and bounded-result feedback', () => {
+    const onSelect = vi.fn()
+    const state: Partial<WorkbenchRouteSnapshot> = {
+      documentKind: 'markdown', path: 'Note.md', phase: 'ready',
+      vault: { id: `vault:${'a'.repeat(64)}`, generation: 1 },
+      settings: { ...DEFAULT_TOCKTUTOR_SETTINGS, backlinksInDocument: true },
+      links: {
+        backlinkDetails: [{ authoredTarget: 'Note', displayText: 'Note', fragment: null, kind: 'wiki', line: 4, normalizedTarget: 'Note', resolvedPath: 'Note.md', sourcePath: 'Other.md', status: 'resolved' }],
+        backlinks: ['Other.md'], complete: false, cursor: null, generation: 1,
+        outgoing: [], outgoingDetails: [], path: 'Note.md', scan: { bytes: 10, entries: 3, files: 3 },
+        tagRelations: [], truncated: true, truncationReason: 'result-limit', unlinkedMentions: [], warnings: [],
+      },
+    }
+    renderRoute(state, { onSelect })
+    const backlinks = screen.getByRole('region', { name: 'Backlinks in Document' })
+    expect(backlinks.textContent).toContain('Linked Mentions (1)')
+    expect(backlinks.textContent).toContain('Results are incomplete')
+    fireEvent.click(within(backlinks).getByRole('button', { name: 'Open Linked Mention Other.md' }))
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith('Other.md')
+    cleanup()
+    renderRoute({ ...state, settings: { ...state.settings!, backlinksInDocument: false } })
+    expect(screen.queryByRole('region', { name: 'Backlinks in Document' })).toBeNull()
+    cleanup()
+    const onLoadRelationships = vi.fn()
+    renderRoute({ ...state, path: 'Next.md' }, { onLoadRelationships })
+    expect(screen.queryByRole('button', { name: 'Open Linked Mention Other.md' })).toBeNull()
+    fireEvent.click(within(screen.getByRole('region', { name: 'Backlinks in Document' })).getByRole('button', { name: 'Retry' }))
+    expect(onLoadRelationships).toHaveBeenCalledOnce()
+    cleanup()
+    renderRoute({ ...state, linksLoading: true })
+    expect(screen.getByRole('region', { name: 'Backlinks in Document' }).textContent).toContain('Loading backlinks')
+    cleanup()
+    renderRoute({ ...state, links: { ...state.links!, backlinkDetails: [], backlinks: [], truncated: false, complete: true } })
+    expect(screen.getByRole('region', { name: 'Backlinks in Document' }).textContent).toContain('No linked mentions.')
+    cleanup()
+    renderRoute({ ...state, documentKind: 'canvas', mode: 'reading', source: '{"nodes":[],"edges":[]}' })
+    expect(screen.queryByRole('region', { name: 'Backlinks in Document' })).toBeNull()
   })
 
   it('renders only collapsible linked and unlinked mentions in Backlinks', () => {
@@ -1663,4 +2031,66 @@ describe('TockTutor titlebar panel controls', () => {
 
     expect(onCancelDispatch).toHaveBeenCalledOnce()
   })
+})
+
+
+describe('route search integrity', () => {
+  function Harness({ initialMode = 'source', source = 'alpha', deferMode = false }: { initialMode?: WorkbenchRouteSnapshot['mode']; source?: string; deferMode?: boolean }) {
+    const [mode, setMode] = useState(initialMode)
+    const [content, setContent] = useState(source)
+    const [path, setPath] = useState('Note.md')
+    return <><button onClick={() => setPath('Other.md')}>Test Other Note</button><button onClick={() => setMode('live-preview')}>Test Live</button><button onClick={() => setMode('source')}>Test Source</button><button onClick={() => setMode('reading')}>Test Reading</button><button onClick={() => setContent(content + 'x')}>Test Append</button>
+      <TockTutorRouteView onActivateTab={() => {}} onAddPane={() => {}} onEdit={setContent} onFocusPane={() => {}} onMode={mode => { if (!deferMode) setMode(mode) }} onMoveCanvas={() => {}} onSave={() => {}} onSelect={() => {}} onToggleTask={() => {}} snapshot={{ ...snapshot, documentKind: 'markdown', path, phase: 'ready', source: content, mode, settings: { ...DEFAULT_TOCKTUTOR_SETTINGS, defaultEditingMode: 'source' } }} />
+      <output aria-label="Authored Source">{content}</output></>
+  }
+
+  it.each(['source', 'reading'] as const)('consumes %s replacement once across mode switches', async initialMode => {
+    render(<Harness initialMode={initialMode} />)
+    fireEvent.keyDown(screen.getByRole('tabpanel', { name: 'Note Editor' }), { key: 'h', ctrlKey: true })
+    const strip = await screen.findByRole('search', { name: 'Find and Replace in Note' })
+    fireEvent.change(within(strip).getByRole('searchbox', { name: 'Find in Note' }), { target: { value: 'alpha' } })
+    fireEvent.change(within(strip).getByRole('textbox', { name: 'Replace in Note' }), { target: { value: 'alphaX' } })
+    await waitFor(() => expect(within(strip).getByRole('button', { name: 'Replace All' }).hasAttribute('disabled')).toBe(false))
+    fireEvent.click(within(strip).getByRole('button', { name: 'Replace All' }))
+    await waitFor(() => expect(screen.getByLabelText('Authored Source').textContent).toBe('alphaX'))
+    fireEvent.click(screen.getByText('Test Reading'))
+    await screen.findByLabelText('Reading View')
+    fireEvent.click(screen.getByText('Test Source'))
+    await waitFor(() => expect(document.querySelector('.cm-content')).toBeTruthy())
+    expect(screen.getByLabelText('Authored Source').textContent).toBe('alphaX')
+    fireEvent.click(screen.getByText('Test Live'))
+    await waitFor(() => expect(document.querySelector('.ProseMirror')?.textContent).toBe('alphaX'), { timeout: 15_000 })
+    expect(screen.getByLabelText('Authored Source').textContent).toBe('alphaX')
+    fireEvent.click(screen.getByText('Test Source'))
+    await waitFor(() => expect(document.querySelector('.cm-content')).toBeTruthy())
+    expect(screen.getByLabelText('Authored Source').textContent).toBe('alphaX')
+  })
+
+  it.each(['query', 'source', 'document', 'editor', 'close'] as const)('cancels a pending Reading handoff after %s changes', async change => {
+    render(<Harness initialMode="reading" deferMode />)
+    fireEvent.keyDown(screen.getByRole('tabpanel', { name: 'Note Editor' }), { key: 'h', ctrlKey: true })
+    const strip = await screen.findByRole('search', { name: 'Find and Replace in Note' })
+    fireEvent.change(within(strip).getByRole('searchbox'), { target: { value: 'alpha' } })
+    fireEvent.change(within(strip).getByRole('textbox', { name: 'Replace in Note' }), { target: { value: 'omega' } })
+    fireEvent.click(within(strip).getByRole('button', { name: 'Replace All' }))
+    if (change === 'query') fireEvent.change(within(strip).getByRole('searchbox'), { target: { value: 'a' } })
+    if (change === 'source') fireEvent.click(screen.getByText('Test Append'))
+    if (change === 'document') fireEvent.click(screen.getByText('Test Other Note'))
+    if (change === 'editor') fireEvent.click(screen.getByText('Test Live'))
+    if (change === 'close') fireEvent.keyDown(within(strip).getByRole('searchbox'), { key: 'Escape' })
+    fireEvent.click(screen.getByText('Test Source'))
+    await waitFor(() => expect(document.querySelector('.cm-content')).toBeTruthy())
+    expect(screen.getByLabelText('Authored Source').textContent).toBe(change === 'source' ? 'alphax' : 'alpha')
+  })
+
+  it('updates capped count when only truncation changes', async () => {
+    render(<Harness source={'x'.repeat(MAX_EDITOR_SEARCH_MATCHES)} />)
+    fireEvent.keyDown(screen.getByRole('tabpanel', { name: 'Note Editor' }), { key: 'f', ctrlKey: true })
+    const strip = await screen.findByRole('search', { name: 'Find in Note' })
+    fireEvent.change(within(strip).getByRole('searchbox'), { target: { value: 'x' } })
+    await waitFor(() => expect(strip.textContent).toContain('1 / 10000'), { timeout: 15_000 })
+    expect(strip.textContent).not.toContain('10000+')
+    fireEvent.click(screen.getByText('Test Append'))
+    await waitFor(() => expect(strip.textContent).toContain('1 / 10000+'), { timeout: 15_000 })
+  }, 20_000)
 })

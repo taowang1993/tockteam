@@ -5,9 +5,10 @@ import type { VaultHeading } from './types.ts';
 export declare function scrollOutlineHeading(root: HTMLElement | null, headings: VaultHeading[], index: number): boolean;
 export declare function NoteOutline({ headings, onNavigate }: {
     headings: VaultHeading[];
-    onNavigate(index: number): boolean;
+    onNavigate(index: number): boolean | Promise<boolean>;
 }): ReactNode;
-export declare function NoteOutlinePanel({ snapshot, onJumpToLine }: {
+export declare function NoteOutlinePanel({ snapshot, onJumpToLine, onNavigateHeading }: {
+    onNavigateHeading?: (headings: VaultHeading[], index: number) => boolean | Promise<boolean>;
     snapshot: TockTutorRouteViewProps['snapshot'];
     onJumpToLine: TockTutorRouteViewProps['onJumpToLine'];
 }): ReactNode;

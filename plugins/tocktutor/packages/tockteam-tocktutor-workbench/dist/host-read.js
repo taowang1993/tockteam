@@ -42,6 +42,12 @@ function assertRecord(value, label) {
         throw new TypeError(`${label} must be a bounded record.`);
     }
 }
+function assertMergeRequest(request) {
+    assertRecord(request, 'Merge request');
+    assertVaultReference(request.expectedVault);
+    if (typeof request.id !== 'string' || !/^merge-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(request.id))
+        throw new TypeError('Merge id must be one recovery identifier.');
+}
 function assertVaultReference(value) {
     if (value === null
         || typeof value !== 'object'
@@ -299,6 +305,11 @@ let TockTutorWorkbenchGateway = (() => {
     let _createDocument_decorators;
     let _saveDocument_decorators;
     let _renameDocument_decorators;
+    let _previewMergeLinks_decorators;
+    let _prepareMerge_decorators;
+    let _applyMerge_decorators;
+    let _listMerges_decorators;
+    let _recoverMerge_decorators;
     let _graph_decorators;
     let _facets_decorators;
     let _outline_decorators;
@@ -330,6 +341,11 @@ let TockTutorWorkbenchGateway = (() => {
             _createDocument_decorators = [Remote];
             _saveDocument_decorators = [Remote];
             _renameDocument_decorators = [Remote];
+            _previewMergeLinks_decorators = [Remote];
+            _prepareMerge_decorators = [Remote];
+            _applyMerge_decorators = [Remote];
+            _listMerges_decorators = [Remote];
+            _recoverMerge_decorators = [Remote];
             _graph_decorators = [Remote];
             _facets_decorators = [Remote];
             _outline_decorators = [Remote];
@@ -358,6 +374,11 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDocument_decorators, { kind: "method", name: "saveDocument", static: false, private: false, access: { has: obj => "saveDocument" in obj, get: obj => obj.saveDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _renameDocument_decorators, { kind: "method", name: "renameDocument", static: false, private: false, access: { has: obj => "renameDocument" in obj, get: obj => obj.renameDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _previewMergeLinks_decorators, { kind: "method", name: "previewMergeLinks", static: false, private: false, access: { has: obj => "previewMergeLinks" in obj, get: obj => obj.previewMergeLinks }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _prepareMerge_decorators, { kind: "method", name: "prepareMerge", static: false, private: false, access: { has: obj => "prepareMerge" in obj, get: obj => obj.prepareMerge }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _applyMerge_decorators, { kind: "method", name: "applyMerge", static: false, private: false, access: { has: obj => "applyMerge" in obj, get: obj => obj.applyMerge }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _listMerges_decorators, { kind: "method", name: "listMerges", static: false, private: false, access: { has: obj => "listMerges" in obj, get: obj => obj.listMerges }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _recoverMerge_decorators, { kind: "method", name: "recoverMerge", static: false, private: false, access: { has: obj => "recoverMerge" in obj, get: obj => obj.recoverMerge }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _graph_decorators, { kind: "method", name: "graph", static: false, private: false, access: { has: obj => "graph" in obj, get: obj => obj.graph }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _facets_decorators, { kind: "method", name: "facets", static: false, private: false, access: { has: obj => "facets" in obj, get: obj => obj.facets }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _outline_decorators, { kind: "method", name: "outline", static: false, private: false, access: { has: obj => "outline" in obj, get: obj => obj.outline }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -457,6 +478,61 @@ let TockTutorWorkbenchGateway = (() => {
             if (result.status !== 'moved')
                 throw new Error('The vault move returned an invalid status.');
             return { ...result, status: 'moved' };
+        }
+        async previewMergeLinks(request, signal) {
+            assertRecord(request, 'Merge preview request');
+            assertVaultReference(request.expectedVault);
+            for (const path of [request.sourcePath, request.destinationPath]) {
+                assertDocumentPath(path);
+                if (!/\.(?:md|markdown)$/iu.test(path))
+                    throw new TypeError('Merge preview requires Markdown documents.');
+            }
+            if (request.sourcePath.normalize('NFC').toLowerCase() === request.destinationPath.normalize('NFC').toLowerCase())
+                throw new TypeError('Merge preview requires different documents.');
+            assertRevision(request.expectedSourceRevision);
+            assertRevision(request.expectedDestinationRevision);
+            assertContent(request.mergedContent);
+            if (typeof request.keepSource !== 'boolean')
+                throw new TypeError('Merge source policy must be Boolean.');
+            if (request.cursor !== undefined && (typeof request.cursor !== 'string' || request.cursor.length === 0 || request.cursor.length > MAX_TREE_CURSOR_LENGTH))
+                throw new TypeError('Merge cursor must be bounded.');
+            signal.throwIfAborted();
+            return this.ctx.noteVault.previewMergeLinks(request, signal);
+        }
+        async prepareMerge(request, signal) {
+            assertRecord(request, 'Merge request');
+            assertVaultReference(request.expectedVault);
+            assertDocumentPath(request.sourcePath);
+            assertDocumentPath(request.destinationPath);
+            assertRevision(request.expectedSourceRevision);
+            assertRevision(request.expectedDestinationRevision);
+            assertContent(request.mergedContent);
+            if (request.sourceContent !== null)
+                assertContent(request.sourceContent);
+            if (typeof request.fingerprint !== 'string' || request.fingerprint.length === 0 || request.fingerprint.length > 256)
+                throw new TypeError('Merge fingerprint must be bounded.');
+            signal.throwIfAborted();
+            return this.ctx.noteVault.prepareMerge(request, signal);
+        }
+        async applyMerge(request, signal) {
+            assertMergeRequest(request);
+            if (request.confirmed !== true)
+                throw new TypeError('Merge confirmation is required.');
+            signal.throwIfAborted();
+            return this.ctx.noteVault.applyMerge(request, signal);
+        }
+        async listMerges(request, signal) {
+            assertRecord(request, 'Merge list request');
+            assertVaultReference(request.expectedVault);
+            if (request.cursor !== undefined)
+                assertMergeRequest({ id: request.cursor, expectedVault: request.expectedVault });
+            signal.throwIfAborted();
+            return this.ctx.noteVault.listMerges(request, signal);
+        }
+        async recoverMerge(request, signal) {
+            assertMergeRequest(request);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.recoverMerge(request, signal);
         }
         async graph(request, signal) {
             assertGraphRequest(request);

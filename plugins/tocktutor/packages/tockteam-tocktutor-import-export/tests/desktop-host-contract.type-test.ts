@@ -72,6 +72,8 @@ type ExpectedCallerOperation =
   | 'popout-close'
   | 'popout-close-all'
   | 'microphone'
+  | 'open-default-app'
+  | 'copy-absolute-path'
   | 'print'
   | 'export-html'
   | 'export-pdf'

@@ -12,11 +12,18 @@ export declare function extractSelectionToNote(input: {
     destinationContent: string;
     sourceContent: string;
 };
+export interface ComposerPropertyConflict {
+    key: string;
+    source: string;
+    destination: string;
+}
+export declare function mergePropertyConflicts(source: string, destination: string): ComposerPropertyConflict[];
 export declare function mergeNotes(input: {
     destination: string;
     destinationPath: string;
     leftover: ComposerLeftover;
     placement: 'append' | 'prepend';
+    propertyChoices?: Readonly<Record<string, 'source' | 'destination'>>;
     source: string;
     sourcePath: string;
 }): {

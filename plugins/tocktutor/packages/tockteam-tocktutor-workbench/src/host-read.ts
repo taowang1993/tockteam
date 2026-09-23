@@ -4,6 +4,7 @@ import type { NoteVaultRuntime } from 'tockbot-note-runtime'
 import { isSafeVaultRelativePath } from './session.ts'
 import type {
   ActiveVaultResult,
+  PrepareMergeRequest, PreparedMergeResult, ApplyMergeRequest, MergeRequest, MergeResult, MergeListResult, MergeListRequest,
   AttachmentMetadataResult,
   AttachmentPreviewResult,
   CreateDocumentRequest,
@@ -15,6 +16,8 @@ import type {
   ListSnapshotsRequest,
   ListTrashRequest,
   ListTreeRequest,
+  MergeLinkPreviewRequest,
+  MergeLinkPreviewResult,
   OpenDocumentResult,
   RenameDocumentRequest,
   RenameDocumentResult,
@@ -76,6 +79,8 @@ export type NoteVaultCapability = Pick<
   | 'outline'
   | 'openSandboxVault'
   | 'previewAttachment'
+  | 'previewMergeLinks'
+  | 'prepareMerge' | 'applyMerge' | 'listMerges' | 'recoverMerge'
   | 'readDraft'
   | 'readSnapshot'
   | 'restoreSnapshot'
@@ -99,6 +104,11 @@ function assertRecord(value: unknown, label: string): asserts value is Record<st
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new TypeError(`${label} must be a bounded record.`)
   }
+}
+
+function assertMergeRequest(request: MergeRequest): void {
+  assertRecord(request, 'Merge request'); assertVaultReference(request.expectedVault)
+  if (typeof request.id !== 'string' || !/^merge-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(request.id)) throw new TypeError('Merge id must be one recovery identifier.')
 }
 
 function assertVaultReference(value: VaultReference): void {
@@ -475,6 +485,59 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     const result = await this.ctx.noteVault.moveFileWithLinkRewrite(request, signal)
     if (result.status !== 'moved') throw new Error('The vault move returned an invalid status.')
     return { ...result, status: 'moved' }
+  }
+
+  @Remote
+  async previewMergeLinks(request: MergeLinkPreviewRequest, signal: AbortSignal): Promise<MergeLinkPreviewResult> {
+    assertRecord(request, 'Merge preview request')
+    assertVaultReference(request.expectedVault)
+    for (const path of [request.sourcePath, request.destinationPath]) {
+      assertDocumentPath(path)
+      if (!/\.(?:md|markdown)$/iu.test(path)) throw new TypeError('Merge preview requires Markdown documents.')
+    }
+    if (request.sourcePath.normalize('NFC').toLowerCase() === request.destinationPath.normalize('NFC').toLowerCase()) throw new TypeError('Merge preview requires different documents.')
+    assertRevision(request.expectedSourceRevision)
+    assertRevision(request.expectedDestinationRevision)
+    assertContent(request.mergedContent)
+    if (typeof request.keepSource !== 'boolean') throw new TypeError('Merge source policy must be Boolean.')
+    if (request.cursor !== undefined && (typeof request.cursor !== 'string' || request.cursor.length === 0 || request.cursor.length > MAX_TREE_CURSOR_LENGTH)) throw new TypeError('Merge cursor must be bounded.')
+    signal.throwIfAborted()
+    return this.ctx.noteVault.previewMergeLinks(request, signal)
+  }
+
+  @Remote
+  async prepareMerge(request: PrepareMergeRequest, signal: AbortSignal): Promise<PreparedMergeResult> {
+    assertRecord(request, 'Merge request')
+    assertVaultReference(request.expectedVault)
+    assertDocumentPath(request.sourcePath); assertDocumentPath(request.destinationPath)
+    assertRevision(request.expectedSourceRevision); assertRevision(request.expectedDestinationRevision)
+    assertContent(request.mergedContent)
+    if (request.sourceContent !== null) assertContent(request.sourceContent)
+    if (typeof request.fingerprint !== 'string' || request.fingerprint.length === 0 || request.fingerprint.length > 256) throw new TypeError('Merge fingerprint must be bounded.')
+    signal.throwIfAborted()
+    return this.ctx.noteVault.prepareMerge(request, signal)
+  }
+
+  @Remote
+  async applyMerge(request: ApplyMergeRequest, signal: AbortSignal): Promise<MergeResult> {
+    assertMergeRequest(request)
+    if (request.confirmed !== true) throw new TypeError('Merge confirmation is required.')
+    signal.throwIfAborted()
+    return this.ctx.noteVault.applyMerge(request, signal)
+  }
+
+  @Remote
+  async listMerges(request: MergeListRequest, signal: AbortSignal): Promise<MergeListResult> {
+    assertRecord(request, 'Merge list request'); assertVaultReference(request.expectedVault)
+    if (request.cursor !== undefined) assertMergeRequest({ id: request.cursor, expectedVault: request.expectedVault })
+    signal.throwIfAborted()
+    return this.ctx.noteVault.listMerges(request, signal)
+  }
+
+  @Remote
+  async recoverMerge(request: MergeRequest, signal: AbortSignal): Promise<MergeResult> {
+    assertMergeRequest(request); signal.throwIfAborted()
+    return this.ctx.noteVault.recoverMerge(request, signal)
   }
 
   @Remote
