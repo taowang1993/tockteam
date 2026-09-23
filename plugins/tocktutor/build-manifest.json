@@ -195,11 +195,11 @@
     },
     {
       "path": "packages/tockbot-note-runtime/lib/index.d.ts",
-      "sha256": "9f5e9a57073783897d90a076e7e9c8a78cd5b93f7c52dcd18fe5c5a972f11e04"
+      "sha256": "d371b4c1afbbea1ffac10591cdbfc074f2f9a8d03c29461e7f1433663c3141fc"
     },
     {
       "path": "packages/tockbot-note-runtime/lib/index.js",
-      "sha256": "4a84031370734afbea9ede8a76b69b817dd0c07eb206127e32b289d7daeec02f"
+      "sha256": "0e43ad3a02c171483805b5a2c9972db28a9eccde65d5ac374f490546d4262a8c"
     },
     {
       "path": "packages/tockbot-note-runtime/lib/owned-process-windows.d.ts",
@@ -283,7 +283,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/package.json",
-      "sha256": "da0c8ed9b7a9afc2b0e45e435545208f63a94ca3bac6d087727325e40106eaf8"
+      "sha256": "c4ea765d84607330fd847babf983eef8b24974ae52f776b5b323db9aa540364a"
     },
     {
       "path": "packages/tockbot-note-runtime/scripts/test-search-index.mjs",
@@ -291,7 +291,7 @@
     },
     {
       "path": "packages/tockbot-note-runtime/src/index.ts",
-      "sha256": "b48de2778336e6b38855809551bc0144a29949169b7cf12c5449a25b08f5f44f"
+      "sha256": "499032f3933a9a841dd68008b0d54626417c07a2cfd2bc4f5fdd7c955d4cfcea"
     },
     {
       "path": "packages/tockbot-note-runtime/src/owned-process-windows.ts",
@@ -3094,12 +3094,16 @@
       "sha256": "8f2855d69ae7f2fb10a9f7bc63ba731362f9cf227d016691d3040ce1729743f1"
     },
     {
+      "path": "patches/chokidar@5.0.0.patch",
+      "sha256": "135665604472560fdea01cd2ccbff5a05c7a5134666c5ada3d5f8908ed8ffb50"
+    },
+    {
       "path": "pnpm-lock.yaml",
-      "sha256": "e339b0606cb6f7549dfa6726f34dfd47cdbcd58f472cc7fddb3e58b8c0427805"
+      "sha256": "a6bd4f3b7b8a779bd99384a3e55b8a43cfe9934c15d034ed32ccae8040cfda6b"
     },
     {
       "path": "pnpm-workspace.yaml",
-      "sha256": "c7eeee123e3fb6a36e133422bb17926ee7c5f0f0832efcdb698527f11278d3e0"
+      "sha256": "f53bda11ab5afb4bc34dc3b3305c30951d87aae6e240e3f5c468499be26248a1"
     }
   ]
 }

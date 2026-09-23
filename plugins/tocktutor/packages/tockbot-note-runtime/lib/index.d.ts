@@ -552,13 +552,18 @@ export declare class NoteVaultRuntime extends Service {
     private vaultRoot;
     private vaultTransitionPending;
     private watcher;
+    private readonly watcherStartup;
+    private readonly watcherCleanup;
     private watcherActive;
     private watcherToken;
     constructor(ctx: Context, config: Config);
+    protected [Service.init](): Promise<void>;
     private emitVaultDeactivation;
     private emitVaultActivation;
     private queueDesktopSelectionClaimRelease;
     private openWatcher;
+    private closeWatcher;
+    private awaitWatcherStartup;
     private emitWatcherChange;
     private emitEntryChange;
     private emitFileMutation;

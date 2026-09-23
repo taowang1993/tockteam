@@ -5,6 +5,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import sqlite3 from 'sqlite3'
+import type { FSWatcher } from 'chokidar'
 import test, { type TestContext } from 'node:test'
 import { pathToFileURL } from 'node:url'
 import { inspect } from 'node:util'
@@ -3050,6 +3051,10 @@ test('watcher and runtime events rebind by generation and dispose with the provi
   try {
     await mkdir(firstVault)
     await mkdir(secondVault)
+    const outside = join(fixture, 'Outside')
+    await mkdir(outside)
+    await mkdir(join(firstVault, '.hidden'))
+    await symlink(outside, join(firstVault, 'Escape'), 'dir')
     await writeFile(join(firstVault, 'Existing.md'), '# Before\n')
     const loaded = await load(`vaultRoot: ${JSON.stringify(firstVault)}`)
     const events: NoteVaultChangeEvent[] = []
@@ -3085,6 +3090,8 @@ test('watcher and runtime events rebind by generation and dispose with the provi
       )), true)
 
       events.length = 0
+      await writeFile(join(outside, 'Secret.md'), '# Outside\n')
+      await writeFile(join(firstVault, '.hidden/Secret.md'), '# Hidden\n')
       await writeFile(join(firstVault, 'External.md'), '# External\n')
       await waitUntil(() => events.some(event => (
         event.kind === 'entry'
@@ -3092,6 +3099,7 @@ test('watcher and runtime events rebind by generation and dispose with the provi
         && event.action.startsWith('external-')
       )))
       assert.equal(JSON.stringify(events).includes(firstVault), false)
+      assert.equal(events.some(event => event.kind === 'entry' && /Escape|Secret|hidden/u.test(event.path)), false)
 
       events.length = 0
       const secondState = loaded.context.noteVault.activate(secondVault, 1)
@@ -3121,6 +3129,89 @@ test('watcher and runtime events rebind by generation and dispose with the provi
       await writeFile(join(secondVault, 'After Dispose.md'), '# Disposed\n')
       await new Promise(resolve => setTimeout(resolve, 100))
       assert.deepEqual(events, [])
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('watcher startup reads remain cancellable and disposal awaits every watcher close', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-watch-lifecycle-'))
+  const closeGate = Promise.withResolvers<void>()
+  const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+  try {
+    const second = join(fixture, 'Second')
+    await mkdir(second)
+    await writeFile(join(second, 'Note.md'), '# Current\n')
+    const runtime = loaded.context.noteVault
+    const retiring = (runtime as unknown as { watcher: FSWatcher }).watcher
+    const closed = Promise.withResolvers<void>()
+    const close = retiring.close.bind(retiring)
+    retiring.close = async () => { await close(); closed.resolve(); await closeGate.promise }
+    const state = runtime.activate(second, runtime.state.generation)
+    if (!state.active) assert.fail('second vault must be active')
+    const watcher = (runtime as unknown as { watcher: FSWatcher }).watcher
+    // Hold the library's readiness seam, not any read or generation validator.
+    watcher.removeAllListeners('ready')
+    const abort = new AbortController()
+    const reading = runtime.openDocument('Note.md', state, abort.signal)
+    const rejected = assert.rejects(reading, { name: 'AbortError' })
+    abort.abort()
+    await rejected
+
+    const blocked = runtime.listTree({ expectedVault: state }, new AbortController().signal)
+    const unavailable = assert.rejects(blocked, { code: 'unavailable' })
+    const entry = [...loaded.context.loader.entries()].find(entry => entry.options.name === packageName)
+    if (!entry?.fiber) assert.fail('runtime Loader entry must be active')
+    let disposed = false
+    const disposing = entry.fiber.dispose().then(() => { disposed = true })
+    await unavailable
+    await closed.promise
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(disposed, false, 'disposal cannot finish before a retired watcher closes')
+    closeGate.resolve()
+    await disposing
+    assert.deepEqual(watcher.getWatched(), {})
+    assert.deepEqual(retiring.getWatched(), {})
+  } finally {
+    closeGate.resolve()
+    await dispose(loaded.context, loaded.root)
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
+test('watcher follows repeated atomic replacements and later nested-file edits', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-atomic-watch-'))
+  const relative = 'Nested/中文 Note.md'
+  const target = join(fixture, relative)
+  try {
+    await mkdir(join(fixture, 'Nested'))
+    await writeFile(target, '# Before\n')
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    const events: NoteVaultChangeEvent[] = []
+    try {
+      loaded.context.on('note-vault/change', event => { events.push(event) })
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      const signal = new AbortController().signal
+      const opened = await loaded.context.noteVault.openDocument(relative, expectedVault, signal)
+      await loaded.context.noteVault.saveDocument({ path: relative, content: '# Owned Save\n', expectedRevision: opened.revision, expectedVault }, signal)
+      // A separate observed entry drains earlier save notifications before the regression.
+      await writeFile(join(fixture, 'Nested/Ready.md'), '# Ready\n')
+      await waitUntil(() => events.some(event => event.kind === 'entry' && event.path === 'Nested/Ready.md'))
+      for (const [index, content] of ['# In-Place\n', '# Atomic\n', '# After Atomic\n'].entries()) {
+        events.length = 0
+        if (index === 1) {
+          const temporary = join(fixture, 'Nested/.replacement')
+          await writeFile(temporary, content)
+          await rename(temporary, target)
+        } else await writeFile(target, content)
+        await waitUntil(() => events.some(event => event.kind === 'entry' && event.path === relative && event.action.startsWith('external-')))
+        assert.equal((await loaded.context.noteVault.openDocument(relative, expectedVault, signal)).content, content)
+      }
     } finally {
       await dispose(loaded.context, loaded.root)
     }

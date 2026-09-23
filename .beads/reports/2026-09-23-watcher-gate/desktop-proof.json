@@ -1,0 +1,67 @@
+{
+  "pageErrors": [],
+  "consoleErrors": [],
+  "transitions": [
+    {
+      "phase": "One",
+      "source": "# External One\n"
+    },
+    {
+      "phase": "Atomic",
+      "source": "# External Atomic\n"
+    },
+    {
+      "phase": "Later",
+      "source": "# External Later\n"
+    }
+  ],
+  "geometry": {
+    "width": 1512,
+    "height": 949,
+    "dpr": 2,
+    "colorScheme": "dark",
+    "skin": null,
+    "route": "/tocktutor/Editable.md"
+  },
+  "mode": "Source Mode",
+  "savedThroughUI": true,
+  "devicePixels": {
+    "width": 3024,
+    "height": 1898
+  },
+  "diskSaveAssertion": "Exact # Editable\\n\\nSaved through the UI.\\n bytes verified before the first external edit",
+  "nativeEffects": "Clipboard and OS open effects intercepted; not exercised or certified",
+  "cleanup": {
+    "id": "f84eaea2-70ce-4bec-9b1a-0d27db7c4696",
+    "rootPid": 94836,
+    "stopped": true,
+    "remaining": [],
+    "recordedPids": [
+      94836,
+      94838,
+      94839,
+      94843,
+      94844,
+      94846,
+      94852,
+      94863,
+      94888,
+      94889,
+      94890,
+      94891,
+      94892,
+      94893,
+      94894,
+      94895,
+      94988,
+      95077,
+      95078,
+      95079,
+      95080,
+      95081,
+      95082,
+      95083,
+      95084
+    ]
+  }
+}

@@ -11,9 +11,7 @@ import {
   realpathSync,
   renameSync,
   unlinkSync,
-  watch,
   writeSync,
-  type FSWatcher,
 } from 'node:fs'
 import { copyFile, link, lstat, mkdir, open, opendir, readlink, realpath, rename, rm, symlink, unlink, type FileHandle } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -21,6 +19,7 @@ import path from 'node:path'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-typert-protocol'
 import Schema from '@deepseek-ai/schemastery'
+import { watch, type FSWatcher } from 'chokidar'
 import { SearchIndexProcess, ISOLATED_SEARCH_SCHEMA, type SearchIndexProcessOptions } from './search-index-process.ts'
 import { adoptSearchIndex, retireSearchIndex, awaitSearchIndexSettlement, searchIndexOwnershipFailure } from './search-index-ownership.ts'
 import {
@@ -3306,6 +3305,8 @@ export class NoteVaultRuntime extends Service {
   private vaultRoot: string | null
   private vaultTransitionPending = false
   private watcher: FSWatcher | null = null
+  private readonly watcherStartup = new WeakMap<FSWatcher, PromiseWithResolvers<void>>()
+  private readonly watcherCleanup = new Set<Promise<void>>()
   private watcherActive = false
   private watcherToken = 0
 
@@ -3417,7 +3418,7 @@ export class NoteVaultRuntime extends Service {
         this.watcherToken += 1
         const watcher = this.watcher
         this.watcher = null
-        watcher?.close()
+        this.closeWatcher(watcher)
         const searchIndex = this.searchIndex
         this.searchIndex = null
         this.searchIndexDisposed = true
@@ -3431,11 +3432,16 @@ export class NoteVaultRuntime extends Service {
         if (activeSelectionClaim !== null) this.queueDesktopSelectionClaimRelease(activeSelectionClaim)
         await Promise.allSettled([...this.desktopSelectionCleanupOperations])
         await Promise.allSettled([...this.draftOperations.values()])
+        await Promise.all([...this.watcherCleanup])
         // Cordis logs disposer rejections; the ownership latch is set before this point.
         if (this.searchIndexFailure) throw new Error('Search-index ownership could not be verified; indexing remains disabled.')
       }
     })
     this.replaceSearchIndex()
+  }
+
+  protected async [Service.init](): Promise<void> {
+    if (this.watcher) await this.watcherStartup.get(this.watcher)?.promise
   }
 
   private emitVaultDeactivation(vault: VaultReference): void {
@@ -3479,15 +3485,29 @@ export class NoteVaultRuntime extends Service {
     state: Extract<NoteVaultState, { active: true }>,
     token: number,
   ): FSWatcher {
+    // Node's Linux recursive watcher remains bound to the old inode after atomic saves.
     const watcher = watch(root, {
-      encoding: 'utf8',
       persistent: false,
-      recursive: true,
-    }, (eventType, filename) => {
-      void this.emitWatcherChange(root, state, token, eventType, filename)
+      followSymlinks: false,
+      ignoreInitial: true,
+      // Keep the final edit in a burst; the default leading-edge throttle can drop it.
+      awaitWriteFinish: { stabilityThreshold: 50, pollInterval: 10 },
+      ignored: candidate => {
+        const relative = path.relative(root, candidate)
+        return relative !== '' && normalizeWatcherPath(relative) === undefined
+      }
+    }).on('all', (event, filename) => {
+      void this.emitWatcherChange(root, state, token, event === 'change' ? 'change' : 'rename', path.relative(root, filename))
         .catch(() => undefined)
     })
+    const startup = Promise.withResolvers<void>()
+    this.watcherStartup.set(watcher, startup)
+    watcher.once('ready', () => {
+      startup.resolve()
+      void this.emitWatcherChange(root, state, token, 'change', null).catch(() => undefined)
+    })
     watcher.on('error', () => {
+      startup.resolve()
       if (
         this.watcherActive
         && this.watcherToken === token
@@ -3504,6 +3524,29 @@ export class NoteVaultRuntime extends Service {
       }
     })
     return watcher
+  }
+
+  private closeWatcher(watcher: FSWatcher | null): void {
+    if (watcher === null) return
+    this.watcherStartup.get(watcher)?.resolve()
+    const cleanup = watcher.close()
+    this.watcherCleanup.add(cleanup)
+    // Retain failures for the Cordis disposer rather than dropping rejected cleanup.
+    void cleanup.then(() => this.watcherCleanup.delete(cleanup), () => undefined)
+  }
+
+  private async awaitWatcherStartup(signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted()
+    if (!this.watcherActive) throw new NoteVaultError('unavailable', 'The note vault runtime became unavailable')
+    const startup = this.watcher && this.watcherStartup.get(this.watcher)?.promise
+    if (!startup) return
+    const cancelled = Promise.withResolvers<void>()
+    const onAbort = (): void => cancelled.reject(signal.reason)
+    signal.addEventListener('abort', onAbort, { once: true })
+    try { await Promise.race([startup, cancelled.promise]) }
+    finally { signal.removeEventListener('abort', onAbort) }
+    signal.throwIfAborted()
+    if (!this.watcherActive) throw new NoteVaultError('unavailable', 'The note vault runtime became unavailable')
   }
 
   private async emitWatcherChange(
@@ -3546,8 +3589,8 @@ export class NoteVaultRuntime extends Service {
       || this.vaultRoot !== root
     ) return
     const vault = { id: state.id, generation: state.generation }
+    this.invalidateSearchIndex(vault, relativePath === null || fullIndexReconcile ? undefined : relativePath)
     if (relativePath !== null) {
-      this.invalidateSearchIndex(vault, fullIndexReconcile ? undefined : relativePath)
       this.context.emit('note-vault/change', {
         action: eventType === 'rename' ? 'external-rename' : 'external-change',
         kind: 'entry',
@@ -3633,7 +3676,7 @@ export class NoteVaultRuntime extends Service {
     this.watcherToken += 1
     const watcher = this.watcher
     this.watcher = null
-    watcher?.close()
+    this.closeWatcher(watcher)
     this.replaceSearchIndex()
     if (this.stateRoot !== null) {
       try { unlinkSync(path.join(vaultStateDirectorySync(this.stateRoot), 'selection.json')) } catch { /* fail closed in memory */ }
@@ -4104,7 +4147,7 @@ export class NoteVaultRuntime extends Service {
     try {
       if (this.stateRoot !== null) persistVaultSelection(this.stateRoot, binding.root, nextRecent)
     } catch {
-      nextWatcher?.close()
+      this.closeWatcher(nextWatcher)
       throw new NoteVaultError('recovery-unavailable', 'Could not persist the active vault selection')
     }
     for (const operation of this.activeDesktopSelectionOperations) {
@@ -4130,7 +4173,7 @@ export class NoteVaultRuntime extends Service {
     this.recentVaults = nextRecent
     this.watcherToken = nextToken
     this.watcher = nextWatcher
-    previousWatcher?.close()
+    this.closeWatcher(previousWatcher)
     this.replaceSearchIndex()
     if (!preserveDesktopSelectionClaim) {
       const activeSelectionClaim = this.activeDesktopSelectionClaim
@@ -4257,7 +4300,7 @@ export class NoteVaultRuntime extends Service {
     this.watcherToken = nextToken
     const previousWatcher = this.watcher
     this.watcher = null
-    previousWatcher?.close()
+    this.closeWatcher(previousWatcher)
     let moved = false
     let nextWatcher: FSWatcher | null = null
     try {
@@ -4296,7 +4339,7 @@ export class NoteVaultRuntime extends Service {
       try { unlinkSync(path.join(vaultStateDirectorySync(this.stateRoot), 'relocation.json')) } catch { /* recovery is idempotent */ }
       return nextState
     } catch (error) {
-      nextWatcher?.close()
+      this.closeWatcher(nextWatcher)
       if (moved) {
         try { renameSync(targetRoot, root) } catch {
           this.invalidateActiveVault(state, root)
@@ -4349,7 +4392,7 @@ export class NoteVaultRuntime extends Service {
     this.watcherToken += 1
     const watcher = this.watcher
     this.watcher = null
-    watcher?.close()
+    this.closeWatcher(watcher)
     this.replaceSearchIndex()
     this.vaultTransitionPending = true
     if (selectionClaim !== null) await this.queueDesktopSelectionClaimRelease(selectionClaim)
@@ -4791,6 +4834,7 @@ export class NoteVaultRuntime extends Service {
     signal: AbortSignal,
     operation: (inspection: VaultInspection) => Promise<Result>,
   ): Promise<VaultInspectionRuntimeResult<Result>> {
+    await this.awaitWatcherStartup(signal)
     const { root, state } = this.captureExpectedVault(expectedVault)
     signal.throwIfAborted()
     try {
@@ -5209,6 +5253,7 @@ export class NoteVaultRuntime extends Service {
     expectedVault: VaultReference,
     signal: AbortSignal,
   ): Promise<OpenDocumentResult> {
+    await this.awaitWatcherStartup(signal)
     const { root, state } = this.captureExpectedVault(expectedVault)
     let document: { content: string; digest: string; modifiedAt: number; path: string; revision: string }
     try {
@@ -5234,6 +5279,7 @@ export class NoteVaultRuntime extends Service {
     request: ListTreeRequest,
     signal: AbortSignal,
   ): Promise<VaultTreePage> {
+    await this.awaitWatcherStartup(signal)
     const { root, state } = this.captureExpectedVault(request.expectedVault)
     signal.throwIfAborted()
     const requestedLimit = request.limit ?? this.maxTreeResults
