@@ -35,6 +35,7 @@ import {
 import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
 import { restoreSettingsBoundary } from './settings-boundary.mjs'
 import { applySettingsTitleCase } from './settings-title-case.mjs'
+import { applyNoteVaultEventForwarding } from './note-vault-event-forwarding.mjs'
 import { adaptTuiRendererPackage } from './tui-upstream-adapter.mjs'
 import { verifyTockTutorBuildManifest } from './tocktutor-build-manifest.mjs'
 
@@ -1008,6 +1009,7 @@ if (process.argv.includes('--quick')
   // ponytail: refresh compiled desktop bundles only; use start:fresh after dependency or pinned DSH changes.
   console.log('Refreshing staged desktop bundles')
   applySettingsTitleCase(runtime)
+  applyNoteVaultEventForwarding(runtime)
   installDesktopPackages({ desktopOnly: true })
   console.log(`Refreshed staged DSH runtime: ${runtime}`)
   process.exit(0)
@@ -1070,6 +1072,7 @@ if (npmRelease) {
 }
 restoreSettingsBoundary(runtime)
 applySettingsTitleCase(runtime)
+applyNoteVaultEventForwarding(runtime)
 console.log('Installing desktop packages')
 installDesktopPackages()
 copyFileSync(
