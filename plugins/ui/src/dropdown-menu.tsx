@@ -1,6 +1,6 @@
 import * as React from 'react'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
-import { Check } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { cn } from './utils.ts'
 
 function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>): React.ReactElement {
@@ -49,7 +49,53 @@ function DropdownMenuGroup(props: React.ComponentProps<typeof DropdownMenuPrimit
   return <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+function DropdownMenuSub(props: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>): React.ReactElement {
+  return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />
+}
+
 const itemClass = 'relative flex cursor-default select-none items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-4'
+
+const DropdownMenuSubTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger>
+>(function DropdownMenuSubTrigger({ className, children, ...props }, ref) {
+  return (
+    <DropdownMenuPrimitive.SubTrigger
+      ref={ref}
+      data-slot="dropdown-menu-sub-trigger"
+      className={cn(itemClass, 'data-[state=open]:bg-accent data-[state=open]:text-accent-foreground', className)}
+      {...props}
+    >
+      {children}
+      <ChevronRight aria-hidden="true" className="ml-auto" />
+    </DropdownMenuPrimitive.SubTrigger>
+  )
+})
+
+type DropdownMenuSubContentProps = React.ComponentProps<typeof DropdownMenuPrimitive.SubContent> & {
+  portalled?: boolean
+  unstyled?: boolean
+}
+
+function DropdownMenuSubContent({
+  className,
+  portalled = true,
+  sideOffset = 4,
+  unstyled = false,
+  ...props
+}: DropdownMenuSubContentProps): React.ReactElement {
+  const content = (
+    <DropdownMenuPrimitive.SubContent
+      data-slot="dropdown-menu-sub-content"
+      sideOffset={sideOffset}
+      className={unstyled
+        ? cn('z-50 outline-hidden', className)
+        : cn('z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden', className)}
+      {...props}
+    />
+  )
+  return portalled ? <DropdownMenuPortal>{content}</DropdownMenuPortal> : content
+}
 
 function DropdownMenuItem({
   className,
@@ -117,6 +163,9 @@ export {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 }
-export type { DropdownMenuContentProps }
+export type { DropdownMenuContentProps, DropdownMenuSubContentProps }

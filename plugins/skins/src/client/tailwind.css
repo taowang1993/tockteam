@@ -39,8 +39,8 @@
   --color-ring: var(--dsw-alias-brand-primary);
   --color-brand: var(--dsw-alias-brand-primary);
   --color-brand-foreground: var(--dsw-alias-brand-primary-invert);
-  --color-primary: var(--dsw-alias-brand-primary);
-  --color-primary-foreground: var(--dsw-alias-brand-primary-invert);
+  --color-primary: var(--dsw-alias-button-primary-fill);
+  --color-primary-foreground: var(--dsw-alias-label-primary-foreground);
   --color-secondary: var(--dsw-alias-bg-layer-2);
   --color-secondary-foreground: var(--dsw-alias-label-primary);
   --color-muted: var(--dsw-alias-bg-layer-2);
