@@ -51,6 +51,15 @@ test('refreshes supplemental captures with verified pixels and honest runtime ev
   assert.ok(proof.startupObservations.some((entry: { message: string }) => entry.message.includes('workspaces.startSession')))
 })
 
+test('records the corrected Live Preview paragraph and flags the unreplaced Reader View image', () => {
+  const expected = 'Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.'
+  const corrected = Object.entries(proof.captures).filter(([, capture]) => (capture as { visibleState?: { renderedParagraph?: string } }).visibleState?.renderedParagraph === expected)
+  assert.equal(corrected.length, proof.livePreviewCorrection.updatedCount)
+  assert.ok(corrected.some(([name]) => name === 'tocktutor-tag-tab-polish.png'))
+  assert.equal(proof.livePreviewCorrection.readerView.status, 'earlier-capture')
+  assert.notEqual(proof.captures['tocktutor-web-viewer-reader.png'].sourceCommit, proof.livePreviewCorrection.sourceCommit)
+})
+
 test('binds shared Markdown and structured documents to the captured content', () => {
   const sharedHash = sha256(readFileSync(resolve(root, 'comparison.md')))
   assert.equal(proof.fixtures['comparison.md'].tocktutor.sha256, sharedHash)

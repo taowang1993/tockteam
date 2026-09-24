@@ -4,6 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TockTutor and Obsidian Surface Comparison</title>
+  <!--
+    Pi capture runbook (not rendered): when asked to refresh TockTutor screenshots,
+    read content-alignment.json for the exact allowlist and fixture state. Reuse the
+    existing build; do not edit app source or rebuild for a screenshot-only task.
+    Launch an isolated Electron run with extended_display on a non-main display, then
+    attach Playwright only to its returned CDP endpoint. Preserve HOME, isolate app
+    data, and use --use-mock-keychain. Capture only allowlisted TockTutor images into
+    a temp directory; never modify Obsidian or unrelated screenshots. Verify each
+    route, note, editor mode, visible content, runtime errors, 1512 × 949 CSS viewport
+    at 2×, built-in dark theme, and no skin on document/body. For Live Preview,
+    assert the rendered first paragraph ends "highlighting, and inline code in one
+    paragraph." with no footnote definition inside it; a heading-only assertion
+    missed a real rendering bug. For Source Mode assert
+    the source editor is visible. In Web Viewer, wait for Example Domain in the actual
+    viewer pane, click Reader View only when enabled, then assert Page View and the
+    visible Reader View article before capture. Validate the exact allowlist and
+    3024 × 1898 PNGs; publish only verified targets transactionally. Run
+    node --test tests/tocktutor-gallery.test.ts tests/tocktutor-content-alignment.test.ts.
+    Stop the owned app with extended_display and verify no descendants remain. Retry
+    a failed state once in isolation; if it still fails, stop and report it—do not
+    edit app code, rebuild, or weaken checks to force a capture through.
+  -->
   <link rel="icon" href="data:,">
   <style>
     :root {
@@ -129,7 +151,7 @@
     <div class="header-inner">
       <p class="eyebrow">Visual Design Audit · 55 Captures</p>
       <h1>TockTutor and Obsidian</h1>
-      <p class="intro">Fresh captures of TockTutor and installed Obsidian 1.13.7 using identical isolated comparison vaults. Note-based surfaces use the shared <a href="comparison.md"><code>comparison.md</code></a> content. Older screenshots predate the filename change. The refreshed TockTutor note menu shows the current filename; attachments use <code>Notes/Welcome.md</code>, and Base and Canvas use the same <a href="../../../plugins/tocktutor/parity/fixtures/vault/">parity fixture files</a>. Search uses <code>Markdown</code> in both apps. The assistant pair uses empty conversations beside the same note, with Claudian 2.3.0 in Obsidian. Product-specific controls and catalogs remain genuine, not fabricated matches. See the <a href="content-alignment.md">capture proof and limitations</a>. Click an image for full resolution.</p>
+      <p class="intro">TockTutor screenshots were refreshed from the source-built Desktop at <code>3c579a86</code> on September 24, 2026; 23 note-facing images were recaptured after the Live Preview correction at <code>81f533aa</code>. The supplemental Reader View image remains from the earlier capture because its focused retry stayed loading. Obsidian 1.13.7 reference images are preserved byte-for-byte. Note-based surfaces use the shared <a href="comparison.md"><code>comparison.md</code></a> content. Older screenshots predate the filename change. The refreshed TockTutor note menu shows the current filename; attachments use <code>Notes/Welcome.md</code>, and Base and Canvas use the same <a href="../../../plugins/tocktutor/parity/fixtures/vault/">parity fixture files</a>. Search uses <code>Markdown</code> in both apps. The assistant pair uses empty conversations beside the same note, with Claudian 2.3.0 in Obsidian. Product-specific controls and catalogs remain genuine, not fabricated matches. See the <a href="content-alignment.md">capture proof and limitations</a>. Click an image for full resolution.</p>
       <div class="capture-standard">1512 × 949 CSS pixels · 2× scale · 3024 × 1898 output · Built-in Dark Theme · No Active Skin</div>
       <div class="legend" aria-label="Comparison legend">
         <span class="tt">TockTutor</span>
@@ -145,7 +167,7 @@
   <main>
     <section class="surface" id="polish">
       <p class="section-number">Focused Check</p><h2>Tag and Tab Polish</h2><p class="section-note">Targeted verification of higher-contrast frontmatter tags and the active tab’s smoother bottom corners.</p>
-      <p class="fixture-proof"><strong>Capture Proof:</strong> TockTutor built from <code>ce91d652</code> and Obsidian 1.13.7 both show the shared <code>comparison.md</code> content in Live Preview, with <code>favorite: true</code> and identical Markdown bytes. Bounded, app-scoped Playwright/CDP captures use 1512 × 949 CSS pixels at 2× scale (3024 × 1898 output), built-in dark themes, and no active skin. Process-tree cleanup is verified; runtime observations are recorded in the linked proof.</p>
+      <p class="fixture-proof"><strong>Capture Proof:</strong> TockTutor built from <code>81f533aa</code> and Obsidian 1.13.7 both show the shared <code>comparison.md</code> content in Live Preview, with <code>favorite: true</code> and identical Markdown bytes. Bounded, app-scoped Playwright/CDP captures use 1512 × 949 CSS pixels at 2× scale (3024 × 1898 output), built-in dark themes, and no active skin. Process-tree cleanup is verified; runtime observations are recorded in the linked proof.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Tag and Tab Polish</span><span class="badge">Focused Verification</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-tag-tab-polish.png"><img src="screenshots/tocktutor-tag-tab-polish.png" alt="TockTutor higher-contrast frontmatter tags and softened active tab corners"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Tag and Tab Reference</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-main-editor.png"><img src="screenshots/obsidian-main-editor.png" alt="Obsidian frontmatter tag contrast and tab shape reference"></a></figure>
@@ -356,7 +378,7 @@
     </section>
 
     <section class="surface" id="web-viewer">
-      <p class="section-number">Surface 24</p><h2>Web Viewer</h2><p class="section-note">Both viewers open https://example.com/ and show Example Domain. TockTutor retains its isolated browsing and clipping panel; Obsidian uses its built-in Web Viewer.</p>
+      <p class="section-number">Surface 24</p><h2>Web Viewer</h2><p class="section-note">Both viewers open https://example.com/ and show Example Domain. TockTutor retains its isolated browsing and clipping panel; Obsidian uses its built-in Web Viewer. The supplemental TockTutor Reader View image is an earlier capture: Reader View stayed loading during this correction’s capture and focused retry.</p>
       <div class="comparison">
         <figure class="tocktutor"><figcaption><span class="caption-title">TockTutor · Web Viewer</span><span class="badge">Current</span></figcaption><a class="screenshot-link" href="screenshots/tocktutor-web-viewer.png"><img src="screenshots/tocktutor-web-viewer.png" alt="TockTutor Web Viewer"></a></figure>
         <figure class="obsidian"><figcaption><span class="caption-title">Obsidian · Web Viewer</span><span class="badge">Reference</span></figcaption><a class="screenshot-link" href="screenshots/obsidian-web-viewer.png"><img src="screenshots/obsidian-web-viewer.png" alt="Obsidian Web Viewer with a local fixture page"></a></figure>

@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-19T02:09:00.107Z",
-  "sourceCommit": "ce91d652",
+  "capturedAt": "2026-09-24T23:35:00.169Z",
+  "sourceCommit": "81f533aa",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -820,15 +820,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 302058,
-      "sha256": "6fb3223cda95aa77d869a363db7d10e7146105cae120ff2c8f418423bb1c6e63",
-      "capturedAt": "2026-09-19T02:01:39.597Z",
+      "bytes": 278802,
+      "sha256": "7215c441955357884b55884497b88684e5a5f1aba3e7ab49cd783cc0eaa16642",
+      "capturedAt": "2026-09-24T23:32:11.291Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
-        "textSha256": "c323d84c5cbfc334c11e5a1ff768485023cee44c2dc023f1d6dcc7e4b803c257",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters"
+        "assertionPassed": true,
+        "textExcerpt": "Markdown Rendering Lab",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-editor-live-preview.png": {
       "geometry": {
@@ -843,15 +845,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 302058,
-      "sha256": "6fb3223cda95aa77d869a363db7d10e7146105cae120ff2c8f418423bb1c6e63",
-      "capturedAt": "2026-09-19T02:01:40.380Z",
+      "bytes": 278802,
+      "sha256": "7215c441955357884b55884497b88684e5a5f1aba3e7ab49cd783cc0eaa16642",
+      "capturedAt": "2026-09-24T23:32:11.720Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
-        "textSha256": "c323d84c5cbfc334c11e5a1ff768485023cee44c2dc023f1d6dcc7e4b803c257",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters"
+        "assertionPassed": true,
+        "textExcerpt": "Markdown Rendering Lab",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-tag-tab-polish.png": {
       "geometry": {
@@ -866,15 +870,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 302058,
-      "sha256": "6fb3223cda95aa77d869a363db7d10e7146105cae120ff2c8f418423bb1c6e63",
-      "capturedAt": "2026-09-19T02:01:41.145Z",
+      "bytes": 278802,
+      "sha256": "7215c441955357884b55884497b88684e5a5f1aba3e7ab49cd783cc0eaa16642",
+      "capturedAt": "2026-09-24T23:32:12.183Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
-        "textSha256": "c323d84c5cbfc334c11e5a1ff768485023cee44c2dc023f1d6dcc7e4b803c257",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters"
+        "assertionPassed": true,
+        "textExcerpt": "Markdown Rendering Lab",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-main-editor.png": {
       "geometry": {
@@ -912,16 +918,17 @@
       "path": "UIUX Comparison.md",
       "mode": "source",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 303562,
-      "sha256": "2d7a21e335ed440013d1c741753804f93615e1b9096f6f15a45579b0be0cba85",
-      "capturedAt": "2026-09-20T00:24:05.624Z",
+      "bytes": 311656,
+      "sha256": "2c5c9820925d85a3f23ff3c835d5cd07331fc685d8204d6b6fdd02a3efa6a142",
+      "capturedAt": "2026-09-24T13:12:08.147Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
-        "textSha256": "c9ef348ea9784c6f791a70e5b17f59966f06a2fdcad2165200510d5547cc4213",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nComparison Vault\nUIUX Comparison\n---\nstatus: review\nfavorite: true\narea: markdown\ntags: [comparison, typography]\ndifficulty: medium\n---\n\n\n# Markdown Rendering Lab\n\n\nUse **bold**, *italic*, ***bold italic***, ~~strikethrough~~, ==highlighting==, and `inline code` in one paragraph.\n\n\nOpen [[Welcome]], follow [[Study Guide|an aliased note]], or visit [Obsidian Help](https://help.obsidian.md).\n\n\n## Structure\n\n\n### Lists\n\n\n1. Compare heading scale and paragraph rhythm.\n2. Inspect nested content.\n   - A nested bullet\n   - A bullet with **strong text**\n\n\n- [x] Completed task\n- [ ] Pending task with [[Welcome]]\n\n\n> A short quote should begin close to its leading bar.\n>\n> A second paragraph tests spacing inside the same quote.\n\n\n## Data\n\n\n| Syntax | Expected Result | State |\n| :--- | :--- | ---: |\n| `**text**` | Bold text | Ready |\n| `[[note]]` | Internal link | Review |\n| `> quote` | Leading bar | Ready |\n\n\n## Code and Notes\n\n\n```ts\nconst lesson = \"markdown\"\nconsole.log(lesson)\n```\n\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.[^context]\n\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\n\n---\n\n\n#### Small Heading\n\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\nUIUX Comparison.md opened.\n1 backlink\nSource\n171 words\n1322 characters\nInternal Testing Notice\n\nDeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building"
+        "assertionPassed": true,
+        "textExcerpt": "Markdown Rendering Lab"
       },
-      "runtimeErrorMonitoring": "Playwright pageerror and console listeners from initial Desktop loading through Source Mode capture. Existing TockCoder startup error recorded in refresh proof.",
-      "refreshProof": ".beads/reports/tocktutor-source-inline-2026-09-20.json"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "refreshProof": ".beads/reports/tocktutor-source-inline-2026-09-20.json",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-source-mode.png": {
       "geometry": {
@@ -959,15 +966,16 @@
       "path": "UIUX Comparison.md",
       "mode": "reading",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 308034,
-      "sha256": "bf7333f5007490ddc6f1c2ac1c41d466c06cadd16b0723194e7fab72d702f3c2",
-      "capturedAt": "2026-09-19T01:58:30.268Z",
+      "bytes": 280097,
+      "sha256": "eace974a916303237aaee684308ce551ea3fd63e827c27e17569dda1e111b89d",
+      "capturedAt": "2026-09-24T13:12:08.966Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
-        "textSha256": "a02f76d08613531a4a3221f6bad82d44762f7d96b31dc87ea80560581735a8f8",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n Completed task\n Pending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses E = mc^2, while a footnote keeps context nearby.[1]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\nFootnotes should remain readable without dominating the page.\nUIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters"
+        "assertionPassed": true,
+        "textExcerpt": "Markdown Rendering Lab"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-reading-view.png": {
       "geometry": {
@@ -1001,21 +1009,22 @@
       "runtimeErrors": [],
       "mode": "live-preview",
       "path": "comparison.md",
-      "capturedAt": "2026-09-23T23:50:21.107Z",
+      "capturedAt": "2026-09-24T23:32:52.501Z",
       "visibleState": {
-        "assertedText": "Markdown Rendering Lab",
-        "textExcerpt": "Workspaces\nNo sessions yet\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\ncomparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\ncomparison\nMention\nStudy Guide\nComparison Vault\ncomparison\nBacklinks in Document\nReading View\nSource Mode\nSplit Right\nSplit Down\nOpen in New Window\nRename Note…\nMove Note…\nBookmark Note…\nMerge Entire File With…\nAdd Property\nExport PDF…\nFind…\nReplace…\nCopy Path\nOpen Linked View\nOpen in Default App\nReveal in Finder\nReveal File in Navigation\nFile Recovery\nOutline\nProperties\nBacklinks\nGraph View\nWeb Viewer\nBookmarks\nTags\nAttachments and Embeds\nNote Tools\nWorkspaces and Panes\nReviews and Actions\nMerge Recovery\nMove File to Trash\ncomparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\n\nStructure\n\n\nLists\n\n\nCompare heading scale and paragraph rhythm.\nInspect nested content.\nA nested bullet\nA bullet with strong text\n\n\n Completed task\n Pending task with Welcome\n\n\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\n\n\nData\n\n\nSyntax\tExpected Result\tState\n**text**\tBold text\tReady\n[[note]]\tInternal link\tReview\n> quote\tLeading bar\tReady\n\n\nCode and Notes\n\n\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.[^context]\n\n\nA soft line ends here.\nThis sentence follows without a blank line.\ncomparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nAdd an API key to get started\n\nConfigure the official DeepSeek provider to start building.\n\nAPI key\nConfigure later\nSave and continue",
-        "textSha256": "899759736adc62b3fb74057515b15ac3a5567350558fbac079f24d472c4328a5"
+        "assertedText": "Reading View",
+        "assertionPassed": true,
+        "textExcerpt": "Reading View",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Playwright pageerror and console error listeners installed before full Desktop route reload through capture.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
       "route": "/tocktutor/comparison.md",
       "theme": "dark",
       "skin": null,
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 383591,
-      "sha256": "bf46aa1e4e853651e66d73bce4b5d7d90f8f0f307f006d42c2e39490b43c656c",
+      "bytes": 397287,
+      "sha256": "9cda9ca71dc3a18dc6ccb5ca232b4c68ccf5ba809bf8f508739a65edfe3c96db",
       "captureScope": "real-desktop",
-      "sourceCommit": "858abe8e"
+      "sourceCommit": "81f533aa"
     },
     "obsidian-note-actions.png": {
       "geometry": {
@@ -1053,16 +1062,18 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 252099,
-      "sha256": "d35b4a24b0ba6362dfcdefa05b4808bfb8c478db251ffae53a141c083f8afe87",
-      "capturedAt": "2026-09-20T01:14:39.433Z",
+      "bytes": 251439,
+      "sha256": "b54058a58d1aa15e4275a7fb8094a76758078a1da467ad9c0597acb8bc782bcc",
+      "capturedAt": "2026-09-24T23:32:15.596Z",
       "visibleState": {
-        "assertedText": "Markdown Rendering Lab",
-        "textSha256": "9a0a598c969b445c7617dd2dd9c02529157f77ec89f0a2e8dbd129064428d35d",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nInternal Testing Notice\n\nDeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness d"
+        "assertedText": "Command Palette",
+        "assertionPassed": true,
+        "textExcerpt": "Command Palette",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Playwright pageerror and console listeners from initial Desktop loading through Command Palette capture. Existing TockCoder startup error recorded in refresh proof.",
-      "refreshProof": ".beads/reports/tocktutor-command-footer-2026-09-20.json"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "refreshProof": ".beads/reports/tocktutor-command-footer-2026-09-20.json",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-command-palette.png": {
       "geometry": {
@@ -1100,15 +1111,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 346643,
-      "sha256": "975cf15061ac5f0582dcac551cb8164e3d7be66b108594e21e94f2958f149c2e",
-      "capturedAt": "2026-09-19T02:01:41.955Z",
+      "bytes": 322168,
+      "sha256": "857448b27fc148df1ea04752d0e633854e939d5e3c0093840df17db0edbc8f7e",
+      "capturedAt": "2026-09-24T23:32:18.296Z",
       "visibleState": {
         "assertedText": "Properties",
-        "textSha256": "828881d5f5b03f39deed6690c6ec360b8f2fceb7c9fb7c030c9c10beddbbad22",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nProperties\nProperty\tType\tCount\nstatus\tstrin"
+        "assertionPassed": true,
+        "textExcerpt": "Properties",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-properties.png": {
       "geometry": {
@@ -1146,15 +1159,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 342027,
-      "sha256": "0faec41bc2b82e86d73aa59d56afe4db50f4c3cae104431499bb8b734e575e3b",
-      "capturedAt": "2026-09-19T02:01:43.566Z",
+      "bytes": 307360,
+      "sha256": "ff45ec57f8ec950ec561e670eda6f96f0a95c4c5ef5c1d9b95082728d9489434",
+      "capturedAt": "2026-09-24T23:32:20.997Z",
       "visibleState": {
         "assertedText": "Backlinks",
-        "textSha256": "4e534a67447f172f0898962a3c99f91ca43160fb33f077574965b9a98af15bf6",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nBacklinks\nLinked Mentions (1)\nStudy Guide.m"
+        "assertionPassed": true,
+        "textExcerpt": "Backlinks",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-backlinks.png": {
       "geometry": {
@@ -1192,15 +1207,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 317279,
-      "sha256": "880ed4683f4989cc248912839a18b9826730ca0c5f7268e34d40f8f02c72933a",
-      "capturedAt": "2026-09-19T02:01:44.364Z",
+      "bytes": 306064,
+      "sha256": "2207f1924074f4f0846e4c44a526407774bfabd62364dce6275272095b567bef",
+      "capturedAt": "2026-09-24T23:32:22.775Z",
       "visibleState": {
         "assertedText": "Tags",
-        "textSha256": "78c7fc493aa66669306f54db558e9fa9145d3aeda7a473fe465f8e3479295b2d",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nTags\n#comparison · 1\n#lesson/intro · 1\n#typ"
+        "assertionPassed": true,
+        "textExcerpt": "Tags",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-tags.png": {
       "geometry": {
@@ -1238,15 +1255,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 343076,
-      "sha256": "041120195baf5da5d220d2e21de6cfff8099cfd8c6804819de093e087b1629f8",
-      "capturedAt": "2026-09-19T02:01:49.931Z",
+      "bytes": 320882,
+      "sha256": "1c1855cc5cb1e2b627112eaa9d67b4d984589f43f47a7264b8e8c379f8c312d9",
+      "capturedAt": "2026-09-24T23:32:50.876Z",
       "visibleState": {
-        "assertedText": "UIUX Comparison",
-        "textSha256": "c505f285e0dd5d23c9f7f9c77f9181bb94fe4aa5d6083aaee531479102a2ad83",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nWhat can I help you with?\nSummarize the Cur"
+        "assertedText": "What can I help you with?",
+        "assertionPassed": true,
+        "textExcerpt": "What can I help you with?",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-assistant.png": {
       "geometry": {
@@ -1284,15 +1303,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 266836,
-      "sha256": "aa7b71c92d1a3bdf4d5db0cd4f2e50d984bb26916570d336f0a3fdf1a3b8732a",
-      "capturedAt": "2026-09-19T01:51:05.529Z",
+      "bytes": 365552,
+      "sha256": "abc0d2c7552399431c2443eb39c87c2976a928e0e224d2c0f3dbd1c13e111e5d",
+      "capturedAt": "2026-09-24T23:32:17.009Z",
       "visibleState": {
         "assertedText": "Markdown",
-        "textSha256": "4a9353601a50dac4f54d73665391b9b2d624869a48167a31e99a82a734df60cf",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\n\nNo supported notes found.\n\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\n5 search results.\n1 backlink\nLive Preview\n171 words\n1322 characters\nBacklinks\nLinked Mentions (1)\nStudy Guide.md · line 3\nUIUX Comparison\nUnlinked Mentions (1)\nSearch Notes\nKeyword\nRelated\nSearch\n3 notes · 5 matches · AI uses deepseek-official/deepseek-v"
+        "assertionPassed": true,
+        "textExcerpt": "Markdown",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-search.png": {
       "geometry": {
@@ -1330,15 +1351,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 342026,
-      "sha256": "8b96e62c2c7d054f081243787795d4bc185d1891eacd73e21ba1c1d90d2e5ac0",
-      "capturedAt": "2026-09-19T02:00:43.251Z",
+      "bytes": 319836,
+      "sha256": "75b71b8be61adfe9dd6b4f3936f25e130bc94fcc37e8a11146ea739f0a452cc1",
+      "capturedAt": "2026-09-24T23:32:21.619Z",
       "visibleState": {
         "assertedText": "Mention.md",
-        "textSha256": "4e534a67447f172f0898962a3c99f91ca43160fb33f077574965b9a98af15bf6",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nBacklinks\nLinked Mentions (1)\nStudy Guide.m"
+        "assertionPassed": true,
+        "textExcerpt": "Mention.md",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-bookmarks.png": {
       "geometry": {
@@ -1353,15 +1376,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 314206,
-      "sha256": "5473d5c8701afae63dcd44ce8bcdd098c912f54fc8914685bc041ca44b729f72",
-      "capturedAt": "2026-09-19T02:01:45.144Z",
+      "bytes": 296144,
+      "sha256": "6b54eff30a42123d5e439dd82947c5fdc132dcabe5b9835458fd7f873ae1d8ae",
+      "capturedAt": "2026-09-24T23:32:23.925Z",
       "visibleState": {
         "assertedText": "Bookmarks",
-        "textSha256": "2b0f2a9730981dba996f6bcc763ef187ade9c05a01493deb5c8e420e7b2d735a",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nBookmarks\nUIUX Comparison · note\nRemove"
+        "assertionPassed": true,
+        "textExcerpt": "Bookmarks",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-bookmarks-tags.png": {
       "geometry": {
@@ -1376,15 +1401,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 314206,
-      "sha256": "5473d5c8701afae63dcd44ce8bcdd098c912f54fc8914685bc041ca44b729f72",
-      "capturedAt": "2026-09-19T02:01:45.944Z",
+      "bytes": 296144,
+      "sha256": "6b54eff30a42123d5e439dd82947c5fdc132dcabe5b9835458fd7f873ae1d8ae",
+      "capturedAt": "2026-09-24T23:32:24.358Z",
       "visibleState": {
         "assertedText": "Bookmarks",
-        "textSha256": "2b0f2a9730981dba996f6bcc763ef187ade9c05a01493deb5c8e420e7b2d735a",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nBookmarks\nUIUX Comparison · note\nRemove"
+        "assertionPassed": true,
+        "textExcerpt": "Bookmarks",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-bookmarks.png": {
       "geometry": {
@@ -1422,16 +1449,18 @@
       "path": "UIUX Comparison.md",
       "mode": "global-graph",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 168480,
-      "sha256": "01982d5112eed5549a749f92bfe039f3549e0456430588c38ac75323838ad12b",
-      "capturedAt": "2026-09-19T02:01:52.606Z",
+      "bytes": 155286,
+      "sha256": "94143e4feae2eb81a6f03f1e9e51f0a1e080b2b24db185c4d282de4375c937f0",
+      "capturedAt": "2026-09-24T23:32:25.765Z",
       "visibleState": {
         "assertedText": "Graph Nodes",
-        "textSha256": "edb3d89464d42ff36b7229d15f1a181e12fcfe3659c9fb357518d20acf84200c",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nGraph View\nGlobal\nLocal\nSettings\nBoards/Les"
+        "assertionPassed": true,
+        "textExcerpt": "Graph Nodes",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches",
-      "documentMode": "live-preview"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "documentMode": "live-preview",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-graph-global.png": {
       "geometry": {
@@ -1468,15 +1497,17 @@
       "path": "UIUX Comparison.md",
       "mode": "local-graph",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 172793,
-      "sha256": "93380f6be4a577bf99cddded98ffdc83c7da4777053b54db77af7f9fbc46d621",
-      "capturedAt": "2026-09-19T02:01:53.964Z",
+      "bytes": 160637,
+      "sha256": "8c6078e71284b873f31eb49e0044f844cb066bf8d248d5e777a618f2252b06d0",
+      "capturedAt": "2026-09-24T23:32:26.453Z",
       "visibleState": {
         "assertedText": "Graph Nodes",
-        "textSha256": "82b4f49e7d664492105eedfde6275719f961467dc0e60193531e43cca462a45e",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nGraph View\nGlobal\nLocal\nSettings\nNotes/Alia"
+        "assertionPassed": true,
+        "textExcerpt": "Graph Nodes",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-graph-local.png": {
       "geometry": {
@@ -1515,15 +1546,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 355572,
-      "sha256": "eefb303fb28c1e8d974c0bb8c351bd4a1ad342a6055e1cc9a463ee459574c29f",
-      "capturedAt": "2026-09-19T02:01:46.751Z",
+      "bytes": 338249,
+      "sha256": "71debe4bab9a19db3ca1355b3e321997a0514fa10be95a631fd10a9296309962",
+      "capturedAt": "2026-09-24T23:32:27.636Z",
       "visibleState": {
         "assertedText": "Note Tools",
-        "textSha256": "6fd6547bdb93940c1eefeb12357a799bf98a5c89eb6b1780f8353135443eea91",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nNote Tools\nNote Composer and Format Convert"
+        "assertionPassed": true,
+        "textExcerpt": "Note Tools",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-note-tools.png": {
       "geometry": {
@@ -1561,15 +1594,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 354775,
-      "sha256": "7637e8301c863bd948662069b44b7ee9813644fe5582b153e7d50167491143fb",
-      "capturedAt": "2026-09-19T02:01:47.546Z",
+      "bytes": 337252,
+      "sha256": "f7d549f8fc40cc1e30d90c925280d955f9d5d2c7a68b390118d7474a141c2f96",
+      "capturedAt": "2026-09-24T23:32:31.498Z",
       "visibleState": {
         "assertedText": "Workspaces and Panes",
-        "textSha256": "66ff16ed7f9ae4deea7f5485065b95cd74e70b43efe930d2791566a2b5ea2107",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nWorkspaces and Panes\nSettings and Workspace"
+        "assertionPassed": true,
+        "textExcerpt": "Workspaces and Panes",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-workspaces-panes.png": {
       "geometry": {
@@ -1630,15 +1665,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 267395,
-      "sha256": "d57632ce922cb024d31f9edf00232ce23eb44dba2c7a65502fbe64bb9e64cac6",
-      "capturedAt": "2026-09-19T01:52:29.370Z",
+      "bytes": 251892,
+      "sha256": "6c306ad49e2df90dead637a04fb5aecf3bfce04b8a620036a30961b682a337a3",
+      "capturedAt": "2026-09-24T23:32:32.409Z",
       "visibleState": {
         "assertedText": "New Note",
-        "textSha256": "db3d386e30d50a82c31dde458c669de08be2324443009f3c0cdc960cc9f65bc6",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\n5 search results.\n1 backlink\nLive Preview\n171 words\n1322 characters\nNew Note\nNote Path\nCancel\nCreate"
+        "assertionPassed": true,
+        "textExcerpt": "New Note",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-new-note.png": {
       "geometry": {
@@ -1653,15 +1690,16 @@
       "path": "Untitled.md",
       "mode": "live-preview",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 114294,
-      "sha256": "e6d192dd56b11e2bbdfd9b8863ff55d8fcdb0a51e8b20106aa2fa943b7992006",
-      "capturedAt": "2026-09-19T01:52:30.649Z",
+      "bytes": 111870,
+      "sha256": "ced427f9ba8dbf292649360844c9501aaefe9a2b2fc3383ef9a5f8c215c914ac",
+      "capturedAt": "2026-09-24T13:12:28.420Z",
       "visibleState": {
         "assertedText": "Untitled",
-        "textSha256": "5796c35bf8e9a4f41d59a78688ccb50d4b9f4a715db144625796b31c42c73710",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUntitled.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUntitled\nUntitled\n\n\n\n\nUntitled.md created.\n1 backlink\nLive Preview\n0 words\n0 characters"
+        "assertionPassed": true,
+        "textExcerpt": "Untitled"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-new-note.png": {
       "geometry": {
@@ -1699,15 +1737,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 382301,
-      "sha256": "160a57012e39818f213c202b3beb589754ae3defc7f8783418cf4d0ccd4418c5",
-      "capturedAt": "2026-09-19T02:01:49.153Z",
+      "bytes": 364454,
+      "sha256": "0b90229fc60d28878ccf4287e7a66d275769e4ab9bbb3f000c904458a599ea87",
+      "capturedAt": "2026-09-24T23:32:29.166Z",
       "visibleState": {
         "assertedText": "File Recovery",
-        "textSha256": "cef3605f6453a7dc8cc91602d142c5714dad0abd48f0cfec7b8eae2e2b84fa41",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nFile Recovery\nCapture\nClear\nRefresh\nMove Cu"
+        "assertionPassed": true,
+        "textExcerpt": "File Recovery",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "obsidian-file-recovery.png": {
       "geometry": {
@@ -1745,15 +1785,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 440923,
-      "sha256": "7acc45dd99de3f2056385070e5b389ade83e03870571456a71dee79931842e57",
-      "capturedAt": "2026-09-19T02:01:48.354Z",
+      "bytes": 423960,
+      "sha256": "5a15d2c65317073b314fbe4483a021f347591b9d6afc624f49e6894a05c1dac1",
+      "capturedAt": "2026-09-24T23:32:30.318Z",
       "visibleState": {
         "assertedText": "Reviews and Actions",
-        "textSha256": "f22a0684a67fb9d4ad6f2e9b8841d16f72c4efa859192d798f2e22ffe6b767e4",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nReviews and Actions\nReviews\n\nREVIEWED OPERA"
+        "assertionPassed": true,
+        "textExcerpt": "Reviews and Actions",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-reading-embed.png": {
       "geometry": {
@@ -1768,15 +1810,16 @@
       "path": "Notes/Welcome.md",
       "mode": "reading",
       "contentSha256": "d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
-      "bytes": 234306,
-      "sha256": "3c3d6be41d4bcbb1f4d015a2e6326b6116b8e5b34286ad98dfe371353046e929",
-      "capturedAt": "2026-09-19T01:52:38.399Z",
+      "bytes": 215210,
+      "sha256": "f623cd4dba58c292b2d0eb9f4f56afd0ecd919d3c3806d2c0b6d17f31ab53f30",
+      "capturedAt": "2026-09-24T13:12:29.741Z",
       "visibleState": {
         "assertedText": "Welcome",
-        "textSha256": "66c63b39f54240cb2c1b5599c0e9a21c910cd6084eb274b1df514a3cb8fe8309",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nWelcome.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nWelcome\nWelcome\nProperties\ntitle\nWelcome\naliases\nStart Here\ntags\nlesson/intro\nstatus\nactive\npoints\n3\nfavorite\nAdd Property\nWelcome\n\nThis fixture links to the alias note and embeds .\n\n Review the lesson\n Keep exact Markdown\nSource Preservation\n\nLive Preview must keep this callout editable.\n\nTopic\tScore\nSafety\t3\n\nInline math $1 + 1 = 2$ and a footnote reference.[1]\n\nWelcome\nSafe\nThis definition stays readable and inert.\nNotes/Welcome.md opened.\n3 backlinks\nReading\n84 words\n656 characters"
+        "assertionPassed": true,
+        "textExcerpt": "Welcome"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-reading-embed.png": {
       "geometry": {
@@ -1814,15 +1857,16 @@
       "path": "Notes/Welcome.md",
       "mode": "reading",
       "contentSha256": "d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
-      "bytes": 265325,
-      "sha256": "fadf3eeec3a2fc8d06e0aee278c864a59bd2cb89a44d826cb5e544f01ef9e89d",
-      "capturedAt": "2026-09-19T01:52:39.988Z",
+      "bytes": 251710,
+      "sha256": "e7b607a8e7d9b5be89d642844105b58beeb3a6eefdbce6dd0eca309c41d85320",
+      "capturedAt": "2026-09-24T13:12:30.967Z",
       "visibleState": {
         "assertedText": "Resolved Embeds",
-        "textSha256": "9ae17549fc73c97f9115bd7f2ebd8d0af0eab431639b7948c47bf0e4dca2f286",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nWelcome.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nWelcome\nWelcome\nProperties\ntitle\nWelcome\naliases\nStart Here\ntags\nlesson/intro\nstatus\nactive\npoints\n3\nfavorite\nAdd Property\nWelcome\n\nThis fixture links to the alias note and embeds .\n\n Review the lesson\n Keep exact Markdown\nSource Preservation\n\nLive Preview must keep this callout editable.\n\nTopic\tScore\nSafety\t3\n\nInline math $1 + 1 = 2$ and a footnote reference.[1]\n\nWelcome\nSafe\nThis definition stays readable and inert.\nNotes/Welcome.md opened.\n3 backlinks\nReading\n84 words\n656 characters\nAttachments and Embeds\nResolved Embeds\nAttachments/pixel.png\nAttachments\nAdd Files\nAttachments/pixel.png"
+        "assertionPassed": true,
+        "textExcerpt": "Resolved Embeds"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-attachments-embeds.png": {
       "geometry": {
@@ -1860,15 +1904,16 @@
       "path": "Bases/Lessons.base",
       "mode": "base",
       "contentSha256": "28e19c6066f86fd84b56f2d71748069dad2a0d5d80bb686a02662789254319dd",
-      "bytes": 169330,
-      "sha256": "b65f1dda05b4d1b7ed050d3e9e166bff5507910589b114b91488838da5354b53",
-      "capturedAt": "2026-09-19T01:52:42.232Z",
+      "bytes": 157150,
+      "sha256": "c3c4c90f397d9b68dcd7ba640528c4250904a372c021aef8b6d9ebd59ba36f1a",
+      "capturedAt": "2026-09-24T13:12:32.059Z",
       "visibleState": {
         "assertedText": "Lessons",
-        "textSha256": "1dfc2a2646cf40635ce81114efb87c58f02dd68c65e6740102a8b46dcad794e9",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nLessons.base\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nLessons\nBase View\nLessons — Table\nDrafts — List\nCards — Cards\nPlaces — Map Labels\nSearch This View\n\n2 Results\n\nCopy Visible Results\nExport Visible CSV\nfile.name\tnote.status\tformula.scoreLabel\nAlias Target\t\n\t5 points\nWelcome\t\n\t3 points\naverage(note.points): 4\nBases/Lessons.base opened.\n3 backlinks\nReading\n63 words\n615 characters"
+        "assertionPassed": true,
+        "textExcerpt": "Lessons"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-base.png": {
       "geometry": {
@@ -1906,15 +1951,16 @@
       "path": "Boards/Lesson.canvas",
       "mode": "canvas",
       "contentSha256": "cd79b2a20ed9ce2b65921a3db8fc2031c49f94f0617d1ebf622981ddc1990170",
-      "bytes": 170769,
-      "sha256": "7b2887f5f9ba5f8dbfdda85f329c657f86d62ad820283f8d314bef21521a5619",
-      "capturedAt": "2026-09-19T01:52:45.195Z",
+      "bytes": 157563,
+      "sha256": "569020e4a8620215b3de0da82da600341bbec07c39f5becd0eb78aea78f9f8fc",
+      "capturedAt": "2026-09-24T13:12:33.008Z",
       "visibleState": {
         "assertedText": "Lesson",
-        "textSha256": "36b363dac34aa80686fce857cca2c009cbe15f3a7eb7c2dd8e9e64fae4e75f22",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nLesson.canvas\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nLesson\nAdd Text Card\nAdd Link Card\nAdd File Card\nAdd Group\n100%\nWelcome\nWelcome\nConnect Welcome\nT\nR\nB\nL\nNotes/Alias Target.md\nConnect Notes/Alias Target.md\nT\nR\nB\nL\nhttps://example.com/lesson\nConnect https://example.com/lesson\nT\nR\nB\nL\nLesson\nConnect Lesson\nT\nR\nB\nL\nCanvas Edge opens from Welcome to Notes/Alias Target.md\nBoards/Lesson.canvas opened.\n3 backlinks\nReading\n93 words\n667 characters"
+        "assertionPassed": true,
+        "textExcerpt": "Lesson"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-canvas.png": {
       "geometry": {
@@ -1952,15 +1998,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 346643,
-      "sha256": "975cf15061ac5f0582dcac551cb8164e3d7be66b108594e21e94f2958f149c2e",
-      "capturedAt": "2026-09-19T02:01:42.762Z",
+      "bytes": 322263,
+      "sha256": "09197e31af6d6fb0f3d0ffd7a00998fa3175b88c68ced9b7f5477bf952961177",
+      "capturedAt": "2026-09-24T23:32:19.482Z",
       "visibleState": {
         "assertedText": "Properties",
-        "textSha256": "828881d5f5b03f39deed6690c6ec360b8f2fceb7c9fb7c030c9c10beddbbad22",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nProperties\nProperty\tType\tCount\nstatus\tstrin"
+        "assertionPassed": true,
+        "textExcerpt": "Properties",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-vault-switcher.png": {
       "geometry": {
@@ -1972,19 +2020,21 @@
       "skin": null,
       "route": "/tocktutor/UIUX%20Comparison.md",
       "runtimeErrors": [],
-      "path": null,
+      "path": "UIUX Comparison.md",
       "mode": "vault-switcher",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 253427,
-      "sha256": "c0db5cfc113acd1b0f8667e3fab2755fa28780b6bad79253fa7d37f61189841c",
-      "capturedAt": "2026-09-19T01:53:46.808Z",
+      "bytes": 269089,
+      "sha256": "17dd6ca9ee201e9460ea9a4168f4e39c72fc9dc55ec7e64ce20d3b1a032bcf87",
+      "capturedAt": "2026-09-24T23:32:39.214Z",
       "visibleState": {
-        "assertedText": "Vault",
-        "textSha256": "074cc5a8cacfda52ac906f843752fd017c56a0ddb3fe25acd7610dbce89fb337",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nVault Switcher\n\nOpen a local Markdown vault"
+        "assertedText": "Create New Vault",
+        "assertionPassed": true,
+        "textExcerpt": "Create New Vault",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches",
-      "backgroundPath": "UIUX Comparison.md"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "backgroundPath": "UIUX Comparison.md",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-settings.png": {
       "geometry": {
@@ -1999,15 +2049,16 @@
       "path": null,
       "mode": "settings",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 414152,
-      "sha256": "f28586f6a8910fdc28e6a5daee3b6c62eb15272da5015bc35c9b2ca65e8a9d88",
-      "capturedAt": "2026-09-19T01:55:00.142Z",
+      "bytes": 415421,
+      "sha256": "0de7f42c9b4ae663559365ced12c133c52815fcda31440dec2ca6a3196015842",
+      "capturedAt": "2026-09-24T13:12:35.653Z",
       "visibleState": {
         "assertedText": "Appearance",
-        "textSha256": "37ea49ea48302755f7adebeae4c696f640c6162985458edac793f7a3eeb889ed",
-        "textExcerpt": "Workspaces\ntutor\nSettings\nGeneral\nModels\nPlugins\nAgent Presets\nSide Panel\nTockLauncher\nOpen configuration file\nPermission\nChoose the default permission mode for new sessions\nWorkspace Write\nLanguage\nEnglish\nAppearance\nLight\nDark\nSystem\nFont Size\nOnly affects conversation content\n14\npx\nConversation Display\nControls process content in completed turns\nCompact\nTockTeam Skin\nChoose a skin shared by Web, Desktop, and TUI.\nOriginal\nFollow Appearance\nDeep Current\nDark\nJade Circuit\nDark\nPorcelain\nLight\nEmber Dusk\nDark\nEnter behavior while busy\nBusy only; Cmd/Ctrl+Enter uses the other behavior\nQueue\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nSettings"
+        "assertionPassed": true,
+        "textExcerpt": "Appearance"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-vault-switcher.png": {
       "geometry": {
@@ -2043,15 +2094,16 @@
       "path": null,
       "mode": "marketplace",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 338305,
-      "sha256": "65fbe64654e6d6275f7c4ea04064145710b0adf7d01d898af5ee5e198a5e8380",
-      "capturedAt": "2026-09-19T01:55:58.881Z",
+      "bytes": 197923,
+      "sha256": "4be1cf7f739ed83ea57ade7ac66f11a0011a3a49b67fdfb8c926e0b765bb8d1b",
+      "capturedAt": "2026-09-24T13:12:37.146Z",
       "visibleState": {
-        "assertedText": "Plugins",
-        "textSha256": "c07ed1db291ed4f87a26d1f297d16b904be21489a9fcb1cec69ab593704767ee",
-        "textExcerpt": "Workspaces\ntutor\nSettings\nGeneral\nModels\nPlugins\nAgent Presets\nSide Panel\nTockLauncher\nOpen configuration file\nPlugins\n\nConfigure and inspect the plugins installed in this deployment.\n\nMarketplace\nPlugin Config\nPlugin List\nRefresh\nLoaded 1922 catalog plugins.\nAll\n1921\nInstalled\n0\nNot Installed\n1921\nUpdates\n0\nDisabled\n0\nAll categories\nacp\nllm\norchestration\npreset\nsandbox\nsession\nskills\nskin\ntools\nui\nutility\nShow Built-in Plugins\n1921 plugins\n@\n@xxxyz/dsh-mcp-manager\nTools\n\nDual manager for DSH — MCP servers (add/edit/enable/disable/restart/delete from Settings UI, JSON import/export, four mcp_manager_* model tools, gated local HTTP API) and Skills (enable/disable panel with persistence and live HMR).\n\nAuto-detect\nA\nadb_dsh_plugin\nTools\n\nDeepSeek Harness plugin for controlling Android devices through ADB\n\nAuto-detect\nA\nadhdgofly-dsh-ext\nTools\n\nADHDGoFly POS highlighting plugin for DeepSeek Harness Web: nouns green, verbs red, adjectives/adverbs purple, others gray in rendered Mark…\n\nAuto-detect\nA\nagent-knock-knock\nTools\n\nOpenClaw plugin: control local Codex/Claude Code via shared tmux\n\nAuto-detect\nA\nagent-skills\nUtility\n\nReusable skills for AI coding agents\n\nAuto-detect\nA\nagent-vision-toolkit\nLlm\n\nVision toolbox & skills for text-only models: multi-image QA, UI reconstruction, GUI automation.\n\nAuto-detect\nA\nagents-go\nOrchestration\n\nMulti-agent framework in Go\n\nAuto-detect\nA\nall (全家桶)\nPreset\n\nAll-in-one meta-package: one install brings the first-party suite — plugin-manager store, notify, session-export, team-board.\n\nAuto-detect\nA\namadeus-for-dsh\nTools\n\nAmadeus (AI assistant f"
+        "assertedText": "Marketplace",
+        "assertionPassed": true,
+        "textExcerpt": "Marketplace"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-settings-general.png": {
       "geometry": {
@@ -2110,16 +2162,18 @@
       "path": null,
       "mode": "web-viewer",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 343029,
-      "sha256": "95e7a230f092f51eb0c6fa2ac7d424d0d82422cb9f83d735a9f9b4c615bcfa11",
-      "capturedAt": "2026-09-19T01:56:38.548Z",
+      "bytes": 318422,
+      "sha256": "c7560c3615db350ce5b135a023db983d65ee80493945698f77f5373f4b0fef20",
+      "capturedAt": "2026-09-24T23:35:00.169Z",
       "visibleState": {
-        "assertedText": "Web Viewer",
-        "textSha256": "d558e5c823f07456256e61b563955b0eef2669b2803683fa68cc48118b30c456",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nWeb Viewer\nExample Domain\nNew Tab\nGo\nBookma"
+        "assertedText": "Example Domain",
+        "assertionPassed": true,
+        "textExcerpt": "Workspaces\nNo sessions yet\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, \n\nhighlighting\n\n\n\nFootnotes should remain readable without dominating the page.\n, and inline code in one paragraph.\n\nOpen \n\nWelcome\n\n\n\nFootnotes should remain readable without dominating the page.\n, follow \n\nan aliased note\n\n\n\nFootnotes should remain readable without dominating the page.\n, or visit Obsidian Help.\n\nStructure\nLists\n1.\n\nCompare heading scale and paragraph rhythm.\n\n2.\n\nInspect nested content.\n\nA n",
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches",
-      "url": "https://example.com/"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "url": "https://example.com/",
+      "sourceCommit": "81f533aa"
     },
     "tocktutor-web-viewer-reader.png": {
       "geometry": {
@@ -2134,16 +2188,17 @@
       "path": null,
       "mode": "web-viewer",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 405453,
-      "sha256": "ae640bb623ded144dd81b79a25316f45ea333bb53cc9246c605d2a1997a84ee1",
-      "capturedAt": "2026-09-19T01:56:40.031Z",
+      "bytes": 394533,
+      "sha256": "5caecb76b5b38d83e3fb1b180ddd46b5c2298fae39a620ae89c5efd9ef9be3ff",
+      "capturedAt": "2026-09-24T12:14:02.637Z",
       "visibleState": {
         "assertedText": "Example Domain",
-        "textSha256": "7df7c04bfa661fa46482ee659552e65fbab7d77c43546b986c667acced9560c1",
-        "textExcerpt": "Workspaces\ntutor\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons.base\nBoards\nLesson.canvas\nImports\nImported.md\nNotes\nAlias Target.md\nWelcome.md\nMention.md\nStudy Guide.md\nUIUX Comparison.md\nUntitled.md\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\nStructure\nLists\n\nCompare heading scale and paragraph rhythm.\n\n⌄\n\nInspect nested content.\n\nA nested bullet\n\nA bullet with strong text\n\nCompleted task\n\nPending task with Welcome\n\nA short quote should begin close to its leading bar.\n\nA second paragraph tests spacing inside the same quote.\n\nData\n\nSyntax\n\n\t\n\nExpected Result\n\n\t\n\nState\n\n\n\n\n**text**\n\n\t\n\nBold text\n\n\t\n\nReady\n\n\n\n\nnote\n\n\t\n\nInternal link\n\n\t\n\nReview\n\n\n\n\n> quote\n\n\t\n\nLeading bar\n\n\t\n\nReady\n\nCode and Notes\nconst lesson = \"markdown\"\nconsole.log(lesson)\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.context\n\n\nA soft line ends here. This sentence follows without a blank line.\n\nSmall Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\ncontext\n\nFootnotes should remain readable without dominating the page.\n\nUIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters\nWeb Viewer\nExample Domain\nNew Tab\nGo\nBookma"
+        "assertionPassed": true,
+        "textExcerpt": "Text Size\nSmall\nMedium\nLarge\nLine Width\nNarrow\nMedium\nWide\nLine Spacing\nCompact\nDefault\nRelaxed\nAppearance\nSystem\nLight\nDark\nExample Domain\nClip DestinationGenerate Clip Preview\nExample Domain\n\nThis domain is for use in documentation examples without needing permission. Avoid use in operations.\n\nLearn more\n"
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches",
-      "url": "https://example.com/"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners observed no events. Playwright console/pageerror listeners were not installed for this focused Web Viewer capture.",
+      "url": "https://example.com/",
+      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
     },
     "obsidian-web-viewer.png": {
       "geometry": {
@@ -2328,7 +2383,15 @@
     "No AI request was submitted. TockTutor has no configured provider; Claudian uses its genuine empty state."
   ],
   "publication": {
-    "policy": "Exact allowlist, verified hashes and dimensions, full cleanup required before same-filesystem directory replacement; rollback restores the original directory on failure."
+    "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage and replace only allowlisted TockTutor images on the same filesystem with rollback copies. Never write Obsidian or unrelated screenshots.",
+    "lastRefresh": {
+      "capturedAt": "2026-09-24T23:35:00.169Z",
+      "sourceCommit": "81f533aa",
+      "updatedTockTutorImages": 23,
+      "preservedObsidianImages": 28,
+      "obsidianHashesUnchanged": true,
+      "transaction": "Same-filesystem allowlist staging with backup, hash/dimension checks and rollback; Reader View retained unchanged after bounded retry."
+    }
   },
   "graphAlignment": {
     "local": {
@@ -2415,5 +2478,100 @@
       "no renderer error or console error during route reload/capture"
     ],
     "publication": "Single allowlisted PNG staged and atomically renamed after geometry, content, runtime and cleanup verification."
+  },
+  "captureRefresh": {
+    "capturedAt": "2026-09-24T13:13:01.724Z",
+    "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c",
+    "screenshotCount": 33,
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null
+    },
+    "runIds": {
+      "finalBatch": "7bdb73c9-a2aa-497d-b29f-b7a686e114c4",
+      "focusedWebViewer": "60437216-e091-46f0-b91d-70641a5ec8ff"
+    },
+    "batches": {
+      "finalBatch": {
+        "captured": 32,
+        "published": 31,
+        "rendererErrors": [],
+        "consoleErrors": [
+          "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+        ]
+      },
+      "focusedWebViewer": {
+        "captured": 2,
+        "published": 2,
+        "capturedAt": "2026-09-24T12:13:59.888Z",
+        "rendererErrors": [],
+        "consoleMonitoring": "not installed"
+      }
+    },
+    "failedAttempt": {
+      "stage": "Web Viewer external-page/Reader View sequence in the final batch",
+      "published": false,
+      "timedOutWaitingFor": "Example Domain in the page body",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "resolution": "Published the two already-verified Web Viewer images from the focused run earlier in this refresh, against the same source build."
+    },
+    "cleanup": {
+      "verified": true,
+      "remaining": [],
+      "processTreesStopped": 2,
+      "method": "extended_display stop; no descendants remained"
+    }
+  },
+  "livePreviewCorrection": {
+    "capturedAt": "2026-09-24T23:35:00.169Z",
+    "sourceCommit": "81f533aa",
+    "updatedCount": 23,
+    "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+    "noteSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null
+    },
+    "runs": {
+      "finalBatch": "e463deea-8990-4c73-9b2f-f50eb8adfc0a",
+      "focusedWebViewer": "15e6fe5d-8580-4782-94f2-da0a1ab2aee3"
+    },
+    "finalBatch": {
+      "captured": 32,
+      "published": 22,
+      "failedStage": "Reader View did not activate; Page View button did not appear",
+      "consoleErrors": []
+    },
+    "focusedWebViewer": {
+      "published": 1,
+      "readerStatus": "Loading Reader… after timeout",
+      "consoleErrors": []
+    },
+    "readerView": {
+      "filename": "tocktutor-web-viewer-reader.png",
+      "status": "earlier-capture",
+      "reason": "Reader View remained loading in the final batch and focused retry; original screenshot was retained rather than publishing a loading or failed state."
+    },
+    "cleanup": {
+      "verified": true,
+      "remaining": [],
+      "processTreesStopped": 2
+    }
   }
 }

@@ -1,12 +1,30 @@
 # TockTutor and Obsidian Content Alignment
 
-## Note Menu Refresh — 2026-09-24
+## Live Preview Correction — 2026-09-24
+
+The TockTutor vault note and the gallery’s `comparison.md` have the same SHA-256 (`3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5`), but the earlier Live Preview screenshots visibly inserted `[^context]` footnote text after “highlighting” and inside links. The inline-preview widget had appended *every* definition, including footnotes, to each small fragment it rendered. At `81f533aa`, it now appends link definitions only; the standalone footnote remains in its own definition. A component regression test first reproduced the incorrect rendered paragraph, then passed after the change.
+
+After rebuilding and refreshing the staged runtime, 23 note-facing TockTutor captures were replaced only after Playwright verified the visible first paragraph reads “Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.” without a footnote inserted. The images are 3024 × 1898 pixels from 1512 × 949 CSS pixels at 2× with the built-in dark theme and no skin; route, note, mode, console/page errors, and renderer events were checked. All 28 Obsidian images remained byte-identical. Both owned Electron process trees were stopped with no remaining descendants. Per-image hashes and evidence are in `content-alignment.json`.
+
+**Remaining limitation:** The supplemental `tocktutor-web-viewer-reader.png` was not replaced. Reader View remained loading after the final-batch attempt and one focused retry, despite Example Domain loading in the ordinary Web Viewer. The earlier Reader View PNG and its original metadata remain intact; it still shows the old Live Preview text behind the Reader View panel. No failed or loading capture was published. A future corrected Reader View capture must verify the article is visible and the Page View control is enabled before replacing it.
+
+## Screenshot Refresh — 2026-09-24
+
+Retook all 33 TockTutor screenshots against the source-built Desktop at `3c579a86812f22e08a920e15118ea7166db5fa3c`. Every published image is 3024 × 1898 pixels from a 1512 × 949 CSS viewport at 2×, with the built-in dark theme and no skin. The 28 Obsidian reference images were not modified; their before/after SHA-256 hashes match.
+
+Thirty-one images came from the final capture batch. The Web Viewer and Reader View pair came from a successful focused capture earlier in the same refresh against the same build. A later full-batch attempt timed out waiting for the external page and logged an HTTP 400; those failed-attempt images were not published. That focused run verified the rendered Example Domain page, Reader View article, geometry, theme, and injected window error/unhandledrejection listeners. It did not install Playwright console/pageerror listeners, so its console state is not claimed. The final batch had no renderer error/unhandledrejection events; its only console error was the failed Web Viewer request.
+
+No application source was edited or rebuilt for this screenshot-only refresh. Candidates were checked against the exact 33-file TockTutor allowlist, PNG dimensions, hashes, route/content/mode, and theme before transactional publication. Both Electron process trees were stopped through `extended_display`; no descendants remained. Current per-image proof and hashes are in `content-alignment.json`.
+
+> The remaining sections preserve historical baseline and menu-refresh notes; their source commits and capture-specific runtime details predate this screenshot refresh.
+
+## Historical Note Menu Refresh — 2026-09-24
 
 Replaced the temporary component-test image with a real TockTutor Desktop capture of the isolated Comparison Vault. The shared note is now named `comparison.md` (including the gallery’s canonical Markdown file), with the original 1,324 bytes and SHA-256 unchanged. The menu offers Reading View and Source Mode, without a Live Preview item; note actions are connected to the real Host. Capture geometry is 1512 × 949 CSS pixels at 2×, built-in dark/no skin, with no renderer errors during monitored route reload and capture.
 
 The user approved retaining Obsidian’s earlier screenshot with the former `UIUX Comparison.md` filename. Its content hash is identical, but its filename is explicitly not claimed to match. Refreshing Obsidian through the required guarded launcher failed before creating a window (`protocol.registerSchemesAsPrivileged should be called before app is ready`); no alternate launch or user-app attachment was attempted. Its failed-launch PID was verified absent. TockTutor’s complete observed process tree was stopped with no remaining PIDs. The JSON proof’s `menuRefresh` records the capture, approval, and cleanup. All other screenshots and their historical filename evidence remain unchanged.
 
-## Original Capture Result
+## Historical Original Capture Result
 
 Retook all 32 existing TockTutor screenshots and all 25 existing Obsidian references. Added four captures: Claudian, expanded Obsidian unlinked mentions, and a dedicated Reading Embed pair. The gallery now contains **55 distinct images**, with **6 supplemental images** retained and refreshed (61 total).
 
