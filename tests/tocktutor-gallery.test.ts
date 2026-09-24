@@ -14,6 +14,7 @@ const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(b
 test('accounts for every gallery and supplemental capture without stale links', () => {
   assert.match(html, /Visual Design Audit · 55 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
+  assert.doesNotMatch(html, /UIUX Comparison/u)
   assert.equal(new Set(images).size, 55)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
