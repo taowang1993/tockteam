@@ -7,10 +7,13 @@ import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 test('Translate group cleanup kills descendants even when their leader has exited', { skip: process.platform === 'win32', timeout: 5000 }, async () => {
   const child = spawn(process.execPath, ['-e', `const {spawn}=require('node:child_process'); const child=spawn(process.execPath,['-e', 'process.on("SIGTERM",()=>{});setInterval(()=>{},1000)'],{stdio:'ignore'}); console.log(child.pid); child.unref()`], { detached: true })
   let descendant = 0
+  let reportedPid = ''
+  const stderr: Buffer[] = []
+  child.stderr.on('data', data => stderr.push(data))
   try {
-    descendant = await new Promise<number>((resolve, reject) => { child.stdout.once('data', data => resolve(Number(data.toString().trim()))); child.once('error', reject) })
+    descendant = await new Promise<number>((resolve, reject) => { child.stdout.once('data', data => { reportedPid = data.toString().trim(); resolve(Number(reportedPid)) }); child.once('error', reject) })
     await new Promise(resolve => child.once('close', resolve))
-    assert.ok(descendant > 0)
+    assert.ok(descendant > 0, `descendant spawn reported ${JSON.stringify(reportedPid)}: ${Buffer.concat(stderr).toString().slice(0, 1024)}`)
     await stopOwnedChild(child, 30, true)
     assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' })
   } finally {
