@@ -592,15 +592,24 @@ describe('Live Preview editor', () => {
     } finally { request.mockRestore() }
   })
 
-  it('rejects active and malformed image payloads without assigning an image URL', async () => {
-    for (const payload of [{ mimeType: 'image/svg+xml', dataBase64: 'PHN2Zz4=' }, { mimeType: 'image/png', dataBase64: 'invalid value' }]) {
-      const request = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(payload)))
+  it('keeps failed images local without a banner, unsafe resource, or changed source link', { timeout: 15_000 }, async () => {
+    for (const response of [
+      new Response(JSON.stringify({ mimeType: 'image/svg+xml', dataBase64: 'PHN2Zz4=' })),
+      new Response(JSON.stringify({ mimeType: 'image/png', dataBase64: 'invalid value' })),
+      new Response(null, { status: 400 }),
+    ]) {
+      const request = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response)
+      const editorViewRef = { current: null as any }
+      const { container, unmount } = render(<LivePreviewEditor content="![Remote](https://example.com/a.png)" editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
       try {
-        const { container, unmount } = render(<LivePreviewEditor content="![Remote](https://example.com/a.png)" onMarkdownChange={() => {}} />)
-        await waitFor(() => expect(container.querySelector('[role="alert"]')?.textContent).toContain('image could not be loaded'))
-        expect(container.querySelector('img[src^="http"]')).toBeNull()
-        unmount()
-      } finally { request.mockRestore() }
+        await waitFor(() => expect(container.querySelector('.ProseMirror img')?.getAttribute('src')).toBe('data:image/png;base64,'), { timeout: 10_000 })
+        expect(container.querySelector('[role="alert"]')).toBeNull()
+        expect(container.querySelector('img[src^="http"], img[src^="data:image/svg"]')).toBeNull()
+        const sources: string[] = []
+        editorViewRef.current.state.doc.descendants(node => { if (node.attrs.src) sources.push(node.attrs.src) })
+        expect(sources).toEqual(['https://example.com/a.png'])
+        expect(request).toHaveBeenCalledTimes(1)
+      } finally { unmount(); request.mockRestore() }
     }
   })
 

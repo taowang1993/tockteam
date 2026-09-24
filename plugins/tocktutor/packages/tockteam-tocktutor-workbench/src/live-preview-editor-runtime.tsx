@@ -83,7 +83,10 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
           pendingImages.add(url)
           void images.load(external.sourceUrl).then(image => {
             if (!disposed) { imageCache.set(url, image.src); refreshImages() }
-          }).catch(() => { if (!disposed) setError('An image could not be loaded. Its original link is preserved.') })
+          }).catch(() => {
+            // Keep failure on the image itself; never replace the authored link or raise a note-wide banner.
+            if (!disposed) { imageCache.set(url, 'data:image/png;base64,'); refreshImages() }
+          })
         }
       } else {
         const target = collectEmbedTargets(`![](<${url}>)`)[0]

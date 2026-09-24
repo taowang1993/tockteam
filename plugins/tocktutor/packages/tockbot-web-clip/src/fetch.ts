@@ -472,8 +472,8 @@ export interface PublicImageResult {
 export async function fetchPublicImage(value: string, options: FetchPublicTextOptions = {}): Promise<PublicImageResult> {
   const imageOptions = { ...options, limits: { maxResponseBytes: defaultPublicImageMaxBytes, ...options.limits } }
   return await fetchPublicResource(value, imageOptions, 'image/avif,image/webp,image/png,image/jpeg,image/gif', async (response, limits, signal, url) => {
-    const mimeType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() ?? ''
-    if (!/^image\/(?:png|jpeg|gif|webp|avif)$/u.test(mimeType)) return fail('content-type', 'A raster image is required.')
+    const declaredType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() ?? ''
+    if (!/^image\/(?:png|jpeg|gif|webp|avif)$/u.test(declaredType)) return fail('content-type', 'A raster image is required.')
     const length = response.headers.get('content-length')
     if (length !== null && (!/^\d+$/u.test(length) || Number(length) > limits.maxResponseBytes)) return fail('body', 'The image is too large.')
     const reader = response.body?.getReader()
@@ -495,12 +495,14 @@ export async function fetchPublicImage(value: string, options: FetchPublicTextOp
       reader.releaseLock()
     }
     const data = Buffer.concat(chunks, total)
-    const signature = mimeType === 'image/png' ? data.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
-      : mimeType === 'image/jpeg' ? data.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex'))
-      : mimeType === 'image/gif' ? /^GIF8[79]a$/u.test(data.subarray(0, 6).toString('ascii'))
-      : mimeType === 'image/webp' ? data.subarray(0, 4).toString('ascii') === 'RIFF' && data.subarray(8, 12).toString('ascii') === 'WEBP'
-      : data.subarray(4, 8).toString('ascii') === 'ftyp' && /avif|avis/u.test(data.subarray(8, 32).toString('ascii'))
-    if (!signature) return fail('content-type', 'The image bytes do not match their content type.')
+    // CDNs can label JPEG bytes as PNG. Publish the verified raster type, not the header or URL suffix.
+    const mimeType = data.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')) ? 'image/png'
+      : data.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex')) ? 'image/jpeg'
+      : /^GIF8[79]a$/u.test(data.subarray(0, 6).toString('ascii')) ? 'image/gif'
+      : data.subarray(0, 4).toString('ascii') === 'RIFF' && data.subarray(8, 12).toString('ascii') === 'WEBP' ? 'image/webp'
+      : data.subarray(4, 8).toString('ascii') === 'ftyp' && /avif|avis/u.test(data.subarray(8, 32).toString('ascii')) ? 'image/avif'
+      : null
+    if (!mimeType) return fail('content-type', 'A supported raster image signature is required.')
     return { dataBase64: data.toString('base64'), mimeType, url }
   })
 }

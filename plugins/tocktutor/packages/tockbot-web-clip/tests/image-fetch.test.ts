@@ -19,6 +19,24 @@ test('loads image bytes over the same pinned, credential-free public transport',
   assert.equal(seen[0]?.headers.referer, undefined)
 })
 
+test('uses the raster bytes when a CDN mislabels an image content type or extension', async () => {
+  const images = [
+    { mimeType: 'image/jpeg', data: Buffer.from('ffd8ffe000104a46494600', 'hex') },
+    { mimeType: 'image/png', data: png },
+    { mimeType: 'image/gif', data: Buffer.from('GIF89a') },
+    { mimeType: 'image/webp', data: Buffer.from('524946460000000057454250', 'hex') },
+    { mimeType: 'image/avif', data: Buffer.from('000000206674797061766966', 'hex') },
+  ]
+  for (const { mimeType, data } of images) {
+    const result = await transport.fetchPublicImage('https://example.com/042423.png', {
+      lookup,
+      request: async () => new Response(data, { headers: { 'content-type': mimeType === 'image/png' ? 'image/jpeg' : 'image/png' } }),
+    })
+    assert.equal(result.mimeType, mimeType)
+    assert.equal(result.dataBase64, data.toString('base64'))
+  }
+})
+
 test('images have a separate bounded budget from text downloads', async () => {
   const data = Buffer.concat([png, Buffer.alloc(1_489_970 - png.length)])
   const options = { lookup, request: async () => new Response(data, { headers: { 'content-type': 'image/png', 'content-length': String(data.length) } }) }
@@ -38,6 +56,8 @@ test('image loading rejects private redirect targets, active formats, forged ima
     { response: new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/private' } }), code: 'address' },
     { response: new Response('<svg/>', { headers: { 'content-type': 'image/svg+xml' } }), code: 'content-type' },
     { response: new Response('<script>bad()</script>', { headers: { 'content-type': 'image/png' } }), code: 'content-type' },
+    { response: new Response('<svg/>', { headers: { 'content-type': 'image/png' } }), code: 'content-type' },
+    { response: new Response(png, { headers: { 'content-type': 'text/html' } }), code: 'content-type' },
     { response: new Response(png, { headers: { 'content-type': 'image/png' } }), code: 'body', maxResponseBytes: 8 },
   ]
   for (const value of cases) await assert.rejects(transport.fetchPublicImage('https://example.com/image', {
