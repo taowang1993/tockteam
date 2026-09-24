@@ -48,6 +48,10 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(builtinDark, /--tockteam-main-pane:var\(--dsw-alias-bg-base\)/, 'the editor uses the former dark sidebar color')
   assert.match(css, /body:not\(\[data-tockteam-skin\]\) \.tocktutor-editor\{--tt-panel:var\(--tockteam-main-pane\)\}/, 'the note canvas follows the shared editor surface without overriding named skins')
   assert.match(css, /body:not\(\[data-tockteam-skin\]\) \.tocktutor-titlebar\{--tt-panel:var\(--tockteam-main-pane\)\}/, 'the active note tab joins the editor surface')
+  const settingsSurface = css.match(/\[data-tockteam-settings-page-surface\]\{([^}]*)\}/)?.[1] ?? ''
+  assert.match(settingsSurface, /background:var\(--tockteam-main-pane\)!important/, 'every Settings page shares the editor canvas')
+  const settingsNav = css.match(/\[data-tockteam-settings-page-surface\]>nav\{([^}]*)\}/)?.[1] ?? ''
+  assert.match(settingsNav, /background:var\(--dsw-specific-sidebar-fill\)!important/, 'Settings navigation retains its sidebar surface')
   const editorTheme = css.match(/\.tocktutor-crepe-editor \.milkdown\{([^}]*)\}/)?.[1] ?? ''
   assert.match(editorTheme, /--crepe-color-background:var\(--tt-panel\)/, 'title and article share the document canvas')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror\{[^}]*caret-color:currentColor/, 'the native rich-editor caret matches the note text')
