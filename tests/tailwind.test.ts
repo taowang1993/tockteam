@@ -56,6 +56,11 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(editorTheme, /--crepe-color-background:var\(--tt-panel\)/, 'title and article share the document canvas')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror\{[^}]*caret-color:currentColor/, 'the native rich-editor caret matches the note text')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror h1\{[^}]*font-size:26px/, 'rich headings match Reading View instead of the oversized Crepe default')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror a\{color:var\(--dsw-specific-markdown-accent\)/, 'Live Preview links use the same purple as Reading View')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label\.ordered\{color:var\(--tt-text\)/, 'ordered list numbers match the note text')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label:is\(\.checked,\.unchecked\) svg\{[^}]*width:21\.333px;[^}]*height:21\.333px/, '18/24 SVG glyph renders at the frontmatter checkbox’s 16px size')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label\.unchecked svg\{fill:color-mix\(in srgb, var\(--tt-text\) 55%, transparent\)/, 'unchecked task outlines stay legible')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label\.checked svg\{[^}]*var\(--dsw-specific-markdown-accent\)/, 'checked task icons use the purple accent')
   const desktopSummary = css.match(/\.tockteam-desktop-shell #tockteam-chrome-layer>\[data-tockteam-pinned-summary\]\{([^}]*)\}/)?.[1] ?? ''
   assert.match(desktopSummary, /height:calc\(50% - 12px\)/)
   assert.match(desktopSummary, /top:12px/)
