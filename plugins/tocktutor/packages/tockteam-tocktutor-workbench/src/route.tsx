@@ -3458,6 +3458,7 @@ export class WorkbenchRouteController {
   }
 
   setSourceEditorSelection(start: number, end: number): void {
+    if (this.snapshot.mode !== 'source') return
     this.setSelection(authoredSourceOffset(this.snapshot.source, start), authoredSourceOffset(this.snapshot.source, end))
   }
 
@@ -3481,7 +3482,8 @@ export class WorkbenchRouteController {
   }
 
   runEditorCommand(command: EditorCommandId): void {
-    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return
+    // ProseMirror offsets are not authored Markdown offsets. Rich edits belong to Crepe.
+    if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source') return
     const result = applyEditorCommand(
       this.snapshot.source,
       command,
@@ -3541,7 +3543,7 @@ export class WorkbenchRouteController {
     const path = this.snapshot.path
     const start = this.snapshot.selectionStart ?? 0
     const end = this.snapshot.selectionEnd ?? 0
-    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading' || end <= start) return false
+    if (vault === null || path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode !== 'source' || end <= start) return false
     const identity = this.recoveryIdentity()!
     const routeOperation = this.operation
     const destinationPath = `Extracted/${noteTitle(path)} Extract.md`
@@ -3588,11 +3590,12 @@ export class WorkbenchRouteController {
     }
   }
 
-  insertCurrentDateTime(kind: 'date' | 'time'): boolean {
+  insertCurrentDateTime(kind: 'date' | 'time', insertRichText?: (text: string) => boolean): boolean {
     if (this.snapshot.path === null || this.snapshot.documentKind !== 'markdown' || this.snapshot.mode === 'reading') return false
+    const value = expandTemplate(kind === 'date' ? '{{date}}' : '{{time}}', { now: this.now(), title: noteTitle(this.snapshot.path) })
+    if (this.snapshot.mode === 'live-preview') return insertRichText?.(value) ?? false
     const start = this.snapshot.selectionStart ?? this.snapshot.source.length
     const end = this.snapshot.selectionEnd ?? start
-    const value = expandTemplate(kind === 'date' ? '{{date}}' : '{{time}}', { now: this.now(), title: noteTitle(this.snapshot.path) })
     this.edit(`${this.snapshot.source.slice(0, start)}${value}${this.snapshot.source.slice(end)}`)
     this.setSelection(start + value.length, start + value.length)
     return true
@@ -3788,12 +3791,34 @@ export class WorkbenchRouteController {
     return true
   }
 
+  async uploadImage(file: File): Promise<string> {
+    if (!/^image\/(?:png|jpeg|gif|webp|avif|bmp)$/u.test(file.type) || file.size > 25 * 1024 * 1024) throw new Error('Unsupported image or image too large.')
+    const path = this.snapshot.path, vault = this.snapshot.vault
+    if (path === null || vault === null) throw new Error('Open a note before uploading an image.')
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    if (bytes.byteLength !== file.size || this.snapshot.path !== path || !sameVault(this.snapshot.vault, vault)) throw new Error('The active note changed.')
+    let binary = ''
+    for (let offset = 0; offset < bytes.length; offset += 32_768) binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768))
+    const stored = await this.writeActiveAttachment(file.name, btoa(binary))
+    if (stored === null) throw new Error('The image could not be stored in this vault.')
+    return stored
+  }
+
   async storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean> {
+    const path = await this.writeActiveAttachment(fileName, dataBase64)
+    if (path === null) return false
+    this.edit(appendAttachmentMarkdown(this.snapshot.source, `![[${path}]]`))
+    const saved = await this.save()
+    if (saved) await this.refreshTree(this.snapshot.vault!)
+    return saved
+  }
+
+  private async writeActiveAttachment(fileName: string, dataBase64: string): Promise<string | null> {
     const vault = this.snapshot.vault
     const notePath = this.snapshot.path
     const source = this.snapshot.source
     const revision = this.snapshot.revision
-    if (vault === null || notePath === null || revision === null || this.snapshot.documentKind !== 'markdown' || dataBase64.length > 35_000_000) return false
+    if (vault === null || notePath === null || revision === null || this.snapshot.documentKind !== 'markdown' || dataBase64.length > 35_000_000) return null
     let path: string
     try {
       path = attachmentTargetPath(
@@ -3802,19 +3827,18 @@ export class WorkbenchRouteController {
         new Set(this.snapshot.entries.filter(entry => entry.kind === 'attachment').map(entry => entry.path)),
       )
     } catch {
-      return false
+      return null
     }
     const operation = this.operation
     try {
       const stored = remoteValue(await this.remote.tocktutorWorkbench.storeAttachment({ dataBase64, expectedVault: vault, path }))
-      if (stored.status !== 'stored' || stored.generation !== vault.generation || stored.path !== path) return false
-      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== notePath || this.snapshot.source !== source || this.snapshot.revision !== revision) return false
-      this.edit(appendAttachmentMarkdown(source, `![[${path}]]`))
-      const saved = await this.save()
-      if (saved) await this.refreshTree(vault)
-      return saved
+      if (stored.status !== 'stored' || stored.generation !== vault.generation || stored.path !== path) return null
+      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== notePath || this.snapshot.source !== source || this.snapshot.revision !== revision) return null
+      await this.refreshTree(vault)
+      if (!sameVault(this.snapshot.vault, vault) || this.snapshot.path !== notePath) return null
+      return path
     } catch {
-      return false
+      return null
     }
   }
 
@@ -4145,6 +4169,7 @@ export interface TockTutorRouteViewProps {
   onEditBookmark?(id: string, title: string, group: string | null): boolean | void
   onRevealFile?(): Promise<boolean> | boolean
   onAttachFiles?(files: FileList): void
+  onUploadImage?(file: File): Promise<string>
   onActivateTab(paneId: string, path: string): void
   onApplyOrganization?(): void
   onBack?(): void
@@ -4172,7 +4197,7 @@ export interface TockTutorRouteViewProps {
   onFocusEditor?(): void
   onFocusPane(paneId: string): void
   onForward?(): void
-  onInsertCurrentDateTime?(kind: 'date' | 'time'): void
+  onInsertCurrentDateTime?(kind: 'date' | 'time', insertRichText?: (text: string) => boolean): void
   onJumpToLine?(line: number): void
   onLoadFacets?(): void
   onLoadGraph?(mode: 'global' | 'local'): void
@@ -5185,7 +5210,7 @@ function boundPaneProps(props: TockTutorRouteViewProps, id: string): TockTutorRo
     const current = controller.getSnapshot()
     return controller.paneLifetimeFor(id) === lifetime && current.focusedPaneId === id && current.path === snapshot.path && snapshot.vault !== null && sameVault(current.vault, snapshot.vault)
   }
-  for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onCanvasChange', 'onBaseEdit', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery'] as const) {
+  for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onBaseEdit', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery'] as const) {
     const callback = props[name]
     if (callback) Object.assign(bound, { [name]: (...args: never[]) => owns() ? (callback as (...args: never[]) => unknown)(...args) : false })
   }
@@ -5196,6 +5221,12 @@ function boundPaneProps(props: TockTutorRouteViewProps, id: string): TockTutorRo
 export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const { snapshot } = props
   const active = props.active !== false
+  const liveCommandRef = useRef<((command: EditorCommandId) => boolean) | null>(null)
+  const liveInsertTextRef = useRef<((text: string) => boolean) | null>(null)
+  const runEditorCommand = (command: EditorCommandId): void => {
+    if (snapshot.mode === 'live-preview') liveCommandRef.current?.(command)
+    else props.onEditorCommand?.(command)
+  }
   const ownerLifetime = props.paneController?.paneLifetimeFor(snapshot.focusedPaneId)
   const previewLabel = snapshot.documentKind === 'canvas'
     ? 'Canvas'
@@ -5802,12 +5833,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             data-document-backlinks={snapshot.settings?.backlinksInDocument === true}
             className="tocktutor-editor-body relative min-h-0 overflow-auto data-[document-backlinks=true]:[&>section]:min-h-0"
             onDrop={event => {
-              if (event.dataTransfer.files.length === 0) return
+              if (event.defaultPrevented || event.dataTransfer.files.length === 0) return
               event.preventDefault()
               props.onAttachFiles?.(event.dataTransfer.files)
             }}
             onPaste={event => {
-              if (event.clipboardData.files.length === 0) return
+              if (event.defaultPrevented || event.clipboardData.files.length === 0) return
+              event.preventDefault()
               props.onAttachFiles?.(event.clipboardData.files)
             }}
           >
@@ -5844,6 +5876,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <LivePreviewView
                 key={`${snapshot.path}:${snapshot.editorReset ?? 0}`}
                 documentKey={snapshot.path}
+                commandRef={liveCommandRef}
+                insertTextRef={liveInsertTextRef}
+                {...(props.onUploadImage === undefined ? {} : { onUploadImage: props.onUploadImage })}
+                onOpenInternalLink={target => { void props.onOpenInternalLink?.(target) }}
                 localEditRevision={snapshot.localEditRevision}
                 embeds={snapshot.embeds}
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
@@ -5978,7 +6014,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onClose={() => { setPaletteView(null); props.onCloseCommandPalette?.() }}
           onCloseAutoFocus={restorePaletteOpener}
           onOpenAutoFocus={rememberPaletteOpener}
-          onEditorCommand={props.onEditorCommand}
+          onEditorCommand={runEditorCommand}
           onForward={props.onForward}
           onNewNote={props.onNewNote}
           onReopen={props.onReopenClosedTab}
@@ -6083,7 +6119,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           )}
           <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]">{props.assistantPanel}</div>
         </aside>
-        <WorkbenchUtilities {...props} onClose={() => { setPanel(null) }} onOpenGraphNode={(path, mode) => {
+        <WorkbenchUtilities {...props} onInsertCurrentDateTime={kind => { props.onInsertCurrentDateTime?.(kind, snapshot.mode === 'live-preview' ? liveInsertTextRef.current ?? undefined : undefined) }} onClose={() => { setPanel(null) }} onOpenGraphNode={(path, mode) => {
           const result = props.onOpenGraphNode?.(path, mode)
           if (mode !== 'note' || result === undefined) return
           void Promise.resolve(result).then(success => { if (success === true) setPanel(null) })
@@ -6227,7 +6263,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     pendingEditorFocus.current?.()
     const container = root.current
     if (!active || snapshot.path === null || container === null) return
-    const selector = snapshot.mode === 'source' || snapshot.mode === 'live-preview' ? '.cm-content' : '[aria-label$="View"]'
+    const selector = snapshot.mode === 'source' ? '.cm-content' : snapshot.mode === 'live-preview' ? '.tocktutor-crepe-editor .ProseMirror' : '[aria-label$="View"]'
     const stop = (): void => {
       observer.disconnect()
       container.ownerDocument.removeEventListener('pointerdown', stop, true)
@@ -6264,6 +6300,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
     const node = root.current
     if (node === null) return
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented) return
       // This native listener runs before the linked leaf's delegated React handler.
       const linkedOrigin = event.target instanceof Element && event.target.closest('[data-linked-kind]') !== null
       const isMac = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '')
@@ -6326,6 +6363,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onAddBookmark={(title, group) => controller.addActiveBookmark(title, group ?? null)}
         onEditBookmark={(id, title, group) => controller.editActiveBookmark(id, title, group)}
         onAttachFiles={files => { void controller.attachFiles(Array.from(files).slice(0, 16)) }}
+        onUploadImage={file => controller.uploadImage(file)}
         onApplyOrganization={() => { void controller.applyOrganization() }}
         onAddPane={() => { void controller.addPane() }}
         onBack={() => { void controller.goBack() }}
@@ -6359,7 +6397,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onFocusEditor={focusEditor}
         onFocusPane={paneId => { void controller.focusPane(paneId) }}
         onForward={() => { void controller.goForward() }}
-        onInsertCurrentDateTime={kind => { controller.insertCurrentDateTime(kind) }}
+        onInsertCurrentDateTime={(kind, insert) => { controller.insertCurrentDateTime(kind, insert) }}
         onJumpToLine={line => { controller.jumpToLine(line) }}
         onLoadFacets={() => { void controller.loadFacets() }}
         onLoadGraph={mode => { void controller.loadGraph(mode) }}

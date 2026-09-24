@@ -24,6 +24,7 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   const css = await buildTailwindCss()
 
   assert.match(css, /\.flex\{/)
+  assert.doesNotMatch(css, /url\([^)]*fonts\/KaTeX/u, 'Crepe math fonts must be bundled, not requested from nonexistent application routes')
   assert.match(css, /\.flex-col\{/)
   assert.match(css, /\.text-foreground\{color:var\(--dsw-alias-label-primary\)\}/)
   assert.match(css, /\.bg-primary(?:,[^{]+)?\{background-color:var\(--dsw-alias-button-primary-fill\)\}/)
@@ -108,7 +109,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
       'launcher-command-menu', 'launcher-command-menu-item',
       'launcher-local-tool', 'launcher-local-tool-header', 'launcher-local-tool-identity', 'launcher-local-tool-content',
       'launcher-local-tool-field', 'launcher-local-tool-status', 'launcher-local-tool-error', 'launcher-secondary-button', 'launcher-primary-button',
-      'tockteam-desktop-shell', 'tockteam-sidebar-styles', 'tocktutor-live-preview-styles',
+      'tockteam-desktop-shell', 'tockteam-sidebar-styles', 'tocktutor-crepe-editor',
     ],
   )
 })

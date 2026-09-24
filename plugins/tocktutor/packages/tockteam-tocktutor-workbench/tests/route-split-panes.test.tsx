@@ -10,7 +10,7 @@ const revision = `file:${'a'.repeat(64)}`
 const ok = <T,>(value: T) => Promise.resolve({ ok: true as const, value })
 afterEach(cleanup)
 
-it.each(['editors', 'assistant', 'tabs', 'live-preview'] as const)('mounts real independent editors and keeps their seats through nested splits: %s', async check => {
+it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent editors and keeps their seats through nested splits: %s', async check => {
   const values = new Map<string, string>()
   const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) }, removeItem: (key: string) => { values.delete(key) } }
   const files = new Map([['One.md', 'alpha\n'], ['Two.md', 'second\n']])
@@ -24,7 +24,7 @@ it.each(['editors', 'assistant', 'tabs', 'live-preview'] as const)('mounts real 
   } } as unknown as WorkbenchRouteRemote
   const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(), storage)
   await controller.syncLocation('/tocktutor/One.md')
-  controller.setMode(check === 'live-preview' ? 'live-preview' : 'source')
+  controller.setMode('source')
   const left = controller.getSnapshot().focusedPaneId
   function Harness() {
     const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
@@ -113,9 +113,42 @@ it.each(['editors', 'assistant', 'tabs', 'live-preview'] as const)('mounts real 
   expect(restored.getSnapshot().layout).toEqual(layout)
   expect(restored.getPaneSnapshot(left).source).toBe('left\n')
   expect(restored.getPaneSnapshot(right).source).toBe('right\n')
-  expect(restored.getPaneSnapshot(left).mode).toBe(check === 'live-preview' ? 'live-preview' : 'source')
+  expect(restored.getPaneSnapshot(left).mode).toBe('source')
   expect(restored.getPaneSnapshot(right).mode).toBe('source')
   await restored.dispose()
+})
+
+it('keeps Crepe editors independent across a split and a note switch', async () => {
+  const files = new Map([['One.md', '# One\n'], ['Two.md', '# Two\n']])
+  const remote = { $on: () => () => {}, tocktutorWorkbench: {
+    currentVault: () => ok({ displayPath: '~/Fixture', generation: 1, name: 'Fixture', vault }),
+    listTree: () => ok({ complete: true, cursor: null, entries: [...files.keys()].map(path => ({ kind: 'document', path, revision, size: 10, createdAt: 1, modifiedAt: 1 })), generation: 1, scan: { entries: 2 }, truncated: false, truncationReason: null, warnings: [] }),
+    openDocument: (path: string) => ok({ content: files.get(path), digest: `sha256:${'a'.repeat(64)}`, generation: 1, path, revision }),
+    readDraft: () => ok({ draft: null, generation: 1 }), saveDraft: () => ok({ generation: 1 }),
+  } } as unknown as WorkbenchRouteRemote
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/One.md')
+  const left = controller.getSnapshot().focusedPaneId
+  function Harness() {
+    const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+    return <TockTutorRouteView snapshot={snapshot} paneController={controller} onActivateTab={() => {}} onFocusPane={id => { void controller.focusPane(id) }} onEdit={text => controller.edit(text)} onMode={mode => controller.setMode(mode)} onSave={() => {}} onSelect={path => { void controller.select(path) }} onMoveCanvas={() => {}} onToggleTask={() => {}} />
+  }
+  const view = render(<Harness />)
+  try {
+    const seat = (id: string) => view.container.querySelector<HTMLElement>(`[data-pane-id="${id}"]`)!
+    await waitFor(() => expect(seat(left).querySelector('.ProseMirror[contenteditable="true"]')).toBeTruthy(), { timeout: 15_000 })
+    const leftEditor = seat(left).querySelector('.ProseMirror')
+    await act(async () => { await controller.splitPane(left, 'horizontal') })
+    const right = controller.getSnapshot().focusedPaneId
+    await waitFor(() => expect(seat(right).querySelector('.ProseMirror[contenteditable="true"]')).toBeTruthy(), { timeout: 15_000 })
+    expect(seat(left).querySelector('.ProseMirror')).toBe(leftEditor)
+    await act(async () => { await controller.select('Two.md') })
+    await waitFor(() => expect(seat(right).querySelector('.ProseMirror')?.textContent).toContain('Two'))
+    expect(seat(left).querySelector('.ProseMirror')).toBe(leftEditor)
+    expect(seat(left).querySelector('.ProseMirror')?.textContent).toContain('One')
+    expect(controller.getPaneSnapshot(left).path).toBe('One.md')
+    expect(controller.getPaneSnapshot(right).path).toBe('Two.md')
+  } finally { view.unmount(); await controller.dispose() }
 })
 
 it('switches only the protected pane to Source Mode after another pane was focused', async () => {
@@ -140,7 +173,7 @@ it('switches only the protected pane to Source Mode after another pane was focus
   }
   const view = render(<Harness />)
   try {
-    await waitFor(() => expect(view.container.querySelectorAll('.cm-editor')).toHaveLength(1), { timeout: 15_000 })
+    await waitFor(() => expect(view.container.querySelectorAll('.ProseMirror[contenteditable="true"]')).toHaveLength(1), { timeout: 15_000 })
     await act(async () => { await controller.splitPane(owner, 'horizontal') })
     const other = controller.getSnapshot().focusedPaneId
     await act(async () => { await controller.select('Other.md'); controller.edit(otherDraft) })

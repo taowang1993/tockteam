@@ -15,7 +15,7 @@ vi.mock('../src/editor-surface.tsx', async importOriginal => {
         readiness.listeners.add(listener)
         return () => { readiness.listeners.delete(listener) }
       }, () => readiness.ready)
-      return ready ? <div aria-label="Live Preview Editor" className="cm-content" contentEditable suppressContentEditableWarning tabIndex={0}>{source}</div> : <p>Loading Editor…</p>
+      return ready ? <div aria-label="Live Preview Editor" className="tocktutor-crepe-editor"><div className="ProseMirror" contentEditable suppressContentEditableWarning tabIndex={0}>{source}</div></div> : <p>Loading Editor…</p>
     },
   }
 })
@@ -54,14 +54,14 @@ describe('deferred route editor focus', () => {
     mountRoute()
     await waitForLoadedNote()
     readyEditor()
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Live Preview Editor')))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Live Preview Editor').querySelector('.ProseMirror')))
   })
 
   it.each(['Split Right', 'Split Down'])('keeps the new Live Preview focused after %s dismisses its menu', async action => {
     mountRoute()
     await waitForLoadedNote()
     readyEditor()
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Live Preview Editor')))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Live Preview Editor').querySelector('.ProseMirror')))
     const trigger = screen.getByRole('button', { name: 'More Note Actions' })
     trigger.focus()
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false })
@@ -69,7 +69,7 @@ describe('deferred route editor focus', () => {
     await waitFor(() => expect(screen.getAllByLabelText('Live Preview Editor')).toHaveLength(2))
     // Radix restores trigger focus when its closing focus scope unmounts.
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
-    expect(document.activeElement).toBe(screen.getAllByLabelText('Live Preview Editor')[1])
+    expect(document.activeElement).toBe(screen.getAllByLabelText('Live Preview Editor')[1]?.querySelector('.ProseMirror'))
   })
 
   it.each(['pointer', 'keyboard'])('does not steal focus after a new %s interaction', async kind => {

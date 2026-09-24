@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { EditorWidgetTarget } from './editor-widgets.ts'
+import type { EditorCommandId } from './editor-commands.ts'
 import type { EditorSearchRequest, EditorSearchState } from './editor-search.ts'
 import type { LivePreviewTableAction } from './milkdown-editor-commands.ts'
 import { MAX_FRONTMATTER_BYTES, MAX_PROPERTIES, parseFrontmatterProperties, type PropertyType, type PropertyValue } from './properties.ts'
@@ -34,6 +35,10 @@ export interface LivePreviewEditorProps {
   className?: string
   content: string
   localEditRevision?: number | undefined
+  commandRef?: MutableRefObject<((command: EditorCommandId) => boolean) | null>
+  insertTextRef?: MutableRefObject<((text: string) => boolean) | null>
+  onUploadImage?: (file: File) => Promise<string>
+  onOpenInternalLink?: (target: string) => void
   editorViewRef?: MutableRefObject<unknown | null>
   onAddProperty?: (key: string) => boolean
   onMarkdownChange: (markdown: string) => void

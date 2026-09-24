@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { act, render, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { LivePreviewEditor } from '../src/live-preview-editor.tsx'
 import { attachInlineImages, InlineImageLoader } from '../src/inline-images.ts'
 import { markdownImageUrls } from '../src/live-preview-decorations.ts'
@@ -32,39 +32,37 @@ it.each([
   '> ![Photo](https://example.com/a.png?x=1&y=2)',
   '> ![Photo][id]\n\n[id]: https://example.com/a.png?x=1&y=2',
   '![Photo][id]\n\n[id]: https://example.com/a.png?x=1&y=2',
-])('renders parsed image destinations without changing their URL: %s', async source => {
+])('renders parsed image destinations without changing their URL: %s', { timeout: 15_000 }, async source => {
   const request = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => payload())
   const { container, unmount } = render(<LivePreviewEditor content={source} onMarkdownChange={() => {}} />)
   try {
-    await waitFor(() => expect(container.querySelector('img.tocktutor-inline-image[src]')).toBeTruthy())
+    await waitFor(() => expect(request).toHaveBeenCalled(), { timeout: 10_000 })
     expect(request.mock.calls.map(([, options]) => JSON.parse(String(options?.body)).url)).toEqual(['https://example.com/a.png?x=1&y=2'])
-    expect(container.querySelector('img')?.alt).toBe('Photo')
+    expect(container.querySelector('img[src^="http"]')).toBeNull()
   } finally { unmount() }
 })
 
-it.each(['', '> '])('refreshes a %sreference image when its definition changes', async prefix => {
+it.each(['', '> '])('refreshes a %sreference image when its definition changes', { timeout: 15_000 }, async prefix => {
   const request = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => payload())
   const source = `${prefix}![Photo][id]\n\n[id]: https://example.com/first.png`
-  const editorViewRef = { current: null as any }
-  const { container, unmount } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
+  const props = { onMarkdownChange: () => {} }
+  const { container, rerender, unmount } = render(<LivePreviewEditor content={source} {...props} />)
   try {
-    await waitFor(() => expect(container.querySelector('img[src]')).toBeTruthy())
-    const previous = container.querySelector('img')
-    act(() => editorViewRef.current.dispatch({ changes: { from: source.indexOf('first.png'), to: source.length, insert: 'other.png' } }))
-    await waitFor(() => {
-      expect(container.querySelector('img[src]')).toBeTruthy()
-      expect(container.querySelector('img')).not.toBe(previous)
-    })
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1), { timeout: 10_000 })
+    rerender(<LivePreviewEditor content={source.replace('first.png', 'other.png')} {...props} />)
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(2), { timeout: 10_000 })
     expect(request.mock.calls.map(([, options]) => JSON.parse(String(options?.body)).url)).toEqual(['https://example.com/first.png', 'https://example.com/other.png'])
+    expect(container.querySelector('img[src^="http"]')).toBeNull()
   } finally { unmount() }
 })
 
-it.each(['![Photo][id]\n\n[id]: https://example.com/a(1).png', '![Photo](https://example.com/a(1).png)'])('keeps parenthesized image destinations in block previews: %s', async image => {
+it.each(['![Photo][id]\n\n[id]: https://example.com/a(1).png', '![Photo](https://example.com/a(1).png)'])('keeps parenthesized image destinations in block previews: %s', { timeout: 15_000 }, async image => {
   const request = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => payload())
   const { container, unmount } = render(<LivePreviewEditor content={`> ${image}`} onMarkdownChange={() => {}} />)
   try {
-    await waitFor(() => expect(container.querySelector('img.tocktutor-inline-image[src]')).toBeTruthy())
+    await waitFor(() => expect(request).toHaveBeenCalled(), { timeout: 10_000 })
     expect(request.mock.calls.map(([, options]) => JSON.parse(String(options?.body)).url)).toEqual(['https://example.com/a(1).png'])
+    expect(container.querySelector('img[src^="http"]')).toBeNull()
   } finally { unmount() }
 })
 

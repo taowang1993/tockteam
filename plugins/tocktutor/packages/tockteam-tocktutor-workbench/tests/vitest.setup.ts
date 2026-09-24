@@ -18,6 +18,18 @@ if (typeof Range !== 'undefined') {
 HTMLElement.prototype.getBoundingClientRect ??= emptyRect
 HTMLElement.prototype.scrollIntoView ??= (() => {})
 
+// jsdom has no layout; actual visibility and image loading are verified in Electron.
+globalThis.IntersectionObserver ??= class implements IntersectionObserver {
+  readonly root = null
+  readonly rootMargin = '0px'
+  readonly thresholds = [0]
+  constructor(private callback: IntersectionObserverCallback) {}
+  disconnect(): void {}
+  observe(target: Element): void { this.callback([{ target, isIntersecting: true } as IntersectionObserverEntry], this) }
+  unobserve(): void {}
+  takeRecords(): IntersectionObserverEntry[] { return [] }
+}
+
 globalThis.ResizeObserver ??= class ResizeObserver {
   disconnect(): void {}
   observe(): void {}

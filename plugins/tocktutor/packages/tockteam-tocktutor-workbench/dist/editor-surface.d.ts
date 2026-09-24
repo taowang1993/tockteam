@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import type { ResolvedEmbedNode } from './embeds.ts';
-import { type LivePreviewSelection } from './live-preview-editor.tsx';
+import { type LivePreviewSelection, type LivePreviewEditorProps } from './live-preview-editor.tsx';
 import { type EditorSearchRequest, type EditorSearchState } from './editor-search.ts';
 import type { PropertyValue } from './properties.ts';
 export interface ReadingLinkResult {
@@ -30,6 +30,10 @@ export declare function RichReadingView(props: {
     title: string;
 }): ReactNode;
 export declare function LivePreviewView(props: {
+    commandRef?: LivePreviewEditorProps['commandRef'];
+    insertTextRef?: LivePreviewEditorProps['insertTextRef'];
+    onUploadImage?: LivePreviewEditorProps['onUploadImage'];
+    onOpenInternalLink?: LivePreviewEditorProps['onOpenInternalLink'];
     documentKey: string;
     localEditRevision?: number | undefined;
     embeds?: readonly ResolvedEmbedNode[] | undefined;

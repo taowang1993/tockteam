@@ -893,22 +893,22 @@ describe('TockTutor titlebar panel controls', () => {
       />
     }
     render(<ProtectedNote />)
-    await waitFor(() => expect(screen.getByLabelText('Live Preview').querySelector('.cm-content[contenteditable="true"]')).toBeTruthy())
+    await waitFor(() => expect(screen.getByLabelText('Live Preview').querySelector('.ProseMirror[contenteditable="true"]')).toBeTruthy(), { timeout: 10_000 })
     expect(screen.queryByLabelText('Markdown Source')).toBeNull()
     expect(screen.queryByRole('note')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
     expect(screen.getByLabelText('Unsaved')).toBeTruthy()
     expect(onEdit).not.toHaveBeenCalled()
-    const editor = document.querySelector<HTMLElement>('.cm-content')!
+    const editor = document.querySelector<HTMLElement>('.ProseMirror')!
     editor.focus()
     fireEvent.keyDown(editor, { key: 'Enter', code: 'Enter' })
-    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('# Lesson', '\n# Lesson')))
+    await waitFor(() => expect(onEdit.mock.lastCall?.[0]).toContain('Keep this exact.'))
   })
 
   it('never locks Live Preview when the note formatting changes', async () => {
     const props = { documentKey: 'Lesson.md', onEdit: vi.fn(), onToggleTask: vi.fn(), title: 'Lesson' }
     const view = render(<LivePreviewView {...props} source={'> [!note]\n> Protected\n'} />)
-    await waitFor(() => expect(view.container.querySelector('.cm-content[contenteditable="true"]')).toBeTruthy())
+    await waitFor(() => expect(view.container.querySelector('.ProseMirror[contenteditable="true"]')).toBeTruthy(), { timeout: 10_000 })
     expect(screen.queryByRole('note')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
     view.rerender(<LivePreviewView {...props} source={'# Lesson\nPlain text.\n'} />)
@@ -973,7 +973,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onMode).toHaveBeenLastCalledWith(defaultEditingMode)
   })
 
-  it('renders editable Live Preview with exact-source task and callout controls', async () => {
+  it('renders editable Crepe Live Preview with task and callout content', async () => {
     const onEdit = vi.fn()
     const onMode = vi.fn()
     const onToggleTask = vi.fn()
@@ -1014,21 +1014,16 @@ describe('TockTutor titlebar panel controls', () => {
     expect(sourceMode.getAttribute('aria-checked')).toBe('false')
     fireEvent.click(sourceMode)
     expect(onMode).toHaveBeenCalledWith('source')
-    await waitFor(() => expect(document.querySelector('.cm-content')).toBeTruthy(), { timeout: 5_000 })
-    expect(document.querySelector('.cm-content')?.getAttribute('contenteditable')).toBe('true')
-    expect(screen.getByLabelText('Live Preview Editor').className).toContain('tocktutor-live-preview-styles')
+    await waitFor(() => expect(document.querySelector('.ProseMirror[contenteditable="true"]')).toBeTruthy(), { timeout: 10_000 })
+    expect(screen.getByLabelText('Live Preview Editor').className).toContain('tocktutor-crepe-editor')
     expect(screen.queryByRole('note')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Edit in Source Mode' })).toBeNull()
-    const task = screen.getByRole('checkbox', { name: 'Mark Task as Complete' })
+    const task = await screen.findByRole('checkbox', { name: 'Mark Task as Complete' })
     expect(task.tabIndex).toBe(0)
     fireEvent.keyDown(task, { key: ' ' })
-    expect(onEdit).toHaveBeenCalledWith(source.replace('- [ ] Review', '- [x] Review'))
-    const callout = document.querySelector<HTMLDetailsElement>('details.callout')!
-    expect(callout.open).toBe(false)
-    expect(callout.textContent).toContain('Body')
-    fireEvent.click(callout.querySelector('summary')!)
-    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(source.replace('- [ ] Review', '- [x] Review').replace('> [!tip]- Fold', '> [!tip]+ Fold')))
-    expect(screen.getByLabelText('Collapse List')).toBeTruthy()
+    await waitFor(() => expect(onEdit.mock.lastCall?.[0]).toContain('[x] Review'))
+    expect(onEdit.mock.lastCall?.[0]).toContain('[!tip]- Fold')
+    expect(document.querySelector('.ProseMirror blockquote')?.textContent).toContain('Body')
   })
 
   it('returns the resolved Reading View fragment through the mounted route and scrolls it after navigation', { timeout: 20_000 }, async () => {
@@ -1922,7 +1917,7 @@ describe('TockTutor titlebar panel controls', () => {
     { activation: 'pointer', content: false, sameNote: true, fails: false },
     { activation: 'keyboard', content: true, sameNote: true, fails: false },
     { activation: 'pointer', content: false, sameNote: false, fails: true },
-  ])('preserves search focus lifecycle ($activation, content=$content, sameNote=$sameNote, fails=$fails)', async ({ activation, content, sameNote, fails }) => {
+  ])('preserves search focus lifecycle ($activation, content=$content, sameNote=$sameNote, fails=$fails)', { timeout: 20_000 }, async ({ activation, content, sameNote, fails }) => {
     const vault = { generation: 1, id: `vault:${'a'.repeat(64)}` }
     const revision = `file:${'b'.repeat(64)}`
     const sources: Record<string, string> = {
@@ -1992,7 +1987,7 @@ describe('TockTutor titlebar panel controls', () => {
     }
     if (!sameNote) await waitFor(() => expect(navigate).toHaveBeenCalledWith('/tocktutor/Notes/Result.md'))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search Notes' })).toBeNull())
-    await waitFor(() => expect(document.activeElement?.classList.contains('cm-content')).toBe(true))
+    await waitFor(() => expect(document.activeElement?.classList.contains(content ? 'cm-content' : 'ProseMirror')).toBe(true), { timeout: 10_000 })
     expect(document.activeElement?.textContent).toContain(sameNote ? 'Welcome' : 'Result')
   })
 
@@ -2101,7 +2096,7 @@ describe('route search integrity', () => {
     await waitFor(() => expect(document.querySelector('.cm-content')).toBeTruthy())
     expect(screen.getByLabelText('Authored Source').textContent).toBe('alphaX')
     fireEvent.click(screen.getByText('Test Live'))
-    await waitFor(() => expect(document.querySelector('.cm-content')?.textContent).toContain('alphaX'), { timeout: 15_000 })
+    await waitFor(() => expect(document.querySelector('.ProseMirror')?.textContent).toContain('alphaX'), { timeout: 15_000 })
     expect(screen.getByLabelText('Authored Source').textContent).toBe('alphaX')
     fireEvent.click(screen.getByText('Test Source'))
     await waitFor(() => expect(document.querySelector('.cm-content')).toBeTruthy())

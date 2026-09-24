@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { ResolvedEmbedNode } from './embeds.ts'
-import { LivePreviewEditor, MarkdownDocumentHeader, type LivePreviewSelection } from './live-preview-editor.tsx'
+import { LivePreviewEditor, MarkdownDocumentHeader, type LivePreviewSelection, type LivePreviewEditorProps } from './live-preview-editor.tsx'
 import { clampEditorSearchIndex, MAX_EDITOR_SEARCH_MATCHES, moveEditorSearchIndex, searchEditorMatches, type EditorSearchRequest, type EditorSearchState } from './editor-search.ts'
 import type { PropertyValue } from './properties.ts'
 import { buildMarkdownSlides, renderMarkdownHtml } from './rich-markdown.ts'
@@ -285,6 +285,10 @@ export function RichReadingView(props: {
 }
 
 export function LivePreviewView(props: {
+  commandRef?: LivePreviewEditorProps['commandRef']
+  insertTextRef?: LivePreviewEditorProps['insertTextRef']
+  onUploadImage?: LivePreviewEditorProps['onUploadImage']
+  onOpenInternalLink?: LivePreviewEditorProps['onOpenInternalLink']
   documentKey: string
   localEditRevision?: number | undefined
   embeds?: readonly ResolvedEmbedNode[] | undefined
@@ -308,6 +312,10 @@ export function LivePreviewView(props: {
         ariaLabel="Live Preview Editor"
         className="min-h-[20rem]"
         content={props.source}
+        {...(props.commandRef === undefined ? {} : { commandRef: props.commandRef })}
+        {...(props.insertTextRef === undefined ? {} : { insertTextRef: props.insertTextRef })}
+        {...(props.onUploadImage === undefined ? {} : { onUploadImage: props.onUploadImage })}
+        {...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink })}
         localEditRevision={props.localEditRevision}
         key={props.documentKey}
         onMarkdownChange={props.onEdit}

@@ -1,8 +1,7 @@
-import { act, cleanup, render, waitFor } from '@testing-library/react'
-import { redo, undo } from '@codemirror/commands'
+import { cleanup, render, waitFor } from '@testing-library/react'
+import { undo } from '@codemirror/commands'
 import type { EditorView } from '@codemirror/view'
 import { afterEach, expect, it, vi } from 'vitest'
-import { LivePreviewEditor } from '../src/live-preview-editor.tsx'
 import { SourceEditor } from '../src/source-editor.tsx'
 
 it.each(['b', 'b\n'])('processes bounded bulk replacements without rescanning the source for every match: %j', async replacement => {
@@ -42,27 +41,9 @@ it('checks replacement size against authored CRLF bytes, not normalized editor b
 // Exercise the public editor adapter, not a rich-text serialization or mocked editor.
 afterEach(cleanup)
 
-it.each([SourceEditor, LivePreviewEditor])('keeps authored whitespace visible with native CodeMirror wrapping', async Editor => {
+it('keeps authored whitespace visible with native CodeMirror wrapping in Source Mode', async () => {
   const editorViewRef = { current: null as EditorView | null }
-  render(<Editor content={'plain  text\nnext   line'} editorViewRef={editorViewRef} />)
+  render(<SourceEditor content={'plain  text\nnext   line'} editorViewRef={editorViewRef} />)
   await waitFor(() => expect(editorViewRef.current).toBeTruthy())
   expect(getComputedStyle(editorViewRef.current!.contentDOM).whiteSpace).toBe('break-spaces')
-})
-it('keeps note-local replacement and exact undo/redo in lossless Live Preview', async () => {
-  const source = '---\r\ntitle: Keep\r\n---\r\nalpha **alpha**\n> [!note]\r> Keep this.\r\n'
-  const editorViewRef = { current: null as EditorView | null }
-  const onMarkdownChange = vi.fn()
-  const onSearchState = vi.fn()
-  const props = { content: source, editorViewRef, onMarkdownChange, onSearchState, searchQuery: 'alpha' }
-  const { rerender } = render(<LivePreviewEditor {...props} />)
-  await waitFor(() => expect(editorViewRef.current).toBeTruthy())
-  expect(onMarkdownChange).not.toHaveBeenCalled()
-  expect(onSearchState).toHaveBeenLastCalledWith({ current: 0, query: 'alpha', total: 2 })
-  rerender(<LivePreviewEditor {...props} searchRequest={{ action: 'replace-all', id: 1, replacement: 'omega' }} />)
-  const edited = source.replaceAll('alpha', 'omega')
-  expect(onMarkdownChange).toHaveBeenLastCalledWith(edited)
-  act(() => { expect(undo(editorViewRef.current!)).toBe(true) })
-  expect(onMarkdownChange).toHaveBeenLastCalledWith(source)
-  act(() => { expect(redo(editorViewRef.current!)).toBe(true) })
-  expect(onMarkdownChange).toHaveBeenLastCalledWith(edited)
 })

@@ -2988,11 +2988,11 @@ for (const change of ['navigate', 'edit'] as const) {
   })
 }
 
-test('Live Preview uses authored Markdown offsets for commands while Reading remains non-editable', async () => {
+test('Rich commands never apply ProseMirror offsets to authored Markdown', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(2026, 7, 26, 10, 0))
   await controller.syncLocation('/tocktutor/Second.md')
-  controller.setMode('live-preview')
+  controller.setMode('source')
   const source = controller.getSnapshot().source
   controller.setSourceEditorSelection(1, 6)
   controller.runEditorCommand('bold')
@@ -3001,13 +3001,18 @@ test('Live Preview uses authored Markdown offsets for commands while Reading rem
   controller.setSourceEditorSelection(1, 6)
   assert.equal(await controller.extractActiveSelection(), true)
   assert.equal(controller.insertCurrentDateTime('date'), true)
-  controller.setMode('reading')
-  const readingSource = controller.getSnapshot().source
+  controller.edit(source)
+  controller.setMode('live-preview')
   controller.setSourceEditorSelection(1, 6)
+  controller.runEditorCommand('bold')
   assert.equal(await controller.extractActiveSelection(), false)
   assert.equal(controller.insertCurrentDateTime('date'), false)
+  assert.equal(controller.insertCurrentDateTime('date', text => text === '2026-08-26'), true)
+  assert.equal(controller.getSnapshot().source, source)
+  controller.setMode('reading')
+  assert.equal(controller.insertCurrentDateTime('date'), false)
   controller.runEditorCommand('bold')
-  assert.equal(controller.getSnapshot().source, readingSource)
+  assert.equal(controller.getSnapshot().source, source)
   controller.dispose()
 })
 

@@ -398,7 +398,7 @@ export declare class WorkbenchRouteController {
     convertActiveNote(): boolean;
     extractActiveSelection(): Promise<boolean>;
     createBuiltinTemplateNote(name: keyof typeof BUILTIN_TEMPLATES): Promise<boolean>;
-    insertCurrentDateTime(kind: 'date' | 'time'): boolean;
+    insertCurrentDateTime(kind: 'date' | 'time', insertRichText?: (text: string) => boolean): boolean;
     prepareOrganization(): Promise<boolean>;
     cancelOrganization(): void;
     applyOrganization(): Promise<boolean>;
@@ -406,7 +406,9 @@ export declare class WorkbenchRouteController {
     hydrateBaseRows(basePath: string): Promise<boolean>;
     applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean>;
     attachFiles(files: readonly File[]): Promise<boolean>;
+    uploadImage(file: File): Promise<string>;
     storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean>;
+    private writeActiveAttachment;
     previewAttachment(path: string): Promise<boolean>;
     closeAttachmentPreview(): void;
     applyCanvasChange(change: CanvasChange): Promise<boolean>;
@@ -437,6 +439,7 @@ export interface TockTutorRouteViewProps {
     onEditBookmark?(id: string, title: string, group: string | null): boolean | void;
     onRevealFile?(): Promise<boolean> | boolean;
     onAttachFiles?(files: FileList): void;
+    onUploadImage?(file: File): Promise<string>;
     onActivateTab(paneId: string, path: string): void;
     onApplyOrganization?(): void;
     onBack?(): void;
@@ -464,7 +467,7 @@ export interface TockTutorRouteViewProps {
     onFocusEditor?(): void;
     onFocusPane(paneId: string): void;
     onForward?(): void;
-    onInsertCurrentDateTime?(kind: 'date' | 'time'): void;
+    onInsertCurrentDateTime?(kind: 'date' | 'time', insertRichText?: (text: string) => boolean): void;
     onJumpToLine?(line: number): void;
     onLoadFacets?(): void;
     onLoadGraph?(mode: 'global' | 'local'): void;

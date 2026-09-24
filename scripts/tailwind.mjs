@@ -23,5 +23,11 @@ export async function buildTailwindCss(root = defaultRoot, sources) {
     onDependency: () => {},
   })
   const scanner = new Scanner({ sources: sources ?? compiler.sources })
-  return optimize(compiler.build(scanner.scan()), { file: input, minify: true }).code
+  const css = optimize(compiler.build(scanner.scan()), { file: input, minify: true }).code
+  const resolve = createRequire(join(root, 'plugins', 'tocktutor', 'packages', 'tockteam-tocktutor-workbench', 'package.json')).resolve
+  const fontRoot = join(dirname(createRequire(resolve('@milkdown/crepe')).resolve('katex/package.json')), 'dist', 'fonts')
+  const fonts = [...css.matchAll(/url\((?:\.\/)?fonts\/(KaTeX_[\w-]+\.(?:woff2?|ttf))\)/gu)]
+  const encoded = await Promise.all(fonts.map(async ([, name, ext]) => [name, `url(data:font/${ext};base64,${(await readFile(join(fontRoot, name))).toString('base64')})`]))
+  const data = new Map(encoded)
+  return css.replace(/url\((?:\.\/)?fonts\/(KaTeX_[\w-]+\.(?:woff2?|ttf))\)/gu, (_url, name) => data.get(name))
 }
