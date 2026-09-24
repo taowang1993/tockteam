@@ -5659,8 +5659,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         />
       )}
 </>
-  const editor = (<section aria-label="Note Editor" className={`tocktutor-editor grid h-full min-h-0 min-w-0 ${noteSearchMode === null ? 'grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)]' : 'grid-rows-[40px_auto_minmax(0,1fr)_var(--tt-footer-height)]'} overflow-hidden bg-[var(--tt-panel)]`} id={props.paneOnly ? `tocktutor-note-editor-${snapshot.focusedPaneId}` : 'tocktutor-note-editor'} role="tabpanel">
-          <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center border-b border-[var(--tt-border)] px-2.5">
+  const editor = (<section aria-label="Note Editor" className={`tocktutor-editor relative grid h-full min-h-0 min-w-0 ${noteSearchMode === null ? 'grid-rows-[40px_minmax(0,1fr)]' : 'grid-rows-[40px_auto_minmax(0,1fr)]'} overflow-hidden bg-[var(--tt-panel)]`} id={props.paneOnly ? `tocktutor-note-editor-${snapshot.focusedPaneId}` : 'tocktutor-note-editor'} role="tabpanel">
+          <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center px-2.5">
             <h2 className="m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
             <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[26px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)]">
               {snapshot.documentKind === 'markdown' ? (
@@ -5831,7 +5831,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <div
             aria-label="Editor Attachment Drop Zone"
             data-document-backlinks={snapshot.settings?.backlinksInDocument === true}
-            className="tocktutor-editor-body relative min-h-0 overflow-auto data-[document-backlinks=true]:[&>section]:min-h-0"
+            className="tocktutor-editor-body relative min-h-0 overflow-auto pb-[var(--tt-footer-height)] data-[document-backlinks=true]:[&>section]:min-h-0"
             onDrop={event => {
               if (event.defaultPrevented || event.dataTransfer.files.length === 0) return
               event.preventDefault()
@@ -5936,7 +5936,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               </section>
             )}
           </div>
-          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar flex min-w-0 items-center border-t border-[var(--tt-border)] px-2 text-xs text-[var(--tt-muted)]" role="group">
+          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar absolute right-0 bottom-0 z-10 flex h-[var(--tt-footer-height)] max-w-full min-w-0 items-center overflow-x-auto rounded-tl-md border-t border-l border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2 text-xs text-[var(--tt-muted)]" role="group">
             <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
             {props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && <output aria-live="polite" className="mr-3 min-w-0 truncate">{props.nativeNoteActions.message}</output>}
             <div className="tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">

@@ -1260,6 +1260,13 @@ describe('TockTutor titlebar panel controls', () => {
     expect(status.textContent).toContain('0 words')
     expect(status.textContent).toContain('0 characters')
     expect(status.querySelector('.tocktutor-document-stats')?.className).toContain('ml-auto')
+    const editor = screen.getByRole('tabpanel', { name: 'Note Editor' })
+    expect(editor.querySelector('.tocktutor-editor-header')?.className).not.toContain('border-b')
+    expect(editor.className).not.toContain('_var(--tt-footer-height)')
+    for (const utility of ['absolute', 'bottom-0', 'right-0', 'max-w-full', 'overflow-x-auto']) {
+      expect(status.classList.contains(utility)).toBe(true)
+    }
+    expect(screen.getByLabelText('Editor Attachment Drop Zone').className).toContain('pb-[var(--tt-footer-height)]')
   })
 
   it('uses one identity-bound FileList callback for picker, paste, and drop', () => {
