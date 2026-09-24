@@ -42,6 +42,12 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(css, /--dsw-specific-markdown-accent:light-dark\(#705dcf,#a68af9\)/)
   assert.match(css, /--dsw-specific-markdown-highlight:#ffd00066/)
   assert.match(css, /--dsw-specific-markdown-inline-code:color-mix\(in srgb, var\(--dsw-alias-label-primary,currentColor\) 9%, transparent\)/)
+  assert.match(css, /:root:not\(\[data-tockteam-skin\]\) \.tocktutor-editor\{--tt-panel:light-dark\(#fff,#1e1e1e\)\}/, 'the default note canvas matches Obsidian without overriding named skins')
+  const editorTheme = css.match(/\.tocktutor-crepe-editor \.milkdown\{([^}]*)\}/)?.[1] ?? ''
+  assert.match(editorTheme, /--crepe-color-background:var\(--tt-panel\)/, 'title and article share the document canvas')
+  assert.match(css, /--prosemirror-virtual-cursor-color:currentColor/, 'the visible rich-editor cursor uses the text color, not a muted border')
+  assert.match(css, /\.ProseMirror:not\(\.virtual-cursor-enabled\)\{caret-color:currentColor\}/, 'native carets match text without drawing a second virtual caret')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror h1\{[^}]*font-size:26px/, 'rich headings match Reading View instead of the oversized Crepe default')
   const desktopSummary = css.match(/\.tockteam-desktop-shell #tockteam-chrome-layer>\[data-tockteam-pinned-summary\]\{([^}]*)\}/)?.[1] ?? ''
   assert.match(desktopSummary, /height:calc\(50% - 12px\)/)
   assert.match(desktopSummary, /top:12px/)
@@ -109,7 +115,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
       'launcher-command-menu', 'launcher-command-menu-item',
       'launcher-local-tool', 'launcher-local-tool-header', 'launcher-local-tool-identity', 'launcher-local-tool-content',
       'launcher-local-tool-field', 'launcher-local-tool-status', 'launcher-local-tool-error', 'launcher-secondary-button', 'launcher-primary-button',
-      'tockteam-desktop-shell', 'tockteam-sidebar-styles', 'tocktutor-crepe-editor',
+      'tockteam-desktop-shell', 'tockteam-sidebar-styles', 'tocktutor-editor', 'tocktutor-crepe-editor',
     ],
   )
 })

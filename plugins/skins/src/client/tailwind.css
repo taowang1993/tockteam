@@ -1090,10 +1090,15 @@
   }
 }
 
+/* The unskinned note canvas follows Obsidian; named skins keep their own surface. */
+@utility tocktutor-editor {
+  :root:not([data-tockteam-skin]) & { --tt-panel: light-dark(#fff, #1e1e1e); }
+}
+
 /* Crepe owns its generated controls; it does not own a second application theme. */
 @utility tocktutor-crepe-editor {
   & .milkdown {
-    --crepe-color-background: var(--dsw-alias-bg-base);
+    --crepe-color-background: var(--tt-panel);
     --crepe-color-on-background: var(--dsw-alias-label-primary);
     --crepe-color-surface: var(--dsw-alias-bg-layer-1);
     --crepe-color-surface-low: var(--dsw-alias-bg-layer-2);
@@ -1119,6 +1124,12 @@
     font-family: inherit;
   }
   & .milkdown .ProseMirror { box-sizing: border-box; width: calc(100% - 48px); max-width: 700px; margin: 0 auto; padding: 18px 0 72px; white-space: pre-wrap; }
+  & .milkdown .ProseMirror { --prosemirror-virtual-cursor-color: currentColor; }
+  & .milkdown .ProseMirror:not(.virtual-cursor-enabled) { caret-color: currentColor; }
+  & .milkdown .cm-cursor, & .milkdown .cm-dropCursor { border-left-color: currentColor; }
+  & .milkdown .ProseMirror h1 { margin: 40px 0 16px; padding: 0; font-size: 26px; line-height: 31px; font-weight: 700; }
+  & .milkdown .ProseMirror > h1:first-child { margin-top: 0; }
+  & .milkdown .ProseMirror > p { margin: 0 0 16px; padding: 0; }
   & .milkdown :is(button, [role='button'], input, [tabindex]):focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
   & .tocktutor-rich-inline[data-editing='false'] > .tocktutor-inline-source { display: none; }
   & .tocktutor-rich-inline[data-editing='true'] > .tocktutor-inline-preview { display: none; }

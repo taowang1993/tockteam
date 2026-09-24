@@ -287,6 +287,25 @@ describe('selection-aware editor widgets', () => {
 })
 
 describe('Live Preview editor', () => {
+  it.each(['reading', 'live'])('shows a repeated article title only once without changing Markdown in %s mode', { timeout: 15_000 }, async mode => {
+    const title = '关于DeepSeek最新V4模型，普通人可以知道的6件事'
+    const heading = '关于 DeepSeek 最新 V4 模型，普通人可以知道的6件事'
+    const source = `---\r\nstatus: active\r\n---\r\n\r\n# ${heading} ###\r\n\r\nArticle text.\r\n`
+    const onMarkdownChange = vi.fn()
+    const { container } = render(mode === 'reading'
+      ? <RichReadingView source={source} onToggleTask={() => {}} title={title} />
+      : <LivePreviewEditor content={source} onMarkdownChange={onMarkdownChange} title={title} />)
+    await waitFor(() => expect(container.querySelector(mode === 'reading' ? 'article h1' : '.ProseMirror h1')?.textContent).toBe(heading), { timeout: 10_000 })
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    expect(screen.getByLabelText('Document Properties').textContent).toContain('statusactive')
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+  })
+
+  it.each(['Body text.', '# Different Heading\n', '```md\n# Article\n```', '    # Article', 'Introduction.\n\n# Article'])('keeps the filename title when the opening body does not repeat it: %s', source => {
+    render(<RichReadingView source={source} onToggleTask={() => {}} title="Article" />)
+    expect(screen.getAllByRole('heading', { level: 1, name: 'Article' })[0]?.closest('header')).not.toBeNull()
+  })
+
   it('preserves frontmatter and presents Obsidian-style tag properties', async () => {
     const source = '---\r\nstatus: active\r\ntags: [one, two]\r\n---\r\n# Lesson\r\n'
     const onSetProperty = vi.fn(() => true)

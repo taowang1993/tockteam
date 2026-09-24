@@ -75,6 +75,13 @@ function editedPropertyValue(previous: PropertyValue, text: string): PropertyVal
   return previous === null && text === '' ? null : text
 }
 
+function fallbackDocumentTitle(source: string, title: string | undefined): string | undefined {
+  if (title === undefined) return undefined
+  // Suppress only a matching leading title; never remove or rewrite authored headings.
+  const heading = splitLivePreviewSource(source).body.match(/^(?:[ \t]*\n)* {0,3}#[ \t]+([^\n]+?)(?:[ \t]+#+)?[ \t]*(?:\n|$)/u)?.[1]
+  return heading?.replace(/\s/gu, '') === title.replace(/\s/gu, '') ? undefined : title
+}
+
 export function MarkdownDocumentHeader(props: { editableProperties?: boolean; className?: string; onAddProperty?: (key: string) => boolean; onSetProperty?: (key: string, value: PropertyValue) => boolean; source: string; title?: string }): ReactNode {
   const properties = useMemo(() => parseFrontmatterProperties(props.source), [props.source])
   const errorId = useId()
@@ -90,10 +97,11 @@ export function MarkdownDocumentHeader(props: { editableProperties?: boolean; cl
   }
   if (props.editableProperties && new TextEncoder().encode(props.source).byteLength > MAX_FRONTMATTER_BYTES) return <p role="status">This note is too large to edit properties. Use Source Mode.</p>
   const showProperties = properties.length > 0 || props.editableProperties === true
-  if (props.title === undefined && !showProperties) return null
+  const title = fallbackDocumentTitle(props.source, props.title)
+  if (title === undefined && !showProperties) return null
   return (
     <header className={props.className}>
-      {props.title !== undefined && <h1 className="m-0 mb-5 text-[30px] leading-tight font-[650] tracking-[-.01em] text-[var(--tt-text)]">{props.title}</h1>}
+      {title !== undefined && <h1 className="m-0 mb-5 text-[26px] leading-[31px] font-bold tracking-[-.01em] text-[var(--tt-text)]">{title}</h1>}
       {props.editableProperties && error && !adding && <p role="alert">{error}</p>}
       {props.editableProperties && properties.length >= MAX_PROPERTIES && <p role="status">The property limit was reached; this list may be incomplete. Use Source Mode.</p>}
       {props.editableProperties && properties.length === 0 && <p className="text-xs text-[var(--tt-muted)]">No properties.</p>}

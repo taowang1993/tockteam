@@ -30,6 +30,13 @@ function editedPropertyValue(previous, text) {
     }
     return previous === null && text === '' ? null : text;
 }
+function fallbackDocumentTitle(source, title) {
+    if (title === undefined)
+        return undefined;
+    // Suppress only a matching leading title; never remove or rewrite authored headings.
+    const heading = splitLivePreviewSource(source).body.match(/^(?:[ \t]*\n)* {0,3}#[ \t]+([^\n]+?)(?:[ \t]+#+)?[ \t]*(?:\n|$)/u)?.[1];
+    return heading?.replace(/\s/gu, '') === title.replace(/\s/gu, '') ? undefined : title;
+}
 export function MarkdownDocumentHeader(props) {
     const properties = useMemo(() => parseFrontmatterProperties(props.source), [props.source]);
     const errorId = useId();
@@ -46,9 +53,10 @@ export function MarkdownDocumentHeader(props) {
     if (props.editableProperties && new TextEncoder().encode(props.source).byteLength > MAX_FRONTMATTER_BYTES)
         return _jsx("p", { role: "status", children: "This note is too large to edit properties. Use Source Mode." });
     const showProperties = properties.length > 0 || props.editableProperties === true;
-    if (props.title === undefined && !showProperties)
+    const title = fallbackDocumentTitle(props.source, props.title);
+    if (title === undefined && !showProperties)
         return null;
-    return (_jsxs("header", { className: props.className, children: [props.title !== undefined && _jsx("h1", { className: "m-0 mb-5 text-[30px] leading-tight font-[650] tracking-[-.01em] text-[var(--tt-text)]", children: props.title }), props.editableProperties && error && !adding && _jsx("p", { role: "alert", children: error }), props.editableProperties && properties.length >= MAX_PROPERTIES && _jsx("p", { role: "status", children: "The property limit was reached; this list may be incomplete. Use Source Mode." }), props.editableProperties && properties.length === 0 && _jsx("p", { className: "text-xs text-[var(--tt-muted)]", children: "No properties." }), showProperties && (_jsxs("section", { children: [_jsx("h2", { className: "m-0 mb-3 text-base font-semibold text-[var(--tt-text)]", children: _jsxs(Button, { unstyled: true, "aria-controls": propertiesId, "aria-expanded": propertiesExpanded, className: "group relative flex min-h-6 w-full cursor-pointer items-center rounded border-0 bg-transparent p-0 text-left text-inherit hover:text-[var(--tt-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tt-accent)]", onClick: () => { setPropertiesExpanded(expanded => !expanded); }, type: "button", children: [_jsx(ChevronRight, { "aria-hidden": "true", className: "absolute -left-5 size-4 text-[var(--tt-muted)] group-aria-expanded:rotate-90", "data-icon": "inline-start" }), "Properties"] }) }), _jsxs("div", { hidden: !propertiesExpanded, id: propertiesId, children: [properties.length > 0 && (_jsx("dl", { "aria-label": "Document Properties", className: "m-0 grid grid-cols-[minmax(96px,140px)_minmax(0,1fr)] gap-x-3 text-sm leading-6", children: properties.map(property => {
+    return (_jsxs("header", { className: props.className, children: [title !== undefined && _jsx("h1", { className: "m-0 mb-5 text-[26px] leading-[31px] font-bold tracking-[-.01em] text-[var(--tt-text)]", children: title }), props.editableProperties && error && !adding && _jsx("p", { role: "alert", children: error }), props.editableProperties && properties.length >= MAX_PROPERTIES && _jsx("p", { role: "status", children: "The property limit was reached; this list may be incomplete. Use Source Mode." }), props.editableProperties && properties.length === 0 && _jsx("p", { className: "text-xs text-[var(--tt-muted)]", children: "No properties." }), showProperties && (_jsxs("section", { children: [_jsx("h2", { className: "m-0 mb-3 text-base font-semibold text-[var(--tt-text)]", children: _jsxs(Button, { unstyled: true, "aria-controls": propertiesId, "aria-expanded": propertiesExpanded, className: "group relative flex min-h-6 w-full cursor-pointer items-center rounded border-0 bg-transparent p-0 text-left text-inherit hover:text-[var(--tt-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tt-accent)]", onClick: () => { setPropertiesExpanded(expanded => !expanded); }, type: "button", children: [_jsx(ChevronRight, { "aria-hidden": "true", className: "absolute -left-5 size-4 text-[var(--tt-muted)] group-aria-expanded:rotate-90", "data-icon": "inline-start" }), "Properties"] }) }), _jsxs("div", { hidden: !propertiesExpanded, id: propertiesId, children: [properties.length > 0 && (_jsx("dl", { "aria-label": "Document Properties", className: "m-0 grid grid-cols-[minmax(96px,140px)_minmax(0,1fr)] gap-x-3 text-sm leading-6", children: properties.map(property => {
                                     const tags = property.key.toLocaleLowerCase() === 'tags' && Array.isArray(property.value) ? property.value : null;
                                     const checkbox = property.type === 'checkbox' && typeof property.value === 'boolean';
                                     const Icon = tags === null ? propertyIcons[property.type] : Tags;
