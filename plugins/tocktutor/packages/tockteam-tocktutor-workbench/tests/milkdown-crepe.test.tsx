@@ -43,6 +43,18 @@ it('keeps content editable and preserves Obsidian constructs through edit, undo,
   await waitFor(() => expect(reopened.current?.state.doc.textContent).toContain('Edited Text'), { timeout: 10_000 })
 }, 20_000)
 
+it('keeps footnote definitions out of earlier Live Preview paragraphs', async () => {
+  const source = 'Use ==highlighting==, and `inline code` in one paragraph.\n\nOpen [[Welcome]], follow [[Study Guide|an aliased note]].\n\nLater.[^context]\n\n[^context]: Footnotes should remain readable without dominating the page.\n'
+  const { container } = render(<LivePreviewEditor content={source} onMarkdownChange={() => {}} />)
+  await waitFor(() => expect(container.querySelector('.ProseMirror')).toBeTruthy(), { timeout: 10_000 })
+  const paragraphs = [...container.querySelectorAll('.ProseMirror > p')].map(node => node.textContent)
+  expect(paragraphs[0]).toContain(', and inline code in one paragraph.')
+  expect(paragraphs[0]).not.toContain('Footnotes should remain readable')
+  expect(paragraphs[1]).not.toContain('Footnotes should remain readable')
+  expect(container.querySelector('.tocktutor-inline-preview')?.textContent).toBe('highlighting')
+  expect(container.querySelector('.ProseMirror dl')?.textContent).toContain('Footnotes should remain readable')
+})
+
 it('preserves block math, link references, and footnote definitions when editing adjacent text', async () => {
   const source = 'Before\n\n$$x + 1$$\n\nRead [Guide][reference] and footnote[^one].\n\n[reference]: Guide.md "Guide title"\n[^one]: Footnote content.\n'
   const ref = { current: null as any }, onChange = vi.fn()

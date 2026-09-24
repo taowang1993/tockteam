@@ -134,7 +134,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
                 detach?.()
                 const pos = getPos()
                 dom.dataset.editing = String(typeof pos === 'number' && view.state.selection.from > pos && view.state.selection.to < pos + next.nodeSize)
-                const definitions = source.current.split('\n').filter(line => /^\s*\[[^\]]+\]:/u.test(line)).join('\n')
+                const definitions = source.current.split('\n').filter(line => /^\s*\[(?!\^)[^\]]+\]:/u.test(line)).join('\n')
                 const references = new Map([...definitions.matchAll(/^\s*\[([^\]]+)\]:\s*(?:<([^>]+)>|(\S+))/gmu)].map(([, label, wrapped, bare]) => [label.toLowerCase(), wrapped ?? bare]))
                 const markdown = next.textContent.replace(/!\[([^\]\n]{0,1000})\]\[([^\]\n]{1,200})\]/gu, (match, alt, label) => {
                   const url = references.get(label.toLowerCase())
