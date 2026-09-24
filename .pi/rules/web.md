@@ -25,7 +25,7 @@ This document is the canonical local design guidance for browser-rendered TockTe
 ## Agent Quick Rules
 
 - Read the owning surface and its callers before changing UI. Reuse the closest existing DSH component, semantic token, and TockTeam recipe before adding local styling.
-- DSH owns the base browser shell, ThemeService, typography, and `--dsw-*` semantic token contract. Verify inherited APIs against the revision pinned by `dsh-source.json`.
+- DSH owns the base browser shell, ThemeService, typography, and `--dsw-*` semantic token contract. Verify inherited APIs against the revision pinned by `dsh-source.json` (currently `@deepseek-ai/dsh` `0.1.2-rc.1`; do not infer the pin from other documentation).
 - `plugins/skins/src/skins.ts` is the only TockTeam skin catalog. Do not create another palette or theme loader.
 - Use `--dsw-alias-*` and `--dsw-specific-*` tokens for ordinary UI color. Color-valued TockTeam aliases such as `--tockteam-*` and TockTutor aliases such as `--tt-*` must derive from those semantic tokens; layout and measurement variables may remain feature-owned.
 - Use Lucide for interface icons. Product marks are the only routine custom-SVG exception.
@@ -103,9 +103,10 @@ Raw colors are allowed only when they are intrinsic data or a documented boundar
 
 Every change must remain legible in the built-in light and dark themes and all four TockTeam skins. Do not assume a white background or a purple accent.
 
-- Verify foreground/fill pairs, not token names: `brand-primary-invert` is not a contrasting foreground in the pinned built-in themes. Shared `primary-foreground` and `brand-foreground` use `--dsw-alias-label-primary-inverted`. Measure at least 4.5:1 for ordinary text and 3:1 for essential control marks, including selected/checked states.
+- Verify foreground/fill pairs, not token names. Currently `primary-foreground` maps to `--dsw-alias-label-primary-foreground`, while `brand-foreground` maps to `--dsw-alias-brand-primary-invert`. In the pinned built-in light and dark themes, `brand-primary-invert` is the **same color** as `brand-primary`: do not rely on `text-brand-foreground` over `bg-brand` for essential marks until that mapping is corrected. Measure at least 4.5:1 for ordinary text and 3:1 for essential control marks, including selected/checked states.
 - Application appearance can differ from system appearance. Bare Tailwind `dark:` follows the system media query in this integration; use semantic colors for application UI instead. Verify dark-app/light-system and light-app/dark-system cases.
 - Feature-local aliases and ancestor focus rules do not inherit across a body portal. Define portaled surface aliases directly from body-visible DSH tokens, and give the portal its own focus treatment. Do not globalize feature aliases or use hardcoded palette fallbacks to hide a missing scope.
+- The shared Desktop shell/editor seam is in `plugins/skins/src/client/tailwind.css`: `--tockteam-shell-chrome` colors the shell/sidebar/status surfaces; `--tockteam-main-pane` colors the editor and Settings content surface, while Settings navigation uses `--dsw-specific-sidebar-fill`. Only the built-in dark, unskinned theme swaps `--dsw-alias-bg-layer-1` to `#1e1e1e` (shell) and retains `--dsw-alias-bg-base` as `#151517` (canvas). Keep built-in light and named skins on their own token mappings. Verify the *computed* pane and navigation colors on all Settings sections and both editor routes before changing these roles.
 
 ## 3. Typography and Copy
 
@@ -117,7 +118,7 @@ DSH owns the base browser font stack and global type behavior. TockTeam currentl
 - Keep terminal font family and size preferences scoped to the terminal.
 - Truncate or wrap user-controlled text intentionally. Shrinkable flex/grid children need `min-width: 0`.
 - Use tabular numerals for aligned counts, durations, timestamps, and diff totals.
-- Follow the owning surface's established capitalization: section and standalone labels generally use Title Case, while descriptions and full sentences use sentence case.
+- Apply `AGENTS.md` Title Case to all standalone UI labels and phrases, including inherited-shell replacements; use sentence case only for descriptions and full sentences. Preserve exact on-screen capitalization when quoting UI in reports.
 - Preserve the exact product names **TockTeam Desktop**, **TockTeam Web**, and **TockTeam TUI**.
 
 ## 4. Icons
@@ -178,7 +179,7 @@ Rules:
 ### Settings Composition
 
 - Full settings pages use an 18px semibold `h2` with a 24px line height; sections use 16px semibold `h3`; row labels use 14px medium text, and helper copy uses 12px text with an 18px line height. Nested headings follow the semantic order. This is a settings recipe, not a new global typography system; compact popovers retain their local hierarchies. Pinned DSH page-title compatibility rules stay revision-bound.
-- The settings shell owns the page inset. Page roots must not add top/left padding or auto-centering that moves their title away from sibling pages. Verify actual title coordinates across every settings page with `node scripts/settings-layout-electron-proof.mjs`; component-only captures cannot catch offsets introduced by the real shell.
+- The settings shell owns the page inset. Page roots must not add top/left padding or auto-centering that moves their title away from sibling pages. Verify actual title coordinates across every settings page in a real Desktop flow using `scripts/settings-layout-electron-checks.js` on an owned app-scoped CDP endpoint; component-only captures cannot catch offsets introduced by the real shell. Do not run the legacy launcher script directly under the extended-display-only guard (see Verification).
 - One component owns each section title and description. Embedded section bodies must not repeat their enclosing card header. Use cards only where they clarify grouping; keep inherited flat settings layouts intact.
 - Associate a single control with its visible label and helper text. Compound rows use named groups and individually named controls, not a label that toggles an arbitrary child. Preserve existing error-description IDs.
 - Give labels a readable minimum measure and let control groups wrap below them when space runs out. Constrain controls and preset grids to the available container width. Check descendant overflow, not only document overflow, and reserve space for expanded switch/checkbox hit targets.
@@ -283,11 +284,7 @@ node --test tests/shadcn-migration.test.ts tests/ui-ref-contract.test.ts
 pnpm --filter @tockteam/ui run typecheck
 ```
 
-For TockLauncher Settings sidebar changes, run the existing bounded Electron proof after runtime staging/build. It exercises both disclosure levels and their motion/accessibility/layout contracts:
-
-```sh
-node scripts/launcher-extension-settings-proof.mts
-```
+For TockLauncher Settings sidebar changes, use the assertions in `scripts/launcher-extension-settings-proof.mts` after runtime staging/build. They cover both disclosure levels and their motion/accessibility/layout contracts, but its current direct Electron spawn is **not** an approved launch path under the extended-display-only guard. Run them only after adapting the harness to attach to a guarded Electron instance; do not bypass the guard.
 
 For TockTutor UI changes, verify the nested workspace and rebuild its tracked outputs; never hand-edit `lib/` or `dist/`:
 
@@ -306,9 +303,9 @@ pnpm test
 pnpm run build
 ```
 
-Rendered verification uses **Electron only**, controlled through app-scoped Playwright/CDP. Do not open standalone browser pages or a system browser for tests. Use hidden/isolated Electron windows, a temporary user-data directory, and `--use-mock-keychain`; preserve `HOME` and never touch the user's Keychain. Any exception requires explicit user approval. Web launcher/profile/bundle changes may additionally use non-browser HTTP checks with automatic opening disabled.
+Rendered verification uses **Electron only**, controlled through app-scoped Playwright/CDP. Do not open standalone browser pages or a system browser for tests. Launch supported generic Electron through `extended_display` on a non-main display and attach Playwright only to its returned owned CDP endpoint. Preserve `HOME`, use an isolated user-data directory and `--use-mock-keychain` before any `HOME` override, never touch the user's Keychain, and stop the owned instance with `extended_display.stop` (verify no descendants remain). Do not launch GUI apps with `node:child_process`, shell scripts, raw app binaries, or a foreground fallback. The existing `scripts/settings-layout-electron-proof.mjs`, `scripts/settings-design-electron-proof.mjs`, and `scripts/launcher-extension-settings-proof.mts` still spawn Electron themselves; **do not run them as-is** under this guard. Reuse their check logic through a guarded instance when feasible, or report the proof as unavailable until the harness is adapted. Web launcher/profile/bundle changes may additionally use non-browser HTTP checks with automatic opening disabled.
 
-Run `node scripts/settings-design-electron-proof.mjs` for the settings regression checks. Its component fixtures use actual pinned DSH theme CSS, not a synthetic palette that masks missing tokens, native margins, or global corner rules. It is not a substitute for a real Desktop flow when IPC or composition changes.
+The Settings component checks in `scripts/settings-design-electron-checks.js` use actual pinned DSH theme CSS when their fixture is constructed; they do not replace real Desktop composition/IPC checks. For canonical TockTutor-versus-Obsidian dark captures, seed `skins.json` with `{"activeId":null,"fallbackTheme":"dark"}` in the isolated profile and verify `document.documentElement.style.colorScheme === 'dark'` and no `data-tockteam-skin` on the document or body before publishing.
 
 Verify actual geometry and contrast, keyboard focus, Escape and outside dismissal, focus restoration, reduced motion, narrow containers, long content, loading/error/selected states, and every affected theme/skin. Confirm screenshots are 1512 × 949 CSS pixels at 2× (3024 × 1898 PNG pixels); record route/content/mode and runtime errors. Stop the entire Electron/runtime process tree in `finally` and verify no owned descendants remain. Publish only explicitly allowlisted screenshots transactionally; do not refresh baselines merely to make a failing visual check pass.
 
