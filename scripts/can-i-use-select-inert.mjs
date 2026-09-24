@@ -201,7 +201,7 @@ export function openEvidenceFile(path, validate = validateEnvelope, maxBytes = M
 
 export const REAL_INPUT = '/private/tmp/tockteam-can-i-use-fixture-gate-r2.noindex'
 export const REAL_OUTPUT = '/private/tmp/tockteam-can-i-use-inert-capsule-r1.noindex'
-const SUPPLEMENT_ROOT = new URL('../.beads/reports/2026-09-09-can-i-use-attribution-supplement/', import.meta.url)
+const SUPPLEMENT_ROOT = new URL('./can-i-use-attribution/', import.meta.url)
 const EPOCH = 1777030995000
 const SELECTORS = ['> 0.5%', 'last 2 versions', 'Firefox ESR', 'not dead']
 export const PROVENANCE_ARCHIVES = Object.freeze([

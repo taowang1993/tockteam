@@ -1,9 +1,0 @@
-{
-  "attempt": "Fresh Desktop Save-Acknowledgment Check",
-  "id": "1bddf1b5-b486-4a8e-993d-da3ec5d6807f",
-  "rootPid": 48201,
-  "recordedPids": [48201, 48203, 48204, 48207, 48212, 48216, 48220, 48221, 48346, 48412],
-  "stopped": true,
-  "remaining": [],
-  "verdict": "Failed verification gate: the driver required a persistent saved message. The isolated file contains the typed marker. The saved note watcher reload can replace that transient message with opened; the stable UI signal is the active tab's Unsaved indicator. No product source change was made."
-}

@@ -1,1 +1,0 @@
-{"outputFile":"/private/tmp/tockteam-can-i-use-inert-capsule-r1.noindex","capsuleSha256":"09a21a4f83e27fe07d4b71ac5b8e531ac1fb8f4713ca0f7305b8cf07d5d49035","selectorSha256":"05842cbfcf3f9a49a6fc2beb0e754a7ad74db2367d6eb30ecd7defb7fda7f9d7","status":"complete","runtimeAdmitted":false}

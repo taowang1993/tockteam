@@ -1041,7 +1041,7 @@
         "plugins/tocktutor/packages/tockbot-web-clip/tests/runtime-adapter.test.ts",
         ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer.png",
         ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
-        ".beads/reports/tocktutor-utility-proof.json"
+        ".agents/uiux/tocktutor/utility-proof.json"
       ],
       "disposition": "Implemented and verified through the assigned existing owner, focused evidence, aggregate gates, and cutover proof."
     },
@@ -1996,7 +1996,7 @@
         "plugins/tocktutor/packages/tockbot-web-clip/tests/runtime-adapter.test.ts",
         ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer.png",
         ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
-        ".beads/reports/tocktutor-utility-proof.json"
+        ".agents/uiux/tocktutor/utility-proof.json"
       ],
       "children": [
         "render-safe-raw-html",

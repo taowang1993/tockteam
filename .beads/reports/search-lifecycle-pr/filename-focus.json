@@ -1,6 +1,0 @@
-{
-  "active": "<div contenteditable=\"true\" translate=\"no\" class=\"ProseMirror editor ProseMirror-focused\" role=\"textbox\"><h1 id=\"result\">Result</h1><p>focus-proof-8edb3413-6cb2-4cbf-86d9-bac9f5a91c9a</p><p>#project</p></div>",
-  "check": "filename Result pointer from Welcome",
-  "editor": "Result\nResult\nProperties\nAdd Property\nResult\n\nfocus-proof-8edb3413-6cb2-4cbf-86d9-bac9f5a91c9a\n\n#project\n\nResult.md opened.\n0 backlinks\nLive Preview\n9 words\n69 characters",
-  "pass": true
-}

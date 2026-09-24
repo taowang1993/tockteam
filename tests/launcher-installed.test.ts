@@ -779,26 +779,26 @@ test('installed evidence catalog owns validated hosted proof on every platform',
   const shortcut = fabricated.rows.find(row => row.id === 'macOS:shortcut-second-instance')
   assert.ok(shortcut)
   shortcut.state = 'local-verified'
-  shortcut.evidence = { kind: 'checked-in-report', platform: 'darwin', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '.beads/reports/fabricated.json', reportSha256: 'b'.repeat(64) }
+  shortcut.evidence = { kind: 'checked-in-report', platform: 'darwin', commit: 'a'.repeat(40), version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: 'scripts/ueli/evidence/fabricated.json', reportSha256: 'b'.repeat(64) }
   assert.ok(inspectInstalledEvidenceCatalog(fabricated).failures.some(failure => failure.includes('report is missing')))
   const traversal = structuredClone(fabricated)
   const promoted = traversal.rows.find(row => row.id === 'macOS:shortcut-second-instance')!
-  promoted.evidence!.reference = '.beads/reports/../package.json'
+  promoted.evidence!.reference = 'scripts/ueli/evidence/../package.json'
   assert.ok(inspectInstalledEvidenceCatalog(traversal).failures.some(failure => failure.includes('not checked in')))
 })
 
 test('installed evidence freshness rejects runtime drift after a report commit', () => {
   const runGit = (args: readonly string[]) => args[0] === 'merge-base'
     ? { status: 0, stdout: '' }
-    : { status: 0, stdout: '.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\nsrc/main.ts\n' }
+    : { status: 0, stdout: 'scripts/ueli/evidence/report.json\nscripts/ueli/installed-evidence-catalog.json\nsrc/main.ts\n' }
   const commit = 'a'.repeat(40)
   const evidenceCatalog = structuredClone(catalog)
   for (const row of evidenceCatalog.rows) row.evidence = null
-  evidenceCatalog.rows[0]!.evidence = { kind: 'checked-in-report', platform: 'darwin', commit, version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: '.beads/reports/report.json', reportSha256: 'b'.repeat(64) }
+  evidenceCatalog.rows[0]!.evidence = { kind: 'checked-in-report', platform: 'darwin', commit, version: '0.1.14', identity: 'ai.deepseek.tockteam-desktop', result: 'passed', reference: 'scripts/ueli/evidence/report.json', reportSha256: 'b'.repeat(64) }
   assert.deepEqual(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit }).failures, [`installed evidence commit has later runtime changes: ${commit}: src/main.ts`])
   const allowedRunGit = (args: readonly string[]) => args[0] === 'merge-base'
     ? { status: 0, stdout: '' }
-    : { status: 0, stdout: '.agents/references/usage.md\n.agents/skills/oh-dsh/SKILL.md\n.beads/interactions.jsonl\n.beads/reports/report.json\nscripts/ueli/installed-evidence-catalog.json\ntests/launcher-installed.test.ts\n' }
+    : { status: 0, stdout: '.agents/references/usage.md\n.agents/skills/oh-dsh/SKILL.md\n.beads/interactions.jsonl\n.beads/reports/report.json\nscripts/ueli/evidence/report.json\nscripts/ueli/installed-evidence-catalog.json\ntests/launcher-installed.test.ts\n' }
   assert.equal(inspectInstalledEvidenceFreshness(evidenceCatalog, { head: 'HEAD', repoRoot: root, runGit: allowedRunGit }).failures.length, 0)
 })
 

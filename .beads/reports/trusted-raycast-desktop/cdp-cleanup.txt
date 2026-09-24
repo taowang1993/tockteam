@@ -1,1 +1,0 @@
-CDP probe exit=7 (7 means connection refused)

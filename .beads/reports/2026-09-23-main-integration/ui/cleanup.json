@@ -1,9 +1,0 @@
-{
-  "id": "51df988a-5e9c-4726-8c6c-e5bbade062a2",
-  "rootPid": 68522,
-  "recordedPids": [68522, 68524, 68525, 68528, 68532, 68536, 68539, 68540, 68541, 68542, 68543, 68544, 68545, 68546, 68547, 68666, 68739, 68740, 68741, 68742, 68744, 68745, 68746, 68747],
-  "stopped": true,
-  "remaining": [],
-  "launch": "Parent-owned extended_display guard; generic Electron, mock Keychain, isolated app data, preserved HOME, extended display11 only",
-  "nativeEffects": "Clipboard and shell.openPath intercepted; OS associations, clipboard, Finder, and installed-app behavior not certified"
-}

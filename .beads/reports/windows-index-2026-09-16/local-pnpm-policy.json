@@ -1,9 +1,0 @@
-{
-  "passed": true,
-  "platform": "darwin",
-  "installerPid": 77889,
-  "policy": "allowBuilds:\n  sqlite3: true\n  koffi: false\noverrides:\n  koffi: 3.1.6",
-  "koffiVersion": "3.1.6",
-  "koffiNativeLoaded": true,
-  "sqliteNativeQuery": true
-}

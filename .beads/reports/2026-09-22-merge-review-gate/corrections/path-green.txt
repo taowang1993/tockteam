@@ -1,8 +1,0 @@
-
- RUN  v4.1.8 /Users/taowang/projects/worktrees/tutor/plugins/tocktutor/packages/tockteam-tocktutor-workbench
-
-
- Test Files  1 passed (1)
-      Tests  6 passed (6)
-   Start at  19:40:09
-   Duration  1.98s (transform 1.08s, setup 10ms, import 1.48s, tests 218ms, environment 219ms)

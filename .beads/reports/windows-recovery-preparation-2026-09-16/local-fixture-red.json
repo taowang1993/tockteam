@@ -1,9 +1,0 @@
-{
-  "failure": "AssertionError [ERR_ASSERTION]: The input did not match the regular expression /LOCAL_STOP_BEFORE_WINDOWS_TERMINATION/. Input:\n\n'AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\\n' +\n  '+ actual - expected\\n' +\n  '\\n' +\n  \"+ 'PRAGMA journal_mode'\\n\" +\n  \"- 'BEGIN EXCLUSIVE'\\n\"\n\n    at async file:///private/tmp/tockteam-recovery-fixture-smoke.mjs:19:2",
-  "cleanedPids": [
-    94865,
-    94866
-  ],
-  "rootRemoved": true,
-  "residue": []
-}

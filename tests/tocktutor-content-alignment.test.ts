@@ -7,7 +7,7 @@ const root = '.agents/uiux/tocktutor'
 test('compares matching content and includes the installed Claudian assistant', () => {
   const html = readFileSync(`${root}/tocktutor.html`, 'utf8')
   assert.match(html, /Obsidian · Claudian/u)
-  const proof = JSON.parse(readFileSync('.beads/reports/tocktutor-content-alignment.json', 'utf8'))
+  const proof = JSON.parse(readFileSync(`${root}/content-alignment.json`, 'utf8'))
   assert.equal(proof.cleanup.verified, true)
   const sources = new Set([...html.matchAll(/<img[^>]*src="screenshots\/([^"]+)"/gu)].map(match => match[1]))
   assert.equal(sources.size, proof.gallery.uniqueImageSources)

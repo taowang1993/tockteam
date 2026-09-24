@@ -6,7 +6,7 @@ import test from 'node:test'
 
 const root = resolve('.agents/uiux/tocktutor')
 const html = readFileSync(resolve(root, 'tocktutor.html'), 'utf8')
-const proof = JSON.parse(readFileSync('.beads/reports/tocktutor-content-alignment.json', 'utf8'))
+const proof = JSON.parse(readFileSync(resolve(root, 'content-alignment.json'), 'utf8'))
 const images = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]!)
 const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]!)
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')

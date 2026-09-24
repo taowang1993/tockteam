@@ -78,7 +78,7 @@ function validateCheckedInEvidence(failures, row) {
   failure(failures, evidence?.identity === 'ai.deepseek.tockteam-desktop', `verified row evidence identity drifted: ${String(row.id)}`)
   const reference = evidence?.reference
   const checkedInPath = typeof reference === 'string'
-    && reference.startsWith('.beads/reports/')
+    && reference.startsWith('scripts/ueli/evidence/')
     && reference.endsWith('.json')
     && !reference.includes('..')
   failure(failures, checkedInPath, `verified row evidence is not checked in: ${String(row.id)}`)
@@ -174,7 +174,7 @@ export function inspectInstalledEvidenceFreshness(catalog, { head = 'HEAD', repo
       continue
     }
     const changed = String(diff.stdout).split(/\r?\n/u).filter(Boolean)
-      .filter(file => !file.startsWith('.agents/skills/') && !file.startsWith('.beads/reports/') && !file.startsWith('tests/') && !file.includes('/tests/') && !ALLOWED_POST_EVIDENCE_PATHS.has(file))
+      .filter(file => !file.startsWith('.agents/skills/') && !file.startsWith('.beads/reports/') && !file.startsWith('scripts/ueli/evidence/') && !file.startsWith('tests/') && !file.includes('/tests/') && !ALLOWED_POST_EVIDENCE_PATHS.has(file))
       .sort()
     if (changed.length > 0) failures.push(`installed evidence commit has later runtime changes: ${commit}: ${changed.join(', ')}`)
   }

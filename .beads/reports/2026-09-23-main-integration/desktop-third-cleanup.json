@@ -1,9 +1,0 @@
-{
-  "attempt": "Stable Save-Contract Desktop Run",
-  "id": "cab097b6-9a05-4cf7-8c51-b6c1465183cc",
-  "rootPid": 53218,
-  "recordedPids": [53218, 53220, 53221, 53224, 53228, 53232, 53235, 53244, 53245, 53246, 53247, 53248, 53249, 53250, 53251, 53360, 53436],
-  "stopped": true,
-  "remaining": [],
-  "verdict": "Incomplete gate: exact editing/history bytes passed, but the verifier read save observation fields from the wrong object and used an ambiguous linked-pane heading locator. All44recorded save observations independently checked clean and exact. No product source change was made."
-}
