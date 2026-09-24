@@ -14,14 +14,16 @@ import { ArrowDown, ArrowUp, FileText, List, Plus, Search, Sparkles } from 'luci
 import { redactBoundaryText } from "./context.js";
 // The body portal and the panel own the same semantic aliases and focus treatment.
 const ASSISTANT_SURFACE = 'text-foreground [--tta-accent:var(--dsw-alias-brand-primary)] [--tta-bg:var(--dsw-alias-bg-base)] [--tta-border:var(--dsw-alias-border-l1)] [--tta-muted:var(--dsw-alias-label-secondary)] [--tta-panel:var(--dsw-alias-bg-layer-1)] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_:is(button,input,select,textarea,summary):focus-visible]:outline-2 [&_:is(button,input,select,textarea,summary):focus-visible]:outline-offset-2 [&_:is(button,input,select,textarea,summary):focus-visible]:outline-ring [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!duration-0';
-const EMPTY_CONVERSATION = Object.freeze({
+const EMPTY_SESSION = Object.freeze({
     lastAgentError: null,
-    nodes: Object.freeze([]),
     openError: null,
     openState: 'cold',
-    partial: null,
     promptError: null,
     running: false,
+});
+const EMPTY_CHAT = Object.freeze({
+    nodes: Object.freeze([]),
+    partial: null,
     runningCalls: Object.freeze([]),
 });
 function remoteValue(result) {
@@ -145,8 +147,13 @@ export function TockTutorAssistantPanel(props) {
     const proposalPage = proposals?.key === reviewKey ? proposals.value : null;
     const activeDecision = decision?.routeEpoch === routeEpoch ? decision : null;
     const current = useSyncExternalStore(listener => props.sessions.list.subscribe(listener), () => props.sessions.list.getSnapshot().current, () => undefined);
-    const conversation = current === undefined ? undefined : props.sessions.binding(current)?.session;
-    const transcript = useSyncExternalStore(listener => conversation?.subscribe(listener) ?? emptySubscribe(), () => conversation?.getSnapshot() ?? EMPTY_CONVERSATION, () => EMPTY_CONVERSATION);
+    const sessionSource = current === undefined ? undefined : props.sessions.binding(current)?.session;
+    const session = useSyncExternalStore(listener => sessionSource?.subscribe(listener) ?? emptySubscribe(), () => sessionSource?.getSnapshot() ?? EMPTY_SESSION, () => EMPTY_SESSION);
+    // RC.1 keeps transcript data on the Chat target, not the Session lifecycle store.
+    const chatSource = current === undefined || sessionSource === undefined
+        ? undefined
+        : props.uiConversation.binding(current).target('chat');
+    const transcript = useSyncExternalStore(listener => chatSource?.subscribe(listener) ?? emptySubscribe(), () => chatSource?.getSnapshot()?.legacy ?? EMPTY_CHAT, () => EMPTY_CHAT);
     useEffect(() => {
         setMessage('');
     }, [reviewKey]);
@@ -223,7 +230,7 @@ export function TockTutorAssistantPanel(props) {
                 controller.abort();
             reviewControllers.clear();
         };
-    }, [loadAudit, loadProposals, reviewControllers, transcript.running, transcript.runningCalls.length]);
+    }, [loadAudit, loadProposals, reviewControllers, session.running, transcript.runningCalls.length]);
     useEffect(() => () => {
         for (const controller of pending.current)
             controller.abort();
@@ -338,9 +345,9 @@ export function TockTutorAssistantPanel(props) {
     };
     const partial = boundedText(blockText(transcript.partial?.blocks, 'kind'), MAX_TRANSCRIPT_ENTRY_CHARS);
     const transcriptEntries = projectTranscript(transcript.nodes);
-    const transcriptError = transcript.promptError?.error.message
-        ?? transcript.openError?.message
-        ?? transcript.lastAgentError;
+    const transcriptError = session.promptError?.error.message
+        ?? session.openError?.message
+        ?? session.lastAgentError;
     const renderedAt = Date.now();
     const hasConversation = transcriptEntries.length > 0
         || partial !== ''

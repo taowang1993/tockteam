@@ -309,6 +309,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       },
     }
     const sessions = { marker: 'packed-client-session' }
+    const uiConversation = { marker: 'packed-client-chat' }
     const mountAssistant = async (): Promise<() => Promise<void>> => {
       const client = await modules.import(packageName) as {
         apply(context: unknown): Promise<() => Promise<void>>
@@ -320,6 +321,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       const clientContext = {
         remote,
         sessions,
+        uiConversation,
         slots: {
           inject(name: string, callback: () => () => void) {
             assert.equal(name, 'tockteam.tocktutor.workbench.assistant')
@@ -333,7 +335,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
         },
       } as Record<string, unknown> & { inject?: unknown }
       clientContext.inject = (services: string[], callback: (child: typeof clientContext) => () => void) => {
-        assert.deepEqual(services, ['remote', 'remote.tocktutorAssistant', 'sessions', 'slots'])
+        assert.deepEqual(services, ['remote', 'remote.tocktutorAssistant', 'sessions', 'slots', 'uiConversation'])
         const disposePanel = callback(clientContext)
         return Object.assign(Promise.resolve(), { dispose: async () => { disposePanel() } })
       }
@@ -347,6 +349,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       assert.deepEqual(injectPanel(), {
         remote: { tocktutorAssistant: assistantRemote },
         sessions,
+        uiConversation,
       })
       return async () => {
         disposePanel()

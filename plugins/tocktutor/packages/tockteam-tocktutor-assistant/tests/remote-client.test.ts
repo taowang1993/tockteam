@@ -134,6 +134,7 @@ test('client mounts Remote and the exact lifecycle-owned Workbench assistant sea
   const registered: Array<{ component: unknown; options: Record<string, unknown> }> = []
   const disposed: string[] = []
   const sessions = { marker: 'selected-session-runtime' }
+  const uiConversation = { marker: 'chat-target-runtime' }
   let declaration: (() => () => void) | undefined
   const assistantRemote = {}
   const context = {
@@ -145,6 +146,7 @@ test('client mounts Remote and the exact lifecycle-owned Workbench assistant sea
       },
     },
     sessions,
+    uiConversation,
     slots: {
       inject(name: string, callback: () => () => void) {
         injected.push(name)
@@ -166,9 +168,9 @@ test('client mounts Remote and the exact lifecycle-owned Workbench assistant sea
   }
 
   const dispose = await client.apply(context as never)
-  assert.deepEqual(client.inject, ['remote', 'sessions', 'slots'])
+  assert.deepEqual(client.inject, ['remote', 'sessions', 'slots', 'uiConversation'])
   assert.deepEqual(mounted, [remote])
-  assert.deepEqual(injectedServices, [['remote', 'remote.tocktutorAssistant', 'sessions', 'slots']])
+  assert.deepEqual(injectedServices, [['remote', 'remote.tocktutorAssistant', 'sessions', 'slots', 'uiConversation']])
   assert.deepEqual(injected, ['tockteam.tocktutor.workbench.assistant'])
   assert.ok(declaration)
   const disposePanel = declaration()
@@ -180,7 +182,7 @@ test('client mounts Remote and the exact lifecycle-owned Workbench assistant sea
     registrant: '@tockteam/tocktutor-assistant',
   })
   const inject = registered[0]?.options.inject as (() => unknown)
-  assert.deepEqual(inject(), { remote: { tocktutorAssistant: assistantRemote }, sessions })
+  assert.deepEqual(inject(), { remote: { tocktutorAssistant: assistantRemote }, sessions, uiConversation })
   disposePanel()
   await dispose()
   assert.deepEqual(disposed, ['panel', 'inject', 'remote'])
@@ -228,6 +230,7 @@ test('real Client Remote propagates cancellation and retires retained handles on
   } as unknown as ConnectionHandle
   context.provide('connection', connection)
   context.provide('sessions', {} as never)
+  context.provide('uiConversation', {} as never)
   context.provide('slots', { inject: () => () => {} } as never)
   const gatewayFiber = context.plugin(Object.assign(gateway.apply, { inject: gateway.inject }))
   await gatewayFiber

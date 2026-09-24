@@ -1,6 +1,9 @@
 import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import assistantRemote from '@tockteam/tocktutor-assistant/remote'
 import {
   TOCKTUTOR_ASSISTANT_PANEL_SLOT,
@@ -8,6 +11,7 @@ import {
 } from '@tockteam/tocktutor-workbench/client'
 import {
   TockTutorAssistantPanel,
+  type AssistantPanelConversation,
   type AssistantPanelRemote,
   type AssistantPanelSessions,
 } from './assistant-panel.tsx'
@@ -18,7 +22,7 @@ type Context = CordisContext & { slots: TockTutorSlots }
 export const name = '@tockteam/tocktutor-assistant'
 
 /** Required generated transport and Workbench presentation services. */
-export const inject = ['remote', 'sessions', 'slots']
+export const inject = ['remote', 'sessions', 'slots', 'uiConversation']
 
 /** Mount transport first, then contribute one lifecycle-owned nested Workbench panel. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
@@ -26,18 +30,19 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   let panelFiber: ReturnType<Context['inject']> | undefined
   try {
     panelFiber = ctx.inject(
-      ['remote', 'remote.tocktutorAssistant', 'sessions', 'slots'],
+      ['remote', 'remote.tocktutorAssistant', 'sessions', 'slots', 'uiConversation'],
       child => {
         const mountedRemote = child.remote as unknown as AssistantPanelRemote
         const remote: AssistantPanelRemote = {
           tocktutorAssistant: mountedRemote.tocktutorAssistant,
         }
-        const sessions = child.sessions as unknown as AssistantPanelSessions
+        const sessions: AssistantPanelSessions = child.sessions as unknown as ISessions
+        const uiConversation: AssistantPanelConversation = child.uiConversation
         const slots = (child as Context).slots
         return slots.inject(
           TOCKTUTOR_ASSISTANT_PANEL_SLOT,
           () => slots.register({
-            inject: () => ({ remote, sessions }),
+            inject: () => ({ remote, sessions, uiConversation }),
             name: TOCKTUTOR_ASSISTANT_PANEL_SLOT,
             registrant: name,
           }, TockTutorAssistantPanel),

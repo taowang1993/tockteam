@@ -20,6 +20,7 @@ import {
 } from 'react'
 import { ArrowDown, ArrowUp, FileText, List, Plus, Search, Sparkles } from 'lucide-react'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TockTutorAssistantPanelOwnerProps } from '@tockteam/tocktutor-workbench/client'
 import { redactBoundaryText } from './context.ts'
 import type {
@@ -38,14 +39,16 @@ import type {
 // The body portal and the panel own the same semantic aliases and focus treatment.
 const ASSISTANT_SURFACE = 'text-foreground [--tta-accent:var(--dsw-alias-brand-primary)] [--tta-bg:var(--dsw-alias-bg-base)] [--tta-border:var(--dsw-alias-border-l1)] [--tta-muted:var(--dsw-alias-label-secondary)] [--tta-panel:var(--dsw-alias-bg-layer-1)] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_:is(button,input,select,textarea,summary):focus-visible]:outline-2 [&_:is(button,input,select,textarea,summary):focus-visible]:outline-offset-2 [&_:is(button,input,select,textarea,summary):focus-visible]:outline-ring [&_h2]:m-0 [&_h3]:m-0 [&_p]:m-0 motion-reduce:[&_*]:!scroll-auto motion-reduce:[&_*]:!duration-0 motion-reduce:[&_*::after]:!duration-0 motion-reduce:[&_*::before]:!duration-0'
 
-const EMPTY_CONVERSATION: AssistantConversationSnapshot = Object.freeze({
+const EMPTY_SESSION: AssistantSessionSnapshot = Object.freeze({
   lastAgentError: null,
-  nodes: Object.freeze([]),
   openError: null,
   openState: 'cold',
-  partial: null,
   promptError: null,
   running: false,
+})
+const EMPTY_CHAT: AssistantChatSnapshot = Object.freeze({
+  nodes: Object.freeze([]),
+  partial: null,
   runningCalls: Object.freeze([]),
 })
 
@@ -54,20 +57,27 @@ interface AssistantTextBlock {
   text?: string
 }
 
-export interface AssistantConversationSnapshot {
+export interface AssistantSessionSnapshot {
   lastAgentError: string | null
-  nodes: readonly unknown[]
   openError: { message: string } | null
   openState: 'cold' | 'loading' | 'open' | 'error'
-  partial: { blocks: readonly AssistantTextBlock[] } | null
   promptError: { error: { message: string } } | null
   running: boolean
+}
+
+export interface AssistantChatSnapshot {
+  nodes: readonly unknown[]
+  partial: { blocks: readonly AssistantTextBlock[] } | null
   runningCalls: readonly { callId: string; name: string }[]
 }
 
-interface ConversationSource {
-  getSnapshot(): AssistantConversationSnapshot
+interface SnapshotSource<T> {
+  getSnapshot(): T
   subscribe(listener: () => void): () => void
+}
+
+export interface AssistantPanelConversation {
+  binding(id: SessionId): { target(target: 'chat'): SnapshotSource<{ legacy: AssistantChatSnapshot } | undefined> }
 }
 
 interface ScopedAssistantRemote {
@@ -79,7 +89,7 @@ interface ScopedAssistantRemote {
 }
 
 export interface AssistantPanelSessions {
-  binding(id: string): { session: ConversationSource } | undefined
+  binding(id: string): { session: SnapshotSource<AssistantSessionSnapshot> } | undefined
   list: {
     getSnapshot(): { current: string | undefined }
     subscribe(listener: () => void): () => void
@@ -101,6 +111,7 @@ export interface AssistantPanelRemote {
 export interface TockTutorAssistantPanelProps extends TockTutorAssistantPanelOwnerProps {
   remote: AssistantPanelRemote
   sessions: AssistantPanelSessions
+  uiConversation: AssistantPanelConversation
 }
 
 function remoteValue<T>(result: RemoteResult<T>): T {
@@ -237,11 +248,20 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
     () => props.sessions.list.getSnapshot().current,
     () => undefined,
   )
-  const conversation = current === undefined ? undefined : props.sessions.binding(current)?.session
+  const sessionSource = current === undefined ? undefined : props.sessions.binding(current)?.session
+  const session = useSyncExternalStore(
+    listener => sessionSource?.subscribe(listener) ?? emptySubscribe(),
+    () => sessionSource?.getSnapshot() ?? EMPTY_SESSION,
+    () => EMPTY_SESSION,
+  )
+  // RC.1 keeps transcript data on the Chat target, not the Session lifecycle store.
+  const chatSource = current === undefined || sessionSource === undefined
+    ? undefined
+    : props.uiConversation.binding(current as SessionId).target('chat')
   const transcript = useSyncExternalStore(
-    listener => conversation?.subscribe(listener) ?? emptySubscribe(),
-    () => conversation?.getSnapshot() ?? EMPTY_CONVERSATION,
-    () => EMPTY_CONVERSATION,
+    listener => chatSource?.subscribe(listener) ?? emptySubscribe(),
+    () => chatSource?.getSnapshot()?.legacy ?? EMPTY_CHAT,
+    () => EMPTY_CHAT,
   )
 
   useEffect(() => {
@@ -319,7 +339,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
       for (const controller of reviewControllers) controller.abort()
       reviewControllers.clear()
     }
-  }, [loadAudit, loadProposals, reviewControllers, transcript.running, transcript.runningCalls.length])
+  }, [loadAudit, loadProposals, reviewControllers, session.running, transcript.runningCalls.length])
 
   useEffect(() => () => {
     for (const controller of pending.current) controller.abort()
@@ -434,9 +454,9 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
 
   const partial = boundedText(blockText(transcript.partial?.blocks, 'kind'), MAX_TRANSCRIPT_ENTRY_CHARS)
   const transcriptEntries = projectTranscript(transcript.nodes)
-  const transcriptError = transcript.promptError?.error.message
-    ?? transcript.openError?.message
-    ?? transcript.lastAgentError
+  const transcriptError = session.promptError?.error.message
+    ?? session.openError?.message
+    ?? session.lastAgentError
   const renderedAt = Date.now()
   const hasConversation = transcriptEntries.length > 0
     || partial !== ''

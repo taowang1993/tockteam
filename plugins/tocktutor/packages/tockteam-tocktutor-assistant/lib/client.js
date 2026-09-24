@@ -4,21 +4,22 @@ import { TockTutorAssistantPanel, } from "./assistant-panel.js";
 /** Browser Loader identity for the inline TockTutor assistant. */
 export const name = '@tockteam/tocktutor-assistant';
 /** Required generated transport and Workbench presentation services. */
-export const inject = ['remote', 'sessions', 'slots'];
+export const inject = ['remote', 'sessions', 'slots', 'uiConversation'];
 /** Mount transport first, then contribute one lifecycle-owned nested Workbench panel. */
 export async function apply(ctx) {
     const disposeRemote = await ctx.remote.$mount(assistantRemote);
     let panelFiber;
     try {
-        panelFiber = ctx.inject(['remote', 'remote.tocktutorAssistant', 'sessions', 'slots'], child => {
+        panelFiber = ctx.inject(['remote', 'remote.tocktutorAssistant', 'sessions', 'slots', 'uiConversation'], child => {
             const mountedRemote = child.remote;
             const remote = {
                 tocktutorAssistant: mountedRemote.tocktutorAssistant,
             };
             const sessions = child.sessions;
+            const uiConversation = child.uiConversation;
             const slots = child.slots;
             return slots.inject(TOCKTUTOR_ASSISTANT_PANEL_SLOT, () => slots.register({
-                inject: () => ({ remote, sessions }),
+                inject: () => ({ remote, sessions, uiConversation }),
                 name: TOCKTUTOR_ASSISTANT_PANEL_SLOT,
                 registrant: name,
             }, TockTutorAssistantPanel));

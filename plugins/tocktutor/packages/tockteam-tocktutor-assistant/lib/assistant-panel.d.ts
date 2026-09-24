@@ -1,35 +1,45 @@
 import { type ReactNode } from 'react';
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol';
+import type { SessionId } from '@deepseek-ai/dsh-session/types';
 import type { TockTutorAssistantPanelOwnerProps } from '@tockteam/tocktutor-workbench/client';
 import type { AssistantApprovalRequest, AssistantApprovalView, AssistantAuditResult, AssistantDecisionView, AssistantPageRequest, AssistantProposalListResult, AssistantRejectionRequest, AssistantSettingsView, AssistantTurnRequest, AssistantTurnResult } from './remote-types.ts';
 interface AssistantTextBlock {
     kind: string;
     text?: string;
 }
-export interface AssistantConversationSnapshot {
+export interface AssistantSessionSnapshot {
     lastAgentError: string | null;
-    nodes: readonly unknown[];
     openError: {
         message: string;
     } | null;
     openState: 'cold' | 'loading' | 'open' | 'error';
-    partial: {
-        blocks: readonly AssistantTextBlock[];
-    } | null;
     promptError: {
         error: {
             message: string;
         };
     } | null;
     running: boolean;
+}
+export interface AssistantChatSnapshot {
+    nodes: readonly unknown[];
+    partial: {
+        blocks: readonly AssistantTextBlock[];
+    } | null;
     runningCalls: readonly {
         callId: string;
         name: string;
     }[];
 }
-interface ConversationSource {
-    getSnapshot(): AssistantConversationSnapshot;
+interface SnapshotSource<T> {
+    getSnapshot(): T;
     subscribe(listener: () => void): () => void;
+}
+export interface AssistantPanelConversation {
+    binding(id: SessionId): {
+        target(target: 'chat'): SnapshotSource<{
+            legacy: AssistantChatSnapshot;
+        } | undefined>;
+    };
 }
 interface ScopedAssistantRemote {
     remote: {
@@ -40,7 +50,7 @@ interface ScopedAssistantRemote {
 }
 export interface AssistantPanelSessions {
     binding(id: string): {
-        session: ConversationSource;
+        session: SnapshotSource<AssistantSessionSnapshot>;
     } | undefined;
     list: {
         getSnapshot(): {
@@ -63,6 +73,7 @@ export interface AssistantPanelRemote {
 export interface TockTutorAssistantPanelProps extends TockTutorAssistantPanelOwnerProps {
     remote: AssistantPanelRemote;
     sessions: AssistantPanelSessions;
+    uiConversation: AssistantPanelConversation;
 }
 /** Inline, authority-free browser presentation for the selected Agent and Host review queue. */
 export declare function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): ReactNode;

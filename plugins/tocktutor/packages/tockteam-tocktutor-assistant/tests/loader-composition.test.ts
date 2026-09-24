@@ -752,7 +752,7 @@ test('the package publishes a browser client contribution without Host behavior'
   }
   assert.deepEqual(manifest.dsh?.client, {
     external: ['@tockteam/tocktutor-workbench/client'],
-    inject: ['@deepseek-ai/dsh-api-remotes', '@deepseek-ai/dsh-client-ui-session', '@tockteam/tocktutor-workbench'],
+    inject: ['@deepseek-ai/dsh-api-remotes', '@deepseek-ai/dsh-client-ui-session', '@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-chat', '@tockteam/tocktutor-workbench'],
     platform: 'web',
     immediately: true,
   })

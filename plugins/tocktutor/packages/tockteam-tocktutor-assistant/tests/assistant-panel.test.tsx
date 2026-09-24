@@ -4,7 +4,9 @@ import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { ReactNode } from 'react'
 import {
   TockTutorAssistantPanel,
-  type AssistantConversationSnapshot,
+  type AssistantChatSnapshot,
+  type AssistantSessionSnapshot,
+  type AssistantPanelConversation,
   type AssistantPanelRemote,
   type AssistantPanelSessions,
 } from '../src/assistant-panel.tsx'
@@ -31,6 +33,12 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+type AssistantConversationSnapshot = AssistantChatSnapshot & AssistantSessionSnapshot
+
+function conversationFor(sessions: AssistantPanelSessions): AssistantPanelConversation {
+  return { binding: id => ({ target: () => (sessions.binding(id)?.session as FakeSession).chat }) }
+}
+
 function emptyConversation(): AssistantConversationSnapshot {
   return {
     lastAgentError: null,
@@ -46,12 +54,42 @@ function emptyConversation(): AssistantConversationSnapshot {
 
 class FakeSession {
   private notifier = new Set<() => void>()
-  snapshot = emptyConversation()
+  private chatNotifier = new Set<() => void>()
+  private value = emptyConversation()
+  private sessionSnapshot = this.sessionOnly(this.value)
+  private chatSnapshot: { legacy: AssistantChatSnapshot } | undefined = this.chatOnly(this.value)
+
+  // RC.1 publishes lifecycle and Chat data on separate observable faces.
+  private sessionOnly(value: AssistantConversationSnapshot) {
+    const { nodes, partial, runningCalls, ...session } = value
+    return session
+  }
+  private chatOnly(value: AssistantConversationSnapshot) {
+    return { legacy: { nodes: value.nodes, partial: value.partial, runningCalls: value.runningCalls } }
+  }
+  get snapshot() { return this.value }
+  set snapshot(value: AssistantConversationSnapshot) {
+    this.value = value
+    this.sessionSnapshot = this.sessionOnly(value)
+    this.chatSnapshot = this.chatOnly(value)
+  }
+  readonly chat = {
+    getSnapshot: () => this.chatSnapshot,
+    subscribe: (listener: () => void) => {
+      this.chatNotifier.add(listener)
+      return () => { this.chatNotifier.delete(listener) }
+    },
+  }
+  publishChat(value: AssistantChatSnapshot | undefined): void {
+    this.chatSnapshot = value === undefined ? undefined : { legacy: value }
+    for (const listener of this.chatNotifier) listener()
+  }
 
   get listenerCount(): number { return this.notifier.size }
+  get chatListenerCount(): number { return this.chatNotifier.size }
 
-  getSnapshot(): AssistantConversationSnapshot {
-    return this.snapshot
+  getSnapshot() {
+    return this.sessionSnapshot
   }
   subscribe(listener: () => void): () => void {
     this.notifier.add(listener)
@@ -60,6 +98,7 @@ class FakeSession {
   publish(snapshot: AssistantConversationSnapshot): void {
     this.snapshot = snapshot
     for (const listener of this.notifier) listener()
+    for (const listener of this.chatNotifier) listener()
   }
 }
 
@@ -81,6 +120,54 @@ afterEach(() => {
 })
 
 describe('TockTutorAssistantPanel', () => {
+  it('keeps the assistant visible as the RC.1 Chat target loads, updates, and switches sessions', async () => {
+    const first = new FakeSession()
+    const second = new FakeSession()
+    first.publishChat(undefined)
+    let current: string | undefined = 'first'
+    const listeners = new Set<() => void>()
+    const sessions: AssistantPanelSessions = {
+      binding: id => ({ session: id === 'first' ? first : second }),
+      list: {
+        getSnapshot: () => ({ current }),
+        subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener) } },
+      },
+      scope: () => undefined,
+    }
+    const remote: AssistantPanelRemote = { tocktutorAssistant: {
+      audit: () => success({ dropped: 0, entries: [], nextOffset: null, total: 0 }),
+      currentSettings: () => success({ provider: 'provider', model: 'model', writePermission: 'read-only' }),
+      listProposals: () => success({ nextOffset: null, proposals: [], total: 0 }),
+      approveProposal: () => { throw new Error('unexpected approval') },
+      rejectProposal: () => { throw new Error('unexpected rejection') },
+      saveSettings: settings => success(settings),
+    } }
+    const mounted = render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
+    expect(first.getSnapshot()).not.toHaveProperty('runningCalls')
+    expect(screen.getByRole('textbox', { name: 'Assistant Message' })).toBeTruthy()
+    const chat = (text: string): AssistantChatSnapshot => ({
+      nodes: [], partial: { blocks: [{ kind: 'text', text }] }, runningCalls: [],
+    })
+    // Only Chat publishes: a subscription to Session alone cannot pass this check.
+    act(() => { first.publishChat(chat('First live answer')) })
+    expect(await screen.findByText('First live answer')).toBeTruthy()
+    act(() => {
+      second.publishChat(chat('Second live answer'))
+      current = 'second'
+      for (const listener of listeners) listener()
+    })
+    expect(await screen.findByText('Second live answer')).toBeTruthy()
+    expect(screen.queryByText('First live answer')).toBeNull()
+    expect(first.listenerCount + first.chatListenerCount).toBe(0)
+    act(() => { first.publishChat(chat('Stale answer')) })
+    expect(screen.queryByText('Stale answer')).toBeNull()
+    act(() => { current = undefined; for (const listener of listeners) listener() })
+    expect(screen.getByRole('heading', { name: 'What can I help you with?' })).toBeTruthy()
+    expect(second.listenerCount + second.chatListenerCount).toBe(0)
+    mounted.unmount()
+    expect(listeners.size).toBe(0)
+  })
+
   it('sends through the selected Agent scope and renders bounded streaming and read status', async () => {
     const turnCalls: Array<{ mode: string; text: string; signal?: AbortSignal }> = []
     const session = new FakeSession()
@@ -115,6 +202,7 @@ describe('TockTutorAssistantPanel', () => {
     const view: ReactNode = <TockTutorAssistantPanel
       activePath="Folder/Plan.md"
       selectedText={'Chosen line\nSecond line'}
+      uiConversation={conversationFor(sessions)}
       remote={remote}
       sessions={sessions}
       vault={{ generation: 7, id: `vault:${'a'.repeat(64)}` }}
@@ -184,7 +272,7 @@ describe('TockTutorAssistantPanel', () => {
       list: { getSnapshot: () => ({ current: undefined }), subscribe: () => () => {} },
       scope: () => undefined,
     }
-    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
     const addContext = screen.getByRole('button', { name: 'Add Context' })
     fireEvent.focus(addContext)
     expect((await screen.findByRole('tooltip')).textContent).toContain('Add Context')
@@ -251,7 +339,7 @@ describe('TockTutorAssistantPanel', () => {
       list: { getSnapshot: () => ({ current: undefined }), subscribe: () => () => {} },
       scope: () => undefined,
     }
-    render(<TockTutorAssistantPanel activePath="Notes/New.md" remote={remote} sessions={sessions} vault={null} />)
+    render(<TockTutorAssistantPanel activePath="Notes/New.md" remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
 
     expect(await screen.findByRole('heading', { name: 'Create Notes/New.md' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Update Notes/Old.md' })).toBeTruthy()
@@ -317,7 +405,7 @@ describe('TockTutorAssistantPanel', () => {
       list: { getSnapshot: () => ({ current: undefined }), subscribe: () => () => {} },
       scope: () => undefined,
     }
-    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
 
     const reject = await screen.findByRole('button', { name: 'Reject Update Reject.md' })
     reject.focus()
@@ -374,7 +462,7 @@ describe('TockTutorAssistantPanel', () => {
       list: { getSnapshot: () => ({ current: undefined }), subscribe: () => () => {} },
       scope: () => undefined,
     }
-    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add Context' }))
     fireEvent.click(screen.getByText('Audit History'))
 
@@ -422,7 +510,7 @@ describe('TockTutorAssistantPanel', () => {
       list: { getSnapshot: () => ({ current: undefined }), subscribe: () => () => {} },
       scope: () => undefined,
     }
-    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
 
     expect(await screen.findByRole('heading', { name: 'Create First.md' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Next Proposal Page' }))
@@ -476,7 +564,7 @@ describe('TockTutorAssistantPanel', () => {
       list: { getSnapshot: () => ({ current: 'selected' }), subscribe: () => () => {} },
       scope: () => undefined,
     }
-    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
 
     expect(await screen.findByText('Message 8')).toBeTruthy()
     expect(screen.queryByText('Message 7')).toBeNull()
@@ -535,6 +623,7 @@ describe('TockTutorAssistantPanel', () => {
     }
     const mounted = render(<TockTutorAssistantPanel
       activePath="Old.md"
+      uiConversation={conversationFor(sessions)}
       remote={remote}
       sessions={sessions}
       vault={{ generation: 1, id: `vault:${'1'.repeat(64)}` }}
@@ -543,6 +632,7 @@ describe('TockTutorAssistantPanel', () => {
 
     mounted.rerender(<TockTutorAssistantPanel
       activePath="New.md"
+      uiConversation={conversationFor(sessions)}
       remote={remote}
       sessions={sessions}
       vault={{ generation: 2, id: `vault:${'2'.repeat(64)}` }}
@@ -596,14 +686,14 @@ describe('TockTutorAssistantPanel', () => {
     }
     const vaultA = { generation: 1, id: `vault:${'a'.repeat(64)}` }
     const vaultB = { generation: 2, id: `vault:${'b'.repeat(64)}` }
-    const mounted = render(<TockTutorAssistantPanel activePath="A.md" remote={remote} sessions={sessions} vault={vaultA} />)
+    const mounted = render(<TockTutorAssistantPanel activePath="A.md" remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={vaultA} />)
     const approve = await screen.findByRole('button', { name: 'Approve Create Same.md' }) as HTMLButtonElement
     fireEvent.click(approve)
     expect(approve.disabled).toBe(true)
 
-    mounted.rerender(<TockTutorAssistantPanel activePath="B.md" remote={remote} sessions={sessions} vault={vaultB} />)
+    mounted.rerender(<TockTutorAssistantPanel activePath="B.md" remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={vaultB} />)
     await waitFor(() => { expect(decisionSignals[0]?.aborted).toBe(true) })
-    mounted.rerender(<TockTutorAssistantPanel activePath="A.md" remote={remote} sessions={sessions} vault={vaultA} />)
+    mounted.rerender(<TockTutorAssistantPanel activePath="A.md" remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={vaultA} />)
     const revisited = await screen.findByRole('button', { name: 'Approve Create Same.md' }) as HTMLButtonElement
     expect(revisited.disabled).toBe(false)
     expect(revisited.textContent).toBe('Approve')
@@ -645,10 +735,11 @@ describe('TockTutorAssistantPanel', () => {
         },
       }),
     }
-    const mounted = render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    const mounted = render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
     await waitFor(() => { expect(signals).toHaveLength(3) })
     expect(listListeners.size).toBe(1)
     expect(session.listenerCount).toBe(1)
+    expect(session.chatListenerCount).toBe(1)
 
     fireEvent.change(screen.getByLabelText('Assistant Message'), { target: { value: 'Pending request' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
@@ -680,7 +771,7 @@ describe('TockTutorAssistantPanel', () => {
       list: { getSnapshot: () => ({ current: undefined }), subscribe: () => () => {} },
       scope: () => undefined,
     }
-    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
     expect(await screen.findByText('Audit history is temporarily unavailable.')).toBeTruthy()
 
     await act(async () => {
@@ -722,7 +813,7 @@ describe('TockTutorAssistantPanel', () => {
       list: { getSnapshot: () => ({ current: undefined }), subscribe: () => () => {} },
       scope: () => undefined,
     }
-    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} vault={null} />)
+    render(<TockTutorAssistantPanel activePath={null} remote={remote} sessions={sessions} uiConversation={conversationFor(sessions)} vault={null} />)
     const approve = await screen.findByRole('button', { name: 'Approve Create Soon.md' })
 
     now = 3_000
