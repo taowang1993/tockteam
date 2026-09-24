@@ -99,6 +99,8 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
       root: root.current,
       defaultValue: splitLivePreviewSource(source.current).body,
       featureConfigs: {
+        // Let the browser own caret shape, blinking, and window-focus visibility.
+        [Crepe.Feature.Cursor]: { virtual: false },
         [Crepe.Feature.ImageBlock]: {
           proxyDomURL: imageURL,
           onUpload: async file => {

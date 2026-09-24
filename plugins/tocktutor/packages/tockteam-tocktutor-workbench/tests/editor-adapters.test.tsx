@@ -287,6 +287,24 @@ describe('selection-aware editor widgets', () => {
 })
 
 describe('Live Preview editor', () => {
+  it('uses the native caret and preserves the editing position across focus changes', { timeout: 15_000 }, async () => {
+    const onMarkdownChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    const { container } = render(<><button>Outside the Editor</button><LivePreviewEditor content="Plain text and `code`." onMarkdownChange={onMarkdownChange} editorViewRef={editorViewRef} /></>)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const editor = container.querySelector<HTMLElement>('.ProseMirror')!
+    editor.focus()
+    expect(editor.classList.contains('virtual-cursor-enabled')).toBe(false)
+    const selection = editorViewRef.current.state.selection.toJSON()
+    screen.getByRole('button', { name: 'Outside the Editor' }).focus()
+    expect(document.activeElement).not.toBe(editor)
+    expect(container.querySelector('.prosemirror-virtual-cursor')).toBeNull()
+    editor.focus()
+    expect(document.activeElement).toBe(editor)
+    expect(editorViewRef.current.state.selection.toJSON()).toEqual(selection)
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+  })
+
   it.each(['reading', 'live'])('shows a repeated article title only once without changing Markdown in %s mode', { timeout: 15_000 }, async mode => {
     const title = '关于DeepSeek最新V4模型，普通人可以知道的6件事'
     const heading = '关于 DeepSeek 最新 V4 模型，普通人可以知道的6件事'

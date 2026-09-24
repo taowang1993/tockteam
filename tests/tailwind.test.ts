@@ -45,8 +45,7 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(css, /:root:not\(\[data-tockteam-skin\]\) \.tocktutor-editor\{--tt-panel:light-dark\(#fff,#1e1e1e\)\}/, 'the default note canvas matches Obsidian without overriding named skins')
   const editorTheme = css.match(/\.tocktutor-crepe-editor \.milkdown\{([^}]*)\}/)?.[1] ?? ''
   assert.match(editorTheme, /--crepe-color-background:var\(--tt-panel\)/, 'title and article share the document canvas')
-  assert.match(css, /--prosemirror-virtual-cursor-color:currentColor/, 'the visible rich-editor cursor uses the text color, not a muted border')
-  assert.match(css, /\.ProseMirror:not\(\.virtual-cursor-enabled\)\{caret-color:currentColor\}/, 'native carets match text without drawing a second virtual caret')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror\{[^}]*caret-color:currentColor/, 'the native rich-editor caret matches the note text')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror h1\{[^}]*font-size:26px/, 'rich headings match Reading View instead of the oversized Crepe default')
   const desktopSummary = css.match(/\.tockteam-desktop-shell #tockteam-chrome-layer>\[data-tockteam-pinned-summary\]\{([^}]*)\}/)?.[1] ?? ''
   assert.match(desktopSummary, /height:calc\(50% - 12px\)/)
