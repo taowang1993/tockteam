@@ -42,7 +42,12 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(css, /--dsw-specific-markdown-accent:light-dark\(#705dcf,#a68af9\)/)
   assert.match(css, /--dsw-specific-markdown-highlight:#ffd00066/)
   assert.match(css, /--dsw-specific-markdown-inline-code:color-mix\(in srgb, var\(--dsw-alias-label-primary,currentColor\) 9%, transparent\)/)
-  assert.match(css, /:root:not\(\[data-tockteam-skin\]\) \.tocktutor-editor\{--tt-panel:light-dark\(#fff,#1e1e1e\)\}/, 'the default note canvas matches Obsidian without overriding named skins')
+  const builtinDark = css.match(/\.tockteam-sidebar-styles body\[data-ds-dark-theme\]:not\(\[data-tockteam-skin\]\)\{([^}]*)\}/)?.[1] ?? ''
+  assert.match(builtinDark, /--dsw-alias-bg-layer-1:#1e1e1e/, 'the built-in dark shell uses the former note color')
+  assert.match(builtinDark, /--tockteam-shell-chrome:var\(--dsw-alias-bg-layer-1\)/)
+  assert.match(builtinDark, /--tockteam-main-pane:var\(--dsw-alias-bg-base\)/, 'the editor uses the former dark sidebar color')
+  assert.match(css, /body:not\(\[data-tockteam-skin\]\) \.tocktutor-editor\{--tt-panel:var\(--tockteam-main-pane\)\}/, 'the note canvas follows the shared editor surface without overriding named skins')
+  assert.match(css, /body:not\(\[data-tockteam-skin\]\) \.tocktutor-titlebar\{--tt-panel:var\(--tockteam-main-pane\)\}/, 'the active note tab joins the editor surface')
   const editorTheme = css.match(/\.tocktutor-crepe-editor \.milkdown\{([^}]*)\}/)?.[1] ?? ''
   assert.match(editorTheme, /--crepe-color-background:var\(--tt-panel\)/, 'title and article share the document canvas')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror\{[^}]*caret-color:currentColor/, 'the native rich-editor caret matches the note text')

@@ -1064,6 +1064,18 @@
     --tockteam-shell-chrome: var(--dsw-alias-bg-base);
   }
 
+  /* Pinned DSH built-in dark seam: swap the former note and shell surfaces.
+     Named skins retain their catalog tokens; light mode keeps its existing roles. */
+  & body[data-ds-dark-theme]:not([data-tockteam-skin]) {
+    --dsw-alias-bg-layer-1: #1e1e1e;
+    --tockteam-shell-chrome: var(--dsw-alias-bg-layer-1);
+    --tockteam-main-pane: var(--dsw-alias-bg-base);
+  }
+
+  & body:not([data-tockteam-skin]) .tocktutor-titlebar {
+    --tt-panel: var(--tockteam-main-pane);
+  }
+
   & [data-slot='sidebar'] *:has(> button [data-slot='sidebar.brand.name']),
   & [data-slot='sidebar'] button:is([aria-label='New session'], [aria-label='新建会话']) {
     display: none !important;
@@ -1090,9 +1102,9 @@
   }
 }
 
-/* The unskinned note canvas follows Obsidian; named skins keep their own surface. */
+/* Note content and the shared editor use one canvas; named skins keep their surface. */
 @utility tocktutor-editor {
-  :root:not([data-tockteam-skin]) & { --tt-panel: light-dark(#fff, #1e1e1e); }
+  body:not([data-tockteam-skin]) & { --tt-panel: var(--tockteam-main-pane); }
 }
 
 /* Crepe owns its generated controls; it does not own a second application theme. */
