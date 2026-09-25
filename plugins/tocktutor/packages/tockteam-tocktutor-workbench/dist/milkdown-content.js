@@ -3,6 +3,7 @@ import { remarkStringifyOptionsCtx } from '@milkdown/core';
 import { $node, $remark } from '@milkdown/utils';
 import { hardbreakAttr, hardbreakSchema } from '@milkdown/preset-commonmark';
 import { imageBlockSchema } from '@milkdown/components/image-block';
+import { footnoteReferenceSchema } from '@milkdown/preset-gfm';
 import { classifyExternalEmbed } from "./external-embeds.js";
 // These constructs carry vault semantics, not merely a Markdown spelling choice.
 // Keep them as editable inline text nodes instead of letting remark escape them.
@@ -70,6 +71,14 @@ export const obsidianSyntax = $remark('tocktutorObsidianSyntax', () => () => (tr
     visit(tree);
 });
 export function configureObsidianContent(ctx) {
+    // The GFM node retains the authored label, but its default DOM omits the reference markers.
+    ctx.update(footnoteReferenceSchema.key, previous => context => {
+        const schema = previous(context);
+        return { ...schema, toDOM: node => {
+                const [tag, attrs] = schema.toDOM(node);
+                return [tag, attrs, `[^${node.attrs.label}]`];
+            } };
+    });
     // Milkdown already parses soft newlines; its inline hardbreak DOM defaults to a space.
     ctx.update(hardbreakSchema.key, previous => context => ({ ...previous(context),
         toDOM: node => ['br', context.get(hardbreakAttr.key)(node)],

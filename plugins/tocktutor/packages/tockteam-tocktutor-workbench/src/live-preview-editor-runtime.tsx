@@ -274,9 +274,12 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
         const button = block.querySelector<HTMLButtonElement>('.language-button')
         if (!button) continue
         const code = block.dataset.codeLanguage?.toLowerCase()
-        const name = code === 'ts' || code === 'tsx' ? 'TypeScript' : code === 'js' || code === 'jsx' ? 'JavaScript' : undefined
-        if (name) { button.dataset.displayLanguage = name; button.setAttribute('aria-label', name) }
-        else { delete button.dataset.displayLanguage; button.removeAttribute('aria-label') }
+        const name = code === 'ts' || code === 'tsx' ? 'TypeScript' : code === 'js' || code === 'jsx' ? 'JavaScript' : block.dataset.codeLanguage || 'Text'
+        const tools = button.closest<HTMLElement>('.tools')!
+        tools.dataset.displayLanguage = name
+        tools.setAttribute('role', 'group')
+        tools.setAttribute('aria-label', name)
+        button.hidden = true
       }
       for (const row of element.querySelectorAll<HTMLElement>('.milkdown-list-item-block .label-wrapper')) {
         const icon = row.querySelector('.milkdown-icon.label')

@@ -1153,9 +1153,8 @@
   & .milkdown .milkdown-code-block { margin: 16px 0 24px; }
   & .milkdown .milkdown-code-block :is(.cm-activeLine, .cm-activeLineGutter) { background: transparent; }
   & .milkdown .milkdown-code-block .tools { justify-content: flex-end; gap: 6px; min-height: 24px; margin-right: -10px; }
-  & .milkdown .milkdown-code-block .tools .language-button { opacity: 1; margin-bottom: 0; }
-  & .milkdown .milkdown-code-block .language-button[data-display-language] { font-size: 0; }
-  & .milkdown .milkdown-code-block .language-button[data-display-language]::before { content: attr(data-display-language); font-size: 12px; }
+  & .milkdown .milkdown-code-block .tools::before { content: attr(data-display-language); color: var(--crepe-color-on-surface-variant); font-size: 12px; font-weight: 600; }
+  & .milkdown .milkdown-code-block .tools .language-button[hidden] { display: none; }
   & .milkdown .milkdown-code-block .tools .tools-button-group button.copy-button { opacity: 1; padding: 4px; font-size: 0; background: transparent; }
   & .milkdown .milkdown-code-block .tools .tools-button-group .copy-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; }
   & .milkdown .milkdown-code-block .copy-button .lucide-copy-check,
@@ -1163,6 +1162,7 @@
   & .milkdown .milkdown-code-block .copy-button[data-copied] .lucide-copy-check { display: block; }
   & .milkdown .milkdown-code-block:has(.cm-focused)::before { content: "```" attr(data-code-language); position: absolute; top: 8px; left: 20px; color: var(--dsw-alias-label-secondary); font: 12px/24px var(--crepe-font-code); }
   & .milkdown .milkdown-code-block:has(.cm-focused)::after { content: "```"; display: block; color: var(--dsw-alias-label-secondary); font: 12px/24px var(--crepe-font-code); }
+  & .milkdown .ProseMirror sup[data-type='footnote_reference'] { color: var(--dsw-alias-label-secondary); font: 12px var(--crepe-font-code); }
   & .milkdown .ProseMirror dl[data-type='footnote_definition'] { display: flex; align-items: baseline; gap: 8px; }
   & .milkdown .ProseMirror dl[data-type='footnote_definition'] dd { margin: 0; }
   & .milkdown .ProseMirror dl[data-type='footnote_definition'] dd > p:first-child { margin: 0; }

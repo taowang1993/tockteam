@@ -607,14 +607,16 @@ describe('Live Preview editor', () => {
       expect(block.dataset.codeLanguage).toBe('ts')
       const language = block.querySelector<HTMLButtonElement>('.language-button')!
       const copy = block.querySelector<HTMLButtonElement>('.copy-button')!
-      await waitFor(() => expect(language.dataset.displayLanguage).toBe('TypeScript'))
-      expect(language.getAttribute('aria-label')).toBe('TypeScript')
+      const tools = block.querySelector<HTMLElement>('.tools')!
+      await waitFor(() => expect(tools.dataset.displayLanguage).toBe('TypeScript'))
+      expect(tools.getAttribute('aria-label')).toBe('TypeScript')
+      expect(language.hidden).toBe(true)
       expect(copy).not.toBe(language)
       expect(copy.textContent).toContain('Copy Code')
       expect(copy.querySelector('.lucide-copy')).toBeTruthy()
       expect(copy.querySelector('.lucide-copy-check')).toBeTruthy()
-      fireEvent.click(language)
-      await waitFor(() => expect(block.querySelector('.language-list')).toBeTruthy())
+      fireEvent.click(tools)
+      expect(block.querySelector('.language-list')).toBeNull()
       expect(writeText).not.toHaveBeenCalled()
       copy.focus()
       fireEvent.click(copy)
@@ -632,11 +634,23 @@ describe('Live Preview editor', () => {
     }
   })
 
+  it('shows Text for an unlabelled fence instead of guessing a language', async () => {
+    const source = '```\nlet lesson = "markdown"\n```\n'
+    const onChange = vi.fn()
+    const { container } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(container.querySelector<HTMLElement>('.milkdown-code-block .tools')?.dataset.displayLanguage).toBe('Text'), { timeout: 10_000 })
+    expect(container.querySelector<HTMLButtonElement>('.milkdown-code-block .language-button')?.hidden).toBe(true)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('places a footnote definition label immediately before its content without rewriting Markdown', async () => {
     const source = 'Text with context.[^context]\n\n[^context]: Footnotes should remain readable.\n'
     const onChange = vi.fn()
     const { container } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
     await waitFor(() => expect(container.querySelector('.ProseMirror')?.textContent).toContain('Footnotes should remain readable.'), { timeout: 10_000 })
+    const reference = container.querySelector<HTMLElement>('.ProseMirror sup[data-type="footnote_reference"]')!
+    expect(reference.dataset.label).toBe('context')
+    expect(reference.textContent).toBe('[^context]')
     const definition = container.querySelector<HTMLElement>('.ProseMirror dl[data-type="footnote_definition"]')!
     expect(definition.querySelector('dt')?.textContent).toBe('context')
     expect(definition.querySelector('dd')?.textContent).toBe('Footnotes should remain readable.')
