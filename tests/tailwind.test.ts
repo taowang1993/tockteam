@@ -59,6 +59,8 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
     assert.match(css, new RegExp(`\\.tocktutor-crepe-editor \\.milkdown \\.ProseMirror h${level}\\{[^}]*font-size:${size}px`), `Live Preview H${level} matches the descending Reading View heading scale`)
   }
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror a\{color:var\(--dsw-specific-markdown-accent\);font-weight:500/, 'Live Preview links use the checked-box purple with enough ink to look equally bright')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror table\{[^}]*table-layout:auto;[^}]*width:max-content;[^}]*max-width:100%/, 'Live Preview tables take their content width instead of filling the note')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.milkdown-table-block :is\(th,td\)\{border-color:color-mix\(in srgb, var\(--dsw-alias-label-secondary\) 60%, var\(--tt-panel\)\)/, 'table cell borders remain visible on the dark canvas')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label\.ordered\{color:var\(--tt-text\)/, 'ordered list numbers match the note text')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label\.bullet svg\{fill:var\(--tt-text\)/, 'nested bullet glyphs match the note text')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label:is\(\.checked,\.unchecked\) svg\{[^}]*width:21\.333px;[^}]*height:21\.333px/, '18/24 SVG glyph renders at the frontmatter checkbox’s 16px size')

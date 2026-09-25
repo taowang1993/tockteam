@@ -1,5 +1,8 @@
 // @ts-nocheck -- Milkdown's extensionless declarations are incompatible with the pinned NodeNext analyzer.
 import { Crepe } from '@milkdown/crepe'
+import { javascript } from '@codemirror/lang-javascript'
+import { HighlightStyle, LanguageDescription, syntaxHighlighting } from '@codemirror/language'
+import { tags } from '@lezer/highlight'
 import { commandsCtx, parserCtx, serializerCtx } from '@milkdown/core'
 import { toggleStrongCommand, toggleEmphasisCommand, remarkInlineLinkPlugin } from '@milkdown/preset-commonmark'
 import { toggleStrikethroughCommand } from '@milkdown/preset-gfm'
@@ -20,6 +23,11 @@ import { classifyExternalEmbed } from './external-embeds.ts'
 import { collectEmbedTargets } from './embeds.ts'
 
 const searchKey = new PluginKey('tocktutor-crepe-search')
+const codeHighlight = syntaxHighlighting(HighlightStyle.define([
+  { tag: [tags.keyword, tags.operatorKeyword, tags.definitionKeyword], color: 'var(--dsw-specific-markdown-accent)' },
+  { tag: [tags.string, tags.number, tags.bool], color: 'var(--dsw-alias-state-success-primary)' },
+  { tag: tags.comment, color: 'var(--dsw-alias-label-secondary)' },
+]))
 
 // Search rendered text, not Markdown punctuation. Keep offsets in the native document.
 function searchDocument(doc, query: string) {
@@ -101,6 +109,13 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
       featureConfigs: {
         // Let the browser own caret shape, blinking, and window-focus visibility.
         [Crepe.Feature.Cursor]: { virtual: false },
+        [Crepe.Feature.CodeMirror]: {
+          languages: [
+            LanguageDescription.of({ name: 'TypeScript', alias: ['ts', 'tsx'], load: async () => javascript({ typescript: true, jsx: true }) }),
+            LanguageDescription.of({ name: 'JavaScript', alias: ['js', 'jsx'], load: async () => javascript({ jsx: true }) }),
+          ],
+          theme: codeHighlight,
+        },
         [Crepe.Feature.ImageBlock]: {
           proxyDomURL: imageURL,
           onUpload: async file => {

@@ -572,6 +572,27 @@ describe('Live Preview editor', () => {
     await waitFor(() => expect(onChange.mock.lastCall?.[0]).toContain('[x] Next'))
   })
 
+  it('keeps consecutive authored lines separate in Live Preview without changing the note', async () => {
+    const source = 'A soft line ends here.\nThis sentence follows without a blank line.\n'
+    const onChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    const { container } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(container.querySelector('.ProseMirror p')?.textContent).toContain('This sentence follows'), { timeout: 10_000 })
+    expect(container.querySelector('.ProseMirror p br')).toBeTruthy()
+    expect(onChange).not.toHaveBeenCalled()
+    const view = editorViewRef.current
+    act(() => view.dispatch(view.state.tr.insertText('!', 1 + 'A soft line ends here.'.length)))
+    await waitFor(() => expect(onChange.mock.lastCall?.[0]).toContain('A soft line ends here.!\nThis sentence follows'))
+  })
+
+  it('colors TypeScript tokens in a fenced Live Preview code block', async () => {
+    const { container } = render(<LivePreviewEditor content={'```ts\nconst lesson = "markdown"\nconsole.log(lesson)\n```\n'} onMarkdownChange={() => {}} />)
+    await waitFor(() => expect(container.querySelector('.milkdown-code-block .cm-line')).toBeTruthy(), { timeout: 10_000 })
+    const keyword = [...container.querySelectorAll('.milkdown-code-block .cm-line span')].find(node => node.textContent === 'const')
+    expect(keyword).toBeTruthy()
+    expect(keyword?.getAttribute('class')).toBeTruthy()
+  })
+
   it('renders bordered tables without a persistent command strip', async () => {
     const { container } = render(<LivePreviewEditor content={'| Surface | Status |\n| --- | --- |\n| Editor | Ready |\n'} onMarkdownChange={() => {}} />)
 
