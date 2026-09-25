@@ -1149,6 +1149,7 @@
   & .milkdown .ProseMirror a { color: var(--dsw-specific-markdown-accent); font-weight: 500; }
   & .milkdown .ProseMirror table { width: max-content; max-width: 100%; table-layout: auto; }
   & .milkdown .milkdown-table-block :is(th, td) { border-color: color-mix(in srgb, var(--dsw-alias-label-secondary) 60%, var(--tt-panel)); }
+  & .milkdown .milkdown-code-block :is(.cm-activeLine, .cm-activeLineGutter) { background: transparent; }
   & .milkdown .label-wrapper .label.ordered { color: var(--tt-text); }
   & .milkdown .label-wrapper .label.bullet svg { fill: var(--tt-text); }
   /* Crepe's 24-unit icon draws an 18-unit box: 21⅓px makes its visible box 16px. */
