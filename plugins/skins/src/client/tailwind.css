@@ -1162,8 +1162,9 @@
   & .milkdown .milkdown-code-block .copy-button[data-copied] .lucide-copy-check { display: block; }
   & .milkdown .milkdown-code-block:has(.cm-focused)::before { content: "```" attr(data-code-language); position: absolute; top: 8px; left: 20px; color: var(--dsw-alias-label-secondary); font: 12px/24px var(--crepe-font-code); }
   & .milkdown .milkdown-code-block:has(.cm-focused)::after { content: "```"; display: block; color: var(--dsw-alias-label-secondary); font: 12px/24px var(--crepe-font-code); }
-  & .milkdown .ProseMirror sup[data-type='footnote_reference'] { color: var(--dsw-alias-label-secondary); font: 12px var(--crepe-font-code); }
+  & .milkdown .ProseMirror sup[data-type='footnote_reference'] { color: var(--dsw-alias-label-tertiary); font-size: 12px; font-family: inherit; line-height: 1; }
   & .milkdown .ProseMirror dl[data-type='footnote_definition'] { display: flex; align-items: baseline; gap: 8px; }
+  & .milkdown .ProseMirror dl[data-type='footnote_definition'] dt { color: var(--dsw-alias-label-tertiary); font-size: 12px; }
   & .milkdown .ProseMirror dl[data-type='footnote_definition'] dd { margin: 0; }
   & .milkdown .ProseMirror dl[data-type='footnote_definition'] dd > p:first-child { margin: 0; }
   & .milkdown .label-wrapper .label.ordered { color: var(--tt-text); }
