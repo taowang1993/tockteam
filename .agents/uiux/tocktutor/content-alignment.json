@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T01:21:03.025Z",
-  "sourceCommit": "74873748",
+  "capturedAt": "2026-09-25T03:10:41.181Z",
+  "sourceCommit": "e1b84268",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -870,17 +870,49 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 281244,
-      "sha256": "c9ec02e01be3bb29717de938e04d1a69b8166c00f96f7aade56f0ae24e02e248",
-      "capturedAt": "2026-09-24T23:57:03.114Z",
+      "bytes": 279027,
+      "sha256": "92528d52c20ecc8b1948955232c2329ad628b6be3e3a269ed2dfc06b9ccfee0a",
+      "capturedAt": "2026-09-25T03:10:41.069Z",
       "visibleState": {
-        "assertedText": "Markdown Rendering Lab",
+        "assertedText": "Markdown Rendering Lab; Structure; Lists",
         "assertionPassed": true,
         "textExcerpt": "Markdown Rendering Lab",
-        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+        "visibleHeadings": [
+          "Markdown Rendering Lab",
+          "Structure",
+          "Lists"
+        ],
+        "scrollContainer": "Editor Attachment Drop Zone",
+        "scrollTop": 0,
+        "headingSizes": {
+          "Markdown Rendering Lab": 26,
+          "Structure": 24,
+          "Lists": 20,
+          "Data": 24,
+          "Code and Notes": 24,
+          "Small Heading": 19
+        },
+        "headingPositions": [
+          {
+            "text": "Markdown Rendering Lab",
+            "y": 403,
+            "bottom": 434
+          },
+          {
+            "text": "Structure",
+            "y": 542,
+            "bottom": 578
+          },
+          {
+            "text": "Lists",
+            "y": 602,
+            "bottom": 634
+          }
+        ]
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Window error/unhandledrejection and Playwright console/pageerror listeners installed before both focused captures; no capture-time errors. TockCoder startup error is recorded separately.",
+      "sourceCommit": "e1b84268",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -2470,10 +2502,10 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 289954,
-      "sha256": "f9393e80ab7b845c45838a1331cef30416e8f285ad8b2386cb3057511cef8023",
-      "capturedAt": "2026-09-25T01:14:01.876Z",
-      "sourceCommit": "74873748",
+      "bytes": 279506,
+      "sha256": "e48c0ec258f6c33a2f0f58df3ea1835c5e9e7957516b92f1fe32560b76999d3b",
+      "capturedAt": "2026-09-25T03:10:41.181Z",
+      "sourceCommit": "e1b84268",
       "visibleState": {
         "assertedText": "Data; Code and Notes; Small Heading",
         "assertionPassed": true,
@@ -2484,9 +2516,34 @@
         ],
         "scrollContainer": "Editor Attachment Drop Zone",
         "scrollTop": 700,
-        "textExcerpt": "Data · Syntax · Expected Result · State · Code and Notes · const lesson = \"markdown\" · Small Heading · Final text tests the smallest heading · Footnotes should remain readable without dominating the page."
+        "textExcerpt": "Data · Syntax · Expected Result · State · Code and Notes · const lesson = \"markdown\" · Small Heading · Final text tests the smallest heading · Footnotes should remain readable without dominating the page.",
+        "headingSizes": {
+          "Markdown Rendering Lab": 26,
+          "Structure": 24,
+          "Lists": 20,
+          "Data": 24,
+          "Code and Notes": 24,
+          "Small Heading": 19
+        },
+        "headingPositions": [
+          {
+            "text": "Data",
+            "y": 222,
+            "bottom": 258
+          },
+          {
+            "text": "Code and Notes",
+            "y": 455,
+            "bottom": 491
+          },
+          {
+            "text": "Small Heading",
+            "y": 687.328125,
+            "bottom": 718.328125
+          }
+        ]
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners during route verification and capture; no capture-time errors.",
+      "runtimeErrorMonitoring": "Window error/unhandledrejection and Playwright console/pageerror listeners installed before both focused captures; no capture-time errors. TockCoder startup error is recorded separately.",
       "route": "/tocktutor/UIUX%20Comparison.md"
     },
     "obsidian-live-preview-lower.png": {
@@ -2654,13 +2711,13 @@
   "publication": {
     "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage only specifically requested allowlisted captures and their proof on the same filesystem with rollback. Preserve every existing screenshot unless an explicit retake is requested; never write unrelated images.",
     "lastRefresh": {
-      "capturedAt": "2026-09-25T01:21:03.025Z",
-      "sourceCommit": "74873748",
-      "addedTockTutorImages": 1,
-      "addedObsidianImages": 1,
-      "preservedExistingImages": 61,
+      "capturedAt": "2026-09-25T03:10:41.181Z",
+      "sourceCommit": "e1b84268",
+      "updatedTockTutorImages": 2,
+      "preservedOtherImages": 61,
+      "preservedObsidianImages": 29,
       "existingObsidianHashesUnchanged": true,
-      "transaction": "Two newly requested allowlisted images and their proof were staged on the same filesystem with rollback; every pre-existing screenshot retained its original SHA-256."
+      "transaction": "Only the two requested TockTutor Live Preview images and their evidence were staged and replaced with rollback copies on the same filesystem; all 61 other screenshots retained their original SHA-256."
     }
   },
   "graphAlignment": {
@@ -2938,7 +2995,9 @@
         "scrollContainer": "Editor Attachment Drop Zone",
         "scrollTop": 700,
         "consoleErrors": [],
-        "runtimeErrors": []
+        "runtimeErrors": [],
+        "retakenAt": "2026-09-25T03:10:41.181Z",
+        "retakeSourceCommit": "e1b84268"
       },
       "obsidian": {
         "screenshot": "obsidian-live-preview-lower.png",
@@ -3037,6 +3096,62 @@
       "port": 55729,
       "portClosed": true,
       "descendantsSpawned": false
+    }
+  },
+  "headingScaleRetake": {
+    "capturedAt": "2026-09-25T03:10:41.181Z",
+    "sourceCommit": "e1b84268",
+    "files": [
+      "tocktutor-editor-live-preview.png",
+      "tocktutor-live-preview-lower.png"
+    ],
+    "reason": "Live Preview H1 was 26px while the unoverridden Crepe H2 was 2.25em; the shared editor scale now descends from H1 through H6.",
+    "sizesPx": {
+      "h1": 26,
+      "h2": 24,
+      "h3": 20,
+      "h4": 19,
+      "h5": 17,
+      "h6": 16
+    },
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2
+    },
+    "theme": "dark",
+    "skin": null,
+    "mode": "live-preview",
+    "route": "/tocktutor/UIUX%20Comparison.md",
+    "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "visibleHeadings": {
+      "top": [
+        "Markdown Rendering Lab",
+        "Structure",
+        "Lists"
+      ],
+      "lower": [
+        "Data",
+        "Code and Notes",
+        "Small Heading"
+      ]
+    },
+    "scrollTops": {
+      "top": 0,
+      "lower": 700
+    },
+    "captureRuntimeErrors": [],
+    "captureConsoleErrors": [],
+    "startupErrors": [
+      "tockteam-desktop: failed to open workspace TypeError: workspaces.startSession is not a function"
+    ],
+    "preservedObsidianImages": 29,
+    "preservedOtherImages": 61,
+    "cleanup": {
+      "verified": true,
+      "run": "7b1bfcaf-5f10-48ea-b3a5-7602efb3c72e",
+      "rootPid": 10121,
+      "remaining": []
     }
   }
 }

@@ -1,5 +1,9 @@
 # TockTutor and Obsidian Content Alignment
 
+## Focused Heading Scale Retake — 2026-09-25
+
+Retook the two TockTutor Live Preview screenshots visible in the reported gallery comparison: `tocktutor-editor-live-preview.png` and `tocktutor-live-preview-lower.png`. The source-built Desktop at `e1b84268` renders H1 at 26px, H2 at 24px, H3 at 20px, and H4 at 19px; the top view shows Markdown Rendering Lab, Structure, and Lists, while the lower view shows Data, Code and Notes, and Small Heading. Both are genuine 1512 × 949 CSS-pixel, 2× (3024 × 1898) captures of the shared note in Live Preview, with the built-in dark theme and no active skin. The startup TockCoder route again logged `workspaces.startSession is not a function` before switching to TockTutor; the capture-time console, page, and renderer error lists are empty. The guarded Electron process tree stopped with no descendants. Both new hashes and heading/scroll evidence are in `content-alignment.json`; all 61 other screenshots, including every Obsidian reference, retained their prior hashes. Other TockTutor gallery screenshots were not retaken in this focused request.
+
 ## Lower Live Preview Pair — 2026-09-25
 
 Added a fresh, scrolled comparison of the identical `UIUX Comparison.md` note in TockTeam Desktop and Obsidian 1.13.7. Both captures show Data, Code and Notes, and Small Heading in Live Preview at 1512 × 949 CSS pixels and 2× scale (3024 × 1898 pixels), using each product’s built-in dark theme and no TockTeam skin. Per-image hashes, visible-section and scroll evidence, theme, route, and error monitoring are in `content-alignment.json`.
