@@ -12,15 +12,15 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 55 Captures/u)
+  assert.match(html, /Visual Design Audit · 57 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
-  assert.equal(new Set(images).size, 55)
+  assert.equal(new Set(images).size, 57)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
   assert.deepEqual(actual, Object.keys(proof.captures).sort())
-  assert.equal(actual.length, 61)
+  assert.equal(actual.length, 63)
   assert.deepEqual(actual.filter(name => !images.includes(`screenshots/${name}`)), proof.gallery.supplementalCaptures)
   for (const href of [...html.matchAll(/\bhref="([^"]+)"/gu)].map(match => match[1]!)) {
     if (href.startsWith('#')) assert.ok(html.includes(`id="${href.slice(1)}"`), href)
@@ -55,6 +55,29 @@ test('refreshes supplemental captures with verified pixels and honest runtime ev
   assert.ok(proof.cleanup.pids.length > 0)
   assert.ok(proof.cleanup.focus.every((event: { faulted: boolean; focusInconclusiveCount: number }) => !event.faulted && event.focusInconclusiveCount === 0))
   assert.ok(proof.startupObservations.some((entry: { message: string }) => entry.message.includes('workspaces.startSession')))
+})
+
+test('records the scrolled lower Live Preview pair with both target sections visible', () => {
+  const pair = proof.pairs.find((candidate: { surface: string }) => candidate.surface === 'live-preview-lower')
+  assert.ok(pair)
+  assert.equal(pair.tocktutor.path, 'UIUX Comparison.md')
+  assert.equal(pair.obsidian.path, 'UIUX Comparison.md')
+  assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256)
+  assert.equal(pair.tocktutor.mode, 'live-preview')
+  assert.equal(pair.obsidian.mode, 'live-preview')
+  assert.deepEqual(proof.lowerNoteComparison.visibleHeadings, ['Data', 'Code and Notes', 'Small Heading'])
+  assert.equal(proof.lowerNoteComparison.cleanup.verified, true)
+  assert.deepEqual(proof.lowerNoteComparison.cleanup.remaining, [])
+  assert.deepEqual(proof.lowerNoteComparison.startupErrors, ['tockteam-desktop: failed to open workspace TypeError: workspaces.startSession is not a function'])
+  for (const name of [pair.tocktutor.screenshot, pair.obsidian.screenshot]) {
+    assert.ok(images.includes(`screenshots/${name}`))
+    const capture = proof.captures[name]
+    assert.equal(capture.theme, 'dark', name)
+    assert.equal(capture.skin, null, name)
+    assert.equal(capture.mode, 'live-preview', name)
+    assert.deepEqual(capture.visibleState.visibleHeadings, proof.lowerNoteComparison.visibleHeadings, name)
+    assert.deepEqual(capture.runtimeErrors, [], name)
+  }
 })
 
 test('records the corrected Live Preview paragraph and flags the unreplaced Reader View image', () => {

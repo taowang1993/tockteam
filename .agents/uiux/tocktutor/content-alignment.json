@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T00:20:44.675Z",
-  "sourceCommit": "91fa6ef4",
+  "capturedAt": "2026-09-25T01:21:03.025Z",
+  "sourceCommit": "74873748",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -19,9 +19,9 @@
     "skinId": null
   },
   "gallery": {
-    "uniqueImageSources": 55,
-    "captureCountLabel": "Visual Design Audit · 55 Captures",
-    "screenshotDirectoryTotal": 61,
+    "uniqueImageSources": 57,
+    "captureCountLabel": "Visual Design Audit · 57 Captures",
+    "screenshotDirectoryTotal": 63,
     "supplementalCaptures": [
       "obsidian-outline.png",
       "obsidian-quick-switcher.png",
@@ -42,6 +42,7 @@
       "obsidian-file-recovery.png",
       "obsidian-graph-global.png",
       "obsidian-graph-local.png",
+      "obsidian-live-preview-lower.png",
       "obsidian-main-editor.png",
       "obsidian-new-note.png",
       "obsidian-note-actions.png",
@@ -74,6 +75,7 @@
       "tocktutor-file-recovery.png",
       "tocktutor-graph-global.png",
       "tocktutor-graph.png",
+      "tocktutor-live-preview-lower.png",
       "tocktutor-main-workspace.png",
       "tocktutor-marketplace.png",
       "tocktutor-new-note-dialog.png",
@@ -514,6 +516,21 @@
       },
       "obsidian": {
         "screenshot": "obsidian-main-editor.png",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
+      }
+    },
+    {
+      "surface": "live-preview-lower",
+      "tocktutor": {
+        "screenshot": "tocktutor-live-preview-lower.png",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
+      },
+      "obsidian": {
+        "screenshot": "obsidian-live-preview-lower.png",
         "path": "UIUX Comparison.md",
         "mode": "live-preview",
         "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
@@ -2440,6 +2457,86 @@
         "textExcerpt": "Comparison Vault\nAttachments\npixel\nPNG\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nUIUX Comparison\nUIUX Comparison\nUIUX Comparison\nProperties\nreview\nmarkdown\ncomparison\ntypography\nmedium\nAdd property\n\n\nMarkdown Rendering Lab\n\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\n\nStructure\n\n\nLists\n\n\n1. Compare heading scale and paragraph rhythm.\n2. Inspect nested content.\n   - A nested bullet\n   - A bullet with strong text\n\n\n Completed task\n Pending task with Welcome\n\n\n> A short quote should begin close to its leading bar.\n>\n> A second paragraph tests spacing inside the same quote.\nLinked mentions\n1\nStudy Guide\n1\nCompare [[UIUX Comparison]] and [[Notes/Welcome]].\nUnlinked mentions\n1\nMention\n1\nUIUX Comparison is our shared Markdown rendering note.\n1 backlink\n5 properties"
       },
       "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+    },
+    "tocktutor-live-preview-lower.png": {
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "runtimeErrors": [],
+      "path": "UIUX Comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+      "bytes": 289954,
+      "sha256": "f9393e80ab7b845c45838a1331cef30416e8f285ad8b2386cb3057511cef8023",
+      "capturedAt": "2026-09-25T01:14:01.876Z",
+      "sourceCommit": "74873748",
+      "visibleState": {
+        "assertedText": "Data; Code and Notes; Small Heading",
+        "assertionPassed": true,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "scrollContainer": "Editor Attachment Drop Zone",
+        "scrollTop": 700,
+        "textExcerpt": "Data · Syntax · Expected Result · State · Code and Notes · const lesson = \"markdown\" · Small Heading · Final text tests the smallest heading · Footnotes should remain readable without dominating the page."
+      },
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners during route verification and capture; no capture-time errors.",
+      "route": "/tocktutor/UIUX%20Comparison.md"
+    },
+    "obsidian-live-preview-lower.png": {
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "runtimeErrors": [],
+      "path": "UIUX Comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+      "bytes": 221639,
+      "sha256": "46a142ca48251b754909bad157a6c2f431986710a01c238c93da59aa1351e027",
+      "capturedAt": "2026-09-25T01:21:03.025Z",
+      "sourceCommit": "74873748",
+      "visibleState": {
+        "assertedText": "Data; Code and Notes; Small Heading",
+        "assertionPassed": true,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "scrollContainer": "CodeMirror Live Preview scroller",
+        "scrollTop": 858,
+        "textExcerpt": "Data · Syntax · Expected Result · State · Code and Notes · const lesson = \"markdown\" · Small Heading · Final text tests the smallest heading · Footnotes should remain readable without dominating the page.",
+        "headingPositions": [
+          {
+            "text": "Data",
+            "y": 184.921875,
+            "bottom": 228.984375
+          },
+          {
+            "text": "Code and Notes",
+            "y": 429.171875,
+            "bottom": 473.234375
+          },
+          {
+            "text": "Small Heading",
+            "y": 773.234375,
+            "bottom": 815.84375
+          }
+        ]
+      },
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners during route verification and capture; no capture-time errors.",
+      "route": "app://obsidian.md/index.html",
+      "productVersion": "Obsidian 1.13.7"
     }
   },
   "galleryBrowserCheck": {
@@ -2463,7 +2560,8 @@
       ],
       "remaining": [],
       "verified": true
-    }
+    },
+    "scope": "Earlier successful verification before the lower-note pair was added; the latest attempt is recorded separately."
   },
   "cleanup": {
     "verified": true,
@@ -2554,14 +2652,15 @@
     "No AI request was submitted. TockTutor has no configured provider; Claudian uses its genuine empty state."
   ],
   "publication": {
-    "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage and replace only allowlisted TockTutor images on the same filesystem with rollback copies. Never write Obsidian or unrelated screenshots.",
+    "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage only specifically requested allowlisted captures and their proof on the same filesystem with rollback. Preserve every existing screenshot unless an explicit retake is requested; never write unrelated images.",
     "lastRefresh": {
-      "capturedAt": "2026-09-25T00:20:44.675Z",
-      "sourceCommit": "91fa6ef4",
-      "updatedTockTutorImages": 1,
-      "preservedObsidianImages": 28,
-      "obsidianHashesUnchanged": true,
-      "transaction": "One allowlisted screenshot and its evidence staged on the same filesystem with rollback; all others retained."
+      "capturedAt": "2026-09-25T01:21:03.025Z",
+      "sourceCommit": "74873748",
+      "addedTockTutorImages": 1,
+      "addedObsidianImages": 1,
+      "preservedExistingImages": 61,
+      "existingObsidianHashesUnchanged": true,
+      "transaction": "Two newly requested allowlisted images and their proof were staged on the same filesystem with rollback; every pre-existing screenshot retained its original SHA-256."
     }
   },
   "graphAlignment": {
@@ -2813,5 +2912,131 @@
     "errors": [],
     "processTreeStopped": true,
     "run": "eea4eb94-7deb-4307-86b1-50d4ef34c63b"
+  },
+  "lowerNoteComparison": {
+    "capturedAt": "2026-09-25T01:21:03.025Z",
+    "sourceCommit": "74873748",
+    "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "visibleHeadings": [
+      "Data",
+      "Code and Notes",
+      "Small Heading"
+    ],
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2
+    },
+    "theme": "dark",
+    "skin": null,
+    "apps": {
+      "tocktutor": {
+        "screenshot": "tocktutor-live-preview-lower.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "scrollContainer": "Editor Attachment Drop Zone",
+        "scrollTop": 700,
+        "consoleErrors": [],
+        "runtimeErrors": []
+      },
+      "obsidian": {
+        "screenshot": "obsidian-live-preview-lower.png",
+        "route": "app://obsidian.md/index.html",
+        "version": "1.13.7",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "scrollContainer": "CodeMirror Live Preview scroller",
+        "scrollTop": 858,
+        "consoleErrors": [],
+        "runtimeErrors": []
+      }
+    },
+    "startupErrors": [
+      "tockteam-desktop: failed to open workspace TypeError: workspaces.startSession is not a function"
+    ],
+    "cleanup": {
+      "verified": true,
+      "remaining": [],
+      "runs": [
+        {
+          "id": "90b174b2-7f80-4893-be5e-66810b7470e4",
+          "rootPid": 2741,
+          "recordedPids": [
+            2741,
+            2743,
+            2744,
+            2746,
+            2747,
+            2751,
+            2757,
+            2886,
+            2887,
+            2888,
+            2889,
+            2890,
+            2891,
+            2892,
+            2893,
+            2922,
+            3102,
+            3103,
+            3104,
+            3105,
+            3106,
+            3107,
+            3108,
+            3109
+          ],
+          "remaining": [],
+          "verified": true
+        },
+        {
+          "id": "824a2011-0576-4f65-b170-3559753227f7",
+          "rootPid": 4215,
+          "recordedPids": [
+            4215,
+            4217,
+            4218,
+            4219,
+            5062,
+            5063
+          ],
+          "remaining": [],
+          "verified": true
+        }
+      ]
+    }
+  },
+  "latestGalleryBrowserAttempt": {
+    "status": "blocked",
+    "attemptedAt": "2026-09-25T02:30:57.987Z",
+    "sourceCommit": "74873748",
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2
+    },
+    "expectedRenderedImages": 59,
+    "expectedUniqueSources": 57,
+    "launch": {
+      "url": "http://127.0.0.1:55729/",
+      "result": "refused-before-launch",
+      "reason": "No eligible extended display. Refusing to open on the main or mirrored display.",
+      "inspectResult": "No eligible extended display. Refusing to open on the main or mirrored display.",
+      "alternateLaunchAttempted": false
+    },
+    "runtimeErrors": null,
+    "cleanup": {
+      "verified": true,
+      "browserLaunched": false,
+      "serverPid": 6206,
+      "serverProcess": "node /tmp/tocktutor-gallery-server.mjs",
+      "serverStopped": true,
+      "serverRemaining": [],
+      "port": 55729,
+      "portClosed": true,
+      "descendantsSpawned": false
+    }
   }
 }

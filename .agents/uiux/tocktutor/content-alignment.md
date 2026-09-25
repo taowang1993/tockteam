@@ -1,5 +1,11 @@
 # TockTutor and Obsidian Content Alignment
 
+## Lower Live Preview Pair — 2026-09-25
+
+Added a fresh, scrolled comparison of the identical `UIUX Comparison.md` note in TockTeam Desktop and Obsidian 1.13.7. Both captures show Data, Code and Notes, and Small Heading in Live Preview at 1512 × 949 CSS pixels and 2× scale (3024 × 1898 pixels), using each product’s built-in dark theme and no TockTeam skin. Per-image hashes, visible-section and scroll evidence, theme, route, and error monitoring are in `content-alignment.json`.
+
+The TockCoder startup route logged the previously observed `workspaces.startSession is not a function` error before switching to TockTutor; it is recorded separately from the clean TockTutor capture. The guarded TockTeam and Obsidian process trees were both stopped with no remaining descendants. No existing Obsidian screenshot was changed. A browser smoke of the updated gallery was blocked because `extended_display` found no eligible secondary display; its bounded loopback server was stopped and the port closed, with no alternate launch attempted.
+
 ## Focused Bullet and Link Retake — 2026-09-25
 
 At `91fa6ef4`, Crepe’s nested bullet SVG now takes the same text color as the list; links still use the *same* `--dsw-specific-markdown-accent` as checked task boxes. Inspection found no link opacity/filter difference: both computed to `rgb(166, 138, 249)` in built-in dark mode. The thinner link glyphs appeared darker against the solid checkbox fill, so links now use font weight 500 rather than introducing a second purple. The note accent has two theme values: `#705dcf` in light mode and `#a68af9` in dark mode; tags are tinted blends, not another link/checkbox accent.
