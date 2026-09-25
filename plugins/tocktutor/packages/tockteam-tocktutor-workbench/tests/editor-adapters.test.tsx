@@ -593,6 +593,44 @@ describe('Live Preview editor', () => {
     expect(keyword?.getAttribute('class')).toBeTruthy()
   })
 
+  it('shows the code language and a separate Copy control, then confirms a successful copy without changing source', async () => {
+    const source = '```ts\nconst lesson = "markdown"\n```\n'
+    const onChange = vi.fn()
+    const writeText = vi.fn().mockRejectedValueOnce(new Error('clipboard denied')).mockResolvedValue(undefined)
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    try {
+      const { container } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
+      await waitFor(() => expect(container.querySelector('.milkdown-code-block .copy-button')).toBeTruthy(), { timeout: 10_000 })
+      const block = container.querySelector<HTMLElement>('.milkdown-code-block')!
+      expect(block.dataset.codeLanguage).toBe('ts')
+      const language = block.querySelector<HTMLButtonElement>('.language-button')!
+      const copy = block.querySelector<HTMLButtonElement>('.copy-button')!
+      expect(language.textContent).toContain('ts')
+      expect(copy).not.toBe(language)
+      expect(copy.textContent).toContain('Copy Code')
+      expect(copy.querySelector('.lucide-copy')).toBeTruthy()
+      expect(copy.querySelector('.lucide-copy-check')).toBeTruthy()
+      fireEvent.click(language)
+      await waitFor(() => expect(block.querySelector('.language-list')).toBeTruthy())
+      expect(writeText).not.toHaveBeenCalled()
+      copy.focus()
+      fireEvent.click(copy)
+      await waitFor(() => expect(consoleError).toHaveBeenCalled())
+      expect(copy.dataset.copied).toBeUndefined()
+      fireEvent.click(copy)
+      await waitFor(() => expect(copy.dataset.copied).toBe('true'))
+      expect(copy.getAttribute('aria-label')).toBe('Copied Code')
+      expect(writeText).toHaveBeenCalledWith('const lesson = "markdown"')
+      expect(onChange).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+      if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard)
+      else delete (navigator as Navigator & { clipboard?: Clipboard }).clipboard
+    }
+  })
+
   it('renders bordered tables without a persistent command strip', async () => {
     const { container } = render(<LivePreviewEditor content={'| Surface | Status |\n| --- | --- |\n| Editor | Ready |\n'} onMarkdownChange={() => {}} />)
 

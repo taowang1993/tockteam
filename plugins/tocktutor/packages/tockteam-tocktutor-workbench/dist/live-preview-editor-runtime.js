@@ -23,6 +23,8 @@ import { renderMarkdownHtml } from "./rich-markdown.js";
 import { classifyExternalEmbed } from "./external-embeds.js";
 import { collectEmbedTargets } from "./embeds.js";
 const searchKey = new PluginKey('tocktutor-crepe-search');
+// Lucide Copy and CopyCheck (0.473.0); Crepe accepts SVG markup, not React components.
+const copyIcons = `<svg xmlns="http://www.w3.org/2000/svg" class="lucide-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg xmlns="http://www.w3.org/2000/svg" class="lucide-copy-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 15 2 2 4-4"/><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
 const codeHighlight = syntaxHighlighting(HighlightStyle.define([
     { tag: [tags.keyword, tags.operatorKeyword, tags.definitionKeyword], color: 'var(--dsw-specific-markdown-accent)' },
     { tag: [tags.string, tags.number, tags.bool], color: 'var(--dsw-alias-state-success-primary)' },
@@ -131,6 +133,21 @@ export function LivePreviewEditorRuntime(props) {
                         LanguageDescription.of({ name: 'JavaScript', alias: ['js', 'jsx'], load: async () => javascript({ jsx: true }) }),
                     ],
                     theme: codeHighlight,
+                    copyIcon: copyIcons,
+                    copyText: 'Copy Code',
+                    onCopy: () => {
+                        const button = root.current?.querySelector('.milkdown-code-block .copy-button:focus');
+                        if (!button)
+                            return;
+                        button.dataset.copied = 'true';
+                        button.setAttribute('aria-label', 'Copied Code');
+                        window.setTimeout(() => {
+                            if (!button.isConnected)
+                                return;
+                            delete button.dataset.copied;
+                            button.setAttribute('aria-label', 'Copy Code');
+                        }, 1800);
+                    },
                 },
                 [Crepe.Feature.ImageBlock]: {
                     proxyDomURL: imageURL,
@@ -205,6 +222,8 @@ export function LivePreviewEditorRuntime(props) {
                         class: `tocktutor-find-match${index === current.current ? ' tocktutor-find-current' : ''}`,
                     }));
                     state.doc.descendants((node, pos) => {
+                        if (node.type.name === 'code_block')
+                            decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-code-language': node.attrs.language ?? '' }));
                         if (node.type.name === 'image-block' || node.type.name === 'image')
                             decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-image-revision': String(imageRevision) }));
                         if (node.type.name === 'tocktutor_inline')
