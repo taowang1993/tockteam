@@ -1,5 +1,9 @@
 # TockTutor and Obsidian Content Alignment
 
+## Live Preview Divider Contrast — 2026-09-25
+
+Retook only `tocktutor-live-preview-lower.png` from guarded Desktop at `1758266d`. The authored `---` was already rendered as `<hr>`, but Crepe mixed its outline down to roughly 2.4% white, nearly invisible on the dark canvas. Using the existing outline token directly yields a visible line at 12% white between “This sentence follows without a blank line.” and “Small Heading”, without changing the Markdown (SHA-256 `3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5`). Verified the Live Preview route, scrollTop 700, 1512 × 949 CSS pixels at DPR 2 (3024 × 1898 PNG), built-in dark/no skin, and zero capture-time errors; the guarded app and all descendants were stopped. All 62 other screenshots, including 29 Obsidian references, retained their hashes. Details: `content-alignment.json`.
+
 ## Fenced Language Highlighting and Footnote Alignment — 2026-09-25
 
 Retook only `tocktutor-live-preview-lower.png` from guarded Desktop at `4919d781` after moving the definition label `context` up 4 CSS pixels to align visually with “Footnotes”. The authored note and its `ts` fence retain SHA-256 `3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5`. A separate isolated Live Preview note verified that authored `python`, `rust`, and `sql` fences display Python, Rust, and SQL with colored tokens, without guessing code content. Both guarded runs used 1512 × 949 CSS pixels at DPR 2, dark/no skin, and stopped with no descendants. The canonical screenshot is 3024 × 1898 pixels at scrollTop 700; TypeScript, Copy, Data, Code and Notes, Small Heading, and the inline `[^context]` reference remain visible; no capture-time console/page errors. All 62 other screenshots, including 29 Obsidian references, retained their hashes. Detailed evidence is in `content-alignment.json`.

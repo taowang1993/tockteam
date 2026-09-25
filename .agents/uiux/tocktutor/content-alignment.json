@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T12:58:05.337Z",
-  "sourceCommit": "4919d781",
+  "capturedAt": "2026-09-25T13:36:37.395Z",
+  "sourceCommit": "1758266d",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -2502,10 +2502,10 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 252964,
-      "sha256": "6f0f9c5907d6801e423420f77fb132340a1ee86aac882f86755c470aaeea8768",
-      "capturedAt": "2026-09-25T12:58:05.337Z",
-      "sourceCommit": "4919d781",
+      "bytes": 252963,
+      "sha256": "9672a13e5ba5a93c1f966c76f8db93bfde1c4c2dee7e8edf418ff47850084d8d",
+      "capturedAt": "2026-09-25T13:36:37.395Z",
+      "sourceCommit": "1758266d",
       "visibleState": {
         "assertedText": "Data; Code and Notes; Small Heading",
         "assertionPassed": true,
@@ -3568,6 +3568,91 @@
       "verified": true,
       "run": "a9f29123-796e-4872-899d-1efbbb79fb49",
       "rootPid": 53966,
+      "remaining": []
+    }
+  },
+  "dividerContrastRetake": {
+    "capturedAt": "2026-09-25T13:36:37.395Z",
+    "sourceCommit": "1758266d",
+    "filename": "tocktutor-live-preview-lower.png",
+    "sha256": "9672a13e5ba5a93c1f966c76f8db93bfde1c4c2dee7e8edf418ff47850084d8d",
+    "previousSha256": "6f0f9c5907d6801e423420f77fb132340a1ee86aac882f86755c470aaeea8768",
+    "route": "/tocktutor/UIUX%20Comparison.md",
+    "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "mode": "live-preview",
+    "scrollTop": 700,
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null,
+      "bodySkin": null
+    },
+    "headings": [
+      {
+        "text": "Data",
+        "y": 238,
+        "marginBottom": "16px"
+      },
+      {
+        "text": "Code and Notes",
+        "y": 483,
+        "marginBottom": "16px"
+      },
+      {
+        "text": "Small Heading",
+        "y": 801.5234375,
+        "marginBottom": "16px"
+      }
+    ],
+    "code": {
+      "authoredFence": "ts",
+      "visibleLabel": "TypeScript",
+      "hiddenPicker": true,
+      "hiddenPickerDisplay": "none",
+      "copyOpacity": "1"
+    },
+    "inlineFootnote": {
+      "authoredReference": "[^context]",
+      "renderedReference": "[^context]",
+      "mutedColor": "rgb(173, 178, 184)",
+      "fontSize": "12px",
+      "fontFamily": "ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    "definition": {
+      "label": "context",
+      "text": "Footnotes should remain readable without dominating the page.",
+      "display": "flex",
+      "labelColor": "rgb(173, 178, 184)",
+      "labelFontSize": "12px",
+      "labelTop": "-4px"
+    },
+    "rule": {
+      "authored": "---",
+      "preceding": "A soft line ends here.This sentence follows without a blank line.",
+      "following": "Small Heading",
+      "background": "rgba(255, 255, 255, 0.12)",
+      "outline": "#ffffff1f",
+      "box": {
+        "x": 562,
+        "y": 768.5234375,
+        "width": 700,
+        "height": 13
+      },
+      "previousComputedBackground": "color(srgb 1 1 1 / 0.0243137)"
+    },
+    "captureErrors": [],
+    "preservedOtherImages": 62,
+    "preservedObsidianImages": 29,
+    "cleanup": {
+      "verified": true,
+      "run": "3fc9a89b-6be0-4ced-8a07-b9fc8f31f9ae",
+      "rootPid": 62671,
       "remaining": []
     }
   }
