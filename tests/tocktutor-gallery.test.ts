@@ -31,6 +31,12 @@ test('accounts for every gallery and supplemental capture without stale links', 
   assert.match(html, /id="reviews"[\s\S]*?Not Applicable/u)
 })
 
+test('orders the numbered surfaces with Tag and Tab Polish at Surface 04', () => {
+  const sections = [...html.matchAll(/<section class="surface" id="([^"]+)">\s*<p class="section-number">Surface (\d+)<\/p>/gu)]
+  assert.deepEqual(sections.map(([, id]) => id).slice(0, 5), ['workspace', 'reading', 'live-preview', 'polish', 'source'])
+  assert.deepEqual(sections.map(([, , number]) => Number(number)), sections.map((_, index) => index + 1))
+})
+
 test('refreshes supplemental captures with verified pixels and honest runtime evidence', () => {
   for (const [name, value] of Object.entries(proof.captures)) {
     const capture = value as { sha256: string; bytes: number; runtimeErrors: string[]; runtimeErrorMonitoring: string }
