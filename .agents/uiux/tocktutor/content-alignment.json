@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T08:23:00.557Z",
-  "sourceCommit": "d91b7b2b",
+  "capturedAt": "2026-09-25T10:07:56.449Z",
+  "sourceCommit": "e807b5a8",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -2502,10 +2502,10 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 282387,
-      "sha256": "a578d51fed343610f0ebcc61d552a53cbe93b8829ab2f4308fdffaa920f5b99b",
-      "capturedAt": "2026-09-25T08:23:00.557Z",
-      "sourceCommit": "d91b7b2b",
+      "bytes": 253157,
+      "sha256": "ea03780ec2d2c1c8f569352bcfc2ccd8b8f063cc31b195c19182c2c614315c10",
+      "capturedAt": "2026-09-25T10:07:56.449Z",
+      "sourceCommit": "e807b5a8",
       "visibleState": {
         "assertedText": "Data; Code and Notes; Small Heading",
         "assertionPassed": true,
@@ -2526,7 +2526,7 @@
           "Small Heading": 19
         }
       },
-      "runtimeErrorMonitoring": "Playwright console/pageerror listeners attached before lower-note state verification and capture after clean reload; no capture-time errors. An earlier unsupported browser-module import prevented route mount; it was removed and the final app was reloaded before this proof.",
+      "runtimeErrorMonitoring": "Playwright console/pageerror listeners during lower-view verification and screenshot; zero capture-time errors, and console error query afterward returned zero errors.",
       "route": "/tocktutor/UIUX%20Comparison.md"
     },
     "obsidian-live-preview-lower.png": {
@@ -3223,5 +3223,70 @@
     },
     "preservedOtherImages": 62,
     "preservedObsidianImages": 29
+  },
+  "languageSpacingFootnoteRetake": {
+    "capturedAt": "2026-09-25T10:07:56.449Z",
+    "sourceCommit": "e807b5a8",
+    "filename": "tocktutor-live-preview-lower.png",
+    "sha256": "ea03780ec2d2c1c8f569352bcfc2ccd8b8f063cc31b195c19182c2c614315c10",
+    "previousSha256": "a578d51fed343610f0ebcc61d552a53cbe93b8829ab2f4308fdffaa920f5b99b",
+    "route": "/tocktutor/UIUX%20Comparison.md",
+    "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "mode": "live-preview",
+    "scrollTop": 700,
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null,
+      "bodySkin": null
+    },
+    "headings": [
+      {
+        "text": "Data",
+        "y": 238,
+        "marginBottom": "16px"
+      },
+      {
+        "text": "Code and Notes",
+        "y": 483,
+        "marginBottom": "16px"
+      },
+      {
+        "text": "Small Heading",
+        "y": 803.625,
+        "marginBottom": "16px"
+      }
+    ],
+    "code": {
+      "sourceLanguage": "ts",
+      "visibleLabel": "TypeScript",
+      "visualLabel": "\"TypeScript\"",
+      "margin": "16px 0px 24px",
+      "languageX": 1111.484375,
+      "copyX": 1224,
+      "copyOpacity": "1"
+    },
+    "footnote": {
+      "label": "context",
+      "text": "Footnotes should remain readable without dominating the page.",
+      "display": "flex",
+      "labelY": 919.125,
+      "textY": 914.625
+    },
+    "captureErrors": [],
+    "preservedOtherImages": 62,
+    "preservedObsidianImages": 29,
+    "cleanup": {
+      "verified": true,
+      "run": "1a79dd94-69cb-4110-ac75-89dc6be83333",
+      "rootPid": 36293,
+      "remaining": []
+    }
   }
 }
