@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T04:32:31.302Z",
-  "sourceCommit": "e940aa6b",
+  "capturedAt": "2026-09-25T08:23:00.557Z",
+  "sourceCommit": "d91b7b2b",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -2502,10 +2502,10 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 280900,
-      "sha256": "e9373a734417bbf875c87d2338551a19b0bdec315782e312f8f51f8a5cfdcc13",
-      "capturedAt": "2026-09-25T04:32:31.302Z",
-      "sourceCommit": "e940aa6b",
+      "bytes": 282387,
+      "sha256": "a578d51fed343610f0ebcc61d552a53cbe93b8829ab2f4308fdffaa920f5b99b",
+      "capturedAt": "2026-09-25T08:23:00.557Z",
+      "sourceCommit": "d91b7b2b",
       "visibleState": {
         "assertedText": "Data; Code and Notes; Small Heading",
         "assertionPassed": true,
@@ -2526,7 +2526,7 @@
           "Small Heading": 19
         }
       },
-      "runtimeErrorMonitoring": "Playwright console/pageerror listeners attached before lower-note state verification and capture; no capture-time errors.",
+      "runtimeErrorMonitoring": "Playwright console/pageerror listeners attached before lower-note state verification and capture after clean reload; no capture-time errors. An earlier unsupported browser-module import prevented route mount; it was removed and the final app was reloaded before this proof.",
       "route": "/tocktutor/UIUX%20Comparison.md"
     },
     "obsidian-live-preview-lower.png": {
@@ -2694,8 +2694,8 @@
   "publication": {
     "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage only specifically requested allowlisted captures and their proof on the same filesystem with rollback. Preserve every existing screenshot unless an explicit retake is requested; never write unrelated images.",
     "lastRefresh": {
-      "capturedAt": "2026-09-25T04:32:31.302Z",
-      "sourceCommit": "e940aa6b",
+      "capturedAt": "2026-09-25T08:23:00.557Z",
+      "sourceCommit": "d91b7b2b",
       "updatedTockTutorImages": 1,
       "preservedOtherImages": 62,
       "preservedObsidianImages": 29,
@@ -2979,8 +2979,8 @@
         "scrollTop": 700,
         "consoleErrors": [],
         "runtimeErrors": [],
-        "retakenAt": "2026-09-25T04:32:31.302Z",
-        "retakeSourceCommit": "e940aa6b"
+        "retakenAt": "2026-09-25T08:23:00.557Z",
+        "retakeSourceCommit": "d91b7b2b"
       },
       "obsidian": {
         "screenshot": "obsidian-live-preview-lower.png",
@@ -3186,6 +3186,39 @@
       "verified": true,
       "run": "c791ded4-75b1-4407-9a8f-1b13f201d4c5",
       "rootPid": 20748,
+      "remaining": []
+    },
+    "preservedOtherImages": 62,
+    "preservedObsidianImages": 29
+  },
+  "codeControlsRetake": {
+    "capturedAt": "2026-09-25T08:23:00.557Z",
+    "sourceCommit": "d91b7b2b",
+    "filename": "tocktutor-live-preview-lower.png",
+    "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "route": "/tocktutor/UIUX%20Comparison.md",
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2
+    },
+    "theme": "dark",
+    "skin": null,
+    "mode": "live-preview",
+    "scrollTop": 700,
+    "language": "ts",
+    "languageOpacity": "1",
+    "copyOpacity": "1",
+    "openingFenceWhileEditing": "\"```ts\"",
+    "closingFenceWhileEditing": "\"```\"",
+    "controlsRemainVisibleWhileEditing": true,
+    "copySucceeded": true,
+    "clipboard": "Renderer-local test stub; did not write the OS clipboard",
+    "captureErrors": [],
+    "cleanup": {
+      "verified": true,
+      "run": "c6ae1c59-0ac5-40ed-9481-c907adae3410",
+      "rootPid": 29742,
       "remaining": []
     },
     "preservedOtherImages": 62,

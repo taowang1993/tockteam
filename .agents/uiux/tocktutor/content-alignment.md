@@ -1,5 +1,9 @@
 # TockTutor and Obsidian Content Alignment
 
+## Live Preview Language and Copy Controls — 2026-09-25
+
+Refreshed only `tocktutor-live-preview-lower.png` from the source-built Desktop. The `ts` language picker and a separate Lucide Copy icon are visible at the top right without hover, and both stay visible while editing. Focusing the code reveals display-only opening and closing fences (the opening fence reads “```ts”); the note source is unchanged. The Copy icon becomes Copy Check after a successful copy and resets; an isolated renderer-local clipboard stub verified this without touching the OS clipboard. The normal-state screenshot is 1512 × 949 CSS pixels at 2× (3024 × 1898), built-in dark with no active skin. Final capture-time console/page errors were empty, the guarded app tree stopped with no descendants, and `content-alignment.json` records the route, computed visibility, modes, hash, and cleanup. All 62 other screenshots, including every Obsidian reference, retained their hashes.
+
 ## Compact Live Preview Table and Code Retake — 2026-09-25
 
 Refreshed only `tocktutor-live-preview-lower.png` from the isolated source-built Desktop. Its Data table is left-aligned at 348.5px within the 700px editor, with stronger semantic-token borders; the `ts` code fence renders colored `const` and string tokens; and the authored lines “A soft line ends here.” / “This sentence follows without a blank line.” render on separate lines without rewriting the note. The lower view shows Data, Code and Notes, and Small Heading at scrollTop 700. The capture is 1512 × 949 CSS pixels at 2× (3024 × 1898), built-in dark, no active skin, and had no capture-time console or renderer errors. The guarded Desktop process tree stopped with no descendants. `content-alignment.json` records the new image hash, route, computed colors, geometry, and cleanup; the other 62 screenshots, including all Obsidian references, retained their hashes.
