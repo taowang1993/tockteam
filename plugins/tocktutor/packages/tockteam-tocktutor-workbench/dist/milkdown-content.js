@@ -1,6 +1,7 @@
 // @ts-nocheck -- Milkdown's extensionless declarations are incompatible with the pinned NodeNext analyzer.
 import { remarkStringifyOptionsCtx } from '@milkdown/core';
 import { $node, $remark } from '@milkdown/utils';
+import { hardbreakAttr, hardbreakSchema } from '@milkdown/preset-commonmark';
 import { imageBlockSchema } from '@milkdown/components/image-block';
 import { classifyExternalEmbed } from "./external-embeds.js";
 // These constructs carry vault semantics, not merely a Markdown spelling choice.
@@ -69,6 +70,10 @@ export const obsidianSyntax = $remark('tocktutorObsidianSyntax', () => () => (tr
     visit(tree);
 });
 export function configureObsidianContent(ctx) {
+    // Milkdown already parses soft newlines; its inline hardbreak DOM defaults to a space.
+    ctx.update(hardbreakSchema.key, previous => context => ({ ...previous(context),
+        toDOM: node => ['br', context.get(hardbreakAttr.key)(node)],
+    }));
     // Crepe otherwise uses Markdown alt text to store its image-width ratio.
     // Preserve human-authored image descriptions independently of view sizing.
     ctx.update(imageBlockSchema.key, previous => context => {
