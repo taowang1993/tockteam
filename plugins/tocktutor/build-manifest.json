@@ -1619,11 +1619,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "f7956fd2586c90ac5c22cd1a34f2cba25f3e6321405afedf0cbd4e0743099af4"
+      "sha256": "6922dc18543b50c0917cbbb6fecb33c2b3bf7aecd30f9243c2999f29c912b417"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "c6a64897e6b7c7caf824e2822aea0e416884e6ab428880b5f05a317d59ab31dd"
+      "sha256": "f20ed515f645db4152b315b11dd81859225dbb3009ced77927a19f22e06f6ebf"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -1879,15 +1879,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor-runtime.d.ts.map",
-      "sha256": "23e03f36f9d165593963eea4619e211cf0722b60aa78e5f89987f5fd21a2d950"
+      "sha256": "3acf6d146bb1e15e72e0f739557f6d6c546c0da4c758f3e30ef63ffc3db34191"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor-runtime.js",
-      "sha256": "35ba465fcd5d27559c2ffd399bf9d1eca3017f0503e60f8df1f5d5488a4e9615"
+      "sha256": "c60c4f4d6ec4bf2581d658af0cf1ccf5bd60ae27f9442570ae251d24c60b7d9d"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor-runtime.js.map",
-      "sha256": "89a661ac5ba00f6ae53b2b89670a17b5c6a77fb80c4ec95bc9240857f52d42aa"
+      "sha256": "d64b77a77f3007b277b253376269ef4e47bc7733b46f51760153d27f3fa24152"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/live-preview-editor.d.ts",
@@ -2711,7 +2711,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/package.json",
-      "sha256": "6145ed7c31462aa017e82a0c79f8a96722c24c348ae6c823730c25bdf1bd5205"
+      "sha256": "d579a37fb9d33cf1927db5557b5724b49b84fba3123230f9b0a3536c8f0b2167"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/scripts/build-client.mjs",
@@ -2891,7 +2891,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/live-preview-editor-runtime.tsx",
-      "sha256": "37aba4c03ef61d88e1ec3b7a9a16304b3062a4fa8bdf6de4a489e0b684b56a66"
+      "sha256": "3241d8b05ec8ad902ea77ebbe3fcd7239ff9f37f6956b42cad30b3eb3b4cc37e"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/live-preview-editor.tsx",
@@ -3159,7 +3159,7 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "70b259a1e93567c08d6522e53782ae3bdc71630ee2aae1c0a519f08623bc89fd"
+      "sha256": "2f2f7b4d7932bcc94143ff3ec4730c088f5471e92b1562cdcaf029df621a7b53"
     },
     {
       "path": "pnpm-workspace.yaml",

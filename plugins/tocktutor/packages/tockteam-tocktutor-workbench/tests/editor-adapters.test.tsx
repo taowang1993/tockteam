@@ -593,6 +593,24 @@ describe('Live Preview editor', () => {
     expect(keyword?.getAttribute('class')).toBeTruthy()
   })
 
+  it('highlights other authored fence languages and shows their full names without changing Markdown', async () => {
+    for (const [fence, name, keyword] of [['python', 'Python', 'def'], ['py', 'Python', 'def'], ['rust', 'Rust', 'fn'], ['sql', 'SQL', 'SELECT']]) {
+      const source = `\`\`\`${fence}\n${keyword} lesson(): pass\n\`\`\`\n`
+      const onChange = vi.fn()
+      const { container, unmount } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
+      const block = await waitFor(() => {
+        const found = container.querySelector<HTMLElement>('.milkdown-code-block')
+        expect(found?.querySelector('.cm-line')).toBeTruthy()
+        return found!
+      }, { timeout: 10_000 })
+      await waitFor(() => expect(block.querySelector<HTMLElement>('.tools')?.dataset.displayLanguage).toBe(name))
+      await waitFor(() => expect([...block.querySelectorAll('.cm-line span')].some(span => span.textContent === keyword && span.className)).toBe(true), { timeout: 10_000 })
+      expect(block.dataset.codeLanguage).toBe(fence)
+      expect(onChange).not.toHaveBeenCalled()
+      unmount()
+    }
+  })
+
   it('shows the code language and a separate Copy control, then confirms a successful copy without changing source', async () => {
     const source = '```ts\nconst lesson = "markdown"\n```\n'
     const onChange = vi.fn()

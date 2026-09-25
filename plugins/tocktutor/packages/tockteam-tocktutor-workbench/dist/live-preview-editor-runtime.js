@@ -3,6 +3,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Crepe } from '@milkdown/crepe';
 import { javascript } from '@codemirror/lang-javascript';
 import { HighlightStyle, LanguageDescription, syntaxHighlighting } from '@codemirror/language';
+import { languages } from '@codemirror/language-data';
 import { tags } from '@lezer/highlight';
 import { commandsCtx, parserCtx, serializerCtx } from '@milkdown/core';
 import { toggleStrongCommand, toggleEmphasisCommand, remarkInlineLinkPlugin } from '@milkdown/preset-commonmark';
@@ -30,6 +31,12 @@ const codeHighlight = syntaxHighlighting(HighlightStyle.define([
     { tag: [tags.string, tags.number, tags.bool], color: 'var(--dsw-alias-state-success-primary)' },
     { tag: tags.comment, color: 'var(--dsw-alias-label-secondary)' },
 ]));
+const codeLanguages = [
+    ...languages.map(language => LanguageDescription.of({ name: language.name, alias: [...language.alias, ...language.extensions], load: () => language.load() })),
+    LanguageDescription.of({ name: 'TypeScript', alias: ['ts', 'tsx'], load: async () => javascript({ typescript: true, jsx: true }) }),
+    LanguageDescription.of({ name: 'JavaScript', alias: ['js', 'jsx'], load: async () => javascript({ jsx: true }) }),
+];
+const codeLanguageNames = new Map(codeLanguages.flatMap(language => language.alias.map(alias => [alias, language.name])));
 // Search rendered text, not Markdown punctuation. Keep offsets in the native document.
 function searchDocument(doc, query) {
     let text = '';
@@ -128,10 +135,7 @@ export function LivePreviewEditorRuntime(props) {
                 // Let the browser own caret shape, blinking, and window-focus visibility.
                 [Crepe.Feature.Cursor]: { virtual: false },
                 [Crepe.Feature.CodeMirror]: {
-                    languages: [
-                        LanguageDescription.of({ name: 'TypeScript', alias: ['ts', 'tsx'], load: async () => javascript({ typescript: true, jsx: true }) }),
-                        LanguageDescription.of({ name: 'JavaScript', alias: ['js', 'jsx'], load: async () => javascript({ jsx: true }) }),
-                    ],
+                    languages: codeLanguages,
                     theme: codeHighlight,
                     copyIcon: copyIcons,
                     copyText: 'Copy Code',
@@ -320,7 +324,7 @@ export function LivePreviewEditorRuntime(props) {
                 if (!button)
                     continue;
                 const code = block.dataset.codeLanguage?.toLowerCase();
-                const name = code === 'ts' || code === 'tsx' ? 'TypeScript' : code === 'js' || code === 'jsx' ? 'JavaScript' : block.dataset.codeLanguage || 'Text';
+                const name = codeLanguageNames.get(code) ?? (block.dataset.codeLanguage || 'Text');
                 const tools = button.closest('.tools');
                 tools.dataset.displayLanguage = name;
                 tools.setAttribute('role', 'group');
