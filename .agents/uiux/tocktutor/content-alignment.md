@@ -1,5 +1,9 @@
 # TockTutor and Obsidian Content Alignment
 
+## Footnote Label Parity Retake — 2026-09-25
+
+Retook only `tocktutor-live-preview-lower.png` from guarded Desktop at `7a219593`, correcting the previous parity claim: the inline `[^context]` marker was still monospace and bright, while the definition `context` was 16px and white. Both are now 12px and muted in the note font; the definition remains inline beside “Footnotes”. The authored note SHA-256 is unchanged. Capture at 1512 × 949 CSS pixels and DPR 2 (3024 × 1898 device pixels) confirmed dark/no skin, Live Preview route, scrollTop 700, Data/Code and Notes/Small Heading, TypeScript and Copy, and zero capture-time console/page errors. Guarded run stopped with no descendants. All 62 other screenshots, including 29 Obsidian references, retained their hashes. Detailed evidence is in `content-alignment.json`.
+
 ## Display-Only Language and Bracketed Footnote Reference — 2026-09-25
 
 Retook only `tocktutor-live-preview-lower.png` from guarded Desktop at `9f89f1e4`. The 1512 × 949 CSS-pixel, 2× dark/no-skin Live Preview retains the authored `ts` fence and syntax colors while displaying “TypeScript” without a dropdown; Copy remains separate. The inline footnote now visibly reads `[^context]` in muted 12px type like the Obsidian reference, while the definition remains intact. The shared comparison note SHA-256 is unchanged. Data, Code and Notes, and Small Heading are visible at scrollTop 700. Capture-time console/page errors were empty; the app tree stopped with no descendants. All 62 other screenshots, including 29 Obsidian references, retained their hashes. Detailed route, geometry, mode, styling, checksums and cleanup are in `content-alignment.json`.

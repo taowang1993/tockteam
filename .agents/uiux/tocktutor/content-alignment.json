@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T11:22:24.046Z",
-  "sourceCommit": "9f89f1e4",
+  "capturedAt": "2026-09-25T12:29:13.876Z",
+  "sourceCommit": "7a219593",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -2502,10 +2502,10 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 253603,
-      "sha256": "3ef8a3b6847548855aba7b4405937d6d1c71ccd1be1167ed7f7a8271f8c6f817",
-      "capturedAt": "2026-09-25T11:22:24.046Z",
-      "sourceCommit": "9f89f1e4",
+      "bytes": 252873,
+      "sha256": "8ac0fde523d101824c2a0be02987ff6098609cb200fb96f42a8dc1c6f88d0f2d",
+      "capturedAt": "2026-09-25T12:29:13.876Z",
+      "sourceCommit": "7a219593",
       "visibleState": {
         "assertedText": "Data; Code and Notes; Small Heading",
         "assertionPassed": true,
@@ -3353,6 +3353,76 @@
       "verified": true,
       "run": "c1d099d1-7b74-40bb-921c-1a612a355858",
       "rootPid": 41229,
+      "remaining": []
+    }
+  },
+  "footnoteParityRetake": {
+    "capturedAt": "2026-09-25T12:29:13.876Z",
+    "sourceCommit": "7a219593",
+    "filename": "tocktutor-live-preview-lower.png",
+    "sha256": "8ac0fde523d101824c2a0be02987ff6098609cb200fb96f42a8dc1c6f88d0f2d",
+    "previousSha256": "3ef8a3b6847548855aba7b4405937d6d1c71ccd1be1167ed7f7a8271f8c6f817",
+    "route": "/tocktutor/UIUX%20Comparison.md",
+    "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "mode": "live-preview",
+    "scrollTop": 700,
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null,
+      "bodySkin": null
+    },
+    "headings": [
+      {
+        "text": "Data",
+        "y": 238,
+        "marginBottom": "16px"
+      },
+      {
+        "text": "Code and Notes",
+        "y": 483,
+        "marginBottom": "16px"
+      },
+      {
+        "text": "Small Heading",
+        "y": 801.5234375,
+        "marginBottom": "16px"
+      }
+    ],
+    "code": {
+      "authoredFence": "ts",
+      "visibleLabel": "TypeScript",
+      "hiddenPicker": true,
+      "hiddenPickerDisplay": "none",
+      "copyOpacity": "1"
+    },
+    "inlineFootnote": {
+      "authoredReference": "[^context]",
+      "renderedReference": "[^context]",
+      "mutedColor": "rgb(173, 178, 184)",
+      "fontSize": "12px",
+      "fontFamily": "ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    "definition": {
+      "label": "context",
+      "text": "Footnotes should remain readable without dominating the page.",
+      "display": "flex",
+      "labelColor": "rgb(173, 178, 184)",
+      "labelFontSize": "12px"
+    },
+    "captureErrors": [],
+    "preservedOtherImages": 62,
+    "preservedObsidianImages": 29,
+    "cleanup": {
+      "verified": true,
+      "run": "96cd0311-461e-4abc-a27d-55afd5b05d35",
+      "rootPid": 48130,
       "remaining": []
     }
   }
