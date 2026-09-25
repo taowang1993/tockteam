@@ -1139,6 +1139,11 @@
   & .milkdown .ProseMirror { caret-color: currentColor; }
   & .milkdown .cm-cursor, & .milkdown .cm-dropCursor { border-left-color: currentColor; }
   & .milkdown .ProseMirror h1 { margin: 40px 0 16px; padding: 0; font-size: 26px; line-height: 31px; font-weight: 700; }
+  & .milkdown .ProseMirror h2 { font-size: 24px; line-height: 32px; font-weight: 700; }
+  & .milkdown .ProseMirror h3 { font-size: 20px; line-height: 28px; font-weight: 700; }
+  & .milkdown .ProseMirror h4 { font-size: 19px; line-height: 27px; font-weight: 700; }
+  & .milkdown .ProseMirror h5 { font-size: 17px; line-height: 26px; font-weight: 700; }
+  & .milkdown .ProseMirror h6 { font-size: 16px; line-height: 24px; }
   & .milkdown .ProseMirror > h1:first-child { margin-top: 0; }
   & .milkdown .ProseMirror > p { margin: 0 0 16px; padding: 0; }
   & .milkdown .ProseMirror a { color: var(--dsw-specific-markdown-accent); font-weight: 500; }

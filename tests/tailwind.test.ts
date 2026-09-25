@@ -55,7 +55,9 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   const editorTheme = css.match(/\.tocktutor-crepe-editor \.milkdown\{([^}]*)\}/)?.[1] ?? ''
   assert.match(editorTheme, /--crepe-color-background:var\(--tt-panel\)/, 'title and article share the document canvas')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror\{[^}]*caret-color:currentColor/, 'the native rich-editor caret matches the note text')
-  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror h1\{[^}]*font-size:26px/, 'rich headings match Reading View instead of the oversized Crepe default')
+  for (const [level, size] of [[1, 26], [2, 24], [3, 20], [4, 19], [5, 17], [6, 16]]) {
+    assert.match(css, new RegExp(`\\.tocktutor-crepe-editor \\.milkdown \\.ProseMirror h${level}\\{[^}]*font-size:${size}px`), `Live Preview H${level} matches the descending Reading View heading scale`)
+  }
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror a\{color:var\(--dsw-specific-markdown-accent\);font-weight:500/, 'Live Preview links use the checked-box purple with enough ink to look equally bright')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label\.ordered\{color:var\(--tt-text\)/, 'ordered list numbers match the note text')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.label-wrapper \.label\.bullet svg\{fill:var\(--tt-text\)/, 'nested bullet glyphs match the note text')
