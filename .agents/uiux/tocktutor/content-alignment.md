@@ -1,5 +1,9 @@
 # TockTutor and Obsidian Content Alignment
 
+## Fenced Language Highlighting and Footnote Alignment — 2026-09-25
+
+Retook only `tocktutor-live-preview-lower.png` from guarded Desktop at `4919d781` after moving the definition label `context` up 4 CSS pixels to align visually with “Footnotes”. The authored note and its `ts` fence retain SHA-256 `3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5`. A separate isolated Live Preview note verified that authored `python`, `rust`, and `sql` fences display Python, Rust, and SQL with colored tokens, without guessing code content. Both guarded runs used 1512 × 949 CSS pixels at DPR 2, dark/no skin, and stopped with no descendants. The canonical screenshot is 3024 × 1898 pixels at scrollTop 700; TypeScript, Copy, Data, Code and Notes, Small Heading, and the inline `[^context]` reference remain visible; no capture-time console/page errors. All 62 other screenshots, including 29 Obsidian references, retained their hashes. Detailed evidence is in `content-alignment.json`.
+
 ## Footnote Label Parity Retake — 2026-09-25
 
 Retook only `tocktutor-live-preview-lower.png` from guarded Desktop at `7a219593`, correcting the previous parity claim: the inline `[^context]` marker was still monospace and bright, while the definition `context` was 16px and white. Both are now 12px and muted in the note font; the definition remains inline beside “Footnotes”. The authored note SHA-256 is unchanged. Capture at 1512 × 949 CSS pixels and DPR 2 (3024 × 1898 device pixels) confirmed dark/no skin, Live Preview route, scrollTop 700, Data/Code and Notes/Small Heading, TypeScript and Copy, and zero capture-time console/page errors. Guarded run stopped with no descendants. All 62 other screenshots, including 29 Obsidian references, retained their hashes. Detailed evidence is in `content-alignment.json`.

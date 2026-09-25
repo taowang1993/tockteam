@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T12:29:13.876Z",
-  "sourceCommit": "7a219593",
+  "capturedAt": "2026-09-25T12:58:05.337Z",
+  "sourceCommit": "4919d781",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -2502,10 +2502,10 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 252873,
-      "sha256": "8ac0fde523d101824c2a0be02987ff6098609cb200fb96f42a8dc1c6f88d0f2d",
-      "capturedAt": "2026-09-25T12:29:13.876Z",
-      "sourceCommit": "7a219593",
+      "bytes": 252964,
+      "sha256": "6f0f9c5907d6801e423420f77fb132340a1ee86aac882f86755c470aaeea8768",
+      "capturedAt": "2026-09-25T12:58:05.337Z",
+      "sourceCommit": "4919d781",
       "visibleState": {
         "assertedText": "Data; Code and Notes; Small Heading",
         "assertionPassed": true,
@@ -3423,6 +3423,151 @@
       "verified": true,
       "run": "96cd0311-461e-4abc-a27d-55afd5b05d35",
       "rootPid": 48130,
+      "remaining": []
+    }
+  },
+  "languageCatalogFootnoteAlignmentRetake": {
+    "capturedAt": "2026-09-25T12:58:05.337Z",
+    "sourceCommit": "4919d781",
+    "filename": "tocktutor-live-preview-lower.png",
+    "sha256": "6f0f9c5907d6801e423420f77fb132340a1ee86aac882f86755c470aaeea8768",
+    "previousSha256": "8ac0fde523d101824c2a0be02987ff6098609cb200fb96f42a8dc1c6f88d0f2d",
+    "route": "/tocktutor/UIUX%20Comparison.md",
+    "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "mode": "live-preview",
+    "scrollTop": 700,
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null,
+      "bodySkin": null
+    },
+    "headings": [
+      {
+        "text": "Data",
+        "y": 238,
+        "marginBottom": "16px"
+      },
+      {
+        "text": "Code and Notes",
+        "y": 483,
+        "marginBottom": "16px"
+      },
+      {
+        "text": "Small Heading",
+        "y": 801.5234375,
+        "marginBottom": "16px"
+      }
+    ],
+    "code": {
+      "authoredFence": "ts",
+      "visibleLabel": "TypeScript",
+      "hiddenPicker": true,
+      "hiddenPickerDisplay": "none",
+      "copyOpacity": "1"
+    },
+    "inlineFootnote": {
+      "authoredReference": "[^context]",
+      "renderedReference": "[^context]",
+      "mutedColor": "rgb(173, 178, 184)",
+      "fontSize": "12px",
+      "fontFamily": "ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    "definition": {
+      "label": "context",
+      "text": "Footnotes should remain readable without dominating the page.",
+      "display": "flex",
+      "labelColor": "rgb(173, 178, 184)",
+      "labelFontSize": "12px",
+      "labelTop": "-4px"
+    },
+    "languageExamples": {
+      "route": "/tocktutor/Languages.md",
+      "blocks": [
+        {
+          "fence": "python",
+          "label": "Python",
+          "buttonHidden": true,
+          "copy": null,
+          "tokens": [
+            {
+              "text": "def",
+              "color": "rgb(166, 138, 249)"
+            },
+            {
+              "text": "return",
+              "color": "rgb(166, 138, 249)"
+            },
+            {
+              "text": "\"hello\"",
+              "color": "rgb(34, 197, 94)"
+            }
+          ]
+        },
+        {
+          "fence": "rust",
+          "label": "Rust",
+          "buttonHidden": true,
+          "copy": null,
+          "tokens": [
+            {
+              "text": "fn",
+              "color": "rgb(166, 138, 249)"
+            },
+            {
+              "text": "let",
+              "color": "rgb(166, 138, 249)"
+            },
+            {
+              "text": "\"hello\"",
+              "color": "rgb(34, 197, 94)"
+            }
+          ]
+        },
+        {
+          "fence": "sql",
+          "label": "SQL",
+          "buttonHidden": true,
+          "copy": null,
+          "tokens": [
+            {
+              "text": "SELECT",
+              "color": "rgb(166, 138, 249)"
+            },
+            {
+              "text": "FROM",
+              "color": "rgb(166, 138, 249)"
+            }
+          ]
+        }
+      ],
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "dpr": 2
+      },
+      "colorScheme": "dark",
+      "skinId": null,
+      "cleanup": {
+        "verified": true,
+        "run": "5d1279fc-6b52-445d-8a64-14dd54b9b9b2",
+        "rootPid": 52295,
+        "remaining": []
+      }
+    },
+    "captureErrors": [],
+    "preservedOtherImages": 62,
+    "preservedObsidianImages": 29,
+    "cleanup": {
+      "verified": true,
+      "run": "a9f29123-796e-4872-899d-1efbbb79fb49",
+      "rootPid": 53966,
       "remaining": []
     }
   }
