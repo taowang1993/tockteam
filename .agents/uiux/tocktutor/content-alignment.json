@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T13:36:37.395Z",
-  "sourceCommit": "1758266d",
+  "capturedAt": "2026-09-25T13:58:23.993Z",
+  "sourceCommit": "f436fcc0",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -837,17 +837,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 281244,
-      "sha256": "c9ec02e01be3bb29717de938e04d1a69b8166c00f96f7aade56f0ae24e02e248",
-      "capturedAt": "2026-09-24T23:57:02.668Z",
+      "bytes": 278699,
+      "sha256": "7bdc97bcc4d833f96084c795713c07e497cde7b3c9c05fb6e0f2d2e0d7554602",
+      "capturedAt": "2026-09-25T13:52:20.541Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
         "textExcerpt": "Markdown Rendering Lab",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -870,11 +870,11 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 279027,
-      "sha256": "92528d52c20ecc8b1948955232c2329ad628b6be3e3a269ed2dfc06b9ccfee0a",
-      "capturedAt": "2026-09-25T03:10:41.069Z",
+      "bytes": 278699,
+      "sha256": "7bdc97bcc4d833f96084c795713c07e497cde7b3c9c05fb6e0f2d2e0d7554602",
+      "capturedAt": "2026-09-25T13:52:21.004Z",
       "visibleState": {
-        "assertedText": "Markdown Rendering Lab; Structure; Lists",
+        "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
         "textExcerpt": "Markdown Rendering Lab",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
@@ -911,8 +911,8 @@
           }
         ]
       },
-      "runtimeErrorMonitoring": "Window error/unhandledrejection and Playwright console/pageerror listeners installed before both focused captures; no capture-time errors. TockCoder startup error is recorded separately.",
-      "sourceCommit": "e1b84268",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -935,17 +935,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 281383,
-      "sha256": "88b7d4ca291614c7a9cabd7e27a90326250faf966d9c50f412f9fd2447b74e90",
-      "capturedAt": "2026-09-25T00:20:44.675Z",
+      "bytes": 278699,
+      "sha256": "7bdc97bcc4d833f96084c795713c07e497cde7b3c9c05fb6e0f2d2e0d7554602",
+      "capturedAt": "2026-09-25T13:52:21.437Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
         "textExcerpt": "Markdown Rendering Lab",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "91fa6ef4",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -996,15 +996,15 @@
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
       "bytes": 311656,
       "sha256": "2c5c9820925d85a3f23ff3c835d5cd07331fc685d8204d6b6fdd02a3efa6a142",
-      "capturedAt": "2026-09-24T13:12:08.147Z",
+      "capturedAt": "2026-09-25T13:52:23.248Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
         "textExcerpt": "Markdown Rendering Lab"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
       "refreshProof": ".beads/reports/tocktutor-source-inline-2026-09-20.json",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-source-mode.png": {
       "geometry": {
@@ -1044,14 +1044,14 @@
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
       "bytes": 280097,
       "sha256": "eace974a916303237aaee684308ce551ea3fd63e827c27e17569dda1e111b89d",
-      "capturedAt": "2026-09-24T13:12:08.966Z",
+      "capturedAt": "2026-09-25T13:52:24.073Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
         "textExcerpt": "Markdown Rendering Lab"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-reading-view.png": {
       "geometry": {
@@ -1085,22 +1085,22 @@
       "runtimeErrors": [],
       "mode": "live-preview",
       "path": "comparison.md",
-      "capturedAt": "2026-09-24T23:57:36.015Z",
+      "capturedAt": "2026-09-25T13:53:02.209Z",
       "visibleState": {
         "assertedText": "Reading View",
         "assertionPassed": true,
         "textExcerpt": "Reading View",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
       "route": "/tocktutor/comparison.md",
       "theme": "dark",
       "skin": null,
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 399893,
-      "sha256": "408f46d55cbb76c0edde6a0012ab0d7e98c67e6cbdec78cf9e25bb36cffc7d55",
+      "bytes": 397824,
+      "sha256": "d64b08baec7712232095c8acad4993aaf0ea2f9685a9fd1107429a61a58d790b",
       "captureScope": "real-desktop",
-      "sourceCommit": "02e96f0e",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1146,18 +1146,18 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 252218,
-      "sha256": "1ee2746ba27f31ff0390c632de714b842490dc71860bfe1ae08b16e3699a3e94",
-      "capturedAt": "2026-09-24T23:57:06.925Z",
+      "bytes": 247522,
+      "sha256": "d869f3d66d0f8fb35d79192bf52b04fe9bf2999bbcf6ac5647e516b9a25198f4",
+      "capturedAt": "2026-09-25T13:52:25.583Z",
       "visibleState": {
         "assertedText": "Command Palette",
         "assertionPassed": true,
         "textExcerpt": "Command Palette",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
       "refreshProof": ".beads/reports/tocktutor-command-footer-2026-09-20.json",
-      "sourceCommit": "02e96f0e",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1203,17 +1203,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 324585,
-      "sha256": "720353f0b73f4b4289f482fb5c6e80b68f50a88c998830318be13f0443d25def",
-      "capturedAt": "2026-09-24T23:57:09.613Z",
+      "bytes": 322196,
+      "sha256": "b00866f456ce5ef96e306892a7b51b8e837c4d121ed4eb0f2c764fd914c276c1",
+      "capturedAt": "2026-09-25T13:52:28.266Z",
       "visibleState": {
         "assertedText": "Properties",
         "assertionPassed": true,
         "textExcerpt": "Properties",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1259,17 +1259,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 309891,
-      "sha256": "9d1d56f55d0c7ebccd0d302502185eb12a7ff828db2d36c200dda083f7e8292d",
-      "capturedAt": "2026-09-24T23:57:12.299Z",
+      "bytes": 307486,
+      "sha256": "d0dfd30a003ec66b4fe05c087a81d03e715e3748398ac4caa557b04146d1e579",
+      "capturedAt": "2026-09-25T13:52:30.953Z",
       "visibleState": {
         "assertedText": "Backlinks",
         "assertionPassed": true,
         "textExcerpt": "Backlinks",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1315,17 +1315,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 308590,
-      "sha256": "d334c6280f97e42496a7f9544b26d1f8c760c5ea39c5999829ede4f09edd2eb0",
-      "capturedAt": "2026-09-24T23:57:14.065Z",
+      "bytes": 306194,
+      "sha256": "13d583a5d325a7c7952858d451277ebd223064d18689352ebef2b004ca815e76",
+      "capturedAt": "2026-09-25T13:52:32.731Z",
       "visibleState": {
         "assertedText": "Tags",
         "assertionPassed": true,
         "textExcerpt": "Tags",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1371,17 +1371,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 320882,
-      "sha256": "1c1855cc5cb1e2b627112eaa9d67b4d984589f43f47a7264b8e8c379f8c312d9",
-      "capturedAt": "2026-09-24T23:32:50.876Z",
+      "bytes": 320719,
+      "sha256": "b8bba5fdf48d03adcbf588f75f4c4f8bffa524670ac5e96bd69feb95f7ac9cc5",
+      "capturedAt": "2026-09-25T13:53:00.589Z",
       "visibleState": {
         "assertedText": "What can I help you with?",
         "assertionPassed": true,
         "textExcerpt": "What can I help you with?",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-assistant.png": {
       "geometry": {
@@ -1419,17 +1419,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 366464,
-      "sha256": "100e51bb70783e3cca723021caf3b64026057ab71a7d929476802ab268fe0083",
-      "capturedAt": "2026-09-24T23:57:08.327Z",
+      "bytes": 363244,
+      "sha256": "62c78c696f16763dc32a4d69442bd7079f7b92fcb2753e75b451aca829cc4c37",
+      "capturedAt": "2026-09-25T13:52:26.978Z",
       "visibleState": {
         "assertedText": "Markdown",
         "assertionPassed": true,
         "textExcerpt": "Markdown",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1475,17 +1475,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 322107,
-      "sha256": "c899600277559953f5509bbc5902910813297132feee832b4d6d4ec4feeedc53",
-      "capturedAt": "2026-09-24T23:57:12.906Z",
+      "bytes": 319534,
+      "sha256": "95cde16843513fe768592d790d89b60f1e4795be2c6462adb513b71a8ee9ddad",
+      "capturedAt": "2026-09-25T13:52:31.574Z",
       "visibleState": {
         "assertedText": "Mention.md",
         "assertionPassed": true,
         "textExcerpt": "Mention.md",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1508,17 +1508,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 298731,
-      "sha256": "cdab59a2f033ec717f636524300df6c37ca70d9b89447b9b1d9f68c28a3172b6",
-      "capturedAt": "2026-09-24T23:57:15.218Z",
+      "bytes": 296275,
+      "sha256": "6500440b639ca9aa232bb3bf4bb32f827446e9b0d401b809eaf81b099d0c4087",
+      "capturedAt": "2026-09-25T13:52:33.883Z",
       "visibleState": {
         "assertedText": "Bookmarks",
         "assertionPassed": true,
         "textExcerpt": "Bookmarks",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1541,17 +1541,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 298731,
-      "sha256": "cdab59a2f033ec717f636524300df6c37ca70d9b89447b9b1d9f68c28a3172b6",
-      "capturedAt": "2026-09-24T23:57:15.666Z",
+      "bytes": 296275,
+      "sha256": "6500440b639ca9aa232bb3bf4bb32f827446e9b0d401b809eaf81b099d0c4087",
+      "capturedAt": "2026-09-25T13:52:34.317Z",
       "visibleState": {
         "assertedText": "Bookmarks",
         "assertionPassed": true,
         "textExcerpt": "Bookmarks",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1599,16 +1599,16 @@
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
       "bytes": 155286,
       "sha256": "94143e4feae2eb81a6f03f1e9e51f0a1e080b2b24db185c4d282de4375c937f0",
-      "capturedAt": "2026-09-24T23:57:17.070Z",
+      "capturedAt": "2026-09-25T13:52:35.718Z",
       "visibleState": {
         "assertedText": "Graph Nodes",
         "assertionPassed": true,
         "textExcerpt": "Graph Nodes",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
       "documentMode": "live-preview",
-      "sourceCommit": "02e96f0e",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1655,15 +1655,15 @@
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
       "bytes": 160637,
       "sha256": "8c6078e71284b873f31eb49e0044f844cb066bf8d248d5e777a618f2252b06d0",
-      "capturedAt": "2026-09-24T23:57:17.775Z",
+      "capturedAt": "2026-09-25T13:52:36.412Z",
       "visibleState": {
         "assertedText": "Graph Nodes",
         "assertionPassed": true,
         "textExcerpt": "Graph Nodes",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1710,17 +1710,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 340818,
-      "sha256": "a90a22c243d67a7ec901d2f1ba918cac9db88a3893e59a4a93b3d46302e21455",
-      "capturedAt": "2026-09-24T23:57:18.946Z",
+      "bytes": 338314,
+      "sha256": "720db0b706bb5df69a5472e604254e9914effd81acab635a43ea6d6bb26bae13",
+      "capturedAt": "2026-09-25T13:52:37.575Z",
       "visibleState": {
         "assertedText": "Note Tools",
         "assertionPassed": true,
         "textExcerpt": "Note Tools",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1766,17 +1766,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 339805,
-      "sha256": "dad079b1333a426126043b0d4d0b2b2887f81e36e3b7e7397a96fd77cb1a2a76",
-      "capturedAt": "2026-09-24T23:57:22.823Z",
+      "bytes": 337329,
+      "sha256": "c6ac488ada6d8a8a4f9711de069f7eb43d79048a738e62088a45e65fe4fa02c3",
+      "capturedAt": "2026-09-25T13:52:41.441Z",
       "visibleState": {
         "assertedText": "Workspaces and Panes",
         "assertionPassed": true,
         "textExcerpt": "Workspaces and Panes",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1845,17 +1845,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 252505,
-      "sha256": "ccad1ae9839281d424dc9f54cc431fece6876774eb059b476eeda8db6b290489",
-      "capturedAt": "2026-09-24T23:57:23.710Z",
+      "bytes": 249148,
+      "sha256": "60bc44245b32caabaddb5db28df480d57673278a34057f2818fb41647442dded",
+      "capturedAt": "2026-09-25T13:52:42.341Z",
       "visibleState": {
         "assertedText": "New Note",
         "assertionPassed": true,
         "textExcerpt": "New Note",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1880,14 +1880,14 @@
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "bytes": 111870,
       "sha256": "ced427f9ba8dbf292649360844c9501aaefe9a2b2fc3383ef9a5f8c215c914ac",
-      "capturedAt": "2026-09-24T13:12:28.420Z",
+      "capturedAt": "2026-09-25T13:52:43.384Z",
       "visibleState": {
         "assertedText": "Untitled",
         "assertionPassed": true,
         "textExcerpt": "Untitled"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-new-note.png": {
       "geometry": {
@@ -1925,17 +1925,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 365819,
-      "sha256": "b79bbaa7ba366fdf5b9b5f8188a0aca0e77bd0882702a669917043a760987d65",
-      "capturedAt": "2026-09-24T23:57:20.481Z",
+      "bytes": 366927,
+      "sha256": "bb0ab91a6373ebda2f78e2075d48c4cd877f48c392a6937bd01912187e671447",
+      "capturedAt": "2026-09-25T13:52:39.109Z",
       "visibleState": {
         "assertedText": "File Recovery",
         "assertionPassed": true,
         "textExcerpt": "File Recovery",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -1981,17 +1981,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 426377,
-      "sha256": "7390901d7947bbdaeec3ceeaf44272ed48460c3d452ae7d7457d734ae314e5b7",
-      "capturedAt": "2026-09-24T23:57:21.640Z",
+      "bytes": 423894,
+      "sha256": "9533217e5ecfa28c3c364d27d393eabb06a8eb17e1ded8277fcc67bc98256f62",
+      "capturedAt": "2026-09-25T13:52:40.277Z",
       "visibleState": {
         "assertedText": "Reviews and Actions",
         "assertionPassed": true,
         "textExcerpt": "Reviews and Actions",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -2014,16 +2014,16 @@
       "path": "Notes/Welcome.md",
       "mode": "reading",
       "contentSha256": "d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
-      "bytes": 215210,
-      "sha256": "f623cd4dba58c292b2d0eb9f4f56afd0ecd919d3c3806d2c0b6d17f31ab53f30",
-      "capturedAt": "2026-09-24T13:12:29.741Z",
+      "bytes": 215216,
+      "sha256": "aa0d43921ee899171810f8e237da6c08bd7b5a247130dd97164dadded6604f84",
+      "capturedAt": "2026-09-25T13:52:44.706Z",
       "visibleState": {
         "assertedText": "Welcome",
         "assertionPassed": true,
         "textExcerpt": "Welcome"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-reading-embed.png": {
       "geometry": {
@@ -2063,14 +2063,14 @@
       "contentSha256": "d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c",
       "bytes": 251710,
       "sha256": "e7b607a8e7d9b5be89d642844105b58beeb3a6eefdbce6dd0eca309c41d85320",
-      "capturedAt": "2026-09-24T13:12:30.967Z",
+      "capturedAt": "2026-09-25T13:52:45.930Z",
       "visibleState": {
         "assertedText": "Resolved Embeds",
         "assertionPassed": true,
         "textExcerpt": "Resolved Embeds"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-attachments-embeds.png": {
       "geometry": {
@@ -2110,14 +2110,14 @@
       "contentSha256": "28e19c6066f86fd84b56f2d71748069dad2a0d5d80bb686a02662789254319dd",
       "bytes": 157150,
       "sha256": "c3c4c90f397d9b68dcd7ba640528c4250904a372c021aef8b6d9ebd59ba36f1a",
-      "capturedAt": "2026-09-24T13:12:32.059Z",
+      "capturedAt": "2026-09-25T13:52:47.024Z",
       "visibleState": {
         "assertedText": "Lessons",
         "assertionPassed": true,
         "textExcerpt": "Lessons"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-base.png": {
       "geometry": {
@@ -2157,14 +2157,14 @@
       "contentSha256": "cd79b2a20ed9ce2b65921a3db8fc2031c49f94f0617d1ebf622981ddc1990170",
       "bytes": 157563,
       "sha256": "569020e4a8620215b3de0da82da600341bbec07c39f5becd0eb78aea78f9f8fc",
-      "capturedAt": "2026-09-24T13:12:33.008Z",
+      "capturedAt": "2026-09-25T13:52:47.955Z",
       "visibleState": {
         "assertedText": "Lesson",
         "assertionPassed": true,
         "textExcerpt": "Lesson"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-canvas.png": {
       "geometry": {
@@ -2202,17 +2202,17 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 324688,
-      "sha256": "9f47470eca306b752edbf2895409d1aabbc8f5b37881ff5eef45b9a670d51244",
-      "capturedAt": "2026-09-24T23:57:10.804Z",
+      "bytes": 322298,
+      "sha256": "e5c999580023bb7bca97a2e3112db799986e03d100202559f6b4b39d7c5d6f14",
+      "capturedAt": "2026-09-25T13:52:29.441Z",
       "visibleState": {
         "assertedText": "Properties",
         "assertionPassed": true,
         "textExcerpt": "Properties",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -2235,18 +2235,18 @@
       "path": "UIUX Comparison.md",
       "mode": "vault-switcher",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 269749,
-      "sha256": "662a8067ac23bc05a89b6537c1c5c835b4a9ee198d7d4242eb760081cd3d3354",
-      "capturedAt": "2026-09-24T23:57:30.457Z",
+      "bytes": 256003,
+      "sha256": "e957156c85ca2141c19b73ed10d56e0f3ea4f6eb10f3e2d6fa93c437a712e17d",
+      "capturedAt": "2026-09-25T13:52:49.134Z",
       "visibleState": {
         "assertedText": "Create New Vault",
         "assertionPassed": true,
         "textExcerpt": "Create New Vault",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
       "backgroundPath": "UIUX Comparison.md",
-      "sourceCommit": "02e96f0e",
+      "sourceCommit": "f436fcc0",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -2269,16 +2269,16 @@
       "path": null,
       "mode": "settings",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 415421,
-      "sha256": "0de7f42c9b4ae663559365ced12c133c52815fcda31440dec2ca6a3196015842",
-      "capturedAt": "2026-09-24T13:12:35.653Z",
+      "bytes": 415417,
+      "sha256": "3194d3a16073a86879a7847f6e6b7f174cce51deac9477b7c6088049d6eb7945",
+      "capturedAt": "2026-09-25T13:52:50.640Z",
       "visibleState": {
         "assertedText": "Appearance",
         "assertionPassed": true,
         "textExcerpt": "Appearance"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-vault-switcher.png": {
       "geometry": {
@@ -2316,14 +2316,14 @@
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "bytes": 197923,
       "sha256": "4be1cf7f739ed83ea57ade7ac66f11a0011a3a49b67fdfb8c926e0b765bb8d1b",
-      "capturedAt": "2026-09-24T13:12:37.146Z",
+      "capturedAt": "2026-09-25T13:52:52.141Z",
       "visibleState": {
         "assertedText": "Marketplace",
         "assertionPassed": true,
         "textExcerpt": "Marketplace"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the final batch; no renderer events for this capture.",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-settings-general.png": {
       "geometry": {
@@ -2382,18 +2382,18 @@
       "path": null,
       "mode": "web-viewer",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 318422,
-      "sha256": "c7560c3615db350ce5b135a023db983d65ee80493945698f77f5373f4b0fef20",
-      "capturedAt": "2026-09-24T23:35:00.169Z",
+      "bytes": 305391,
+      "sha256": "f9b506192b3b9e68cc3686327ff0351e3dfa5527700a0c9a7f24ebe939ab0dcf",
+      "capturedAt": "2026-09-25T13:52:54.019Z",
       "visibleState": {
-        "assertedText": "Example Domain",
+        "assertedText": "Web Viewer",
         "assertionPassed": true,
-        "textExcerpt": "Workspaces\nNo sessions yet\nTockCoder\nChoose workspace\nStandard Mode\nChoose a workspace to start\nUIUX Comparison.md\nFiles\nAttachments\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nComparison Vault\nUIUX Comparison\nUIUX Comparison\nProperties\nstatus\nreview\nfavorite\narea\nmarkdown\ntags\ncomparison\ntypography\ndifficulty\nmedium\nAdd Property\nMarkdown Rendering Lab\n\nUse bold, italic, bold italic, strikethrough, \n\nhighlighting\n\n\n\nFootnotes should remain readable without dominating the page.\n, and inline code in one paragraph.\n\nOpen \n\nWelcome\n\n\n\nFootnotes should remain readable without dominating the page.\n, follow \n\nan aliased note\n\n\n\nFootnotes should remain readable without dominating the page.\n, or visit Obsidian Help.\n\nStructure\nLists\n1.\n\nCompare heading scale and paragraph rhythm.\n\n2.\n\nInspect nested content.\n\nA n",
+        "textExcerpt": "Web Viewer",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
       "url": "https://example.com/",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "f436fcc0"
     },
     "tocktutor-web-viewer-reader.png": {
       "geometry": {
@@ -2408,17 +2408,17 @@
       "path": null,
       "mode": "web-viewer",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 394533,
-      "sha256": "5caecb76b5b38d83e3fb1b180ddd46b5c2298fae39a620ae89c5efd9ef9be3ff",
-      "capturedAt": "2026-09-24T12:14:02.637Z",
+      "bytes": 384164,
+      "sha256": "aa52565fe1765f09436471a88ae5e6c81bb5f1bba9da59e051921242e07e9f0c",
+      "capturedAt": "2026-09-25T13:52:59.524Z",
       "visibleState": {
         "assertedText": "Example Domain",
         "assertionPassed": true,
-        "textExcerpt": "Text Size\nSmall\nMedium\nLarge\nLine Width\nNarrow\nMedium\nWide\nLine Spacing\nCompact\nDefault\nRelaxed\nAppearance\nSystem\nLight\nDark\nExample Domain\nClip DestinationGenerate Clip Preview\nExample Domain\n\nThis domain is for use in documentation examples without needing permission. Avoid use in operations.\n\nLearn more\n"
+        "textExcerpt": "Example Domain"
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners observed no events. Playwright console/pageerror listeners were not installed for this focused Web Viewer capture.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
       "url": "https://example.com/",
-      "sourceCommit": "3c579a86812f22e08a920e15118ea7166db5fa3c"
+      "sourceCommit": "f436fcc0"
     },
     "obsidian-web-viewer.png": {
       "geometry": {
@@ -2502,12 +2502,12 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 252963,
-      "sha256": "9672a13e5ba5a93c1f966c76f8db93bfde1c4c2dee7e8edf418ff47850084d8d",
-      "capturedAt": "2026-09-25T13:36:37.395Z",
-      "sourceCommit": "1758266d",
+      "bytes": 294143,
+      "sha256": "57622de6b18eba909c0b4248592e2036434d66823f54097e893c63d807859687",
+      "capturedAt": "2026-09-25T13:52:22.179Z",
+      "sourceCommit": "f436fcc0",
       "visibleState": {
-        "assertedText": "Data; Code and Notes; Small Heading",
+        "assertedText": "Small Heading",
         "assertionPassed": true,
         "visibleHeadings": [
           "Data",
@@ -2516,7 +2516,7 @@
         ],
         "scrollContainer": "Editor Attachment Drop Zone",
         "scrollTop": 700,
-        "textExcerpt": "Data · Syntax · Expected Result · State · Code and Notes · const lesson = \"markdown\" · A soft line ends here. · This sentence follows without a blank line. · Small Heading",
+        "textExcerpt": "Small Heading",
         "headingSizes": {
           "Markdown Rendering Lab": 26,
           "Structure": 24,
@@ -2526,7 +2526,7 @@
           "Small Heading": 19
         }
       },
-      "runtimeErrorMonitoring": "Playwright console/pageerror listeners during lower-note verification and capture; console error query afterward returned zero errors.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
       "route": "/tocktutor/UIUX%20Comparison.md"
     },
     "obsidian-live-preview-lower.png": {
@@ -2694,13 +2694,12 @@
   "publication": {
     "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage only specifically requested allowlisted captures and their proof on the same filesystem with rollback. Preserve every existing screenshot unless an explicit retake is requested; never write unrelated images.",
     "lastRefresh": {
-      "capturedAt": "2026-09-25T08:23:00.557Z",
-      "sourceCommit": "d91b7b2b",
-      "updatedTockTutorImages": 1,
-      "preservedOtherImages": 62,
+      "capturedAt": "2026-09-25T13:58:23.993Z",
+      "sourceCommit": "f436fcc0",
+      "updatedTockTutorImages": 34,
       "preservedObsidianImages": 29,
-      "existingObsidianHashesUnchanged": true,
-      "transaction": "Only the lower TockTutor Live Preview image and its evidence were staged and replaced with rollback copies on the same filesystem; all 62 other screenshots retained their original SHA-256."
+      "obsidianHashesUnchanged": true,
+      "transaction": "Same-filesystem staged candidates and rollback copies; pre/post SHA-256, PNG geometry, route, mode, content and appearance checked."
     }
   },
   "graphAlignment": {
@@ -3653,6 +3652,485 @@
       "verified": true,
       "run": "3fc9a89b-6be0-4ced-8a07-b9fc8f31f9ae",
       "rootPid": 62671,
+      "remaining": []
+    }
+  },
+  "fullGalleryDividerRetake": {
+    "capturedAt": "2026-09-25T13:58:23.993Z",
+    "sourceCommit": "f436fcc0",
+    "runId": "8a29bdeb-f8a8-405a-8ee2-b7c58fda18dd",
+    "rootPid": 65351,
+    "images": 34,
+    "preservedObsidian": 29,
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null,
+      "bodySkin": null
+    },
+    "noteSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "divider": {
+      "authored": "---",
+      "backgroundToken": "--dsw-alias-label-secondary",
+      "location": "between This sentence follows without a blank line. and Small Heading",
+      "priorSha256": "9672a13e5ba5a93c1f966c76f8db93bfde1c4c2dee7e8edf418ff47850084d8d",
+      "newSha256": "57622de6b18eba909c0b4248592e2036434d66823f54097e893c63d807859687"
+    },
+    "captures": [
+      {
+        "filename": "tocktutor-main-workspace.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Markdown Rendering Lab",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-editor-live-preview.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Markdown Rendering Lab",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-tag-tab-polish.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Markdown Rendering Lab",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-live-preview-lower.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Small Heading",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-editor-source.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "source",
+        "detectedMode": "source",
+        "expectedText": "Markdown Rendering Lab",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-editor-reading.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "reading",
+        "detectedMode": "reading",
+        "expectedText": "Markdown Rendering Lab",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-command-palette.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Command Palette",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-search.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Markdown",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-properties.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Properties",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-properties-links.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Properties",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-backlinks.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Backlinks",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-backlinks-unlinked-expanded.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Mention.md",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-tags.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Tags",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-bookmarks.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Bookmarks",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-bookmarks-tags.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Bookmarks",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-graph-global.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "global-graph",
+        "detectedMode": "live-preview",
+        "expectedText": "Graph Nodes",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-graph.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "local-graph",
+        "detectedMode": "live-preview",
+        "expectedText": "Graph Nodes",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-note-tools.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Note Tools",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-file-recovery.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "File Recovery",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-reviews-actions.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Reviews and Actions",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-workspaces-panes.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Workspaces and Panes",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-new-note-dialog.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "New Note",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-new-note.png",
+        "route": "/tocktutor/Untitled.md",
+        "path": "Untitled.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Untitled",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-reading-embed.png",
+        "route": "/tocktutor/Notes/Welcome.md",
+        "path": "Notes/Welcome.md",
+        "mode": "reading",
+        "detectedMode": "reading",
+        "expectedText": "Welcome",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-attachments-embeds.png",
+        "route": "/tocktutor/Notes/Welcome.md",
+        "path": "Notes/Welcome.md",
+        "mode": "reading",
+        "detectedMode": "reading",
+        "expectedText": "Resolved Embeds",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-base.png",
+        "route": "/tocktutor/Bases/Lessons.base",
+        "path": "Bases/Lessons.base",
+        "mode": "base",
+        "detectedMode": "base",
+        "expectedText": "Lessons",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-canvas.png",
+        "route": "/tocktutor/Boards/Lesson.canvas",
+        "path": "Boards/Lesson.canvas",
+        "mode": "canvas",
+        "detectedMode": "canvas",
+        "expectedText": "Lesson",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-vault-switcher.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "vault-switcher",
+        "detectedMode": "live-preview",
+        "expectedText": "Create New Vault",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-settings.png",
+        "route": "/settings",
+        "path": null,
+        "mode": "settings",
+        "detectedMode": "unknown",
+        "expectedText": "Appearance",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-marketplace.png",
+        "route": "/settings",
+        "path": null,
+        "mode": "marketplace",
+        "detectedMode": "unknown",
+        "expectedText": "Marketplace",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-web-viewer.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "web-viewer",
+        "detectedMode": "live-preview",
+        "expectedText": "Web Viewer",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-web-viewer-reader.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "web-viewer",
+        "detectedMode": "live-preview",
+        "expectedText": "Example Domain",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-assistant.png",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "What can I help you with?",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      },
+      {
+        "filename": "tocktutor-note-actions-menu.png",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "mode": "live-preview",
+        "detectedMode": "live-preview",
+        "expectedText": "Reading View",
+        "expectationMet": true,
+        "expectedPathMet": true,
+        "geometryMet": true,
+        "themeMet": true,
+        "modeMet": true
+      }
+    ],
+    "failures": [],
+    "consoleErrors": [],
+    "rendererErrors": [],
+    "cleanup": {
+      "verified": true,
       "remaining": []
     }
   }

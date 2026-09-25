@@ -1,5 +1,9 @@
 # TockTutor and Obsidian Content Alignment
 
+## Stronger Divider and Full TockTutor Retake — 2026-09-25
+
+In the existing Live Preview CSS utility, the authored `---` divider now uses the stronger semantic `--dsw-alias-label-secondary` color instead of the faint outline token; its Markdown and surrounding layout remain unchanged. A guarded source-built Desktop run retook all **34 TockTutor screenshots** in the gallery, including the lower Live Preview view and the loaded Web Viewer Reader View. Each published capture verified its expected route, mode, content, 1512 × 949 CSS pixels at DPR 2 (3024 × 1898 PNG), built-in dark/no skin, and zero renderer and console/page errors. The shared note's SHA-256 remains `3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5`. The owned Electron root PID 65351 and all descendants stopped; all **29 Obsidian references** retained their original hashes. Full per-capture evidence and checksums: `content-alignment.json`.
+
 ## Live Preview Divider Contrast — 2026-09-25
 
 Retook only `tocktutor-live-preview-lower.png` from guarded Desktop at `1758266d`. The authored `---` was already rendered as `<hr>`, but Crepe mixed its outline down to roughly 2.4% white, nearly invisible on the dark canvas. Using the existing outline token directly yields a visible line at 12% white between “This sentence follows without a blank line.” and “Small Heading”, without changing the Markdown (SHA-256 `3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5`). Verified the Live Preview route, scrollTop 700, 1512 × 949 CSS pixels at DPR 2 (3024 × 1898 PNG), built-in dark/no skin, and zero capture-time errors; the guarded app and all descendants were stopped. All 62 other screenshots, including 29 Obsidian references, retained their hashes. Details: `content-alignment.json`.
