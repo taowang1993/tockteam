@@ -269,7 +269,15 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
   useEffect(() => {
     if (!ready || !root.current) return
     const element = root.current
-    const labelTasks = () => {
+    const labelControls = () => {
+      for (const block of element.querySelectorAll<HTMLElement>('.milkdown-code-block[data-code-language]')) {
+        const button = block.querySelector<HTMLButtonElement>('.language-button')
+        if (!button) continue
+        const code = block.dataset.codeLanguage?.toLowerCase()
+        const name = code === 'ts' || code === 'tsx' ? 'TypeScript' : code === 'js' || code === 'jsx' ? 'JavaScript' : undefined
+        if (name) { button.dataset.displayLanguage = name; button.setAttribute('aria-label', name) }
+        else { delete button.dataset.displayLanguage; button.removeAttribute('aria-label') }
+      }
       for (const row of element.querySelectorAll<HTMLElement>('.milkdown-list-item-block .label-wrapper')) {
         const icon = row.querySelector('.milkdown-icon.label')
         if (!icon?.classList.contains('checked') && !icon?.classList.contains('unchecked')) continue
@@ -280,9 +288,9 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
         row.tabIndex = 0
       }
     }
-    const observer = new MutationObserver(labelTasks)
-    observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] })
-    labelTasks()
+    const observer = new MutationObserver(labelControls)
+    observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-code-language'] })
+    labelControls()
     const activate = (event: KeyboardEvent) => {
       if (event.key !== ' ' && event.key !== 'Enter' || !(event.target instanceof Element) || !event.target.matches('.milkdown-list-item-block .label-wrapper[role="checkbox"]')) return
       event.preventDefault(); event.stopPropagation()

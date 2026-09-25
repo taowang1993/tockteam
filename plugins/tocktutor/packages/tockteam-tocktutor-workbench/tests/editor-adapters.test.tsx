@@ -607,7 +607,8 @@ describe('Live Preview editor', () => {
       expect(block.dataset.codeLanguage).toBe('ts')
       const language = block.querySelector<HTMLButtonElement>('.language-button')!
       const copy = block.querySelector<HTMLButtonElement>('.copy-button')!
-      expect(language.textContent).toContain('ts')
+      await waitFor(() => expect(language.dataset.displayLanguage).toBe('TypeScript'))
+      expect(language.getAttribute('aria-label')).toBe('TypeScript')
       expect(copy).not.toBe(language)
       expect(copy.textContent).toContain('Copy Code')
       expect(copy.querySelector('.lucide-copy')).toBeTruthy()
@@ -629,6 +630,17 @@ describe('Live Preview editor', () => {
       if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard)
       else delete (navigator as Navigator & { clipboard?: Clipboard }).clipboard
     }
+  })
+
+  it('places a footnote definition label immediately before its content without rewriting Markdown', async () => {
+    const source = 'Text with context.[^context]\n\n[^context]: Footnotes should remain readable.\n'
+    const onChange = vi.fn()
+    const { container } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(container.querySelector('.ProseMirror')?.textContent).toContain('Footnotes should remain readable.'), { timeout: 10_000 })
+    const definition = container.querySelector<HTMLElement>('.ProseMirror dl[data-type="footnote_definition"]')!
+    expect(definition.querySelector('dt')?.textContent).toBe('context')
+    expect(definition.querySelector('dd')?.textContent).toBe('Footnotes should remain readable.')
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('renders bordered tables without a persistent command strip', async () => {

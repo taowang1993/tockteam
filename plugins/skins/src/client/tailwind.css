@@ -1144,14 +1144,18 @@
   & .milkdown .ProseMirror h4 { font-size: 19px; line-height: 27px; font-weight: 700; }
   & .milkdown .ProseMirror h5 { font-size: 17px; line-height: 26px; font-weight: 700; }
   & .milkdown .ProseMirror h6 { font-size: 16px; line-height: 24px; }
+  & .milkdown .ProseMirror :is(h2, h3, h4, h5, h6) { margin-bottom: 16px; }
   & .milkdown .ProseMirror > h1:first-child { margin-top: 0; }
   & .milkdown .ProseMirror > p { margin: 0 0 16px; padding: 0; }
   & .milkdown .ProseMirror a { color: var(--dsw-specific-markdown-accent); font-weight: 500; }
   & .milkdown .ProseMirror table { width: max-content; max-width: 100%; table-layout: auto; }
   & .milkdown .milkdown-table-block :is(th, td) { border-color: color-mix(in srgb, var(--dsw-alias-label-secondary) 60%, var(--tt-panel)); }
+  & .milkdown .milkdown-code-block { margin: 16px 0 24px; }
   & .milkdown .milkdown-code-block :is(.cm-activeLine, .cm-activeLineGutter) { background: transparent; }
-  & .milkdown .milkdown-code-block .tools { justify-content: flex-end; gap: 6px; min-height: 24px; }
+  & .milkdown .milkdown-code-block .tools { justify-content: flex-end; gap: 6px; min-height: 24px; margin-right: -10px; }
   & .milkdown .milkdown-code-block .tools .language-button { opacity: 1; margin-bottom: 0; }
+  & .milkdown .milkdown-code-block .language-button[data-display-language] { font-size: 0; }
+  & .milkdown .milkdown-code-block .language-button[data-display-language]::before { content: attr(data-display-language); font-size: 12px; }
   & .milkdown .milkdown-code-block .tools .tools-button-group button.copy-button { opacity: 1; padding: 4px; font-size: 0; background: transparent; }
   & .milkdown .milkdown-code-block .tools .tools-button-group .copy-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; }
   & .milkdown .milkdown-code-block .copy-button .lucide-copy-check,
@@ -1159,6 +1163,9 @@
   & .milkdown .milkdown-code-block .copy-button[data-copied] .lucide-copy-check { display: block; }
   & .milkdown .milkdown-code-block:has(.cm-focused)::before { content: "```" attr(data-code-language); position: absolute; top: 8px; left: 20px; color: var(--dsw-alias-label-secondary); font: 12px/24px var(--crepe-font-code); }
   & .milkdown .milkdown-code-block:has(.cm-focused)::after { content: "```"; display: block; color: var(--dsw-alias-label-secondary); font: 12px/24px var(--crepe-font-code); }
+  & .milkdown .ProseMirror dl[data-type='footnote_definition'] { display: flex; align-items: baseline; gap: 8px; }
+  & .milkdown .ProseMirror dl[data-type='footnote_definition'] dd { margin: 0; }
+  & .milkdown .ProseMirror dl[data-type='footnote_definition'] dd > p:first-child { margin: 0; }
   & .milkdown .label-wrapper .label.ordered { color: var(--tt-text); }
   & .milkdown .label-wrapper .label.bullet svg { fill: var(--tt-text); }
   /* Crepe's 24-unit icon draws an 18-unit box: 21⅓px makes its visible box 16px. */
