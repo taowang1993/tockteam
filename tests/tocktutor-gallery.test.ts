@@ -60,6 +60,17 @@ test('records the corrected Live Preview paragraph and flags the unreplaced Read
   assert.notEqual(proof.captures['tocktutor-web-viewer-reader.png'].sourceCommit, proof.livePreviewCorrection.sourceCommit)
 })
 
+test('tracks only the focused bullet-and-link retake', () => {
+  const retake = proof.focusedStyleRetake
+  assert.equal(retake.filename, 'tocktutor-tag-tab-polish.png')
+  assert.equal(retake.updatedCount, 1)
+  const capture = proof.captures[retake.filename]
+  assert.equal(capture.styleEvidence.bullet, capture.styleEvidence.text)
+  assert.equal(capture.styleEvidence.link, capture.styleEvidence.checked)
+  assert.equal(capture.styleEvidence.linkWeight, '500')
+  assert.equal(retake.processTreeStopped, true)
+})
+
 test('binds refreshed Live Preview colors and checkbox size to visible capture evidence', () => {
   const entries = Object.entries(proof.captures).filter(([, capture]) => (capture as { styleEvidence?: unknown }).styleEvidence)
   assert.equal(entries.length, proof.livePreviewStyleCorrection.updatedCount)

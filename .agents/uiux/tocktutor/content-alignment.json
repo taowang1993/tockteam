@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-24T23:57:36.015Z",
-  "sourceCommit": "02e96f0e",
+  "capturedAt": "2026-09-25T00:20:44.675Z",
+  "sourceCommit": "91fa6ef4",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -886,9 +886,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 281244,
-      "sha256": "c9ec02e01be3bb29717de938e04d1a69b8166c00f96f7aade56f0ae24e02e248",
-      "capturedAt": "2026-09-24T23:57:03.544Z",
+      "bytes": 281383,
+      "sha256": "88b7d4ca291614c7a9cabd7e27a90326250faf966d9c50f412f9fd2447b74e90",
+      "capturedAt": "2026-09-25T00:20:44.675Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
@@ -896,14 +896,17 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "02e96f0e",
+      "sourceCommit": "91fa6ef4",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
         "checked": "rgb(166, 138, 249)",
         "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
         "glyph": 21.328125,
-        "favorite": 16
+        "favorite": 16,
+        "linkWeight": "500",
+        "bullet": "rgb(249, 250, 251)",
+        "text": "rgb(249, 250, 251)"
       }
     },
     "obsidian-main-editor.png": {
@@ -2553,12 +2556,12 @@
   "publication": {
     "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage and replace only allowlisted TockTutor images on the same filesystem with rollback copies. Never write Obsidian or unrelated screenshots.",
     "lastRefresh": {
-      "capturedAt": "2026-09-24T23:57:36.015Z",
-      "sourceCommit": "02e96f0e",
-      "updatedTockTutorImages": 21,
+      "capturedAt": "2026-09-25T00:20:44.675Z",
+      "sourceCommit": "91fa6ef4",
+      "updatedTockTutorImages": 1,
       "preservedObsidianImages": 28,
       "obsidianHashesUnchanged": true,
-      "transaction": "Same-filesystem allowlist staging with backup and rollback; excluded/unverified images retained."
+      "transaction": "One allowlisted screenshot and its evidence staged on the same filesystem with rollback; all others retained."
     }
   },
   "graphAlignment": {
@@ -2778,5 +2781,37 @@
       "remaining": [],
       "processTreesStopped": 2
     }
+  },
+  "focusedStyleRetake": {
+    "filename": "tocktutor-tag-tab-polish.png",
+    "updatedCount": 1,
+    "capturedAt": "2026-09-25T00:20:44.675Z",
+    "sourceCommit": "91fa6ef4",
+    "route": "/tocktutor/UIUX%20Comparison.md",
+    "mode": "live-preview",
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null
+    },
+    "viewport": {
+      "width": 1512,
+      "height": 949,
+      "dpr": 2
+    },
+    "pixelSize": {
+      "width": 3024,
+      "height": 1898
+    },
+    "paragraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+    "styleEvidence": {
+      "link": "rgb(166, 138, 249)",
+      "linkWeight": "500",
+      "checked": "rgb(166, 138, 249)",
+      "bullet": "rgb(249, 250, 251)",
+      "text": "rgb(249, 250, 251)"
+    },
+    "errors": [],
+    "processTreeStopped": true,
+    "run": "eea4eb94-7deb-4307-86b1-50d4ef34c63b"
   }
 }

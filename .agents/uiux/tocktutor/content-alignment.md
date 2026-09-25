@@ -1,5 +1,11 @@
 # TockTutor and Obsidian Content Alignment
 
+## Focused Bullet and Link Retake — 2026-09-25
+
+At `91fa6ef4`, Crepe’s nested bullet SVG now takes the same text color as the list; links still use the *same* `--dsw-specific-markdown-accent` as checked task boxes. Inspection found no link opacity/filter difference: both computed to `rgb(166, 138, 249)` in built-in dark mode. The thinner link glyphs appeared darker against the solid checkbox fill, so links now use font weight 500 rather than introducing a second purple. The note accent has two theme values: `#705dcf` in light mode and `#a68af9` in dark mode; tags are tinted blends, not another link/checkbox accent.
+
+Only `tocktutor-tag-tab-polish.png` was retaken. Its verified 1512 × 949 CSS-pixel, 2× Desktop capture records the Live Preview route, corrected paragraph, dark/no-skin state, matching link/checkbox color, matching bullet/text color, font weight, and zero runtime/console errors in `content-alignment.json`. The bounded Electron process tree stopped without descendants. Every other screenshot, including all 28 Obsidian images, retained its previous hash; a full retake is deferred until requested.
+
 ## Live Preview Styling — 2026-09-24
 
 The gallery exposed three style gaps in TockTutor’s Live Preview: links inherited white, ordered markers inherited Crepe’s 12%-opacity outline color, and task icons inherited that same dim fill. At `02e96f0e`, the shared Crepe utility styles links and checked task icons with the Markdown purple, number labels with the note text, and unchecked outlines at 55% text opacity. Crepe draws a 18-unit checkbox inside a 24-unit SVG, so the SVG is 21⅓px wide to show a 16px glyph matching the frontmatter checkbox.
