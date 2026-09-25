@@ -63,6 +63,7 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.milkdown-table-block :is\(th,td\)\{border-color:color-mix\(in srgb, var\(--dsw-alias-label-secondary\) 60%, var\(--tt-panel\)\)/, 'table cell borders remain visible on the dark canvas')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.milkdown-code-block :is\(\.cm-activeLine,\.cm-activeLineGutter\)\{background:0 0\}/, 'syntax colors are readable without a permanent selected-line stripe')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror :is\(h2,h3,h4,h5,h6\)\{[^}]*margin-bottom:16px/, 'headings separate from their content')
+  assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror hr\{[^}]*background-color:var\(--crepe-color-outline\)/, 'authored dividers remain visible on the note canvas')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.milkdown-code-block\{[^}]*margin:16px 0 24px/, 'code blocks breathe before and after adjacent text')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.milkdown-code-block \.tools\{[^}]*margin-right:-10px/, 'both code controls shift right together')
   assert.match(css, /\.tocktutor-crepe-editor \.milkdown \.ProseMirror dl\[data-type=footnote_definition\]\{[^}]*display:flex/, 'footnote labels sit in front of their definition text')

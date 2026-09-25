@@ -585,6 +585,15 @@ describe('Live Preview editor', () => {
     await waitFor(() => expect(onChange.mock.lastCall?.[0]).toContain('A soft line ends here.!\nThis sentence follows'))
   })
 
+  it('keeps an authored divider between its paragraphs and heading in Live Preview', async () => {
+    const source = 'This sentence follows without a blank line.\n\n---\n\n#### Small Heading\n'
+    const onChange = vi.fn()
+    const { container } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(container.querySelector('.ProseMirror hr')?.previousElementSibling?.textContent).toContain('This sentence follows'), { timeout: 10_000 })
+    expect(container.querySelector('.ProseMirror hr')?.nextElementSibling?.textContent).toBe('Small Heading')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('colors TypeScript tokens in a fenced Live Preview code block', async () => {
     const { container } = render(<LivePreviewEditor content={'```ts\nconst lesson = "markdown"\nconsole.log(lesson)\n```\n'} onMarkdownChange={() => {}} />)
     await waitFor(() => expect(container.querySelector('.milkdown-code-block .cm-line')).toBeTruthy(), { timeout: 10_000 })
