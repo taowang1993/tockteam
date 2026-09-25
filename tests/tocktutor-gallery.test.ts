@@ -60,6 +60,19 @@ test('records the corrected Live Preview paragraph and flags the unreplaced Read
   assert.notEqual(proof.captures['tocktutor-web-viewer-reader.png'].sourceCommit, proof.livePreviewCorrection.sourceCommit)
 })
 
+test('binds refreshed Live Preview colors and checkbox size to visible capture evidence', () => {
+  const entries = Object.entries(proof.captures).filter(([, capture]) => (capture as { styleEvidence?: unknown }).styleEvidence)
+  assert.equal(entries.length, proof.livePreviewStyleCorrection.updatedCount)
+  assert.ok(entries.some(([name]) => name === 'tocktutor-tag-tab-polish.png'))
+  for (const [name, capture] of entries) {
+    const evidence = (capture as { styleEvidence: { link: string; ordered: string; checked: string; unchecked: string; glyph: number; favorite: number } }).styleEvidence
+    assert.equal(evidence.link, evidence.checked, name)
+    assert.equal(evidence.ordered, 'rgb(249, 250, 251)', name)
+    assert.match(evidence.unchecked, /\/ 0\.55/u, name)
+    assert.ok(Math.abs(evidence.glyph * 0.75 - evidence.favorite) < 0.05, name)
+  }
+})
+
 test('binds shared Markdown and structured documents to the captured content', () => {
   const sharedHash = sha256(readFileSync(resolve(root, 'comparison.md')))
   assert.equal(proof.fixtures['comparison.md'].tocktutor.sha256, sharedHash)

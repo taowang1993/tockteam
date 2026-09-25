@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-24T23:35:00.169Z",
-  "sourceCommit": "81f533aa",
+  "capturedAt": "2026-09-24T23:57:36.015Z",
+  "sourceCommit": "02e96f0e",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -820,9 +820,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 278802,
-      "sha256": "7215c441955357884b55884497b88684e5a5f1aba3e7ab49cd783cc0eaa16642",
-      "capturedAt": "2026-09-24T23:32:11.291Z",
+      "bytes": 281244,
+      "sha256": "c9ec02e01be3bb29717de938e04d1a69b8166c00f96f7aade56f0ae24e02e248",
+      "capturedAt": "2026-09-24T23:57:02.668Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
@@ -830,7 +830,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "tocktutor-editor-live-preview.png": {
       "geometry": {
@@ -845,9 +853,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 278802,
-      "sha256": "7215c441955357884b55884497b88684e5a5f1aba3e7ab49cd783cc0eaa16642",
-      "capturedAt": "2026-09-24T23:32:11.720Z",
+      "bytes": 281244,
+      "sha256": "c9ec02e01be3bb29717de938e04d1a69b8166c00f96f7aade56f0ae24e02e248",
+      "capturedAt": "2026-09-24T23:57:03.114Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
@@ -855,7 +863,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "tocktutor-tag-tab-polish.png": {
       "geometry": {
@@ -870,9 +886,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 278802,
-      "sha256": "7215c441955357884b55884497b88684e5a5f1aba3e7ab49cd783cc0eaa16642",
-      "capturedAt": "2026-09-24T23:32:12.183Z",
+      "bytes": 281244,
+      "sha256": "c9ec02e01be3bb29717de938e04d1a69b8166c00f96f7aade56f0ae24e02e248",
+      "capturedAt": "2026-09-24T23:57:03.544Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
@@ -880,7 +896,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-main-editor.png": {
       "geometry": {
@@ -1009,7 +1033,7 @@
       "runtimeErrors": [],
       "mode": "live-preview",
       "path": "comparison.md",
-      "capturedAt": "2026-09-24T23:32:52.501Z",
+      "capturedAt": "2026-09-24T23:57:36.015Z",
       "visibleState": {
         "assertedText": "Reading View",
         "assertionPassed": true,
@@ -1021,10 +1045,18 @@
       "theme": "dark",
       "skin": null,
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 397287,
-      "sha256": "9cda9ca71dc3a18dc6ccb5ca232b4c68ccf5ba809bf8f508739a65edfe3c96db",
+      "bytes": 399893,
+      "sha256": "408f46d55cbb76c0edde6a0012ab0d7e98c67e6cbdec78cf9e25bb36cffc7d55",
       "captureScope": "real-desktop",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-note-actions.png": {
       "geometry": {
@@ -1062,9 +1094,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 251439,
-      "sha256": "b54058a58d1aa15e4275a7fb8094a76758078a1da467ad9c0597acb8bc782bcc",
-      "capturedAt": "2026-09-24T23:32:15.596Z",
+      "bytes": 252218,
+      "sha256": "1ee2746ba27f31ff0390c632de714b842490dc71860bfe1ae08b16e3699a3e94",
+      "capturedAt": "2026-09-24T23:57:06.925Z",
       "visibleState": {
         "assertedText": "Command Palette",
         "assertionPassed": true,
@@ -1073,7 +1105,15 @@
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
       "refreshProof": ".beads/reports/tocktutor-command-footer-2026-09-20.json",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-command-palette.png": {
       "geometry": {
@@ -1111,9 +1151,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 322168,
-      "sha256": "857448b27fc148df1ea04752d0e633854e939d5e3c0093840df17db0edbc8f7e",
-      "capturedAt": "2026-09-24T23:32:18.296Z",
+      "bytes": 324585,
+      "sha256": "720353f0b73f4b4289f482fb5c6e80b68f50a88c998830318be13f0443d25def",
+      "capturedAt": "2026-09-24T23:57:09.613Z",
       "visibleState": {
         "assertedText": "Properties",
         "assertionPassed": true,
@@ -1121,7 +1161,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-properties.png": {
       "geometry": {
@@ -1159,9 +1207,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 307360,
-      "sha256": "ff45ec57f8ec950ec561e670eda6f96f0a95c4c5ef5c1d9b95082728d9489434",
-      "capturedAt": "2026-09-24T23:32:20.997Z",
+      "bytes": 309891,
+      "sha256": "9d1d56f55d0c7ebccd0d302502185eb12a7ff828db2d36c200dda083f7e8292d",
+      "capturedAt": "2026-09-24T23:57:12.299Z",
       "visibleState": {
         "assertedText": "Backlinks",
         "assertionPassed": true,
@@ -1169,7 +1217,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-backlinks.png": {
       "geometry": {
@@ -1207,9 +1263,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 306064,
-      "sha256": "2207f1924074f4f0846e4c44a526407774bfabd62364dce6275272095b567bef",
-      "capturedAt": "2026-09-24T23:32:22.775Z",
+      "bytes": 308590,
+      "sha256": "d334c6280f97e42496a7f9544b26d1f8c760c5ea39c5999829ede4f09edd2eb0",
+      "capturedAt": "2026-09-24T23:57:14.065Z",
       "visibleState": {
         "assertedText": "Tags",
         "assertionPassed": true,
@@ -1217,7 +1273,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-tags.png": {
       "geometry": {
@@ -1303,9 +1367,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 365552,
-      "sha256": "abc0d2c7552399431c2443eb39c87c2976a928e0e224d2c0f3dbd1c13e111e5d",
-      "capturedAt": "2026-09-24T23:32:17.009Z",
+      "bytes": 366464,
+      "sha256": "100e51bb70783e3cca723021caf3b64026057ab71a7d929476802ab268fe0083",
+      "capturedAt": "2026-09-24T23:57:08.327Z",
       "visibleState": {
         "assertedText": "Markdown",
         "assertionPassed": true,
@@ -1313,7 +1377,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-search.png": {
       "geometry": {
@@ -1351,9 +1423,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 319836,
-      "sha256": "75b71b8be61adfe9dd6b4f3936f25e130bc94fcc37e8a11146ea739f0a452cc1",
-      "capturedAt": "2026-09-24T23:32:21.619Z",
+      "bytes": 322107,
+      "sha256": "c899600277559953f5509bbc5902910813297132feee832b4d6d4ec4feeedc53",
+      "capturedAt": "2026-09-24T23:57:12.906Z",
       "visibleState": {
         "assertedText": "Mention.md",
         "assertionPassed": true,
@@ -1361,7 +1433,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "tocktutor-bookmarks.png": {
       "geometry": {
@@ -1376,9 +1456,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 296144,
-      "sha256": "6b54eff30a42123d5e439dd82947c5fdc132dcabe5b9835458fd7f873ae1d8ae",
-      "capturedAt": "2026-09-24T23:32:23.925Z",
+      "bytes": 298731,
+      "sha256": "cdab59a2f033ec717f636524300df6c37ca70d9b89447b9b1d9f68c28a3172b6",
+      "capturedAt": "2026-09-24T23:57:15.218Z",
       "visibleState": {
         "assertedText": "Bookmarks",
         "assertionPassed": true,
@@ -1386,7 +1466,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "tocktutor-bookmarks-tags.png": {
       "geometry": {
@@ -1401,9 +1489,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 296144,
-      "sha256": "6b54eff30a42123d5e439dd82947c5fdc132dcabe5b9835458fd7f873ae1d8ae",
-      "capturedAt": "2026-09-24T23:32:24.358Z",
+      "bytes": 298731,
+      "sha256": "cdab59a2f033ec717f636524300df6c37ca70d9b89447b9b1d9f68c28a3172b6",
+      "capturedAt": "2026-09-24T23:57:15.666Z",
       "visibleState": {
         "assertedText": "Bookmarks",
         "assertionPassed": true,
@@ -1411,7 +1499,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-bookmarks.png": {
       "geometry": {
@@ -1451,7 +1547,7 @@
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
       "bytes": 155286,
       "sha256": "94143e4feae2eb81a6f03f1e9e51f0a1e080b2b24db185c4d282de4375c937f0",
-      "capturedAt": "2026-09-24T23:32:25.765Z",
+      "capturedAt": "2026-09-24T23:57:17.070Z",
       "visibleState": {
         "assertedText": "Graph Nodes",
         "assertionPassed": true,
@@ -1460,7 +1556,15 @@
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
       "documentMode": "live-preview",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-graph-global.png": {
       "geometry": {
@@ -1499,7 +1603,7 @@
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
       "bytes": 160637,
       "sha256": "8c6078e71284b873f31eb49e0044f844cb066bf8d248d5e777a618f2252b06d0",
-      "capturedAt": "2026-09-24T23:32:26.453Z",
+      "capturedAt": "2026-09-24T23:57:17.775Z",
       "visibleState": {
         "assertedText": "Graph Nodes",
         "assertionPassed": true,
@@ -1507,7 +1611,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-graph-local.png": {
       "geometry": {
@@ -1546,9 +1658,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 338249,
-      "sha256": "71debe4bab9a19db3ca1355b3e321997a0514fa10be95a631fd10a9296309962",
-      "capturedAt": "2026-09-24T23:32:27.636Z",
+      "bytes": 340818,
+      "sha256": "a90a22c243d67a7ec901d2f1ba918cac9db88a3893e59a4a93b3d46302e21455",
+      "capturedAt": "2026-09-24T23:57:18.946Z",
       "visibleState": {
         "assertedText": "Note Tools",
         "assertionPassed": true,
@@ -1556,7 +1668,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-note-tools.png": {
       "geometry": {
@@ -1594,9 +1714,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 337252,
-      "sha256": "f7d549f8fc40cc1e30d90c925280d955f9d5d2c7a68b390118d7474a141c2f96",
-      "capturedAt": "2026-09-24T23:32:31.498Z",
+      "bytes": 339805,
+      "sha256": "dad079b1333a426126043b0d4d0b2b2887f81e36e3b7e7397a96fd77cb1a2a76",
+      "capturedAt": "2026-09-24T23:57:22.823Z",
       "visibleState": {
         "assertedText": "Workspaces and Panes",
         "assertionPassed": true,
@@ -1604,7 +1724,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-workspaces-panes.png": {
       "geometry": {
@@ -1665,9 +1793,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 251892,
-      "sha256": "6c306ad49e2df90dead637a04fb5aecf3bfce04b8a620036a30961b682a337a3",
-      "capturedAt": "2026-09-24T23:32:32.409Z",
+      "bytes": 252505,
+      "sha256": "ccad1ae9839281d424dc9f54cc431fece6876774eb059b476eeda8db6b290489",
+      "capturedAt": "2026-09-24T23:57:23.710Z",
       "visibleState": {
         "assertedText": "New Note",
         "assertionPassed": true,
@@ -1675,7 +1803,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "tocktutor-new-note.png": {
       "geometry": {
@@ -1737,9 +1873,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 364454,
-      "sha256": "0b90229fc60d28878ccf4287e7a66d275769e4ab9bbb3f000c904458a599ea87",
-      "capturedAt": "2026-09-24T23:32:29.166Z",
+      "bytes": 365819,
+      "sha256": "b79bbaa7ba366fdf5b9b5f8188a0aca0e77bd0882702a669917043a760987d65",
+      "capturedAt": "2026-09-24T23:57:20.481Z",
       "visibleState": {
         "assertedText": "File Recovery",
         "assertionPassed": true,
@@ -1747,7 +1883,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "obsidian-file-recovery.png": {
       "geometry": {
@@ -1785,9 +1929,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 423960,
-      "sha256": "5a15d2c65317073b314fbe4483a021f347591b9d6afc624f49e6894a05c1dac1",
-      "capturedAt": "2026-09-24T23:32:30.318Z",
+      "bytes": 426377,
+      "sha256": "7390901d7947bbdaeec3ceeaf44272ed48460c3d452ae7d7457d734ae314e5b7",
+      "capturedAt": "2026-09-24T23:57:21.640Z",
       "visibleState": {
         "assertedText": "Reviews and Actions",
         "assertionPassed": true,
@@ -1795,7 +1939,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "tocktutor-reading-embed.png": {
       "geometry": {
@@ -1998,9 +2150,9 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 322263,
-      "sha256": "09197e31af6d6fb0f3d0ffd7a00998fa3175b88c68ced9b7f5477bf952961177",
-      "capturedAt": "2026-09-24T23:32:19.482Z",
+      "bytes": 324688,
+      "sha256": "9f47470eca306b752edbf2895409d1aabbc8f5b37881ff5eef45b9a670d51244",
+      "capturedAt": "2026-09-24T23:57:10.804Z",
       "visibleState": {
         "assertedText": "Properties",
         "assertionPassed": true,
@@ -2008,7 +2160,15 @@
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "tocktutor-vault-switcher.png": {
       "geometry": {
@@ -2023,9 +2183,9 @@
       "path": "UIUX Comparison.md",
       "mode": "vault-switcher",
       "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 269089,
-      "sha256": "17dd6ca9ee201e9460ea9a4168f4e39c72fc9dc55ec7e64ce20d3b1a032bcf87",
-      "capturedAt": "2026-09-24T23:32:39.214Z",
+      "bytes": 269749,
+      "sha256": "662a8067ac23bc05a89b6537c1c5c835b4a9ee198d7d4242eb760081cd3d3354",
+      "capturedAt": "2026-09-24T23:57:30.457Z",
       "visibleState": {
         "assertedText": "Create New Vault",
         "assertionPassed": true,
@@ -2034,7 +2194,15 @@
       },
       "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners; no errors at capture.",
       "backgroundPath": "UIUX Comparison.md",
-      "sourceCommit": "81f533aa"
+      "sourceCommit": "02e96f0e",
+      "styleEvidence": {
+        "link": "rgb(166, 138, 249)",
+        "ordered": "rgb(249, 250, 251)",
+        "checked": "rgb(166, 138, 249)",
+        "unchecked": "color(srgb 0.976471 0.980392 0.984314 / 0.55)",
+        "glyph": 21.328125,
+        "favorite": 16
+      }
     },
     "tocktutor-settings.png": {
       "geometry": {
@@ -2385,12 +2553,12 @@
   "publication": {
     "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage and replace only allowlisted TockTutor images on the same filesystem with rollback copies. Never write Obsidian or unrelated screenshots.",
     "lastRefresh": {
-      "capturedAt": "2026-09-24T23:35:00.169Z",
-      "sourceCommit": "81f533aa",
-      "updatedTockTutorImages": 23,
+      "capturedAt": "2026-09-24T23:57:36.015Z",
+      "sourceCommit": "02e96f0e",
+      "updatedTockTutorImages": 21,
       "preservedObsidianImages": 28,
       "obsidianHashesUnchanged": true,
-      "transaction": "Same-filesystem allowlist staging with backup, hash/dimension checks and rollback; Reader View retained unchanged after bounded retry."
+      "transaction": "Same-filesystem allowlist staging with backup and rollback; excluded/unverified images retained."
     }
   },
   "graphAlignment": {
@@ -2567,6 +2735,43 @@
       "filename": "tocktutor-web-viewer-reader.png",
       "status": "earlier-capture",
       "reason": "Reader View remained loading in the final batch and focused retry; original screenshot was retained rather than publishing a loading or failed state."
+    },
+    "cleanup": {
+      "verified": true,
+      "remaining": [],
+      "processTreesStopped": 2
+    }
+  },
+  "livePreviewStyleCorrection": {
+    "capturedAt": "2026-09-24T23:57:36.015Z",
+    "sourceCommit": "02e96f0e",
+    "updatedCount": 21,
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null
+    },
+    "run": "eaf57af2-fc0c-4d94-b791-2efb8988a69f",
+    "cssEvidence": {
+      "links": "rgb(166, 138, 249)",
+      "numbers": "rgb(249, 250, 251)",
+      "checked": "rgb(166, 138, 249)",
+      "unchecked": "55% of note text",
+      "svgWidth": "21.333px (visible glyph 16px)",
+      "frontmatterWidth": "16px"
+    },
+    "excluded": {
+      "tocktutor-editor-source.png": "Source Mode has no Live Preview controls; earlier image retained.",
+      "tocktutor-editor-reading.png": "Reading View has no Live Preview controls; earlier image retained.",
+      "tocktutor-assistant.png": "Assistant button was absent during this capture attempt; earlier image retained.",
+      "tocktutor-web-viewer.png": "Web Viewer not included in this focused styling batch; earlier image retained.",
+      "tocktutor-web-viewer-reader.png": "Reader View still lacks a verified current capture; earlier image retained."
     },
     "cleanup": {
       "verified": true,

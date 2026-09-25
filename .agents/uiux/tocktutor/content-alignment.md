@@ -1,5 +1,11 @@
 # TockTutor and Obsidian Content Alignment
 
+## Live Preview Styling — 2026-09-24
+
+The gallery exposed three style gaps in TockTutor’s Live Preview: links inherited white, ordered markers inherited Crepe’s 12%-opacity outline color, and task icons inherited that same dim fill. At `02e96f0e`, the shared Crepe utility styles links and checked task icons with the Markdown purple, number labels with the note text, and unchecked outlines at 55% text opacity. Crepe draws a 18-unit checkbox inside a 24-unit SVG, so the SVG is 21⅓px wide to show a 16px glyph matching the frontmatter checkbox.
+
+At 1512 × 949 CSS pixels and 2× scale, Playwright verified computed link, marker, and icon colors; 16px visible task/frontmatter checkbox sizes; dark theme/no skin; and no renderer or console errors. Twenty-one verified Live Preview screenshots were transactionally replaced (3024 × 1898 PNGs), with per-image hashes and computed-style evidence in `content-alignment.json`. All 28 Obsidian images were byte-identical; both owned Electron trees stopped without descendants. Source and Reading View screenshots were excluded because they have no Live Preview controls; the Assistant button was absent in this attempt, and Web Viewer was outside this focused batch, so their earlier images remain. No failed-attempt image was published. The supplemental Reader View limitation below remains unresolved.
+
 ## Live Preview Correction — 2026-09-24
 
 The TockTutor vault note and the gallery’s `comparison.md` have the same SHA-256 (`3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5`), but the earlier Live Preview screenshots visibly inserted `[^context]` footnote text after “highlighting” and inside links. The inline-preview widget had appended *every* definition, including footnotes, to each small fragment it rendered. At `81f533aa`, it now appends link definitions only; the standalone footnote remains in its own definition. A component regression test first reproduced the incorrect rendered paragraph, then passed after the change.
