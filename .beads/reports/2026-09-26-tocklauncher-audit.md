@@ -6,15 +6,17 @@ Reviewed `.agents/references/tocklauncher.md` against launcher composition, main
 
 ## Fixed Findings
 
-| Finding | Resolution | Commit |
-| --- | --- | --- |
-| A maximum-length web query produced an invalid display label and prevented result publication. | Bound the label to 512 characters without truncating the query in the URL. | `120a5500` |
-| NDJSON limits were applied to accumulated pipe chunks; valid coalesced messages and escaped 16 KiB input could kill the child. | Bound complete frames and unfinished remainders independently; allow 128 KiB serialized input and retain the 1 MiB output limit. | `a5730654` |
-| Clipboard ownership compared only plain text, allowing restoration over newer rich data with identical text. | Compare the owned format set and every buffer as well as text; preserve unreadable/changed clipboard contents. | `5c9dee63` |
-| Can I Use closed the entire command when input exceeded its search limits. | Validate before consuming handles or revoking the session; the user can correct the query. | `51aa84da` |
-| The tracer omitted extension identity and relied on English defaults despite requiring Chinese output; its negative test passed on this early failure. Installed proof guards incorrectly allowed Linux. | Supply identity/explicit targets; require readiness before the expected timeout; add offline admitted-source success coverage; skip unsupported platforms before renderer access. | `ef283cf3` |
-| Sequential Electron `writeBuffer` calls cannot losslessly restore multiple clipboard formats. | Refuse external Paste before mutation for multi-format clipboards; retain direct in-app insertion and single-format restoration. | `25eac89d` |
-| Standalone proofs expected obsolete approval screens/controls, and historical TTS evidence could mask missing current playback. | Use direct bundled command IDs/current controls and remove historical evidence as a pass condition. | `9de9c230` |
+**Nine confirmed bugs were fixed: five runtime bugs and four verification-tool bugs.** The previous seven-row table combined separate verification findings. Ranked by severity (P1: potential data loss; P2: functional failure or unreliable verification):
+
+1. **[P1 — High] Multi-format clipboard restoration destroyed formats.** Each Electron `writeBuffer` call replaces the pasteboard, so sequential writes lost earlier formats. External Paste now refuses multi-format clipboards before mutation; direct in-app insertion remains available. Commit: `25eac89d`.
+2. **[P1 — High] Paste could overwrite newer clipboard data.** Ownership compared only plain text, missing newer rich content with identical text. Restoration now checks the format set and every buffer as well as text, leaving unreadable or changed contents untouched. Commit: `5c9dee63`.
+3. **[P2 — Medium] Valid trusted-extension input could terminate the child.** NDJSON bounds applied to pipe chunks rather than individual frames and did not accommodate JSON escaping. Complete frames and unfinished remainders are now bounded independently, with 128 KiB input and 1 MiB output limits. Commit: `a5730654`.
+4. **[P2 — Medium] Invalid Can I Use queries closed the command.** Search validation occurred after handles were consumed. Validation now precedes revocation, allowing the user to correct input without reopening the command. Commit: `51aa84da`.
+5. **[P2 — Medium] Maximum-length web queries prevented result publication.** Generated display labels exceeded their limit. Labels are now capped at 512 characters without truncating the query used in the browser URL. Commit: `120a5500`.
+6. **[P2 — Medium] Historical TTS evidence could hide a current playback failure.** Old proof could satisfy the gate despite missing live playback. A responding upstream without observed playback now fails; upstream unavailability is reported as inconclusive. Commit: `9de9c230`.
+7. **[P2 — Medium] The translation tracer failed before exercising translation.** It omitted extension identity and used defaults inconsistent with its Chinese-output assertion; its negative test falsely accepted the early failure. The tracer now supplies identity/targets, and tests require readiness plus an offline admitted-source success path. Commit: `ef283cf3`.
+8. **[P2 — Medium] Fresh-profile visual proofs followed obsolete UI flows.** Scripts waited for approval screens no longer shown for bundled commands and used an outdated preference control. They now target direct command IDs and current controls; fresh visual execution remains outstanding. Commit: `9de9c230`.
+9. **[P2 — Medium] Installed compatibility proofs ran on unsupported Linux systems.** Two helpers excluded only Windows despite macOS-only invocation. They now skip all non-macOS platforms before accessing a renderer. Commit: `ef283cf3`.
 
 The clipboard replacement finding was confirmed from the installed Electron version's upstream source, not by touching the user's clipboard:
 
