@@ -24,6 +24,8 @@ import { InlineImageLoader, attachInlineImages } from './inline-images.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import { classifyExternalEmbed } from './external-embeds.ts'
 import { collectEmbedTargets } from './embeds.ts'
+import { SlashMenu, slashMenuPlugin } from './live-preview-slash-menu.tsx'
+import { BlockHandle, block, configureBlockHandle } from './live-preview-block-handle.tsx'
 
 const searchKey = new PluginKey('tocktutor-crepe-search')
 // Leading hashes + Space choose the level, even inside an existing heading.
@@ -71,6 +73,8 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
   const current = useRef<number | null>(props.searchCurrentIndex ?? null)
   const lastRequest = useRef<number | null>(null)
   const [ready, setReady] = useState(false)
+  const [slashMenu, setSlashMenu] = useState(null)
+  const [blockHandle, setBlockHandle] = useState(null)
   const [error, setError] = useState('')
   const imageWaiters = useRef(new Set<() => void>())
 
@@ -89,6 +93,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     const imageCache = new Map<string, string>()
     const pendingImages = new Set<string>()
     let imageRevision = 0
+    let contentRevision = 0
     const refreshImages = () => {
       imageRevision++
       const view = viewRef.current
@@ -99,6 +104,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     // synchronously, before mounting: an async proxy briefly leaks that original URL.
     const placeholder = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
     const imageURL = (url: string): string => {
+      if (url === '') return '' // An empty image owns the upload form, not a proxied preview.
       if (imageCache.has(url)) return imageCache.get(url)!
       const external = classifyExternalEmbed(url)
       if (external) {
@@ -121,6 +127,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     const crepe = new Crepe({
       root: root.current,
       defaultValue: splitLivePreviewSource(source.current).body,
+      features: { [Crepe.Feature.BlockEdit]: false },
       featureConfigs: {
         // Let the browser own caret shape, blinking, and window-focus visibility.
         [Crepe.Feature.Cursor]: { virtual: false },
@@ -145,7 +152,9 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
           proxyDomURL: imageURL,
           onUpload: async file => {
             if (!latest.current.onUploadImage) throw new Error('Image upload is unavailable in this view.')
-            return latest.current.onUploadImage(file)
+            const revision = contentRevision
+            const url = await latest.current.onUploadImage(file)
+            return disposed || revision !== contentRevision ? '' : url
           },
         },
         [Crepe.Feature.Placeholder]: { text: 'Start writing, or type / for commands.' },
@@ -154,6 +163,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     instance.current = crepe
     const serialize = doc => crepe.editor.action(ctx => `${splitLivePreviewSource(source.current).prefix}${ctx.get(serializerCtx)(doc)}`)
     const configured = crepe.editor.remove([...remarkInlineLinkPlugin, wrapInHeadingInputRule])
+    crepe.editor.config(ctx => configureBlockHandle(ctx, setBlockHandle)).use(block).use(slashMenuPlugin(setSlashMenu))
     crepe.editor.config(configureObsidianContent).use(obsidianSyntax).use(obsidianInline).use(referenceDefinition).use(headingInputRule)
       .use($prose(() => new Plugin({
         key: searchKey,
@@ -243,6 +253,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
           if (latest.current.editorViewRef) latest.current.editorViewRef.current = view
           return {
             update(view, previous) {
+              if (!previous.doc.eq(view.state.doc)) contentRevision++
               if (disposed || !mounted) return
               if (!syncing.current && !withoutGeneratedHeadingIds(previous.doc).eq(withoutGeneratedHeadingIds(view.state.doc))) {
                 const markdown = serialize(view.state.doc)
@@ -414,5 +425,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
   return <div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={`tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`}>
     {error && <p role="alert">{error}</p>}
     <div ref={root} />
+    {slashMenu && <SlashMenu menu={slashMenu} />}
+    {blockHandle && <BlockHandle handle={blockHandle} />}
   </div>
 }

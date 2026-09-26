@@ -556,6 +556,9 @@ importers:
       '@codemirror/view':
         specifier: 6.41.1
         version: 6.41.1
+      '@floating-ui/dom':
+        specifier: 1.8.0
+        version: 1.8.0
       '@lezer/highlight':
         specifier: 1.2.3
         version: 1.2.3
@@ -568,10 +571,16 @@ importers:
       '@milkdown/crepe':
         specifier: 7.22.2
         version: 7.22.2(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.3)(typescript@5.9.3)
+      '@milkdown/plugin-block':
+        specifier: 7.22.2
+        version: 7.22.2
       '@milkdown/plugin-history':
         specifier: 7.22.2
         version: 7.22.2
       '@milkdown/plugin-listener':
+        specifier: 7.22.2
+        version: 7.22.2
+      '@milkdown/plugin-slash':
         specifier: 7.22.2
         version: 7.22.2
       '@milkdown/preset-commonmark':

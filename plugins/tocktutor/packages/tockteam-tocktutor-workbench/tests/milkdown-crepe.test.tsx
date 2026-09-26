@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { LivePreviewEditor } from '../src/live-preview-editor.tsx'
 import { undo, redo } from '@milkdown/prose/history'
@@ -6,19 +6,20 @@ import { TextSelection } from '@milkdown/prose/state'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
-it('offers the Crepe slash menu in an editable Live Preview', async () => {
-  const editorViewRef = { current: null as any }
+it('offers block commands for a typed slash in an editable Live Preview', async () => {
+  const editorViewRef = { current: null as any }, commandRef = { current: null }
   const onChange = vi.fn()
-  const { container } = render(<LivePreviewEditor content="" editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
-  await waitFor(() => expect(container.querySelector('.ProseMirror[contenteditable="true"]')).toBeTruthy(), { timeout: 10_000 })
+  render(<LivePreviewEditor content="" commandRef={commandRef} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+  await waitFor(() => expect(commandRef.current).toBeTruthy(), { timeout: 10_000 })
   await act(async () => {
     const view = editorViewRef.current
     view.focus()
-    view.dispatch(view.state.tr.insertText('/'))
+    const { from, to } = view.state.selection
+    expect(view.someProp('handleTextInput', (handler: any) => handler(view, from, to, '/'))).toBe(true)
   })
-  await waitFor(() => expect(container.querySelector('.milkdown-slash-menu')).toBeTruthy())
-  expect(container.textContent).toContain('Table')
-  expect(container.textContent).toContain('Task List')
+  await screen.findByRole('listbox', { name: 'Block Commands' })
+  expect(screen.getByRole('option', { name: 'Table', exact: true })).toBeTruthy()
+  expect(screen.getByRole('option', { name: 'Task List', exact: true })).toBeTruthy()
 })
 
 it('keeps content editable and preserves Obsidian constructs through edit, undo, and reopen', async () => {

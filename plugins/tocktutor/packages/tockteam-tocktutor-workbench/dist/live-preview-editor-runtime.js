@@ -25,6 +25,8 @@ import { InlineImageLoader, attachInlineImages } from "./inline-images.js";
 import { renderMarkdownHtml } from "./rich-markdown.js";
 import { classifyExternalEmbed } from "./external-embeds.js";
 import { collectEmbedTargets } from "./embeds.js";
+import { SlashMenu, slashMenuPlugin } from "./live-preview-slash-menu.js";
+import { BlockHandle, block, configureBlockHandle } from "./live-preview-block-handle.js";
 const searchKey = new PluginKey('tocktutor-crepe-search');
 // Leading hashes + Space choose the level, even inside an existing heading.
 const headingInputRule = $inputRule(ctx => textblockTypeInputRule(/^(#{1,6}) $/, headingSchema.type(ctx), match => ({ level: match[1].length })));
@@ -76,6 +78,8 @@ export function LivePreviewEditorRuntime(props) {
     const current = useRef(props.searchCurrentIndex ?? null);
     const lastRequest = useRef(null);
     const [ready, setReady] = useState(false);
+    const [slashMenu, setSlashMenu] = useState(null);
+    const [blockHandle, setBlockHandle] = useState(null);
     const [error, setError] = useState('');
     const imageWaiters = useRef(new Set());
     const publishSearch = (view, error) => {
@@ -93,6 +97,7 @@ export function LivePreviewEditorRuntime(props) {
         const imageCache = new Map();
         const pendingImages = new Set();
         let imageRevision = 0;
+        let contentRevision = 0;
         const refreshImages = () => {
             imageRevision++;
             const view = viewRef.current;
@@ -104,6 +109,8 @@ export function LivePreviewEditorRuntime(props) {
         // synchronously, before mounting: an async proxy briefly leaks that original URL.
         const placeholder = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
         const imageURL = (url) => {
+            if (url === '')
+                return ''; // An empty image owns the upload form, not a proxied preview.
             if (imageCache.has(url))
                 return imageCache.get(url);
             const external = classifyExternalEmbed(url);
@@ -135,6 +142,7 @@ export function LivePreviewEditorRuntime(props) {
         const crepe = new Crepe({
             root: root.current,
             defaultValue: splitLivePreviewSource(source.current).body,
+            features: { [Crepe.Feature.BlockEdit]: false },
             featureConfigs: {
                 // Let the browser own caret shape, blinking, and window-focus visibility.
                 [Crepe.Feature.Cursor]: { virtual: false },
@@ -162,7 +170,9 @@ export function LivePreviewEditorRuntime(props) {
                     onUpload: async (file) => {
                         if (!latest.current.onUploadImage)
                             throw new Error('Image upload is unavailable in this view.');
-                        return latest.current.onUploadImage(file);
+                        const revision = contentRevision;
+                        const url = await latest.current.onUploadImage(file);
+                        return disposed || revision !== contentRevision ? '' : url;
                     },
                 },
                 [Crepe.Feature.Placeholder]: { text: 'Start writing, or type / for commands.' },
@@ -171,6 +181,7 @@ export function LivePreviewEditorRuntime(props) {
         instance.current = crepe;
         const serialize = doc => crepe.editor.action(ctx => `${splitLivePreviewSource(source.current).prefix}${ctx.get(serializerCtx)(doc)}`);
         const configured = crepe.editor.remove([...remarkInlineLinkPlugin, wrapInHeadingInputRule]);
+        crepe.editor.config(ctx => configureBlockHandle(ctx, setBlockHandle)).use(block).use(slashMenuPlugin(setSlashMenu));
         crepe.editor.config(configureObsidianContent).use(obsidianSyntax).use(obsidianInline).use(referenceDefinition).use(headingInputRule)
             .use($prose(() => new Plugin({
             key: searchKey,
@@ -280,6 +291,8 @@ export function LivePreviewEditorRuntime(props) {
                     latest.current.editorViewRef.current = view;
                 return {
                     update(view, previous) {
+                        if (!previous.doc.eq(view.state.doc))
+                            contentRevision++;
                         if (disposed || !mounted)
                             return;
                         if (!syncing.current && !withoutGeneratedHeadingIds(previous.doc).eq(withoutGeneratedHeadingIds(view.state.doc))) {
@@ -487,6 +500,6 @@ export function LivePreviewEditorRuntime(props) {
                 props.insertTextRef.current = null;
         };
     }, [ready, props.commandRef, props.insertTextRef]);
-    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root })] });
+    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && _jsx(SlashMenu, { menu: slashMenu }), blockHandle && _jsx(BlockHandle, { handle: blockHandle })] });
 }
 //# sourceMappingURL=live-preview-editor-runtime.js.map
