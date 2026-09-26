@@ -109,6 +109,26 @@ it('dismisses on Shift+Enter without consuming the query or the line break', asy
   expect(view.state.doc.firstChild.lastChild.type.name).toBe('hardbreak')
 })
 
+it('keeps keyboard selection visible while navigating beyond the menu viewport', async () => {
+  const scrollIntoView = vi.fn()
+  const original = HTMLElement.prototype.scrollIntoView
+  HTMLElement.prototype.scrollIntoView = scrollIntoView
+  try {
+    const { view } = await editor('Text\n')
+    type(view, '/', 5)
+    await screen.findByRole('listbox', { name: 'Block Commands' })
+    scrollIntoView.mockClear()
+    for (let index = 0; index < 11; index++) fireEvent.keyDown(view.dom, { key: 'ArrowDown' })
+    const selected = screen.getByRole('option', { name: 'Task List' })
+    expect(selected.getAttribute('aria-selected')).toBe('true')
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(selected)
+    expect(document.activeElement).toBe(view.dom)
+  } finally {
+    HTMLElement.prototype.scrollIntoView = original
+  }
+})
+
 it('keeps keyboard and pointer selection accessible without moving focus to a search field', async () => {
   const { view } = await editor('Text\n')
   type(view, '/', 5)
