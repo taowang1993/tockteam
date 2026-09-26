@@ -10,3 +10,7 @@ Inactive tabs are plain; hover adds a rounded highlight and close button. Active
 - `cd plugins/tocktutor/packages/tockteam-tocktutor-workbench && ./node_modules/.bin/vitest run tests/route-panel-controls.test.tsx tests/route-note-context-menu.test.tsx --environment jsdom`: 107 passed.
 - `node --test tests/shadcn-migration.test.ts tests/ui-ref-contract.test.ts`: 7 passed. Root `./node_modules/.bin/tsc --noEmit` passed. React Doctor changed-line scan found no issues; maintainability scan was incomplete.
 - Coordinated slash-command session owns generated outputs and the final repository gate; it rebuilt and staged the verified source. Source commits: cc54104c, 56aff321, da76e5f0. No external-app actions were exercised.
+
+## Integrated Pane Layout Recheck
+
+After `214d515a` extracted `PaneTabs`, reran `playwright-cli -s=tabs run-code --filename=/Users/taowang/projects/tockteam/scripts/tocktutor-tab-hover-checks.js` against the rebuilt/staged app. All 13 assertions passed again: the rounded hover fill encloses title and close, closing the inactive tab preserves the active note, and pointer exit hides the fill/close. Built-in dark/no skin, 1512 × 949 at 2×, zero runtime errors. Owned root PID 40235 and its full recorded descendant tree stopped; none remained. No additional source changes were needed.
