@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { buildTrustedRaycast } from './trusted-raycast-build.mjs'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 import { parseTrustedRaycastResult } from '../src/trusted-raycast-tracer-contract.ts'
+import { TRUSTED_RAYCAST_PREFERENCE_DEFAULTS } from '../src/trusted-raycast-contract.ts'
 
 // Test driver only. The interactive runtime never supplies its own search text.
 const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR
@@ -27,9 +28,9 @@ const manager = new TrustedRaycastManager({
 })
 try {
   await buildTrustedRaycast(work, artifact)
-  await manager.start({ webContentsId: 1 }, { sessionId: 'tracer', generation: '1', command: 'translate', preferences: {} })
+  await manager.start({ webContentsId: 1 }, { extensionId: 'google-translate', sessionId: 'tracer', generation: '1', command: 'translate', preferences: { ...TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, lang1: 'zh-CN', autoInput: false } })
   process.stdout.write('READY\n')
-  if (process.env.TRUSTED_RAYCAST_FORCE_NO_RESULT !== '1') manager.send({ webContentsId: 1 }, { sessionId: latest.sessionId, generation: latest.generation, revision: latest.revision, eventId: latest.root.props.searchEventId, kind: 'searchChanged', value: input })
+  if (process.env.TRUSTED_RAYCAST_FORCE_NO_RESULT !== '1') manager.send({ webContentsId: 1 }, { extensionId: 'google-translate', sessionId: latest.sessionId, generation: latest.generation, revision: latest.revision, eventId: latest.root.props.searchEventId, kind: 'searchChanged', value: input })
   const deadline = Date.now() + Number(process.env.TRUSTED_RAYCAST_CHILD_DEADLINE_MS ?? 15000)
   while (!result && !failure && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 25))
   if (!result) throw new Error(failure ?? 'trusted Raycast child deadline: no validated translation result')

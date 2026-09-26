@@ -133,7 +133,7 @@ async function assertBundledTrust(launcher, userData, expectedEnabled) {
 
 /** Real packaged cold/warm command entry for every bundled extension; mutations stay in the main-owned trust view. */
 export async function runBundledTrustedRaycastInstalledSmoke(launcher, userData, { waitFor, clickExactText }, { clickSelector = selector => launcher.clickSelector(selector) } = {}) {
-  if (process.platform === 'win32') return Object.freeze({ verified: false, reason: 'Trusted runtime extraction requires /usr/bin/tar' })
+  if (process.platform !== 'darwin') return Object.freeze({ verified: false, reason: 'Trusted compatibility invocation is macOS-only' })
   const wait = expression => waitFor(() => launcher.evaluate(expression), value => value === true, 15000)
   const input = (selector, value) => launcher.evaluate(`(() => { const input = document.querySelector(${JSON.stringify(selector)}); if (!(input instanceof HTMLInputElement)) throw Error('Expected input is missing'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event('input', { bubbles: true })); })()`)
   const click = async text => {
@@ -202,7 +202,7 @@ export async function runBundledTrustedRaycastInstalledSmoke(launcher, userData,
 
 /** Reopen the same packaged app after an explicit disablement and prove bootstrap did not re-enable it. */
 export async function runTrustedRaycastInstalledRestartSmoke(launcher, userData, { waitFor }) {
-  if (process.platform === 'win32') return Object.freeze({ verified: false, reason: 'Trusted runtime extraction requires /usr/bin/tar' })
+  if (process.platform !== 'darwin') return Object.freeze({ verified: false, reason: 'Trusted compatibility invocation is macOS-only' })
   const wait = expression => waitFor(() => launcher.evaluate(expression), value => value === true, 15000)
   const input = (selector, value) => launcher.evaluate(`(() => { const input = document.querySelector(${JSON.stringify(selector)}); if (!(input instanceof HTMLInputElement)) throw Error('Expected input is missing'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event('input', { bubbles: true })); })()`)
   const expectedEnabled = Object.fromEntries(BUNDLED_TRUSTED_RAYCAST_IDS.map(extensionId => [extensionId, extensionId !== 'kaomoji-search']))
