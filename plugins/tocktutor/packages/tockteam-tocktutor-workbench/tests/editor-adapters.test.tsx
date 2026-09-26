@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { undo as undoCodeMirror, redo as redoCodeMirror } from '@codemirror/commands'
 import { EditorSelection } from '@codemirror/state'
+import { undo as undoProseMirror, redo as redoProseMirror } from '@milkdown/prose/history'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   SourceEditor,
@@ -481,7 +482,7 @@ describe('Live Preview editor', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('reveals only the active body heading marker without changing Markdown or the filename', async () => {
+  it('keeps focused body headings free of decorative hashes without changing Markdown or the filename', async () => {
     const source = '# First\n\n## Second\n\n### Third\n\n#### Fourth\n\n##### Fifth\n\n###### Sixth\n\nBody text.\n'
     const onChange = vi.fn()
     const editorViewRef = { current: null as any }
@@ -496,10 +497,8 @@ describe('Live Preview editor', () => {
         view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.create(view.state.doc, pos + 1)))
         view.focus()
       })
-      const marker = container.querySelector('.ProseMirror-focused [data-heading-mark]')
-      expect(marker?.getAttribute('data-heading-mark')).toBe(`${'#'.repeat(index + 1)} `)
-      expect(marker?.tagName).toBe(`H${index + 1}`)
-      expect(container.querySelectorAll('[data-heading-mark]')).toHaveLength(1)
+      expect(container.querySelectorAll('[data-heading-mark]')).toHaveLength(0)
+      expect(container.querySelector(`.ProseMirror h${index + 1}`)?.textContent).toBe(view.state.selection.$head.parent.textContent)
       expect(view.state.doc.toJSON()).toEqual(original)
     }
     const title = screen.getByRole('textbox', { name: 'Note title' }) as HTMLInputElement
@@ -517,6 +516,90 @@ describe('Live Preview editor', () => {
     expect(onChange.mock.lastCall?.[0]).not.toContain('# #')
     act(() => view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.atEnd(view.state.doc))))
     expect(container.querySelector('[data-heading-mark]')).toBeNull()
+  })
+
+  it.each([[1, 2], [3, 1], [2, 2], [1, 3], [2, 4], [3, 5], [0, 6]])('sets heading level %s to %s with leading hashes and Space', async (originalLevel, level) => {
+    const prefix = '---\nstatus: active\n---\n'
+    const source = `${prefix}${originalLevel ? '#'.repeat(originalLevel) + ' ' : ''}健康 **Lesson**\n\nBody.\n`
+    const onChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    const { container } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    const count = view.state.doc.childCount
+    act(() => {
+      view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.create(view.state.doc, 1)))
+      view.dispatch(view.state.tr.insertText('#'.repeat(level)))
+    })
+    expect(view.state.doc.firstChild.type.name).toBe(originalLevel ? 'heading' : 'paragraph')
+    expect(view.state.doc.firstChild.textContent).toBe(`${'#'.repeat(level)}健康 Lesson`)
+    act(() => {
+      const { from, to } = view.state.selection
+      expect(view.someProp('handleTextInput', (handler: any) => handler(view, from, to, ' '))).toBe(true)
+    })
+    expect(container.querySelector(`.ProseMirror > h${level}`)?.textContent).toBe('健康 Lesson')
+    expect(container.querySelector(`.ProseMirror > h${level} strong`)?.textContent).toBe('Lesson')
+    expect(view.state.doc.childCount).toBe(count)
+    expect(view.state.selection.$from.parentOffset).toBe(0)
+    const converted = `${prefix}${'#'.repeat(level)} 健康 **Lesson**\n\nBody.\n`
+    expect(onChange.mock.lastCall?.[0]).toBe(converted)
+    act(() => { expect(undoProseMirror(view.state, view.dispatch)).toBe(true) })
+    expect(onChange.mock.lastCall?.[0]).toBe(source)
+    act(() => { expect(redoProseMirror(view.state, view.dispatch)).toBe(true) })
+    expect(onChange.mock.lastCall?.[0]).toBe(converted)
+  })
+
+  it('Enter keeps literal hashes in the heading and splits following text into a paragraph', async () => {
+    const onChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    const { container } = render(<LivePreviewEditor content={'# 健康\n\nBody.\n'} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    act(() => {
+      view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.create(view.state.doc, 1)))
+      view.dispatch(view.state.tr.insertText('##'))
+      view.focus()
+    })
+    fireEvent.keyDown(view.dom, { key: 'Enter', code: 'Enter' })
+    expect(container.querySelector('.ProseMirror > h1')?.textContent).toBe('##')
+    expect(container.querySelector('.ProseMirror > h1 + p')?.textContent).toBe('健康')
+    expect(view.state.selection.$from.parent.type.name).toBe('paragraph')
+    expect(view.state.selection.$from.parentOffset).toBe(0)
+    expect(onChange.mock.lastCall?.[0]).toBe('# #\\#\n\n健康\n\nBody.\n')
+  })
+
+  it.each([
+    ['# Lesson\n\nBody.\n', 1, '#######'],
+    ['# Lesson\n\nBody.\n', 4, '##'],
+    ['```text\nLesson\n```\n', 1, '##'],
+  ])('leaves non-shortcut hashes literal in %s at %s', async (source, position, hashes) => {
+    const editorViewRef = { current: null as any }
+    render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    act(() => {
+      view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.create(view.state.doc, position)))
+      view.dispatch(view.state.tr.insertText(hashes))
+    })
+    const before = view.state.doc.toJSON()
+    const { from, to } = view.state.selection
+    expect(view.someProp('handleTextInput', (handler: any) => handler(view, from, to, ' '))).toBeFalsy()
+    expect(view.state.doc.toJSON()).toEqual(before)
+  })
+
+  it('Shift+Enter keeps a line break inside the heading', async () => {
+    const editorViewRef = { current: null as any }
+    const { container } = render(<LivePreviewEditor content={'# Lesson\n\nBody.\n'} editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    act(() => {
+      view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.create(view.state.doc, 4)))
+      view.focus()
+    })
+    fireEvent.keyDown(view.dom, { key: 'Enter', code: 'Enter', shiftKey: true })
+    expect(container.querySelector('.ProseMirror > h1 br')).toBeTruthy()
+    expect(container.querySelector('.ProseMirror > h1')?.textContent).toBe('Lesson')
+    expect(view.state.selection.$from.parent.type.name).toBe('heading')
   })
 
   it('finds formatted Live Preview text and replaces it with one native undo step', async () => {

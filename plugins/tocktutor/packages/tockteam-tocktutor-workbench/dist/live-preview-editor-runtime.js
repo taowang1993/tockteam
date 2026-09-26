@@ -6,13 +6,15 @@ import { HighlightStyle, LanguageDescription, syntaxHighlighting } from '@codemi
 import { languages } from '@codemirror/language-data';
 import { tags } from '@lezer/highlight';
 import { commandsCtx, parserCtx, serializerCtx } from '@milkdown/core';
-import { toggleStrongCommand, toggleEmphasisCommand, remarkInlineLinkPlugin } from '@milkdown/preset-commonmark';
+import { toggleStrongCommand, toggleEmphasisCommand, remarkInlineLinkPlugin, headingSchema, wrapInHeadingInputRule } from '@milkdown/preset-commonmark';
+import { textblockTypeInputRule } from '@milkdown/prose/inputrules';
+import { splitBlockAs } from '@milkdown/prose/commands';
 import { toggleStrikethroughCommand } from '@milkdown/preset-gfm';
 import { closeHistory } from '@milkdown/prose/history';
 import { Slice } from '@milkdown/prose/model';
 import { EditorState, Plugin, PluginKey, TextSelection } from '@milkdown/prose/state';
 import { Decoration, DecorationSet } from '@milkdown/prose/view';
-import { $prose } from '@milkdown/utils';
+import { $inputRule, $prose } from '@milkdown/utils';
 import { useEffect, useRef, useState } from 'react';
 import { applyEditorCommand, resolvePlatformEditorCommand } from "./editor-commands.js";
 import { clampEditorSearchIndex, moveEditorSearchIndex, searchEditorMatches } from "./editor-search.js";
@@ -24,6 +26,8 @@ import { renderMarkdownHtml } from "./rich-markdown.js";
 import { classifyExternalEmbed } from "./external-embeds.js";
 import { collectEmbedTargets } from "./embeds.js";
 const searchKey = new PluginKey('tocktutor-crepe-search');
+// Leading hashes + Space choose the level, even inside an existing heading.
+const headingInputRule = $inputRule(ctx => textblockTypeInputRule(/^(#{1,6}) $/, headingSchema.type(ctx), match => ({ level: match[1].length })));
 // Lucide Copy and CopyCheck (0.473.0); Crepe accepts SVG markup, not React components.
 const copyIcons = `<svg xmlns="http://www.w3.org/2000/svg" class="lucide-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg xmlns="http://www.w3.org/2000/svg" class="lucide-copy-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 15 2 2 4-4"/><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
 const codeHighlight = syntaxHighlighting(HighlightStyle.define([
@@ -166,8 +170,8 @@ export function LivePreviewEditorRuntime(props) {
         });
         instance.current = crepe;
         const serialize = doc => crepe.editor.action(ctx => `${splitLivePreviewSource(source.current).prefix}${ctx.get(serializerCtx)(doc)}`);
-        const configured = crepe.editor.remove(remarkInlineLinkPlugin);
-        crepe.editor.config(configureObsidianContent).use(obsidianSyntax).use(obsidianInline).use(referenceDefinition)
+        const configured = crepe.editor.remove([...remarkInlineLinkPlugin, wrapInHeadingInputRule]);
+        crepe.editor.config(configureObsidianContent).use(obsidianSyntax).use(obsidianInline).use(referenceDefinition).use(headingInputRule)
             .use($prose(() => new Plugin({
             key: searchKey,
             props: {
@@ -214,6 +218,10 @@ export function LivePreviewEditorRuntime(props) {
                     },
                 },
                 handleKeyDown(view, event) {
+                    if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && !event.isComposing
+                        && view.state.selection.$from.parent.type.name === 'heading') {
+                        return splitBlockAs(() => ({ type: view.state.schema.nodes.paragraph }))(view.state, view.dispatch);
+                    }
                     const command = resolvePlatformEditorCommand(event, /Mac|iPhone|iPad/u.test(navigator.platform));
                     if (!command || !commandHandler.current)
                         return false;
@@ -226,9 +234,6 @@ export function LivePreviewEditorRuntime(props) {
                         class: `tocktutor-find-match${index === current.current ? ' tocktutor-find-current' : ''}`,
                     }));
                     state.doc.descendants((node, pos) => {
-                        if (node.type.name === 'heading' && state.selection.$head.parent === node) {
-                            decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-heading-mark': `${'#'.repeat(node.attrs.level)} ` }));
-                        }
                         if (node.type.name === 'code_block')
                             decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-code-language': node.attrs.language ?? '' }));
                         if (node.type.name === 'image-block' || node.type.name === 'image')
