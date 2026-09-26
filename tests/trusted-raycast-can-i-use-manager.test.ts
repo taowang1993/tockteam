@@ -137,6 +137,10 @@ test('real manager searches all Can I Use features and rejects foreign or stale 
       revision: initial.revision, eventId: String(initial.root!.props.searchEventId), kind: 'searchChanged' as const, value: feature.slug }
     assert.throws(() => manager.send({ webContentsId: owner.webContentsId + 1 }, search), /stale/)
     assert.throws(() => manager.send(owner, { ...search, generation: 'foreign' }), /stale/)
+    for (const value of ['x'.repeat(257), Array(33).fill('x').join(' '), 'x\u0001']) {
+      assert.throws(() => manager.send(owner, { ...search, value }), /search|LIMIT_EXCEEDED|QUERY_UNSUPPORTED/i)
+      assert.equal(manager.active, true, 'invalid input must not close the command')
+    }
     manager.send(owner, search)
     assert.throws(() => manager.send(owner, search), /stale/, 'in-flight search handles must be consumed')
     const waitFor = async (count: number) => {

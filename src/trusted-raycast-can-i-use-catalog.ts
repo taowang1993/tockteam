@@ -176,7 +176,7 @@ export function createTrustedRaycastCanIUseCatalog(value: readonly TrustedRaycas
   })
 }
 
-function normalizeSearchQuery(value: unknown): { query: string; tokens: readonly string[] } {
+export function normalizeSearchQuery(value: unknown): { query: string; tokens: readonly string[] } {
   if (typeof value !== 'string' || hasUnpairedSurrogate(value) || CONTROL_PATTERN.test(value)) fail('QUERY_UNSUPPORTED')
   if (Array.from(value).length > MAX_SEARCH_SCALARS || byteLength(value) > MAX_SEARCH_BYTES) fail('LIMIT_EXCEEDED')
   const query = value.replace(/^ +| +$/g, '').replace(/ +/g, ' ')

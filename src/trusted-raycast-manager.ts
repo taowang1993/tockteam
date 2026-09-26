@@ -8,6 +8,7 @@ import { join, isAbsolute, dirname } from 'node:path'
 import { admitTrustedRaycastArtifact, readLegacyGoogleTranslateBuildIdentity, readTrustedRaycastBuildIdentity, readTrustedRaycastDerivedFile } from './trusted-raycast-artifact-admission.ts'
 import { getTrustedRaycastRuntimeDescriptor, type TrustedRaycastExtensionId, type TrustedRaycastRuntimeExtensionId } from './trusted-raycast-descriptors.ts'
 import { createTrustedRaycastCanIUsePreferenceForm } from './trusted-raycast-can-i-use-preference-form.ts'
+import { normalizeSearchQuery } from './trusted-raycast-can-i-use-catalog.ts'
 import { createTrustedRaycastCanIUseRuntime, loadTrustedRaycastCanIUseData } from './trusted-raycast-can-i-use-runtime.ts'
 import { TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS, prepareTrustedRaycastCanIUsePreferences, type TrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preferences.ts'
 import { createTrustedRaycastLineReader, isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, KAOMOJI_PREFERENCE_DEFAULTS, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
@@ -337,6 +338,9 @@ export class TrustedRaycastManager {
     if (event.kind === 'searchChanged') {
       if (event.eventId !== session.eventId || session.eventId === '') throw new Error('Translate event is stale')
       if (session.canIUse) {
+        // Reject editable query errors before consuming the current command's handles.
+        try { normalizeSearchQuery(event.value) }
+        catch { throw new Error('Search requires at most 256 characters and 32 words, without control characters.') }
         session.eventId = ''; session.preferencesEventId = undefined; session.themeEventId = undefined
         session.actions.clear(); session.fields.clear(); session.action = undefined
         try {
