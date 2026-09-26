@@ -106,8 +106,14 @@ const restoreClipboardSnapshot = (deps: TrustedRaycastNativeDeps, snapshot: Clip
   if (restored.length !== snapshot.formats.length || restored.some((format, index) => format !== snapshot.formats[index])) throw new Error('Clipboard restoration failed')
 }
 
-/** The clipboard still carries this paste's own write: safe to restore the captured snapshot. */
-const stillOwnsPasteWrite = (deps: TrustedRaycastNativeDeps, text: string): boolean => deps.readClipboard() === text
+/** Preserve newer clipboard data even when its plain text is identical to our paste. */
+const stillOwnsPasteWrite = (deps: TrustedRaycastNativeDeps, text: string, owned: ClipboardSnapshot): boolean => {
+  try {
+    const formats = [...new Set(deps.readClipboardFormats())].sort()
+    return deps.readClipboard() === text && formats.length === owned.formats.length
+      && formats.every((format, index) => format === owned.formats[index] && deps.readClipboardBuffer(format).equals(owned.data.get(format)!))
+  } catch { return false }
+}
 
 /** Main-owned paste policy: restore the captured target app, paste, and always preserve the prior clipboard. */
 export async function pasteTrustedRaycastText(text: string, priorApp: TrustedRaycastPriorApp | undefined, deps: TrustedRaycastNativeDeps): Promise<TrustedRaycastPasteResult> {
@@ -122,8 +128,9 @@ export async function pasteTrustedRaycastText(text: string, priorApp: TrustedRay
   const wait = deps.wait ?? (ms => new Promise(resolve => setTimeout(resolve, ms)))
   deps.writeClipboard(text)
   if (deps.readClipboard() !== text) { restoreClipboardSnapshot(deps, snapshot); throw new Error('Clipboard was not accepted') }
+  const owned = captureClipboardSnapshot(deps)
   const restore = async (): Promise<'restored' | 'external-change-preserved'> => {
-    if (!stillOwnsPasteWrite(deps, text)) return 'external-change-preserved'
+    if (!stillOwnsPasteWrite(deps, text, owned)) return 'external-change-preserved'
     restoreClipboardSnapshot(deps, snapshot)
     return 'restored'
   }

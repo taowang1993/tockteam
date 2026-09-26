@@ -198,6 +198,30 @@ test('paste preserves every clipboard format and denies before mutating an unpre
   assert.ok(!liveWrites.some(write => write === ''), 'no restore ran over the newer content')
 })
 
+test('paste preserves a newer clipboard with identical text but changed formats or bytes', async () => {
+  for (const change of ['new-format', 'changed-bytes', 'unreadable']) {
+    let clipboard = new Map([['text/plain', Buffer.from('original')]])
+    let unreadable = false
+    const writes: string[] = []
+    const result = await pasteTrustedRaycastText('same text', prior, deps({
+      readClipboard: () => clipboard.get('text/plain')!.toString(),
+      readClipboardFormats: () => [...clipboard.keys()],
+      readClipboardBuffer: format => { if (unreadable) throw new Error('Clipboard unavailable'); return clipboard.get(format)! },
+      writeClipboard: text => { writes.push(text); clipboard = new Map([['text/plain', Buffer.from(text)], ['text/html', Buffer.from('<p>same text</p>')]]) },
+      writeClipboardBuffer: () => assert.fail('must not restore over a newer clipboard'),
+      execFile: async () => {
+        if (change === 'new-format') clipboard.set('public.png', Buffer.from('new image'))
+        if (change === 'changed-bytes') clipboard.set('text/html', Buffer.from('<b>same text</b>'))
+        if (change === 'unreadable') unreadable = true
+        return { stdout: '' }
+      },
+      wait: async () => {},
+    }))
+    assert.equal(result.restoration, 'external-change-preserved', change)
+    assert.deepEqual(writes, ['same text'], change)
+  }
+})
+
 test('paste policy denials: no captured target, clipboard refusal, and oversized text', async () => {
   await assert.rejects(pasteTrustedRaycastText('x', undefined, deps()), /No prior application captured/)
   await assert.rejects(pasteTrustedRaycastText('x'.repeat(128 * 1024 + 1), prior, deps()), /exceeds its bound/)
