@@ -153,23 +153,20 @@ test('real paste restores focus via the target app and restores the clipboard on
 })
 
 test('paste preserves every clipboard format and denies before mutating an unpreservable clipboard', async () => {
-  // Multi-format clipboard: an image item must survive a text paste intact.
-  const formats = ['public.png', 'text/plain']
-  const buffers = new Map<string, string>([[ 'public.png', '\x89PNG-image-bytes' ], [ 'text/plain', 'user clipboard bytes' ]])
-  let currentFormats = [...formats]
-  let currentText = 'user clipboard bytes'
-  let writes: string[] = []
-  const result = await pasteTrustedRaycastText('pasted translation', prior, deps({
+  // Electron writeBuffer replaces the entire clipboard on each call; it does not append formats.
+  const original = new Map([['public.png', Buffer.from('image')], ['text/plain', Buffer.from('user clipboard bytes')]])
+  let clipboard = new Map(original)
+  let writes = 0
+  await assert.rejects(pasteTrustedRaycastText('pasted translation', prior, deps({
     fixture: 'paste',
-    readClipboardFormats: () => currentFormats,
-    readClipboardBuffer: format => Buffer.from(buffers.get(format) ?? ''),
-    writeClipboardBuffer: (format, data) => { buffers.set(format, data.toString()); if (format === 'text/plain') currentText = data.toString(); writes.push(format) },
-    readClipboard: () => currentText,
-    writeClipboard: text => { currentText = text },
-  }))
-  assert.equal(result.restoration, 'restored')
-  assert.equal(buffers.get('public.png'), '\x89PNG-image-bytes', 'image bytes restored')
-  assert.equal(currentText, 'user clipboard bytes')
+    readClipboardFormats: () => [...clipboard.keys()],
+    readClipboardBuffer: format => clipboard.get(format)!,
+    writeClipboardBuffer: (format, data) => { writes++; clipboard = new Map([[format, data]]) },
+    readClipboard: () => clipboard.get('text/plain')?.toString() ?? '',
+    writeClipboard: text => { writes++; clipboard = text === '' ? new Map() : new Map([['text/plain', Buffer.from(text)]]) },
+  })), /multiple formats/)
+  assert.equal(writes, 0, 'deny before mutating a clipboard Electron cannot restore losslessly')
+  assert.deepEqual(clipboard, original)
   // Oversized snapshot: deny BEFORE any write, leaving every format untouched.
   const oversized = new Map<string, Buffer>([['text/plain', Buffer.from('user')], ['big', Buffer.alloc(16 * 1024 * 1024 + 1)]])
   let oversizedText = 'user'

@@ -125,6 +125,9 @@ export async function pasteTrustedRaycastText(text: string, priorApp: TrustedRay
   }
   // Capture every clipboard format in memory before any mutation; deny the paste instead of clobbering.
   const snapshot = captureClipboardSnapshot(deps)
+  // Electron writeBuffer replaces, rather than appends to, the pasteboard on macOS.
+  // Deny before mutation until an atomic multi-format restoration adapter exists.
+  if (snapshot.formats.length > 1) throw new Error('Paste cannot preserve a clipboard with multiple formats. Use Copy instead.')
   const wait = deps.wait ?? (ms => new Promise(resolve => setTimeout(resolve, ms)))
   deps.writeClipboard(text)
   if (deps.readClipboard() !== text) { restoreClipboardSnapshot(deps, snapshot); throw new Error('Clipboard was not accepted') }
