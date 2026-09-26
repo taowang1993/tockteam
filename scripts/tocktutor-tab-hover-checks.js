@@ -7,7 +7,13 @@ async page => {
   const cdp = await page.context().newCDPSession(page)
   const style = tab => tab.locator('..').evaluate(el => {
     const css = getComputedStyle(el), close = el.querySelector('button[aria-label^="Close "]'), button = getComputedStyle(close)
-    return { background: css.backgroundColor, border: css.borderTopColor, radius: css.borderBottomLeftRadius, before: getComputedStyle(el, '::before').display, closeOpacity: button.opacity, pointerEvents: button.pointerEvents, focused: close === document.activeElement, box: el.getBoundingClientRect().toJSON() }
+    const canvas = document.createElement('canvas').getContext('2d'), ancestors = []
+    for (let node = el; node; node = node.parentElement) ancestors.unshift(node)
+    for (const node of ancestors) { canvas.fillStyle = getComputedStyle(node).backgroundColor; canvas.fillRect(0, 0, 1, 1) }
+    const luminance = () => [...canvas.getImageData(0, 0, 1, 1).data].slice(0, 3).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0)
+    const background = luminance()
+    const contrast = color => { canvas.fillStyle = color; canvas.fillRect(0, 0, 1, 1); const foreground = luminance(); return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05) }
+    return { background: css.backgroundColor, border: css.borderTopColor, radius: css.borderBottomLeftRadius, before: getComputedStyle(el, '::before').display, closeOpacity: button.opacity, pointerEvents: button.pointerEvents, focused: close === document.activeElement, textContrast: contrast(css.color), closeContrast: contrast(button.color), box: el.getBoundingClientRect().toJSON() }
   })
   try {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false })
@@ -32,9 +38,13 @@ async page => {
     const hovered = await style(oldTab)
     check(hovered.background !== idle.background && parseFloat(hovered.radius) > 0 && hovered.closeOpacity === '1' && hovered.pointerEvents === 'auto', 'hover reveals rounded highlight and close')
     check(JSON.stringify(idle.box) === JSON.stringify(hovered.box), 'hover does not move or resize tabs')
+    check(idle.textContrast >= 4.5 && hovered.textContrast >= 4.5 && hovered.closeContrast >= 3 && active.closeContrast >= 3, 'text and close contrast across tab states')
     screenshots.hover = (await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data
     await page.getByRole('heading', { name: 'Comparison', exact: true }).hover()
     check((await style(oldTab)).closeOpacity === '0', 'pointer exit hides the inactive close')
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true })
+    check(await page.evaluate(() => matchMedia('(hover: none)').matches) && (await style(oldTab)).closeOpacity === '1', 'touch users retain a visible close control')
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false })
     await activeTab.focus(); await page.keyboard.press('Shift+Tab')
     const keyboard = await style(oldTab)
     check(keyboard.focused && keyboard.closeOpacity === '1', 'keyboard focus reveals the inactive close')
