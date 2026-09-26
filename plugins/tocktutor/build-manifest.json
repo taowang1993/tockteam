@@ -1619,11 +1619,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "d5d316410999b3debbbc76eb15f8d3938ed52fc5d328aee55afd58d59ea02d33"
+      "sha256": "d817d024295d0fbd352b8480fbd2f0747d3ba412a86577ddfbc398d116869d9e"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "397fc33cf228923fdf9c7de2ef58a0b1f82768ae5c62d32165071e16ad8db17f"
+      "sha256": "2ce0c1c26fbefc1e2bdcb4c45f19f2259bdd63b7521e44072d8a71ddfa3dd428"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -2711,7 +2711,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/package.json",
-      "sha256": "d579a37fb9d33cf1927db5557b5724b49b84fba3123230f9b0a3536c8f0b2167"
+      "sha256": "966e6acff645699b8ecfe77f28adc3c66ef5a868aee0a4d9bf7041d07050c34f"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/scripts/build-client.mjs",
@@ -3159,7 +3159,7 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "2f2f7b4d7932bcc94143ff3ec4730c088f5471e92b1562cdcaf029df621a7b53"
+      "sha256": "8735cea6d5c44ba9915d7d552d1f2bbcc683031366ae6e2e02a5d4739cf5916b"
     },
     {
       "path": "pnpm-workspace.yaml",
