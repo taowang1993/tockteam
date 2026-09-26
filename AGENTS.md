@@ -104,6 +104,7 @@ Use a bounded Playwright browser session (including Playwright’s Electron/CDP 
 - Never push without explicit authority from the user, orchestrator, or active repository profile. Never squash-merge pull requests; use merge commits.
 - Never modify `AGENTS.md` or add Markdown files at the repository root without explicit user permission.
 - Never create scratch or context files in the repository root; use `/tmp` for disposable notes and `.beads/plans` or `.beads/reports` only for requested durable work.
+- Must show me the result after modifying code. Show me a screenshot if it is a UI change. Tell me to start Electron if it is a UX change. Tell me if I need to restart Electron to eyeball the change. 
 
 ## Security Boundaries
 
