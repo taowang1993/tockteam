@@ -65,6 +65,12 @@ Downstream plugins periodically inspect upstream features and adapt them to
 the current DSH contracts. Upstream code, the TockTeam UI, and final permission
 boundaries remain separate layers.
 
+TockCoder is the `/tockcoder` coding workspace on Desktop and Web, composed
+from DSH sessions/conversation plus the sidebar, terminal dock, and pinned
+summary—not a separate agent runtime. Its service contracts, Host boundaries,
+data compatibility, and verification are documented in
+[TockCoder Implementation](./tockcoder.md).
+
 `@tockteam/skins` is the only skin-definition module for all three surfaces.
 Web and Desktop adapt the catalog to DSH CSS tokens; TUI adapts the same ids
 to the upstream native `/theme` palettes. TUI retains upstream hot switching
