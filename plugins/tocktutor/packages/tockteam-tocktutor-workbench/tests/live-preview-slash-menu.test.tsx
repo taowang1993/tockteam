@@ -123,6 +123,8 @@ it('keeps keyboard selection visible while navigating beyond the menu viewport',
     expect(selected.getAttribute('aria-selected')).toBe('true')
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
     expect(scrollIntoView.mock.instances.at(-1)).toBe(selected)
+    for (let index = 0; index < 11; index++) fireEvent.keyDown(view.dom, { key: 'ArrowUp' })
+    expect(scrollIntoView.mock.instances).toContain(screen.getByText('Basic Blocks').closest('[cmdk-group-heading]'))
     expect(document.activeElement).toBe(view.dom)
   } finally {
     HTMLElement.prototype.scrollIntoView = original

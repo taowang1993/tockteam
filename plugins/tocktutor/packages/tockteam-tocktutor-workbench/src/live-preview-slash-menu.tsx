@@ -182,6 +182,7 @@ export function SlashMenu({ menu }) {
     if (list) menu.view.dom.setAttribute('aria-controls', list.id)
     if (option) {
       menu.view.dom.setAttribute('aria-activedescendant', option.id)
+      if (option === option.parentElement?.firstElementChild) option.closest('[cmdk-group]')?.querySelector('[cmdk-group-heading]')?.scrollIntoView?.({ block: 'nearest' })
       option.scrollIntoView?.({ block: 'nearest' })
     }
     else menu.view.dom.removeAttribute('aria-activedescendant')
