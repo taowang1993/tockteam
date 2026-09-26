@@ -16,7 +16,7 @@ async page => {
         const shell = tab.parentElement, strip = shell.closest('[data-pane-tabs]'), bar = strip.closest('.tocktutor-titlebar') ?? strip
         const b = bar.getBoundingClientRect(), r = shell.getBoundingClientRect(), s = strip.getBoundingClientRect()
         return { pane: strip.dataset.paneTabs, height: b.height, border: getComputedStyle(shell).borderBottomWidth,
-          columns: [r.left + 4, r.left + r.width / 2, r.right - 4].map(x => [pixel(x, b.bottom - 3), pixel(x, b.bottom - .5), pixel(x, b.bottom + 1)]),
+          columns: [r.left + 4, r.left + r.width / 2, r.right - 4].map(x => Array.from({ length: 12 }, (_, i) => pixel(x, b.bottom - 3 + i / 2))),
           outside: [pixel(s.right - 60, b.bottom - 3), pixel(s.right - 60, b.bottom - .5)] }
       })
     }, screenshot)
