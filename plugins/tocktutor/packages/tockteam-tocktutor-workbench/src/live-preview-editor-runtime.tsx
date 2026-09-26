@@ -26,7 +26,6 @@ import { classifyExternalEmbed } from './external-embeds.ts'
 import { collectEmbedTargets } from './embeds.ts'
 import { SlashMenu, slashMenuPlugin, slashKey } from './live-preview-slash-menu.tsx'
 import { SlashLinkDialog } from './slash-link-dialog.tsx'
-import { BlockHandle, block, configureBlockHandle } from './live-preview-block-handle.tsx'
 
 const searchKey = new PluginKey('tocktutor-crepe-search')
 // Leading hashes + Space choose the level, even inside an existing heading.
@@ -75,7 +74,6 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
   const lastRequest = useRef<number | null>(null)
   const [ready, setReady] = useState(false)
   const [slashMenu, setSlashMenu] = useState(null)
-  const [blockHandle, setBlockHandle] = useState(null)
   const [error, setError] = useState('')
   const imageWaiters = useRef(new Set<() => void>())
 
@@ -164,7 +162,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     instance.current = crepe
     const serialize = doc => crepe.editor.action(ctx => `${splitLivePreviewSource(source.current).prefix}${ctx.get(serializerCtx)(doc)}`)
     const configured = crepe.editor.remove([...remarkInlineLinkPlugin, wrapInHeadingInputRule])
-    crepe.editor.config(ctx => configureBlockHandle(ctx, setBlockHandle)).use(block).use(slashMenuPlugin(setSlashMenu, () => latest.current.slashLinks))
+    crepe.editor.use(slashMenuPlugin(setSlashMenu, () => latest.current.slashLinks))
     crepe.editor.config(configureObsidianContent).use(obsidianSyntax).use(obsidianInline).use(referenceDefinition).use(headingInputRule)
       .use($prose(() => new Plugin({
         key: searchKey,
@@ -435,6 +433,5 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     {error && <p role="alert">{error}</p>}
     <div ref={root} />
     {slashMenu && (slashMenu.form ? <SlashLinkDialog action={slashMenu.action} /> : <SlashMenu menu={slashMenu} />)}
-    {blockHandle && <BlockHandle handle={blockHandle} />}
   </div>
 }

@@ -46,6 +46,10 @@ async page => {
     await page.waitForFunction(() => document.querySelectorAll('[role=tab]').length === 2)
     check(await page.getByRole('tab').count() === 2, 'both top panes have visible tabs and close controls')
     await geometry()
+    for (const editor of await page.locator('.tocktutor-editor').all()) {
+      await editor.hover({ position: { x: 30, y: 190 } })
+      check(await page.locator('.tocktutor-block-handle:visible').count() === 0, 'hovering a note shows no block grip over adjacent dividers')
+    }
     const right = page.getByRole('separator', { name: 'Resize Right Split' })
     await page.getByLabel('TockTutor Title Bar', { exact: true }).hover({ position: { x: 10, y: 10 } })
     const idle = await dividerStyle(right)
@@ -55,12 +59,12 @@ async page => {
     check(hover.width === '2px' && hover.color !== idle.color && hover.contrast >= 3, 'hover reveals a contrasting two-pixel accent line')
     check(await right.evaluate(el => {
       const sample = document.createElement('span')
-      sample.style.color = 'var(--tockteam-pane-divider-accent)'
+      sample.style.color = 'var(--dsw-specific-markdown-accent)'
       el.append(sample)
       const accent = getComputedStyle(sample).color
       sample.remove()
       return getComputedStyle(el, '::after').backgroundColor === accent
-    }), 'hover line inherits the resolved theme accent')
+    }), 'hover line stays purple instead of following the active skin accent')
     const screenshot = (await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data
     await right.focus(); await page.keyboard.press('ArrowRight')
     check(await right.getAttribute('aria-valuenow') === '55', 'keyboard resizing remains available')
@@ -110,13 +114,13 @@ async page => {
     await coderDivider.hover({ position: { x: coderHandle.width / 2, y: 90 } })
     check(await coderDivider.evaluate(el => {
       const sample = document.createElement('span')
-      sample.style.color = 'var(--tockteam-pane-divider-accent)'
+      sample.style.color = 'var(--dsw-specific-markdown-accent)'
       el.append(sample)
       const accent = getComputedStyle(sample).color
       sample.remove()
       const line = getComputedStyle(el, '::after')
       return line.width === '2px' && line.backgroundColor === accent
-    }), 'TockCoder right pane uses the same resolved theme highlight')
+    }), 'TockCoder right pane uses the same purple highlight')
     await page.mouse.move(coderHandle.x + coderHandle.width / 2, coderHandle.y + 90)
     await page.mouse.down()
     await page.mouse.move(coderHandle.x - 60, coderHandle.y + 90, { steps: 4 })

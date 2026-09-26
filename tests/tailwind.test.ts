@@ -28,7 +28,7 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(css, /\.tockteam-pane-divider:after\{[^}]*background:var\(--dsw-alias-border-l1\);[^}]*inset-block:0;[^}]*width:1px;/u, 'idle divider line is thin and confined to the pane-local handle')
   assert.match(css, /\.tockteam-pane-divider:is\(:hover,:active,:focus-visible\):after\{[^}]*background:var\(--tockteam-pane-divider-accent\);[^}]*width:2px;/u, 'pointer and keyboard feedback share the theme accent, not the neutral button brand')
   assert.match(css, /--tockteam-pane-divider-accent:var\(--dsw-specific-markdown-accent\)/u, 'built-in dividers inherit the existing purple accent')
-  assert.match(css, /body\[data-tockteam-skin\]\{--tockteam-pane-divider-accent:var\(--dsw-alias-brand-primary\)\}/u, 'named skins supply their own palette accent')
+  assert.doesNotMatch(css, /body\[data-tockteam-skin\]\{--tockteam-pane-divider-accent:/u, 'changing skins does not change the purple split highlight')
   assert.match(css, /\.tockteam-pane-divider\[aria-orientation=horizontal\]:is\(:hover,:active,:focus-visible\):after\{[^}]*height:2px;/u, 'lower splits receive the same thin highlight')
   assert.doesNotMatch(css, /url\([^)]*fonts\/KaTeX/u, 'Crepe math fonts must be bundled, not requested from nonexistent application routes')
   assert.match(css, /\.flex-col\{/)

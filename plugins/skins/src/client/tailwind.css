@@ -1089,10 +1089,6 @@
     --tockteam-sidebar-width: 300px;
   }
 
-  & body[data-tockteam-skin] {
-    --tockteam-pane-divider-accent: var(--dsw-alias-brand-primary);
-  }
-
   & body {
     /* Pinned Obsidian-compatible document roles; shell actions keep the active DSH brand. */
     --dsw-specific-markdown-accent: light-dark(#705dcf, #a68af9);

@@ -22,6 +22,14 @@ it('offers block commands for a typed slash in an editable Live Preview', async 
   expect(screen.getByRole('option', { name: 'Task List', exact: true })).toBeTruthy()
 })
 
+it('keeps editable Live Preview free of floating block grips beside pane dividers', async () => {
+  const ref = { current: null as any }
+  const { container } = render(<LivePreviewEditor content="# A heading\n\nA paragraph.\n" editorViewRef={ref} onMarkdownChange={() => {}} />)
+  await waitFor(() => expect(ref.current).toBeTruthy(), { timeout: 10_000 })
+  expect(container.querySelector('.tocktutor-block-handle')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Drag Block' })).toBeNull()
+})
+
 it('keeps content editable and preserves Obsidian constructs through edit, undo, and reopen', async () => {
   const source = '---\nstatus: active\n---\nText\n\n> [!note]+ Important\n> Keep this callout.\n\n[[Target|Label]] ![[Photo.png]] ==highlight== %%comment%%\n\n```mermaid\ngraph TD; A-->B\n```\n\n<div>HTML content</div>\n\n- [ ] Task\n\n![Photo](https://example.com/photo.png)\n'
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Offline fixture')))
