@@ -160,7 +160,7 @@ export function slashMenuPlugin(publish) {
         },
         view(view) {
             const element = document.createElement('div');
-            element.className = 'tocktutor-slash-menu fixed z-50 w-64 max-w-[calc(100vw-1rem)] rounded-xl border border-border bg-popover text-popover-foreground shadow-md data-[show=false]:invisible data-[show=false]:pointer-events-none';
+            element.className = 'tocktutor-slash-menu fixed z-50 w-64 max-w-[calc(100vw-1rem)] rounded-xl border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] text-popover-foreground shadow-md data-[show=false]:invisible data-[show=false]:pointer-events-none';
             element.dataset.show = 'false';
             const boundary = view.dom.closest('.tocktutor-editor-body') ?? document.documentElement;
             const provider = new SlashProvider({ content: element, root: view.dom.closest('[data-tockteam-tocktutor-route]') ?? document.body, debounce: 0,
@@ -209,14 +209,16 @@ export function SlashMenu({ menu }) {
         const option = menu.element.querySelector(`[data-command-id="${menu.selected}"]`);
         if (list)
             menu.view.dom.setAttribute('aria-controls', list.id);
-        if (option)
+        if (option) {
             menu.view.dom.setAttribute('aria-activedescendant', option.id);
+            option.scrollIntoView?.({ block: 'nearest' });
+        }
         else
             menu.view.dom.removeAttribute('aria-activedescendant');
         menu.view.dom.setAttribute('aria-autocomplete', 'list');
         menu.view.dom.setAttribute('aria-haspopup', 'listbox');
         return autoUpdate(menu.view.dom, menu.element, () => menu.provider.update(menu.view), { layoutShift: false });
     }, [menu]);
-    return createPortal(_jsxs(Command, { label: "Block Commands", shouldFilter: false, value: menu.selected, onValueChange: menu.select, onPointerDown: event => event.preventDefault(), children: [_jsxs(CommandList, { label: "Block Commands", className: "max-h-[min(18rem,var(--tocktutor-slash-height,18rem))]", children: [_jsx(CommandEmpty, { children: "No Results" }), [...new Set(menu.items.map(item => item.group))].map(group => _jsx(CommandGroup, { heading: _jsx("span", { className: "text-popover-foreground", children: group }), children: menu.items.filter(item => item.group === group).map(item => _jsxs(CommandItem, { value: item.id, "data-command-id": item.id, onSelect: () => menu.run(item.id), children: [_jsx(item.icon, { "aria-hidden": "true", className: "size-4 shrink-0" }), item.label] }, item.id)) }, group))] }), _jsx("span", { className: "sr-only", role: "status", children: menu.items.find(item => item.id === menu.selected)?.label ?? 'No Results' })] }), menu.element);
+    return createPortal(_jsxs(Command, { label: "Block Commands", unstyled: true, className: "flex size-full flex-col overflow-hidden rounded-xl bg-transparent text-popover-foreground", shouldFilter: false, value: menu.selected, onValueChange: menu.select, onPointerDown: event => event.preventDefault(), children: [_jsxs(CommandList, { label: "Block Commands", className: "max-h-[min(18rem,var(--tocktutor-slash-height,18rem))]", children: [_jsx(CommandEmpty, { children: "No Results" }), [...new Set(menu.items.map(item => item.group))].map(group => _jsx(CommandGroup, { heading: _jsx("span", { className: "text-popover-foreground", children: group }), children: menu.items.filter(item => item.group === group).map(item => _jsxs(CommandItem, { value: item.id, "data-command-id": item.id, onSelect: () => menu.run(item.id), children: [_jsx(item.icon, { "aria-hidden": "true", className: "size-4 shrink-0" }), item.label] }, item.id)) }, group))] }), _jsx("span", { className: "sr-only", role: "status", children: menu.items.find(item => item.id === menu.selected)?.label ?? 'No Results' })] }), menu.element);
 }
 //# sourceMappingURL=live-preview-slash-menu.js.map

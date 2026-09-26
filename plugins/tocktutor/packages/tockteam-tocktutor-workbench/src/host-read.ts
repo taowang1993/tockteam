@@ -19,6 +19,7 @@ import type {
   MergeLinkPreviewRequest,
   MergeLinkPreviewResult,
   OpenDocumentResult,
+  DuplicateDocumentResult,
   RenameDocumentRequest,
   RenameDocumentResult,
   ReadSnapshotRequest,
@@ -76,6 +77,7 @@ export type NoteVaultCapability = Pick<
   | 'listTree'
   | 'openDocument'
   | 'moveFileWithLinkRewrite'
+  | 'duplicateFile'
   | 'outline'
   | 'openSandboxVault'
   | 'previewAttachment'
@@ -485,6 +487,15 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     const result = await this.ctx.noteVault.moveFileWithLinkRewrite(request, signal)
     if (result.status !== 'moved') throw new Error('The vault move returned an invalid status.')
     return { ...result, status: 'moved' }
+  }
+
+  @Remote
+  async duplicateDocument(request: RenameDocumentRequest, signal: AbortSignal): Promise<DuplicateDocumentResult> {
+    assertRenameRequest(request)
+    signal.throwIfAborted()
+    const result = await this.ctx.noteVault.duplicateFile(request, signal)
+    if (result.status !== 'duplicated') throw new Error('The vault duplicate returned an invalid status.')
+    return { ...result, status: 'duplicated' }
   }
 
   @Remote

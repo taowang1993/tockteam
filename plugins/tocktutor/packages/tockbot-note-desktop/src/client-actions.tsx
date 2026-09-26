@@ -717,6 +717,29 @@ export function TockTutorVaultActions(props: TockTutorVaultActionsProps): ReactN
 }
 
 /** Accessible contribution for Workbench's root-scoped Native Actions seat. */
+export async function runTargetNoteAction(
+  owner: TockTutorNativeActionsOwnerProps,
+  action: 'open-default' | 'copy-absolute' | 'open-window' | 'reveal',
+  target: { path: string; vault: VaultReference },
+  bridge: DesktopCallerBridge,
+  remote: DesktopActionRemote,
+  lifetime: AbortSignal,
+): Promise<NativeActionResult | undefined> {
+  if (!owner.withNoteTarget || lifetime.aborted || owner.vault?.id !== target.vault.id || owner.vault.generation !== target.vault.generation) return undefined
+  const operation = { 'open-default': 'open-default-app', 'copy-absolute': 'copy-absolute-path', 'open-window': 'popout-open', reveal: 'reveal-entry' } as const
+  const method = { 'open-default': 'openInDefaultApp', 'copy-absolute': 'copyAbsolutePath', 'open-window': 'openPopOut', reveal: 'revealEntry' } as const
+  let result: NativeActionResult | undefined
+  await owner.withNoteTarget(target, action === 'open-default' || action === 'open-window', async targetSignal => {
+    const signal = AbortSignal.any([lifetime, targetSignal])
+    signal.throwIfAborted()
+    result = await nativeCall(bridge, operation[action], signal, (authorization) => {
+      signal.throwIfAborted()
+      return remote.tocktutorDesktop[method[action]](authorization, target.path, target.vault, signal)
+    }, target.vault)
+  })
+  return result
+}
+
 export function TockTutorNativeActions(props: TockTutorNativeActionsProps): ReactNode {
   const owner = useRef<TockTutorNativeActionsOwnerProps>(props)
   const lifetime = useRef<AbortController>()
@@ -859,13 +882,22 @@ export function TockTutorNativeActions(props: TockTutorNativeActionsProps): Reac
   useEffect(() => {
     props.publishNoteActions?.({
       activePath: props.activePath,
-      disabled: busy !== null || !hasNote,
+      disabled: busy !== null || props.vault === null,
       message,
       run: action => { void noteActions[action]() },
+      ...(props.withNoteTarget ? { runTarget: (action: 'open-default' | 'copy-absolute' | 'open-window' | 'reveal', target: { path: string; vault: VaultReference }) => {
+        const signal = lifetime.current?.signal
+        if (!signal || signal.aborted || busy !== null) return
+        setBusy('Note Action')
+        void runTargetNoteAction(owner.current, action, target, props.bridge, props.remote, signal)
+          .then(result => { if (!signal.aborted) setMessage(result ? resultMessage(result) : 'The note action was cancelled.') })
+          .catch(() => { if (!signal.aborted) setMessage('The note action failed safely.') })
+          .finally(() => { if (!signal.aborted) setBusy(null) })
+      } } : {}),
       vault: vaultId === undefined || vaultGeneration === undefined ? null : { id: vaultId, generation: vaultGeneration },
     })
     return () => { props.publishNoteActions?.(null) }
-  }, [props.publishNoteActions, props.activePath, vaultId, vaultGeneration, busy, hasNote, message, noteActions])
+  }, [props.publishNoteActions, props.activePath, vaultId, vaultGeneration, busy, hasNote, message, noteActions, !!props.withNoteTarget, props.bridge, props.remote])
 
   const startRecording = async (): Promise<void> => {
     const signal = lifetime.current?.signal

@@ -34,6 +34,10 @@ export type TockTutorNativeActionsDispatchResult = 'handled' | 'failed' | 'stale
 /** UI callbacks only; the Desktop contribution retains all native authority. */
 export interface TockTutorNativeNoteActions {
     activePath: string | null;
+    runTarget?(action: 'open-default' | 'copy-absolute' | 'open-window' | 'reveal', target: {
+        path: string;
+        vault: VaultReference;
+    }): void;
     disabled: boolean;
     message: string;
     run(action: 'open-default' | 'copy-absolute' | 'open-window' | 'export-pdf' | 'reveal'): void;
@@ -45,6 +49,11 @@ export interface TockTutorNativeActionsOwnerProps {
     handleDispatch(event: TockTutorNativeActionsDispatchEvent): Promise<TockTutorNativeActionsDispatchResult>;
     publishNoteActions?(actions: TockTutorNativeNoteActions | null): void;
     saveCurrent?(): Promise<boolean>;
+    /** The Workbench retains and validates the target draft for the entire native request. */
+    withNoteTarget?(target: {
+        path: string;
+        vault: VaultReference;
+    }, save: boolean, run: (signal: AbortSignal) => Promise<void>): Promise<boolean>;
     /** Save only the owning note for note-local native actions. */
     saveNote?(): Promise<boolean>;
     /** Cancels a pending note action if its authored draft changes. */

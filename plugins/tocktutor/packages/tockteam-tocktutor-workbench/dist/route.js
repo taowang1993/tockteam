@@ -42,6 +42,7 @@ import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, 
 import { buildOrganizationProposal } from "./organize.js";
 import { convertMarkdownFormats, extractSelectionToNote } from "./composer.js";
 import { previewNoteMerge } from "./merge-preview.js";
+import { SidebarNoteMenu } from "./sidebar-note-menu.js";
 import { NoteMergeReview, MergeRecoveryDialog } from "./merge-review.js";
 import { appendAttachmentMarkdown, attachmentTargetPath } from "./attachments.js";
 import { collectEmbedTargets, resolveEmbedGraph } from "./embeds.js";
@@ -441,6 +442,7 @@ export class WorkbenchRouteController {
     bookmarks = [];
     workspaces = [];
     operation = 0;
+    recoveryTarget = null;
     recoveryOperation = 0;
     recoveryAbort = null;
     embedTargets = Object.freeze([]);
@@ -1492,6 +1494,125 @@ export class WorkbenchRouteController {
             this.shellSession = markTabDirty(this.shellSession, group.id, path, dirty);
         this.syncShell();
     }
+    noteTargetCurrent(target) {
+        return !this.disposed && this.snapshot.phase === 'ready' && sameVault(this.snapshot.vault, target.vault)
+            && isSafeVaultRelativePath(target.path) && supportedDocument(target.path)
+            && (!this.treeComplete || this.snapshot.entries.some(entry => entry.kind === 'document' && entry.path === target.path))
+            && this.documents.get(this.documentKey(target.vault, target.path))?.state.documentUnavailable !== true;
+    }
+    async withNoteDocument(target, run) {
+        if (!this.noteTargetCurrent(target))
+            return false;
+        const key = this.documentKey(target.vault, target.path);
+        this.documentSelections.set(key, (this.documentSelections.get(key) ?? 0) + 1);
+        try {
+            const document = this.documents.get(key) ?? await this.loadPaneDocument(target.vault, target.path);
+            return !!document && this.noteTargetCurrent(target) && this.documentCurrent(document) && await run(document);
+        }
+        finally {
+            const count = (this.documentSelections.get(key) ?? 1) - 1;
+            if (count > 0)
+                this.documentSelections.set(key, count);
+            else
+                this.documentSelections.delete(key);
+            this.pruneDocuments();
+        }
+    }
+    async openSidebarNote(target, placement) {
+        const owner = this.snapshot.focusedPaneId, lifetime = this.paneLifetimeFor(owner);
+        return this.withNoteDocument(target, async (document) => {
+            if (this.snapshot.focusedPaneId !== owner || this.paneLifetimeFor(owner) !== lifetime)
+                return false;
+            let groupId = owner;
+            const group = this.shellSession.groups.find(group => group.id === owner && !group.linkedView);
+            if (!group)
+                return false;
+            if (placement === 'right') {
+                if (this.shellSession.groups.length >= MAX_PANE_GROUPS)
+                    return false;
+                const added = splitPaneGroup(this.shellSession, owner, 'horizontal');
+                this.shellSession = added.session;
+                groupId = added.groupId;
+                // The split helper clones the source tab; this command opens the clicked note instead.
+                const created = this.shellSession.groups.find(group => group.id === groupId);
+                created.tabs = [];
+                created.activeTabId = null;
+            }
+            else if (group.tabs.length >= MAX_NOTE_TABS && !group.tabs.some(tab => tab.path === target.path)) {
+                this.update({ message: `This pane is limited to ${String(MAX_NOTE_TABS)} note tabs.` });
+                return false;
+            }
+            const mode = this.snapshot.settings?.defaultEditingMode ?? 'live-preview';
+            this.shellSession = openNoteTab(this.shellSession, groupId, target.path, { mode: sessionModeFromRoute(mode) });
+            this.cancelRecoveryOperations();
+            this.syncShell({ ...document.state, path: target.path, mode: routeModeFromSession(this.shellSession.groups.find(group => group.id === groupId).tabs.find(tab => tab.path === target.path).mode),
+                recoveryOpen: false, selectedSnapshot: null, snapshots: [], selectionStart: 0, selectionEnd: 0, selectionRequest: null });
+            this.markDocumentDirty(target.path, document.state.saveStatus !== 'saved');
+            this.navigate(routeForPath(target.path));
+            return true;
+        });
+    }
+    async withNoteTarget(target, save, run) {
+        return this.withNoteDocument(target, async (document) => {
+            if (save && !await this.saveDocumentRecord(document))
+                return false;
+            if (!this.documentCurrent(document) || !this.noteTargetCurrent(target))
+                return false;
+            const epoch = document.epoch, revision = document.state.revision, abort = new AbortController();
+            const signal = this.operationAbort ? AbortSignal.any([abort.signal, this.operationAbort.signal]) : abort.signal;
+            const current = () => this.documentCurrent(document, epoch) && this.noteTargetCurrent(target) && document.state.revision === revision;
+            const unsubscribe = this.subscribe(() => { if (!current())
+                abort.abort(); });
+            try {
+                signal.throwIfAborted();
+                await run(signal);
+                return !signal.aborted && current();
+            }
+            finally {
+                unsubscribe();
+                abort.abort();
+            }
+        });
+    }
+    async duplicateNote(target) {
+        const duplicate = this.remote.tocktutorWorkbench.duplicateDocument;
+        if (!duplicate)
+            return false;
+        return this.withNoteDocument(target, async (document) => {
+            if (!await this.saveDocumentRecord(document) || !this.documentCurrent(document) || !document.state.revision)
+                return false;
+            const { epoch } = document, revision = document.state.revision;
+            const stem = target.path.replace(/\.(?:md|markdown|canvas|base)$/iu, '');
+            const extension = target.path.slice(stem.length);
+            const operation = this.nextOperation();
+            try {
+                for (let index = 1; index <= 100; index++) {
+                    if (!this.current(operation.id, target.vault) || !this.documentCurrent(document, epoch) || document.state.revision !== revision)
+                        return false;
+                    const path = `${stem} Copy${index === 1 ? '' : ` ${index}`}${extension}`;
+                    try {
+                        const result = remoteValue(await duplicate.call(this.remote.tocktutorWorkbench, { expectedVault: target.vault, expectedRevision: revision, fromPath: target.path, toPath: path }, operation.signal));
+                        if (!this.current(operation.id, target.vault) || result.status !== 'duplicated' || result.fromPath !== target.path || result.path !== path || result.generation !== target.vault.generation)
+                            return false;
+                        await this.refreshTree(target.vault);
+                        if (this.current(operation.id, target.vault))
+                            await this.openSidebarNote({ path, vault: target.vault }, 'tab');
+                        return true;
+                    }
+                    catch (error) {
+                        if (!(error instanceof RemoteCallError) || error.code !== 'exists')
+                            throw error;
+                    }
+                }
+                this.update({ message: 'No available copy name was found. Rename an existing copy and try again.' });
+            }
+            catch (error) {
+                if (this.current(operation.id, target.vault))
+                    this.update({ message: this.failureMessage(error, 'The note could not be duplicated. Check the folder before retrying.') });
+            }
+            return false;
+        });
+    }
     async splitPane(id, axis) {
         if (!this.pane(id)?.activePath || this.shellSession.groups.length >= MAX_PANE_GROUPS)
             return false;
@@ -1692,7 +1813,7 @@ export class WorkbenchRouteController {
     pruneDocuments() {
         for (const [key, document] of this.documents) {
             const referenced = sameVault(this.shellSession.vault, document.vault) && this.shellSession.groups.some(group => group.linkedView?.path === document.path || group.tabs.some(tab => tab.path === document.path));
-            if (!referenced && (document.state.saveStatus === 'saved' || document.durableEpoch === document.epoch)
+            if (!referenced && !(this.recoveryTarget?.path === document.path && sameVault(this.recoveryTarget.vault, document.vault)) && (document.state.saveStatus === 'saved' || document.durableEpoch === document.epoch)
                 && !this.documentLoads.has(key) && !this.documentSelections.has(key)
                 && !document.saving && !document.draftFlight && document.draftTimer === null) {
                 document.relationshipsAbort?.abort();
@@ -1803,15 +1924,28 @@ export class WorkbenchRouteController {
             trash: Object.freeze([]),
         });
     }
+    getRecoverySnapshot() {
+        const target = this.recoveryTarget;
+        const document = target && this.documents.get(this.documentKey(target.vault, target.path));
+        return target && sameVault(this.snapshot.vault, target.vault) ? { ...this.snapshot, ...document?.state, path: target.path } : this.snapshot;
+    }
+    async openNoteRecovery(target) {
+        return this.withNoteDocument(target, async () => {
+            this.recoveryTarget = target;
+            await this.setRecoveryOpen(true);
+            return this.noteTargetCurrent(target);
+        });
+    }
     recoveryIdentity() {
-        const vault = this.snapshot.vault;
+        const snapshot = this.getRecoverySnapshot();
+        const vault = snapshot.vault;
         if (vault === null)
             return null;
         return {
-            paneId: this.snapshot.focusedPaneId,
-            path: this.snapshot.path,
-            revision: this.snapshot.revision,
-            source: this.snapshot.source,
+            paneId: snapshot.focusedPaneId,
+            path: snapshot.path,
+            revision: snapshot.revision,
+            source: snapshot.source,
             vault,
         };
     }
@@ -1827,12 +1961,13 @@ export class WorkbenchRouteController {
         return { id: this.recoveryOperation, signal: abort.signal };
     }
     recoveryIdentityMatches(identity, requireRevision = true) {
+        const snapshot = this.getRecoverySnapshot();
         return !this.disposed
-            && sameVault(this.snapshot.vault, identity.vault)
-            && this.snapshot.focusedPaneId === identity.paneId
-            && this.snapshot.path === identity.path
-            && this.snapshot.source === identity.source
-            && (!requireRevision || this.snapshot.revision === identity.revision);
+            && sameVault(snapshot.vault, identity.vault)
+            && snapshot.focusedPaneId === identity.paneId
+            && snapshot.path === identity.path
+            && snapshot.source === identity.source
+            && (!requireRevision || snapshot.revision === identity.revision);
     }
     recoveryCurrent(id, identity) {
         return this.recoveryOperation === id
@@ -2438,9 +2573,11 @@ export class WorkbenchRouteController {
             return false;
         }
     }
-    async setRecoveryOpen(open) {
+    async setRecoveryOpen(open, target = this.recoveryTarget) {
+        this.recoveryTarget = target;
         const identity = this.recoveryIdentity();
         if (!open || identity === null) {
+            this.recoveryTarget = null;
             this.cancelRecoveryOperations();
             this.update({ recoveryOpen: false, selectedSnapshot: null, snapshots: Object.freeze([]), trash: Object.freeze([]) });
             return;
@@ -2539,7 +2676,7 @@ export class WorkbenchRouteController {
     }
     async restoreRecoverySnapshotOverwrite(snapshotId) {
         const identity = this.recoveryIdentity();
-        if (identity === null || identity.path === null || identity.revision === null || this.snapshot.saveStatus !== 'saved'
+        if (identity === null || identity.path === null || identity.revision === null || this.getRecoverySnapshot().saveStatus !== 'saved'
             || this.snapshot.snapshots?.some(snapshot => snapshot.id === snapshotId && snapshot.path === identity.path) !== true)
             return false;
         const operation = this.nextRecoveryOperation();
@@ -2555,6 +2692,9 @@ export class WorkbenchRouteController {
                 || restored.generation !== identity.vault.generation
                 || restored.path !== identity.path)
                 return false;
+            if (this.recoveryTarget && this.snapshot.path !== identity.path) {
+                return !!await this.loadPaneDocument(identity.vault, identity.path, true);
+            }
             this.clearDocument();
             return await this.select(identity.path, false, undefined, true, false, true);
         }
@@ -2592,7 +2732,39 @@ export class WorkbenchRouteController {
             return false;
         }
     }
+    async trashNote(target) {
+        return this.withNoteDocument(target, async (document) => {
+            if (!await this.saveDocumentRecord(document) || !this.documentCurrent(document) || !document.state.revision)
+                return false;
+            const epoch = document.epoch, operation = this.nextOperation();
+            try {
+                const result = remoteValue(await this.remote.tocktutorWorkbench.trashEntry({ expectedVault: target.vault, expectedRevision: document.state.revision, path: target.path }, operation.signal));
+                if (!this.current(operation.id, target.vault) || !validTrashMutationResult(result, target.vault, target.path))
+                    return false;
+                this.invalidateLinkedPath(target.path);
+                // A draft authored while trashing remains represented for recovery rather than being discarded.
+                if (document.epoch === epoch && document.state.saveStatus === 'saved') {
+                    for (const group of this.shellSession.groups)
+                        this.shellSession = closeNoteTab(this.shellSession, group.id, target.path).session;
+                    if (this.snapshot.path === target.path) {
+                        this.clearDocument();
+                        this.navigate(ROUTE_PREFIX);
+                    }
+                    this.syncShell();
+                }
+                await this.refreshTree(target.vault);
+                return true;
+            }
+            catch (error) {
+                if (this.current(operation.id, target.vault))
+                    this.update({ message: this.failureMessage(error, 'The note could not be moved to Trash.') });
+                return false;
+            }
+        });
+    }
     async trashCurrent() {
+        if (this.recoveryTarget)
+            return this.trashNote(this.recoveryTarget);
         const initial = this.recoveryIdentity();
         const routeOperation = this.operation;
         if (initial === null || initial.path === null || initial.revision === null)
@@ -2867,9 +3039,11 @@ export class WorkbenchRouteController {
         this.syncShell();
         return true;
     }
-    addActiveBookmark(title = noteTitle(this.snapshot.path), groupId = null) {
-        const vault = this.snapshot.vault;
-        const path = this.snapshot.path;
+    addActiveBookmark(title = noteTitle(this.snapshot.path), groupId = null, target) {
+        if (target && !this.noteTargetCurrent(target))
+            return false;
+        const vault = target?.vault ?? this.snapshot.vault;
+        const path = target?.path ?? this.snapshot.path;
         if (vault === null || path === null || this.storage === null || hasNoteBookmark(this.bookmarks, path))
             return false;
         try {
@@ -2994,9 +3168,9 @@ export class WorkbenchRouteController {
         }));
         return opened;
     }
-    async renameActiveTitle(title) {
-        const fromPath = this.snapshot.path;
-        if (fromPath === null || this.snapshot.documentKind !== 'markdown')
+    async renameActiveTitle(title, target) {
+        const fromPath = target?.path ?? this.snapshot.path;
+        if (fromPath === null || documentKind(fromPath) !== 'markdown')
             return false;
         const normalized = title.trim();
         if (normalized.length === 0
@@ -3010,11 +3184,11 @@ export class WorkbenchRouteController {
             return false;
         const directory = fromPath.includes('/') ? fromPath.slice(0, fromPath.lastIndexOf('/')) : '';
         const toPath = directory === '' ? `${normalized}${extension}` : `${directory}/${normalized}${extension}`;
-        return await this.renameActivePath(toPath, 'renamed');
+        return await this.renameActivePath(toPath, 'renamed', target);
     }
-    async moveActiveNote(folder) {
-        const fromPath = this.snapshot.path;
-        if (fromPath === null || this.snapshot.documentKind !== 'markdown')
+    async moveActiveNote(folder, target) {
+        const fromPath = target?.path ?? this.snapshot.path;
+        if (fromPath === null || documentKind(fromPath) !== 'markdown')
             return false;
         const input = folder.trim();
         const normalized = input.replace(/\/+$/u, '');
@@ -3024,14 +3198,18 @@ export class WorkbenchRouteController {
             return false;
         const basename = fileName(fromPath);
         const toPath = normalized === '' ? basename : `${normalized}/${basename}`;
-        return await this.renameActivePath(toPath, 'moved');
+        return await this.renameActivePath(toPath, 'moved', target);
     }
-    async renameActivePath(toPath, action) {
-        const vault = this.snapshot.vault;
-        const fromPath = this.snapshot.path;
-        if (vault === null || fromPath === null || this.snapshot.documentKind !== 'markdown'
+    async renameActivePath(toPath, action, target) {
+        const vault = target?.vault ?? this.snapshot.vault;
+        const fromPath = target?.path ?? this.snapshot.path;
+        if (vault === null || fromPath === null || documentKind(fromPath) !== 'markdown'
             || !isSafeVaultRelativePath(toPath))
             return false;
+        return this.withNoteDocument({ path: fromPath, vault }, async (document) => this.renameDocumentRecord(document, toPath, action));
+    }
+    async renameDocumentRecord(document, toPath, action) {
+        const { vault, path: fromPath } = document;
         if (toPath === fromPath)
             return true;
         const recoveryWasOpen = this.snapshot.recoveryOpen === true;
@@ -3042,17 +3220,17 @@ export class WorkbenchRouteController {
         if (this.snapshot.entries.some(entry => entry.path === toPath)
             || this.shellSession.groups.some(group => group.tabs.some(tab => tab.path === toPath)))
             return false;
-        if (this.snapshot.saveStatus !== 'saved' && !await this.save())
+        if (document.state.saveStatus !== 'saved' && !await this.saveDocumentRecord(document))
             return false;
-        if (!sameVault(this.snapshot.vault, vault) || this.snapshot.path !== fromPath || this.snapshot.revision === null)
+        if (!this.documentCurrent(document) || document.state.revision == null)
             return false;
         const operation = this.nextOperation();
-        const sourceAtRename = this.snapshot.source;
+        const sourceAtRename = document.state.source;
         this.pendingRename = { fromPath, toPath, vault };
         this.update({ message: `${action === 'moved' ? 'Moving' : 'Renaming'} ${fromPath}.` });
         try {
             const request = {
-                expectedRevision: this.snapshot.revision,
+                expectedRevision: document.state.revision,
                 expectedVault: vault,
                 fromPath,
                 toPath,
@@ -3081,8 +3259,20 @@ export class WorkbenchRouteController {
                 if (closed?.path === fromPath)
                     this.recentlyClosed[index] = { ...closed, path: toPath };
             }
-            this.cancelEmbedOperation();
-            this.embedTargets = embedTargetSources(this.snapshot.source, toPath);
+            const active = this.snapshot.path === fromPath;
+            document.relationshipsAbort?.abort();
+            document.embedsAbort?.abort();
+            document.baseAbort?.abort();
+            this.documents.delete(document.key);
+            document.key = this.documentKey(vault, toPath);
+            document.path = toPath;
+            document.state = { ...document.state, revision: renamed.revision, embeds: [], links: null, outline: null,
+                saveStatus: document.state.source === sourceAtRename ? 'saved' : 'unsaved' };
+            this.documents.set(document.key, document);
+            if (active) {
+                this.cancelEmbedOperation();
+                this.embedTargets = embedTargetSources(document.state.source ?? '', toPath);
+            }
             const bookmarks = remapBookmarks(this.bookmarks, fromPath, toPath);
             const bookmarksPersisted = this.storage === null || saveBookmarks(this.storage, vault.id, bookmarks);
             const renameWarnings = [
@@ -3095,22 +3285,17 @@ export class WorkbenchRouteController {
             const message = renameWarnings.length === 0 ? `${toPath} ${action}.` : `${toPath} ${action}; ${renameWarnings.join(' ')}`;
             this.update({
                 bookmarks: Object.freeze(bookmarks.map(bookmark => Object.freeze({ ...bookmark }))),
-                draftRecovered: false,
-                embeds: Object.freeze([]),
-                links: null,
+                ...(active ? { ...document.state, path: toPath, draftRecovered: false } : {}),
                 message,
-                outline: null,
-                path: toPath,
                 selectedSnapshot: null,
                 snapshots: Object.freeze([]),
-                revision: renamed.revision,
-                saveStatus: this.snapshot.source === sourceAtRename ? 'saved' : 'unsaved',
                 warnings: Object.freeze([...this.snapshot.warnings, ...renameWarnings].slice(-32)),
             });
             this.syncShell();
-            if (this.snapshot.saveStatus !== 'saved')
-                this.scheduleDraft();
-            this.navigate(routeForPath(toPath), 'replace');
+            if (document.state.saveStatus !== 'saved')
+                this.scheduleDocumentDraft(document);
+            if (active)
+                this.navigate(routeForPath(toPath), 'replace');
             await this.refreshTree(vault);
             if (renameWarnings.length > 0) {
                 this.update({ warnings: Object.freeze([...this.snapshot.warnings, ...renameWarnings].slice(-32)) });
@@ -3735,9 +3920,11 @@ export class WorkbenchRouteController {
         this.recordDirty(false);
         return false;
     }
-    async prepareNoteMerge(destinationPath, callerSignal) {
+    async prepareNoteMerge(destinationPath, callerSignal, target) {
         callerSignal.throwIfAborted();
-        const vault = this.snapshot.vault, sourcePath = this.snapshot.path;
+        if (target && !this.noteTargetCurrent(target))
+            throw new Error('This note is no longer available.');
+        const vault = target?.vault ?? this.snapshot.vault, sourcePath = target?.path ?? this.snapshot.path;
         if (!vault || !sourcePath || this.snapshot.phase !== 'ready' || this.disposed
             || !isSafeVaultRelativePath(destinationPath) || !/\.(?:md|markdown)$/iu.test(sourcePath) || !/\.(?:md|markdown)$/iu.test(destinationPath)
             || sourcePath.normalize('NFC').toLowerCase() === destinationPath.normalize('NFC').toLowerCase())
@@ -3755,7 +3942,7 @@ export class WorkbenchRouteController {
         }
         let saved = [];
         const current = () => this.current(operation.id, vault) && this.snapshot.phase === 'ready'
-            && this.snapshot.focusedPaneId === pane && this.paneLifetimeFor(pane) === lifetime && this.snapshot.path === sourcePath
+            && (target ? this.noteTargetCurrent(target) : this.snapshot.focusedPaneId === pane && this.paneLifetimeFor(pane) === lifetime && this.snapshot.path === sourcePath)
             && [...watched].every(([document, captured]) => this.documents.get(document.key) === document && document.epoch === captured.epoch
                 && (captured.revision === undefined || (document.state.saveStatus === 'saved' && document.state.revision === captured.revision)))
             && saved.every(opened => {
@@ -3821,7 +4008,8 @@ export class WorkbenchRouteController {
                                                     history[index] = destinationPath;
                                         this.syncShell();
                                         sourceReconciled = true;
-                                        await this.select(destinationPath, true, undefined, false, false, true);
+                                        if (this.snapshot.path === sourcePath)
+                                            await this.select(destinationPath, true, undefined, false, false, true);
                                     }
                                 }
                                 if (sameVault(this.snapshot.vault, vault))
@@ -4411,7 +4599,21 @@ function TreeEntries(props) {
             return left.kind === 'directory' ? -1 : 1;
         return left.path.localeCompare(right.path, undefined, { sensitivity: 'base' });
     });
-    return children.map(entry => entry.kind === 'directory' ? (_jsx("li", { className: "tocktutor-tree-directory", children: _jsxs("details", { className: "group/folder", "data-tree-directory": entry.path, open: true, children: [_jsxs("summary", { className: "tocktutor-tree-row grid min-h-7 w-full cursor-pointer list-none grid-cols-[12px_minmax(0,1fr)] items-center gap-[7px] rounded bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [&::-webkit-details-marker]:hidden [&>svg]:size-3 group-open/folder:[&>svg]:rotate-90", title: entry.path, children: [_jsx(WorkbenchGlyph, { kind: "collapse" }), _jsx("span", { className: "truncate", children: fileName(entry.path) })] }), _jsx("ul", { className: "my-0 mr-0 ml-[11px] list-none border-l border-[var(--tt-border)] py-0 pr-0 pl-1", children: _jsx(TreeEntries, { entries: props.entries, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/`, revealPath: props.revealPath }) })] }) }, entry.path)) : (_jsx("li", { children: _jsxs(Button, { unstyled: true, "aria-current": entry.path === props.path ? 'page' : undefined, "aria-label": entry.path, "data-tree-path": entry.path, className: "tocktutor-tree-row grid min-h-7 w-full grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-[7px] rounded border-0 bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] aria-[current=page]:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)]", onClick: () => { props.onSelect(entry.path); }, title: entry.path, type: "button", children: [_jsx("span", { className: "tocktutor-tree-indent w-3" }), _jsx("span", { className: "truncate", children: noteTitle(entry.path) }), /\.(?:base|canvas)$/iu.test(entry.path) && _jsx("span", { "aria-hidden": "true", className: "text-[10px] font-medium tracking-wide text-[var(--tt-muted)]", children: entry.path.split('.').at(-1)?.toUpperCase() })] }) }, entry.path)));
+    return children.map(entry => entry.kind === 'directory' ? (_jsx("li", { className: "tocktutor-tree-directory", children: _jsxs("details", { className: "group/folder", "data-tree-directory": entry.path, open: true, children: [_jsxs("summary", { className: "tocktutor-tree-row grid min-h-7 w-full cursor-pointer list-none grid-cols-[12px_minmax(0,1fr)] items-center gap-[7px] rounded bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [&::-webkit-details-marker]:hidden [&>svg]:size-3 group-open/folder:[&>svg]:rotate-90", title: entry.path, children: [_jsx(WorkbenchGlyph, { kind: "collapse" }), _jsx("span", { className: "truncate", children: fileName(entry.path) })] }), _jsx("ul", { className: "my-0 mr-0 ml-[11px] list-none border-l border-[var(--tt-border)] py-0 pr-0 pl-1", children: _jsx(TreeEntries, { entries: props.entries, onContextMenu: props.onContextMenu, onSelect: props.onSelect, path: props.path, prefix: `${entry.path}/`, revealPath: props.revealPath }) })] }) }, entry.path)) : (_jsx("li", { children: _jsxs(Button, { unstyled: true, "aria-current": entry.path === props.path ? 'page' : undefined, "aria-label": entry.path, "data-tree-path": entry.path, className: "tocktutor-tree-row grid min-h-7 w-full grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-[7px] rounded border-0 bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] aria-[current=page]:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)]", onClick: event => { if (!event.ctrlKey)
+                props.onSelect(entry.path); }, onContextMenu: event => {
+                if (!props.onContextMenu)
+                    return;
+                event.preventDefault();
+                event.stopPropagation();
+                props.onContextMenu(entry.path, { x: event.clientX, y: event.clientY, row: event.currentTarget });
+            }, onKeyDown: event => {
+                if (!props.onContextMenu || !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')))
+                    return;
+                event.preventDefault();
+                event.stopPropagation();
+                const box = event.currentTarget.getBoundingClientRect();
+                props.onContextMenu(entry.path, { x: box.left, y: box.bottom, row: event.currentTarget });
+            }, title: entry.path, type: "button", children: [_jsx("span", { className: "tocktutor-tree-indent w-3" }), _jsx("span", { className: "truncate", children: noteTitle(entry.path) }), /\.(?:base|canvas)$/iu.test(entry.path) && _jsx("span", { "aria-hidden": "true", className: "text-[10px] font-medium tracking-wide text-[var(--tt-muted)]", children: entry.path.split('.').at(-1)?.toUpperCase() })] }) }, entry.path)));
 }
 const NOTE_SUBMENU_CLASS = "z-[1002] min-w-[196px] rounded-[8px] border border-[var(--dsw-alias-border-l2,CanvasText)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] p-1.5 text-[var(--dsw-alias-label-primary,#27272a)] shadow-xl [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_[data-slot=dropdown-menu-item]]:h-[25px] [&_[data-slot=dropdown-menu-item]]:min-h-0 [&_[data-slot=dropdown-menu-item]]:py-0 [&_[data-slot=dropdown-menu-item]]:leading-[17px] [&_[data-slot=dropdown-menu-item]>svg]:size-4";
 const NOTE_ACTION_CLASS = "h-[25px] min-h-0 w-full gap-2 rounded-[5px] px-2 py-0 text-[13px] leading-[17px] text-inherit focus:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] focus:text-inherit data-[highlighted]:bg-[var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,0.05))] data-[highlighted]:text-inherit [&>svg]:size-4 [&>svg]:shrink-0 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate";
@@ -4503,6 +4705,8 @@ export function TockTutorRouteView(props) {
     };
     const [noteAction, setNoteAction] = useState(null);
     const [bookmarkDialog, setBookmarkDialog] = useState(null);
+    const [sidebarMenu, setSidebarMenu] = useState(null);
+    const [sidebarDialog, setSidebarDialog] = useState(null);
     const [mergeOpen, setMergeOpen] = useState(false);
     const [mergeRecoveryOpen, setMergeRecoveryOpen] = useState(false);
     const [revealPath, setRevealPath] = useState(null);
@@ -4546,6 +4750,34 @@ export function TockTutorRouteView(props) {
         && snapshot.vault !== null
         && props.nativeNoteActions.activePath === snapshot.path
         && sameVault(props.nativeNoteActions.vault, snapshot.vault);
+    const sidebarAction = (action) => {
+        const target = sidebarMenu?.target, controller = props.paneController;
+        setSidebarMenu(null);
+        if (!target || !controller?.noteTargetCurrent(target))
+            return;
+        if (action === 'rename' || action === 'move' || action === 'bookmark' || action === 'merge')
+            setSidebarDialog({ target, action });
+        else if (action === 'tab' || action === 'right')
+            void controller.openSidebarNote(target, action);
+        else if (action === 'duplicate')
+            void controller.duplicateNote(target);
+        else if (action === 'trash')
+            void controller.trashNote(target);
+        else if (action === 'recovery') {
+            setPanel('recovery');
+            void controller.openNoteRecovery(target);
+        }
+        else if (action === 'copy-relative')
+            void globalThis.navigator?.clipboard?.writeText(target.path).catch(() => { });
+        else
+            props.nativeNoteActions?.runTarget?.(action, target);
+    };
+    useEffect(() => {
+        if (sidebarMenu && !props.paneController?.noteTargetCurrent(sidebarMenu.target))
+            setSidebarMenu(null);
+        if (sidebarDialog && !props.paneController?.noteTargetCurrent(sidebarDialog.target))
+            setSidebarDialog(null);
+    }, [snapshot, sidebarMenu, sidebarDialog, props.paneController]);
     const noteSearchAvailable = snapshot.documentKind === 'markdown' && snapshot.path !== null;
     const openNoteSearch = (mode) => {
         if (!noteSearchAvailable)
@@ -4815,7 +5047,9 @@ export function TockTutorRouteView(props) {
                                         if (next !== undefined)
                                             props.onActivateTab(focusedPane.id, next.path);
                                     }, "aria-controls": props.paneController ? `tocktutor-note-editor-${focusedPane.id}` : 'tocktutor-note-editor', role: "tab", tabIndex: tab.path === focusedPane.activePath ? 0 : -1, title: tab.path, type: "button", children: _jsxs("span", { children: [tab.dirty && _jsx("span", { "aria-label": "Unsaved", children: "\u2022" }), fileName(tab.path)] }) }), _jsx(Button, { unstyled: true, "aria-label": `Close ${fileName(tab.path)}`, className: "relative z-1 inline-flex size-5 shrink-0 translate-x-0.5 items-center justify-center rounded border-0 bg-transparent p-0 text-[var(--tt-muted)] [&_svg]:size-3!", onClick: () => { props.onCloseTab?.(focusedPane.id, tab.path); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "close" }) })] }, tab.path))) }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx("span", { className: "inline-flex", children: _jsx(Button, { unstyled: true, "aria-label": "New Note", className: "tocktutor-new-tab border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", disabled: props.onNewNote === undefined, onClick: props.onNewNote, type: "button", children: _jsx(WorkbenchGlyph, { kind: "new" }) }) }) }), _jsx(TooltipContent, { children: "New Note" })] }), _jsx("span", { className: "tocktutor-titlebar-spacer flex-1" }), _jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-expanded": panel === 'assistant', "aria-label": "Toggle Assistant Panel", className: "tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]", onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", children: _jsx(WorkbenchGlyph, { kind: "panel-right" }) }) }), _jsx(TooltipContent, { children: "Toggle Assistant Panel" })] })] })] })) : null;
-    const noteDialogs = _jsxs(_Fragment, { children: ["      ", noteAction !== null && snapshot.path !== null && (_jsx(NoteValueDialog, { initialValue: noteAction === 'property' ? '' : noteAction === 'rename'
+    const sidebarTarget = sidebarDialog?.target;
+    const sidebarBookmarks = noteBookmarksForPath(snapshot.bookmarks ?? [], sidebarTarget?.path ?? null);
+    const noteDialogs = _jsxs(_Fragment, { children: [sidebarMenu && _jsx(SidebarNoteMenu, { anchor: sidebarMenu.anchor, bookmarked: hasNoteBookmark(snapshot.bookmarks ?? [], sidebarMenu.target.path), markdown: documentKind(sidebarMenu.target.path) === 'markdown', nativeAvailable: !!props.nativeNoteActions?.runTarget && !props.nativeNoteActions.disabled && sameVault(props.nativeNoteActions.vault, sidebarMenu.target.vault), onAction: sidebarAction, onClose: () => setSidebarMenu(null) }), sidebarTarget && sidebarDialog && props.paneController && (sidebarDialog.action === 'rename' || sidebarDialog.action === 'move') && _jsx(NoteValueDialog, { kind: sidebarDialog.action, initialValue: sidebarDialog.action === 'rename' ? noteTitle(sidebarTarget.path) : sidebarTarget.path.split('/').slice(0, -1).join('/'), onCancel: () => setSidebarDialog(null), onSubmit: value => sidebarDialog.action === 'rename' ? props.paneController.renameActiveTitle(value, sidebarTarget) : props.paneController.moveActiveNote(value, sidebarTarget) }, `${sidebarTarget.vault.id}:${sidebarTarget.vault.generation}:${sidebarTarget.path}:${sidebarDialog.action}`), sidebarTarget && sidebarDialog?.action === 'bookmark' && props.paneController && _jsx(BookmarkDialog, { path: sidebarTarget.path, bookmarks: sidebarBookmarks, groups: bookmarkGroupOptions, initialBookmarkId: sidebarBookmarks[0]?.id ?? null, mode: sidebarBookmarks.length ? 'edit' : 'create', onCancel: () => setSidebarDialog(null), onRemove: id => props.paneController.noteTargetCurrent(sidebarTarget) && props.paneController.removeBookmark(id), onSubmit: (id, title, group) => props.paneController.noteTargetCurrent(sidebarTarget) && (id ? props.paneController.editActiveBookmark(id, title, group) : props.paneController.addActiveBookmark(title, group, sidebarTarget)) }, `${sidebarTarget.vault.id}:${sidebarTarget.vault.generation}:${sidebarTarget.path}`), sidebarTarget && sidebarDialog?.action === 'merge' && props.paneController && _jsx(NoteMergeReview, { sourcePath: sidebarTarget.path, paths: documents.map(entry => entry.path), onPrepare: (path, signal) => props.paneController.prepareNoteMerge(path, signal, sidebarTarget), onClose: () => setSidebarDialog(null) }), noteAction !== null && snapshot.path !== null && (_jsx(NoteValueDialog, { initialValue: noteAction === 'property' ? '' : noteAction === 'rename'
                     ? noteTitle(snapshot.path)
                     : snapshot.path.includes('/') ? snapshot.path.slice(0, snapshot.path.lastIndexOf('/')) : '', kind: noteAction, onCancel: () => { setNoteAction(null); }, validate: value => {
                     if (noteAction !== 'property')
@@ -4905,7 +5139,9 @@ export function TockTutorRouteView(props) {
                         gridTemplateColumns: contentColumns,
                         transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
                         '--tocktutor-sidebar-width': `${String(sidebarWidth)}px`,
-                    }, children: [_jsxs("aside", { "aria-hidden": !effectiveSidebarOpen, "aria-label": showSidebarSearch ? 'Vault Search' : 'Files', className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]", "data-open": effectiveSidebarOpen, ...(effectiveSidebarOpen ? {} : { inert: '' }), children: [_jsx("header", { className: "tocktutor-sidebar-header flex items-center border-b border-[var(--tt-border)] px-2.5", children: _jsx("h1", { className: "m-0 text-sm font-semibold", children: showSidebarSearch ? 'Search' : 'Files' }) }), _jsx("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: showSidebarSearch ? _jsx(SidebarSearch, { snapshot: snapshot, onChange: props.onSearchChange, onRun: props.onRunSearch, onLoadMore: props.onLoadMoreSearch, onSelect: props.onSelectSearchMatch }) : _jsxs("nav", { "aria-label": "Vault Notes", ref: treeRef, children: [snapshot.phase === 'loading' && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }), _jsx("ul", { className: "tocktutor-tree m-0 list-none p-0", children: _jsx(TreeEntries, { entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path, revealPath: revealPath }) })] }) }), _jsx(WorkbenchVaultDialog, { onCreateManagedVault: props.onCreateManagedVault, renderVaultActions: props.renderVaultActions, vault: snapshot.vault, vaultDisplayPath: snapshot.vaultDisplayPath ?? null, vaultName: snapshot.vaultName ?? null })] }), _jsx(Button, { unstyled: true, "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`, className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]", hidden: !effectiveSidebarOpen, onKeyDown: resizeSidebarWithKeyboard, onPointerDown: beginSidebarResize, style: { left: sidebarWidth - 4 }, title: "Drag or Use Left and Right Arrow Keys", type: "button" }), props.paneController && snapshot.layout ? _jsx(PaneLayoutView, { layout: snapshot.layout, onResize: (path, ratio) => { props.paneController.resizeSplit(path, ratio); }, renderPane: id => (snapshot.panes.find(pane => pane.id === id)?.linkedView ? _jsx(LinkedNotePane, { controller: props.paneController, id: id }) : _jsx(TockTutorRouteView, { ...boundPaneProps(props, id), paneOnly: true, panePanel: panel, onPanePanel: setPanel, onPaneReveal: path => { setSidebarOpen(true); setSidebarSearch(false); setRevealPath(path); } })) }) : editor, _jsxs("aside", { "aria-hidden": panel !== 'assistant', "aria-label": "Assistant Panel", className: "tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]", "data-open": panel === 'assistant', style: { width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }, ...(panel === 'assistant' ? {} : { inert: '' }), children: [panel === 'assistant' && (_jsx(Button, { unstyled: true, "aria-label": "Resize Assistant Panel", "aria-orientation": "vertical", "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH, "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH, "aria-valuenow": assistantPanelWidth, className: "tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]", onKeyDown: resizeAssistantPanelWithKeyboard, onPointerDown: beginAssistantPanelResize, role: "separator", title: "Drag or Use Left and Right Arrow Keys", type: "button" })), _jsx("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })] }), _jsx(WorkbenchUtilities, { ...props, onInsertCurrentDateTime: kind => { props.onInsertCurrentDateTime?.(kind, snapshot.mode === 'live-preview' ? liveInsertTextRef.current ?? undefined : undefined); }, onClose: () => { setPanel(null); }, onOpenGraphNode: (path, mode) => {
+                    }, children: [_jsxs("aside", { "aria-hidden": !effectiveSidebarOpen, "aria-label": showSidebarSearch ? 'Vault Search' : 'Files', className: "tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]", "data-open": effectiveSidebarOpen, ...(effectiveSidebarOpen ? {} : { inert: '' }), children: [_jsx("header", { className: "tocktutor-sidebar-header flex items-center border-b border-[var(--tt-border)] px-2.5", children: _jsx("h1", { className: "m-0 text-sm font-semibold", children: showSidebarSearch ? 'Search' : 'Files' }) }), _jsx("div", { className: "tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]", children: showSidebarSearch ? _jsx(SidebarSearch, { snapshot: snapshot, onChange: props.onSearchChange, onRun: props.onRunSearch, onLoadMore: props.onLoadMoreSearch, onSelect: props.onSelectSearchMatch }) : _jsxs("nav", { "aria-label": "Vault Notes", ref: treeRef, children: [snapshot.phase === 'loading' && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "Loading notes\u2026" }), snapshot.phase === 'inactive' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: "No Active Vault" }), snapshot.phase === 'error' && _jsx(Alert, { unstyled: true, className: "mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]", children: snapshot.message }), snapshot.phase === 'ready' && documents.length === 0 && _jsx("p", { className: "mx-1 my-[7px] text-xs text-[var(--tt-muted)]", children: "No supported notes found." }), _jsx("ul", { className: "tocktutor-tree m-0 list-none p-0", children: _jsx(TreeEntries, { onContextMenu: props.paneController ? (path, anchor) => { if (snapshot.vault)
+                                                        setSidebarMenu({ target: { path, vault: snapshot.vault }, anchor }); } : undefined, entries: visibleTreeEntries, onSelect: props.onSelect, path: snapshot.path, revealPath: revealPath }) })] }) }), _jsx(WorkbenchVaultDialog, { onCreateManagedVault: props.onCreateManagedVault, renderVaultActions: props.renderVaultActions, vault: snapshot.vault, vaultDisplayPath: snapshot.vaultDisplayPath ?? null, vaultName: snapshot.vaultName ?? null })] }), _jsx(Button, { unstyled: true, "aria-label": `Resize Files Sidebar, ${String(sidebarWidth)} Pixels`, className: "tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]", hidden: !effectiveSidebarOpen, onKeyDown: resizeSidebarWithKeyboard, onPointerDown: beginSidebarResize, style: { left: sidebarWidth - 4 }, title: "Drag or Use Left and Right Arrow Keys", type: "button" }), props.paneController && snapshot.layout ? _jsx(PaneLayoutView, { layout: snapshot.layout, onResize: (path, ratio) => { props.paneController.resizeSplit(path, ratio); }, renderPane: id => (snapshot.panes.find(pane => pane.id === id)?.linkedView ? _jsx(LinkedNotePane, { controller: props.paneController, id: id }) : _jsx(TockTutorRouteView, { ...boundPaneProps(props, id), paneOnly: true, panePanel: panel, onPanePanel: setPanel, onPaneReveal: path => { setSidebarOpen(true); setSidebarSearch(false); setRevealPath(path); } })) }) : editor, _jsxs("aside", { "aria-hidden": panel !== 'assistant', "aria-label": "Assistant Panel", className: "tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]", "data-open": panel === 'assistant', style: { width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }, ...(panel === 'assistant' ? {} : { inert: '' }), children: [panel === 'assistant' && (_jsx(Button, { unstyled: true, "aria-label": "Resize Assistant Panel", "aria-orientation": "vertical", "aria-valuemax": MAX_ASSISTANT_PANEL_WIDTH, "aria-valuemin": MIN_ASSISTANT_PANEL_WIDTH, "aria-valuenow": assistantPanelWidth, className: "tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]", onKeyDown: resizeAssistantPanelWithKeyboard, onPointerDown: beginAssistantPanelResize, role: "separator", title: "Drag or Use Left and Right Arrow Keys", type: "button" })), _jsx("div", { className: "tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]", children: props.assistantPanel })] }), _jsx(WorkbenchUtilities, { ...props, snapshot: panel === 'recovery' ? props.paneController?.getRecoverySnapshot() ?? snapshot : snapshot, onInsertCurrentDateTime: kind => { props.onInsertCurrentDateTime?.(kind, snapshot.mode === 'live-preview' ? liveInsertTextRef.current ?? undefined : undefined); }, onClose: () => { if (panel === 'recovery')
+                                void props.paneController?.setRecoveryOpen(false); setPanel(null); }, onOpenGraphNode: (path, mode) => {
                                 const result = props.onOpenGraphNode?.(path, mode);
                                 if (mode !== 'note' || result === undefined)
                                     return;
@@ -4947,6 +5183,7 @@ function TockTutorNativeActionsOutlet(props) {
         noteSource: props.noteSource,
         noteOwnerKey: props.noteOwnerKey,
         saveNote: props.saveNote,
+        withNoteTarget: props.withNoteTarget,
         saveCurrent: props.saveCurrent,
         storeAudio: props.storeAudio,
         vault: props.vault,
@@ -5066,14 +5303,14 @@ export function TockTutorRoute(props) {
     }, [controller]);
     return (_jsx("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: _jsx(TockTutorRouteView, { paneController: controller, onSplitPane: (id, axis) => { void controller.splitPane(id, axis); }, assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, ...((snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0)
                     ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 10_000)) }
-                    : {}), vault: snapshot.vault })), nativeNoteActions: nativeNoteActions, nativeActions: (_jsx(TockTutorNativeActionsOutlet, { noteOwnerKey: controller.nativeNoteOwnerKey(), activePath: snapshot.path, noteSource: snapshot.source, saveNote: () => controller.save(), handleDispatch: event => controller.handleDispatch(event), publishNoteActions: publishNoteActions, renderSlot: props.renderSlot, saveCurrent: () => controller.saveAll(), storeAudio: (fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64), vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: (title, group) => controller.addActiveBookmark(title, group ?? null), onEditBookmark: (id, title, group) => controller.editActiveBookmark(id, title, group), onAttachFiles: files => { void controller.attachFiles(Array.from(files).slice(0, 16)); }, onUploadImage: file => controller.uploadImage(file), onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: request => controller.applyBaseEdit(request), onBaseExport: request => {
+                    : {}), vault: snapshot.vault })), nativeNoteActions: nativeNoteActions, nativeActions: (_jsx(TockTutorNativeActionsOutlet, { noteOwnerKey: controller.nativeNoteOwnerKey(), activePath: snapshot.path, noteSource: snapshot.source, saveNote: () => controller.save(), withNoteTarget: (target, save, run) => controller.withNoteTarget(target, save, run), handleDispatch: event => controller.handleDispatch(event), publishNoteActions: publishNoteActions, renderSlot: props.renderSlot, saveCurrent: () => controller.saveAll(), storeAudio: (fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64), vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: (title, group) => controller.addActiveBookmark(title, group ?? null), onEditBookmark: (id, title, group) => controller.editActiveBookmark(id, title, group), onAttachFiles: files => { void controller.attachFiles(Array.from(files).slice(0, 16)); }, onUploadImage: file => controller.uploadImage(file), onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: request => controller.applyBaseEdit(request), onBaseExport: request => {
                 const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }));
                 const anchor = document.createElement('a');
                 anchor.href = url;
                 anchor.download = request.filename;
                 anchor.click();
                 URL.revokeObjectURL(url);
-            }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCancelOrganization: () => { controller.cancelOrganization(); }, onCanvasChange: change => { void controller.applyCanvasChange(change); }, onCaptureSnapshot: () => { void controller.captureRecoverySnapshot(); }, onClearSnapshots: () => { void controller.clearRecoverySnapshots(); }, onCloseAttachmentPreview: () => { controller.closeAttachmentPreview(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onClosePane: paneId => { void controller.closePane(paneId); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onConvertActiveNote: () => { controller.convertActiveNote(); }, onCopyGraphPath: path => { void globalThis.navigator?.clipboard?.writeText(path); }, onCreateBuiltinTemplate: name => { void controller.createBuiltinTemplateNote(name); }, onCreateManagedVault: name => { void controller.createManagedVault(name); }, onEdit: source => { controller.edit(source); }, onEditorCommand: command => { controller.runEditorCommand(command); }, onExtractSelection: () => { void controller.extractActiveSelection(); }, onFocusEditor: focusEditor, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onInsertCurrentDateTime: (kind, insert) => { controller.insertCurrentDateTime(kind, insert); }, onJumpToLine: line => { controller.jumpToLine(line); }, onLoadFacets: () => { void controller.loadFacets(); }, onLoadGraph: mode => { void controller.loadGraph(mode); }, onLoadRelationships: () => { void controller.loadRelationships(); }, onLoadWorkspace: id => { void controller.loadWorkspace(id); }, onMode: mode => { controller.setMode(mode); }, onMoveNote: folder => controller.moveActiveNote(folder), onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenBookmark: id => { void controller.openBookmark(id); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenExternalUrl: url => { setExternalUrl(url); }, onOpenGraphNode: (path, mode) => controller.openGraphNode(path, mode), onOpenInternalLink: target => controller.openInternalLink(target), onOpenRecovery: () => { void controller.setRecoveryOpen(true); }, onOpenSearch: () => { controller.openSearch(snapshot.searchQuery); }, onOpenSidebarSearch: () => { controller.openSidebarSearch(); }, onOpenSmartView: kind => { void controller.openSmartView(kind); }, onPrepareNoteMerge: (path, signal) => controller.prepareNoteMerge(path, signal), onListMergeRecovery: (signal, cursor) => controller.listMergeRecovery(signal, cursor), onRecoverNoteMerge: (id, signal) => controller.recoverNoteMerge(id, signal), onPrepareOrganization: () => { void controller.prepareOrganization(); }, onPreviewAttachment: path => { void controller.previewAttachment(path); }, onReadSnapshot: id => { void controller.readRecoverySnapshot(id); }, onRenameTitle: title => controller.renameActiveTitle(title), onRemoveBookmark: id => controller.removeBookmark(id), onRevealFile: () => controller.revealActiveFile(), onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onRestoreSnapshot: id => { void controller.restoreRecoverySnapshot(id); }, onRestoreSnapshotOverwrite: id => { void controller.restoreRecoverySnapshotOverwrite(id); }, onRestoreTrash: id => { void controller.restoreTrashEntry(id); }, onLoadMoreSearch: () => { void controller.loadMoreSearch(); }, onQuickAnswer: () => { void controller.runQuickAnswer(); }, onCancelQuickAnswer: () => { controller.cancelQuickAnswer(); }, onRetryQuickAnswer: () => { void controller.retryQuickAnswer(); }, onRunSearch: () => { void controller.runSearch(); }, onSave: () => { void controller.save(); }, onSaveWorkspace: () => { controller.saveCurrentWorkspace(); }, onSearchActiveMove: delta => { controller.moveSearchActive(delta); }, onSearchActiveSet: index => { controller.setSearchActiveIndex(index); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSearchMode: mode => { controller.setSearchMode(mode); }, onSearchFilters: filters => { controller.setSearchFilters(filters); }, onSelectSearchMatch: (match, newTab) => controller.openSearchMatch(match, newTab), onHideSearchPreview: () => { controller.hideSearchPreview(); }, onSettingsChange: change => { controller.updateSettings(change); }, onSelect: path => { void controller.select(path); }, onSelectionChange: (start, end) => { controller.setSourceEditorSelection(start, end); }, onSetProperty: (key, value) => controller.setProperty(key, value), onStoreAttachment: (fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onToggleTask: index => { controller.toggleTask(index); }, onTrashCurrent: () => { void controller.trashCurrent(); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), active: active, renderVaultActions: (placement, close, closeMenu, beginRename, renderMenuItem) => (_jsx(TockTutorVaultActionsOutlet, { beginRename: beginRename, close: close, closeMenu: closeMenu, placement: placement, renderMenuItem: renderMenuItem, renderSlot: props.renderSlot, saveCurrent: () => controller.saveAll(), vault: snapshot.vault, vaultName: snapshot.vaultName ?? null })), snapshot: snapshot, webViewerPanel: (_jsx(TockTutorWebViewerOutlet, { activePath: snapshot.path, addLinkBookmark: (title, url) => controller.addLinkBookmark(title, url), externalUrl: externalUrl, renderSlot: props.renderSlot, vault: snapshot.vault, webClipFolder: snapshot.settings?.webClipFolder ?? 'Clips' })), ...(active && typeof document !== 'undefined'
+            }, onCancelDispatch: () => { controller.cancelDispatchDialog(); }, onCancelOrganization: () => { controller.cancelOrganization(); }, onCanvasChange: change => { void controller.applyCanvasChange(change); }, onCaptureSnapshot: () => { void controller.captureRecoverySnapshot(); }, onClearSnapshots: () => { void controller.clearRecoverySnapshots(); }, onCloseAttachmentPreview: () => { controller.closeAttachmentPreview(); }, onCloseCommandPalette: () => { controller.setCommandPaletteOpen(false); }, onClosePane: paneId => { void controller.closePane(paneId); }, onCloseSearch: () => { controller.closeSearch(); }, onCloseTab: (paneId, path) => { void controller.closeTab(paneId, path); }, onConvertActiveNote: () => { controller.convertActiveNote(); }, onCopyGraphPath: path => { void globalThis.navigator?.clipboard?.writeText(path); }, onCreateBuiltinTemplate: name => { void controller.createBuiltinTemplateNote(name); }, onCreateManagedVault: name => { void controller.createManagedVault(name); }, onEdit: source => { controller.edit(source); }, onEditorCommand: command => { controller.runEditorCommand(command); }, onExtractSelection: () => { void controller.extractActiveSelection(); }, onFocusEditor: focusEditor, onFocusPane: paneId => { void controller.focusPane(paneId); }, onForward: () => { void controller.goForward(); }, onInsertCurrentDateTime: (kind, insert) => { controller.insertCurrentDateTime(kind, insert); }, onJumpToLine: line => { controller.jumpToLine(line); }, onLoadFacets: () => { void controller.loadFacets(); }, onLoadGraph: mode => { void controller.loadGraph(mode); }, onLoadRelationships: () => { void controller.loadRelationships(); }, onLoadWorkspace: id => { void controller.loadWorkspace(id); }, onMode: mode => { controller.setMode(mode); }, onMoveNote: folder => controller.moveActiveNote(folder), onMoveCanvas: (nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY); }, onMoveTab: (paneId, path, direction) => { controller.moveTab(paneId, path, direction); }, onNewNote: () => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }); }, onOpenBookmark: id => { void controller.openBookmark(id); }, onOpenCommandPalette: () => { controller.setCommandPaletteOpen(true); }, onOpenExternalUrl: url => { setExternalUrl(url); }, onOpenGraphNode: (path, mode) => controller.openGraphNode(path, mode), onOpenInternalLink: target => controller.openInternalLink(target), onOpenRecovery: () => { void controller.setRecoveryOpen(true, null); }, onOpenSearch: () => { controller.openSearch(snapshot.searchQuery); }, onOpenSidebarSearch: () => { controller.openSidebarSearch(); }, onOpenSmartView: kind => { void controller.openSmartView(kind); }, onPrepareNoteMerge: (path, signal) => controller.prepareNoteMerge(path, signal), onListMergeRecovery: (signal, cursor) => controller.listMergeRecovery(signal, cursor), onRecoverNoteMerge: (id, signal) => controller.recoverNoteMerge(id, signal), onPrepareOrganization: () => { void controller.prepareOrganization(); }, onPreviewAttachment: path => { void controller.previewAttachment(path); }, onReadSnapshot: id => { void controller.readRecoverySnapshot(id); }, onRenameTitle: title => controller.renameActiveTitle(title), onRemoveBookmark: id => controller.removeBookmark(id), onRevealFile: () => controller.revealActiveFile(), onReopenClosedTab: () => { void controller.reopenClosedTab(); }, onRestoreSnapshot: id => { void controller.restoreRecoverySnapshot(id); }, onRestoreSnapshotOverwrite: id => { void controller.restoreRecoverySnapshotOverwrite(id); }, onRestoreTrash: id => { void controller.restoreTrashEntry(id); }, onLoadMoreSearch: () => { void controller.loadMoreSearch(); }, onQuickAnswer: () => { void controller.runQuickAnswer(); }, onCancelQuickAnswer: () => { controller.cancelQuickAnswer(); }, onRetryQuickAnswer: () => { void controller.retryQuickAnswer(); }, onRunSearch: () => { void controller.runSearch(); }, onSave: () => { void controller.save(); }, onSaveWorkspace: () => { controller.saveCurrentWorkspace(); }, onSearchActiveMove: delta => { controller.moveSearchActive(delta); }, onSearchActiveSet: index => { controller.setSearchActiveIndex(index); }, onSearchChange: query => { controller.setSearchQuery(query); }, onSearchMode: mode => { controller.setSearchMode(mode); }, onSearchFilters: filters => { controller.setSearchFilters(filters); }, onSelectSearchMatch: (match, newTab) => controller.openSearchMatch(match, newTab), onHideSearchPreview: () => { controller.hideSearchPreview(); }, onSettingsChange: change => { controller.updateSettings(change); }, onSelect: path => { void controller.select(path); }, onSelectionChange: (start, end) => { controller.setSourceEditorSelection(start, end); }, onSetProperty: (key, value) => controller.setProperty(key, value), onStoreAttachment: (fileName, dataBase64) => { void controller.storeActiveAttachment(fileName, dataBase64); }, onSubmitDispatch: draft => { void controller.submitDispatchDialog(draft); }, onToggleFocusMode: () => { controller.toggleFocusMode(); }, onToggleTask: index => { controller.toggleTask(index); }, onTrashCurrent: () => { void controller.trashCurrent(); }, reviewPanel: (_jsx(TockTutorReviewPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, vault: snapshot.vault })), active: active, renderVaultActions: (placement, close, closeMenu, beginRename, renderMenuItem) => (_jsx(TockTutorVaultActionsOutlet, { beginRename: beginRename, close: close, closeMenu: closeMenu, placement: placement, renderMenuItem: renderMenuItem, renderSlot: props.renderSlot, saveCurrent: () => controller.saveAll(), vault: snapshot.vault, vaultName: snapshot.vaultName ?? null })), snapshot: snapshot, webViewerPanel: (_jsx(TockTutorWebViewerOutlet, { activePath: snapshot.path, addLinkBookmark: (title, url) => controller.addLinkBookmark(title, url), externalUrl: externalUrl, renderSlot: props.renderSlot, vault: snapshot.vault, webClipFolder: snapshot.settings?.webClipFolder ?? 'Clips' })), ...(active && typeof document !== 'undefined'
                 ? { titlebarTarget: document.getElementById('tockteam-window-titlebar-slot') ?? document.body }
                 : {}) }) }));
 }

@@ -472,6 +472,22 @@ export function TockTutorVaultActions(props) {
     return (_jsxs("div", { className: "flex items-center gap-4 p-4", "data-vault-action-row": true, children: [_jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("h3", { className: "m-0 font-medium", children: "Open Folder as Vault" }), _jsx("p", { className: "mt-1 text-xs text-[var(--tt-muted)]", children: "Choose an existing folder of Markdown files." })] }), _jsx(Button, { "aria-label": "Open Folder as Vault", disabled: busy, onClick: () => { void open(); }, variant: "outline", children: busy ? 'Opening…' : 'Open' }), _jsx("span", { "aria-live": "polite", className: "sr-only", children: message })] }));
 }
 /** Accessible contribution for Workbench's root-scoped Native Actions seat. */
+export async function runTargetNoteAction(owner, action, target, bridge, remote, lifetime) {
+    if (!owner.withNoteTarget || lifetime.aborted || owner.vault?.id !== target.vault.id || owner.vault.generation !== target.vault.generation)
+        return undefined;
+    const operation = { 'open-default': 'open-default-app', 'copy-absolute': 'copy-absolute-path', 'open-window': 'popout-open', reveal: 'reveal-entry' };
+    const method = { 'open-default': 'openInDefaultApp', 'copy-absolute': 'copyAbsolutePath', 'open-window': 'openPopOut', reveal: 'revealEntry' };
+    let result;
+    await owner.withNoteTarget(target, action === 'open-default' || action === 'open-window', async (targetSignal) => {
+        const signal = AbortSignal.any([lifetime, targetSignal]);
+        signal.throwIfAborted();
+        result = await nativeCall(bridge, operation[action], signal, (authorization) => {
+            signal.throwIfAborted();
+            return remote.tocktutorDesktop[method[action]](authorization, target.path, target.vault, signal);
+        }, target.vault);
+    });
+    return result;
+}
 export function TockTutorNativeActions(props) {
     const owner = useRef(props);
     const lifetime = useRef();
@@ -600,13 +616,26 @@ export function TockTutorNativeActions(props) {
     useEffect(() => {
         props.publishNoteActions?.({
             activePath: props.activePath,
-            disabled: busy !== null || !hasNote,
+            disabled: busy !== null || props.vault === null,
             message,
             run: action => { void noteActions[action](); },
+            ...(props.withNoteTarget ? { runTarget: (action, target) => {
+                    const signal = lifetime.current?.signal;
+                    if (!signal || signal.aborted || busy !== null)
+                        return;
+                    setBusy('Note Action');
+                    void runTargetNoteAction(owner.current, action, target, props.bridge, props.remote, signal)
+                        .then(result => { if (!signal.aborted)
+                        setMessage(result ? resultMessage(result) : 'The note action was cancelled.'); })
+                        .catch(() => { if (!signal.aborted)
+                        setMessage('The note action failed safely.'); })
+                        .finally(() => { if (!signal.aborted)
+                        setBusy(null); });
+                } } : {}),
             vault: vaultId === undefined || vaultGeneration === undefined ? null : { id: vaultId, generation: vaultGeneration },
         });
         return () => { props.publishNoteActions?.(null); };
-    }, [props.publishNoteActions, props.activePath, vaultId, vaultGeneration, busy, hasNote, message, noteActions]);
+    }, [props.publishNoteActions, props.activePath, vaultId, vaultGeneration, busy, hasNote, message, noteActions, !!props.withNoteTarget, props.bridge, props.remote]);
     const startRecording = async () => {
         const signal = lifetime.current?.signal;
         if (signal === undefined || signal.aborted || props.activePath === null || props.vault === null || props.storeAudio === undefined

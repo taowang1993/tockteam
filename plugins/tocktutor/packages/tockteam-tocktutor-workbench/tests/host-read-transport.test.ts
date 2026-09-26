@@ -231,6 +231,30 @@ test('real runtime missing-file classification survives the Host read transport'
   }
 })
 
+test('duplicate transport preserves bytes and rejects collisions and unsafe requests', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tocktutor-duplicate-'))
+  const context = new Context()
+  try {
+    await writeFile(join(root, 'Note.md'), '# Exact copy\n')
+    await context.plugin(NoteVaultRuntime, RuntimeConfig({ vaultRoot: root, stateRoot: null } as never))
+    await context.plugin(workbench)
+    const runtime = context.get('noteVault'), gateway = context.get('tocktutorWorkbench')
+    assert.ok(runtime instanceof NoteVaultRuntime); assert.ok(gateway instanceof TockTutorWorkbenchGateway)
+    const state = runtime.state
+    if (!state.active) assert.fail('Expected active vault')
+    const expectedVault = { id: state.id, generation: state.generation }, signal = new AbortController().signal
+    const original = await gateway.openDocument('Note.md', expectedVault, signal)
+    const request = { expectedVault, expectedRevision: original.revision, fromPath: 'Note.md', toPath: 'Note Copy.md' }
+    assert.equal((await gateway.duplicateDocument(request, signal)).status, 'duplicated')
+    assert.equal((await gateway.openDocument(request.toPath, expectedVault, signal)).content, original.content)
+    await assert.rejects(gateway.duplicateDocument(request, signal), { code: 'exists' })
+    for (const invalid of [{ toPath: '../Escape.md' }, { expectedRevision: 'invalid' }, { expectedVault: { ...expectedVault, generation: -1 } }]) {
+      await assert.rejects(gateway.duplicateDocument({ ...request, ...invalid }, signal))
+    }
+    await assert.rejects(gateway.duplicateDocument({ ...request, toPath: 'Cancelled.md' }, AbortSignal.abort()), { name: 'AbortError' })
+  } finally { await context.fiber.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
 test('generated Remote declarations resolve with declaration checking enabled', () => {
   const declaration = fileURLToPath(new URL('../dist/typert.remote-client.d.ts', import.meta.url))
   const program = ts.createProgram([declaration], {
@@ -304,6 +328,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
       { invocation: { kind: 'direct' }, method: 'createDocument' },
       { invocation: { kind: 'direct' }, method: 'saveDocument' },
       { invocation: { kind: 'direct' }, method: 'renameDocument' },
+      { invocation: { kind: 'direct' }, method: 'duplicateDocument' },
       { invocation: { kind: 'direct' }, method: 'previewMergeLinks' },
       { invocation: { kind: 'direct' }, method: 'prepareMerge' },
       { invocation: { kind: 'direct' }, method: 'applyMerge' },

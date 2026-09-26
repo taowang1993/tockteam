@@ -16,6 +16,23 @@ import {
   type DesktopCallerBridge,
 } from '../dist/client-actions.js'
 
+test('sidebar native actions authorize the clicked note and stop after target cancellation', async () => {
+  const { runTargetNoteAction } = await import('../dist/client-actions.js')
+  const calls: unknown[] = [], abort = new AbortController()
+  const target = { path: 'Clicked.md', vault }
+  const owner = { activePath: 'Other.md', vault, withNoteTarget: async (received, save, run) => {
+    calls.push([received, save]); await run(abort.signal); return true
+  } } as TockTutorNativeActionsOwnerProps
+  const bridge = { authorize: async (operation, expectedVault) => { calls.push([operation, expectedVault]); return { authorization: 'owned' } } } as DesktopCallerBridge
+  const remote = { tocktutorDesktop: { openPopOut: async (...args: Parameters<DesktopActionRemote['tocktutorDesktop']['openPopOut']>) => { calls.push(args.slice(0, 3)); return { ok: true, value: { status: 'opened' } } } } } as unknown as DesktopActionRemote
+  assert.equal((await runTargetNoteAction(owner, 'open-window', target, bridge, remote, abort.signal))?.status, 'opened')
+  assert.deepEqual(calls, [[target, true], ['popout-open', vault], ['owned', 'Clicked.md', vault]])
+  calls.length = 0
+  bridge.authorize = async () => { abort.abort(); return { authorization: 'stale' } }
+  await assert.rejects(runTargetNoteAction(owner, 'open-window', target, bridge, remote, new AbortController().signal), { name: 'AbortError' })
+  assert.equal(calls.length, 1)
+})
+
 const vault = Object.freeze({ generation: 7, id: `vault:${'a'.repeat(64)}` })
 
 test('opens a folder as a vault through the caller-bound Desktop picker', async () => {

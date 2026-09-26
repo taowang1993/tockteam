@@ -305,6 +305,7 @@ let TockTutorWorkbenchGateway = (() => {
     let _createDocument_decorators;
     let _saveDocument_decorators;
     let _renameDocument_decorators;
+    let _duplicateDocument_decorators;
     let _previewMergeLinks_decorators;
     let _prepareMerge_decorators;
     let _applyMerge_decorators;
@@ -341,6 +342,7 @@ let TockTutorWorkbenchGateway = (() => {
             _createDocument_decorators = [Remote];
             _saveDocument_decorators = [Remote];
             _renameDocument_decorators = [Remote];
+            _duplicateDocument_decorators = [Remote];
             _previewMergeLinks_decorators = [Remote];
             _prepareMerge_decorators = [Remote];
             _applyMerge_decorators = [Remote];
@@ -374,6 +376,7 @@ let TockTutorWorkbenchGateway = (() => {
             __esDecorate(this, null, _createDocument_decorators, { kind: "method", name: "createDocument", static: false, private: false, access: { has: obj => "createDocument" in obj, get: obj => obj.createDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _saveDocument_decorators, { kind: "method", name: "saveDocument", static: false, private: false, access: { has: obj => "saveDocument" in obj, get: obj => obj.saveDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _renameDocument_decorators, { kind: "method", name: "renameDocument", static: false, private: false, access: { has: obj => "renameDocument" in obj, get: obj => obj.renameDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _duplicateDocument_decorators, { kind: "method", name: "duplicateDocument", static: false, private: false, access: { has: obj => "duplicateDocument" in obj, get: obj => obj.duplicateDocument }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _previewMergeLinks_decorators, { kind: "method", name: "previewMergeLinks", static: false, private: false, access: { has: obj => "previewMergeLinks" in obj, get: obj => obj.previewMergeLinks }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _prepareMerge_decorators, { kind: "method", name: "prepareMerge", static: false, private: false, access: { has: obj => "prepareMerge" in obj, get: obj => obj.prepareMerge }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _applyMerge_decorators, { kind: "method", name: "applyMerge", static: false, private: false, access: { has: obj => "applyMerge" in obj, get: obj => obj.applyMerge }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -478,6 +481,14 @@ let TockTutorWorkbenchGateway = (() => {
             if (result.status !== 'moved')
                 throw new Error('The vault move returned an invalid status.');
             return { ...result, status: 'moved' };
+        }
+        async duplicateDocument(request, signal) {
+            assertRenameRequest(request);
+            signal.throwIfAborted();
+            const result = await this.ctx.noteVault.duplicateFile(request, signal);
+            if (result.status !== 'duplicated')
+                throw new Error('The vault duplicate returned an invalid status.');
+            return { ...result, status: 'duplicated' };
         }
         async previewMergeLinks(request, signal) {
             assertRecord(request, 'Merge preview request');

@@ -42,6 +42,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>;
         createDocument(request: CreateDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         openDocument(path: string, expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<OpenDocumentResult>>;
+        duplicateDocument?(request: RenameDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').DuplicateDocumentResult>>;
         renameDocument(request: RenameDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<RenameDocumentResult>>;
         saveDocument(request: SaveDocumentRequest, signal?: AbortSignal): Promise<RemoteResult<WriteDocumentResult>>;
         readDraft(request: DraftRequest, signal?: AbortSignal): Promise<RemoteResult<DraftResult>>;
@@ -70,6 +71,10 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         storeAttachment(request: StoreAttachmentRequest, signal?: AbortSignal): Promise<RemoteResult<StoreAttachmentResult>>;
         graph(request: VaultGraphRequest, signal?: AbortSignal): Promise<RemoteResult<VaultGraphResult>>;
     };
+}
+export interface NoteTarget {
+    path: string;
+    vault: VaultReference;
 }
 export type RoutePhase = 'loading' | 'inactive' | 'ready' | 'error';
 export type RouteEditorMode = 'source' | 'live-preview' | 'reading';
@@ -232,6 +237,7 @@ export declare class WorkbenchRouteController {
     private bookmarks;
     private workspaces;
     private operation;
+    private recoveryTarget;
     private recoveryOperation;
     private recoveryAbort;
     private embedTargets;
@@ -310,6 +316,11 @@ export declare class WorkbenchRouteController {
     nativeNoteOwnerKey(): string;
     bindPaneEdit(id: string): (source: string) => boolean;
     private markDocumentDirty;
+    noteTargetCurrent(target: NoteTarget): boolean;
+    private withNoteDocument;
+    openSidebarNote(target: NoteTarget, placement: 'tab' | 'right'): Promise<boolean>;
+    withNoteTarget(target: NoteTarget, save: boolean, run: (signal: AbortSignal) => Promise<void>): Promise<boolean>;
+    duplicateNote(target: NoteTarget): Promise<boolean>;
     splitPane(id: string, axis: 'horizontal' | 'vertical'): Promise<boolean>;
     openLinkedView(id: string, kind: LinkedViewKind): Promise<boolean>;
     unlinkLinkedView(id: string): void;
@@ -330,6 +341,8 @@ export declare class WorkbenchRouteController {
     private scheduleDraft;
     private flushPendingDraft;
     private clearDocument;
+    getRecoverySnapshot(): WorkbenchRouteSnapshot;
+    openNoteRecovery(target: NoteTarget): Promise<boolean>;
     private recoveryIdentity;
     private cancelRecoveryOperations;
     private nextRecoveryOperation;
@@ -354,12 +367,13 @@ export declare class WorkbenchRouteController {
     private refreshTree;
     createManagedVault(name: string): Promise<boolean>;
     openSandboxVault(): Promise<boolean>;
-    setRecoveryOpen(open: boolean): Promise<void>;
+    setRecoveryOpen(open: boolean, target?: NoteTarget | null): Promise<void>;
     readRecoverySnapshot(snapshotId: string): Promise<boolean>;
     captureRecoverySnapshot(): Promise<boolean>;
     clearRecoverySnapshots(): Promise<boolean>;
     restoreRecoverySnapshotOverwrite(snapshotId: string): Promise<boolean>;
     restoreRecoverySnapshot(snapshotId: string): Promise<boolean>;
+    trashNote(target: NoteTarget): Promise<boolean>;
     trashCurrent(): Promise<boolean>;
     restoreTrashEntry(id: string): Promise<boolean>;
     addPane(): Promise<boolean>;
@@ -376,15 +390,16 @@ export declare class WorkbenchRouteController {
     toggleFocusMode(): void;
     updateSettings(change: Partial<TockTutorSettings>): boolean;
     saveCurrentWorkspace(name?: string): boolean;
-    addActiveBookmark(title?: string, groupId?: string | null): boolean;
+    addActiveBookmark(title?: string, groupId?: string | null, target?: NoteTarget): boolean;
     editActiveBookmark(id: string, title: string, groupId: string | null): boolean;
     addLinkBookmark(title: string, url: string): boolean;
     removeBookmark(id: string): boolean;
     openBookmark(id: string): Promise<boolean>;
     loadWorkspace(id: string): Promise<boolean>;
-    renameActiveTitle(title: string): Promise<boolean>;
-    moveActiveNote(folder: string): Promise<boolean>;
+    renameActiveTitle(title: string, target?: NoteTarget): Promise<boolean>;
+    moveActiveNote(folder: string, target?: NoteTarget): Promise<boolean>;
     private renameActivePath;
+    private renameDocumentRecord;
     select(path: string, navigate?: boolean, dispatchRevision?: number, recordHistory?: boolean, newTab?: boolean, refresh?: boolean, ownerCurrent?: () => boolean): Promise<boolean>;
     revealActiveFile(): Promise<boolean>;
     edit(source: string, originPaneId?: string): void;
@@ -412,7 +427,7 @@ export declare class WorkbenchRouteController {
     previewAttachment(path: string): Promise<boolean>;
     closeAttachmentPreview(): void;
     applyCanvasChange(change: CanvasChange): Promise<boolean>;
-    prepareNoteMerge(destinationPath: string, callerSignal: AbortSignal): Promise<PreparedNoteMerge>;
+    prepareNoteMerge(destinationPath: string, callerSignal: AbortSignal, target?: NoteTarget): Promise<PreparedNoteMerge>;
     listMergeRecovery(signal: AbortSignal, cursor?: string): Promise<import('./types.ts').MergeListResult>;
     recoverNoteMerge(id: string, signal: AbortSignal): Promise<import('./types.ts').MergeResult>;
     save(): Promise<boolean>;

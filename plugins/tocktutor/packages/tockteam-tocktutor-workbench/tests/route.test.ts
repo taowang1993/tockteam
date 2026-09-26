@@ -28,6 +28,104 @@ import type {
   WriteDocumentResult,
 } from '../dist/types.js'
 
+test('sidebar tab and right-split navigation retain the other note’s unsaved buffer without saving it', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.reload()
+  await controller.select('Folder/Note.md')
+  controller.edit('Unsaved original')
+  const target = { path: 'Second.md', vault: firstVault }
+  assert.equal(await controller.openSidebarNote(target, 'tab'), true)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.deepEqual(controller.getSnapshot().panes[0]?.tabs.map(tab => [tab.path, tab.dirty]), [['Folder/Note.md', true], ['Second.md', false]])
+  assert.equal(remote.calls.some(call => call.method === 'saveDocument'), false)
+  assert.equal(await controller.openSidebarNote({ path: 'Folder/Note.md', vault: firstVault }, 'right'), true)
+  const state = controller.getSnapshot()
+  assert.equal(state.panes.length, 2)
+  assert.equal(state.path, 'Folder/Note.md')
+  assert.equal(state.source, 'Unsaved original')
+  assert.equal(state.saveStatus, 'unsaved')
+  assert.equal(await controller.openSidebarNote({ ...target, vault: secondVault }, 'tab'), false)
+  controller.dispose()
+})
+
+test('sidebar rename and bookmarks bind to the clicked note without replacing a dirty editor', async () => {
+  const remote = new FakeRemote(), storage = new MemoryStorage()
+  const controller = new WorkbenchRouteController(remote, () => {}, () => new Date(0), storage)
+  await controller.reload(); await controller.select('Second.md'); controller.edit('Keep A unsaved')
+  const target = { path: 'Folder/Note.md', vault: firstVault }
+  assert.equal(controller.addActiveBookmark('Clicked Note', null, target), true)
+  const bookmark = controller.getSnapshot().bookmarks?.[0]
+  assert.ok(bookmark && 'path' in bookmark)
+  assert.equal(bookmark.path, 'Folder/Note.md')
+  assert.equal(await controller.renameActiveTitle('Renamed', target), true)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.equal(controller.getSnapshot().source, 'Keep A unsaved')
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+  assert.equal(remote.calls.some(call => call.method === 'saveDocument'), false)
+  assert.equal(await controller.renameActiveTitle('Stale', target), false)
+  controller.dispose()
+})
+
+test('sidebar recovery and trash never read or remove the unrelated dirty note', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  await controller.reload(); await controller.select('Second.md'); controller.edit('Keep this draft')
+  const target = { path: 'Folder/Note.md', vault: firstVault }
+  assert.equal(await controller.openNoteRecovery(target), true)
+  assert.equal(controller.getRecoverySnapshot().path, target.path)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.ok(remote.calls.some(call => call.method === 'listSnapshots' && (call.parameters[0] as { path: string }).path === target.path))
+  assert.equal(await controller.trashNote(target), true)
+  const request = remote.calls.find(call => call.method === 'trashEntry')?.parameters[0] as { path: string }
+  assert.equal(request.path, target.path)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.equal(controller.getSnapshot().source, 'Keep this draft')
+  assert.equal(controller.getSnapshot().saveStatus, 'unsaved')
+  await controller.setRecoveryOpen(false)
+  await controller.setRecoveryOpen(true, null)
+  assert.equal(controller.getRecoverySnapshot().path, 'Second.md')
+  controller.dispose()
+})
+
+test('sidebar duplication retries only name collisions and never repeats a partial write', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  const destinations: string[] = []
+  ;(remote as WorkbenchRouteRemote).tocktutorWorkbench.duplicateDocument = async request => {
+    destinations.push(request.toPath)
+    return destinations.length === 1 ? failure('exists', 'Already exists') : success({ fromPath: request.fromPath, path: request.toPath, generation: firstVault.generation, revision: firstRevision, status: 'duplicated' as const })
+  }
+  await controller.reload(); await controller.select('Second.md'); controller.edit('Keep this draft')
+  assert.equal(await controller.duplicateNote({ path: 'Folder/Note.md', vault: firstVault }), true)
+  assert.deepEqual(destinations, ['Folder/Note Copy.md', 'Folder/Note Copy 2.md'])
+  assert.equal(remote.calls.some(call => call.method === 'saveDocument'), false)
+  destinations.length = 0
+  ;(remote as WorkbenchRouteRemote).tocktutorWorkbench.duplicateDocument = async request => {
+    destinations.push(request.toPath)
+    return { ok: false, error: new NoteVaultError('partial', 'Destination retained') }
+  }
+  assert.equal(await controller.duplicateNote({ path: 'Folder/Note.md', vault: firstVault }), false)
+  assert.equal(destinations.length, 1)
+  assert.equal(controller.getSnapshot().message, 'Destination retained')
+  controller.dispose()
+})
+
+test('native target guard cancels when the clicked draft changes, not when an unrelated draft changes', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  await controller.reload(); await controller.select('Folder/Note.md')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.openSidebarNote({ path: 'Second.md', vault: firstVault }, 'right')
+  const gate = deferred<void>()
+  let signal: AbortSignal | undefined
+  const pending = controller.withNoteTarget({ path: 'Folder/Note.md', vault: firstVault }, false, async captured => { signal = captured; await gate.promise })
+  controller.edit('Unrelated draft')
+  assert.equal(signal?.aborted, false)
+  controller.bindPaneEdit(left)('Target draft changed')
+  assert.equal(signal?.aborted, true)
+  gate.resolve()
+  assert.equal(await pending, false)
+  controller.dispose()
+})
+
 const firstVault = Object.freeze({ generation: 3, id: `vault:${'1'.repeat(64)}` })
 const secondVault = Object.freeze({ generation: 4, id: `vault:${'2'.repeat(64)}` })
 const sandboxVault = Object.freeze({ generation: 5, id: `vault:${'3'.repeat(64)}` })

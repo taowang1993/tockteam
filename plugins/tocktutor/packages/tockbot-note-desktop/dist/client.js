@@ -46,6 +46,7 @@ __export(client_exports, {
   requestMicrophoneAccess: () => requestMicrophoneAccess,
   revealVault: () => revealVault,
   runDesktopDispatchLoop: () => runDesktopDispatchLoop,
+  runTargetNoteAction: () => runTargetNoteAction,
   startAudioRecording: () => startAudioRecording
 });
 module.exports = __toCommonJS(client_exports);
@@ -15319,7 +15320,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15334,7 +15335,7 @@ function clsx() {
   return n;
 }
 
-// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -15913,6 +15914,21 @@ function TockTutorVaultActions(props) {
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { "aria-live": "polite", className: "sr-only", children: message })
   ] });
 }
+async function runTargetNoteAction(owner, action, target, bridge, remote, lifetime) {
+  if (!owner.withNoteTarget || lifetime.aborted || owner.vault?.id !== target.vault.id || owner.vault.generation !== target.vault.generation) return void 0;
+  const operation = { "open-default": "open-default-app", "copy-absolute": "copy-absolute-path", "open-window": "popout-open", reveal: "reveal-entry" };
+  const method = { "open-default": "openInDefaultApp", "copy-absolute": "copyAbsolutePath", "open-window": "openPopOut", reveal: "revealEntry" };
+  let result;
+  await owner.withNoteTarget(target, action === "open-default" || action === "open-window", async (targetSignal) => {
+    const signal = AbortSignal.any([lifetime, targetSignal]);
+    signal.throwIfAborted();
+    result = await nativeCall(bridge, operation[action], signal, (authorization) => {
+      signal.throwIfAborted();
+      return remote.tocktutorDesktop[method[action]](authorization, target.path, target.vault, signal);
+    }, target.vault);
+  });
+  return result;
+}
 function TockTutorNativeActions(props) {
   const owner = (0, import_react.useRef)(props);
   const lifetime = (0, import_react.useRef)();
@@ -16025,17 +16041,29 @@ function TockTutorNativeActions(props) {
   (0, import_react.useEffect)(() => {
     props.publishNoteActions?.({
       activePath: props.activePath,
-      disabled: busy !== null || !hasNote,
+      disabled: busy !== null || props.vault === null,
       message,
       run: (action) => {
         void noteActions[action]();
       },
+      ...props.withNoteTarget ? { runTarget: (action, target) => {
+        const signal = lifetime.current?.signal;
+        if (!signal || signal.aborted || busy !== null) return;
+        setBusy("Note Action");
+        void runTargetNoteAction(owner.current, action, target, props.bridge, props.remote, signal).then((result) => {
+          if (!signal.aborted) setMessage(result ? resultMessage(result) : "The note action was cancelled.");
+        }).catch(() => {
+          if (!signal.aborted) setMessage("The note action failed safely.");
+        }).finally(() => {
+          if (!signal.aborted) setBusy(null);
+        });
+      } } : {},
       vault: vaultId === void 0 || vaultGeneration === void 0 ? null : { id: vaultId, generation: vaultGeneration }
     });
     return () => {
       props.publishNoteActions?.(null);
     };
-  }, [props.publishNoteActions, props.activePath, vaultId, vaultGeneration, busy, hasNote, message, noteActions]);
+  }, [props.publishNoteActions, props.activePath, vaultId, vaultGeneration, busy, hasNote, message, noteActions, !!props.withNoteTarget, props.bridge, props.remote]);
   const startRecording = async () => {
     const signal = lifetime.current?.signal;
     if (signal === void 0 || signal.aborted || props.activePath === null || props.vault === null || props.storeAudio === void 0 || recordingStarting.current || activeRecording.current) return;

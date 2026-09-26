@@ -93,5 +93,9 @@ export declare function removeVault(owner: TockTutorVaultActionsOwnerProps, brid
 /** Desktop-only vault picker and management contribution for the vault dialog. */
 export declare function TockTutorVaultActions(props: TockTutorVaultActionsProps): ReactNode;
 /** Accessible contribution for Workbench's root-scoped Native Actions seat. */
+export declare function runTargetNoteAction(owner: TockTutorNativeActionsOwnerProps, action: 'open-default' | 'copy-absolute' | 'open-window' | 'reveal', target: {
+    path: string;
+    vault: VaultReference;
+}, bridge: DesktopCallerBridge, remote: DesktopActionRemote, lifetime: AbortSignal): Promise<NativeActionResult | undefined>;
 export declare function TockTutorNativeActions(props: TockTutorNativeActionsProps): ReactNode;
 //# sourceMappingURL=client-actions.d.ts.map

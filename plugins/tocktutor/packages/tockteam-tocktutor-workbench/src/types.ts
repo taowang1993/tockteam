@@ -67,6 +67,14 @@ export interface RenameDocumentRequest {
   toPath: string
 }
 
+export interface DuplicateDocumentResult {
+  fromPath: string
+  generation: number
+  path: string
+  revision: string
+  status: 'duplicated'
+}
+
 export interface RenameDocumentResult {
   fromPath: string
   generation: number

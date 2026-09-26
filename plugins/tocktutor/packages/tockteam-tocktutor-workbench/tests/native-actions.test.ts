@@ -128,6 +128,7 @@ test('route renders an accessible Native Actions area with bounded owner props',
     'saveNote',
     'storeAudio',
     'vault',
+    'withNoteTarget',
   ])
   assert.equal(typeof (dispatched[3]?.owner as { handleDispatch?: unknown }).handleDispatch, 'function')
   assert.equal(typeof (dispatched[3]?.owner as { saveCurrent?: unknown }).saveCurrent, 'function')
