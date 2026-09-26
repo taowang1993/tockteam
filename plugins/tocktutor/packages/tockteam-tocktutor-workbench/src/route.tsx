@@ -5811,7 +5811,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </Tooltip>
       </div>
       <div className="tocktutor-titlebar-main relative min-w-0" style={{ marginRight: panel === 'assistant' ? assistantPanelWidth : 0 }}>
-        {(snapshot.layout ? paneLayoutEntries(snapshot.layout).filter(entry => 'groupId' in entry.node && entry.y === 0) : focusedPane ? [{ node: { groupId: focusedPane.id }, x: 0, width: 100 }] : []).map(({ node, x, width }) => {
+        {(snapshot.layout || focusedPane ? paneLayoutEntries(snapshot.layout ?? { groupId: focusedPane!.id }) : []).filter(entry => 'groupId' in entry.node && entry.y === 0).map(({ node, x, width }) => {
           const pane = 'groupId' in node ? snapshot.panes.find(pane => pane.id === node.groupId) : undefined
           return pane && <div key={pane.id} data-pane-tabs={pane.id} className="absolute inset-y-0 flex min-w-0 items-center overflow-hidden pr-16 pl-2" style={{ left: `${x}%`, width: `${width}%` }}><PaneTabs {...props} pane={pane} /></div>
         })}
