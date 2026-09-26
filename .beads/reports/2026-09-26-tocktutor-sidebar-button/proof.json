@@ -1,0 +1,157 @@
+{
+  "viewport": [
+    1512,
+    949,
+    2
+  ],
+  "png": [
+    3024,
+    1898
+  ],
+  "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+  "content": "Comparison note in Live Preview, rounded-square note action button hovered",
+  "reducedMotion": "reduce",
+  "systemAppearance": "Opposite app appearance",
+  "checks": [
+    "hidden at rest",
+    "revealed on hover",
+    "button covers the long title edge",
+    "24px rounded square contrasts with row",
+    "ellipsis contrast",
+    "no hover layout shift",
+    "existing 13 actions",
+    "menu does not navigate or lose draft",
+    "button remains visible while menu is open",
+    "Escape restores ellipsis focus",
+    "Tab reveals and focuses button",
+    "outside dismissal preserves draft",
+    "nested note uses same menu",
+    "selected row also opens menu",
+    "exact viewport",
+    "zero runtime errors"
+  ],
+  "themes": [
+    {
+      "name": "dark",
+      "theme": "dark",
+      "htmlSkin": null,
+      "skin": null,
+      "background": "color(srgb 0.296969 0.297788 0.298607)",
+      "rowBackground": "color(srgb 0.237882 0.238431 0.23898)",
+      "size": [
+        24,
+        24
+      ],
+      "radius": "4px",
+      "iconContrast": 8.21742578888317,
+      "errors": []
+    },
+    {
+      "name": "light",
+      "theme": "light",
+      "htmlSkin": null,
+      "skin": null,
+      "background": "color(srgb 0.803482 0.80512 0.808395)",
+      "rowBackground": "color(srgb 0.868235 0.869333 0.871529)",
+      "size": [
+        24,
+        24
+      ],
+      "radius": "4px",
+      "iconContrast": 11.89540843022478,
+      "errors": []
+    },
+    {
+      "name": "deep-current",
+      "theme": "dark",
+      "htmlSkin": null,
+      "skin": "tockteam-skin-deep-current",
+      "background": "color(srgb 0.1441 0.284317 0.346375)",
+      "rowBackground": "color(srgb 0.0771765 0.224471 0.290902)",
+      "size": [
+        24,
+        24
+      ],
+      "radius": "4px",
+      "iconContrast": 8.876335436089708,
+      "errors": []
+    },
+    {
+      "name": "jade-circuit",
+      "theme": "dark",
+      "htmlSkin": null,
+      "skin": "tockteam-skin-jade-circuit",
+      "background": "color(srgb 0.148646 0.298535 0.250133)",
+      "rowBackground": "color(srgb 0.0821176 0.238902 0.18902)",
+      "size": [
+        24,
+        24
+      ],
+      "radius": "4px",
+      "iconContrast": 8.929596964897906,
+      "errors": []
+    },
+    {
+      "name": "porcelain",
+      "theme": "light",
+      "htmlSkin": null,
+      "skin": "tockteam-skin-porcelain",
+      "background": "color(srgb 0.79974 0.854268 0.848518)",
+      "rowBackground": "color(srgb 0.861098 0.911843 0.906275)",
+      "size": [
+        24,
+        24
+      ],
+      "radius": "4px",
+      "iconContrast": 9.602099674569658,
+      "errors": []
+    },
+    {
+      "name": "ember-dusk",
+      "theme": "dark",
+      "htmlSkin": null,
+      "skin": "tockteam-skin-ember-dusk",
+      "background": "color(srgb 0.339115 0.232813 0.253515)",
+      "rowBackground": "color(srgb 0.281647 0.171216 0.195765)",
+      "size": [
+        24,
+        24
+      ],
+      "radius": "4px",
+      "iconContrast": 9.012255804749662,
+      "errors": []
+    }
+  ],
+  "stoppedRuns": [
+    {
+      "id": "3253d8f6-32b2-4065-8288-06623632fbc2",
+      "rootPid": 92038,
+      "remaining": []
+    },
+    {
+      "id": "65081e7e-139f-4170-b6c6-fe305ea96667",
+      "rootPid": 95854,
+      "remaining": []
+    },
+    {
+      "id": "f98a0747-f1ae-4391-a50a-8de0c9223b94",
+      "rootPid": 96975,
+      "remaining": []
+    },
+    {
+      "id": "05ce6bd6-fc3a-4e35-86e6-c969ae19053c",
+      "rootPid": 97862,
+      "remaining": []
+    },
+    {
+      "id": "2e8511ed-ba10-4d66-a88b-7cb9236154a0",
+      "rootPid": 98379,
+      "remaining": []
+    },
+    {
+      "id": "526cf7df-4d24-45e2-bc56-f49afadf830b",
+      "rootPid": 98843,
+      "remaining": []
+    }
+  ]
+}

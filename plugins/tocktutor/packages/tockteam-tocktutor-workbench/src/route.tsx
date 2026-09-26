@@ -5286,7 +5286,7 @@ function TreeEntries(props: {
       {props.onContextMenu && <Button unstyled type="button"
         aria-label={`Note Actions for ${entry.path}`} aria-haspopup="menu" aria-expanded={props.menuPath === entry.path}
         title="Note Actions"
-        className="tocktutor-tree-menu pointer-events-none absolute top-0.5 right-0.5 flex size-6 cursor-pointer items-center justify-center rounded border-0 bg-[var(--tt-selected)] p-0 text-inherit opacity-0 group-hover/note:pointer-events-auto group-hover/note:opacity-100 group-focus-within/note:pointer-events-auto group-focus-within/note:opacity-100 group-data-[menu-open=true]/note:pointer-events-auto group-data-[menu-open=true]/note:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
+        className="tocktutor-tree-menu pointer-events-none absolute top-0.5 right-0.5 flex size-6 cursor-pointer items-center justify-center rounded border-0 bg-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-selected))] p-0 text-inherit opacity-0 group-hover/note:pointer-events-auto group-hover/note:opacity-100 group-focus-within/note:pointer-events-auto group-focus-within/note:opacity-100 group-data-[menu-open=true]/note:pointer-events-auto group-data-[menu-open=true]/note:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
         onClick={event => {
           event.stopPropagation()
           const box = event.currentTarget.getBoundingClientRect()
