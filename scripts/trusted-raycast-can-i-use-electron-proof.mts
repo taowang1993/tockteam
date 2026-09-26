@@ -133,14 +133,10 @@ try {
     await workbench.evaluate(() => window.dshDesktop.launcher.settings.updateSetting('window.hideWindowOn', []));
     await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' }));
     await launcher.locator('#launcher-search').fill('Can I Use');
-    await launcher.locator('[data-result-id="trusted-raycast:setup:can-i-use"]').waitFor(); await launcher.locator('#launcher-search').press('Enter');
-    await launcher.getByRole('button', { name: 'Approve and Open', exact: true }).waitFor();
-    await launcher.keyboard.press('Escape');
-    if (await launcher.locator('#launcher-search').inputValue() !== 'Can I Use') throw new Error('Escape lost search');
-    if ((await launcher.evaluate(() => window.tockteamLauncher.getTrustedRaycastTrust('can-i-use'))).installed) throw new Error('Review mutated installation');
+    await launcher.locator('[data-result-id="trusted-raycast:can-i-use:index"]').waitFor();
+    const trust = await launcher.evaluate(() => window.tockteamLauncher.getTrustedRaycastTrust('can-i-use'));
+    if (!trust.installed || !trust.enabled || !trust.digestApproved) throw new Error('Bundled Can I Use was not admitted');
     await launcher.locator('#launcher-search').press('Enter');
-    await launcher.getByRole('button', { name: 'Approve and Open', exact: true }).waitFor();
-    await launcher.keyboard.press('Enter');
     await launcher.getByRole('textbox', { name: 'Browser Targets' }).waitFor(); return true;
   `)
   await capture('setup-dark.png')
@@ -174,7 +170,8 @@ try {
   await run(`
     const search = launcher.getByRole('searchbox', { name: 'Search Web Features' });
     await launcher.getByRole('button', { name: 'Preferences', exact: true }).click();
-    await launcher.getByRole('combobox', { name: 'Brief Mode' }).selectOption('true'); await launcher.keyboard.press('Meta+Enter');
+    await launcher.getByRole('button', { name: 'Brief Mode', exact: true }).click();
+    await launcher.getByRole('option', { name: 'Yes', exact: true }).click(); await launcher.keyboard.press('Meta+Enter');
     await launcher.getByRole('status').filter({ hasText: 'Showing 64 of 581 matches.' }).waitFor();
     await search.fill('no-such-feature-for-proof'); await launcher.getByRole('status').filter({ hasText: 'Showing 0 of 0 matches.' }).waitFor(); return true;
   `)

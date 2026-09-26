@@ -38,6 +38,21 @@ test('Electron harness uses inherited IPC shutdown and read-only bounded residue
   assert.doesNotMatch(harness, /process\.kill|stopChildProcess|assertProcessTreeGone|System Events|rm\(finalEvidence|renameSync\(evidence, finalEvidence/u)
 })
 
+test('fresh-profile proofs open bundled commands directly and use current preference controls', async () => {
+  for (const id of ['can-i-use', 'kaomoji'] as const) {
+    const source = await readFile(new URL(`../scripts/trusted-raycast-${id}-electron-proof.mts`, import.meta.url), 'utf8')
+    assert.doesNotMatch(source, /trusted-raycast:setup:|Approve and Open/)
+    assert.match(source, new RegExp(`trusted-raycast:${id === 'kaomoji' ? 'kaomoji-search' : id}:index`))
+    assert.doesNotMatch(source, /getByRole\('combobox', \{ name: 'Brief Mode' \}\)\.selectOption/)
+  }
+})
+
+test('TTS regression gate cannot substitute historical proof for missing live playback', async () => {
+  const source = await readFile(new URL('../scripts/trusted-raycast-electron-proof.mjs', import.meta.url), 'utf8')
+  assert.doesNotMatch(source, /const priorTtsProof|\|\| priorTtsProof/)
+  assert.match(source, /throw new Error\('No afplay process observed for the TTS fixture although the upstream endpoint answered'\)/)
+})
+
 test('every source extension proof launch isolates macOS Keychain, including restart and toggle', async () => {
   for (const [file, count] of [
     ['trusted-raycast-can-i-use-electron-proof.mts', 1],

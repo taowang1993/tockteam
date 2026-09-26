@@ -206,8 +206,10 @@ try {
     await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' }));
     await launcher.waitForFunction(() => document.documentElement.dataset.launcherReady === 'true' && document.documentElement.style.colorScheme === 'dark');
     const input = launcher.locator('#launcher-search'); await input.fill('Kaomoji Search');
-    await launcher.locator('[data-result-id="trusted-raycast:setup:kaomoji-search"]').waitFor(); await input.press('Enter');
-    await launcher.getByRole('button', { name: 'Approve and Open', exact: true }).waitFor(); await launcher.keyboard.press('Enter');
+    await launcher.locator('[data-result-id="trusted-raycast:kaomoji-search:index"]').waitFor();
+    const trust = await launcher.evaluate(() => window.tockteamLauncher.getTrustedRaycastTrust('kaomoji-search'));
+    if (!trust.installed || !trust.enabled || !trust.digestApproved) throw new Error('Bundled Kaomoji Search was not admitted');
+    await input.press('Enter');
     const section = launcher.locator('section[aria-label="Kaomoji Search"]'); await section.waitFor();
     await launcher.waitForFunction(() => document.querySelectorAll('section[aria-label="Kaomoji Search"] li.launcher-command-row').length === 64);
     const facts = await launcher.evaluate(() => ({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio, screenX, screenY, availLeft: screen.availLeft, availTop: screen.availTop, colorScheme: document.documentElement.style.colorScheme, node: typeof window.process, require: typeof window.require }));

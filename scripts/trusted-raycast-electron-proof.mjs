@@ -489,17 +489,16 @@ export async function proveTrustedRaycast({ port, root, workbenchConnection, use
     if (ttsProcesses.length === 0) {
       // Distinguish an upstream outage from a defect: probe the exact TTS endpoint outside the child.
       const { stdout: ttsProbe } = await exec(process.execPath, ['-e', `const https=require('node:https');const text='TockTeam trusted Raycast TTS probe';const url='https://translate.google.com/translate_tts?ie=UTF-8&q='+encodeURIComponent(text)+'&tl=en&total=1&idx=0&textlen='+text.length+'&client=tw-ob';https.get(url,r=>{const c=[];r.on('data',x=>c.push(x));r.on('end',()=>{console.log('PROBE '+r.statusCode+' '+Buffer.concat(c).length);process.exit(0)})}).on('error',e=>{console.log('PROBE ERROR '+e.message);process.exit(0)});setTimeout(()=>{console.log('PROBE STALL');process.exit(0)},15000)`], { timeout: 20000, maxBuffer: 4096 }).catch(() => ({ stdout: 'PROBE ERROR' }))
-      const priorTtsProof = await readFile(join(root, '.beads/reports/trusted-raycast-desktop/slice-3/tts-proof.txt'), 'utf8').catch(() => '')
-      if (!/PROBE 200 \d+/.test(ttsProbe) || priorTtsProof !== '') {
-        await writeFile(join(evidence, 'tts-upstream-outage.txt'), `No live afplay was observed in this bounded run; outside-child probe: ${ttsProbe.trim()}. Existing deterministic/live proof is retained in slice-3/tts-proof.txt.\n`, { mode: 0o600 })
-        console.log('TTS gate: no live afplay this run; existing deterministic/live proof retained in slice-3/tts-proof.txt.')
+      if (!/PROBE 200 \d+/.test(ttsProbe)) {
+        await writeFile(join(evidence, 'tts-upstream-outage.txt'), `TTS inconclusive: no live afplay was observed in this bounded run; outside-child probe: ${ttsProbe.trim()}. Historical evidence is not a pass for this run.\n`, { mode: 0o600 })
+        console.log('TTS gate inconclusive: upstream probe failed and no live afplay was observed.')
       } else {
         throw new Error('No afplay process observed for the TTS fixture although the upstream endpoint answered')
       }
     }
     if (ttsProcesses.length === 0) {
-      console.log('TTS close-during-playback gate: no afplay was spawnable this run; skipping the playback teardown proof (see slice-3/tts-proof.txt for the live proof).')
-      await writeFile(join(evidence, 'tts-skipped.txt'), 'No live afplay was observed this run; slice-3/tts-proof.txt retains the earlier download, playback and teardown proof.\n', { mode: 0o600 })
+      console.log('TTS close-during-playback gate inconclusive: no live afplay was observed; playback teardown was not verified.')
+      await writeFile(join(evidence, 'tts-skipped.txt'), 'Partial proof: no live afplay was observed this run; download, playback and playback teardown remain unverified.\n', { mode: 0o600 })
     } else {
       await writeFile(join(evidence, 'tts-proof.txt'), `afplay processes observed with private workspace paths:\n${ttsProcesses.join('\n')}\n`, { mode: 0o600 })
       console.log('TTS proved: upstream https.get download and afplay playback ran in the private child temp.')
