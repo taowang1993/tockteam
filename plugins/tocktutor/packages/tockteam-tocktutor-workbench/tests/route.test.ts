@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
+import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { NoteVaultError } from 'tockbot-note-runtime'
 import { createVaultInspection } from 'tockbot-note-vault/inspection'
@@ -234,10 +235,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   readonly calls: Array<{ method: string; parameters: unknown[] }> = []
   readonly listeners = new Set<(event: NoteVaultChangeEvent) => void>()
   createFailure: { code: 'exists'; message: string } | null = null
-  createOverride: ((request: CreateDocumentRequest) => Promise<{
-    ok: true
-    value: WriteDocumentResult
-  }>) | null = null
+  createOverride: ((request: CreateDocumentRequest) => Promise<RemoteResult<WriteDocumentResult>>) | null = null
   treeFailure: Error | null = null
   treeGate: { promise: Promise<void> } | null = null
   treePageOverride: ((request: { cursor?: string | null; expectedVault: VaultReference; limit?: number }, signal?: AbortSignal) => Promise<{ ok: true; value: VaultTreePage }>) | null = null
@@ -255,6 +253,7 @@ class FakeRemote implements WorkbenchRouteRemote {
   tocktutorAssistant?: NonNullable<WorkbenchRouteRemote['tocktutorAssistant']>
 
   private readonly createdPaths: Set<string>
+  readonly createdSources = new Map<string, string>()
 
   constructor(createdPaths: Set<string> = new Set()) {
     this.createdPaths = createdPaths
@@ -271,6 +270,7 @@ class FakeRemote implements WorkbenchRouteRemote {
       if (this.createFailure !== null) return failure(this.createFailure.code, this.createFailure.message)
       if (this.createOverride !== null) return this.createOverride(request)
       this.createdPaths.add(request.path)
+      this.createdSources.set(request.path, request.content)
       return success({
         digest: `sha256:${'e'.repeat(64)}`,
         generation: request.expectedVault.generation,
@@ -376,7 +376,7 @@ class FakeRemote implements WorkbenchRouteRemote {
       this.calls.push({ method: 'openDocument', parameters: [path, expectedVault, signal] })
       if (this.openOverride !== null) return this.openOverride(path)
       return success({
-        content: path === 'Folder/Note.md' || path === this.renamedPath
+        content: this.createdSources.get(path) ?? (path === 'Folder/Note.md' || path === this.renamedPath
           ? '# Before\n- [ ] Verify route\nParagraph ^route-block\n'
           : path === 'Board.canvas'
             ? JSON.stringify({
@@ -394,7 +394,7 @@ class FakeRemote implements WorkbenchRouteRemote {
               })
             : path === 'Tasks.base'
               ? 'views:\n  - type: table\n    name: Tasks\n    order:\n      - file.name\n      - note.status\n'
-              : '---\nstatus: open\n---\n# Second\n',
+              : '---\nstatus: open\n---\n# Second\n'),
         digest: `sha256:${'c'.repeat(64)}`,
         generation: expectedVault.generation,
         path,
@@ -1843,6 +1843,38 @@ test('keeps ordinary note switching in one reusable tab', async () => {
     assert.equal(await controller.select(`Note-${String(index)}.md`), true)
   }
   assert.deepEqual(controller.getSnapshot().panes[0]?.tabs.map(tab => tab.path), ['Note-20.md'])
+  controller.dispose()
+})
+
+test('creates a default Base in the selected folder and opens its table without overwriting', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.createBase('Folder'), true)
+  const first = remote.calls.find(call => call.method === 'createDocument')?.parameters[0] as CreateDocumentRequest
+  assert.equal(first.path, 'Folder/Untitled.base')
+  assert.equal(first.content, 'views:\n  - type: table\n    name: Table\n')
+  assert.equal(controller.getSnapshot().path, first.path)
+  assert.equal(controller.getSnapshot().documentKind, 'base')
+  assert.equal(controller.getSnapshot().source, first.content)
+  const html = renderToStaticMarkup(createElement(TockTutorRouteView, {
+    onActivateTab() {}, onAddPane() {}, onEdit() {}, onFocusPane() {}, onMode() {}, onMoveCanvas() {}, onSave() {}, onSelect() {}, onToggleTask() {},
+    onNewBase() {}, snapshot: controller.getSnapshot(),
+  }))
+  assert.match(html, /aria-label="Add to Files"/u)
+  assert.match(html, /aria-label="Executable Base"/u)
+  controller.dispose()
+})
+
+test('Base name collision retries only an explicit exists result and never overwrites', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  remote.createOverride = request => request.path === 'Folder/Untitled.base'
+    ? failure('exists', 'The Base exists.')
+    : success({ digest: `sha256:${'e'.repeat(64)}`, generation: request.expectedVault.generation, path: request.path, revision: secondRevision, status: 'created' })
+  assert.equal(await controller.createBase('Folder'), true)
+  assert.deepEqual(remote.calls.filter(call => call.method === 'createDocument').map(call => (call.parameters[0] as CreateDocumentRequest).path), ['Folder/Untitled.base', 'Folder/Untitled 2.base'])
   controller.dispose()
 })
 

@@ -3810,6 +3810,34 @@ export class WorkbenchRouteController {
     }
   }
 
+  async createBase(folder = ''): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (!vault || this.snapshot.phase !== 'ready' || (folder !== ''
+      && (!isSafeVaultRelativePath(folder) || !this.snapshot.entries.some(entry => entry.kind === 'directory' && entry.path === folder)))) return false
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    const operation = this.operation
+    const content = 'views:\n  - type: table\n    name: Table\n'
+    for (let index = 1; index <= 100; index += 1) {
+      const path = `${folder === '' ? '' : `${folder}/`}Untitled${index === 1 ? '' : ` ${String(index)}`}.base`
+      try {
+        const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content, expectedVault: vault, path }))
+        if (created.status !== 'created' || created.generation !== vault.generation || created.path !== path) return false
+        if (!sameVault(this.snapshot.vault, vault) || this.operation !== operation) {
+          if (sameVault(this.snapshot.vault, vault)) this.update({ message: `${path} created; your current page was left untouched.` })
+          return false
+        }
+        await this.refreshTree(vault)
+        return this.operation === operation && sameVault(this.snapshot.vault, vault) && await this.select(path)
+      } catch (error) {
+        if (error instanceof RemoteCallError && error.code === 'exists') continue
+        if (sameVault(this.snapshot.vault, vault)) this.update({ message: `Could not confirm whether the Base was created. Refresh Files before retrying.` })
+        return false
+      }
+    }
+    this.update({ message: 'No available Base name was found.' })
+    return false
+  }
+
   async createBuiltinTemplateNote(name: keyof typeof BUILTIN_TEMPLATES): Promise<boolean> {
     const vault = this.snapshot.vault
     if (vault === null) return false
@@ -4410,6 +4438,7 @@ export interface TockTutorRouteViewProps {
   onActivateTab(paneId: string, path: string): void
   onApplyOrganization?(): void
   onBack?(): void
+  onNewBase?(folder: string): void
   onBaseCopy?(request: ExecutableBaseCopyRequest): void
   onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> | boolean | void
   onBaseExport?(request: ExecutableBaseExportRequest): void
@@ -5311,6 +5340,7 @@ function TreeEntries(props: {
   entries: readonly VaultTreeEntry[]
   menuPath?: string | undefined
   onContextMenu?: ((path: string, anchor: NoteMenuAnchor) => void) | undefined
+  onFolderContextMenu?: ((folder: string, anchor: NoteMenuAnchor) => void) | undefined
   onSelect(path: string): void
   path: string | null
   prefix?: string
@@ -5328,12 +5358,14 @@ function TreeEntries(props: {
   return children.map(entry => entry.kind === 'directory' ? (
     <li className="tocktutor-tree-directory" key={entry.path}>
       <details className="group/folder" data-tree-directory={entry.path} open>
-        <summary className="tocktutor-tree-row grid min-h-7 w-full cursor-pointer list-none grid-cols-[12px_minmax(0,1fr)] items-center gap-[7px] rounded bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [&::-webkit-details-marker]:hidden [&>svg]:size-3 group-open/folder:[&>svg]:rotate-90" title={entry.path}>
+        <summary className="tocktutor-tree-row grid min-h-7 w-full cursor-pointer list-none grid-cols-[12px_minmax(0,1fr)] items-center gap-[7px] rounded bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [&::-webkit-details-marker]:hidden [&>svg]:size-3 group-open/folder:[&>svg]:rotate-90" title={entry.path}
+          onContextMenu={event => { if (!props.onFolderContextMenu) return; event.preventDefault(); props.onFolderContextMenu(entry.path, { x: event.clientX, y: event.clientY, row: event.currentTarget }) }}
+          onKeyDown={event => { if (!props.onFolderContextMenu || !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return; event.preventDefault(); const box = event.currentTarget.getBoundingClientRect(); props.onFolderContextMenu(entry.path, { x: box.left, y: box.bottom, row: event.currentTarget }) }} tabIndex={0}>
           <WorkbenchGlyph kind="collapse" />
           <span className="truncate">{fileName(entry.path)}</span>
         </summary>
         <ul className="my-0 mr-0 ml-[11px] list-none border-l border-[var(--tt-border)] py-0 pr-0 pl-1">
-          <TreeEntries entries={props.entries} menuPath={props.menuPath} onContextMenu={props.onContextMenu} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} revealPath={props.revealPath} />
+          <TreeEntries entries={props.entries} menuPath={props.menuPath} onContextMenu={props.onContextMenu} onFolderContextMenu={props.onFolderContextMenu} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} revealPath={props.revealPath} />
         </ul>
       </details>
     </li>
@@ -5515,6 +5547,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [noteAction, setNoteAction] = useState<'move' | 'rename' | 'property' | null>(null)
   const [bookmarkDialog, setBookmarkDialog] = useState<{ mode: 'create' } | { id: string; mode: 'edit' } | null>(null)
   const [sidebarMenu, setSidebarMenu] = useState<{ target: NoteTarget; anchor: NoteMenuAnchor } | null>(null)
+  const [folderMenu, setFolderMenu] = useState<{ folder: string; anchor: NoteMenuAnchor } | null>(null)
   const [sidebarDialog, setSidebarDialog] = useState<{ target: NoteTarget; action: 'rename' | 'move' | 'bookmark' | 'merge' } | null>(null)
   const [mergeOpen, setMergeOpen] = useState(false)
   const [mergeRecoveryOpen, setMergeRecoveryOpen] = useState(false)
@@ -5872,6 +5905,12 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const sidebarTarget = sidebarDialog?.target
   const sidebarBookmarks = noteBookmarksForPath(snapshot.bookmarks ?? [], sidebarTarget?.path ?? null)
   const noteDialogs = <>
+    {folderMenu && <DropdownMenu open modal={false} onOpenChange={open => { if (!open) setFolderMenu(null) }}>
+      <DropdownMenuTrigger aria-hidden tabIndex={-1} className="pointer-events-none fixed size-0 border-0 p-0 opacity-0" style={{ left: folderMenu.anchor.x, top: folderMenu.anchor.y }} />
+      <DropdownMenuContent unstyled portalled={false} aria-label="Folder Actions" className="min-w-40 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-1.5 text-foreground shadow-xl" sideOffset={0} collisionPadding={8} onCloseAutoFocus={event => { event.preventDefault(); if (folderMenu.anchor.row.isConnected) folderMenu.anchor.row.focus() }}>
+        <DropdownMenuItem onSelect={() => props.onNewBase?.(folderMenu.folder)}><Plus aria-hidden="true" /><span>New Base</span></DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>}
     {sidebarMenu && <SidebarNoteMenu anchor={sidebarMenu.anchor} bookmarked={hasNoteBookmark(snapshot.bookmarks ?? [], sidebarMenu.target.path)} markdown={documentKind(sidebarMenu.target.path) === 'markdown'} nativeAvailable={!!props.nativeNoteActions?.runTarget && !props.nativeNoteActions.disabled && sameVault(props.nativeNoteActions.vault, sidebarMenu.target.vault)} onAction={sidebarAction} onClose={() => setSidebarMenu(null)} />}
     {sidebarTarget && sidebarDialog && props.paneController && (sidebarDialog.action === 'rename' || sidebarDialog.action === 'move') && <NoteValueDialog
       key={`${sidebarTarget.vault.id}:${sidebarTarget.vault.generation}:${sidebarTarget.path}:${sidebarDialog.action}`}
@@ -6330,6 +6369,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         >
           <header className="tocktutor-sidebar-header flex items-center border-b border-[var(--tt-border)] px-2.5">
             <h1 className="m-0 text-sm font-semibold">{showSidebarSearch ? 'Search' : 'Files'}</h1>
+            {!showSidebarSearch && <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild><Button unstyled aria-label="Add to Files" className="ml-auto flex size-7 items-center justify-center rounded border-0 bg-transparent p-0 hover:bg-[var(--tt-selected)] [-webkit-app-region:no-drag]" disabled={!snapshot.vault} type="button"><Plus aria-hidden="true" /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end" unstyled portalled={false} className="min-w-40 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-1.5 text-foreground shadow-xl">
+                <DropdownMenuItem disabled={!props.onNewNote} onSelect={() => props.onNewNote?.()}><FileText aria-hidden="true" /><span>New Note</span></DropdownMenuItem>
+                <DropdownMenuItem disabled={!props.onNewBase} onSelect={() => props.onNewBase?.('')}><Plus aria-hidden="true" /><span>New Base</span></DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>}
           </header>
           <div className="tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]">
             {showSidebarSearch ? <SidebarSearch snapshot={snapshot} onChange={props.onSearchChange} onRun={props.onRunSearch} onLoadMore={props.onLoadMoreSearch} onSelect={props.onSelectSearchMatch} /> : <nav aria-label="Vault Notes" ref={treeRef}>
@@ -6338,7 +6384,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">{snapshot.message}</Alert>}
               {snapshot.phase === 'ready' && documents.length === 0 && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No supported notes found.</p>}
               <ul className="tocktutor-tree m-0 list-none p-0">
-                <TreeEntries menuPath={sidebarMenu?.target.path} onContextMenu={props.paneController ? (path, anchor) => { if (snapshot.vault) setSidebarMenu({ target: { path, vault: snapshot.vault }, anchor }) } : undefined} entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} revealPath={revealPath} />
+                <TreeEntries menuPath={sidebarMenu?.target.path} onContextMenu={props.paneController ? (path, anchor) => { if (snapshot.vault) setSidebarMenu({ target: { path, vault: snapshot.vault }, anchor }) } : undefined} onFolderContextMenu={props.onNewBase ? (folder, anchor) => setFolderMenu({ folder, anchor }) : undefined} entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} revealPath={revealPath} />
               </ul>
             </nav>}
           </div>
@@ -6680,6 +6726,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onMoveCanvas={(nodeId, deltaX, deltaY) => { controller.moveCanvasNode(nodeId, deltaX, deltaY) }}
         onMoveTab={(paneId, path, direction) => { controller.moveTab(paneId, path, direction) }}
         onNewNote={() => { void controller.handleDispatch({ action: 'new', kind: 'quick-action', operationId: crypto.randomUUID() }) }}
+        onNewBase={folder => { void controller.createBase(folder) }}
         onOpenBookmark={id => { void controller.openBookmark(id) }}
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
         onOpenExternalUrl={url => { setExternalUrl(url) }}

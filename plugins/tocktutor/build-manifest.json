@@ -1619,11 +1619,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "12e5590470830c05e6c6dff0b0b91556c5ae4de5971492470b89ff052d87ba69"
+      "sha256": "d567aae7ec1c578f7ed8872200c1551faa00f2867c612b862e9d9217c64e2db4"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "9b80e3727a517e082486543b8742a2a2363b78e3dd43f320fe24a454d03937c6"
+      "sha256": "7dc4567a0d1678b1fc577d4dcba4b2d6e6b314a4689a989dc183d3a03a846528"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -2499,19 +2499,19 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.d.ts",
-      "sha256": "bb7deee26a90b63c61ac16b51e6b252dc427a54c82bd25f95d0ab1797354c5ed"
+      "sha256": "a2256543aad7f01027a26666d79f31b6b8fbe43d7706dd0166a606b66327f287"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.d.ts.map",
-      "sha256": "06690904fd2cf3198e47f5f326ef0c1dc94f4798ab7a95ac738c5a7ee8f42c06"
+      "sha256": "2925a850bafaa0b8e34ca94eaacb06ac68e03a328710ce80f21a9becd7e90752"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js",
-      "sha256": "3a6ea9efa4b3466540a4943568e3290774639fd8259f03a1d7c591c2eef4147e"
+      "sha256": "361e9a3c93e254986723981d6974dfa5fa23c363409ac67129cca96d4ede13fe"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/route.js.map",
-      "sha256": "a50112f9efed13076cb6ece1abb3afe5975b4b757d3b3ac7f5fd86570934a0e8"
+      "sha256": "1d0f3218c2fcf0b82a6c9620a57051a5a5a9a9257c208dd3139479ef5f0c6c9a"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/search-intelligence.d.ts",
@@ -3147,7 +3147,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/route.tsx",
-      "sha256": "c99a9a9aef0757f3b5d408caa61c805f6b1417bc2b8bdbda79aad4a14cf3b515"
+      "sha256": "0ea62b866e0d5915a0780ab5566ea18cfd6ada848e35517ba4a1ecc9330c8e9e"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/search-intelligence.ts",

@@ -414,6 +414,7 @@ export declare class WorkbenchRouteController {
     moveCanvasNode(nodeId: string, deltaX: number, deltaY: number): void;
     convertActiveNote(): boolean;
     extractActiveSelection(): Promise<boolean>;
+    createBase(folder?: string): Promise<boolean>;
     createBuiltinTemplateNote(name: keyof typeof BUILTIN_TEMPLATES): Promise<boolean>;
     insertCurrentDateTime(kind: 'date' | 'time', insertRichText?: (text: string) => boolean): boolean;
     prepareOrganization(): Promise<boolean>;
@@ -461,6 +462,7 @@ export interface TockTutorRouteViewProps {
     onActivateTab(paneId: string, path: string): void;
     onApplyOrganization?(): void;
     onBack?(): void;
+    onNewBase?(folder: string): void;
     onBaseCopy?(request: ExecutableBaseCopyRequest): void;
     onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> | boolean | void;
     onBaseExport?(request: ExecutableBaseExportRequest): void;
