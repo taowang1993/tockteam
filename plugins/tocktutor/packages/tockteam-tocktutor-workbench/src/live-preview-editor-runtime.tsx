@@ -25,6 +25,7 @@ import { renderMarkdownHtml } from './rich-markdown.ts'
 import { classifyExternalEmbed } from './external-embeds.ts'
 import { collectEmbedTargets } from './embeds.ts'
 import { SlashMenu, slashMenuPlugin } from './live-preview-slash-menu.tsx'
+import { SlashLinkDialog } from './slash-link-dialog.tsx'
 import { BlockHandle, block, configureBlockHandle } from './live-preview-block-handle.tsx'
 
 const searchKey = new PluginKey('tocktutor-crepe-search')
@@ -425,7 +426,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
   return <div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={`tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`}>
     {error && <p role="alert">{error}</p>}
     <div ref={root} />
-    {slashMenu && <SlashMenu menu={slashMenu} />}
+    {slashMenu && (slashMenu.form ? <SlashLinkDialog action={slashMenu.action} /> : <SlashMenu menu={slashMenu} />)}
     {blockHandle && <BlockHandle handle={blockHandle} />}
   </div>
 }

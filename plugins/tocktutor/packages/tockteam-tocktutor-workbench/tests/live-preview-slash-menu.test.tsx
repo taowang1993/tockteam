@@ -26,6 +26,49 @@ function type(view: any, text: string, position?: number) {
   })
 }
 
+it('inserts a web link at the invocation with one-step undo and no surrounding loss', async () => {
+  const { view, onChange } = await editor('# Before after\n')
+  type(view, '/url', 7)
+  fireEvent.click(await screen.findByRole('option', { name: 'Link', exact: true }))
+  expect(view.state.doc.firstChild.textContent).toBe('Before/url after')
+  fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'https://example.com/a?q=1&b=2' } })
+  fireEvent.change(screen.getByLabelText('Display Text'), { target: { value: 'A [link]' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Insert Link' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(onChange.mock.lastCall?.[0]).toBe('# Before[A \\[link\\]](https://example.com/a?q=1\\&b=2) after\n')
+  expect(document.activeElement).toBe(view.dom)
+  act(() => { undo(view.state, view.dispatch) })
+  expect(view.state.doc.firstChild.textContent).toBe('Before/url after')
+  act(() => { redo(view.state, view.dispatch) })
+  expect(view.state.doc.firstChild.textContent).toBe('BeforeA [link] after')
+})
+
+it('keeps invalid link drafts and cancels without changing the document', async () => {
+  const { view } = await editor('Text\n')
+  type(view, '/url', 5)
+  fireEvent.click(await screen.findByRole('option', { name: 'Link', exact: true }))
+  fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'javascript:alert(1)' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Insert Link' }))
+  expect((await screen.findByRole('alert')).textContent).toBe('Enter a valid public HTTP or HTTPS URL.')
+  expect(view.state.doc.firstChild.textContent).toBe('Text/url')
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(view.state.doc.firstChild.textContent).toBe('Text/url')
+})
+
+it('invalidates a pending link form on content edits and peer source replacement', async () => {
+  const { view, rerender, editorViewRef } = await editor('Text\n')
+  type(view, '/url', 5)
+  fireEvent.click(await screen.findByRole('option', { name: 'Link', exact: true }))
+  act(() => view.dispatch(view.state.tr.insertText('!', 1)))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  type(view, '/url', 1)
+  fireEvent.click(await screen.findByRole('option', { name: 'Link', exact: true }))
+  rerender(<LivePreviewEditor content={'Other Note\n'} editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(view.state.doc.firstChild.textContent).toBe('Other Note')
+})
+
 it.each([
   ['text', 'paragraph', undefined], ['h1', 'heading', 1], ['h3', 'heading', 3], ['h4', 'heading', 4], ['h5', 'heading', 5], ['h6', 'heading', 6],
   ['quote', 'blockquote', undefined], ['bullet', 'bullet_list', undefined], ['numbered', 'ordered_list', undefined],
@@ -118,12 +161,13 @@ it('keeps keyboard selection visible while navigating beyond the menu viewport',
     type(view, '/', 5)
     await screen.findByRole('listbox', { name: 'Block Commands' })
     scrollIntoView.mockClear()
-    for (let index = 0; index < 11; index++) fireEvent.keyDown(view.dom, { key: 'ArrowDown' })
     const selected = screen.getByRole('option', { name: 'Task List' })
+    const steps = screen.getAllByRole('option').indexOf(selected)
+    for (let index = 0; index < steps; index++) fireEvent.keyDown(view.dom, { key: 'ArrowDown' })
     expect(selected.getAttribute('aria-selected')).toBe('true')
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
     expect(scrollIntoView.mock.instances.at(-1)).toBe(selected)
-    for (let index = 0; index < 11; index++) fireEvent.keyDown(view.dom, { key: 'ArrowUp' })
+    for (let index = 0; index < steps; index++) fireEvent.keyDown(view.dom, { key: 'ArrowUp' })
     expect(scrollIntoView.mock.instances).toContain(screen.getByText('Basic Blocks').closest('[cmdk-group-heading]'))
     expect(document.activeElement).toBe(view.dom)
   } finally {

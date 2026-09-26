@@ -7,7 +7,7 @@ import { findWrapping } from '@milkdown/prose/transform'
 import { createTable } from '@milkdown/preset-gfm'
 import { $prose } from '@milkdown/utils'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@tockteam/ui/command'
-import { Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Text, Quote, List, ListOrdered, ListTodo, Minus, Code, Image, Table, Sigma } from 'lucide-react'
+import { Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Text, Quote, List, ListOrdered, ListTodo, Minus, Code, Image, Table, Sigma, Link } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useLayoutEffect } from 'react'
 
@@ -22,6 +22,7 @@ const commands = [
   { id: 'h6', label: 'Heading 6', icon: Heading6, group: 'Basic Blocks' },
   { id: 'quote', label: 'Quote', icon: Quote, group: 'Basic Blocks' },
   { id: 'divider', label: 'Divider', icon: Minus, group: 'Basic Blocks' },
+  { id: 'link', label: 'Link', aliases: 'url', icon: Link, group: 'Basic Blocks', form: true },
   { id: 'bullet', label: 'Bulleted List', icon: List, group: 'Lists' },
   { id: 'numbered', label: 'Numbered List', aliases: 'ordered', icon: ListOrdered, group: 'Lists' },
   { id: 'todo', label: 'Task List', icon: ListTodo, group: 'Lists' },
@@ -72,12 +73,16 @@ function transaction(state, invocation, id, ctx) {
 function entries(state, invocation, ctx) {
   const query = state.doc.textBetween(invocation.from + Number(invocation.slash), invocation.to).trim().toLowerCase()
   return commands.filter(item => `${item.id} ${item.label} ${item.aliases ?? ''}`.toLowerCase().includes(query)
-    && transaction(state, invocation, item.id, ctx))
+    && (item.form ? state.selection.$from.parent.type.allowsMarkType(state.schema.marks.link) : transaction(state, invocation, item.id, ctx)))
 }
 
 function apply(view, id, ctx) {
   const invocation = slashKey.getState(view.state)
   if (view.isDestroyed || !invocation || !view.editable || !eligible(view.state) || !entries(view.state, invocation, ctx).some(item => item.id === id)) return
+  if (commands.find(item => item.id === id)?.form) {
+    view.dispatch(view.state.tr.setMeta(slashKey, { ...invocation, form: id }))
+    return
+  }
   const tr = transaction(view.state, invocation, id, ctx)
   if (!tr) return
   view.dispatch(closeHistory(tr))
@@ -94,6 +99,7 @@ export function slashMenuPlugin(publish) {
         const explicit = tr.getMeta(slashKey)
         if (explicit !== undefined) return explicit
         if (!previous) return null
+        if (previous.form) return tr.docChanged ? null : previous
         const from = tr.mapping.mapResult(previous.from, -1)
         const to = tr.mapping.map(previous.to, 1)
         if (from.deleted || !eligible({ selection: tr.selection }) || tr.selection.from !== to
@@ -112,7 +118,7 @@ export function slashMenuPlugin(publish) {
       },
       handleKeyDown(view, event) {
         const invocation = slashKey.getState(view.state)
-        if (!invocation || event.isComposing || view.composing || event.keyCode === 229) return false
+        if (!invocation || invocation.form || event.isComposing || view.composing || event.keyCode === 229) return false
         const items = entries(view.state, invocation, ctx)
         const selected = Math.max(0, items.findIndex(item => item.id === invocation.selected))
         if (event.key === 'Escape' || event.key === 'Tab' || ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
@@ -134,7 +140,7 @@ export function slashMenuPlugin(publish) {
       handleDOMEvents: {
         paste(view) { if (slashKey.getState(view.state)) view.dispatch(view.state.tr.setMeta(slashKey, null)); return false },
         compositionstart(view) { if (slashKey.getState(view.state)) view.dispatch(view.state.tr.setMeta(slashKey, null)); return false },
-        blur(view) { if (slashKey.getState(view.state)) view.dispatch(view.state.tr.setMeta(slashKey, null)); return false },
+        blur(view) { if (slashKey.getState(view.state) && !slashKey.getState(view.state).form) view.dispatch(view.state.tr.setMeta(slashKey, null)); return false },
       },
     },
     view(view) {
@@ -149,16 +155,39 @@ export function slashMenuPlugin(publish) {
             element.style.setProperty('--tocktutor-slash-height', `${Math.max(0, availableHeight - 2)}px`)
           } }),
         ] }, 
-        shouldShow: view => !!slashKey.getState(view.state) && view.editable && view.hasFocus(),
+        shouldShow: view => !!slashKey.getState(view.state) && !slashKey.getState(view.state).form && view.editable && view.hasFocus(),
       })
       const clearARIA = () => { for (const name of ['aria-controls', 'aria-activedescendant', 'aria-autocomplete', 'aria-haspopup']) view.dom.removeAttribute(name) }
       const dismiss = event => {
-        if (!element.contains(event.target) && slashKey.getState(view.state)) view.dispatch(view.state.tr.setMeta(slashKey, null))
+        if (!element.contains(event.target) && slashKey.getState(view.state) && !slashKey.getState(view.state).form) view.dispatch(view.state.tr.setMeta(slashKey, null))
       }
       document.addEventListener('pointerdown', dismiss)
       const update = () => {
         const invocation = slashKey.getState(view.state)
-        if (!invocation || !view.editable || !view.hasFocus()) { provider.hide(); clearARIA(); publish(null); return }
+        if (!invocation || !view.editable) { provider.hide(); clearARIA(); publish(null); return }
+        if (invocation.form) {
+          provider.hide(); clearARIA()
+          let restore = false
+          const current = () => !view.isDestroyed && view.editable && slashKey.getState(view.state) === invocation
+          publish({ form: invocation.form, action: {
+            cancel() { if (current()) { restore = true; view.dispatch(view.state.tr.setMeta(slashKey, null)) } },
+            restoreFocus() { if (restore && !view.isDestroyed && view.editable) view.focus() },
+            insert(href, label) {
+              if (!current()) return false
+              const marks = view.state.doc.resolve(invocation.from).marks().filter(mark => mark.type.name !== 'link')
+              const node = view.state.schema.text(label, [...marks, view.state.schema.marks.link.create({ href })])
+              const tr = view.state.tr.replaceWith(invocation.from, invocation.to, node)
+              tr.setSelection(TextSelection.create(tr.doc, invocation.from + node.nodeSize)).setStoredMarks([]).setMeta(slashKey, null).scrollIntoView()
+              restore = true
+              view.dispatch(closeHistory(tr))
+              if (slashKey.getState(view.state) === invocation) { restore = false; return false }
+              view.dispatch(closeHistory(view.state.tr))
+              return true
+            },
+          } })
+          return
+        }
+        if (!view.hasFocus()) { provider.hide(); clearARIA(); publish(null); return }
         const items = entries(view.state, invocation, ctx)
         const selected = items.find(item => item.id === invocation.selected)?.id ?? items[0]?.id ?? ''
         publish({ element, view, provider, items, selected,
