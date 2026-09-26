@@ -99,6 +99,7 @@ Use a bounded Playwright browser session (including Playwright’s Electron/CDP 
 - Prefer focused tests and browser or component verification while iterating. On macOS, run `pnpm test:launcher:electron` only when a change affects Electron, the launcher, preload or IPC behavior, packaging, or explicitly requires a final Desktop smoke; never run it for an isolated browser UI styling change. Run `pnpm test:launcher:installed` only after focused checks pass and only once per final commit; never run installed smokes concurrently.
 - Run local installed smokes with `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT` inside a `.noindex` cache directory to reduce Spotlight churn.
 - Write new reports in `.beads/reports`.
+- In review and audit reports, state the total number of confirmed findings and present each as a separate numbered list item, ranked from highest to lowest severity; never use tables for findings or fixed findings. Include each finding's severity, impact, affected path, and fix/verification status. Keep unresolved or unverified concerns separate, and do not count environment-blocked checks as confirmed bugs.
 - Never push without explicit authority from the user, orchestrator, or active repository profile. Never squash-merge pull requests; use merge commits.
 - Never modify `AGENTS.md` or add Markdown files at the repository root without explicit user permission.
 - Never create scratch or context files in the repository root; use `/tmp` for disposable notes and `.beads/plans` or `.beads/reports` only for requested durable work.
