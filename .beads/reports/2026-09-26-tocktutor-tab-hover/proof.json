@@ -1,0 +1,579 @@
+{
+  "themes": [
+    {
+      "name": "dark",
+      "state": {
+        "theme": "dark",
+        "htmlSkin": null,
+        "skin": null
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison in Live Preview; Original inactive in idle and hover captures",
+      "idle": {
+        "background": "rgba(0, 0, 0, 0)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "0",
+        "pointerEvents": "none",
+        "focused": false,
+        "textContrast": 11.067896561378452,
+        "closeContrast": 11.067896561378452,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "hovered": {
+        "background": "rgb(53, 54, 56)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 8.030301396556194,
+        "closeContrast": 8.030301396556194,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "active": {
+        "background": "rgb(21, 21, 23)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "0px",
+        "before": "block",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 17.45095194843412,
+        "closeContrast": 17.45095194843412,
+        "box": {
+          "x": 458.3046875,
+          "y": 8,
+          "width": 220,
+          "height": 34,
+          "top": 8,
+          "right": 678.3046875,
+          "bottom": 42,
+          "left": 458.3046875
+        }
+      },
+      "checks": [
+        "Open in New Tab deactivates the previous tab",
+        "inactive tab is plain without a rectangle",
+        "inactive close is hidden and cannot intercept clicks",
+        "active tab retains its shape and close button",
+        "hover reveals rounded highlight and close",
+        "hover does not move or resize tabs",
+        "text and close contrast across tab states",
+        "pointer exit hides the inactive close",
+        "touch users retain a visible close control",
+        "keyboard focus reveals the inactive close",
+        "arrow navigation restores the active tab",
+        "closing an inactive tab preserves the active note",
+        "exact viewport and no runtime errors"
+      ],
+      "errors": []
+    },
+    {
+      "name": "light",
+      "state": {
+        "theme": "light",
+        "htmlSkin": null,
+        "skin": null
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison in Live Preview; Original inactive in idle and hover captures",
+      "idle": {
+        "background": "rgba(0, 0, 0, 0)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "0",
+        "pointerEvents": "none",
+        "focused": false,
+        "textContrast": 5.322704663147297,
+        "closeContrast": 5.322704663147297,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "hovered": {
+        "background": "rgb(255, 255, 255)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 5.799289506181867,
+        "closeContrast": 5.799289506181867,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "active": {
+        "background": "rgb(255, 255, 255)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "0px",
+        "before": "block",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 18.896452054380127,
+        "closeContrast": 18.896452054380127,
+        "box": {
+          "x": 458.3046875,
+          "y": 8,
+          "width": 220,
+          "height": 34,
+          "top": 8,
+          "right": 678.3046875,
+          "bottom": 42,
+          "left": 458.3046875
+        }
+      },
+      "checks": [
+        "Open in New Tab deactivates the previous tab",
+        "inactive tab is plain without a rectangle",
+        "inactive close is hidden and cannot intercept clicks",
+        "active tab retains its shape and close button",
+        "hover reveals rounded highlight and close",
+        "hover does not move or resize tabs",
+        "text and close contrast across tab states",
+        "pointer exit hides the inactive close",
+        "touch users retain a visible close control",
+        "keyboard focus reveals the inactive close",
+        "arrow navigation restores the active tab",
+        "closing an inactive tab preserves the active note",
+        "exact viewport and no runtime errors"
+      ],
+      "errors": []
+    },
+    {
+      "name": "deep-current",
+      "state": {
+        "theme": "dark",
+        "htmlSkin": null,
+        "skin": "tockteam-skin-deep-current"
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison in Live Preview; Original inactive in idle and hover captures",
+      "idle": {
+        "background": "rgba(0, 0, 0, 0)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "0",
+        "pointerEvents": "none",
+        "focused": false,
+        "textContrast": 12.211092938528438,
+        "closeContrast": 12.211092938528438,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "hovered": {
+        "background": "rgb(20, 52, 69)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 8.909062145138456,
+        "closeContrast": 8.909062145138456,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "active": {
+        "background": "rgb(11, 34, 48)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "0px",
+        "before": "block",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 14.999134677756654,
+        "closeContrast": 14.999134677756654,
+        "box": {
+          "x": 458.3046875,
+          "y": 8,
+          "width": 220,
+          "height": 34,
+          "top": 8,
+          "right": 678.3046875,
+          "bottom": 42,
+          "left": 458.3046875
+        }
+      },
+      "checks": [
+        "Open in New Tab deactivates the previous tab",
+        "inactive tab is plain without a rectangle",
+        "inactive close is hidden and cannot intercept clicks",
+        "active tab retains its shape and close button",
+        "hover reveals rounded highlight and close",
+        "hover does not move or resize tabs",
+        "text and close contrast across tab states",
+        "pointer exit hides the inactive close",
+        "touch users retain a visible close control",
+        "keyboard focus reveals the inactive close",
+        "arrow navigation restores the active tab",
+        "closing an inactive tab preserves the active note",
+        "exact viewport and no runtime errors"
+      ],
+      "errors": []
+    },
+    {
+      "name": "jade-circuit",
+      "state": {
+        "theme": "dark",
+        "htmlSkin": null,
+        "skin": "tockteam-skin-jade-circuit"
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison in Live Preview; Original inactive in idle and hover captures",
+      "idle": {
+        "background": "rgba(0, 0, 0, 0)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "0",
+        "pointerEvents": "none",
+        "focused": false,
+        "textContrast": 12.236357614342271,
+        "closeContrast": 12.236357614342271,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "hovered": {
+        "background": "rgb(21, 57, 47)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 8.621892294285246,
+        "closeContrast": 8.621892294285246,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "active": {
+        "background": "rgb(11, 36, 30)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "0px",
+        "before": "block",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 15.216209781330681,
+        "closeContrast": 15.216209781330681,
+        "box": {
+          "x": 458.3046875,
+          "y": 8,
+          "width": 220,
+          "height": 34,
+          "top": 8,
+          "right": 678.3046875,
+          "bottom": 42,
+          "left": 458.3046875
+        }
+      },
+      "checks": [
+        "Open in New Tab deactivates the previous tab",
+        "inactive tab is plain without a rectangle",
+        "inactive close is hidden and cannot intercept clicks",
+        "active tab retains its shape and close button",
+        "hover reveals rounded highlight and close",
+        "hover does not move or resize tabs",
+        "text and close contrast across tab states",
+        "pointer exit hides the inactive close",
+        "touch users retain a visible close control",
+        "keyboard focus reveals the inactive close",
+        "arrow navigation restores the active tab",
+        "closing an inactive tab preserves the active note",
+        "exact viewport and no runtime errors"
+      ],
+      "errors": []
+    },
+    {
+      "name": "porcelain",
+      "state": {
+        "theme": "light",
+        "htmlSkin": null,
+        "skin": "tockteam-skin-porcelain"
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison in Live Preview; Original inactive in idle and hover captures",
+      "idle": {
+        "background": "rgba(0, 0, 0, 0)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "0",
+        "pointerEvents": "none",
+        "focused": false,
+        "textContrast": 6.174776535795522,
+        "closeContrast": 6.174776535795522,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "hovered": {
+        "background": "rgb(229, 239, 236)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 6.109794833814774,
+        "closeContrast": 6.109794833814774,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "active": {
+        "background": "rgb(248, 251, 250)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "0px",
+        "before": "block",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 13.277022340492914,
+        "closeContrast": 13.277022340492914,
+        "box": {
+          "x": 458.3046875,
+          "y": 8,
+          "width": 220,
+          "height": 34,
+          "top": 8,
+          "right": 678.3046875,
+          "bottom": 42,
+          "left": 458.3046875
+        }
+      },
+      "checks": [
+        "Open in New Tab deactivates the previous tab",
+        "inactive tab is plain without a rectangle",
+        "inactive close is hidden and cannot intercept clicks",
+        "active tab retains its shape and close button",
+        "hover reveals rounded highlight and close",
+        "hover does not move or resize tabs",
+        "text and close contrast across tab states",
+        "pointer exit hides the inactive close",
+        "touch users retain a visible close control",
+        "keyboard focus reveals the inactive close",
+        "arrow navigation restores the active tab",
+        "closing an inactive tab preserves the active note",
+        "exact viewport and no runtime errors"
+      ],
+      "errors": []
+    },
+    {
+      "name": "ember-dusk",
+      "state": {
+        "theme": "dark",
+        "htmlSkin": null,
+        "skin": "tockteam-skin-ember-dusk"
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison in Live Preview; Original inactive in idle and hover captures",
+      "idle": {
+        "background": "rgba(0, 0, 0, 0)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "0",
+        "pointerEvents": "none",
+        "focused": false,
+        "textContrast": 10.5301617052959,
+        "closeContrast": 10.5301617052959,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "hovered": {
+        "background": "rgb(64, 40, 58)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "5px",
+        "before": "none",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 7.979175577751589,
+        "closeContrast": 7.979175577751589,
+        "box": {
+          "x": 328,
+          "y": 11,
+          "width": 126.3046875,
+          "height": 28,
+          "top": 11,
+          "right": 454.3046875,
+          "bottom": 39,
+          "left": 328
+        }
+      },
+      "active": {
+        "background": "rgb(42, 27, 39)",
+        "border": "rgba(0, 0, 0, 0)",
+        "radius": "0px",
+        "before": "block",
+        "closeOpacity": "1",
+        "pointerEvents": "auto",
+        "focused": false,
+        "textContrast": 14.716911835252361,
+        "closeContrast": 14.716911835252361,
+        "box": {
+          "x": 458.3046875,
+          "y": 8,
+          "width": 220,
+          "height": 34,
+          "top": 8,
+          "right": 678.3046875,
+          "bottom": 42,
+          "left": 458.3046875
+        }
+      },
+      "checks": [
+        "Open in New Tab deactivates the previous tab",
+        "inactive tab is plain without a rectangle",
+        "inactive close is hidden and cannot intercept clicks",
+        "active tab retains its shape and close button",
+        "hover reveals rounded highlight and close",
+        "hover does not move or resize tabs",
+        "text and close contrast across tab states",
+        "pointer exit hides the inactive close",
+        "touch users retain a visible close control",
+        "keyboard focus reveals the inactive close",
+        "arrow navigation restores the active tab",
+        "closing an inactive tab preserves the active note",
+        "exact viewport and no runtime errors"
+      ],
+      "errors": []
+    }
+  ],
+  "stoppedRootPids": [
+    18469,
+    23446,
+    26699,
+    27277,
+    27801,
+    28261,
+    28735,
+    29213
+  ],
+  "remaining": []
+}
