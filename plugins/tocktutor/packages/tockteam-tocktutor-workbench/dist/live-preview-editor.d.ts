@@ -24,6 +24,7 @@ export interface LivePreviewEditorProps {
     editorViewRef?: MutableRefObject<unknown | null>;
     onAddProperty?: (key: string) => boolean;
     onMarkdownChange: (markdown: string) => void;
+    onRenameTitle?: (title: string) => Promise<boolean> | boolean;
     onSearchState?: (state: EditorSearchState) => void;
     onOpenExternalUrl?: (url: string) => void;
     onSetProperty?: (key: string, value: PropertyValue) => boolean;
@@ -41,6 +42,7 @@ export declare function MarkdownDocumentHeader(props: {
     editableProperties?: boolean;
     className?: string;
     onAddProperty?: (key: string) => boolean;
+    onRenameTitle?: (title: string) => Promise<boolean> | boolean;
     onSetProperty?: (key: string, value: PropertyValue) => boolean;
     source: string;
     title?: string;

@@ -50,7 +50,7 @@ function titleError(value) {
         return 'Note titles must be 200 characters or fewer.';
     return null;
 }
-function SourceTitleEditor(props) {
+export function NoteTitleEditor(props) {
     const errorId = useId();
     const [error, setError] = useState(null);
     const [pending, setPending] = useState(false);
@@ -88,49 +88,58 @@ function SourceTitleEditor(props) {
         pendingRef.current = true;
         setPending(true);
         setError(null);
-        void Promise.resolve()
-            .then(() => props.onRenameTitle?.(normalized))
-            .then(success => {
-            if (success === true) {
-                setValue(normalized);
-                setError(null);
-            }
-            else {
+        // Invoke before a blur-triggering tab click can change the active note.
+        try {
+            void Promise.resolve(props.onRenameTitle(normalized))
+                .then(success => {
+                if (success === true) {
+                    setValue(normalized);
+                    setError(null);
+                }
+                else {
+                    restore();
+                    setError('The note could not be renamed.');
+                }
+            }, () => {
                 restore();
                 setError('The note could not be renamed.');
-            }
-        }, () => {
-            restore();
-            setError('The note could not be renamed.');
-        })
-            .finally(() => {
+            })
+                .finally(() => {
+                pendingRef.current = false;
+                setPending(false);
+            });
+        }
+        catch {
             pendingRef.current = false;
             setPending(false);
-        });
+            restore();
+            setError('The note could not be renamed.');
+        }
     };
-    return (_jsxs("div", { className: "mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]", children: [_jsx(Input, { "aria-describedby": error === null ? undefined : errorId, "aria-invalid": error === null ? undefined : true, "aria-label": "Note title", autoComplete: "off", className: "h-auto w-full border-0 bg-transparent p-0 text-[30px] leading-tight font-[650] tracking-[-.01em] text-[var(--tt-text)] outline-none focus-visible:ring-0", disabled: pending, readOnly: props.onRenameTitle === undefined, onBlur: event => {
-                    if (skipBlurRef.current) {
-                        skipBlurRef.current = false;
-                        return;
-                    }
-                    commit(event.currentTarget.value);
-                }, onChange: event => { setValue(event.currentTarget.value); setError(null); }, onKeyDown: event => {
-                    if (event.key === 'Escape') {
-                        event.preventDefault();
-                        skipBlurRef.current = true;
-                        restore();
-                        inputRef.current?.blur();
-                    }
-                    else if (event.key === 'Enter') {
-                        event.preventDefault();
-                        commit(event.currentTarget.value);
-                    }
-                }, ref: inputRef, spellCheck: false, type: "text", value: value }), error !== null && _jsx("p", { className: "mt-1 text-xs text-[var(--dsw-alias-state-error-primary)]", id: errorId, role: "alert", children: error })] }));
+    const input = _jsx(Input, { unstyled: props.compact === true, "aria-describedby": error === null ? undefined : errorId, "aria-invalid": error === null ? undefined : true, "aria-label": "Note title", autoComplete: "off", className: `h-auto w-full border-0 bg-transparent p-0 tracking-[-.01em] text-[var(--tt-text)] outline-none focus-visible:ring-0 ${props.compact ? 'text-[26px] leading-[31px] font-bold' : 'text-[30px] leading-tight font-[650]'}`, disabled: pending, readOnly: props.onRenameTitle === undefined, onBlur: event => {
+            if (skipBlurRef.current) {
+                skipBlurRef.current = false;
+                return;
+            }
+            commit(event.currentTarget.value);
+        }, onChange: event => { setValue(event.currentTarget.value); setError(null); }, onKeyDown: event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                skipBlurRef.current = true;
+                restore();
+                inputRef.current?.blur();
+            }
+            else if (event.key === 'Enter') {
+                event.preventDefault();
+                commit(event.currentTarget.value);
+            }
+        }, ref: inputRef, spellCheck: false, type: "text", value: value });
+    return (_jsxs("div", { className: props.compact ? 'mb-5 min-w-0' : 'mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]', children: [props.compact ? _jsx("h1", { "aria-label": value, className: "m-0", children: input }) : input, error !== null && _jsx("p", { className: "mt-1 text-xs text-[var(--dsw-alias-state-error-primary)]", id: errorId, role: "alert", children: error })] }));
 }
 export function SourceEditor(props) {
     const { className, onRenameTitle, title, ...runtimeProps } = props;
     return (_jsxs("div", { className: `tocktutor-source-surface flex h-full min-h-0 min-w-0 flex-1 flex-col ${className ?? ''}`, children: [title !== undefined && (onRenameTitle === undefined
-                ? _jsx(SourceTitleEditor, { title: title })
-                : _jsx(SourceTitleEditor, { onRenameTitle: onRenameTitle, title: title })), _jsx(Suspense, { fallback: _jsx("div", { "aria-label": props.ariaLabel ?? 'Markdown Source Editor', className: "min-h-0 min-w-0 flex-1", children: "Loading Source Editor\u2026" }), children: _jsx(LazySourceEditor, { ...runtimeProps, className: "min-h-0 min-w-0 flex-1" }) })] }));
+                ? _jsx(NoteTitleEditor, { title: title })
+                : _jsx(NoteTitleEditor, { onRenameTitle: onRenameTitle, title: title })), _jsx(Suspense, { fallback: _jsx("div", { "aria-label": props.ariaLabel ?? 'Markdown Source Editor', className: "min-h-0 min-w-0 flex-1", children: "Loading Source Editor\u2026" }), children: _jsx(LazySourceEditor, { ...runtimeProps, className: "min-h-0 min-w-0 flex-1" }) })] }));
 }
 //# sourceMappingURL=source-editor.js.map

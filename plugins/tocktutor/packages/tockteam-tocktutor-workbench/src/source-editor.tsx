@@ -100,7 +100,7 @@ function titleError(value: string): string | null {
   return null
 }
 
-function SourceTitleEditor(props: { onRenameTitle?: (title: string) => Promise<boolean> | boolean; title: string }): ReactNode {
+export function NoteTitleEditor(props: { compact?: boolean; onRenameTitle?: (title: string) => Promise<boolean> | boolean; title: string }): ReactNode {
   const errorId = useId()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -139,34 +139,40 @@ function SourceTitleEditor(props: { onRenameTitle?: (title: string) => Promise<b
     pendingRef.current = true
     setPending(true)
     setError(null)
-    void Promise.resolve()
-      .then(() => props.onRenameTitle?.(normalized))
-      .then(success => {
-        if (success === true) {
-          setValue(normalized)
-          setError(null)
-        } else {
+    // Invoke before a blur-triggering tab click can change the active note.
+    try {
+      void Promise.resolve(props.onRenameTitle(normalized))
+        .then(success => {
+          if (success === true) {
+            setValue(normalized)
+            setError(null)
+          } else {
+            restore()
+            setError('The note could not be renamed.')
+          }
+        }, () => {
           restore()
           setError('The note could not be renamed.')
-        }
-      }, () => {
-        restore()
-        setError('The note could not be renamed.')
-      })
-      .finally(() => {
-        pendingRef.current = false
-        setPending(false)
-      })
+        })
+        .finally(() => {
+          pendingRef.current = false
+          setPending(false)
+        })
+    } catch {
+      pendingRef.current = false
+      setPending(false)
+      restore()
+      setError('The note could not be renamed.')
+    }
   }
 
-  return (
-    <div className="mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]">
-      <Input
+  const input = <Input
+        unstyled={props.compact === true}
         aria-describedby={error === null ? undefined : errorId}
         aria-invalid={error === null ? undefined : true}
         aria-label="Note title"
         autoComplete="off"
-        className="h-auto w-full border-0 bg-transparent p-0 text-[30px] leading-tight font-[650] tracking-[-.01em] text-[var(--tt-text)] outline-none focus-visible:ring-0"
+        className={`h-auto w-full border-0 bg-transparent p-0 tracking-[-.01em] text-[var(--tt-text)] outline-none focus-visible:ring-0 ${props.compact ? 'text-[26px] leading-[31px] font-bold' : 'text-[30px] leading-tight font-[650]'}`}
         disabled={pending}
         readOnly={props.onRenameTitle === undefined}
         onBlur={event => {
@@ -193,6 +199,9 @@ function SourceTitleEditor(props: { onRenameTitle?: (title: string) => Promise<b
         type="text"
         value={value}
       />
+  return (
+    <div className={props.compact ? 'mb-5 min-w-0' : 'mx-auto w-[calc(100%-48px)] max-w-3xl pt-[18px]'}>
+      {props.compact ? <h1 aria-label={value} className="m-0">{input}</h1> : input}
       {error !== null && <p className="mt-1 text-xs text-[var(--dsw-alias-state-error-primary)]" id={errorId} role="alert">{error}</p>}
     </div>
   )
@@ -203,8 +212,8 @@ export function SourceEditor(props: SourceEditorProps): ReactNode {
   return (
     <div className={`tocktutor-source-surface flex h-full min-h-0 min-w-0 flex-1 flex-col ${className ?? ''}`}>
       {title !== undefined && (onRenameTitle === undefined
-        ? <SourceTitleEditor title={title} />
-        : <SourceTitleEditor onRenameTitle={onRenameTitle} title={title} />)}
+        ? <NoteTitleEditor title={title} />
+        : <NoteTitleEditor onRenameTitle={onRenameTitle} title={title} />)}
       <Suspense fallback={<div aria-label={props.ariaLabel ?? 'Markdown Source Editor'} className="min-h-0 min-w-0 flex-1">Loading Source Editor…</div>}>
         <LazySourceEditor {...runtimeProps} className="min-h-0 min-w-0 flex-1" />
       </Suspense>

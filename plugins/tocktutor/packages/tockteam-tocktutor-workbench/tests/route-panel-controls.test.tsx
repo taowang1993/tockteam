@@ -745,6 +745,21 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onLoadWorkspace).toHaveBeenCalledWith('class-layout')
   })
 
+  it('renames the active note directly from its Live Preview title without opening a dialog', async () => {
+    const onRenameTitle = vi.fn(async () => true)
+    renderRoute({
+      documentKind: 'markdown', mode: 'live-preview', path: 'Lessons/Welcome.md', phase: 'ready', revision: 'file:123', source: '# Markdown Rendering Lab\n',
+    }, { onRenameTitle })
+
+    const title = await screen.findByRole('textbox', { name: 'Note title' }) as HTMLInputElement
+    expect(title.value).toBe('Welcome')
+    expect(screen.getByRole('heading', { name: 'Welcome', level: 1 }).contains(title)).toBe(true)
+    fireEvent.change(title, { target: { value: 'New Lesson' } })
+    fireEvent.keyDown(title, { key: 'Enter' })
+    await waitFor(() => expect(onRenameTitle).toHaveBeenCalledExactlyOnceWith('New Lesson'))
+    expect(screen.queryByRole('dialog', { name: 'Rename Note' })).toBeNull()
+  })
+
   it('exposes Host-backed note actions behind explicit rename and move dialogs', async () => {
     const onMoveNote = vi.fn(async () => true)
     const onRenameTitle = vi.fn(async () => true)
@@ -780,8 +795,9 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onTrashCurrent).toHaveBeenCalledOnce()
   })
 
-  it('exposes accessible tab lifecycle and history controls', () => {
+  it('exposes accessible tab lifecycle and history controls below the tabs', () => {
     const onBack = vi.fn()
+    const onForward = vi.fn()
     const onCloseTab = vi.fn()
     const onMoveTab = vi.fn()
     renderRoute({
@@ -801,12 +817,21 @@ describe('TockTutor titlebar panel controls', () => {
       recentlyClosed: [{ dirty: false, path: 'Closed.md', pinned: false }],
     }, {
       onBack,
+      onForward,
       onCloseTab,
       onMoveTab,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }))
+    const titlebar = screen.getByRole('region', { name: 'TockTutor Title Bar' })
+    const header = screen.getByRole('tabpanel', { name: 'Note Editor' }).querySelector('.tocktutor-editor-header')!
+    expect(within(titlebar).queryByRole('button', { name: 'Go Back' })).toBeNull()
+    expect(within(titlebar).queryByRole('button', { name: 'Go Forward' })).toBeNull()
+    fireEvent.click(within(header as HTMLElement).getByRole('button', { name: 'Go Back' }))
     expect(onBack).toHaveBeenCalledOnce()
+    const forward = within(header as HTMLElement).getByRole('button', { name: 'Go Forward' }) as HTMLButtonElement
+    expect(forward.disabled).toBe(true)
+    fireEvent.click(forward)
+    expect(onForward).not.toHaveBeenCalled()
     const firstTab = screen.getByRole('tab', { name: 'First.md' })
     fireEvent.keyDown(firstTab, { altKey: true, key: 'ArrowRight' })
     expect(onMoveTab).toHaveBeenCalledWith('main', 'First.md', 1)

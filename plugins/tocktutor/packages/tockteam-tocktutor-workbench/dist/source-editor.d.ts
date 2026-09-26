@@ -62,5 +62,10 @@ export declare function buildSourceChange(current: string, next: string): {
     insert: string;
     to: number;
 } | null;
+export declare function NoteTitleEditor(props: {
+    compact?: boolean;
+    onRenameTitle?: (title: string) => Promise<boolean> | boolean;
+    title: string;
+}): ReactNode;
 export declare function SourceEditor(props: SourceEditorProps): ReactNode;
 //# sourceMappingURL=source-editor.d.ts.map

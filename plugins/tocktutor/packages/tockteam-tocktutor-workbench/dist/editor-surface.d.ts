@@ -40,6 +40,7 @@ export declare function LivePreviewView(props: {
     onAddProperty?: ((key: string) => boolean) | undefined;
     onEdit(source: string): void;
     onEditSource?: (() => void) | undefined;
+    onRenameTitle?: ((title: string) => Promise<boolean> | boolean) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
     onSearchState?: ((state: EditorSearchState) => void) | undefined;
     onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined;

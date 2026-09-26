@@ -305,6 +305,35 @@ describe('Live Preview editor', () => {
     expect(onMarkdownChange).not.toHaveBeenCalled()
   })
 
+  it('validates, cancels and recovers an inline Live Preview note rename without changing Markdown', async () => {
+    const onRenameTitle = vi.fn(async () => false)
+    const onMarkdownChange = vi.fn()
+    render(<LivePreviewEditor content={'# Markdown Rendering Lab\n'} onMarkdownChange={onMarkdownChange} onRenameTitle={onRenameTitle} title="Welcome" />)
+    const title = await screen.findByRole('textbox', { name: 'Note title' }) as HTMLInputElement
+    fireEvent.change(title, { target: { value: 'Folder/Bad' } })
+    fireEvent.keyDown(title, { key: 'Enter' })
+    expect(screen.getByRole('alert').textContent).toContain('path separator')
+    expect(onRenameTitle).not.toHaveBeenCalled()
+    fireEvent.change(title, { target: { value: 'Canceled' } })
+    title.focus()
+    fireEvent.keyDown(title, { key: 'Escape' })
+    expect(title.value).toBe('Welcome')
+    fireEvent.change(title, { target: { value: 'New Lesson' } })
+    fireEvent.blur(title)
+    // Capture the current note before the click that caused blur can navigate away.
+    expect(onRenameTitle).toHaveBeenCalledExactlyOnceWith('New Lesson')
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('could not be renamed'))
+    expect(title.value).toBe('Welcome')
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+  })
+
+  it('keeps filename renaming available when the body starts with the same heading', async () => {
+    const onMarkdownChange = vi.fn()
+    render(<LivePreviewEditor content={'# Welcome\n'} onMarkdownChange={onMarkdownChange} onRenameTitle={async () => true} title="Welcome" />)
+    expect((await screen.findByRole('textbox', { name: 'Note title' }) as HTMLInputElement).value).toBe('Welcome')
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+  })
+
   it.each(['reading', 'live'])('shows a repeated article title only once without changing Markdown in %s mode', { timeout: 15_000 }, async mode => {
     const title = '关于DeepSeek最新V4模型，普通人可以知道的6件事'
     const heading = '关于 DeepSeek 最新 V4 模型，普通人可以知道的6件事'

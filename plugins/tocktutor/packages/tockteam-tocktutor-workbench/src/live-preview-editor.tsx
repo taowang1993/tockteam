@@ -15,6 +15,7 @@ import type { EditorWidgetTarget } from './editor-widgets.ts'
 import type { EditorCommandId } from './editor-commands.ts'
 import type { EditorSearchRequest, EditorSearchState } from './editor-search.ts'
 import type { LivePreviewTableAction } from './milkdown-editor-commands.ts'
+import { NoteTitleEditor } from './source-editor.tsx'
 import { MAX_FRONTMATTER_BYTES, MAX_PROPERTIES, parseFrontmatterProperties, type PropertyType, type PropertyValue } from './properties.ts'
 
 const propertyIcons = { text: AlignLeft, list: List, number: Hash, checkbox: CheckSquare, date: CalendarDays, datetime: CalendarDays, mixed: List } satisfies Record<PropertyType, typeof AlignLeft>
@@ -42,6 +43,7 @@ export interface LivePreviewEditorProps {
   editorViewRef?: MutableRefObject<unknown | null>
   onAddProperty?: (key: string) => boolean
   onMarkdownChange: (markdown: string) => void
+  onRenameTitle?: (title: string) => Promise<boolean> | boolean
   onSearchState?: (state: EditorSearchState) => void
   onOpenExternalUrl?: (url: string) => void
   onSetProperty?: (key: string, value: PropertyValue) => boolean
@@ -82,7 +84,7 @@ function fallbackDocumentTitle(source: string, title: string | undefined): strin
   return heading?.replace(/\s/gu, '') === title.replace(/\s/gu, '') ? undefined : title
 }
 
-export function MarkdownDocumentHeader(props: { editableProperties?: boolean; className?: string; onAddProperty?: (key: string) => boolean; onSetProperty?: (key: string, value: PropertyValue) => boolean; source: string; title?: string }): ReactNode {
+export function MarkdownDocumentHeader(props: { editableProperties?: boolean; className?: string; onAddProperty?: (key: string) => boolean; onRenameTitle?: (title: string) => Promise<boolean> | boolean; onSetProperty?: (key: string, value: PropertyValue) => boolean; source: string; title?: string }): ReactNode {
   const properties = useMemo(() => parseFrontmatterProperties(props.source), [props.source])
   const errorId = useId()
   const propertiesId = useId()
@@ -97,11 +99,13 @@ export function MarkdownDocumentHeader(props: { editableProperties?: boolean; cl
   }
   if (props.editableProperties && new TextEncoder().encode(props.source).byteLength > MAX_FRONTMATTER_BYTES) return <p role="status">This note is too large to edit properties. Use Source Mode.</p>
   const showProperties = properties.length > 0 || props.editableProperties === true
-  const title = fallbackDocumentTitle(props.source, props.title)
+  const title = props.onRenameTitle === undefined ? fallbackDocumentTitle(props.source, props.title) : props.title
   if (title === undefined && !showProperties) return null
   return (
     <header className={props.className}>
-      {title !== undefined && <h1 className="m-0 mb-5 text-[26px] leading-[31px] font-bold tracking-[-.01em] text-[var(--tt-text)]">{title}</h1>}
+      {title !== undefined && (props.onRenameTitle === undefined
+        ? <h1 className="m-0 mb-5 text-[26px] leading-[31px] font-bold tracking-[-.01em] text-[var(--tt-text)]">{title}</h1>
+        : <NoteTitleEditor compact onRenameTitle={props.onRenameTitle} title={title} />)}
       {props.editableProperties && error && !adding && <p role="alert">{error}</p>}
       {props.editableProperties && properties.length >= MAX_PROPERTIES && <p role="status">The property limit was reached; this list may be incomplete. Use Source Mode.</p>}
       {props.editableProperties && properties.length === 0 && <p className="text-xs text-[var(--tt-muted)]">No properties.</p>}
@@ -200,7 +204,7 @@ export function MarkdownDocumentHeader(props: { editableProperties?: boolean; cl
 export function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]" source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
+      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]" source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
       <Suspense fallback={<div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={props.className}>Loading Live Preview…</div>}>
         <LazyLivePreviewEditor {...props} />
       </Suspense>

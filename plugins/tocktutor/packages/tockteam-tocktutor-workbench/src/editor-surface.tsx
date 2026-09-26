@@ -295,6 +295,7 @@ export function LivePreviewView(props: {
   onAddProperty?: ((key: string) => boolean) | undefined
   onEdit(source: string): void
   onEditSource?: (() => void) | undefined
+  onRenameTitle?: ((title: string) => Promise<boolean> | boolean) | undefined
   onOpenExternalUrl?: ((url: string) => void) | undefined
   onSearchState?: ((state: EditorSearchState) => void) | undefined
   onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined
@@ -319,6 +320,7 @@ export function LivePreviewView(props: {
         localEditRevision={props.localEditRevision}
         key={props.documentKey}
         onMarkdownChange={props.onEdit}
+        {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}
         {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })}
         {...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl })}
         {...(props.onSearchState === undefined ? {} : { onSearchState: props.onSearchState })}

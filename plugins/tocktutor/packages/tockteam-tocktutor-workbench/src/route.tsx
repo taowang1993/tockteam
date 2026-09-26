@@ -5556,10 +5556,6 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </Tooltip>
       </div>
       <div className="tocktutor-titlebar-main flex min-w-0 items-center gap-1 pl-2 pr-3.5">
-        <span className="tocktutor-history mr-[18px] flex gap-[5px] px-1.5">
-          <Button unstyled aria-label="Go Back" className="border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35" disabled={snapshot.canGoBack !== true} onClick={props.onBack} type="button"><WorkbenchGlyph kind="back" /></Button>
-          <Button unstyled aria-label="Go Forward" className="border-0 bg-transparent p-1 text-[var(--tt-muted)] disabled:opacity-35" disabled={snapshot.canGoForward !== true} onClick={props.onForward} type="button"><WorkbenchGlyph kind="forward" /></Button>
-        </span>
         <div className="tocktutor-tabs -mx-[var(--tt-tab-curve)] -mb-px flex max-w-[min(48rem,58vw)] min-w-0 self-stretch items-end gap-1 overflow-x-auto overflow-y-hidden px-[var(--tt-tab-curve)] [--tt-tab-curve:16px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" {...(focusedPane?.tabs.length ? { 'aria-label': 'Note Tabs', role: 'tablist' } : {})}>
           {focusedPane?.tabs.map((tab, index) => (
             <div
@@ -5661,7 +5657,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
 </>
   const editor = (<section aria-label="Note Editor" className={`tocktutor-editor relative grid h-full min-h-0 min-w-0 ${noteSearchMode === null ? 'grid-rows-[40px_minmax(0,1fr)]' : 'grid-rows-[40px_auto_minmax(0,1fr)]'} overflow-hidden bg-[var(--tt-panel)]`} id={props.paneOnly ? `tocktutor-note-editor-${snapshot.focusedPaneId}` : 'tocktutor-note-editor'} role="tabpanel">
           <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center px-2.5">
-            <h2 className="m-0 truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
+            {(!props.paneOnly || props.paneController?.getSnapshot().focusedPaneId === snapshot.focusedPaneId) && <nav aria-label="Note History" className="tocktutor-history absolute left-2 flex items-center gap-1">
+              <Button unstyled aria-label="Go Back" className="size-7 border-0 bg-transparent p-1.5 text-[var(--tt-muted)] disabled:opacity-35 focus-visible:outline-2 focus-visible:outline-[var(--tt-accent)]" disabled={snapshot.canGoBack !== true} onClick={props.onBack} type="button"><WorkbenchGlyph kind="back" /></Button>
+              <Button unstyled aria-label="Go Forward" className="size-7 border-0 bg-transparent p-1.5 text-[var(--tt-muted)] disabled:opacity-35 focus-visible:outline-2 focus-visible:outline-[var(--tt-accent)]" disabled={snapshot.canGoForward !== true} onClick={props.onForward} type="button"><WorkbenchGlyph kind="forward" /></Button>
+            </nav>}
+            <h2 className="m-0 max-w-[calc(100%-152px)] truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
             <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[26px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)]">
               {snapshot.documentKind === 'markdown' ? (
                 <Tooltip>
@@ -5885,6 +5885,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
                 onEdit={props.onEdit}
                 onEditSource={() => { props.onMode('source') }}
+                {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}
                 {...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl })}
                 {...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState })}
                 onSelectionChange={selection => { props.onSelectionChange?.(selection.from, selection.to) }}
