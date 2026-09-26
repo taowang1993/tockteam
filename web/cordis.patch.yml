@@ -14,6 +14,19 @@
 # browser-side panel layout. Only the Electron-bound surfaces stay out: the
 # desktop shell chrome and the marketplace bridge.
 
+# TockCoder starts with OpenRouter; saved model selections still take precedence.
+- id: llm-pi-ai
+  config:
+    providers:
+      openrouter:
+        displayName: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+
+- id: agent-default-model
+  config:
+    provider: openrouter
+    model: openrouter/free
+
 - insert:
     - id: tockteam-web
       name: '@tockteam/web'

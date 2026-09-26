@@ -136,6 +136,14 @@ test('web bundle patch mounts the web-capable TockTeam plugins', () => {
   }
 })
 
+test('TockCoder Desktop and Web default to the OpenRouter free model', () => {
+  for (const path of ['../cordis.patch.yml', '../web/cordis.patch.yml']) {
+    const patch = readFileSync(new URL(path, import.meta.url), 'utf8')
+    assert.match(patch, /- id: llm-pi-ai\n  config:\n    providers:\n      openrouter:\n        displayName: OpenRouter\n        apiKeyEnv: OPENROUTER_API_KEY/u)
+    assert.match(patch, /- id: agent-default-model\n  config:\n    provider: openrouter\n    model: openrouter\/free/u)
+  }
+})
+
 test('web launcher defaults match the dsh-web-app bundle surface', () => {
   const options = parseLaunchArgs([], {}, false, `/home/user/${DEFAULT_DATA_DIR_NAME}`)
   assert.equal(options.host, DEFAULT_WEB_HOST)

@@ -14,6 +14,19 @@
     surfaceContext: false
     trustedHosts: []
 
+# TockCoder starts with OpenRouter; saved model selections still take precedence.
+- id: llm-pi-ai
+  config:
+    providers:
+      openrouter:
+        displayName: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+
+- id: agent-default-model
+  config:
+    provider: openrouter
+    model: openrouter/free
+
 - insert:
     - id: tockteam-desktop
       name: '@tockteam/desktop'
