@@ -1,7 +1,11 @@
 import { isSafeVaultRelativePath } from './session.ts'
 import type { VaultTreeEntry } from './types.ts'
 
-export type SlashLinkRequest = { kind: 'note' | 'new-note'; path: string }
+export type SlashLinkRequest =
+  | { kind: 'note'; path: string }
+  | { kind: 'new-note'; path: string }
+  | { kind: 'attachment'; path: string }
+  | { kind: 'upload'; file: File }
 export interface SlashLinkResult { href: string; label: string; writtenPath?: string }
 export class SlashWriteUncertainError extends Error {
   constructor(path: string) { super(`The write outcome for ${path} is uncertain. Check the vault and use an existing-file link before trying another write.`) }

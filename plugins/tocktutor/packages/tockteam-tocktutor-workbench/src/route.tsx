@@ -109,7 +109,7 @@ import { convertMarkdownFormats, extractSelectionToNote } from './composer.ts'
 import { previewNoteMerge, type NoteMergePreview, type PreparedNoteMerge } from './merge-preview.ts'
 import { SidebarNoteMenu, type NoteMenuAnchor, type SidebarNoteAction } from './sidebar-note-menu.tsx'
 import { NoteMergeReview, MergeRecoveryDialog } from './merge-review.tsx'
-import { appendAttachmentMarkdown, attachmentTargetPath } from './attachments.ts'
+import { appendAttachmentMarkdown, attachmentTargetPath, isSupportedAttachment } from './attachments.ts'
 import { markdownLinkHref, resolveMarkdownLink, SlashWriteUncertainError, type SlashLinkContext } from './markdown-links.ts'
 import { collectEmbedTargets, resolveEmbedGraph, type EmbedTarget } from './embeds.ts'
 import {
@@ -1640,25 +1640,48 @@ export class WorkbenchRouteController {
       },
       resolve: async (request, signal) => {
         if (!isCurrent() || signal.aborted) throw new Error('The source note changed. Reopen the command.')
-        if (request.kind === 'new-note') {
-          const href = markdownLinkHref(path, request.path)
-          const folder = request.path.split('/').slice(0, -1).join('/')
-          if (!/\.md$/iu.test(request.path) || request.path.split('/').at(-1)!.length > 255
-            || (folder && !this.snapshot.entries.some(entry => entry.kind === 'directory' && entry.path === folder))) throw new Error('Choose an existing folder and a valid Markdown filename.')
-          if (this.snapshot.entries.some(entry => entry.path.toLocaleLowerCase() === request.path.toLocaleLowerCase())) throw new Error('A file with that name already exists.')
+        if (request.kind === 'new-note' || request.kind === 'upload') {
+          let destination: string, dataBase64 = ''
+          if (request.kind === 'new-note') {
+            destination = request.path
+            markdownLinkHref(path, destination) // Validate decoded vault identities before I/O.
+            const folder = destination.split('/').slice(0, -1).join('/')
+            if (!/\.md$/iu.test(destination) || destination.split('/').at(-1)!.length > 255
+              || (folder && !this.snapshot.entries.some(entry => entry.kind === 'directory' && entry.path === folder))) throw new Error('Choose an existing folder and a valid Markdown filename.')
+            if (this.snapshot.entries.some(entry => entry.path.toLocaleLowerCase() === destination.toLocaleLowerCase())) throw new Error('A file with that name already exists.')
+          } else {
+            if (request.file.size > 25 * 1024 * 1024) throw new Error('Choose a file no larger than 25 MiB.')
+            destination = attachmentTargetPath(this.snapshot.settings?.attachmentFolder ?? 'Attachments', request.file.name, new Set(this.snapshot.entries.map(entry => entry.path)))
+            markdownLinkHref(path, destination)
+            const bytes = new Uint8Array(await request.file.arrayBuffer())
+            if (bytes.byteLength !== request.file.size) throw new Error('The file changed while reading it.')
+            let binary = ''
+            for (let offset = 0; offset < bytes.length; offset += 32_768) binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768))
+            dataBase64 = btoa(binary)
+          }
+          if (!isCurrent() || signal.aborted) throw new Error('The source note changed. Reopen the command.')
           try {
             // Once sent, retain the receipt even if the form closes; cancellation cannot undo a filesystem write.
-            const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content: '', expectedVault: vault, path: request.path }))
-            if (created.status !== 'created' || created.path !== request.path || created.generation !== vault.generation) throw new Error('Invalid creation receipt.')
+            const written = request.kind === 'new-note'
+              ? remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content: '', expectedVault: vault, path: destination }))
+              : remoteValue(await this.remote.tocktutorWorkbench.storeAttachment({ dataBase64, expectedVault: vault, path: destination }))
+            if (written.status !== (request.kind === 'new-note' ? 'created' : 'stored') || written.path !== destination || written.generation !== vault.generation) throw new Error('Invalid write receipt.')
             await this.refreshTree(vault, true)
-            return { href, label: noteTitle(created.path), writtenPath: created.path }
+            return { href: markdownLinkHref(path, destination), label: request.kind === 'new-note' ? noteTitle(destination) : destination.split('/').at(-1)!, writtenPath: destination }
           } catch (error) {
             await this.refreshTree(vault, true)
             if (error instanceof RemoteCallError && error.code === 'exists') throw new Error('A file with that name already exists.')
-            const uncertain = new SlashWriteUncertainError(request.path)
+            const uncertain = new SlashWriteUncertainError(destination)
             if (!this.disposed) this.update({ message: uncertain.message })
             throw uncertain
           }
+        }
+        if (request.kind === 'attachment') {
+          if (!isSupportedAttachment(request.path)) throw new Error('Attachment type is unsupported.')
+          const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(request.path, vault, signal))
+          if (!isCurrent() || signal.aborted) throw new Error('The source note changed. Reopen the command.')
+          if (preview.path !== request.path || preview.generation !== vault.generation) throw new Error('That attachment is unavailable.')
+          return { href: markdownLinkHref(path, preview.path), label: preview.path.split('/').at(-1)! }
         }
         const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(request.path, vault, signal))
         if (!isCurrent() || signal.aborted) throw new Error('The source note changed. Reopen the command.')

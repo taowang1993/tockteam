@@ -877,6 +877,40 @@ test('saves an edited note before renaming every open pane reference and refresh
   controller.dispose()
 })
 
+test('slash writes reject collisions and aborted reads before sending a mutation', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    controller.setMode('live-preview')
+    const context = controller.slashLinkContext()!, abort = new AbortController()
+    await assert.rejects(context.resolve({ kind: 'new-note', path: 'Second.md' }, abort.signal), /already exists/)
+    await assert.rejects(context.resolve({ kind: 'new-note', path: '../Outside.md' }, abort.signal), /Invalid/)
+    await assert.rejects(context.resolve({ kind: 'new-note', path: 'Missing/New.md' }, abort.signal), /existing folder/)
+    const bytes = deferred<ArrayBuffer>()
+    const pending = context.resolve({ kind: 'upload', file: { name: 'later.pdf', size: 1, arrayBuffer: () => bytes.promise } as File }, abort.signal)
+    abort.abort(); bytes.resolve(new Uint8Array([1]).buffer)
+    await assert.rejects(pending, /source note changed/)
+    assert.equal(remote.calls.filter(call => ['storeAttachment', 'createDocument'].includes(call.method)).length, 0)
+  } finally { await controller.dispose() }
+})
+
+test('slash attachments store bounded files without embedding or editing the source', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    controller.setMode('live-preview')
+    const source = controller.getSnapshot().source, context = controller.slashLinkContext()!
+    const result = await context.resolve({ kind: 'upload', file: new File(['%PDF-1.7'], 'Notes #1.pdf', { type: 'application/pdf' }) }, new AbortController().signal)
+    assert.equal(result.href, '../Attachments/Notes%20%231.pdf')
+    assert.equal(result.writtenPath, 'Attachments/Notes #1.pdf')
+    assert.equal(controller.getSnapshot().source, source)
+    await assert.rejects(context.resolve({ kind: 'upload', file: new File(['exe'], 'bad.exe') }, new AbortController().signal), /unsupported/i)
+    await assert.rejects(context.resolve({ kind: 'upload', file: { name: 'big.pdf', size: 25 * 1024 * 1024 + 1 } as File }, new AbortController().signal), /25 MiB/)
+    assert.equal(remote.calls.filter(call => call.method === 'storeAttachment').length, 1)
+    assert.deepEqual(await context.resolve({ kind: 'attachment', path: 'Attachments/existing.png' }, new AbortController().signal), { href: '../Attachments/existing.png', label: 'existing.png' })
+  } finally { await controller.dispose() }
+})
+
 test('slash creation keeps a new Markdown file when the originating note changes', async () => {
   const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
   try {
@@ -885,7 +919,7 @@ test('slash creation keeps a new Markdown file when the originating note changes
     const context = controller.slashLinkContext()!
     const gate = deferred<void>()
     const create = remote.tocktutorWorkbench.createDocument
-    remote.tocktutorWorkbench.createDocument = async (...args) => { await gate.promise; return create(...args) }
+    ;(remote as WorkbenchRouteRemote).tocktutorWorkbench.createDocument = async (...args) => { await gate.promise; return create(...args) }
     const pending = context.resolve({ kind: 'new-note', path: 'Folder/New.md' }, new AbortController().signal)
     controller.edit('Newer source')
     gate.resolve()

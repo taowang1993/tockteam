@@ -239,7 +239,10 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
               const url = link.getAttribute('data-target') ?? link.getAttribute('href') ?? ''
               const publicLink = classifyExternalEmbed(url)
               if (publicLink) latest.current.onOpenExternalUrl?.(publicLink.viewerUrl)
-              else if (!/^[a-z][a-z\d+.-]*:/iu.test(url) && !url.startsWith('//')) latest.current.onOpenInternalLink?.(url, link.hasAttribute('data-target') && link.dataset.linkKind !== 'markdown' ? undefined : 'markdown')
+              else if (!/^[a-z][a-z\d+.-]*:/iu.test(url) && !url.startsWith('//')) {
+                if (link.hasAttribute('data-target') && link.dataset.linkKind !== 'markdown') latest.current.onOpenInternalLink?.(url)
+                else latest.current.onOpenInternalLink?.(url, 'markdown')
+              }
               return true
             },
           },

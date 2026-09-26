@@ -7,7 +7,7 @@ import { findWrapping } from '@milkdown/prose/transform'
 import { createTable } from '@milkdown/preset-gfm'
 import { $prose } from '@milkdown/utils'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@tockteam/ui/command'
-import { Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Text, Quote, List, ListOrdered, ListTodo, Minus, Code, Image, Table, Sigma, Link, FileSymlink, FilePlus } from 'lucide-react'
+import { Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Text, Quote, List, ListOrdered, ListTodo, Minus, Code, Image, Table, Sigma, Link, FileSymlink, FilePlus, Paperclip } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useLayoutEffect } from 'react'
 
@@ -28,8 +28,9 @@ const commands = [
   { id: 'bullet', label: 'Bulleted List', icon: List, group: 'Lists' },
   { id: 'numbered', label: 'Numbered List', aliases: 'ordered', icon: ListOrdered, group: 'Lists' },
   { id: 'todo', label: 'Task List', icon: ListTodo, group: 'Lists' },
-  { id: 'code', label: 'Code Block', icon: Code, group: 'Advanced' },
-  { id: 'image', label: 'Image', icon: Image, group: 'Advanced' },
+  { id: 'image', label: 'Image', icon: Image, group: 'Media' },
+  { id: 'code', label: 'Code Block', icon: Code, group: 'Media' },
+  { id: 'file', label: 'File Attachment', aliases: 'upload', icon: Paperclip, group: 'Media', form: true },
   { id: 'table', label: 'Table', icon: Table, group: 'Advanced' },
   { id: 'math', label: 'Math', icon: Sigma, group: 'Advanced' },
 ]
@@ -75,7 +76,7 @@ function transaction(state, invocation, id, ctx) {
 function entries(state, invocation, ctx, context) {
   const query = state.doc.textBetween(invocation.from + Number(invocation.slash), invocation.to).trim().toLowerCase()
   return commands.filter(item => `${item.id} ${item.label} ${item.aliases ?? ''}`.toLowerCase().includes(query)
-    && (!['note-link', 'new-note'].includes(item.id) || context?.isCurrent())
+    && (!['note-link', 'new-note', 'file'].includes(item.id) || context?.isCurrent())
     && (item.form ? state.selection.$from.parent.type.allowsMarkType(state.schema.marks.link) : transaction(state, invocation, item.id, ctx)))
 }
 
@@ -168,7 +169,8 @@ export function slashMenuPlugin(publish, getContext = () => undefined) {
       let pending = null
       const update = () => {
         const invocation = slashKey.getState(view.state)
-        if (!invocation || !view.editable) { provider.hide(); clearARIA(); publish(null); return }
+        if (invocation && !view.editable) { view.dispatch(view.state.tr.setMeta(slashKey, null)); return }
+        if (!invocation) { pending = null; provider.hide(); clearARIA(); publish(null); return }
         if (invocation.form) {
           provider.hide(); clearARIA()
           if (invocation.context && !invocation.context.isCurrent()) { view.dispatch(view.state.tr.setMeta(slashKey, null)); return }

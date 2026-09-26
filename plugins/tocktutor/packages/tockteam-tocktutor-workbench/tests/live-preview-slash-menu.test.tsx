@@ -3,6 +3,7 @@ import { undo, redo } from '@milkdown/prose/history'
 import { Plugin, TextSelection } from '@milkdown/prose/state'
 import { afterEach, expect, it, vi } from 'vitest'
 import { LivePreviewEditor } from '../src/live-preview-editor.tsx'
+import { SlashWriteUncertainError } from '../src/markdown-links.ts'
 
 afterEach(cleanup)
 
@@ -98,6 +99,51 @@ it('reports a created file after cancellation instead of inserting it or sending
   expect(resolve).toHaveBeenCalledTimes(1)
   expect(reportUnlinked).toHaveBeenCalledWith(result)
   expect(view.state.doc.firstChild.textContent).toBe('Text/new note')
+})
+
+it('uploads a file as an ordinary Markdown link and retains the original catalog in Media', async () => {
+  const resolve = vi.fn(async () => ({ href: '../Attachments/Clip.mp4', label: 'Clip.mp4', writtenPath: 'Attachments/Clip.mp4' }))
+  const slashLinks = { sourcePath: 'Folder/Source.md', entries: [], isCurrent: () => true, resolve }
+  const { view, onChange } = await editor('Text\n', { slashLinks })
+  type(view, '/', 5)
+  await screen.findByRole('listbox')
+  expect(screen.getAllByRole('option')).toHaveLength(20)
+  expect(screen.getByRole('option', { name: 'Code Block' }).closest('[cmdk-group]')?.textContent).toContain('Media')
+  fireEvent.click(screen.getByRole('option', { name: 'File Attachment', exact: true }))
+  fireEvent.click(screen.getByRole('radio', { name: 'Upload File' }))
+  const file = new File(['video'], 'Clip.mp4', { type: 'video/mp4' })
+  fireEvent.change(screen.getByLabelText('File'), { target: { files: [file] } })
+  fireEvent.click(screen.getByRole('button', { name: 'Upload and Link' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(resolve.mock.calls[0]?.[0]).toEqual({ kind: 'upload', file })
+  expect(onChange.mock.lastCall?.[0]).toBe('Text[Clip.mp4](../Attachments/Clip.mp4)\n')
+  expect(view.dom.querySelector('video')).toBeNull()
+})
+
+it('does not resend an uncertain filesystem write from the same form', async () => {
+  const resolve = vi.fn(async () => { throw new SlashWriteUncertainError('New.md') })
+  const slashLinks = { sourcePath: 'Source.md', entries: [], isCurrent: () => true, resolve }
+  const { view } = await editor('Text\n', { slashLinks })
+  type(view, '/new note', 5)
+  fireEvent.click(await screen.findByRole('option', { name: 'New Note', exact: true }))
+  fireEvent.change(screen.getByLabelText('Note Name'), { target: { value: 'New' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create and Link' }))
+  expect((await screen.findByRole('alert')).textContent).toContain('uncertain')
+  expect((screen.getByRole('button', { name: 'Create and Link' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: 'Create and Link' }))
+  expect(resolve).toHaveBeenCalledTimes(1)
+  expect(view.state.doc.firstChild.textContent).toBe('Text/new note')
+})
+
+it('permanently dismisses a pending form when the editor becomes read-only', async () => {
+  const { view } = await editor('Text\n')
+  type(view, '/url', 5)
+  fireEvent.click(await screen.findByRole('option', { name: 'Link', exact: true }))
+  act(() => view.setProps({ editable: () => false }))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  act(() => view.setProps({ editable: () => true }))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(view.state.doc.firstChild.textContent).toBe('Text/url')
 })
 
 it('keeps invalid link drafts and cancels without changing the document', async () => {
