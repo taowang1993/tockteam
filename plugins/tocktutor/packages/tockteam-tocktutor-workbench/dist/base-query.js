@@ -2,12 +2,12 @@ import { evaluateNotesBaseFormula, evaluateNotesBaseSummary, notesBaseFileTimest
 import { evaluateNotesBaseFilterTree } from "./NotesBaseFilterTree.js";
 import { notesBaseValueText } from "./NotesBaseFormulaValue.js";
 import { parseFrontmatterProperties } from "./properties.js";
+import { isSafeVaultRelativePath } from "./session.js";
 export const MAX_EXECUTABLE_BASE_FILES = 2_000;
 export const MAX_EXECUTABLE_BASE_FILE_BYTES = 1_000_000;
 export const MAX_EXECUTABLE_BASE_TOTAL_BYTES = 16_000_000;
 const MAX_EXECUTABLE_BASE_PROPERTIES = 256;
 const MAX_EXECUTABLE_BASE_FORMULA_DEPTH = 32;
-const SAFE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*[\\\0\r\n])[\p{L}\p{N} ._()\-\/[\]]+$/u;
 const REVISION = /^file:[0-9a-f]{64}$/u;
 function fileName(path) {
     return (path.split('/').at(-1) ?? path).replace(/\.(?:markdown|md)$/iu, '');
@@ -121,7 +121,7 @@ function validateFiles(files) {
     const paths = new Set();
     let totalBytes = 0;
     for (const file of files) {
-        if (!SAFE_PATH.test(file.path) || !/\.(?:markdown|md)$/iu.test(file.path) || paths.has(file.path))
+        if (!isSafeVaultRelativePath(file.path) || /[\r\n]/u.test(file.path) || !/\.(?:markdown|md)$/iu.test(file.path) || paths.has(file.path))
             return 'Base hydration contains an invalid or duplicate path.';
         if (!REVISION.test(file.revision))
             return 'Base hydration contains an invalid revision.';

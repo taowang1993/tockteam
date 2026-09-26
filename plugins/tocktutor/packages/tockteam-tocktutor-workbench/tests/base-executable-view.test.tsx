@@ -69,6 +69,21 @@ function ControlledBase(props: {
 }
 
 describe('ExecutableBaseView', () => {
+  it('keeps the comparable controls in one toolbar with visible selector and search outlines', () => {
+    render(<ControlledBase />)
+    const toolbar = screen.getByRole('toolbar', { name: 'Base View Controls' })
+    for (const name of ['2 Results', 'Sort', 'Filter', 'Properties']) expect(within(toolbar).getByRole('button', { name })).toBeTruthy()
+    expect(within(toolbar).getByRole('combobox', { name: 'Base View' }).className).toContain('border-[color-mix(')
+    expect(within(toolbar).getByRole('searchbox', { name: 'Search Ranked' }).className).toContain('border-[color-mix(')
+    const more = within(toolbar).getByLabelText('More Base Actions') as HTMLElement
+    expect((more.closest('details') as HTMLDetailsElement).open).toBe(false)
+    fireEvent.click(more)
+    expect((more.closest('details') as HTMLDetailsElement).open).toBe(true)
+    expect(screen.getByRole('button', { name: 'Add View' })).toBeTruthy()
+    fireEvent.keyDown(more, { key: 'Escape' })
+    expect((more.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
   it('offers the Base toolbar and persists a changed sort through the source owner', async () => {
     const changes: string[] = []
     render(<ExecutableBaseView files={files} source={source} onSourceChange={async (_, next) => { changes.push(next); return true }} onNewNote={() => {}} />)
@@ -87,6 +102,7 @@ describe('ExecutableBaseView', () => {
   it('renames the selected view in Base source', async () => {
     const changes: string[] = []
     render(<ExecutableBaseView files={files} source={source} onSourceChange={async (_, next) => { changes.push(next); return true }} />)
+    fireEvent.click(screen.getByLabelText('More Base Actions'))
     fireEvent.click(screen.getByRole('button', { name: 'Rename View' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'View Name' }), { target: { value: 'Favorites' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save View Name' }))
@@ -121,6 +137,7 @@ describe('ExecutableBaseView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Properties' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'file.path' }))
     await waitFor(() => expect(screen.getByRole('columnheader', { name: 'file.path' })).toBeTruthy())
+    fireEvent.click(screen.getByLabelText('More Base Actions'))
     fireEvent.click(screen.getByRole('button', { name: 'Add View' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'View Name' }), { target: { value: 'Gallery' } })
     fireEvent.change(screen.getByRole('combobox', { name: 'View Type' }), { target: { value: 'cards' } })
@@ -157,6 +174,7 @@ describe('ExecutableBaseView', () => {
     render(<ControlledBase onCopy={onCopy} onExport={onExport} />)
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search Ranked' }), { target: { value: 'alpha' } })
+    fireEvent.click(screen.getByLabelText('More Base Actions'))
     fireEvent.click(screen.getByRole('button', { name: 'Copy Visible Results' }))
     fireEvent.click(screen.getByRole('button', { name: 'Export Visible CSV' }))
 

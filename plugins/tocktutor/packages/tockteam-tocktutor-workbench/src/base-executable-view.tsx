@@ -7,6 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
+import { ArrowDownUp, ListFilter, ListTree, Plus, Search } from 'lucide-react'
 import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
 import { Field, FieldLabel } from '@tockteam/ui/field'
@@ -397,54 +398,48 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
   const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-3 text-foreground shadow-lg'
   return (
     <section aria-label="Executable Base" className="flex min-h-0 flex-col gap-3 overflow-auto p-4">
-      <header className="flex flex-wrap items-end gap-3">
-        <Field className="w-auto gap-1">
-          <FieldLabel htmlFor="tocktutor-base-view" className="text-xs">Base View</FieldLabel>
+      <header aria-label="Base View Controls" role="toolbar" className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border pb-2">
+        <div className="w-36 shrink-0">
           <NativeSelect unstyled
             id="tocktutor-base-view"
             aria-label="Base View"
-            className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm"
+            className="w-full rounded border border-[color-mix(in_srgb,var(--dsw-alias-border-l3)_70%,var(--dsw-alias-label-secondary))] bg-surface px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             value={model.view.name}
             onChange={event => props.onActiveViewChange?.(event.currentTarget.value)}
           >
-            {model.views.map(view => <NativeSelectOption key={view.name} value={view.name}>{view.name} — {readableKind(view.kind)}</NativeSelectOption>)}
+            {model.views.map(view => <NativeSelectOption key={view.name} value={view.name}>{view.name === readableKind(view.kind) ? view.name : `${view.name} — ${readableKind(view.kind)}`}</NativeSelectOption>)}
           </NativeSelect>
-        </Field>
-        <Field className="min-w-48 flex-1 gap-1">
-          <FieldLabel htmlFor="tocktutor-base-search" className="text-xs">Search This View</FieldLabel>
-          <Input
-            unstyled
-            id="tocktutor-base-search"
-            aria-label={`Search ${model.view.name}`}
-            className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1.5 text-sm"
-            maxLength={1_000}
-            type="search"
-            value={model.search}
-            onChange={event => props.onSearchChange?.(model.view.name, event.currentTarget.value)}
-          />
-        </Field>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" type="button" aria-live="polite">{resultCount(model.rows.length)}</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
+        </div>
+        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button" aria-live="polite" className="tabular-nums text-muted-foreground">{resultCount(model.rows.length)}</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-result-limit">Result Limit</FieldLabel><NativeSelect id="base-result-limit" value={String(model.view.limit ?? 'all')} disabled={!props.onSourceChange} onChange={event => { void commit(setBaseViewField(props.source, model.view.name, 'limit', event.currentTarget.value === 'all' ? '' : event.currentTarget.value)) }}>
             {['all', '25', '50', '100', '500', '2000'].map(value => <NativeSelectOption key={value} value={value}>{value === 'all' ? 'All Results' : value}</NativeSelectOption>)}
           </NativeSelect></Field>
         </PopoverContent></Popover>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" type="button">Add View</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
-          <Field className="gap-1"><FieldLabel htmlFor="base-new-view-name">View Name</FieldLabel><Input id="base-new-view-name" value={viewName} onChange={event => setViewName(event.currentTarget.value)} /></Field>
-          <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-new-view-kind">View Type</FieldLabel><NativeSelect id="base-new-view-kind" value={viewType} onChange={event => setViewType(event.currentTarget.value as typeof viewType)}>{(['table', 'list', 'cards', 'map'] as const).map(kind => <NativeSelectOption key={kind} value={kind}>{readableKind(kind)}</NativeSelectOption>)}</NativeSelect></Field>
-          <Button className="mt-3" disabled={!props.onSourceChange} type="button" onClick={() => { void commit(appendBaseView(props.source, viewType, viewName)) }}>Create View</Button>
-        </PopoverContent></Popover>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" type="button" onClick={() => setRenameName(model.view.name)}>Rename View</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
-          <Field className="gap-1"><FieldLabel htmlFor="base-rename-view-name">View Name</FieldLabel><Input id="base-rename-view-name" value={renameName} onChange={event => setRenameName(event.currentTarget.value)} /></Field>
-          <Button className="mt-3" disabled={!props.onSourceChange || renameName === model.view.name} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'name', renameName)) }}>Save View Name</Button>
-        </PopoverContent></Popover>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" type="button">Sort</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
+        <details className="relative shrink-0" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus() } }}>
+          <summary aria-label="More Base Actions" className="flex size-7 cursor-pointer list-none items-center justify-center rounded-md text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"><Plus aria-hidden="true" className="size-4" /></summary>
+          <div className="absolute top-full left-0 z-[1002] flex w-max max-w-[calc(100vw-3rem)] flex-wrap gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
+            <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button">Add View</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
+              <Field className="gap-1"><FieldLabel htmlFor="base-new-view-name">View Name</FieldLabel><Input id="base-new-view-name" value={viewName} onChange={event => setViewName(event.currentTarget.value)} /></Field>
+              <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-new-view-kind">View Type</FieldLabel><NativeSelect id="base-new-view-kind" value={viewType} onChange={event => setViewType(event.currentTarget.value as typeof viewType)}>{(['table', 'list', 'cards', 'map'] as const).map(kind => <NativeSelectOption key={kind} value={kind}>{readableKind(kind)}</NativeSelectOption>)}</NativeSelect></Field>
+              <Button className="mt-3" disabled={!props.onSourceChange} type="button" onClick={() => { void commit(appendBaseView(props.source, viewType, viewName)) }}>Create View</Button>
+            </PopoverContent></Popover>
+            <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button" onClick={() => setRenameName(model.view.name)}>Rename View</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
+              <Field className="gap-1"><FieldLabel htmlFor="base-rename-view-name">View Name</FieldLabel><Input id="base-rename-view-name" value={renameName} onChange={event => setRenameName(event.currentTarget.value)} /></Field>
+              <Button className="mt-3" disabled={!props.onSourceChange || renameName === model.view.name} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'name', renameName)) }}>Save View Name</Button>
+            </PopoverContent></Popover>
+            <Button size="sm" variant="ghost" disabled={tsv === null || props.onCopy === undefined} type="button" onClick={() => { if (tsv !== null) props.onCopy?.({ kind: 'results', text: tsv, view: model.view.name }) }}>Copy Visible Results</Button>
+            <Button size="sm" variant="ghost" disabled={csv === null || props.onExport === undefined} type="button" onClick={() => { if (csv !== null) props.onExport?.({ filename: executableBaseCsvFilename(model.view.name), text: csv, view: model.view.name }) }}>Export Visible CSV</Button>
+          </div>
+        </details>
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ArrowDownUp aria-hidden="true" />Sort</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-sort-property">Sort Property</FieldLabel><NativeSelect id="base-sort-property" value={sortProperty} onChange={event => setSortProperty(event.currentTarget.value)}>{properties.map(key => <NativeSelectOption key={key} value={key}>{key}</NativeSelectOption>)}</NativeSelect></Field>
           <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-sort-direction">Sort Direction</FieldLabel><NativeSelect id="base-sort-direction" value={sortDirection} onChange={event => setSortDirection(event.currentTarget.value)}><NativeSelectOption value="asc">Ascending</NativeSelectOption><NativeSelectOption value="desc">Descending</NativeSelectOption></NativeSelect></Field>
           <p className="text-xs text-muted-foreground">{model.view.sort.length > 0 ? model.view.sort.join(', ') : 'No sort applied.'}</p>
           <Button disabled={!props.onSourceChange} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'sort', [`${sortProperty} ${sortDirection}`])) }}>Apply Sort</Button>
           <Button variant="ghost" disabled={!props.onSourceChange || model.view.sort.length === 0} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'sort', [])) }}>Clear Sort</Button>
         </PopoverContent></Popover>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" type="button">Filter</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
+        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ListFilter aria-hidden="true" />Filter</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-filter-property">Filter Property</FieldLabel><NativeSelect id="base-filter-property" value={filterProperty} onChange={event => setFilterProperty(event.currentTarget.value)}>{properties.map(key => <NativeSelectOption key={key} value={key}>{key}</NativeSelectOption>)}</NativeSelect></Field>
           <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-filter-operator">Filter Operator</FieldLabel><NativeSelect id="base-filter-operator" value={filterOperator} onChange={event => setFilterOperator(event.currentTarget.value)}><NativeSelectOption value="==">Equals</NativeSelectOption><NativeSelectOption value="!=">Does Not Equal</NativeSelectOption></NativeSelect></Field>
           <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-filter-value">Filter Value</FieldLabel><Input id="base-filter-value" maxLength={200} value={filterValue} onChange={event => setFilterValue(event.currentTarget.value)} /></Field>
@@ -452,13 +447,16 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
           <Button disabled={!props.onSourceChange || filterValue === ''} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'filters', `${filterProperty} ${filterOperator} ${JSON.stringify(filterValue)}`)) }}>Apply Filter</Button>
           <Button variant="ghost" disabled={!props.onSourceChange || model.view.filters.length === 0} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'filters', '')) }}>Clear Filter</Button>
         </PopoverContent></Popover>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" type="button">Properties</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
+        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ListTree aria-hidden="true" />Properties</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
           <p className="m-0 mb-2 text-sm">Visible Properties</p>
           <div className="max-h-56 overflow-auto">{properties.map(key => <Label key={key} className="flex min-h-8 items-center gap-2 text-sm"><Checkbox disabled={!props.onSourceChange || key === 'file.name'} checked={model.columns.some(column => column.key === key)} onCheckedChange={checked => { const columns = model.columns.map(column => column.key).filter(column => column !== key); if (checked === true) columns.push(key); if (!columns.includes('file.name')) columns.unshift('file.name'); void commit(setBaseViewField(props.source, model.view.name, 'order', columns)) }} /><span>{key}</span></Label>)}</div>
         </PopoverContent></Popover>
-        <Button size="sm" variant="outline" disabled={!props.onNewNote} type="button" onClick={props.onNewNote}>New</Button>
-        <Button size="sm" variant="outline" disabled={tsv === null || props.onCopy === undefined} type="button" onClick={() => { if (tsv !== null) props.onCopy?.({ kind: 'results', text: tsv, view: model.view.name }) }}>Copy Visible Results</Button>
-        <Button size="sm" variant="outline" disabled={csv === null || props.onExport === undefined} type="button" onClick={() => { if (csv !== null) props.onExport?.({ filename: executableBaseCsvFilename(model.view.name), text: csv, view: model.view.name }) }}>Export Visible CSV</Button>
+        <div className="relative w-36 shrink-0">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input unstyled id="tocktutor-base-search" aria-label={`Search ${model.view.name}`} className="w-full rounded border border-[color-mix(in_srgb,var(--dsw-alias-border-l3)_70%,var(--dsw-alias-label-secondary))] bg-surface py-1 pl-7 pr-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50" maxLength={1_000} placeholder="Search" type="search" value={model.search} onChange={event => props.onSearchChange?.(model.view.name, event.currentTarget.value)} />
+        </div>
+        <Button size="sm" variant="ghost" disabled={!props.onNewNote} type="button" onClick={props.onNewNote}><Plus aria-hidden="true" />New</Button>
+        </div>
       </header>
       {authoringError && <p role="alert" className="m-0 text-sm text-destructive">{authoringError}</p>}
       {blocked ? (
