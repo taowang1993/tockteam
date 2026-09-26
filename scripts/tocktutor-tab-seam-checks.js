@@ -12,11 +12,13 @@ async page => {
       const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height
       const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0); image.close()
       const pixel = (x, y) => [...ctx.getImageData(Math.floor(x * devicePixelRatio), Math.floor(y * devicePixelRatio), 1, 1).data].join(',')
+      const sidebar = document.querySelector('.tocktutor-titlebar-sidebar').getBoundingClientRect()
       return [...document.querySelectorAll('[role=tab][aria-selected=true]')].map(tab => {
         const shell = tab.parentElement, strip = shell.closest('[data-pane-tabs]'), bar = strip.closest('.tocktutor-titlebar') ?? strip
         const b = bar.getBoundingClientRect(), r = shell.getBoundingClientRect(), s = strip.getBoundingClientRect()
         return { pane: strip.dataset.paneTabs, height: b.height, border: getComputedStyle(shell).borderBottomWidth,
           columns: [r.left + 4, r.left + r.width / 2, r.right - 4].map(x => Array.from({ length: 12 }, (_, i) => pixel(x, b.bottom - 3 + i / 2))),
+          sidebar: [pixel(sidebar.left + 4, sidebar.bottom - 3), pixel(sidebar.left + 4, sidebar.bottom - .5)],
           outside: [pixel(s.right - 60, b.bottom - 3), pixel(s.right - 60, b.bottom - .5)] }
       })
     }, screenshot)
@@ -24,7 +26,8 @@ async page => {
     for (const sample of samples) {
       check(sample.height === 40 && sample.border === '0px', 'tab bar stays 40px with no active-tab bottom border')
       check(sample.columns.every(colors => colors.every(color => color === colors[0])), `active tab joins editor without a divider: ${JSON.stringify(sample)}`)
-      check(sample.outside[0] !== sample.outside[1], 'divider remains outside the active tab')
+      check(sample.outside[0] === sample.outside[1], 'editor-side tab strip has no bottom divider')
+      check(sample.sidebar[0] !== sample.sidebar[1], 'sidebar-side bottom divider remains')
     }
     return screenshot
   }
