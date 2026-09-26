@@ -96,6 +96,9 @@ async page => {
   await hoverDrag();
   const handle = page.getByRole('button', { name: 'Drag Block', exact: true });
   await handle.waitFor();
+  await handle.focus();
+  await handle.press('Enter');
+  check(await editor.locator('.ProseMirror-selectednode').textContent() === 'Drag This Block', 'keyboard handle selects the whole block');
   const destination = editor.locator('p').filter({ hasText: /^Destination Block$/ });
   const box = await destination.boundingBox();
   const handleBox = await handle.boundingBox();
