@@ -1,4 +1,5 @@
 import type { GitReviewCommit } from './review-types.ts'
+import { submittedInputEntries, type ComposerHistoryEventSource } from './composer-input-history.ts'
 
 export type ReviewCommentSide = 'new' | 'old' | null
 
@@ -27,11 +28,6 @@ interface ReviewSessionSummary {
   cwd?: string
 }
 
-export interface ReviewSessionFace {
-  getSnapshot(): { nodes?: readonly { kind: string; seq: number }[] }
-  subscribe(listener: () => void): () => void
-}
-
 interface ReviewInputState {
   draft: string
   draftRev: number
@@ -47,7 +43,9 @@ interface ReviewOccurrence {
   source: string
   ref: string
   offset: number
+  length: number
   label: string
+  clipboardText: string
 }
 
 export interface ReviewAgentContext {
@@ -61,7 +59,7 @@ export interface ReviewSessionsService {
     byId: Record<string, ReviewSessionSummary>
   }>
   scope?(id: string): ReviewAgentContext | undefined
-  sessionOf?(context: ReviewAgentContext): ReviewSessionFace | undefined
+  binding?(id: string): { eventSource: ComposerHistoryEventSource } | undefined
 }
 
 interface ReviewConversationService {
@@ -204,7 +202,8 @@ function createComposerBridge(
   let initialized = false
   let mutating = false
   let watchedInput: ReviewInput | undefined
-  let watchedSession: ReviewSessionFace | undefined
+  let watchedContext: ReviewAgentContext | undefined
+  let watchedSession: ComposerHistoryEventSource | undefined
   let watchedId: string | undefined
   let stopInput: (() => void) | undefined
   let stopSession: (() => void) | undefined
@@ -213,6 +212,7 @@ function createComposerBridge(
     input: ReviewInput
     ids: readonly string[]
     baselineSeq: number
+    text: string
   } | undefined
 
   const label = (): string => `${String(comments.size)} comment${comments.size === 1 ? '' : 's'}`
@@ -233,7 +233,7 @@ function createComposerBridge(
     id: string
     context: ReviewAgentContext
     input: ReviewInput
-    session: ReviewSessionFace | undefined
+    session: ComposerHistoryEventSource | undefined
     cwd: string | undefined
   } | null => {
     const snapshot = sessions.list.getSnapshot()
@@ -247,7 +247,7 @@ function createComposerBridge(
       id,
       context,
       input: conversation.input.for(context),
-      session: sessions.sessionOf?.(context),
+      session: sessions.binding?.(id)?.eventSource,
       cwd: snapshot.byId[id]?.cwd,
     }
   }
@@ -257,20 +257,25 @@ function createComposerBridge(
     : `${value.id}\0${value.cwd ?? ''}\0${branch ?? ''}`
   const occurrence = (state: ReviewInputState): ReviewOccurrence | undefined =>
     state.occurrences.find(item => item.source === REVIEW_SOURCE && item.ref === REVIEW_REF)
-  const latestUserSeq = (session: ReviewSessionFace | undefined): number => {
-    let latest = -1
-    for (const node of session?.getSnapshot().nodes ?? []) {
-      if (node.kind === 'user' && node.seq > latest) latest = node.seq
-    }
-    return latest
-  }
-  const removeOccurrence = (input: ReviewInput, item: ReviewOccurrence): void => {
+  const userMessages = (session: ComposerHistoryEventSource | undefined) =>
+    submittedInputEntries(session?.getSnapshot().entries)
+  const latestUserSeq = (session: ComposerHistoryEventSource | undefined): number =>
+    userMessages(session).reduce((latest, entry) => Math.max(latest, Number(entry.id)), -1)
+  // RC.1 publishes clipboard-text offsets but scoped edits use detect offsets:
+  // each preceding reference occupies one character in the detect projection.
+  const detectOffset = (state: ReviewInputState, offset: number): number => offset
+    - state.occurrences.filter(item => item.offset < offset)
+      .reduce((total, item) => total + item.length - 1, 0)
+  const removeOccurrence = (context: ReviewAgentContext, input: ReviewInput, item: ReviewOccurrence): void => {
     const state = input.state.getSnapshot()
-    if (state.draft[item.offset] !== '\uFFFC') return
-    input.setDraft(state.draft.slice(0, item.offset) + state.draft.slice(item.offset + 1))
+    const start = detectOffset(state, item.offset)
+    context.bail(context, 'slash/input-consume-token', {
+      guard: { kind: 'span', span: { start, end: start + 1, draftRev: state.draftRev } },
+    })
   }
-  const insertOccurrence = (value: NonNullable<ReturnType<typeof current>>): boolean => {
+  const insertOccurrence = (value: NonNullable<ReturnType<typeof current>>, existing?: ReviewOccurrence): boolean => {
     const state = value.input.state.getSnapshot()
+    const start = detectOffset(state, existing?.offset ?? state.draft.length)
     return value.context.bail(value.context, 'slash/input-insert-reference', {
       reference: {
         source: REVIEW_SOURCE,
@@ -278,7 +283,7 @@ function createComposerBridge(
         label: label(),
         clipboardText: payload(),
       },
-      span: { start: state.draft.length, end: state.draft.length, draftRev: state.draftRev },
+      span: { start, end: start + (existing === undefined ? 0 : 1), draftRev: state.draftRev },
     }) === true
   }
 
@@ -299,6 +304,7 @@ function createComposerBridge(
       stopInput = undefined
       stopSession = undefined
       watchedInput = undefined
+      watchedContext = undefined
       watchedSession = undefined
       watchedId = undefined
       previousInputState = undefined
@@ -311,6 +317,7 @@ function createComposerBridge(
     stopSession?.()
     watchedId = value.id
     watchedInput = value.input
+    watchedContext = value.context
     watchedSession = value.session
     previousInputState = value.input.state.getSnapshot()
     stopInput = value.input.state.subscribe(() => {
@@ -318,7 +325,8 @@ function createComposerBridge(
       const next = value.input.state.getSnapshot()
       previousInputState = next
       if (mutating) return
-      if (pending !== undefined && next.draft !== '') pending = undefined
+      // A failed send restores its chip; typing a new draft is not a failure.
+      if (pending !== undefined && occurrence(next) !== undefined) pending = undefined
       if (pending === undefined && previous !== undefined
         && occurrence(previous) !== undefined && occurrence(next) === undefined
         && next.draft === '' && comments.size > 0) {
@@ -326,13 +334,15 @@ function createComposerBridge(
           input: value.input,
           ids: [...comments.keys()],
           baselineSeq: latestUserSeq(value.session),
+          text: payload(),
         }
       }
       reconcile()
     })
     stopSession = value.session?.subscribe(() => {
-      if (pending !== undefined
-        && latestUserSeq(value.session) > pending.baselineSeq) completeDelivery()
+      const delivery = pending
+      if (delivery !== undefined && userMessages(value.session).some(entry =>
+        Number(entry.id) > delivery.baselineSeq && entry.value.includes(delivery.text))) completeDelivery()
     })
   }
 
@@ -344,9 +354,9 @@ function createComposerBridge(
       const oldOccurrence = watchedInput === undefined
         ? undefined
         : occurrence(watchedInput.state.getSnapshot())
-      if (watchedInput !== undefined && oldOccurrence !== undefined) {
+      if (watchedContext !== undefined && watchedInput !== undefined && oldOccurrence !== undefined) {
         mutating = true
-        try { removeOccurrence(watchedInput, oldOccurrence) } finally { mutating = false }
+        try { removeOccurrence(watchedContext, watchedInput, oldOccurrence) } finally { mutating = false }
       }
       comments = commentsByScope.get(nextScope) ?? new Map()
       pending = undefined
@@ -359,21 +369,19 @@ function createComposerBridge(
     if (value === null) return 'unavailable'
 
     const existing = occurrence(value.input.state.getSnapshot())
-    if (pending?.input === value.input && existing === undefined
-      && value.input.state.getSnapshot().draft === '') return 'inserted'
+    if (pending?.input === value.input && existing === undefined) return 'inserted'
     if (comments.size === 0) {
       if (existing !== undefined) {
         mutating = true
-        try { removeOccurrence(value.input, existing) } finally { mutating = false }
+        try { removeOccurrence(value.context, value.input, existing) } finally { mutating = false }
       }
       return 'inserted'
     }
-    if (existing?.label === label()) return 'inserted'
+    if (existing?.label === label() && existing.clipboardText === payload()) return 'inserted'
 
     mutating = true
     try {
-      if (existing !== undefined) removeOccurrence(value.input, existing)
-      return insertOccurrence(value) ? 'inserted' : 'unavailable'
+      return insertOccurrence(value, existing) ? 'inserted' : 'unavailable'
     } finally {
       mutating = false
     }
@@ -410,7 +418,7 @@ function createComposerBridge(
       const value = current()
       if (value !== null) {
         const item = occurrence(value.input.state.getSnapshot())
-        if (item !== undefined) removeOccurrence(value.input, item)
+        if (item !== undefined) removeOccurrence(value.context, value.input, item)
       }
     },
   }

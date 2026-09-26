@@ -7,6 +7,7 @@ import {
   type ReviewSessionsService,
 } from '../plugins/sidebar/src/client/review-comments.ts'
 import type { GitReviewCommit } from '../plugins/sidebar/src/client/review-types.ts'
+import type { ComposerHistoryEventWindow } from '../plugins/sidebar/src/client/composer-input-history.ts'
 
 function observable<T>(initial: T) {
   let value = initial
@@ -30,7 +31,7 @@ const commit: GitReviewCommit = {
 }
 
 function fixture() {
-  type Occurrence = { source: string; ref: string; offset: number; label: string }
+  type Occurrence = { source: string; ref: string; offset: number; length: number; label: string; clipboardText: string }
   const state = observable({ draft: '', draftRev: 0, occurrences: [] as Occurrence[] })
   const input = {
     state,
@@ -40,16 +41,34 @@ function fixture() {
   }
   const context: ReviewAgentContext = {
     get: () => ({ input: { for: () => input } }),
-    bail: (_context, _event, request) => {
-      const { reference, span } = request as {
-        reference: Omit<Occurrence, 'offset'>
-        span: { start: number }
+    bail: (_context, event, request) => {
+      const { reference, span, guard } = request as {
+        reference: Omit<Occurrence, 'offset' | 'length'>
+        span: { start: number; end: number; draftRev: number }
+        guard?: { span: typeof span }
       }
+      const edit = guard?.span ?? span
       const previous = state.getSnapshot()
+      assert.equal(edit.draftRev, previous.draftRev)
+      const clipboardOffset = (offset: number) => {
+        let extra = 0
+        for (const item of previous.occurrences) {
+          if (item.offset - extra >= offset) break
+          extra += item.length - 1
+        }
+        return offset + extra
+      }
+      const start = clipboardOffset(edit.start)
+      const end = clipboardOffset(edit.end)
+      assert.ok(start <= previous.draft.length && end <= previous.draft.length, 'spans use detect coordinates')
+      const inserted = event === 'slash/input-insert-reference' ? reference.clipboardText : ''
+      const occurrences = previous.occurrences.filter(item => item.offset < start || item.offset >= end)
+        .map(item => item.offset >= end ? { ...item, offset: item.offset + inserted.length - (end - start) } : item)
+      if (inserted !== '') occurrences.push({ ...reference, offset: start, length: inserted.length })
       state.set({
-        draft: `${previous.draft.slice(0, span.start)}\uFFFC${previous.draft.slice(span.start)}`,
+        draft: previous.draft.slice(0, start) + inserted + previous.draft.slice(end),
         draftRev: previous.draftRev + 1,
-        occurrences: [{ ...reference, offset: span.start }],
+        occurrences: occurrences.sort((a, b) => a.offset - b.offset),
       })
       return true
     },
@@ -57,7 +76,8 @@ function fixture() {
   const list = observable({ current: 'first', byId: {
     first: { cwd: '/first' }, second: { cwd: '/second' },
   } })
-  const sessions: ReviewSessionsService = { list, scope: () => context }
+  const events = observable<ComposerHistoryEventWindow>({ entries: [] })
+  const sessions = { list, scope: () => context, binding: () => ({ eventSource: events }) } satisfies ReviewSessionsService
   let source: Parameters<ReviewInputTriggersService['registerSource']>[0] | undefined
   const data = new Map<string, string>()
   const storage: Storage = {
@@ -76,6 +96,21 @@ function fixture() {
     service,
     state,
     storage,
+    events,
+    clearDraft: () => { input.setDraft('') },
+    setDraft: input.setDraft,
+    receive(text: string, kind = 'user') {
+      const entries = events.getSnapshot().entries
+      events.set({ entries: [...entries, { type: 'event', event: {
+        type: 'user/message', seq: entries.length + 1,
+        data: { source: { kind }, content: [{ type: 'text', text }] },
+      } }] })
+    },
+    insertOtherReference() {
+      const clipboardText = '/workspace/README.md'
+      state.set({ draft: clipboardText, draftRev: state.getSnapshot().draftRev + 1,
+        occurrences: [{ source: 'files', ref: 'readme', offset: 0, length: clipboardText.length, label: 'README', clipboardText }] })
+    },
     payload: async () => await source!.codec.serialize(),
     select(sessionId: 'first' | 'second') {
       list.set({ ...list.getSnapshot(), current: sessionId })
@@ -91,6 +126,67 @@ function fixture() {
     },
   }
 }
+
+test('review comments retire only after their request arrives in the pinned event window', async () => {
+  const f = fixture()
+  try {
+    f.add('sent')
+    const sent = await f.payload()
+    f.clearDraft()
+    assert.equal(f.service.getSnapshot().length, 1, 'optimistic clearing is not delivery')
+    f.receive('unrelated message')
+    f.receive(sent, 'agent')
+    assert.equal(f.service.getSnapshot().length, 1, 'unrelated events cannot acknowledge review comments')
+    f.setDraft('My next question')
+    assert.equal(f.state.getSnapshot().occurrences.length, 0)
+    f.receive(`Please fix these:\n${sent}`)
+    assert.equal(f.state.getSnapshot().draft, 'My next question')
+    assert.equal(f.service.getSnapshot().length, 0)
+    assert.equal(await f.payload(), '')
+    assert.equal(f.storage.getItem('tockteam.sidebar.review-comments.v1'), '[]')
+    f.add('next')
+    assert.doesNotMatch(await f.payload(), /Comment sent/)
+  } finally {
+    f.service.dispose()
+  }
+})
+
+test('a failed review submission retains its restored comment chip for retry', async () => {
+  const f = fixture()
+  try {
+    f.add('retry')
+    const before = f.state.getSnapshot()
+    const sent = await f.payload()
+    f.clearDraft()
+    f.state.set({ ...before, draftRev: before.draftRev + 2 })
+    assert.equal(f.service.getSnapshot().length, 1)
+    assert.equal(f.state.getSnapshot().occurrences[0]?.label, '1 comment')
+    f.clearDraft()
+    f.receive(sent)
+    assert.equal(f.service.getSnapshot().length, 0)
+  } finally {
+    f.service.dispose()
+  }
+})
+
+test('review chips use pinned-runtime spans without duplicating text or destroying other references', async () => {
+  const f = fixture()
+  try {
+    f.insertOtherReference()
+    f.add('one')
+    f.add('two')
+    assert.equal(f.state.getSnapshot().occurrences.length, 2)
+    assert.equal(f.state.getSnapshot().draft, `/workspace/README.md${await f.payload()}`)
+    f.service.remove('one')
+    assert.equal(f.state.getSnapshot().draft, `/workspace/README.md${await f.payload()}`)
+    assert.doesNotMatch(f.state.getSnapshot().draft, /Comment one/)
+    f.service.remove('two')
+    assert.equal(f.state.getSnapshot().draft, '/workspace/README.md')
+    assert.equal(f.state.getSnapshot().occurrences[0]?.source, 'files')
+  } finally {
+    f.service.dispose()
+  }
+})
 
 test('review comment retention keeps visible, persisted, and outgoing comments in agreement', async () => {
   const f = fixture()
