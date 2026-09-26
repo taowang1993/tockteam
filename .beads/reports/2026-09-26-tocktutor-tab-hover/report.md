@@ -9,4 +9,4 @@ Inactive tabs are plain; hover adds a rounded highlight and close button. Active
 - Initial rendered RED caught the rectangular inactive tab. A second RED caught an unavailable workbench alias in the portaled Header; fixed with the shared semantic accent background.
 - `cd plugins/tocktutor/packages/tockteam-tocktutor-workbench && ./node_modules/.bin/vitest run tests/route-panel-controls.test.tsx tests/route-note-context-menu.test.tsx --environment jsdom`: 107 passed.
 - `node --test tests/shadcn-migration.test.ts tests/ui-ref-contract.test.ts`: 7 passed. Root `./node_modules/.bin/tsc --noEmit` passed. React Doctor changed-line scan found no issues; maintainability scan was incomplete.
-- Coordinated slash-command session owns generated outputs and the final repository gate; it rebuilt and staged the verified source. Source commits: cc54104c, 56aff321, da76e5f0. No native windows or app launches exercised by the test.
+- Coordinated slash-command session owns generated outputs and the final repository gate; it rebuilt and staged the verified source. Source commits: cc54104c, 56aff321, da76e5f0. No external-app actions were exercised.
