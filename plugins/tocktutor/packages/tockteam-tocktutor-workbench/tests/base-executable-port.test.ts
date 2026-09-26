@@ -129,6 +129,21 @@ test('hydrates .markdown files and exposes their basename to Base formulas', () 
   assert.equal(query.rows[0]?.values['note.status'], 'ready')
 })
 
+test('shows vault notes with ordinary punctuation in a Base without admitting unsafe paths', () => {
+  const parsed = parseExecutableBase('views:\n  - type: table\n    name: Table\n')
+  assert.equal(parsed.status, 'ready')
+  if (parsed.status !== 'ready') return
+  const path = '笔记/周日荐书：《AI众神时代》，看一看？.md'
+  const file = { path, revision: revision('d'), source: '# Book\n' }
+  const query = queryExecutableBaseView(parsed, parsed.views[0]!, [file])
+  assert.deepEqual(query.unsupported, [])
+  assert.deepEqual(query.rows.map(row => row.file.path), [path])
+  for (const unsafe of ['../note.md', '笔记/../note.md', '笔记\\note.md', '笔记/line\nfeed.md']) {
+    assert.deepEqual(queryExecutableBaseView(parsed, parsed.views[0]!, [{ ...file, path: unsafe }]).unsupported.map(entry => entry.kind), ['input'])
+  }
+  assert.deepEqual(queryExecutableBaseView(parsed, parsed.views[0]!, [file, file]).unsupported.map(entry => entry.kind), ['input'])
+})
+
 test('preserves quotes inside Obsidian Base filter statements', () => {
   const parsed = parseExecutableBase(`filters:\n  and:\n    - 'note.status != "archived"'\nviews:\n  - type: table\n    name: Filtered\n    order: [file.name]\n`)
   assert.equal(parsed.status, 'ready')
