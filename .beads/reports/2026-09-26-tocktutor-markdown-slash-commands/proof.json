@@ -1,0 +1,419 @@
+{
+  "flow": {
+    "checks": [
+      "Link: dialog is above the owning route",
+      "unsafe URL refused",
+      "ordinary website link inserted",
+      "focus restored after link",
+      "one undo restores exact invocation",
+      "Link to Note: dialog is above the owning route",
+      "exact source-relative encoded note target",
+      "New Note: dialog is above the owning route",
+      "creation defaults to source folder",
+      "created note linked without leaving source",
+      "created note link supports native undo",
+      "undo retains created file",
+      "File Attachment: dialog is above the owning route",
+      "upload inserts a link rather than an embed",
+      "File Attachment: dialog is above the owning route",
+      "existing attachment inserts without another upload",
+      "source save clears active-tab Unsaved marker",
+      "save/reopen retains all five ordinary links",
+      "Live Preview link opens exact target",
+      "Reading link opens exact target",
+      "canonical dark geometry and appearance",
+      "no runtime errors"
+    ],
+    "errors": [],
+    "state": {
+      "route": "/tocktutor/Notes/A%20%231%25.md",
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "theme": "dark",
+      "htmlSkin": null,
+      "bodySkin": null
+    }
+  },
+  "themes": [
+    {
+      "checks": [
+        "dark/dark: 20 commands",
+        "dark/dark: keyboard scrolls both directions",
+        "dark/dark: shell chrome fill retained",
+        "dark/dark: keyboard stays in dialog",
+        "dark/dark: visible bounded form",
+        "dark/dark: form contrast",
+        "dark/dark: Escape restores editor focus",
+        "no runtime errors",
+        "exact capture geometry and skin ownership",
+        "canonical unskinned dark capture"
+      ],
+      "errors": [],
+      "state": {
+        "route": "/tocktutor/Drafts/Source.md",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "theme": "dark",
+        "htmlSkin": null,
+        "bodySkin": null
+      },
+      "appearances": [
+        {
+          "name": "dark",
+          "skin": null,
+          "theme": "dark",
+          "systemTheme": "light",
+          "reducedMotion": true,
+          "down": 492,
+          "menu": {
+            "fill": "rgb(30, 30, 30)",
+            "sidebar": "rgb(30, 30, 30)",
+            "top": 4,
+            "groupVisible": true
+          },
+          "metrics": {
+            "x": 548,
+            "y": 232.2265625,
+            "right": 964,
+            "bottom": 716.7734375,
+            "overflow": false,
+            "contrast": 11.067896561378452,
+            "frontmost": true
+          }
+        }
+      ]
+    },
+    {
+      "checks": [
+        "light/light: 20 commands",
+        "light/light: keyboard scrolls both directions",
+        "light/light: shell chrome fill retained",
+        "light/light: keyboard stays in dialog",
+        "light/light: visible bounded form",
+        "light/light: form contrast",
+        "light/light: Escape restores editor focus",
+        "no runtime errors",
+        "exact capture geometry and skin ownership"
+      ],
+      "errors": [],
+      "state": {
+        "route": "/tocktutor/Drafts/Source.md",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "theme": "light",
+        "htmlSkin": null,
+        "bodySkin": null
+      },
+      "appearances": [
+        {
+          "name": "light",
+          "skin": null,
+          "theme": "light",
+          "systemTheme": "dark",
+          "reducedMotion": true,
+          "down": 492,
+          "menu": {
+            "fill": "color(srgb 0.962353 0.962667 0.963294)",
+            "sidebar": "color(srgb 0.962353 0.962667 0.963294)",
+            "top": 4,
+            "groupVisible": true
+          },
+          "metrics": {
+            "x": 548,
+            "y": 232.2265625,
+            "right": 964,
+            "bottom": 716.7734375,
+            "overflow": false,
+            "contrast": 5.322704663147297,
+            "frontmost": true
+          }
+        }
+      ]
+    },
+    {
+      "checks": [
+        "tockteam-skin-deep-current/dark: 20 commands",
+        "tockteam-skin-deep-current/dark: keyboard scrolls both directions",
+        "tockteam-skin-deep-current/dark: shell chrome fill retained",
+        "tockteam-skin-deep-current/dark: keyboard stays in dialog",
+        "tockteam-skin-deep-current/dark: visible bounded form",
+        "tockteam-skin-deep-current/dark: form contrast",
+        "tockteam-skin-deep-current/dark: Escape restores editor focus",
+        "no runtime errors",
+        "exact capture geometry and skin ownership"
+      ],
+      "errors": [],
+      "state": {
+        "route": "/tocktutor/Drafts/Source.md",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "theme": "dark",
+        "htmlSkin": null,
+        "bodySkin": "tockteam-skin-deep-current"
+      },
+      "appearances": [
+        {
+          "name": "tockteam-skin-deep-current",
+          "skin": "tockteam-skin-deep-current",
+          "theme": "dark",
+          "systemTheme": "light",
+          "reducedMotion": true,
+          "down": 492,
+          "menu": {
+            "fill": "rgb(7, 25, 35)",
+            "sidebar": "rgb(7, 25, 35)",
+            "top": 4,
+            "groupVisible": true
+          },
+          "metrics": {
+            "x": 548,
+            "y": 232.2265625,
+            "right": 964,
+            "bottom": 716.7734375,
+            "overflow": false,
+            "contrast": 12.211092938528438,
+            "frontmost": true
+          }
+        }
+      ]
+    },
+    {
+      "checks": [
+        "tockteam-skin-jade-circuit/dark: 20 commands",
+        "tockteam-skin-jade-circuit/dark: keyboard scrolls both directions",
+        "tockteam-skin-jade-circuit/dark: shell chrome fill retained",
+        "tockteam-skin-jade-circuit/dark: keyboard stays in dialog",
+        "tockteam-skin-jade-circuit/dark: visible bounded form",
+        "tockteam-skin-jade-circuit/dark: form contrast",
+        "tockteam-skin-jade-circuit/dark: Escape restores editor focus",
+        "no runtime errors",
+        "exact capture geometry and skin ownership"
+      ],
+      "errors": [],
+      "state": {
+        "route": "/tocktutor/Drafts/Source.md",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "theme": "dark",
+        "htmlSkin": null,
+        "bodySkin": "tockteam-skin-jade-circuit"
+      },
+      "appearances": [
+        {
+          "name": "tockteam-skin-jade-circuit",
+          "skin": "tockteam-skin-jade-circuit",
+          "theme": "dark",
+          "systemTheme": "light",
+          "reducedMotion": true,
+          "down": 492,
+          "menu": {
+            "fill": "rgb(7, 26, 22)",
+            "sidebar": "rgb(7, 26, 22)",
+            "top": 4,
+            "groupVisible": true
+          },
+          "metrics": {
+            "x": 548,
+            "y": 232.2265625,
+            "right": 964,
+            "bottom": 716.7734375,
+            "overflow": false,
+            "contrast": 12.236357614342271,
+            "frontmost": true
+          }
+        }
+      ]
+    },
+    {
+      "checks": [
+        "tockteam-skin-porcelain/light: 20 commands",
+        "tockteam-skin-porcelain/light: keyboard scrolls both directions",
+        "tockteam-skin-porcelain/light: shell chrome fill retained",
+        "tockteam-skin-porcelain/light: keyboard stays in dialog",
+        "tockteam-skin-porcelain/light: visible bounded form",
+        "tockteam-skin-porcelain/light: form contrast",
+        "tockteam-skin-porcelain/light: Escape restores editor focus",
+        "no runtime errors",
+        "exact capture geometry and skin ownership"
+      ],
+      "errors": [],
+      "state": {
+        "route": "/tocktutor/Drafts/Source.md",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "theme": "light",
+        "htmlSkin": null,
+        "bodySkin": "tockteam-skin-porcelain"
+      },
+      "appearances": [
+        {
+          "name": "tockteam-skin-porcelain",
+          "skin": "tockteam-skin-porcelain",
+          "theme": "light",
+          "systemTheme": "dark",
+          "reducedMotion": true,
+          "down": 492,
+          "menu": {
+            "fill": "color(srgb 0.918588 0.937569 0.93349)",
+            "sidebar": "color(srgb 0.918588 0.937569 0.93349)",
+            "top": 4,
+            "groupVisible": true
+          },
+          "metrics": {
+            "x": 548,
+            "y": 232.2265625,
+            "right": 964,
+            "bottom": 716.7734375,
+            "overflow": false,
+            "contrast": 6.174776535795522,
+            "frontmost": true
+          }
+        }
+      ]
+    },
+    {
+      "checks": [
+        "tockteam-skin-ember-dusk/dark: 20 commands",
+        "tockteam-skin-ember-dusk/dark: keyboard scrolls both directions",
+        "tockteam-skin-ember-dusk/dark: shell chrome fill retained",
+        "tockteam-skin-ember-dusk/dark: keyboard stays in dialog",
+        "tockteam-skin-ember-dusk/dark: visible bounded form",
+        "tockteam-skin-ember-dusk/dark: form contrast",
+        "tockteam-skin-ember-dusk/dark: Escape restores editor focus",
+        "no runtime errors",
+        "exact capture geometry and skin ownership"
+      ],
+      "errors": [],
+      "state": {
+        "route": "/tocktutor/Drafts/Source.md",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "theme": "dark",
+        "htmlSkin": null,
+        "bodySkin": "tockteam-skin-ember-dusk"
+      },
+      "appearances": [
+        {
+          "name": "tockteam-skin-ember-dusk",
+          "skin": "tockteam-skin-ember-dusk",
+          "theme": "dark",
+          "systemTheme": "light",
+          "reducedMotion": true,
+          "down": 492,
+          "menu": {
+            "fill": "rgb(33, 22, 31)",
+            "sidebar": "rgb(33, 22, 31)",
+            "top": 4,
+            "groupVisible": true
+          },
+          "metrics": {
+            "x": 548,
+            "y": 232.2265625,
+            "right": 964,
+            "bottom": 716.7734375,
+            "overflow": false,
+            "contrast": 10.5301617052959,
+            "frontmost": true
+          }
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "Drafts/Source.md",
+      "bytes": 299,
+      "sha256": "c02dad8d60a511b3a506eb0aba307359d4208ff4d312b4a15fa124a729976b0a"
+    },
+    {
+      "path": "Drafts/Created Note.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Attachments/Document #1.pdf",
+      "bytes": 9,
+      "sha256": "0716f9264c9fe19f5d7455276107f3ddcc1d3497f63d60689a73558ae8a1bf5e"
+    }
+  ],
+  "screenshot": {
+    "file": "canonical-dark.png",
+    "css": [
+      1512,
+      949
+    ],
+    "device": [
+      3024,
+      1898
+    ],
+    "scale": 2,
+    "theme": "dark",
+    "skinId": null,
+    "content": "New Note form over Markdown Commands in Live Preview; pending slash and Unsaved marker visible, long draft name entered, Folder focused; cancelled without creating a second file"
+  },
+  "finalRuns": [
+    {
+      "purpose": "All four commands and navigation",
+      "rootPid": 58767,
+      "id": "9f082a15-e285-42ea-b12f-32e1f2eeade0",
+      "remaining": []
+    },
+    {
+      "purpose": "Dark",
+      "rootPid": 70342,
+      "id": "701d6394-a7c1-4713-9b97-ce83f7735aa4",
+      "remaining": []
+    },
+    {
+      "purpose": "Light",
+      "rootPid": 54310,
+      "id": "9a74ed97-76e5-475b-a491-fbf0f08e9d8f",
+      "remaining": []
+    },
+    {
+      "purpose": "Deep Current",
+      "rootPid": 59888,
+      "id": "acf2014e-4b74-46d0-85b8-3e318b19a0ee",
+      "remaining": []
+    },
+    {
+      "purpose": "Jade Circuit",
+      "rootPid": 60319,
+      "id": "246023c1-90fb-475a-ad18-41eef46aaad9",
+      "remaining": []
+    },
+    {
+      "purpose": "Porcelain",
+      "rootPid": 60761,
+      "id": "31375226-2da4-4edc-a456-e7da035e8aef",
+      "remaining": []
+    },
+    {
+      "purpose": "Ember Dusk",
+      "rootPid": 61237,
+      "id": "07324842-6d09-4229-bfb5-e2f61fecf7ee",
+      "remaining": []
+    }
+  ]
+}
