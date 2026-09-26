@@ -782,7 +782,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
                 <TooltipTrigger asChild>
                   <Button unstyled
                     aria-label="Send"
-                    className="tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-[var(--tta-bg)] disabled:cursor-default disabled:bg-[var(--tta-border)] disabled:text-[var(--tta-text)] [&_svg]:size-3.5"
+                    className="tocktutor-assistant-send flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--tta-accent)] p-0 text-[var(--tta-bg)]! disabled:cursor-default disabled:bg-[var(--tta-border)] disabled:text-[var(--tta-text)]! [&_svg]:size-3.5"
                     disabled={message.trim() === ''}
                     type="submit"
                   ><ArrowUp aria-hidden="true" /></Button>
