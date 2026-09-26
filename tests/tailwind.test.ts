@@ -24,10 +24,12 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   const css = await buildTailwindCss()
 
   assert.match(css, /\.flex\{/)
-  assert.match(css, /\.tocktutor-pane-divider\{[^}]*touch-action:none;[^}]*-webkit-app-region:no-drag;/u, 'pane dividers retain pointer ownership outside the draggable titlebar')
-  assert.match(css, /\.tocktutor-pane-divider:after\{[^}]*background:var\(--dsw-alias-border-l1\);[^}]*inset-block:0;[^}]*width:1px;/u, 'idle divider line is thin and confined to the pane-local handle')
-  assert.match(css, /\.tocktutor-pane-divider:is\(:hover,:active,:focus-visible\):after\{[^}]*background:var\(--dsw-alias-brand-primary\);[^}]*width:2px;/u, 'pointer and keyboard feedback share the semantic accent')
-  assert.match(css, /\.tocktutor-pane-divider\[aria-orientation=horizontal\]:is\(:hover,:active,:focus-visible\):after\{[^}]*height:2px;/u, 'lower splits receive the same thin highlight')
+  assert.match(css, /\.tockteam-pane-divider\{[^}]*touch-action:none;[^}]*-webkit-app-region:no-drag;/u, 'pane dividers retain pointer ownership outside the draggable titlebar')
+  assert.match(css, /\.tockteam-pane-divider:after\{[^}]*background:var\(--dsw-alias-border-l1\);[^}]*inset-block:0;[^}]*width:1px;/u, 'idle divider line is thin and confined to the pane-local handle')
+  assert.match(css, /\.tockteam-pane-divider:is\(:hover,:active,:focus-visible\):after\{[^}]*background:var\(--tockteam-pane-divider-accent\);[^}]*width:2px;/u, 'pointer and keyboard feedback share the theme accent, not the neutral button brand')
+  assert.match(css, /--tockteam-pane-divider-accent:var\(--dsw-specific-markdown-accent\)/u, 'built-in dividers inherit the existing purple accent')
+  assert.match(css, /body\[data-tockteam-skin\]\{--tockteam-pane-divider-accent:var\(--dsw-alias-brand-primary\)\}/u, 'named skins supply their own palette accent')
+  assert.match(css, /\.tockteam-pane-divider\[aria-orientation=horizontal\]:is\(:hover,:active,:focus-visible\):after\{[^}]*height:2px;/u, 'lower splits receive the same thin highlight')
   assert.doesNotMatch(css, /url\([^)]*fonts\/KaTeX/u, 'Crepe math fonts must be bundled, not requested from nonexistent application routes')
   assert.match(css, /\.flex-col\{/)
   assert.match(css, /\.text-foreground\{color:var\(--dsw-alias-label-primary\)\}/)
@@ -143,7 +145,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
     [
-      'tocktutor-pane-divider', 'tocktutor-note-links',
+      'tockteam-pane-divider', 'tocktutor-note-links',
       'launcher-settings-nav-row', 'launcher-command-surface', 'launcher-command-header', 'launcher-command-search', 'launcher-command-content', 'launcher-command-list',
       'launcher-command-field', 'launcher-command-control', 'launcher-command-select-content', 'launcher-command-select-item', 'launcher-command-status', 'launcher-command-empty', 'launcher-command-error', 'launcher-command-group-title',
       'launcher-command-row', 'launcher-command-row-icon', 'launcher-command-footer', 'launcher-command-footer-identity', 'launcher-command-footer-actions', 'launcher-command-footer-action',

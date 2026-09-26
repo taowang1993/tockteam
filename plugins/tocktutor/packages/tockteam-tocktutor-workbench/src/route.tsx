@@ -6347,7 +6347,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </aside>
         <Button unstyled
           aria-label={`Resize Files Sidebar, ${String(sidebarWidth)} Pixels`}
-          className="tocktutor-sidebar-resize tocktutor-pane-divider absolute top-0 bottom-0 z-5 w-2 cursor-ew-resize"
+          className="tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring [-webkit-app-region:no-drag]"
           hidden={!effectiveSidebarOpen}
           onKeyDown={resizeSidebarWithKeyboard}
           onPointerDown={beginSidebarResize}
@@ -6373,7 +6373,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               aria-valuemax={MAX_ASSISTANT_PANEL_WIDTH}
               aria-valuemin={MIN_ASSISTANT_PANEL_WIDTH}
               aria-valuenow={assistantPanelWidth}
-              className="tocktutor-assistant-resize tocktutor-pane-divider absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 cursor-col-resize"
+              className="tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 m-0 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring [-webkit-app-region:no-drag]"
               onKeyDown={resizeAssistantPanelWithKeyboard}
               onPointerDown={beginAssistantPanelResize}
               role="separator"

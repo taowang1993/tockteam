@@ -65,7 +65,7 @@
 }
 
 /* Pane-local hit targets: the accent never crosses into the window titlebar. */
-@utility tocktutor-pane-divider {
+@utility tockteam-pane-divider {
   margin: 0;
   padding: 0;
   border: 0;
@@ -90,7 +90,7 @@
     height: 1px;
   }
   &:is(:hover, :active, :focus-visible)::after {
-    background: var(--dsw-alias-brand-primary);
+    background: var(--tockteam-pane-divider-accent);
     left: calc(50% - 1px);
     width: 2px;
   }
@@ -1089,9 +1089,14 @@
     --tockteam-sidebar-width: 300px;
   }
 
+  & body[data-tockteam-skin] {
+    --tockteam-pane-divider-accent: var(--dsw-alias-brand-primary);
+  }
+
   & body {
     /* Pinned Obsidian-compatible document roles; shell actions keep the active DSH brand. */
     --dsw-specific-markdown-accent: light-dark(#705dcf, #a68af9);
+    --tockteam-pane-divider-accent: var(--dsw-specific-markdown-accent);
     --dsw-specific-markdown-highlight: rgb(255 208 0 / 40%);
     --dsw-specific-markdown-inline-code: color-mix(in srgb, var(--dsw-alias-label-primary, currentColor) 9%, transparent);
     --tockteam-main-pane: var(--dsw-alias-bg-layer-1, var(--dsw-alias-bg-base, #fff));

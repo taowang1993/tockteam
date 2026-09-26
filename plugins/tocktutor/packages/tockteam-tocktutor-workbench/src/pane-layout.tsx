@@ -36,7 +36,7 @@ export function PaneLayoutView(props: {
     handles.push(<Button unstyled key={path.join('.') || 'root'} role="separator" type="button"
       aria-label={horizontal ? 'Resize Right Split' : 'Resize Down Split'} aria-orientation={horizontal ? 'vertical' : 'horizontal'}
       aria-valuemin={15} aria-valuemax={85} aria-valuenow={Math.round(ratio * 100)}
-      className="tocktutor-pane-divider absolute z-10 aria-[orientation=vertical]:w-2 aria-[orientation=vertical]:cursor-col-resize aria-[orientation=horizontal]:h-2 aria-[orientation=horizontal]:cursor-row-resize"
+      className="tockteam-pane-divider absolute z-10 aria-[orientation=vertical]:w-2 aria-[orientation=vertical]:cursor-col-resize aria-[orientation=horizontal]:h-2 aria-[orientation=horizontal]:cursor-row-resize"
       style={horizontal ? { left: `calc(${x + width * ratio}% - 4px)`, top: `${y}%`, height: `${height}%` }
         : { left: `${x}%`, top: `calc(${y + height * ratio}% - 4px)`, width: `${width}%` }}
       onKeyDown={event => {

@@ -14,7 +14,7 @@ async page => {
     }
     const background = luminance(getComputedStyle(document.querySelector('.tocktutor-editor')).backgroundColor), foreground = luminance(line.backgroundColor)
     const contrast = (Math.max(background, foreground) + .05) / (Math.min(background, foreground) + .05)
-    return { contrast, color: line.backgroundColor, width: line.width, height: line.height, top: line.top, left: line.left, content: line.content, background: handle.backgroundColor, box: el.getBoundingClientRect().toJSON(), accent: getComputedStyle(el).getPropertyValue('--dsw-alias-brand-primary').trim() }
+    return { contrast, color: line.backgroundColor, width: line.width, height: line.height, top: line.top, left: line.left, content: line.content, background: handle.backgroundColor, box: el.getBoundingClientRect().toJSON(), accent: getComputedStyle(el).getPropertyValue('--tockteam-pane-divider-accent').trim() }
   })
   const geometry = async () => {
     const titlebar = await page.getByLabel('TockTutor Title Bar', { exact: true }).boundingBox()
@@ -24,7 +24,7 @@ async page => {
       check(tabs && Math.abs(tabs.x - seat.box.x) < 1 && Math.abs(tabs.width - seat.box.width) < 1, 'tab strip aligns with its pane')
       check(tabs.y === titlebar.y || tabs.y === seat.box.y, 'tabs occupy the titlebar or the top of a lower pane')
     }
-    for (const handle of await page.locator('.tocktutor-pane-divider:visible').all()) {
+    for (const handle of await page.locator('.tockteam-pane-divider:visible').all()) {
       const box = await handle.boundingBox()
       check(box.y >= titlebar.y + titlebar.height, 'divider stays below the titlebar')
     }
@@ -53,6 +53,14 @@ async page => {
     await right.hover()
     const hover = await dividerStyle(right)
     check(hover.width === '2px' && hover.color !== idle.color && hover.contrast >= 3, 'hover reveals a contrasting two-pixel accent line')
+    check(await right.evaluate(el => {
+      const sample = document.createElement('span')
+      sample.style.color = 'var(--tockteam-pane-divider-accent)'
+      el.append(sample)
+      const accent = getComputedStyle(sample).color
+      sample.remove()
+      return getComputedStyle(el, '::after').backgroundColor === accent
+    }), 'hover line inherits the resolved theme accent')
     const screenshot = (await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data
     await right.focus(); await page.keyboard.press('ArrowRight')
     check(await right.getAttribute('aria-valuenow') === '55', 'keyboard resizing remains available')
@@ -66,14 +74,13 @@ async page => {
     check(Number(await right.getAttribute('aria-valuenow')) > 55 && (await dividerStyle(right)).width === '2px', 'drag resizes the panes with the accent visible')
     await page.mouse.up()
     await geometry()
-    for (const handle of [page.locator('.tocktutor-sidebar-resize')]) {
-      await handle.hover()
-      check((await dividerStyle(handle)).width === '2px', 'sidebar uses the same line treatment')
-    }
+    const sidebar = page.locator('.tocktutor-sidebar-resize')
+    await sidebar.hover()
+    check(await sidebar.evaluate(el => getComputedStyle(el, '::after').content === 'none'), 'sidebar stays resizable without a highlight')
     await page.getByRole('button', { name: 'Toggle Assistant Panel' }).click()
     const assistant = page.getByRole('separator', { name: 'Resize Assistant Panel' })
     await assistant.hover()
-    check((await dividerStyle(assistant)).width === '2px', 'assistant uses the same line treatment')
+    check(await assistant.evaluate(el => getComputedStyle(el, '::after').content === 'none'), 'assistant stays resizable without a highlight')
     await geometry()
     await page.getByRole('button', { name: 'Toggle Assistant Panel' }).click()
     await split(1, 'Down')
@@ -90,8 +97,33 @@ async page => {
     await page.waitForFunction(() => document.querySelectorAll('[role=tab]').length === 1)
     check(await right.count() === 0, 'right pane can be closed from its titlebar tab')
     check(await page.locator('[data-pane-id]').count() === 1, 'remaining pane expands without losing its note')
+    await page.getByRole('button', { name: 'TockCoder', exact: true }).click()
+    const setup = page.getByRole('dialog', { name: 'Add an API key to get started' })
+    if (await setup.isVisible()) await setup.getByRole('button', { name: 'Configure later' }).click()
+    await page.getByRole('button', { name: 'Toggle side panel' }).click()
+    const coderPane = page.getByRole('complementary', { name: 'Side Panel' })
+    const coderDivider = coderPane.locator('.tockteam-workspace-resize')
+    const coderTitle = await page.locator('.tockteam-window-titlebar').boundingBox()
+    const coderBefore = await coderPane.boundingBox()
+    const coderHandle = await coderDivider.boundingBox()
+    check(coderHandle.y >= coderTitle.y + coderTitle.height, 'TockCoder divider begins below its titlebar')
+    await coderDivider.hover({ position: { x: coderHandle.width / 2, y: 90 } })
+    check(await coderDivider.evaluate(el => {
+      const sample = document.createElement('span')
+      sample.style.color = 'var(--tockteam-pane-divider-accent)'
+      el.append(sample)
+      const accent = getComputedStyle(sample).color
+      sample.remove()
+      const line = getComputedStyle(el, '::after')
+      return line.width === '2px' && line.backgroundColor === accent
+    }), 'TockCoder right pane uses the same resolved theme highlight')
+    await page.mouse.move(coderHandle.x + coderHandle.width / 2, coderHandle.y + 90)
+    await page.mouse.down()
+    await page.mouse.move(coderHandle.x - 60, coderHandle.y + 90, { steps: 4 })
+    await page.mouse.up()
+    check((await coderPane.boundingBox()).width > coderBefore.width + 30, 'TockCoder right pane still resizes by dragging')
     const viewport = await page.evaluate(() => [innerWidth, innerHeight, devicePixelRatio])
     check(viewport.join() === '1512,949,2' && errors.length === 0, 'exact viewport and no runtime errors')
-    return { theme, viewport, route: await page.evaluate(() => location.pathname), content: 'Original.md in two side-by-side Live Preview panes; right divider hovered', idle, hover, checks, errors, screenshots: { hover: screenshot } }
+    return { theme, viewport, route: '/tocktutor/Original.md → /tockcoder', content: 'Original.md in two side-by-side Live Preview panes; right divider hovered', idle, hover, checks, errors, screenshots: { hover: screenshot } }
   } finally { await cdp.detach() }
 }

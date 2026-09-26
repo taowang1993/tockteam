@@ -591,7 +591,7 @@ export function SideToolsPanel(props: SideToolsPanelProps): JSX.Element {
       >
         {!props.maximized && (
         <div
-          className="tockteam-workspace-resize absolute top-0 bottom-0 left-[-4px] z-2 w-2 touch-none cursor-ew-resize"
+          className="tockteam-workspace-resize tockteam-pane-divider absolute top-px bottom-0 left-0 z-2 w-2 cursor-ew-resize after:!left-0"
           onPointerDown={beginResize}
           aria-hidden="true"
         />

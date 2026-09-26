@@ -216,6 +216,20 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(tockTutor, /left: `\$\{x\}%`, width: `\$\{width\}%`/u, 'titlebar tab groups follow pane geometry')
 })
 
+test('accent divider feedback belongs to note splits and the TockCoder right pane only', () => {
+  const tutor = readFileSync(join(root, 'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx'), 'utf8')
+  const panes = readFileSync(join(root, 'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/pane-layout.tsx'), 'utf8')
+  const coder = readFileSync(join(root, 'plugins/sidebar/src/client/SideToolsPanel.tsx'), 'utf8')
+  assert.match(panes, /className="tockteam-pane-divider /u)
+  assert.match(coder, /className="tockteam-workspace-resize tockteam-pane-divider /u)
+  for (const role of ['sidebar', 'assistant']) {
+    const classes = tutor.match(new RegExp(`className="(tocktutor-${role}-resize [^"]+)"`, 'u'))?.[1] ?? ''
+    assert.match(classes, /touch-none/u, `${role} retains touch resizing`)
+    assert.match(classes, /focus-visible:outline/u, `${role} retains keyboard focus indication`)
+    assert.doesNotMatch(classes, /pane-divider|after:/u, `${role} does not draw a highlight`)
+  }
+})
+
 test('review, pinned summary, and embedded side tools keep distinct layouts', () => {
   const summary = readFileSync(join(root, 'plugins/pinned-summary/src/client.ts'), 'utf8')
   const workspace = readFileSync(join(root, 'plugins/sidebar/src/client/plugin.tsx'), 'utf8')
