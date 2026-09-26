@@ -21,11 +21,12 @@ pnpm -C plugins/tocktutor/packages/tockteam-tocktutor-workbench exec vitest run 
 pnpm -C plugins/tocktutor/packages/tockteam-tocktutor-workbench exec tsc --noEmit -p tsconfig.json
 node --test plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/package-boundary.test.ts
 node --test tests/shadcn-migration.test.ts tests/ui-ref-contract.test.ts
+node --test tests/right-panel-layout.test.ts tests/tailwind.test.ts
 pnpm run typecheck
 playwright-cli -s=tutor-dividers run-code --filename=/Users/taowang/projects/tockteam/scripts/tocktutor-pane-divider-checks.js
 ```
 
-Results: 139 focused component tests, 5 boundary tests, 7 shared-UI checks, and both typechecks passed. The browser script passed **47 assertions in each of six appearances**: built-in Dark and Light, Deep Current, Jade Circuit, Porcelain, and Ember Dusk. Each used the opposite system appearance, reduced motion, isolated application data and vault, and an owned extended-display Electron/CDP session.
+Results: 139 focused component tests, 5 boundary tests, 7 shared-UI checks, 7 root titlebar/Tailwind checks, and both typechecks passed. The combined root gate exposed stale titlebar class-order/padding assertions and the missing named-divider utility entry; the focused root checks were rerun red, then updated to assert the new pane-aligned geometry, border-box 40px sizing, retained drag behavior, and compiled semantic divider feedback. No style-ownership or interaction guards were removed. The browser script passed **47 assertions in each of six appearances**: built-in Dark and Light, Deep Current, Jade Circuit, Porcelain, and Ember Dusk. Each used the opposite system appearance, reduced motion, isolated application data and vault, and an owned extended-display Electron/CDP session.
 
 Verified actual split creation, tab alignment before/after pointer and keyboard resize, both divider axes, Files/Assistant feedback, lower/right tab closure, surviving note, 1512 × 949 CSS pixels at 2×, and zero page runtime errors. Highlight contrast ranged from 5.05:1 to 18.90:1. The separate tab-hover owner also reran the existing real Desktop hover proof after extraction: 13/13 passed.
 

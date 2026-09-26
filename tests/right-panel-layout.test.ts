@@ -191,7 +191,10 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /document\.documentElement\.style\.removeProperty\('--tockteam-primary-sidebar-width'\)/u)
   assert.match(workspace, /className="hidden \[html\[data-tockteam-tocktutor-active='true'\]_&\]:absolute[^"\n]+\]:block" id="tockteam-window-titlebar-slot"/u)
   assert.match(workspace, /tockteam-panel-toolbar[^"\n]+\[html\[data-tockteam-tocktutor-active='true'\]_&\]:hidden/u)
-  assert.match(tockTutor, /tocktutor-titlebar absolute top-0/u)
+  const titlebarClasses = tockTutor.match(/className="(tocktutor-titlebar [^"]+)"/u)?.[1]?.split(/\s+/u) ?? []
+  for (const utility of ['absolute', 'top-0', 'box-border', 'h-[var(--tockteam-titlebar-height,40px)]', '[-webkit-app-region:drag]']) {
+    assert.ok(titlebarClasses.includes(utility), `TockTutor titlebar retains ${utility}`)
+  }
   assert.match(tockTutor, /tocktutor-grid relative grid h-full min-h-0 grid-cols-\[var\(--tockteam-primary-sidebar-width,280px\)_minmax\(0,1fr\)_auto_auto\] transition-\[grid-template-columns\] duration-300 ease-out/u)
   assert.match(tockTutor, /tocktutor-right-panel[^"\n]+transition-\[width,opacity,transform,visibility\][^"\n]+\[transition-duration:420ms,300ms,460ms,0s\]/u)
   assert.doesNotMatch(tockTutor, /tocktutor-right-panel[^"\n]+fixed/u)
@@ -208,7 +211,9 @@ test('desktop titlebar matches Tockbot chrome and stays draggable', () => {
   assert.match(workspace, /tockteam-app-rail[^"\n]+\[&_svg\]:size-\[18px\]/u)
   assert.match(workspace, /tockteam-titlebar-leading[^"\n]+\[&_button\]:\[-webkit-app-region:no-drag\]/u)
   assert.match(workspace, /tockteam-panel-toolbar fixed top-\[5px\] right-3\.5[^"\n]+border-0 bg-transparent p-0 shadow-none/u)
-  assert.match(tockTutor, /tocktutor-titlebar-main[^"\n]+pl-2 pr-3\.5/u)
+  assert.match(tockTutor, /tocktutor-titlebar-main relative min-w-0/u)
+  assert.match(tockTutor, /data-pane-tabs=\{pane\.id\}[^\n]+absolute inset-y-0[^\n]+pr-16 pl-2/u, 'each pane owns its tab inset and reserves space for the titlebar controls')
+  assert.match(tockTutor, /left: `\$\{x\}%`, width: `\$\{width\}%`/u, 'titlebar tab groups follow pane geometry')
 })
 
 test('review, pinned summary, and embedded side tools keep distinct layouts', () => {
