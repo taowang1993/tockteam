@@ -1,0 +1,56 @@
+{
+  "checks": [
+    "full command catalog",
+    "editor keeps focus",
+    "accessible editor-to-list association",
+    "bounded menu geometry",
+    "text and icon contrast",
+    "heading prefix and suffix preserved",
+    "bold suffix preserved",
+    "one undo restores query and original heading",
+    "pointer command preserves middle-of-block suffix",
+    "paragraph restored",
+    "add handle uses same command menu",
+    "native drag reorders whole block",
+    "drag neither duplicates nor drops content",
+    "pane 0: exactly one active menu",
+    "pane 0: menu fits its pane",
+    "pane 1: exactly one active menu",
+    "pane 1: menu fits its pane",
+    "saved document reopens with conversion and block order",
+    "explicit seeded appearance retained",
+    "Live Preview active",
+    "no runtime errors"
+  ],
+  "errors": [],
+  "state": {
+    "route": "/tocktutor/Slash%20Editing.md",
+    "viewport": [
+      1512,
+      949,
+      2
+    ],
+    "theme": "dark",
+    "htmlSkin": null,
+    "bodySkin": "tockteam-skin-deep-current",
+    "mode": "0 backlinksLive Preview9 words67 characters"
+  },
+  "appearances": [
+    {
+      "skin": "tockteam-skin-deep-current",
+      "theme": "dark",
+      "systemTheme": "light",
+      "metrics": {
+        "x": 623.6640625,
+        "y": 213.09375,
+        "right": 881.6640625,
+        "bottom": 503.09375,
+        "selectedContrast": 13.671475748124486,
+        "normalContrast": 10.445492041679065,
+        "groupContrast": 10.445492041679065
+      }
+    }
+  ],
+  "savedMarkdown": "## 健康 **Lesson**\n\nBefore after\n\nDestination Block\n\nDrag This Block\n",
+  "commit": "05e4aacc"
+}

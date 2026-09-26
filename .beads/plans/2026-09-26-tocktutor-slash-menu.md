@@ -1,6 +1,6 @@
 # Plan: Notion-Style Slash Editing With TockTeam Design
 
-**Status:** Proposed for review. Only the Milkdown dependency upgrade is implemented. Menu implementation requires approval.
+**Status:** Approved and implemented. See [verification and limitations](../reports/2026-09-26-tocktutor-slash-menu/report.md). The full repository gate retains separately reported environment restrictions.
 
 **Tracking:** Epic `tockteam-ptmd`; slices `tockteam-ptmd.1` → `tockteam-ptmd.2` → `tockteam-ptmd.3`.
 
@@ -99,7 +99,7 @@ The menu key handler must run before the existing heading Enter-to-paragraph sho
 
 ## Delivery Slices and Acceptance Gates
 
-All slices remain deferred until this plan is approved. Every slice includes its own tests and real interaction check; these are not separate horizontal UI/backend projects.
+The user approved implementation. All three slices were delivered with editor tests and guarded Desktop interaction checks; these are not separate horizontal UI/backend projects.
 
 ### 1. Convert Existing Text — `tockteam-ptmd.1`
 
