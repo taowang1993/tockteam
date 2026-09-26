@@ -20,7 +20,8 @@ export interface LivePreviewEditorProps {
     commandRef?: MutableRefObject<((command: EditorCommandId) => boolean) | null>;
     insertTextRef?: MutableRefObject<((text: string) => boolean) | null>;
     onUploadImage?: (file: File) => Promise<string>;
-    onOpenInternalLink?: (target: string) => void;
+    slashLinks?: import('./markdown-links.ts').SlashLinkContext | undefined;
+    onOpenInternalLink?: (target: string, kind?: 'markdown') => void;
     editorViewRef?: MutableRefObject<unknown | null>;
     onAddProperty?: (key: string) => boolean;
     onMarkdownChange: (markdown: string) => void;

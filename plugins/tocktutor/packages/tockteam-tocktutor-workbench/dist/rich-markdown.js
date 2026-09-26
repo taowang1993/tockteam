@@ -274,13 +274,19 @@ function renderInline(source, footnoteNumbers, externalEmbedMode = 'inert') {
         // Only Host-resolved data may become a resource; rejected URLs stay inert.
         return hold(escapeMarkdownHtml(match));
     });
-    text = escapeMarkdownHtml(text);
-    text = text.replace(/\[([^\]\n]{1,2000})\]\(([^)\n]{1,4096})\)/gu, (match, label, target) => {
-        const url = safeUrl(target);
-        return url === null
-            ? escapeMarkdownHtml(match)
-            : `<a href="${escapeMarkdownHtml(url)}" rel="noopener noreferrer">${label}</a>`;
+    text = text.replace(/\[((?:\\.|[^\]\\\n]){1,2000})\]\((<?(?:\\.|[^)\\\n]){1,4096})\)/gu, (match, label, target) => {
+        const unescape = (value) => value.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/gu, '$1');
+        const href = unescape(target.replace(/^<|>$/gu, ''));
+        const relative = !/^[a-z][a-z\d+.-]*:|^[\/\\]|[\u0000-\u0020\u007f]/iu.test(href) && href.length <= 4096;
+        const url = relative ? href : safeUrl(href);
+        if (url === null)
+            return hold(escapeMarkdownHtml(match));
+        const attributes = relative
+            ? `class="internal-link" data-link-kind="markdown" data-target="${escapeMarkdownHtml(url)}"`
+            : externalEmbedMode === 'viewer' ? `data-external-url="${escapeMarkdownHtml(url)}"` : '';
+        return hold(`<a ${attributes} href="${escapeMarkdownHtml(url)}" rel="noopener noreferrer">${escapeMarkdownHtml(unescape(label))}</a>`);
     });
+    text = escapeMarkdownHtml(text);
     text = text.replace(/\[\[([^\]|\n]{1,2000})(?:\|([^\]\n]{1,2000}))?\]\]/gu, (match, target, alias, offset) => {
         if (escapedAt(text, offset) || offset > 0 && text[offset - 1] === '!' && escapedAt(text, offset - 1))
             return match;

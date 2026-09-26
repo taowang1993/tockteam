@@ -1,0 +1,1 @@
+{"version":3,"file":"pane-tabs.d.ts","sourceRoot":"","sources":["../src/pane-tabs.tsx"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,gBAAgB,EAAE,uBAAuB,EAAE,MAAM,aAAa,CAAA;AAE5E,wBAAgB,QAAQ,CAAC,EAAE,IAAI,EAAE,aAAa,EAAE,UAAU,EAAE,SAAS,EAAE,cAAc,EAAE,EAAE,IAAI,CAAC,uBAAuB,EAAE,eAAe,GAAG,YAAY,GAAG,WAAW,GAAG,gBAAgB,CAAC,GAAG;IAAE,IAAI,EAAE,gBAAgB,CAAA;CAAE,+BAwBnN"}

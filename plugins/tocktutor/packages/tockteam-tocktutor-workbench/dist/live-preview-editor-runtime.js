@@ -25,7 +25,8 @@ import { InlineImageLoader, attachInlineImages } from "./inline-images.js";
 import { renderMarkdownHtml } from "./rich-markdown.js";
 import { classifyExternalEmbed } from "./external-embeds.js";
 import { collectEmbedTargets } from "./embeds.js";
-import { SlashMenu, slashMenuPlugin } from "./live-preview-slash-menu.js";
+import { SlashMenu, slashMenuPlugin, slashKey } from "./live-preview-slash-menu.js";
+import { SlashLinkDialog } from "./slash-link-dialog.js";
 import { BlockHandle, block, configureBlockHandle } from "./live-preview-block-handle.js";
 const searchKey = new PluginKey('tocktutor-crepe-search');
 // Leading hashes + Space choose the level, even inside an existing heading.
@@ -181,7 +182,7 @@ export function LivePreviewEditorRuntime(props) {
         instance.current = crepe;
         const serialize = doc => crepe.editor.action(ctx => `${splitLivePreviewSource(source.current).prefix}${ctx.get(serializerCtx)(doc)}`);
         const configured = crepe.editor.remove([...remarkInlineLinkPlugin, wrapInHeadingInputRule]);
-        crepe.editor.config(ctx => configureBlockHandle(ctx, setBlockHandle)).use(block).use(slashMenuPlugin(setSlashMenu));
+        crepe.editor.config(ctx => configureBlockHandle(ctx, setBlockHandle)).use(block).use(slashMenuPlugin(setSlashMenu, () => latest.current.slashLinks));
         crepe.editor.config(configureObsidianContent).use(obsidianSyntax).use(obsidianInline).use(referenceDefinition).use(headingInputRule)
             .use($prose(() => new Plugin({
             key: searchKey,
@@ -271,8 +272,12 @@ export function LivePreviewEditorRuntime(props) {
                         const publicLink = classifyExternalEmbed(url);
                         if (publicLink)
                             latest.current.onOpenExternalUrl?.(publicLink.viewerUrl);
-                        else if (!/^[a-z][a-z\d+.-]*:/iu.test(url) && !url.startsWith('//'))
-                            latest.current.onOpenInternalLink?.(url);
+                        else if (!/^[a-z][a-z\d+.-]*:/iu.test(url) && !url.startsWith('//')) {
+                            if (link.hasAttribute('data-target') && link.dataset.linkKind !== 'markdown')
+                                latest.current.onOpenInternalLink?.(url);
+                            else
+                                latest.current.onOpenInternalLink?.(url, 'markdown');
+                        }
                         return true;
                     },
                 },
@@ -376,6 +381,11 @@ export function LivePreviewEditorRuntime(props) {
         element.addEventListener('keydown', activate);
         return () => { observer.disconnect(); element.removeEventListener('keydown', activate); };
     }, [ready]);
+    useEffect(() => {
+        const view = viewRef.current;
+        if (view && slashKey.getState(view.state)?.form)
+            view.dispatch(view.state.tr);
+    }, [props.slashLinks]);
     useEffect(() => {
         for (const finish of imageWaiters.current)
             finish();
@@ -500,6 +510,6 @@ export function LivePreviewEditorRuntime(props) {
                 props.insertTextRef.current = null;
         };
     }, [ready, props.commandRef, props.insertTextRef]);
-    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && _jsx(SlashMenu, { menu: slashMenu }), blockHandle && _jsx(BlockHandle, { handle: blockHandle })] });
+    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && (slashMenu.form ? _jsx(SlashLinkDialog, { action: slashMenu.action }) : _jsx(SlashMenu, { menu: slashMenu })), blockHandle && _jsx(BlockHandle, { handle: blockHandle })] });
 }
 //# sourceMappingURL=live-preview-editor-runtime.js.map

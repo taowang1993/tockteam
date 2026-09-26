@@ -1,6 +1,6 @@
 import { PluginKey } from '@milkdown/prose/state';
 export declare const slashKey: PluginKey<any>;
-export declare function slashMenuPlugin(publish: any): unknown;
+export declare function slashMenuPlugin(publish: any, getContext?: () => undefined): unknown;
 export declare function SlashMenu({ menu }: {
     menu: any;
 }): import("react").ReactPortal;

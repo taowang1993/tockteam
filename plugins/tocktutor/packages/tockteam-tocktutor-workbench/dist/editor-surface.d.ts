@@ -19,7 +19,7 @@ export declare function RichReadingView(props: {
     embeds?: readonly ResolvedEmbedNode[] | undefined;
     onAddProperty?: ((key: string) => boolean) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
-    onOpenInternalLink?: ((target: string) => void | Promise<ReadingLinkResult | null>) | undefined;
+    onOpenInternalLink?: ((target: string, kind?: 'markdown') => void | Promise<ReadingLinkResult | null>) | undefined;
     onSearchState?: ((state: EditorSearchState) => void) | undefined;
     onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined;
     onToggleTask(index: number): void;
@@ -32,6 +32,7 @@ export declare function RichReadingView(props: {
 export declare function LivePreviewView(props: {
     commandRef?: LivePreviewEditorProps['commandRef'];
     insertTextRef?: LivePreviewEditorProps['insertTextRef'];
+    slashLinks?: LivePreviewEditorProps['slashLinks'];
     onUploadImage?: LivePreviewEditorProps['onUploadImage'];
     onOpenInternalLink?: LivePreviewEditorProps['onOpenInternalLink'];
     documentKey: string;

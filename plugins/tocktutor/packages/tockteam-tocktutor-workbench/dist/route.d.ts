@@ -20,6 +20,7 @@ import { type GraphPosition } from './graph.ts';
 import { BUILTIN_TEMPLATES } from './capture.ts';
 import { type OrganizationProposal } from './organize.ts';
 import { type PreparedNoteMerge } from './merge-preview.ts';
+import { type SlashLinkContext } from './markdown-links.ts';
 import { type EmbedTarget } from './embeds.ts';
 import { type KeyValueStorage, type NamedWorkspace, type TockTutorSettings } from './settings.ts';
 import { type EditorCommandId } from './editor-commands.ts';
@@ -296,7 +297,8 @@ export declare class WorkbenchRouteController {
     loadFacets(): Promise<boolean>;
     loadGraph(mode: 'global' | 'local'): Promise<boolean>;
     openGraphNode(path: string, mode: 'local' | 'note'): Promise<boolean>;
-    openInternalLink(target: string): Promise<ReadingLinkResult | null>;
+    slashLinkContext(pane?: string): SlashLinkContext | undefined;
+    openInternalLink(target: string, kind?: 'markdown'): Promise<ReadingLinkResult | null>;
     openSmartView(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): Promise<boolean>;
     private documentCurrent;
     private publishDocument;
@@ -443,6 +445,7 @@ export interface BookmarkDraft {
 export interface TockTutorRouteViewProps {
     paneController?: WorkbenchRouteController;
     paneOnly?: boolean;
+    paneTabs?: boolean;
     panePanel?: 'assistant' | WorkbenchUtilityView | null;
     onPanePanel?(panel: 'assistant' | WorkbenchUtilityView | null): void;
     onPaneReveal?(path: string): void;
@@ -499,7 +502,7 @@ export interface TockTutorRouteViewProps {
     onOpenBookmark?(id: string): void;
     onOpenCommandPalette?(): void;
     onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>;
-    onOpenInternalLink?(target: string): void | Promise<ReadingLinkResult | null>;
+    onOpenInternalLink?(target: string, kind?: 'markdown'): void | Promise<ReadingLinkResult | null>;
     onOpenRecovery?(): void;
     onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void;
     onOpenExternalUrl?(url: string): void;

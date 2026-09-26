@@ -8,7 +8,7 @@ import { findWrapping } from '@milkdown/prose/transform';
 import { createTable } from '@milkdown/preset-gfm';
 import { $prose } from '@milkdown/utils';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@tockteam/ui/command';
-import { Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Text, Quote, List, ListOrdered, ListTodo, Minus, Code, Image, Table, Sigma } from 'lucide-react';
+import { Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Text, Quote, List, ListOrdered, ListTodo, Minus, Code, Image, Table, Sigma, Link, FileSymlink, FilePlus, Paperclip } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useLayoutEffect } from 'react';
 export const slashKey = new PluginKey('tocktutor-slash-menu');
@@ -22,11 +22,15 @@ const commands = [
     { id: 'h6', label: 'Heading 6', icon: Heading6, group: 'Basic Blocks' },
     { id: 'quote', label: 'Quote', icon: Quote, group: 'Basic Blocks' },
     { id: 'divider', label: 'Divider', icon: Minus, group: 'Basic Blocks' },
+    { id: 'link', label: 'Link', aliases: 'url', icon: Link, group: 'Basic Blocks', form: true },
+    { id: 'note-link', label: 'Link to Note', aliases: 'page', icon: FileSymlink, group: 'Basic Blocks', form: true },
+    { id: 'new-note', label: 'New Note', aliases: 'new page', icon: FilePlus, group: 'Basic Blocks', form: true },
     { id: 'bullet', label: 'Bulleted List', icon: List, group: 'Lists' },
     { id: 'numbered', label: 'Numbered List', aliases: 'ordered', icon: ListOrdered, group: 'Lists' },
     { id: 'todo', label: 'Task List', icon: ListTodo, group: 'Lists' },
-    { id: 'code', label: 'Code Block', icon: Code, group: 'Advanced' },
-    { id: 'image', label: 'Image', icon: Image, group: 'Advanced' },
+    { id: 'image', label: 'Image', icon: Image, group: 'Media' },
+    { id: 'code', label: 'Code Block', icon: Code, group: 'Media' },
+    { id: 'file', label: 'File Attachment', aliases: 'upload', icon: Paperclip, group: 'Media', form: true },
     { id: 'table', label: 'Table', icon: Table, group: 'Advanced' },
     { id: 'math', label: 'Math', icon: Sigma, group: 'Advanced' },
 ];
@@ -77,15 +81,20 @@ function transaction(state, invocation, id, ctx) {
     }
     return tr.setMeta(slashKey, null).scrollIntoView();
 }
-function entries(state, invocation, ctx) {
+function entries(state, invocation, ctx, context) {
     const query = state.doc.textBetween(invocation.from + Number(invocation.slash), invocation.to).trim().toLowerCase();
     return commands.filter(item => `${item.id} ${item.label} ${item.aliases ?? ''}`.toLowerCase().includes(query)
-        && transaction(state, invocation, item.id, ctx));
+        && (!['note-link', 'new-note', 'file'].includes(item.id) || context?.isCurrent())
+        && (item.form ? state.selection.$from.parent.type.allowsMarkType(state.schema.marks.link) : transaction(state, invocation, item.id, ctx)));
 }
-function apply(view, id, ctx) {
+function apply(view, id, ctx, context) {
     const invocation = slashKey.getState(view.state);
-    if (view.isDestroyed || !invocation || !view.editable || !eligible(view.state) || !entries(view.state, invocation, ctx).some(item => item.id === id))
+    if (view.isDestroyed || !invocation || !view.editable || !eligible(view.state) || !entries(view.state, invocation, ctx, context).some(item => item.id === id))
         return;
+    if (commands.find(item => item.id === id)?.form) {
+        view.dispatch(view.state.tr.setMeta(slashKey, { ...invocation, form: id, context }));
+        return;
+    }
     const tr = transaction(view.state, invocation, id, ctx);
     if (!tr)
         return;
@@ -93,7 +102,7 @@ function apply(view, id, ctx) {
     view.dispatch(closeHistory(view.state.tr));
     view.focus();
 }
-export function slashMenuPlugin(publish) {
+export function slashMenuPlugin(publish, getContext = () => undefined) {
     return $prose(ctx => new Plugin({
         key: slashKey,
         state: {
@@ -104,6 +113,8 @@ export function slashMenuPlugin(publish) {
                     return explicit;
                 if (!previous)
                     return null;
+                if (previous.form)
+                    return tr.docChanged ? null : previous;
                 const from = tr.mapping.mapResult(previous.from, -1);
                 const to = tr.mapping.map(previous.to, 1);
                 if (from.deleted || !eligible({ selection: tr.selection }) || tr.selection.from !== to
@@ -125,9 +136,9 @@ export function slashMenuPlugin(publish) {
             },
             handleKeyDown(view, event) {
                 const invocation = slashKey.getState(view.state);
-                if (!invocation || event.isComposing || view.composing || event.keyCode === 229)
+                if (!invocation || invocation.form || event.isComposing || view.composing || event.keyCode === 229)
                     return false;
-                const items = entries(view.state, invocation, ctx);
+                const items = entries(view.state, invocation, ctx, getContext());
                 const selected = Math.max(0, items.findIndex(item => item.id === invocation.selected));
                 if (event.key === 'Escape' || event.key === 'Tab' || ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
                     || (event.key === 'Enter' && (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey))) {
@@ -142,7 +153,7 @@ export function slashMenuPlugin(publish) {
                 }
                 if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
                     if (items[selected]) {
-                        apply(view, items[selected].id, ctx);
+                        apply(view, items[selected].id, ctx, getContext());
                         return true;
                     }
                     view.dispatch(view.state.tr.setMeta(slashKey, null));
@@ -154,7 +165,7 @@ export function slashMenuPlugin(publish) {
                     view.dispatch(view.state.tr.setMeta(slashKey, null)); return false; },
                 compositionstart(view) { if (slashKey.getState(view.state))
                     view.dispatch(view.state.tr.setMeta(slashKey, null)); return false; },
-                blur(view) { if (slashKey.getState(view.state))
+                blur(view) { if (slashKey.getState(view.state) && !slashKey.getState(view.state).form)
                     view.dispatch(view.state.tr.setMeta(slashKey, null)); return false; },
             },
         },
@@ -170,24 +181,78 @@ export function slashMenuPlugin(publish) {
                                 element.style.setProperty('--tocktutor-slash-height', `${Math.max(0, availableHeight - 2)}px`);
                             } }),
                     ] },
-                shouldShow: view => !!slashKey.getState(view.state) && view.editable && view.hasFocus(),
+                shouldShow: view => !!slashKey.getState(view.state) && !slashKey.getState(view.state).form && view.editable && view.hasFocus(),
             });
             const clearARIA = () => { for (const name of ['aria-controls', 'aria-activedescendant', 'aria-autocomplete', 'aria-haspopup'])
                 view.dom.removeAttribute(name); };
             const dismiss = event => {
-                if (!element.contains(event.target) && slashKey.getState(view.state))
+                if (!element.contains(event.target) && slashKey.getState(view.state) && !slashKey.getState(view.state).form)
                     view.dispatch(view.state.tr.setMeta(slashKey, null));
             };
             document.addEventListener('pointerdown', dismiss);
+            let pending = null;
             const update = () => {
                 const invocation = slashKey.getState(view.state);
-                if (!invocation || !view.editable || !view.hasFocus()) {
+                if (invocation && !view.editable) {
+                    view.dispatch(view.state.tr.setMeta(slashKey, null));
+                    return;
+                }
+                if (!invocation) {
+                    pending = null;
                     provider.hide();
                     clearARIA();
                     publish(null);
                     return;
                 }
-                const items = entries(view.state, invocation, ctx);
+                if (invocation.form) {
+                    provider.hide();
+                    clearARIA();
+                    if (invocation.context && !invocation.context.isCurrent()) {
+                        view.dispatch(view.state.tr.setMeta(slashKey, null));
+                        return;
+                    }
+                    if (pending?.invocation === invocation) {
+                        publish(pending.menu);
+                        return;
+                    }
+                    let restore = false;
+                    const current = () => !view.isDestroyed && view.editable && slashKey.getState(view.state) === invocation && (!invocation.context || invocation.context.isCurrent());
+                    const menu = { form: invocation.form, action: {
+                            kind: invocation.form, context: invocation.context, isCurrent: current,
+                            cancel() { if (current()) {
+                                restore = true;
+                                view.dispatch(view.state.tr.setMeta(slashKey, null));
+                            } },
+                            restoreFocus() { if (restore && !view.isDestroyed && view.editable)
+                                view.focus(); },
+                            insert(href, label) {
+                                if (!current())
+                                    return false;
+                                const marks = view.state.doc.resolve(invocation.from).marks().filter(mark => mark.type.name !== 'link');
+                                const node = view.state.schema.text(label, [...marks, view.state.schema.marks.link.create({ href })]);
+                                const tr = view.state.tr.replaceWith(invocation.from, invocation.to, node);
+                                tr.setSelection(TextSelection.create(tr.doc, invocation.from + node.nodeSize)).setStoredMarks([]).setMeta(slashKey, null).scrollIntoView();
+                                restore = true;
+                                view.dispatch(closeHistory(tr));
+                                if (slashKey.getState(view.state) === invocation) {
+                                    restore = false;
+                                    return false;
+                                }
+                                view.dispatch(closeHistory(view.state.tr));
+                                return true;
+                            },
+                        } };
+                    pending = { invocation, menu };
+                    publish(menu);
+                    return;
+                }
+                if (!view.hasFocus()) {
+                    provider.hide();
+                    clearARIA();
+                    publish(null);
+                    return;
+                }
+                const items = entries(view.state, invocation, ctx, getContext());
                 const selected = items.find(item => item.id === invocation.selected)?.id ?? items[0]?.id ?? '';
                 publish({ element, view, provider, items, selected,
                     select(id) {
@@ -195,7 +260,7 @@ export function slashMenuPlugin(publish) {
                         if (current && current.selected !== id)
                             view.dispatch(view.state.tr.setMeta(slashKey, { ...current, selected: id }));
                     },
-                    run: id => apply(view, id, ctx),
+                    run: id => apply(view, id, ctx, getContext()),
                 });
             };
             update();
