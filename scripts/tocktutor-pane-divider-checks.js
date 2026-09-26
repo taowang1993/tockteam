@@ -7,7 +7,14 @@ async page => {
   const cdp = await page.context().newCDPSession(page)
   const dividerStyle = locator => locator.evaluate(el => {
     const line = getComputedStyle(el, '::after'), handle = getComputedStyle(el)
-    return { color: line.backgroundColor, width: line.width, height: line.height, top: line.top, left: line.left, content: line.content, background: handle.backgroundColor, box: el.getBoundingClientRect().toJSON(), accent: getComputedStyle(el).getPropertyValue('--dsw-alias-brand-primary').trim() }
+    const canvas = document.createElement('canvas').getContext('2d')
+    const luminance = color => {
+      canvas.fillStyle = color; canvas.fillRect(0, 0, 1, 1)
+      return [...canvas.getImageData(0, 0, 1, 1).data].slice(0, 3).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0)
+    }
+    const background = luminance(getComputedStyle(document.querySelector('.tocktutor-editor')).backgroundColor), foreground = luminance(line.backgroundColor)
+    const contrast = (Math.max(background, foreground) + .05) / (Math.min(background, foreground) + .05)
+    return { contrast, color: line.backgroundColor, width: line.width, height: line.height, top: line.top, left: line.left, content: line.content, background: handle.backgroundColor, box: el.getBoundingClientRect().toJSON(), accent: getComputedStyle(el).getPropertyValue('--dsw-alias-brand-primary').trim() }
   })
   const geometry = async () => {
     const titlebar = await page.getByLabel('TockTutor Title Bar', { exact: true }).boundingBox()
@@ -24,12 +31,13 @@ async page => {
   }
   try {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false })
-    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
     const notice = page.getByRole('dialog', { name: 'Internal Testing Notice' })
     if (await notice.isVisible()) await notice.getByRole('button', { name: 'Continue', exact: true }).click()
     await page.getByRole('button', { name: 'TockTutor', exact: true }).click()
     await page.getByRole('button', { name: 'Original.md', exact: true }).click()
     const theme = await page.evaluate(() => ({ scheme: document.documentElement.style.colorScheme, htmlSkin: document.documentElement.dataset.tockteamSkin ?? null, bodySkin: document.body.dataset.tockteamSkin ?? null }))
+    await page.emulateMedia({ colorScheme: theme.scheme === 'dark' ? 'light' : 'dark' })
     const split = async (index, direction) => {
       await page.getByRole('button', { name: 'More Note Actions', exact: true }).nth(index).click()
       await page.getByRole('menuitem', { name: `Split ${direction}`, exact: true }).click()
@@ -44,7 +52,7 @@ async page => {
     check(idle.width === '1px' && idle.background === 'rgba(0, 0, 0, 0)', 'idle divider is a thin rule without a grip')
     await right.hover()
     const hover = await dividerStyle(right)
-    check(hover.width === '2px' && hover.color !== idle.color, 'hover reveals a two-pixel accent line')
+    check(hover.width === '2px' && hover.color !== idle.color && hover.contrast >= 3, 'hover reveals a contrasting two-pixel accent line')
     const screenshot = (await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data
     await right.focus(); await page.keyboard.press('ArrowRight')
     check(await right.getAttribute('aria-valuenow') === '55', 'keyboard resizing remains available')
