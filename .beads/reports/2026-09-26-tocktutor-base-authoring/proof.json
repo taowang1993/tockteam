@@ -1,0 +1,30 @@
+{
+  "surface": "guarded TockTeam Desktop / TockTutor",
+  "route": "/tocktutor/Untitled.base",
+  "canonicalAppearance": { "colorScheme": "dark", "skinId": null, "htmlSkin": null, "bodySkin": null },
+  "geometry": { "cssWidth": 1512, "cssHeight": 949, "deviceScale": 2, "pngWidth": 3024, "pngHeight": 1898 },
+  "screenshot": "canonical-dark.png",
+  "checks": [
+    "Files > New Base created an exclusive Untitled.base with a Table view and opened it",
+    "Results limit, descending Sort, Filter, and visible Properties persisted in Base source",
+    "Add View created a List view; Rename View changed it to Reading",
+    "Base New offered vault, same-folder, and chosen-folder destinations with path preview",
+    "Base New created an empty Projects/New Item.md, kept Untitled.base open, refreshed Files, and explained why the current filter hid it",
+    "Projects folder context action created Projects/Untitled.base",
+    "Results menu remained topmost and keyboard dismissible in built-in light and all four named skins",
+    "Built-in dark parity screenshot has no active skin"
+  ],
+  "appearanceChecks": [
+    { "name": "Built-in Dark", "scheme": "dark", "skin": null },
+    { "name": "Built-in Light", "scheme": "light", "skin": null },
+    { "name": "Deep Current", "scheme": "dark", "skin": "tockteam-skin-deep-current" },
+    { "name": "Jade Circuit", "scheme": "dark", "skin": "tockteam-skin-jade-circuit" },
+    { "name": "Porcelain", "scheme": "light", "skin": "tockteam-skin-porcelain" },
+    { "name": "Ember Dusk", "scheme": "dark", "skin": "tockteam-skin-ember-dusk" }
+  ],
+  "savedBaseSha256": "1c2adc68a80e63497a0af738d637fbd69212c6effead4b24938e80196f491620",
+  "createdNoteSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "consoleErrors": 0,
+  "consoleWarnings": ["Electron development-mode insecure CSP warning"],
+  "processTree": { "rootPid": 64704, "remainingAfterStop": [] }
+}

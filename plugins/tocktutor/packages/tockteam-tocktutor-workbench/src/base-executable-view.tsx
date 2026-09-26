@@ -394,7 +394,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
       setAuthoringError('')
     } catch { setAuthoringError('The Base could not be saved. Review its source before retrying.') }
   }
-  const menuClass = 'z-50 w-64 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-3 text-foreground shadow-lg'
+  const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-3 text-foreground shadow-lg'
   return (
     <section aria-label="Executable Base" className="flex min-h-0 flex-col gap-3 overflow-auto p-4">
       <header className="flex flex-wrap items-end gap-3">
