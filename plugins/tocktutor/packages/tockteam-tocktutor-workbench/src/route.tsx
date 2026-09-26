@@ -86,7 +86,8 @@ import { MAX_EDITOR_SEARCH_QUERY_LENGTH, type EditorSearchAction, type EditorSea
 import { SourceEditor, type SourceEditorSelectionRequest } from './source-editor.tsx'
 import { WorkbenchUtilities, type WorkbenchUtilityView } from './utility-panel.tsx'
 import { LinkedNotePane, LINKED_VIEW_TITLES } from './linked-note-pane.tsx'
-import { PaneLayoutView } from './pane-layout.tsx'
+import { PaneLayoutView, paneLayoutEntries } from './pane-layout.tsx'
+import { PaneTabs } from './pane-tabs.tsx'
 import { NoteBacklinks } from './note-backlinks.tsx'
 import { WorkbenchVaultDialog } from './vault-dialog.tsx'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
@@ -3202,6 +3203,9 @@ export class WorkbenchRouteController {
     const result = closeNoteTab(this.shellSession, paneId, path)
     if (result.closed === null) return false
     this.shellSession = result.session
+    if (this.shellSession.groups.length > 1 && this.shellSession.groups.find(group => group.id === paneId)?.tabs.length === 0) {
+      this.shellSession = closePaneGroup(this.shellSession, paneId).session
+    }
     this.recentlyClosed.splice(
       0,
       this.recentlyClosed.length,
@@ -4367,6 +4371,7 @@ export interface BookmarkDraft {
 export interface TockTutorRouteViewProps {
   paneController?: WorkbenchRouteController
   paneOnly?: boolean
+  paneTabs?: boolean
   panePanel?: 'assistant' | WorkbenchUtilityView | null
   onPanePanel?(panel: 'assistant' | WorkbenchUtilityView | null): void
   onPaneReveal?(path: string): void
@@ -5805,42 +5810,12 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <TooltipContent>Toggle Files Sidebar</TooltipContent>
         </Tooltip>
       </div>
-      <div className="tocktutor-titlebar-main flex min-w-0 items-center gap-1 pl-2 pr-3.5">
-        <div className="tocktutor-tabs -mx-[var(--tt-tab-curve)] -mb-px flex max-w-[min(48rem,58vw)] min-w-0 self-stretch items-end gap-1 overflow-x-auto overflow-y-hidden px-[var(--tt-tab-curve)] [--tt-tab-curve:16px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" {...(focusedPane?.tabs.length ? { 'aria-label': 'Note Tabs', role: 'tablist' } : {})}>
-          {focusedPane?.tabs.map((tab, index) => (
-            <div
-              className="group/tab relative z-1 -mb-px flex h-[34px] min-w-[118px] max-w-[220px] items-center gap-2 rounded-t-[5px] border border-b-0 border-transparent bg-[var(--tt-panel)] pr-2.5 pl-3 before:pointer-events-none before:absolute before:bottom-[-1px] before:left-[calc(var(--tt-tab-curve)*-1)] before:size-[var(--tt-tab-curve)] before:rounded-br-[var(--tt-tab-curve)] before:content-[''] before:[box-shadow:calc(var(--tt-tab-curve)/2)_calc(var(--tt-tab-curve)/2)_0_calc(var(--tt-tab-curve)/2)_var(--tt-panel)] after:pointer-events-none after:absolute after:right-[calc(var(--tt-tab-curve)*-1)] after:bottom-[-1px] after:size-[var(--tt-tab-curve)] after:rounded-bl-[var(--tt-tab-curve)] after:content-[''] after:[box-shadow:calc(var(--tt-tab-curve)/-2)_calc(var(--tt-tab-curve)/2)_0_calc(var(--tt-tab-curve)/2)_var(--tt-panel)] data-[active=false]:mb-0.5 data-[active=false]:h-7 data-[active=false]:rounded-[5px] data-[active=false]:border-b data-[active=false]:bg-transparent data-[active=false]:hover:bg-accent data-[active=false]:focus-within:bg-accent data-[active=false]:text-[var(--tt-muted)] data-[active=false]:shadow-none data-[active=false]:before:hidden data-[active=false]:after:hidden"
-              data-active={tab.path === focusedPane.activePath}
-              key={tab.path}
-              role="presentation"
-            >
-              <Button unstyled
-                aria-selected={tab.path === focusedPane.activePath}
-                className="relative z-1 flex min-w-0 flex-1 items-center self-stretch border-0 bg-transparent p-0 text-left [&>span]:truncate"
-                onClick={() => { props.onActivateTab(focusedPane.id, tab.path) }}
-                onKeyDown={event => {
-                  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-                  event.preventDefault()
-                  const offset = event.key === 'ArrowLeft' ? -1 : 1
-                  if (event.altKey) {
-                    props.onMoveTab?.(focusedPane.id, tab.path, offset)
-                    return
-                  }
-                  const next = focusedPane.tabs[(index + offset + focusedPane.tabs.length) % focusedPane.tabs.length]
-                  if (next !== undefined) props.onActivateTab(focusedPane.id, next.path)
-                }}
-                aria-controls={props.paneController ? `tocktutor-note-editor-${focusedPane.id}` : 'tocktutor-note-editor'}
-                role="tab"
-                tabIndex={tab.path === focusedPane.activePath ? 0 : -1}
-                title={tab.path}
-                type="button"
-              >
-                <span>{tab.dirty && <span aria-label="Unsaved">•</span>}{fileName(tab.path)}</span>
-              </Button>
-              <Button unstyled aria-label={`Close ${fileName(tab.path)}`} className="pointer-events-none relative z-1 inline-flex size-5 shrink-0 translate-x-0.5 items-center justify-center rounded border-0 bg-transparent p-0 text-[var(--tt-muted)] opacity-0 group-data-[active=true]/tab:pointer-events-auto group-data-[active=true]/tab:opacity-100 group-hover/tab:pointer-events-auto group-hover/tab:opacity-100 group-focus-within/tab:pointer-events-auto group-focus-within/tab:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100 [&_svg]:size-3!" onClick={() => { props.onCloseTab?.(focusedPane.id, tab.path) }} type="button"><WorkbenchGlyph kind="close" /></Button>
-            </div>
-          ))}
-        </div>
+      <div className="tocktutor-titlebar-main relative min-w-0" style={{ marginRight: panel === 'assistant' ? assistantPanelWidth : 0 }}>
+        {(snapshot.layout ? paneLayoutEntries(snapshot.layout).filter(entry => 'groupId' in entry.node && entry.y === 0) : focusedPane ? [{ node: { groupId: focusedPane.id }, x: 0, width: 100 }] : []).map(({ node, x, width }) => {
+          const pane = 'groupId' in node ? snapshot.panes.find(pane => pane.id === node.groupId) : undefined
+          return pane && <div key={pane.id} data-pane-tabs={pane.id} className="absolute inset-y-0 flex min-w-0 items-center overflow-hidden pr-16 pl-2" style={{ left: `${x}%`, width: `${width}%` }}><PaneTabs {...props} pane={pane} /></div>
+        })}
+        <div className="absolute inset-y-0 right-2 flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">
@@ -5849,7 +5824,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           </TooltipTrigger>
           <TooltipContent>New Note</TooltipContent>
         </Tooltip>
-        <span className="tocktutor-titlebar-spacer flex-1" />
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button unstyled
@@ -5862,6 +5837,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           </TooltipTrigger>
           <TooltipContent>Toggle Assistant Panel</TooltipContent>
         </Tooltip>
+        </div>
       </div>
     </section>
   ) : null
@@ -6230,7 +6206,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             </div>
           </footer>
         </section>)
-  if (props.paneOnly) return <TooltipProvider><div className="h-full min-h-0 min-w-0" data-pane-id={snapshot.focusedPaneId}
+  if (props.paneOnly) return <TooltipProvider><div className="flex h-full min-h-0 min-w-0 flex-col" data-pane-id={snapshot.focusedPaneId}
     onPointerDownCapture={() => { props.onFocusPane?.(snapshot.focusedPaneId) }}
     onFocusCapture={() => { props.onFocusPane?.(snapshot.focusedPaneId) }}
     onKeyDown={event => {
@@ -6240,7 +6216,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       event.preventDefault()
       openNoteSearch(event.key.toLowerCase() === 'h' ? 'replace' : 'find')
     }}
-  >{noteDialogs}{editor}</div></TooltipProvider>
+  >{noteDialogs}{props.paneTabs && focusedPane && <div data-pane-tabs={focusedPane.id} className="flex h-10 shrink-0 items-center overflow-hidden border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2"><PaneTabs {...props} pane={focusedPane} /></div>}<div className="min-h-0 flex-1">{editor}</div></div></TooltipProvider>
   return (
     <TooltipProvider>
       <main
@@ -6348,7 +6324,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </aside>
         <Button unstyled
           aria-label={`Resize Files Sidebar, ${String(sidebarWidth)} Pixels`}
-          className="tocktutor-sidebar-resize absolute top-0 bottom-0 z-5 m-0 w-2 touch-none cursor-ew-resize border-0 bg-transparent p-0 outline-none after:absolute after:top-0 after:bottom-0 after:left-[3px] after:w-0.5 after:bg-transparent after:content-[''] focus-visible:after:bg-[var(--tt-accent)]"
+          className="tocktutor-sidebar-resize tocktutor-pane-divider absolute top-0 bottom-0 z-5 w-2 cursor-ew-resize"
           hidden={!effectiveSidebarOpen}
           onKeyDown={resizeSidebarWithKeyboard}
           onPointerDown={beginSidebarResize}
@@ -6356,8 +6332,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           title="Drag or Use Left and Right Arrow Keys"
           type="button"
         />
-        {props.paneController && snapshot.layout ? <PaneLayoutView layout={snapshot.layout} onResize={(path, ratio) => { props.paneController!.resizeSplit(path, ratio) }} renderPane={id => (
-          snapshot.panes.find(pane => pane.id === id)?.linkedView ? <LinkedNotePane controller={props.paneController!} id={id} /> : <TockTutorRouteView {...boundPaneProps(props, id)} paneOnly panePanel={panel} onPanePanel={setPanel} onPaneReveal={path => { setSidebarOpen(true); setSidebarSearch(false); setRevealPath(path) }} />
+        {props.paneController && snapshot.layout ? <PaneLayoutView layout={snapshot.layout} onResize={(path, ratio) => { props.paneController!.resizeSplit(path, ratio) }} renderPane={(id, topRow) => (
+          snapshot.panes.find(pane => pane.id === id)?.linkedView ? <LinkedNotePane controller={props.paneController!} id={id} /> : <TockTutorRouteView {...boundPaneProps(props, id)} paneOnly paneTabs={!topRow} panePanel={panel} onPanePanel={setPanel} onPaneReveal={path => { setSidebarOpen(true); setSidebarSearch(false); setRevealPath(path) }} />
         )} /> : editor}
         <aside
           aria-hidden={panel !== 'assistant'}
@@ -6374,7 +6350,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               aria-valuemax={MAX_ASSISTANT_PANEL_WIDTH}
               aria-valuemin={MIN_ASSISTANT_PANEL_WIDTH}
               aria-valuenow={assistantPanelWidth}
-              className="tocktutor-assistant-resize absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 touch-none cursor-col-resize border-0 bg-transparent p-0 outline-none active:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)] focus-visible:[&+.tocktutor-assistant-content]:border-l-[var(--tt-accent)]"
+              className="tocktutor-assistant-resize tocktutor-pane-divider absolute top-0 bottom-0 left-0 z-3 w-4 -translate-x-1/2 cursor-col-resize"
               onKeyDown={resizeAssistantPanelWithKeyboard}
               onPointerDown={beginAssistantPanelResize}
               role="separator"

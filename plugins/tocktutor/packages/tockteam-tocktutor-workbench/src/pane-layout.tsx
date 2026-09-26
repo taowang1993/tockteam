@@ -2,29 +2,43 @@ import { Button } from '@tockteam/ui/button'
 import { useRef, type ReactNode } from 'react'
 import type { PaneLayout } from './session.ts'
 
+/** Shared geometry keeps titlebar tabs aligned with their pane seats. */
+export function paneLayoutEntries(layout: PaneLayout) {
+  const entries: { node: PaneLayout; path: number[]; x: number; y: number; width: number; height: number }[] = []
+  const visit = (node: PaneLayout, path: number[], x: number, y: number, width: number, height: number): void => {
+    entries.push({ node, path, x, y, width, height })
+    if ('groupId' in node) return
+    const horizontal = node.axis === 'horizontal', ratio = node.ratio
+    visit(node.children[0], [...path, 0], x, y, horizontal ? width * ratio : width, horizontal ? height : height * ratio)
+    visit(node.children[1], [...path, 1], horizontal ? x + width * ratio : x, horizontal ? y : y + height * ratio, horizontal ? width * (1 - ratio) : width, horizontal ? height : height * (1 - ratio))
+  }
+  visit(layout, [], 0, 0, 100, 100)
+  return entries
+}
+
 /** Flat, keyed pane seats preserve editor DOM/history when a split reparents a leaf. */
 export function PaneLayoutView(props: {
   layout: PaneLayout
-  renderPane(id: string): ReactNode
+  renderPane(id: string, topRow: boolean): ReactNode
   onResize(path: readonly number[], ratio: number): void
 }): ReactNode {
   const root = useRef<HTMLDivElement>(null)
   const drag = useRef<{ pointer: number; start: number; size: number; ratio: number; path: number[] } | null>(null)
   const panes: ReactNode[] = []
   const handles: ReactNode[] = []
-  const visit = (node: PaneLayout, path: number[], x: number, y: number, width: number, height: number): void => {
+  for (const { node, path, x, y, width, height } of paneLayoutEntries(props.layout)) {
     if ('groupId' in node) {
-      panes.push(<div className="absolute min-h-0 min-w-0 overflow-hidden" key={node.groupId} style={{ left: `${x}%`, top: `${y}%`, width: `${width}%`, height: `${height}%` }}>{props.renderPane(node.groupId)}</div>)
-      return
+      panes.push(<div className="absolute min-h-0 min-w-0 overflow-hidden" key={node.groupId} style={{ left: `${x}%`, top: `${y}%`, width: `${width}%`, height: `${height}%` }}>{props.renderPane(node.groupId, y === 0)}</div>)
+      continue
     }
     const horizontal = node.axis === 'horizontal'
     const ratio = node.ratio
     handles.push(<Button unstyled key={path.join('.') || 'root'} role="separator" type="button"
       aria-label={horizontal ? 'Resize Right Split' : 'Resize Down Split'} aria-orientation={horizontal ? 'vertical' : 'horizontal'}
       aria-valuemin={15} aria-valuemax={85} aria-valuenow={Math.round(ratio * 100)}
-      className="absolute z-10 touch-none border-0 bg-[var(--tt-border)] p-0 focus-visible:bg-[var(--tt-accent)]"
-      style={horizontal ? { left: `calc(${x + width * ratio}% - 2px)`, top: `${y}%`, width: 4, height: `${height}%`, cursor: 'col-resize' }
-        : { left: `${x}%`, top: `calc(${y + height * ratio}% - 2px)`, width: `${width}%`, height: 4, cursor: 'row-resize' }}
+      className="tocktutor-pane-divider absolute z-10 aria-[orientation=vertical]:w-2 aria-[orientation=vertical]:cursor-col-resize aria-[orientation=horizontal]:h-2 aria-[orientation=horizontal]:cursor-row-resize"
+      style={horizontal ? { left: `calc(${x + width * ratio}% - 4px)`, top: `${y}%`, height: `${height}%` }
+        : { left: `${x}%`, top: `calc(${y + height * ratio}% - 4px)`, width: `${width}%` }}
       onKeyDown={event => {
         const negative = horizontal ? 'ArrowLeft' : 'ArrowUp'
         const positive = horizontal ? 'ArrowRight' : 'ArrowDown'
@@ -48,9 +62,6 @@ export function PaneLayoutView(props: {
       onLostPointerCapture={() => { drag.current = null }}
       onPointerCancel={() => { drag.current = null }}
     />)
-    visit(node.children[0], [...path, 0], x, y, horizontal ? width * ratio : width, horizontal ? height : height * ratio)
-    visit(node.children[1], [...path, 1], horizontal ? x + width * ratio : x, horizontal ? y : y + height * ratio, horizontal ? width * (1 - ratio) : width, horizontal ? height : height * (1 - ratio))
   }
-  visit(props.layout, [], 0, 0, 100, 100)
   return <div aria-label="Note Panes" className="relative h-full min-h-0 min-w-0 overflow-hidden" ref={root}>{panes}{handles}</div>
 }

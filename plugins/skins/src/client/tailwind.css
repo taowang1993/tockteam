@@ -64,6 +64,45 @@
   --radius-xl: 12px;
 }
 
+/* Pane-local hit targets: the accent never crosses into the window titlebar. */
+@utility tocktutor-pane-divider {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  touch-action: none;
+  -webkit-app-region: no-drag;
+  &::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: calc(50% - 0.5px);
+    width: 1px;
+    background: var(--dsw-alias-border-l1);
+    pointer-events: none;
+  }
+  &[aria-orientation='horizontal']::after {
+    inset-inline: 0;
+    top: calc(50% - 0.5px);
+    bottom: auto;
+    width: auto;
+    height: 1px;
+  }
+  &:is(:hover, :active, :focus-visible)::after {
+    background: var(--dsw-alias-brand-primary);
+    left: calc(50% - 1px);
+    width: 2px;
+  }
+  &[aria-orientation='horizontal']:is(:hover, :active, :focus-visible)::after {
+    left: 0;
+    top: calc(50% - 1px);
+    width: auto;
+    height: 2px;
+  }
+  &:focus-visible { outline: none !important; }
+}
+
 /* Decorative only: keep the outbound cue out of editable Markdown and link names. */
 @utility tocktutor-note-links {
   & a:is([href^="http://" i], [href^="https://" i])::after {

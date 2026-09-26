@@ -56,10 +56,13 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
   await waitFor(() => expect(view.container.querySelectorAll('.cm-content')).toHaveLength(2))
   expect(view.container.querySelector('.cm-editor')).toBe(original)
   if (check === 'tabs') {
-    for (const tab of screen.getAllByRole('tab')) {
+    expect(screen.getAllByRole('tab')).toHaveLength(2)
+    for (const id of [left, right]) {
+      const tab = screen.getAllByRole('tab').find(tab => tab.getAttribute('aria-controls') === `tocktutor-note-editor-${id}`)!
+      expect(tab).toBeTruthy()
       const panel = document.getElementById(tab.getAttribute('aria-controls')!)
       expect(panel?.getAttribute('role')).toBe('tabpanel')
-      expect(panel?.closest('[data-pane-id]')?.getAttribute('data-pane-id')).toBe(controller.getSnapshot().focusedPaneId)
+      expect(panel?.closest('[data-pane-id]')?.getAttribute('data-pane-id')).toBe(id)
     }
   }
   if (check === 'assistant') {
@@ -85,6 +88,7 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
   fireEvent.pointerDown(within(seats().find(node => node.dataset.paneId === right)!).getByRole('button', { name: 'More Note Actions' }), { button: 0, ctrlKey: false })
   fireEvent.click(await screen.findByRole('menuitem', { name: 'Split Down' }))
   const down = controller.getSnapshot().focusedPaneId
+  if (check === 'tabs') expect(screen.getAllByRole('tab')).toHaveLength(3)
   await waitFor(() => expect(view.container.querySelectorAll('.cm-content')).toHaveLength(3))
   expect(view.container.querySelector('.cm-editor')).toBe(original)
   const handle = screen.getByRole('separator', { name: 'Resize Down Split' })
@@ -115,6 +119,13 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
   expect(restored.getPaneSnapshot(right).source).toBe('right\n')
   expect(restored.getPaneSnapshot(left).mode).toBe('source')
   expect(restored.getPaneSnapshot(right).mode).toBe('source')
+  if (check === 'tabs') {
+    expect(await restored.closeTab(right, 'Two.md')).toBe(true)
+    expect(restored.getSnapshot().panes.map(pane => pane.id)).toEqual([left])
+    expect(restored.getSnapshot().path).toBe('One.md')
+    expect(await restored.reopenClosedTab()).toBe(true)
+    expect(restored.getSnapshot().path).toBe('Two.md')
+  }
   await restored.dispose()
 })
 
