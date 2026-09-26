@@ -46,7 +46,7 @@ async page => {
   check(metrics.x >= 0 && metrics.y >= 40 && metrics.right <= 1512 && metrics.bottom <= 949, 'bounded menu geometry');
   check(metrics.selectedContrast >= 4.5 && metrics.normalContrast >= 4.5 && metrics.groupContrast >= 4.5, 'text and icon contrast');
   appearances.push({ ...appearance, systemTheme: appearance.theme === 'dark' ? 'light' : 'dark', metrics });
-  screenshots[appearance.skin ?? appearance.theme] = (await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data;
+  screenshots[appearance.skin?.replace(/^tockteam-skin-/u, '') ?? appearance.theme] = (await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data;
   await page.keyboard.type('h2');
   await page.waitForFunction(() => document.querySelectorAll('.tocktutor-slash-menu [role="option"]').length === 1);
   await page.keyboard.press('Enter');

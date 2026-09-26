@@ -99,6 +99,16 @@ it('dismisses without deleting text, suppresses reopening, and reports empty res
   expect(view.state.doc.textContent).toContain('/nomatches')
 })
 
+it('dismisses on Shift+Enter without consuming the query or the line break', async () => {
+  const { view } = await editor('# Text\n')
+  type(view, '/h2', 5)
+  await screen.findByRole('option', { name: 'Heading 2' })
+  fireEvent.keyDown(view.dom, { key: 'Enter', shiftKey: true })
+  expect(screen.queryByRole('listbox')).toBeNull()
+  expect(view.state.doc.firstChild.textContent).toBe('Text/h2\n')
+  expect(view.state.doc.firstChild.lastChild.type.name).toBe('hardbreak')
+})
+
 it('keeps keyboard and pointer selection accessible without moving focus to a search field', async () => {
   const { view } = await editor('Text\n')
   type(view, '/', 5)

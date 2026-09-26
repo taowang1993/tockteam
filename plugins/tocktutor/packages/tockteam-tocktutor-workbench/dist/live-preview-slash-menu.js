@@ -129,7 +129,8 @@ export function slashMenuPlugin(publish) {
                     return false;
                 const items = entries(view.state, invocation, ctx);
                 const selected = Math.max(0, items.findIndex(item => item.id === invocation.selected));
-                if (event.key === 'Escape' || event.key === 'Tab' || ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                if (event.key === 'Escape' || event.key === 'Tab' || ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
+                    || (event.key === 'Enter' && (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey))) {
                     view.dispatch(view.state.tr.setMeta(slashKey, null));
                     return event.key === 'Escape';
                 }
