@@ -7,7 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
-import { ArrowDownUp, ListFilter, ListTree, Plus, Search } from 'lucide-react'
+import { ArrowDownUp, ChevronsUpDown, LayoutGrid, List, ListFilter, ListTree, MapPin, Plus, Search, Table2 } from 'lucide-react'
 import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
 import { Field, FieldLabel } from '@tockteam/ui/field'
@@ -396,19 +396,22 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
     } catch { setAuthoringError('The Base could not be saved. Review its source before retrying.') }
   }
   const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-3 text-foreground shadow-lg'
+  const ViewIcon = { table: Table2, list: List, cards: LayoutGrid, 'map-label': MapPin }[model.kind]
   return (
     <section aria-label="Executable Base" className="flex min-h-0 flex-col gap-3 overflow-auto p-4">
       <header aria-label="Base View Controls" role="toolbar" className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border pb-2">
-        <div className="w-36 shrink-0">
+        <div className="relative flex h-7 max-w-36 shrink-0 items-center rounded-md hover:bg-muted">
+          <ViewIcon aria-hidden="true" className="pointer-events-none absolute left-2 size-4 text-muted-foreground" />
           <NativeSelect unstyled
             id="tocktutor-base-view"
             aria-label="Base View"
-            className="w-full rounded border border-[color-mix(in_srgb,var(--dsw-alias-border-l3)_70%,var(--dsw-alias-label-secondary))] bg-surface px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="box-border h-7 min-w-24 max-w-36 cursor-pointer appearance-none [field-sizing:content] rounded-md border-0 bg-transparent py-1 pl-7 pr-6 text-sm text-foreground outline-none focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]"
             value={model.view.name}
             onChange={event => props.onActiveViewChange?.(event.currentTarget.value)}
           >
             {model.views.map(view => <NativeSelectOption key={view.name} value={view.name}>{view.name === readableKind(view.kind) ? view.name : `${view.name} — ${readableKind(view.kind)}`}</NativeSelectOption>)}
           </NativeSelect>
+          <ChevronsUpDown aria-hidden="true" className="pointer-events-none absolute right-1 size-3.5 text-muted-foreground" />
         </div>
         <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button" aria-live="polite" className="tabular-nums text-muted-foreground">{resultCount(model.rows.length)}</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-result-limit">Result Limit</FieldLabel><NativeSelect id="base-result-limit" value={String(model.view.limit ?? 'all')} disabled={!props.onSourceChange} onChange={event => { void commit(setBaseViewField(props.source, model.view.name, 'limit', event.currentTarget.value === 'all' ? '' : event.currentTarget.value)) }}>
@@ -451,9 +454,9 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
           <p className="m-0 mb-2 text-sm">Visible Properties</p>
           <div className="max-h-56 overflow-auto">{properties.map(key => <Label key={key} className="flex min-h-8 items-center gap-2 text-sm"><Checkbox disabled={!props.onSourceChange || key === 'file.name'} checked={model.columns.some(column => column.key === key)} onCheckedChange={checked => { const columns = model.columns.map(column => column.key).filter(column => column !== key); if (checked === true) columns.push(key); if (!columns.includes('file.name')) columns.unshift('file.name'); void commit(setBaseViewField(props.source, model.view.name, 'order', columns)) }} /><span>{key}</span></Label>)}</div>
         </PopoverContent></Popover>
-        <div className="relative w-36 shrink-0">
+        <div className="relative w-36 shrink-0 rounded-md hover:bg-muted">
           <Search aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input unstyled id="tocktutor-base-search" aria-label={`Search ${model.view.name}`} className="w-full rounded border border-[color-mix(in_srgb,var(--dsw-alias-border-l3)_70%,var(--dsw-alias-label-secondary))] bg-surface py-1 pl-7 pr-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50" maxLength={1_000} placeholder="Search" type="search" value={model.search} onChange={event => props.onSearchChange?.(model.view.name, event.currentTarget.value)} />
+          <Input unstyled id="tocktutor-base-search" aria-label={`Search ${model.view.name}`} className="box-border h-7 w-full rounded-md border-0 bg-transparent py-1 pl-7 pr-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" maxLength={1_000} placeholder="Search" type="search" value={model.search} onChange={event => props.onSearchChange?.(model.view.name, event.currentTarget.value)} />
         </div>
         <Button size="sm" variant="ghost" disabled={!props.onNewNote} type="button" onClick={props.onNewNote}><Plus aria-hidden="true" />New</Button>
         </div>

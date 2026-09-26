@@ -69,12 +69,19 @@ function ControlledBase(props: {
 }
 
 describe('ExecutableBaseView', () => {
-  it('keeps the comparable controls in one toolbar with visible selector and search outlines', () => {
+  it('keeps unboxed View and Search controls in one toolbar with visible keyboard focus', () => {
     render(<ControlledBase />)
     const toolbar = screen.getByRole('toolbar', { name: 'Base View Controls' })
     for (const name of ['2 Results', 'Sort', 'Filter', 'Properties']) expect(within(toolbar).getByRole('button', { name })).toBeTruthy()
-    expect(within(toolbar).getByRole('combobox', { name: 'Base View' }).className).toContain('border-[color-mix(')
-    expect(within(toolbar).getByRole('searchbox', { name: 'Search Ranked' }).className).toContain('border-[color-mix(')
+    const view = within(toolbar).getByRole('combobox', { name: 'Base View' })
+    const search = within(toolbar).getByRole('searchbox', { name: 'Search Ranked' })
+    for (const control of [view, search]) {
+      expect(control.className).toContain('border-0')
+      expect(control.className).toContain('bg-transparent')
+      expect(control.className).toContain('focus-visible:shadow-')
+    }
+    expect(view.className).toContain('appearance-none')
+    expect(view.className).toContain('[field-sizing:content]')
     const more = within(toolbar).getByLabelText('More Base Actions') as HTMLElement
     expect((more.closest('details') as HTMLDetailsElement).open).toBe(false)
     fireEvent.click(more)
