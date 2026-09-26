@@ -3,6 +3,8 @@ import { getTrustedRaycastDescriptor, getTrustedRaycastRuntimeDescriptor, type T
 const byteLength = (value: string): number => new TextEncoder().encode(value).byteLength
 const MAX_TEXT = 16 * 1024
 const MAX_MESSAGE = 1024 * 1024
+// A 16 KiB input can expand sixfold under JSON escaping, plus its bounded envelope.
+export const TRUSTED_RAYCAST_INPUT_FRAME_BYTES = 128 * 1024
 const MAX_DEPTH = 32
 // Measured against the reviewed 250-language catalog: the nested AddLanguageForm projection
 // (3 x 251 dropdown entries plus form chrome) serializes to ~4.1k JSON nodes at the 4k ceiling.
@@ -307,6 +309,20 @@ export function isTrustedRaycastViewMessage(value: unknown): value is TrustedRay
   if (value.type === 'ready') return exactKeys(value, ['type', ...identity, 'root']) && isViewNode(value.root, value.extensionId as TrustedRaycastExtensionId)
   if (value.type === 'patch') return exactKeys(value, ['type', ...identity, 'root', 'status']) && isViewNode(value.root, value.extensionId as TrustedRaycastExtensionId) && (value.status === 'ready' || value.status === 'loading' || value.status === 'error')
   return value.type === 'error' && exactKeys(value, ['type', ...identity, 'message']) && boundedString(value.message, 512)
+}
+
+/** Bound NDJSON frames, not arbitrary pipe chunks that may contain several messages. */
+export function createTrustedRaycastLineReader(maxBytes = MAX_MESSAGE): (chunk: string) => string[] {
+  let pending = ''
+  return chunk => {
+    const lines = (pending + chunk).split('\n')
+    pending = lines.pop()!
+    if (byteLength(pending) > maxBytes || lines.some(line => byteLength(line) > maxBytes)) {
+      pending = ''
+      throw new Error('Trusted extension frame exceeded its bound')
+    }
+    return lines
+  }
 }
 
 /** Main's child-channel admission: identity/revision belong to this invocation, not the child. */

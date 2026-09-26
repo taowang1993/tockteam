@@ -6,7 +6,24 @@ import { join } from 'node:path'
 import { TrustedRaycastManager } from '../src/trusted-raycast-manager.ts'
 // @ts-expect-error Build helper is JavaScript.
 import { buildTrustedRaycast } from '../scripts/trusted-raycast-build.mjs'
-import { parseTrustedRaycastChildMessage, type TrustedRaycastViewMessage } from '../src/trusted-raycast-contract.ts'
+import { createTrustedRaycastLineReader, TRUSTED_RAYCAST_INPUT_FRAME_BYTES, isTrustedRaycastViewEvent, KAOMOJI_PREFERENCE_DEFAULTS, parseTrustedRaycastChildMessage, type TrustedRaycastViewMessage } from '../src/trusted-raycast-contract.ts'
+
+test('child framing admits split and coalesced messages but rejects oversized individual frames', () => {
+  const read = createTrustedRaycastLineReader(8)
+  assert.deepEqual(read('1234'), [])
+  assert.deepEqual(read('5678\nabcdefgh\nxy'), ['12345678', 'abcdefgh'])
+  assert.deepEqual(read('z\n'), ['xyz'])
+  assert.deepEqual(read('éééé\n'), ['éééé'])
+  for (const chunks of [['123456789\n'], ['12345678', '9'], ['ééééé\n']]) {
+    const bounded = createTrustedRaycastLineReader(8)
+    assert.throws(() => { for (const chunk of chunks) bounded(chunk) }, /bound/)
+  }
+  const event = { extensionId: 'google-translate', sessionId: '\u0001'.repeat(128), generation: '\u0001'.repeat(128),
+    revision: Number.MAX_SAFE_INTEGER, eventId: '\u0001'.repeat(128), kind: 'searchChanged', value: '\u0001'.repeat(16 * 1024) }
+  assert.equal(isTrustedRaycastViewEvent(event), true)
+  const line = JSON.stringify(event)
+  assert.deepEqual(createTrustedRaycastLineReader(TRUSTED_RAYCAST_INPUT_FRAME_BYTES)(`${line}\n${line}\n`), [line, line])
+})
 
 test('manager child admission fails closed before accepting wrong identity, stale or malformed output', () => {
   const session = { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate' as const, preferences: {} }
@@ -54,6 +71,31 @@ test('install-store runtime resolution fails closed before any child can load', 
   await assert.rejects(missing.start({ webContentsId: 1 }, { extensionId: 'google-translate' as const, sessionId: 'a', generation: 'b', command: 'translate', preferences: {} }))
   await missing.close()
 })
+test('reviewed child accepts maximum escaped search input without closing its session', { timeout: 30000 }, async t => {
+  if (process.platform === 'win32') return t.skip('POSIX trusted-child integration is unsupported on Windows')
+  const work = mkdtempSync(join(tmpdir(), 'raycast-input-bound-'))
+  const messages: TrustedRaycastViewMessage[] = []
+  const errors: string[] = []
+  const manager = new TrustedRaycastManager({
+    runtimeDir: join(work, 'trusted-raycast-kaomoji'), nodePath: process.execPath,
+    onMessage: (_, message) => { messages.push(message) }, onError: (_, error) => { errors.push(error.message) },
+  })
+  try {
+    await buildTrustedRaycast(work, join(process.cwd(), 'plugins/trusted-raycast/vendor/kaomoji-search.tar'), 'kaomoji-search')
+    await manager.start({ webContentsId: 1 }, { extensionId: 'kaomoji-search', sessionId: 'input', generation: '1', command: 'index', preferences: KAOMOJI_PREFERENCE_DEFAULTS })
+    const latest = messages.findLast(message => message.root)!
+    manager.send({ webContentsId: 1 }, { extensionId: 'kaomoji-search', sessionId: 'input', generation: '1', revision: latest.revision,
+      eventId: String(latest.root!.props.searchEventId), kind: 'searchChanged', value: '\u0001'.repeat(16 * 1024) })
+    const deadline = Date.now() + 5000
+    while (!messages.some(message => message.root?.props.querySequence === 1) && manager.active && errors.length === 0 && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    assert.deepEqual(errors, [])
+    assert.equal(manager.active, true)
+    assert.ok(messages.some(message => message.root?.props.querySequence === 1), 'the admitted search must reach the source child')
+  } finally { await manager.close(); rmSync(work, { recursive: true, force: true }) }
+})
+
 test('configured unchanged component translates interactive input and revokes owner', { timeout: 30000 }, async t => {
   if (process.platform === 'win32') return t.skip('POSIX trusted-child integration is unsupported on Windows')
   const artifact = process.env.TRUSTED_RAYCAST_ARTIFACT_TAR

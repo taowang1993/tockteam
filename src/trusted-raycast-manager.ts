@@ -10,7 +10,7 @@ import { getTrustedRaycastRuntimeDescriptor, type TrustedRaycastExtensionId, typ
 import { createTrustedRaycastCanIUsePreferenceForm } from './trusted-raycast-can-i-use-preference-form.ts'
 import { createTrustedRaycastCanIUseRuntime, loadTrustedRaycastCanIUseData } from './trusted-raycast-can-i-use-runtime.ts'
 import { TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS, prepareTrustedRaycastCanIUsePreferences, type TrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preferences.ts'
-import { isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, KAOMOJI_PREFERENCE_DEFAULTS, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
+import { createTrustedRaycastLineReader, isTrustedRaycastNativeRequest, isTrustedRaycastPreferences, KAOMOJI_PREFERENCE_DEFAULTS, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastNativeRequest, type TrustedRaycastViewNode, isTrustedRaycastViewEvent, parseTrustedRaycastChildMessage, isTrustedRaycastViewOpen, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage, type TrustedRaycastViewOpen } from './trusted-raycast-contract.ts'
 
 export type TrustedRaycastOwner = Readonly<{ webContentsId: number }>
 export type TrustedRaycastManagerOptions = Readonly<{
@@ -182,7 +182,7 @@ export class TrustedRaycastManager {
     this.preview = { child, workspace, phase: 'running' }
     try {
       await new Promise<void>((resolve, reject) => {
-        let pending = ''
+        const readLines = createTrustedRaycastLineReader()
         let finished = false
         const finish = (error?: Error): void => {
           if (finished) return
@@ -198,11 +198,10 @@ export class TrustedRaycastManager {
         const timer = setTimeout(() => finish(new Error('Translate preview readiness timed out')), 15000)
         child.stdout.setEncoding('utf8')
         child.stdout.on('data', (chunk: string) => {
-          pending += chunk
-          if (Buffer.byteLength(pending) > 1024 * 1024) { finish(new Error('Translate preview output exceeded its bound')); return }
-          let end: number
-          while ((end = pending.indexOf('\n')) >= 0) {
-            const line = pending.slice(0, end); pending = pending.slice(end + 1)
+          let lines: string[]
+          try { lines = readLines(chunk) }
+          catch { finish(new Error('Translate preview output exceeded its bound')); return }
+          for (const line of lines) {
             try {
               const message = parseTrustedRaycastChildMessage(line, input, -1)
               if (message.type === 'ready') { canIUse?.publish(message.root!); finish(); return }
@@ -248,15 +247,15 @@ export class TrustedRaycastManager {
         this.options.onError?.(owner, error)
         void this.stop(error.message).catch(error => this.options.onError?.(owner, error))
       }
-      let pending = ''; let stderrBytes = 0; let diagnostic = ''
+      const readLines = createTrustedRaycastLineReader()
+      let stderrBytes = 0; let diagnostic = ''
       child.stdout.setEncoding('utf8')
       child.stdout.on('data', (chunk: string) => {
         if (this.session !== session || session.revoked) return
-        pending += chunk
-        if (Buffer.byteLength(pending) > 1024 * 1024) { fail(new Error('Translate output exceeded its bound')); return }
-        let end: number
-        while ((end = pending.indexOf('\n')) >= 0) {
-          const line = pending.slice(0, end); pending = pending.slice(end + 1)
+        let lines: string[]
+        try { lines = readLines(chunk) }
+        catch { fail(new Error('Translate output exceeded its bound')); return }
+        for (const line of lines) {
           try {
             const raw: unknown = JSON.parse(line)
             if ((raw as { type?: string })?.type === 'native') {

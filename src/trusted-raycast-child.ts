@@ -4,7 +4,7 @@ import { createTranslateCollectionProjection, projectTrustedRaycastRoot } from '
 // @ts-expect-error Build-time first-party alias, shared with unchanged source.
 import { Action, ActionPanel, Form, configureCompatibility, advanceQuery, getPreferenceValues, savePreferenceValues, queryText, registerNavigationRenderer, popView, useNavigation, viewSearchable, navigationDepth } from '@raycast/api'
 // @ts-expect-error Build-time first-party contract alias.
-import { isTrustedRaycastNativeOutcome, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage } from '@tockteam/trusted-raycast-child-contract'
+import { createTrustedRaycastLineReader, TRUSTED_RAYCAST_INPUT_FRAME_BYTES, isTrustedRaycastNativeOutcome, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage } from '@tockteam/trusted-raycast-child-contract'
 // @ts-expect-error The approved child artifact supplies this runtime-only singleton.
 import Reconciler from 'react-reconciler'
 // @ts-expect-error The runtime replaces this source-preserving path during extraction.
@@ -179,13 +179,9 @@ const mount = (view: unknown): void => {
 registerNavigationRenderer(mount)
 mount(showingPreferenceSetup ? preferencesRoot : undefined)
 process.stdin.setEncoding('utf8')
-let pending = ''
+const readLines = createTrustedRaycastLineReader(TRUSTED_RAYCAST_INPUT_FRAME_BYTES)
 process.stdin.on('data', chunk => {
-  pending += chunk
-  if (Buffer.byteLength(pending) > 32768) throw new Error('Translate input exceeded its bound')
-  let end: number
-  while ((end = pending.indexOf('\n')) >= 0) {
-    const line = pending.slice(0, end); pending = pending.slice(end + 1)
+  for (const line of readLines(chunk)) {
     const message = JSON.parse(line)
     if (canIUseSource) {
       handles.clear(); fieldHandles.clear()
