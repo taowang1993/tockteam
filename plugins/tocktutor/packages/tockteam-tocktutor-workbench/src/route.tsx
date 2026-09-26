@@ -5775,7 +5775,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const titlebar = active ? (
     <section
       aria-label="TockTutor Title Bar"
-      className="tocktutor-titlebar box-border absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]"
+      className="tocktutor-titlebar box-border absolute top-0 right-0 left-0 z-[2147483647] grid h-[var(--tockteam-titlebar-height,40px)] grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)] shadow-[inset_0_-1px_var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] text-[var(--tt-text)] transition-[grid-template-columns] duration-300 ease-out [--tt-accent:var(--dsw-alias-brand-primary,#533afd)] [--tt-border:var(--dsw-alias-border-l1,var(--dsw-alias-border-subtle,#e1e3e7))] [--tt-muted:var(--dsw-alias-label-secondary,#71717a)] [--tt-panel:var(--dsw-alias-bg-layer-1,#fff)] [--tt-text:var(--dsw-alias-label-primary,#27272a)] [-webkit-app-region:drag] [font:14px/1.45_ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif] [&_*]:box-border [&_*::after]:box-border [&_*::before]:box-border [&_button]:text-inherit [&_button]:[font:inherit] [&_button]:[-webkit-app-region:no-drag] [&_svg]:block [&_svg]:size-[18px]"
       style={{
         gridTemplateColumns: titlebarColumns,
         transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
@@ -6216,7 +6216,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       event.preventDefault()
       openNoteSearch(event.key.toLowerCase() === 'h' ? 'replace' : 'find')
     }}
-  >{noteDialogs}{props.paneTabs && focusedPane && <div data-pane-tabs={focusedPane.id} className="flex h-10 shrink-0 items-center overflow-hidden border-b border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2"><PaneTabs {...props} pane={focusedPane} /></div>}<div className="min-h-0 flex-1">{editor}</div></div></TooltipProvider>
+  >{noteDialogs}{props.paneTabs && focusedPane && <div data-pane-tabs={focusedPane.id} className="flex h-10 shrink-0 items-center overflow-hidden shadow-[inset_0_-1px_var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2"><PaneTabs {...props} pane={focusedPane} /></div>}<div className="min-h-0 flex-1">{editor}</div></div></TooltipProvider>
   return (
     <TooltipProvider>
       <main
