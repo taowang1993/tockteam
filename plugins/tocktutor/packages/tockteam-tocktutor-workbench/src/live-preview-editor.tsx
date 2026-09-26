@@ -104,7 +104,7 @@ export function MarkdownDocumentHeader(props: { editableProperties?: boolean; cl
   return (
     <header className={props.className}>
       {title !== undefined && (props.onRenameTitle === undefined
-        ? <h1 className="m-0 mb-5 text-[26px] leading-[31px] font-bold tracking-[-.01em] text-[var(--tt-text)]">{title}</h1>
+        ? <h1 className="m-0 mb-5 text-[30px] leading-tight font-bold tracking-[-.01em] text-[var(--tt-text)]">{title}</h1>
         : <NoteTitleEditor compact onRenameTitle={props.onRenameTitle} title={title} />)}
       {props.editableProperties && error && !adding && <p role="alert">{error}</p>}
       {props.editableProperties && properties.length >= MAX_PROPERTIES && <p role="status">The property limit was reached; this list may be incomplete. Use Source Mode.</p>}

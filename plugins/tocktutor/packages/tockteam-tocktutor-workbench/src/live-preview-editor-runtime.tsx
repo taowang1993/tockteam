@@ -201,6 +201,9 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
               class: `tocktutor-find-match${index === current.current ? ' tocktutor-find-current' : ''}`,
             }))
             state.doc.descendants((node, pos) => {
+              if (node.type.name === 'heading' && state.selection.$head.parent === node) {
+                decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-heading-mark': `${'#'.repeat(node.attrs.level)} ` }))
+              }
               if (node.type.name === 'code_block') decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-code-language': node.attrs.language ?? '' }))
               if (node.type.name === 'image-block' || node.type.name === 'image') decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-image-revision': String(imageRevision) }))
               if (node.type.name === 'tocktutor_inline') decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-editing': String(state.selection.from > pos && state.selection.to < pos + node.nodeSize), 'data-image-revision': String(imageRevision) }))

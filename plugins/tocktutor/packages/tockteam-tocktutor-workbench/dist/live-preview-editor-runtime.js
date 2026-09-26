@@ -226,6 +226,9 @@ export function LivePreviewEditorRuntime(props) {
                         class: `tocktutor-find-match${index === current.current ? ' tocktutor-find-current' : ''}`,
                     }));
                     state.doc.descendants((node, pos) => {
+                        if (node.type.name === 'heading' && state.selection.$head.parent === node) {
+                            decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-heading-mark': `${'#'.repeat(node.attrs.level)} ` }));
+                        }
                         if (node.type.name === 'code_block')
                             decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-code-language': node.attrs.language ?? '' }));
                         if (node.type.name === 'image-block' || node.type.name === 'image')

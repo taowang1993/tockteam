@@ -116,7 +116,7 @@ export function NoteTitleEditor(props) {
             setError('The note could not be renamed.');
         }
     };
-    const input = _jsx(Input, { unstyled: props.compact === true, "aria-describedby": error === null ? undefined : errorId, "aria-invalid": error === null ? undefined : true, "aria-label": "Note title", autoComplete: "off", className: `h-auto w-full border-0 bg-transparent p-0 tracking-[-.01em] text-[var(--tt-text)] outline-none focus-visible:ring-0 ${props.compact ? 'text-[26px] leading-[31px] font-bold' : 'text-[30px] leading-tight font-[650]'}`, disabled: pending, readOnly: props.onRenameTitle === undefined, onBlur: event => {
+    const input = _jsx(Input, { unstyled: props.compact === true, "aria-describedby": error === null ? undefined : errorId, "aria-invalid": error === null ? undefined : true, "aria-label": "Note title", autoComplete: "off", className: `h-auto w-full border-0 bg-transparent p-0 tracking-[-.01em] text-[var(--tt-text)] outline-none focus-visible:ring-0 ${props.compact ? 'text-[30px] leading-tight font-bold' : 'text-[30px] leading-tight font-[650]'}`, disabled: pending, readOnly: props.onRenameTitle === undefined, onBlur: event => {
             if (skipBlurRef.current) {
                 skipBlurRef.current = false;
                 return;

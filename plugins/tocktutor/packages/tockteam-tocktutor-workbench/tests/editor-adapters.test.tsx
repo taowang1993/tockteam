@@ -481,6 +481,44 @@ describe('Live Preview editor', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('reveals only the active body heading marker without changing Markdown or the filename', async () => {
+    const source = '# First\n\n## Second\n\n### Third\n\n#### Fourth\n\n##### Fifth\n\n###### Sixth\n\nBody text.\n'
+    const onChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    const { container } = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} onRenameTitle={async () => true} title="Comparison" />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    const original = view.state.doc.toJSON()
+    const headings: number[] = []
+    view.state.doc.descendants((node: any, pos: number) => { if (node.type.name === 'heading') headings.push(pos) })
+    for (const [index, pos] of headings.entries()) {
+      act(() => {
+        view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.create(view.state.doc, pos + 1)))
+        view.focus()
+      })
+      const marker = container.querySelector('.ProseMirror-focused [data-heading-mark]')
+      expect(marker?.getAttribute('data-heading-mark')).toBe(`${'#'.repeat(index + 1)} `)
+      expect(marker?.tagName).toBe(`H${index + 1}`)
+      expect(container.querySelectorAll('[data-heading-mark]')).toHaveLength(1)
+      expect(view.state.doc.toJSON()).toEqual(original)
+    }
+    const title = screen.getByRole('textbox', { name: 'Note title' }) as HTMLInputElement
+    act(() => title.focus())
+    expect(container.querySelector('.ProseMirror-focused [data-heading-mark]')).toBeNull()
+    expect(title.closest('[data-heading-mark]')).toBeNull()
+    expect(title.value).toBe('Comparison')
+    expect(onChange).not.toHaveBeenCalled()
+    act(() => {
+      view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.create(view.state.doc, headings[0]! + 1)))
+      view.focus()
+      view.dispatch(view.state.tr.insertText('Edited '))
+    })
+    await waitFor(() => expect(onChange.mock.lastCall?.[0]).toContain('# Edited First'))
+    expect(onChange.mock.lastCall?.[0]).not.toContain('# #')
+    act(() => view.dispatch(view.state.tr.setSelection(view.state.selection.constructor.atEnd(view.state.doc))))
+    expect(container.querySelector('[data-heading-mark]')).toBeNull()
+  })
+
   it('finds formatted Live Preview text and replaces it with one native undo step', async () => {
     const source = 'alpha **alpha**\r\n'
     const onChange = vi.fn()

@@ -1146,6 +1146,8 @@
   & .milkdown .ProseMirror h6 { font-size: 16px; line-height: 24px; }
   & .milkdown .ProseMirror :is(h2, h3, h4, h5, h6) { margin-bottom: 16px; }
   & .milkdown .ProseMirror > h1:first-child { margin-top: 0; }
+  /* Reveal syntax only at the active heading; generated content never enters Markdown or clipboard text. */
+  & .milkdown .ProseMirror-focused [data-heading-mark]::before { content: attr(data-heading-mark) / ""; color: var(--dsw-alias-label-secondary); }
   & .milkdown .ProseMirror > p { margin: 0 0 16px; padding: 0; }
   & .milkdown .ProseMirror a { color: var(--dsw-specific-markdown-accent); font-weight: 500; }
   & .milkdown .ProseMirror hr { background-color: var(--crepe-color-outline); }
