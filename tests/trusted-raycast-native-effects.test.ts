@@ -155,7 +155,7 @@ test('real paste restores focus via the target app and restores the clipboard on
 test('paste preserves every clipboard format and denies before mutating an unpreservable clipboard', async () => {
   // Electron writeBuffer replaces the entire clipboard on each call; it does not append formats.
   const original = new Map([['public.png', Buffer.from('image')], ['text/plain', Buffer.from('user clipboard bytes')]])
-  let clipboard = new Map(original)
+  let clipboard: Map<string, Buffer> = new Map(original)
   let writes = 0
   await assert.rejects(pasteTrustedRaycastText('pasted translation', prior, deps({
     fixture: 'paste',

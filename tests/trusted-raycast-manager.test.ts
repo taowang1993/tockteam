@@ -74,6 +74,7 @@ test('install-store runtime resolution fails closed before any child can load', 
 test('reviewed child accepts maximum escaped search input without closing its session', { timeout: 30000 }, async t => {
   if (process.platform === 'win32') return t.skip('POSIX trusted-child integration is unsupported on Windows')
   const work = mkdtempSync(join(tmpdir(), 'raycast-input-bound-'))
+  let pid: number | undefined
   const messages: TrustedRaycastViewMessage[] = []
   const errors: string[] = []
   const manager = new TrustedRaycastManager({
@@ -83,6 +84,8 @@ test('reviewed child accepts maximum escaped search input without closing its se
   try {
     await buildTrustedRaycast(work, join(process.cwd(), 'plugins/trusted-raycast/vendor/kaomoji-search.tar'), 'kaomoji-search')
     await manager.start({ webContentsId: 1 }, { extensionId: 'kaomoji-search', sessionId: 'input', generation: '1', command: 'index', preferences: KAOMOJI_PREFERENCE_DEFAULTS })
+    pid = (manager as unknown as { session: { child: { pid: number } } }).session.child.pid
+    assert.ok(pid > 0)
     const latest = messages.findLast(message => message.root)!
     manager.send({ webContentsId: 1 }, { extensionId: 'kaomoji-search', sessionId: 'input', generation: '1', revision: latest.revision,
       eventId: String(latest.root!.props.searchEventId), kind: 'searchChanged', value: '\u0001'.repeat(16 * 1024) })
@@ -93,7 +96,11 @@ test('reviewed child accepts maximum escaped search input without closing its se
     assert.deepEqual(errors, [])
     assert.equal(manager.active, true)
     assert.ok(messages.some(message => message.root?.props.querySequence === 1), 'the admitted search must reach the source child')
-  } finally { await manager.close(); rmSync(work, { recursive: true, force: true }) }
+  } finally {
+    await manager.close()
+    if (pid) for (const processId of [pid, -pid]) assert.throws(() => process.kill(processId, 0), { code: 'ESRCH' })
+    rmSync(work, { recursive: true, force: true })
+  }
 })
 
 test('configured unchanged component translates interactive input and revokes owner', { timeout: 30000 }, async t => {
