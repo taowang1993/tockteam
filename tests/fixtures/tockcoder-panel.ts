@@ -4,8 +4,11 @@ import { DEFAULT_SIDEBAR_PREFERENCES, parseSidebarPreferences } from '../../plug
 
 // Real sidebar plugin and React UI; only DSH services and HTTP responses are fixtures.
 const listeners = new Set<() => void>()
-let current = 'first'
-let snapshot = { current, byId: { first: { cwd: '/first' }, second: { cwd: '/second' } } }
+let current: string | undefined = 'first'
+let snapshot = { current: current as string | undefined, byId: { first: { cwd: '/first' }, second: { cwd: '/second' } } }
+let startedSessions = 0
+const chatListeners = new Set<() => void>()
+let chat = { legacy: { runningCalls: [] as Array<{ callId: string; name: string; argsRaw: string }> } }
 const services = new Map<string, any>()
 const disposers: Array<() => void> = []
 const pendingFacts: Array<() => void> = []
@@ -83,7 +86,12 @@ services.set('inputTriggers', { registerSource: subscribe })
 services.set(TOCKTEAM_SURFACE_VIEW_SERVICE, { kind: 'web' })
 services.set('desktopPanels', { subscribe, isBottomPanelOpen: () => false, setAutoOpenTerminal: () => {} })
 services.set('pinnedSummary', { subscribe, setOpen: () => {}, isOpen: () => false })
-services.set('workspaces', { openPath: async () => {}, startSession: () => {} })
+services.set('workspaces', { openPath: async () => {} })
+services.set('uiWorkspace', { startSession: () => { startedSessions += 1 } })
+services.set('uiConversation', { binding: () => ({ target: () => ({
+  getSnapshot: () => chat,
+  subscribe: (listener: () => void) => { chatListeners.add(listener); return () => { chatListeners.delete(listener) } },
+}) }) })
 apply({
   get: name => services.get(name),
   effect: fn => { const dispose = fn(); if (dispose) disposers.push(dispose) },
@@ -91,6 +99,16 @@ apply({
 })
 Object.assign(window, { panelProof: {
   open: () => services.get('workspaceTools').openReview(),
+  startedSessions: () => startedSessions,
+  startBlankSideChat: async () => {
+    snapshot = { ...snapshot, current: undefined }
+    for (const listener of listeners) listener()
+    await services.get('workspaceTools').openSideChat()
+  },
+  running: (command?: string) => {
+    chat = { legacy: { runningCalls: command === undefined ? [] : [{ callId: 'tool-1', name: 'bash', argsRaw: JSON.stringify({ command }) }] } }
+    for (const listener of chatListeners) listener()
+  },
   select: (id: 'first' | 'second') => {
     current = id
     snapshot = { ...snapshot, current }

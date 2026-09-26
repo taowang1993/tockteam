@@ -55,6 +55,9 @@ interface WorkspaceView {
 
 interface WorkspacesService {
   create(input: { path: string }): Promise<WorkspaceView>
+}
+
+interface UiWorkspaceService {
   startSession(workspaceId?: string): void
 }
 
@@ -82,7 +85,7 @@ declare global {
 }
 
 /** Wait for the DSH services used by native menu commands. */
-export const inject = ['workspaces', 'desktopPanels', 'pinnedSummary', 'theme', ...launcherSettingsInject]
+export const inject = ['workspaces', 'uiWorkspace', 'desktopPanels', 'pinnedSummary', 'theme', ...launcherSettingsInject]
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
@@ -311,16 +314,17 @@ function navigateLauncherRoute(route: LauncherWorkbenchRoute): void {
   if (route.destination === 'tockcoder') window.setTimeout(focusComposer, 0)
 }
 
-async function openPaths(workspaces: WorkspacesService, paths: readonly string[]): Promise<void> {
+async function openPaths(workspaces: WorkspacesService, uiWorkspace: UiWorkspaceService, paths: readonly string[]): Promise<void> {
   for (const path of paths) {
     const workspace = await workspaces.create({ path })
-    workspaces.startSession(workspace.workspaceId)
+    uiWorkspace.startSession(workspace.workspaceId)
   }
 }
 
 function dispatch(
   command: DesktopCommand,
   workspaces: WorkspacesService,
+  uiWorkspace: UiWorkspaceService,
   panels: DesktopPanels,
   pinnedSummary: PinnedSummary,
   workspaceTools: WorkspaceTools,
@@ -330,10 +334,10 @@ function dispatch(
       focusComposer()
       return
     case 'new-session':
-      workspaces.startSession()
+      uiWorkspace.startSession()
       return
     case 'open-paths':
-      void openPaths(workspaces, command.paths).catch((error: unknown) => {
+      void openPaths(workspaces, uiWorkspace, command.paths).catch((error: unknown) => {
         console.error('tockteam-desktop: failed to open workspace', error)
       })
       return
@@ -388,6 +392,7 @@ export function apply(ctx: ClientContext): void {
     throw new Error('tockteam-desktop: preload bridge is unavailable outside TockTeam')
   }
   const workspaces = ctx.get('workspaces') as WorkspacesService
+  const uiWorkspace = ctx.get('uiWorkspace') as UiWorkspaceService
   const panels = ctx.get('desktopPanels') as DesktopPanels
   const pinnedSummary = ctx.get('pinnedSummary') as PinnedSummary
   applyLauncherSettings(ctx)
@@ -409,6 +414,7 @@ export function apply(ctx: ClientContext): void {
       dispatch(
         command,
         workspaces,
+        uiWorkspace,
         panels,
         pinnedSummary,
         ctx.get('workspaceTools') as WorkspaceTools,

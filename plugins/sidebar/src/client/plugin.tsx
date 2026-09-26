@@ -165,7 +165,10 @@ interface RunningToolCall {
 interface ConversationSnapshot {
   hasMore?: boolean
   loadingOlder?: boolean
-  runningCalls?: readonly RunningToolCall[]
+}
+
+interface UiConversationService {
+  binding(id: string): { target(target: 'chat'): ObservableSnapshot<{ legacy: { runningCalls: readonly RunningToolCall[] } }> }
 }
 
 interface SessionBinding {
@@ -191,6 +194,9 @@ interface WorkspaceView {
 interface WorkspacesService {
   create(input: { path: string }): Promise<WorkspaceView>
   openPath(path: string): Promise<void>
+}
+
+interface UiWorkspaceService {
   startSession(workspaceId?: string): void
 }
 
@@ -315,9 +321,11 @@ export const inject = [
   'slots',
   TOCKTEAM_SURFACE_VIEW_SERVICE,
   'workspaces',
+  'uiWorkspace',
+  'uiConversation',
 ]
 
-const EMPTY_CONVERSATION: ConversationSnapshot = { runningCalls: [] }
+const EMPTY_RUNNING_CALLS: readonly RunningToolCall[] = []
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -591,7 +599,7 @@ class WorkspaceToolsService implements WorkspaceTools {
     private readonly t: Translate<WorkspaceMessage>,
     private readonly pinnedSummary: PinnedSummary,
     private readonly sessions: SessionsService,
-    private readonly workspaces: WorkspacesService,
+    private readonly uiWorkspace: UiWorkspaceService,
     private readonly showDesktopChrome: boolean,
   ) {
     this.state = this.project(sidebar.getSnapshot())
@@ -656,7 +664,7 @@ class WorkspaceToolsService implements WorkspaceTools {
 
   async openSideChat(): Promise<void> {
     const current = this.sessions.list.getSnapshot().current
-    if (current === undefined) this.workspaces.startSession()
+    if (current === undefined) this.uiWorkspace.startSession()
     else {
       const child = await this.sessions.fork({ sessionId: current, increaseTitle: true })
       this.sessions.open(child)
@@ -716,7 +724,6 @@ class WorkspaceToolsService implements WorkspaceTools {
         panels={this.panels}
         pinnedSummary={this.pinnedSummary}
         sessions={this.sessions}
-        workspaces={this.workspaces}
         sidebar={this.sidebar}
         showDesktopChrome={this.showDesktopChrome}
       />,
@@ -985,15 +992,15 @@ function DesktopWindowTitlebar({
   )
 }
 
-function useActiveConversation(sessions: SessionsService, sessionId: string | undefined): ConversationSnapshot {
-  const binding = sessionId === undefined ? undefined : sessions.binding(sessionId)
+function useRunningCalls(conversation: UiConversationService, sessionId: string | undefined): readonly RunningToolCall[] {
+  const chat = sessionId === undefined ? undefined : conversation.binding(sessionId).target('chat')
   const subscribe = useCallback(
-    (listener: () => void) => binding?.session.subscribe(listener) ?? (() => {}),
-    [binding],
+    (listener: () => void) => chat?.subscribe(listener) ?? (() => {}),
+    [chat],
   )
   const getSnapshot = useCallback(
-    () => binding?.session.getSnapshot() ?? EMPTY_CONVERSATION,
-    [binding],
+    () => chat?.getSnapshot().legacy.runningCalls ?? EMPTY_RUNNING_CALLS,
+    [chat],
   )
   return useSyncExternalStore(
     subscribe,
@@ -1006,22 +1013,26 @@ function WorkspacePanel({
   service,
   sessions,
   workspaces,
+  uiWorkspace,
+  uiConversation,
   t,
 }: {
   reviewComments: ReviewCommentsService
   service: WorkspaceToolsService
   sessions: SessionsService
   workspaces: WorkspacesService
+  uiWorkspace: UiWorkspaceService
+  uiConversation: UiConversationService
   t: Translate<WorkspaceMessage>
 }): JSX.Element {
   const panelState = useSyncExternalStore(service.subscribe, service.getSnapshot)
   const sessionList = useSyncExternalStore(sessions.list.subscribe, sessions.list.getSnapshot)
   const sessionId = sessionList.current
   const cwd = sessionId === undefined ? undefined : sessionList.byId[sessionId]?.cwd
-  const conversation = useActiveConversation(sessions, sessionId)
+  const runningCalls = useRunningCalls(uiConversation, sessionId)
   const processes = useMemo(
-    () => flattenRunningCalls(conversation.runningCalls ?? []),
-    [conversation.runningCalls],
+    () => flattenRunningCalls(runningCalls),
+    [runningCalls],
   )
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot | null>(null)
   const [error, setError] = useState('')
@@ -1250,7 +1261,7 @@ function WorkspacePanel({
     const paths = await window.dshDesktop?.chooseWorkspace() ?? []
     for (const path of paths) {
       const workspace = await workspaces.create({ path })
-      workspaces.startSession(workspace.workspaceId)
+      uiWorkspace.startSession(workspace.workspaceId)
     }
   }
 
@@ -1603,7 +1614,6 @@ function WorkspaceToolsSurface(props: {
   panels: DesktopPanels
   pinnedSummary: PinnedSummary
   sessions: SessionsService
-  workspaces: WorkspacesService
   showDesktopChrome: boolean
 }): ReactNode {
   const t = useTranslate(props.locale, props.t)
@@ -1727,6 +1737,8 @@ function registerBuiltinSidebarTools(options: {
   sidebar: DesktopSidebar
   t: Translate<WorkspaceMessage>
   workspaces: WorkspacesService
+  uiWorkspace: UiWorkspaceService
+  uiConversation: UiConversationService
 }): () => void {
   const {
     openExternalPath,
@@ -1737,6 +1749,8 @@ function registerBuiltinSidebarTools(options: {
     sidebar,
     t,
     workspaces,
+    uiWorkspace,
+    uiConversation,
   } = options
   const disposers = [
     sidebar.registerTab({
@@ -1751,6 +1765,8 @@ function registerBuiltinSidebarTools(options: {
           service={service}
           sessions={sessions}
           workspaces={workspaces}
+          uiWorkspace={uiWorkspace}
+          uiConversation={uiConversation}
           t={t}
         />
       ),
@@ -2402,6 +2418,8 @@ export function apply(ctx: ClientContext): void {
   const sessions = ctx.get('sessions') as SessionsService
   const inputTriggers = ctx.get('inputTriggers') as InputTriggersService
   const workspaces = ctx.get('workspaces') as WorkspacesService
+  const uiWorkspace = ctx.get('uiWorkspace') as UiWorkspaceService
+  const uiConversation = ctx.get('uiConversation') as UiConversationService
   const originalOpenPath = workspaces.openPath
   const openExternalPath = async (path: string): Promise<void> => {
     await originalOpenPath.call(workspaces, path)
@@ -2423,7 +2441,7 @@ export function apply(ctx: ClientContext): void {
     t,
     pinnedSummary,
     sessions,
-    workspaces,
+    uiWorkspace,
     surface.kind === 'desktop',
   )
   const unregisterBuiltins = registerBuiltinSidebarTools({
@@ -2435,6 +2453,8 @@ export function apply(ctx: ClientContext): void {
     sidebar: desktopSidebar,
     t,
     workspaces,
+    uiWorkspace,
+    uiConversation,
   })
   const settingsStore = defineStore({
     init: () => ({

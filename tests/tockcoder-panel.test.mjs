@@ -3,10 +3,12 @@ import { createServer } from 'node:http'
 import { test } from 'node:test'
 import { build } from 'esbuild'
 import { loadInstalledPlaywright } from '../scripts/launcher-installed-smoke.mjs'
-import { stopChildProcess } from '../scripts/process-cleanup.mjs'
 
-// Uses the same globally installed Playwright CLI/browser as the installed smoke.
-test('TockCoder panels keep workspace, diff, and directory responses attached to their selection', { timeout: 60_000 }, async () => {
+// Launch Electron with extended_display first; this test only attaches to that owned endpoint.
+const endpoint = process.env.TOCKCODER_TEST_CDP_URL
+test('TockCoder panels keep workspace, diff, and directory responses attached to their selection', {
+  timeout: 60_000, skip: !endpoint && 'Requires an owned extended_display CDP endpoint in TOCKCODER_TEST_CDP_URL',
+}, async () => {
   const bundle = await build({
     entryPoints: [new URL('./fixtures/tockcoder-panel.ts', import.meta.url).pathname],
     bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic',
@@ -16,18 +18,17 @@ test('TockCoder panels keep workspace, diff, and directory responses attached to
     response.end(request.url === '/fixture.js' ? bundle.outputFiles[0].text
       : '<!doctype html><html style="color-scheme:dark"><body><div id="root"></div><script src="/fixture.js"></script></body></html>')
   })
-  let browserServer
+  let page
   let browser
-  let root
   try {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
     const chromium = await loadInstalledPlaywright()
-    browserServer = await chromium.launchServer({ headless: true, args: ['--use-mock-keychain'] })
-    root = browserServer.process()
-    console.log(`TockCoder panel browser root PID=${root.pid}`)
-    browser = await chromium.connect(browserServer.wsEndpoint())
-    const context = await browser.newContext({ viewport: { width: 1512, height: 949 }, deviceScaleFactor: 2, colorScheme: 'dark' })
-    const page = await context.newPage()
+    browser = await chromium.connectOverCDP(endpoint)
+    page = browser.contexts()[0]?.pages()[0]
+    assert.ok(page, 'the guarded Electron window must already exist')
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false })
+    await page.emulateMedia({ colorScheme: 'dark' })
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
@@ -38,7 +39,9 @@ test('TockCoder panels keep workspace, diff, and directory responses attached to
       skin: document.documentElement.dataset.tockteamSkin ?? null,
     })), { width: 1512, height: 949, scale: 2, route: '/tockcoder', theme: 'dark', skin: null })
     await page.waitForFunction(() => window.panelProof?.ready())
-    await page.evaluate(() => { window.panelProof.holdFacts(); window.panelProof.open() })
+    await page.evaluate(() => window.panelProof.startBlankSideChat())
+    assert.equal(await page.evaluate(() => window.panelProof.startedSessions()), 1)
+    await page.evaluate(() => { window.panelProof.select('first'); window.panelProof.holdFacts(); window.panelProof.open() })
     await page.waitForFunction(() => window.panelProof.factsPending() === 1)
     await page.evaluate(() => window.panelProof.select('second'))
     const branch = page.getByRole('combobox', { name: 'workspace.current-branch' })
@@ -47,6 +50,10 @@ test('TockCoder panels keep workspace, diff, and directory responses attached to
     // Drain the resolved request and React's resulting paint, not a wall-clock race.
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     assert.equal(await branch.inputValue(), 'second', 'old workspace response must not replace the active workspace')
+    await page.evaluate(() => window.panelProof.running('npm test'))
+    await page.locator('.tockteam-process-row code').filter({ hasText: 'npm test' }).waitFor()
+    await page.evaluate(() => window.panelProof.running())
+    await page.waitForFunction(() => document.querySelectorAll('.tockteam-process-row').length === 0)
 
     await page.evaluate(() => window.panelProof.holdDiffs())
     await page.getByRole('button', { name: /one\.ts/ }).click()
@@ -97,12 +104,9 @@ test('TockCoder panels keep workspace, diff, and directory responses attached to
     assert.deepEqual(errors, [])
     await page.evaluate(() => window.panelProof.dispose())
   } finally {
+    await page?.goto('about:blank').catch(() => {})
     await browser?.close()
-    await browserServer?.close()
-    if (root) {
-      await stopChildProcess(root, 1_000, 1_000)
-      assert.ok(root.exitCode !== null || root.signalCode !== null, 'browser root must be stopped')
-    }
+    // The caller owns the Electron process tree and must use extended_display.stop.
     server.closeAllConnections()
     await new Promise(resolve => server.close(resolve))
   }
