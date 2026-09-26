@@ -71,6 +71,7 @@ Folder: `.agents/references/`
 | `self-evolving.md` | Reversible Cordis composition philosophy      |
 | `tocklauncher.md`  | TockLauncher product and security contracts   |
 | `tocktutor.md`     | TockTutor plugin and package contracts        |
+| `tockcoder.md`     | TockCoder implementation and service contracts |
 | `usage.md`         | Installation, operations, and troubleshooting |
 
 ## UIUX

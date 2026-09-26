@@ -67,9 +67,7 @@ boundaries remain separate layers.
 
 TockCoder is the `/tockcoder` coding workspace on Desktop and Web, composed
 from DSH sessions/conversation plus the sidebar, terminal dock, and pinned
-summary—not a separate agent runtime. Its service contracts, Host boundaries,
-data compatibility, and verification are documented in
-[TockCoder Implementation](./tockcoder.md).
+summary—not a separate agent runtime.
 
 `@tockteam/skins` is the only skin-definition module for all three surfaces.
 Web and Desktop adapt the catalog to DSH CSS tokens; TUI adapts the same ids
@@ -114,10 +112,9 @@ commit `ed39e301`; run `33301125258` refreshed those historical reports at commi
 `63a72645`, including controlled validation failure and recovery using the
 preserved prior Debian package from run `33301125258`. Those reports were
 later removed and the runtime changed. The repository recreation retired those
-hosted runs. Fresh checked-in reports in
-`.beads/reports/release-verification-2026-09-18/` cover source commit `a6326d27`,
-version `0.1.14`, from hosted run
-[`35339263744`](https://github.com/taowang1993/tockteam/actions/runs/35339263744):
+hosted runs. Hosted run
+[`35339263744`](https://github.com/taowang1993/tockteam/actions/runs/35339263744)
+verified source commit `a6326d27`, version `0.1.14`:
 macOS arm64 unsigned/internal ad-hoc evidence, Windows x64, and Linux x64.
 The checked-in Linux report proves controlled validation failure and recovery
 through the preserved Debian package from baseline run `35337301769`; the historical
@@ -146,5 +143,3 @@ Windows/Linux reports do not claim execution of those commands.
 User-facing names are **TockTeam Desktop**, **TockTeam Web**, and **TockTeam TUI**.
 Internal package ids, the bundle id, and existing data directories remain
 stable so upgrades preserve sessions, settings, and credentials.
-
-See [installation, operations, and troubleshooting](./usage.md).
