@@ -2,12 +2,12 @@
 audience: agent
 canonical: .agents/references/tocklauncher.md
 owner: TockTeam
-last_reviewed: 2026-09-19
+last_reviewed: 2026-09-26
 ---
 
 # TockLauncher
 
-_Last reviewed: 2026-09-19_
+_Last reviewed: 2026-09-26_
 
 TockLauncher is TockTeam Desktop's native keystroke launcher. It selectively ports the reviewed Ueli `v9.29.0` behavior while keeping the Electron lifecycle, renderer, persistence, security boundary, platform effects, and product routing under TockTeam ownership.
 
@@ -162,6 +162,8 @@ Compatibility extends only to these exact artifacts and their reviewed API subse
 | Kaomoji Search | `index` | Fixed 1,822-record dataset, List/Grid preferences, at most 64 projected items and four actions per item. |
 | Can I Use | `index` | Pinned 581-feature dataset, at most 64 root rows, one detail level, exact browser-target unions, and canonical feature links. Automatic selectors such as `defaults` and workspace configuration are unsupported. |
 
+Compatibility NDJSON limits apply to each complete frame and the unfinished remainder, not the aggregate pipe chunk. Child input permits 128 KiB per frame so a validated 16 KiB string still fits after JSON escaping; child output remains capped at 1 MiB per frame. Coalesced messages do not consume one another's allowance. Can I Use search additionally accepts at most 256 Unicode scalars, 1,024 UTF-8 bytes and 32 space-separated words, with no control characters. Invalid queries are rejected before revoking command handles, allowing correction without reopening the command.
+
 Production compatibility invocation is currently macOS-only; the runtime depends on POSIX extraction and reviewed native/process cleanup. The catalog can still project installed/enabled commands on another platform, so a displayed row is not proof of runtime availability. Packaging bytes for Windows/Linux is not proof of runtime support. There is no extension store, runtime package installation, generic manifest loader, per-extension Cordis plugin, or Web/TUI mounting.
 
 One Desktop-only `@tockteam/trusted-raycast` Cordis plugin holds a bearer-authenticated loopback activation stream. Its disconnect removes discovery authority and closes the active child. This is a lifecycle lease, not generic RPC or another composition system; generated endpoint/token values stay Host/main-owned.
@@ -197,9 +199,15 @@ Native helpers never rely on a writable current-directory search:
 
 Windows shortcut elevation is scan-bound and confirmation-gated. Only a bounded regular `.lnk` can receive the administrator action. Main records its SHA-256 during mapping, revalidates identity before and after confirmation, rehashes immediately before launch, and passes the expected digest as data to a fixed PowerShell script. That script opens the shortcut with `FileShare.Read`, verifies SHA-256 while the non-write/non-delete share lock remains held, calls `Start-Process -Verb RunAs`, and releases the handle afterward. Store IDs do not receive elevation or reveal actions.
 
+### Trusted-Extension Paste
+
+Paste into a captured TockTeam workbench uses its bound `webContents.insertText` and never touches the clipboard. External-app Paste captures the clipboard before writing, then checks the text, format set and every format's bytes before restoration; unreadable or changed contents are left untouched, including newer rich content with identical plain text.
+
+Electron 42's macOS `clipboard.writeBuffer()` replaces the pasteboard for each call rather than appending formats. Until there is an atomic multi-format restoration adapter, external Paste rejects a clipboard containing more than one exposed format **before any mutation** and offers Copy instead. Snapshot size is capped at 16 MiB. This is not a native clipboard change-counter guarantee: an identical rewrite cannot be distinguished, and the comparison/restoration sequence is not atomic with another application. Do not claim arbitrary multi-item pasteboard preservation from the Electron format API.
+
 ## Search and Action Authorization
 
-`createLauncherCoreSearch()` supports `fuzzysort` and `Fuse.js`, bounded fuzziness and result counts, alphabetical empty-search behavior, instant providers, favorites, exclusions, history, rescan status, and isolated provider failures. Whitespace-only queries follow empty-search behavior. A cancelled or superseded initial scan cannot publish the inert cached index. Excluding an item removes it from both favorite membership and ordering before later favorite writes.
+`createLauncherCoreSearch()` supports `fuzzysort` and `Fuse.js`, bounded fuzziness and result counts, alphabetical empty-search behavior, instant providers, favorites, exclusions, history, rescan status, and isolated provider failures. Web-search display labels are capped at 512 characters independently of the original query used to build the browser URL. Whitespace-only queries follow empty-search behavior. A cancelled or superseded initial scan cannot publish the inert cached index. Excluding an item removes it from both favorite membership and ordering before later favorite writes.
 
 `LauncherActionStore` is the execution boundary:
 
@@ -372,9 +380,13 @@ pnpm test:launcher:electron
 pnpm test:launcher:packaged
 ```
 
-On macOS, run `pnpm test:launcher:electron` only for changes affecting Electron, launcher behavior, preload/IPC, packaging, or a required final Desktop smoke—not for isolated browser styling. Run `pnpm test:launcher:installed` only after focused checks pass and once for the final evidence commit, with `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT` inside a `.noindex` cache directory. Never run installed smokes concurrently, and stop every Electron app, server, and child process started for verification. Standard Electron keyboard smokes bring windows to the foreground: obtain immediate explicit permission first, or use a bounded inactive proof and state its narrower coverage.
+On macOS, run `pnpm test:launcher:electron` only for changes affecting Electron, launcher behavior, preload/IPC, packaging, or a required final Desktop smoke—not for isolated browser styling. Run `pnpm test:launcher:installed` only after focused checks pass and once for the final evidence commit, with `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT` inside a `.noindex` cache directory. Never run installed smokes concurrently, and stop every Electron app, server, and child process started for verification. In an extended-display-only session, launch Electron/browser verification through the guarded `extended_display` tool and use only its owned CDP endpoint; existing shell-spawning proof scripts are not an alternative launch path. No main-screen fallback, native dialogs, user-app attachment or OS-level input is allowed. Never touch the user's clipboard for a regression check without immediate explicit permission.
 
 The root `node:test` suite contains focused contracts for IPC, ownership, provider races, native effects, persistence recovery, settings, renderer behavior, packaging, installers, and evidence freshness. Mutation-style package tests reject missing assets, dependency drift, stale evidence, unsafe paths, and widened authority.
+
+Fresh-profile compatibility proofs must open the bundled command directly, not wait for an obsolete **Approve and Open** screen; explicit removal/disablement recovery is a separate scenario. The Translate tracer supplies its extension identity and explicit Chinese target languages, with an offline admitted-source success regression. Installed compatibility proofs skip non-macOS platforms. Historical TTS proof cannot satisfy a current playback gate: a responding upstream without observed playback fails; an unavailable upstream records a partial/inconclusive result, not a current TTS pass.
+
+Legacy standalone overlay proofs still encode `750 × 475` geometry and require migration before they can publish evidence under the project-wide `1512 × 949` CSS-pixel / `3024 × 1898` screenshot contract. Source-contract tests are not fresh visual evidence. The September 26 audit passed typecheck/build and focused regressions, but its broad launcher run retained three environment-denied process-inspection failures; see `.beads/reports/2026-09-26-tocklauncher-audit.md` for exact commands and limits.
 
 ## Maintenance Rules
 
