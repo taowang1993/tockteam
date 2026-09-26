@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-09-25T13:58:23.993Z",
-  "sourceCommit": "f436fcc0",
+  "capturedAt": "2026-09-25T23:54:43.170Z",
+  "sourceCommit": "15fa8806",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
   "products": {
     "tocktutor": "Current source-built Desktop composition",
@@ -2502,10 +2502,10 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 294143,
-      "sha256": "57622de6b18eba909c0b4248592e2036434d66823f54097e893c63d807859687",
-      "capturedAt": "2026-09-25T13:52:22.179Z",
-      "sourceCommit": "f436fcc0",
+      "bytes": 286693,
+      "sha256": "042d2b07f49bc6a4b73bae1467c6cea9f3ce8617b50d1a0c9fa0e5a9e402fb74",
+      "capturedAt": "2026-09-25T23:54:43.170Z",
+      "sourceCommit": "15fa8806",
       "visibleState": {
         "assertedText": "Small Heading",
         "assertionPassed": true,
@@ -2526,7 +2526,7 @@
           "Small Heading": 19
         }
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners and Playwright console/pageerror listeners during the focused lower-note capture; all assertions passed with zero renderer or console errors. Two development-only Electron/Vue warnings are recorded separately.",
       "route": "/tocktutor/UIUX%20Comparison.md"
     },
     "obsidian-live-preview-lower.png": {
@@ -2694,12 +2694,12 @@
   "publication": {
     "policy": "Verify the exact allowlist, PNG dimensions, state evidence, and hashes; stage only specifically requested allowlisted captures and their proof on the same filesystem with rollback. Preserve every existing screenshot unless an explicit retake is requested; never write unrelated images.",
     "lastRefresh": {
-      "capturedAt": "2026-09-25T13:58:23.993Z",
-      "sourceCommit": "f436fcc0",
-      "updatedTockTutorImages": 34,
+      "capturedAt": "2026-09-25T23:54:43.170Z",
+      "sourceCommit": "15fa8806",
+      "updatedTockTutorImages": 1,
       "preservedObsidianImages": 29,
       "obsidianHashesUnchanged": true,
-      "transaction": "Same-filesystem staged candidates and rollback copies; pre/post SHA-256, PNG geometry, route, mode, content and appearance checked."
+      "transaction": "Same-filesystem staged candidate and rollback copies; the one allowlisted PNG passed hash, geometry, route, content, mode, appearance, divider-pixel and cleanup checks before publication."
     }
   },
   "graphAlignment": {
@@ -4131,6 +4131,107 @@
     "rendererErrors": [],
     "cleanup": {
       "verified": true,
+      "remaining": []
+    }
+  },
+  "dividerParityRetake": {
+    "capturedAt": "2026-09-25T23:54:43.170Z",
+    "sourceCommit": "15fa8806",
+    "runId": "b800bf20-42a6-48a5-a81b-a94497922e07",
+    "rootPid": 96228,
+    "filename": "tocktutor-live-preview-lower.png",
+    "previousSha256": "57622de6b18eba909c0b4248592e2036434d66823f54097e893c63d807859687",
+    "sha256": "042d2b07f49bc6a4b73bae1467c6cea9f3ce8617b50d1a0c9fa0e5a9e402fb74",
+    "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "route": "/tocktutor/UIUX%20Comparison.md",
+    "path": "UIUX Comparison.md",
+    "mode": "live-preview",
+    "scrollTop": 700,
+    "geometry": {
+      "width": 1512,
+      "height": 949,
+      "deviceScaleFactor": 2,
+      "pixelWidth": 3024,
+      "pixelHeight": 1898
+    },
+    "theme": {
+      "colorScheme": "dark",
+      "skinId": null,
+      "bodySkin": null
+    },
+    "visibleHeadings": [
+      {
+        "text": "Data",
+        "y": 238,
+        "visible": true
+      },
+      {
+        "text": "Code and Notes",
+        "y": 483,
+        "visible": true
+      },
+      {
+        "text": "Small Heading",
+        "y": 801.5234375,
+        "visible": true
+      }
+    ],
+    "paragraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+    "divider": {
+      "authored": "---",
+      "location": "between This sentence follows without a blank line. and Small Heading",
+      "cssProperty": "background-color",
+      "backgroundToken": "--crepe-color-outline",
+      "outlineToken": "#ffffff1f",
+      "computedBackground": "rgba(255, 255, 255, 0.12)",
+      "previousPixel": {
+        "x": 1500,
+        "y": 1549,
+        "rgb": [
+          208,
+          211,
+          214
+        ],
+        "hex": "#d0d3d6"
+      },
+      "retakenPixel": {
+        "x": 1500,
+        "y": 1549,
+        "rgb": [
+          49,
+          49,
+          51
+        ],
+        "hex": "#313133"
+      },
+      "obsidianReferencePixel": {
+        "x": 1500,
+        "y": 1472,
+        "rgb": [
+          51,
+          51,
+          51
+        ],
+        "hex": "#333333"
+      },
+      "box": {
+        "x": 562,
+        "y": 768.5234375,
+        "width": 700,
+        "height": 13
+      }
+    },
+    "captureErrors": [],
+    "consoleWarnings": [
+      "Electron development-only Content-Security-Policy warning",
+      "Vue esm-bundler compile-time feature-flags warning"
+    ],
+    "preservedOtherImages": 62,
+    "preservedObsidianImages": 29,
+    "cleanup": {
+      "verified": true,
+      "run": "b800bf20-42a6-48a5-a81b-a94497922e07",
+      "rootPid": 96228,
       "remaining": []
     }
   }

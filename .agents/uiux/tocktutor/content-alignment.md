@@ -1,5 +1,9 @@
 # TockTutor and Obsidian Content Alignment
 
+## Divider Parity Retake — 2026-09-26
+
+Retook only `tocktutor-live-preview-lower.png` from the source-built Desktop at `15fa8806`. The authored `---` divider now uses Crepe’s existing `--crepe-color-outline` (mapped to DSH’s semantic border token) rather than the much brighter secondary-label color; the note itself is unchanged. The sampled TockTutor line dimmed from `#d0d3d6` to `#313133`, matching Obsidian’s `#333333` reference closely. The 1512 × 949 CSS-pixel, 2× capture (3024 × 1898) verifies the same note hash, Live Preview route/mode, scrollTop 700, dark theme with no skin, and visible Data, Code and Notes, and Small Heading sections. No renderer or console errors occurred; two development-only Electron/Vue warnings are recorded separately. The owned Electron process tree (root PID 96228) stopped with no descendants. All 62 other screenshots, including all 29 Obsidian references, retained their original hashes. Detailed evidence: `content-alignment.json`.
+
 ## Stronger Divider and Full TockTutor Retake — 2026-09-25
 
 In the existing Live Preview CSS utility, the authored `---` divider now uses the stronger semantic `--dsw-alias-label-secondary` color instead of the faint outline token; its Markdown and surrounding layout remain unchanged. A guarded source-built Desktop run retook all **34 TockTutor screenshots** in the gallery, including the lower Live Preview view and the loaded Web Viewer Reader View. Each published capture verified its expected route, mode, content, 1512 × 949 CSS pixels at DPR 2 (3024 × 1898 PNG), built-in dark/no skin, and zero renderer and console/page errors. The shared note's SHA-256 remains `3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5`. The owned Electron root PID 65351 and all descendants stopped; all **29 Obsidian references** retained their original hashes. Full per-capture evidence and checksums: `content-alignment.json`.
