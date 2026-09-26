@@ -21,6 +21,7 @@
 ## Out of Scope
 
 - Adding Board/Kanban, Calendar, Timeline, a geographic map, formulas editor, arbitrary expression builder, drag grouping, or complete Obsidian API/schema parity. Table/List/Cards/Map-label are the only already supported layouts; no fake controls for unsupported kinds.
+- **New Folder** and **New Canvas** sidebar actions: the user explicitly chose to focus this project on Bases. Keep the existing New Note entry but do not add those separate vault-writing flows.
 - A Milkdown `.base` node or automatic conversion of Markdown tables to Bases; no Web/TUI mount or new Host authority.
 - Rewriting unfamiliar `.base` YAML, full arbitrary filter expressions through point-and-click controls, changing third-party/user profile patches, or silently modifying existing notes to populate a new view.
 
