@@ -12,16 +12,20 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 57 Captures/u)
+  assert.match(html, /Visual Design Audit · 56 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
-  assert.equal(new Set(images).size, 57)
+  assert.doesNotMatch(html, /Tag and Tab Polish|id="polish"/u)
+  assert.equal(new Set(images).size, 56)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
   assert.deepEqual(actual, Object.keys(proof.captures).sort())
   assert.equal(actual.length, 63)
   assert.deepEqual(actual.filter(name => !images.includes(`screenshots/${name}`)), proof.gallery.supplementalCaptures)
+  assert.ok(proof.gallery.supplementalCaptures.includes('tocktutor-tag-tab-polish.png'))
+  assert.ok(proof.comparisons.every((comparison: { surface: string }) => comparison.surface !== 'polish'))
+  assert.ok(proof.pairs.every((pair: { surface: string }) => pair.surface !== 'polish'))
   for (const href of [...html.matchAll(/\bhref="([^"]+)"/gu)].map(match => match[1]!)) {
     if (href.startsWith('#')) assert.ok(html.includes(`id="${href.slice(1)}"`), href)
     else if (!href.startsWith('data:')) assert.ok(existsSync(resolve(root, href)), href)
@@ -31,9 +35,9 @@ test('accounts for every gallery and supplemental capture without stale links', 
   assert.match(html, /id="reviews"[\s\S]*?Not Applicable/u)
 })
 
-test('orders the numbered surfaces with Tag and Tab Polish at Surface 04', () => {
+test('orders the numbered surfaces with Source Mode at Surface 04', () => {
   const sections = [...html.matchAll(/<section class="surface" id="([^"]+)">\s*<p class="section-number">Surface (\d+)<\/p>/gu)]
-  assert.deepEqual(sections.map(([, id]) => id).slice(0, 5), ['workspace', 'reading', 'live-preview', 'polish', 'source'])
+  assert.deepEqual(sections.map(([, id]) => id).slice(0, 5), ['workspace', 'reading', 'live-preview', 'source', 'note-actions'])
   assert.deepEqual(sections.map(([, , number]) => Number(number)), sections.map((_, index) => index + 1))
 })
 
@@ -55,6 +59,20 @@ test('refreshes supplemental captures with verified pixels and honest runtime ev
   assert.ok(proof.cleanup.pids.length > 0)
   assert.ok(proof.cleanup.focus.every((event: { faulted: boolean; focusInconclusiveCount: number }) => !event.faulted && event.focusInconclusiveCount === 0))
   assert.ok(proof.startupObservations.some((entry: { message: string }) => entry.message.includes('workspaces.startSession')))
+})
+
+test('records a fresh dark Source Mode capture with visible raw Markdown', () => {
+  const source = proof.captures['tocktutor-editor-source.png']
+  assert.equal(source.route, '/tocktutor/UIUX%20Comparison.md')
+  assert.equal(source.mode, 'source')
+  assert.equal(source.visibleState.sourceVisible, true)
+  assert.equal(source.visibleState.rawHeadingVisible, true)
+  assert.equal(source.visibleState.rawTagsVisible, true)
+  assert.equal(source.captureProof.titlebarHistoryButtons, 0)
+  assert.equal(source.captureProof.noteHeaderHistoryButtons, 2)
+  assert.deepEqual(source.captureProof.consoleErrors, [])
+  assert.deepEqual(source.captureProof.pageErrors, [])
+  assert.equal(source.captureProof.processTreeStopped, true)
 })
 
 test('records the scrolled lower Live Preview pair with both target sections visible', () => {

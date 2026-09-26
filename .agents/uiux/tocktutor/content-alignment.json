@@ -19,8 +19,8 @@
     "skinId": null
   },
   "gallery": {
-    "uniqueImageSources": 57,
-    "captureCountLabel": "Visual Design Audit · 57 Captures",
+    "uniqueImageSources": 56,
+    "captureCountLabel": "Visual Design Audit · 56 Captures",
     "screenshotDirectoryTotal": 63,
     "supplementalCaptures": [
       "obsidian-outline.png",
@@ -28,6 +28,7 @@
       "tocktutor-bookmarks-tags.png",
       "tocktutor-new-note-dialog.png",
       "tocktutor-properties-links.png",
+      "tocktutor-tag-tab-polish.png",
       "tocktutor-web-viewer-reader.png"
     ],
     "allowlist": [
@@ -235,14 +236,6 @@
     }
   ],
   "comparisons": [
-    {
-      "surface": "polish",
-      "screenshots": [
-        "tocktutor-tag-tab-polish.png",
-        "obsidian-main-editor.png"
-      ],
-      "contentComparison": "byte-identical Markdown"
-    },
     {
       "surface": "workspace",
       "screenshots": [
@@ -461,21 +454,6 @@
     }
   ],
   "pairs": [
-    {
-      "surface": "polish",
-      "tocktutor": {
-        "screenshot": "tocktutor-tag-tab-polish.png",
-        "path": "UIUX Comparison.md",
-        "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      },
-      "obsidian": {
-        "screenshot": "obsidian-main-editor.png",
-        "path": "UIUX Comparison.md",
-        "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      }
-    },
     {
       "surface": "workspace",
       "tocktutor": {
@@ -837,17 +815,29 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 278699,
-      "sha256": "7bdc97bcc4d833f96084c795713c07e497cde7b3c9c05fb6e0f2d2e0d7554602",
-      "capturedAt": "2026-09-25T13:52:20.541Z",
+      "bytes": 278539,
+      "sha256": "3d0ee784eb6b87fb6eb785a57dafd938c84a278f52a8aca3f57e2b5b6263eeb5",
+      "capturedAt": "2026-09-26T00:25:25.925Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
         "textExcerpt": "Markdown Rendering Lab",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
-      "sourceCommit": "f436fcc0",
+      "runtimeErrorMonitoring": "App-scoped Playwright/CDP capture: window error/unhandledrejection and capture-time console/pageerror lists were empty; the known TockCoder startup error occurred before the TockTutor capture.",
+      "sourceCommit": "14cfad10 + uncommitted note-history placement",
+      "historyPlacement": {
+        "titlebarButtons": 0,
+        "noteHeaderButtons": 2,
+        "tabBottom": 41,
+        "historyTop": 46,
+        "visibleParagraph": true,
+        "windowErrorEvents": [],
+        "consoleErrors": [],
+        "pageErrors": [],
+        "rootPid": 4503,
+        "stoppedWithNoDescendants": true
+      },
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
@@ -994,17 +984,28 @@
       "path": "UIUX Comparison.md",
       "mode": "source",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 311656,
-      "sha256": "2c5c9820925d85a3f23ff3c835d5cd07331fc685d8204d6b6fdd02a3efa6a142",
-      "capturedAt": "2026-09-25T13:52:23.248Z",
+      "bytes": 307347,
+      "sha256": "c8fcb2ecc19d925019a452e8b1c7a348c704db6efc79e4966da66f8192c2ff6f",
+      "capturedAt": "2026-09-26T02:26:54.310Z",
       "visibleState": {
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
-        "textExcerpt": "Markdown Rendering Lab"
+        "textExcerpt": "Markdown Rendering Lab",
+        "sourceVisible": true,
+        "rawHeadingVisible": true,
+        "rawTagsVisible": true,
+        "firstParagraphVisible": true
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
-      "refreshProof": ".beads/reports/tocktutor-source-inline-2026-09-20.json",
-      "sourceCommit": "f436fcc0"
+      "runtimeErrorMonitoring": "App-scoped Playwright/CDP capture: window error/unhandledrejection and capture-time console/pageerror lists were empty; the known TockCoder startup error occurred before the TockTutor capture.",
+      "sourceCommit": "14cfad10 + uncommitted note-history placement",
+      "captureProof": {
+        "titlebarHistoryButtons": 0,
+        "noteHeaderHistoryButtons": 2,
+        "consoleErrors": [],
+        "pageErrors": [],
+        "rootPid": 12019,
+        "processTreeStopped": true
+      }
     },
     "obsidian-source-mode.png": {
       "geometry": {
