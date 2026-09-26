@@ -10,7 +10,7 @@ const ok = <T,>(value: T) => Promise.resolve({ ok: true as const, value })
 afterEach(cleanup)
 
 it('right-click and keyboard menus preserve dirty A while opening, renaming and duplicating B', async () => {
-  const files = new Map([['A.md', '# A\n'], ['B.md', '# B\n']])
+  const files = new Map([['A.md', '# A\n'], ['B.md', '# B\n'], ['Unavailable.md', '# Unavailable\n']])
   const saved: string[] = []
   const remote = { $on: () => () => {}, tocktutorWorkbench: {
     currentVault: () => ok({ displayPath: '~/Fixture', generation: 1, name: 'Fixture', vault }),
@@ -57,6 +57,11 @@ it('right-click and keyboard menus preserve dirty A while opening, renaming and 
     await waitFor(() => expect(files.get('Renamed B Copy.md')).toBe('Dirty B'))
     expect(saved).toEqual(['Renamed B.md'])
     expect(controller.getPaneSnapshot(left).source).toBe('Dirty A')
+    remote.tocktutorWorkbench.openDocument = async () => { throw new Error('Unavailable target') }
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Unavailable.md', exact: true }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'File Recovery', exact: true }))
+    await waitFor(() => expect(controller.getSnapshot().message).toBe('Unavailable target'))
+    expect(screen.queryByRole('heading', { name: 'File Recovery', exact: true })).toBeNull()
   } finally { view.unmount(); await controller.dispose() }
 })
 it('shows the 13 agreed actions, targets the clicked row and restores focus on Escape', async () => {

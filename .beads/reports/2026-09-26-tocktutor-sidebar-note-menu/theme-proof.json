@@ -1,0 +1,90 @@
+{
+  "geometry": [
+    1512,
+    949,
+    2
+  ],
+  "systemAppearance": "Opposite to the explicit app theme",
+  "reducedMotion": "reduce",
+  "themes": {
+    "dark": {
+      "menuColor": "rgb(30, 30, 30)",
+      "chrome": "rgb(30, 30, 30)",
+      "sidebar": "rgb(30, 30, 30)",
+      "normalContrast": 15.95286574315298,
+      "selectedContrast": 11.5745859518911,
+      "hover": true,
+      "enabled": true,
+      "items": 13,
+      "bounded": true,
+      "theme": "dark",
+      "skin": null
+    },
+    "light": {
+      "menuColor": "color(srgb 0.962353 0.962667 0.963294)",
+      "chrome": "color(srgb 0.962353 0.962667 0.963294)",
+      "sidebar": "color(srgb 0.962353 0.962667 0.963294)",
+      "normalContrast": 17.34354412890975,
+      "selectedContrast": 18.896452054380127,
+      "hover": true,
+      "enabled": true,
+      "items": 13,
+      "bounded": true,
+      "theme": "light",
+      "skin": null
+    },
+    "deep-current": {
+      "menuColor": "rgb(7, 25, 35)",
+      "chrome": "rgb(7, 25, 35)",
+      "sidebar": "rgb(7, 25, 35)",
+      "normalContrast": 16.4495170055241,
+      "selectedContrast": 12.001363841669917,
+      "hover": true,
+      "enabled": true,
+      "items": 13,
+      "bounded": true,
+      "theme": "dark",
+      "skin": "tockteam-skin-deep-current"
+    },
+    "jade-circuit": {
+      "menuColor": "rgb(7, 26, 22)",
+      "chrome": "rgb(7, 26, 22)",
+      "sidebar": "rgb(7, 26, 22)",
+      "normalContrast": 16.739293071487573,
+      "selectedContrast": 11.794717553504489,
+      "hover": true,
+      "enabled": true,
+      "items": 13,
+      "bounded": true,
+      "theme": "dark",
+      "skin": "tockteam-skin-jade-circuit"
+    },
+    "porcelain": {
+      "menuColor": "color(srgb 0.918588 0.937569 0.93349)",
+      "chrome": "color(srgb 0.918588 0.937569 0.93349)",
+      "sidebar": "color(srgb 0.918588 0.937569 0.93349)",
+      "normalContrast": 11.900719026986428,
+      "selectedContrast": 11.775479032844903,
+      "hover": true,
+      "enabled": true,
+      "items": 13,
+      "bounded": true,
+      "theme": "light",
+      "skin": "tockteam-skin-porcelain"
+    },
+    "ember-dusk": {
+      "menuColor": "rgb(33, 22, 31)",
+      "chrome": "rgb(33, 22, 31)",
+      "sidebar": "rgb(33, 22, 31)",
+      "normalContrast": 15.76374508153132,
+      "selectedContrast": 11.944896316758125,
+      "hover": true,
+      "enabled": true,
+      "items": 13,
+      "bounded": true,
+      "theme": "dark",
+      "skin": "tockteam-skin-ember-dusk"
+    }
+  },
+  "processAndRuntimeEvidence": "../2026-09-26-tocktutor-slash-color-scroll/proof.json"
+}

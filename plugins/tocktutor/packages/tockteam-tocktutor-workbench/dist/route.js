@@ -4763,10 +4763,9 @@ export function TockTutorRouteView(props) {
             void controller.duplicateNote(target);
         else if (action === 'trash')
             void controller.trashNote(target);
-        else if (action === 'recovery') {
-            setPanel('recovery');
-            void controller.openNoteRecovery(target);
-        }
+        else if (action === 'recovery')
+            void controller.openNoteRecovery(target).then(opened => { if (opened)
+                setPanel('recovery'); });
         else if (action === 'copy-relative')
             void globalThis.navigator?.clipboard?.writeText(target.path).catch(() => { });
         else

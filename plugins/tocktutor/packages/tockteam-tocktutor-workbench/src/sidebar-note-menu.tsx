@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 
 export type SidebarNoteAction = 'tab' | 'right' | 'open-window' | 'duplicate' | 'move' | 'bookmark' | 'merge' | 'copy-relative' | 'copy-absolute' | 'recovery' | 'open-default' | 'reveal' | 'rename' | 'trash'
 export interface NoteMenuAnchor { x: number; y: number; row: HTMLElement }
+const menuClass = 'max-h-(--radix-dropdown-menu-content-available-height) min-w-60 overflow-y-auto rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-1.5 text-sm text-foreground shadow-xl'
 
 /** The shared menu owns focus, keyboard navigation, dismissal and collision handling. */
 export function SidebarNoteMenu(props: {
@@ -19,7 +20,7 @@ export function SidebarNoteMenu(props: {
   )
   return <DropdownMenu open modal={false} onOpenChange={open => { if (!open) props.onClose() }}>
     <DropdownMenuTrigger aria-hidden tabIndex={-1} className="pointer-events-none fixed size-0 border-0 p-0 opacity-0" style={{ left: props.anchor.x, top: props.anchor.y }} />
-    <DropdownMenuContent aria-labelledby={undefined} aria-label="Note Actions" className="min-w-60" sideOffset={0} collisionPadding={8}
+    <DropdownMenuContent aria-labelledby={undefined} aria-label="Note Actions" unstyled portalled={false} className={menuClass} sideOffset={0} collisionPadding={{ top: 48, bottom: 8, left: 8, right: 8 }}
       onCloseAutoFocus={event => { event.preventDefault(); if (props.anchor.row.isConnected) props.anchor.row.focus() }}>
       <DropdownMenuGroup>
         {item('tab', 'Open in New Tab', <PanelsTopLeft aria-hidden />)}
@@ -37,7 +38,7 @@ export function SidebarNoteMenu(props: {
       <DropdownMenuGroup>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger><Copy aria-hidden /><span>Copy Path</span></DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
+          <DropdownMenuSubContent unstyled portalled={false} className={menuClass}>
             <DropdownMenuGroup>
               {item('copy-relative', 'Copy Relative Path', <Copy aria-hidden />)}
               {item('copy-absolute', 'Copy Absolute Path', <Copy aria-hidden />, !props.nativeAvailable)}

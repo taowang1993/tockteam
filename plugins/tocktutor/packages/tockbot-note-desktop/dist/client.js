@@ -15320,7 +15320,7 @@ var typert_remote_client_default = TYPERT_REMOTE;
 // ../../../ui/src/alert.tsx
 var React = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
+// ../../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 function r(e) {
   var t, f, n = "";
   if ("string" == typeof e || "number" == typeof e) n += e;
@@ -15335,7 +15335,7 @@ function clsx() {
   return n;
 }
 
-// ../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
+// ../../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority/dist/index.mjs
 var falsyToString = (value) => typeof value === "boolean" ? `${value}` : value === 0 ? "0" : value;
 var cx = clsx;
 var cva = (base, config2) => (props) => {
@@ -16051,7 +16051,7 @@ function TockTutorNativeActions(props) {
         if (!signal || signal.aborted || busy !== null) return;
         setBusy("Note Action");
         void runTargetNoteAction(owner.current, action, target, props.bridge, props.remote, signal).then((result) => {
-          if (!signal.aborted) setMessage(result ? resultMessage(result) : "The note action was cancelled.");
+          if (!signal.aborted) setMessage(result ? action === "open-default" && result.status === "opened" ? "Opened in the default app." : resultMessage(result) : "The note action was cancelled.");
         }).catch(() => {
           if (!signal.aborted) setMessage("The note action failed safely.");
         }).finally(() => {

@@ -133,6 +133,16 @@ Assistant and Web Viewer slots are single contributions; native-action, vault-ac
 
 Native dispatches are invalidated by newer navigation. TockTeam Desktop resolves current, named, recent, and absolute-path protocol selectors against main-owned canonical vault records, then sends only an opaque vault ID to the Host/client adapter. The Workbench accepts that request only after the selected runtime publishes the matching opaque identity. Tab, split, and window requests retain dirty-save gating and exact completion callbacks. Protocol note creation accepts a name without requiring a separate file selector. Delayed document loads, renames, and selection extraction preserve later navigation and edits; source-offset formatting, date/time insertion, and extraction require Source mode because Live Preview positions are not Markdown offsets.
 
+#### Sidebar Note Actions
+
+Right-click a note in **Files**, or press Shift+F10 / the context-menu key on its row, to open the 13-action note menu. Opening or dismissing it does not navigate or save. **Open in New Tab** retains the current tab; **Open to the Right** creates a permanent editable split using the existing pane layout, not a temporary Side Peek.
+
+The remaining actions are **Open in New Window**, **Duplicate**, **Move Note…**, **Bookmark Note…** / **Edit Bookmark…**, **Merge Entire File With…**, **Copy Path** (relative/absolute), **File Recovery**, **Open in Default App**, **Reveal in Finder**, **Rename Note…**, and **Move File to Trash**. They bind to the clicked vault-relative note rather than the active editor. Existing **More Note Actions** controls remain available independently. Markdown-only operations and unavailable native contributions are disabled.
+
+**Duplicate** saves only the target's open draft, then delegates through the validated `duplicateDocument` Remote to runtime `duplicateFile`. Same-folder `Copy` names use exclusive creation and at most 100 collision retries; partial writes are not retried as collisions. Local dialogs, recovery reads, and native authorization retain their target identity. Unrelated pane drafts are not saved or replaced. The existing native contribution accepts target-bound callbacks; no additional dispatch loop, filesystem writer, browser capability, or Web/TUI mount is introduced.
+
+Desktop verification checks live in `scripts/tocktutor-sidebar-menu-checks.js`; evidence and limitations are recorded in `.beads/reports/2026-09-26-tocktutor-sidebar-note-menu/`.
+
 #### Search Intelligence
 
 The mounted search palette supports **Keyword** and **Related** modes, title/folder/modified-date filters, keyboard selection, result previews, and **Quick Answer** with source citations. Related retrieval is bounded lexical/metadata ranking, optionally augmented by model-generated alternate queries; it is not a vector database. The route controller in `src/route.tsx` owns query/navigation cancellation and stale-result rejection. The assistant's `aiSearch` policy is `off`, `on-demand` (default), or `automatic`; missing/disabled providers do not remove local search. `src/search-intelligence.ts` validates bounded model output and rechecks vault/settings ownership; Quick Answer rereads candidate evidence and accepts only supported citations.

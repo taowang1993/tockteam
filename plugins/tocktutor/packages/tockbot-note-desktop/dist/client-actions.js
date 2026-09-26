@@ -626,7 +626,7 @@ export function TockTutorNativeActions(props) {
                     setBusy('Note Action');
                     void runTargetNoteAction(owner.current, action, target, props.bridge, props.remote, signal)
                         .then(result => { if (!signal.aborted)
-                        setMessage(result ? resultMessage(result) : 'The note action was cancelled.'); })
+                        setMessage(result ? action === 'open-default' && result.status === 'opened' ? 'Opened in the default app.' : resultMessage(result) : 'The note action was cancelled.'); })
                         .catch(() => { if (!signal.aborted)
                         setMessage('The note action failed safely.'); })
                         .finally(() => { if (!signal.aborted)

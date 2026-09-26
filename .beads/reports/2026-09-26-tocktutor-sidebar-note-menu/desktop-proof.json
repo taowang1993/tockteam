@@ -1,0 +1,85 @@
+{
+  "cssPixels": [
+    1512,
+    949
+  ],
+  "deviceScaleFactor": 2,
+  "pngPixels": [
+    3024,
+    1898
+  ],
+  "colorScheme": "dark",
+  "skinId": null,
+  "mode": "Source in the original pane; editable Live Preview in the right pane",
+  "runtimeErrors": 0,
+  "checks": [
+    "13 menu actions",
+    "right-click does not navigate",
+    "Shift+F10 opens menu",
+    "Escape restores row focus",
+    "permanent editable right split",
+    "Duplicate",
+    "Rename Note",
+    "Move Note",
+    "Bookmark Note and Edit Bookmark label",
+    "File Recovery opens for target",
+    "Move File to Trash",
+    "unrelated draft remains unsaved; original vault bytes unchanged"
+  ],
+  "ownedRuns": [
+    {
+      "id": "8aa91272-30d1-4c4e-a22b-3ea46d3e9ff4",
+      "rootPid": 51251,
+      "result": "outdated stage detected; no evidence published",
+      "remaining": []
+    },
+    {
+      "id": "8be1dadd-79bd-40bc-93fc-95713eb3628a",
+      "rootPid": 52149,
+      "result": "portal stacking defect detected; fixed before publication",
+      "remaining": []
+    },
+    {
+      "id": "4f278d9b-f8c6-439b-8704-f7b5d2152091",
+      "rootPid": 56020,
+      "result": "actions verified",
+      "remaining": []
+    },
+    {
+      "id": "61adbc64-654f-4bdc-914e-030a11e4bfad",
+      "rootPid": 72256,
+      "result": "Reusable final action script passed after final fixes; dark/opposite-system contrast rechecked",
+      "remaining": []
+    }
+  ],
+  "finalCheck": {
+    "state": {
+      "route": "/tocktutor/Clicked.md",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "htmlSkin": null,
+      "bodySkin": null
+    },
+    "checks": [
+      "13 top-level actions",
+      "opening the menu does not navigate",
+      "Escape restores row focus",
+      "persistent right split",
+      "split retains original draft",
+      "duplicate retains original draft",
+      "rename retains original draft",
+      "bookmark is bound to the clicked note",
+      "move and trash retain original draft",
+      "explicit canonical dark appearance",
+      "menu fits the owning route",
+      "no runtime errors"
+    ],
+    "errors": [],
+    "visibleState": "Original.md unsaved Source buffer on the left; Clicked Copy.md in editable Live Preview on the right; its sidebar Note Actions menu open",
+    "filesystem": "Exact Original.md and Clicked Copy.md bytes verified; Folder/Renamed.md absent after trash"
+  }
+}
