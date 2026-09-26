@@ -449,7 +449,7 @@ function mapWebResult(
     details: value,
     id,
     imageKey: engine === 'DuckDuckGo' ? 'web-search-duckduckgo' : 'web-search-google',
-    name,
+    name: name.slice(0, 512),
     sourceExtension: 'WebSearch',
   })
 }

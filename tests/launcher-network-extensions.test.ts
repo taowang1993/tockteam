@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { LAUNCHER_DEEPL_QUERY_PREFIX, LAUNCHER_NETWORK_EXTENSION_DEFAULTS, LAUNCHER_NETWORK_EXTENSION_IDS, LAUNCHER_WEB_SEARCH_QUERY_PREFIX } from '../src/launcher-network-extension-config.ts'
 import { createLauncherNetworkExtensions, type LauncherNetworkFetch, validateLauncherNetworkUrl } from '../src/launcher-network-extensions.ts'
-import type { LauncherActionRecord, LauncherInternalResultItem } from '../src/launcher-actions.ts'
+import { LauncherActionStore, type LauncherActionRecord, type LauncherInternalResultItem } from '../src/launcher-actions.ts'
 
 function settings<T>(key: string, fallback: T): T {
   if (key === 'extension[CurrencyConversion].currencies') return ['usd', 'eur'] as T
@@ -135,6 +135,27 @@ test('network provider uses fixed custom URL and web search shapes', async () =>
   assert.equal(result.after[0]?.id, 'search-Google')
   assert.equal(urls[0], 'https://www.google.com/complete/search?client=opera&q=hello%20world&hl=en-us')
   assert.equal(result.after.length, 3)
+})
+
+test('maximum-length instant web searches publish bounded labels without truncating the query', async () => {
+  const opened: string[] = []
+  const provider = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => assert.fail('Instant navigation must not fetch suggestions'),
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[WebSearch].showInstantSearchResult' ? true as T : fallback,
+    openExternal: url => { opened.push(url) }, resolveAddresses: publicResolver,
+  })
+  const owner = { role: 'launcher' as const, webContentsId: 1 }
+  const actions = new LauncherActionStore({ execute: async record => { await provider.executeAction(record) } })
+  try {
+    const query = 'a'.repeat(512)
+    const result = await provider.searchInstant(query)
+    const published = actions.publish({ items: result.after, owner })
+    assert.equal(published.items.length, 1)
+    assert.equal(published.items[0]!.name.length, 512)
+    await actions.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
+    assert.equal(new URL(opened[0]!).searchParams.get('q'), query)
+  } finally { actions.clear(); await provider.close() }
 })
 
 test('accepted custom URL settings produce invocation-safe actions', async () => {
