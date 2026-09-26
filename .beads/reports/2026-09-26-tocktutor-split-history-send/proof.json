@@ -1,0 +1,448 @@
+{
+  "proof": [
+    {
+      "appearance": {
+        "scheme": "dark",
+        "skin": null
+      },
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/Original.md",
+      "navigation": [
+        {
+          "pane": "pane-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 328,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 360,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        },
+        {
+          "pane": "group-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 924,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 956,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        }
+      ],
+      "assistantBorder": "0px",
+      "disabledSend": {
+        "disabled": true,
+        "background": "rgba(255, 255, 255, 0.06)",
+        "color": "rgb(249, 250, 251)",
+        "opacity": "1",
+        "svgColor": "rgb(249, 250, 251)"
+      },
+      "enabledSend": {
+        "disabled": false,
+        "background": "rgb(249, 250, 251)",
+        "color": "rgb(21, 21, 23)",
+        "opacity": "1",
+        "svgColor": "rgb(21, 21, 23)"
+      },
+      "enabledArrowContrast": 17.45,
+      "runtimeErrors": []
+    },
+    {
+      "appearance": {
+        "scheme": "light",
+        "skin": null
+      },
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/Original.md",
+      "navigation": [
+        {
+          "pane": "pane-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 328,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 360,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        },
+        {
+          "pane": "group-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 924,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 956,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        }
+      ],
+      "assistantBorder": "0px",
+      "disabledSend": {
+        "disabled": true,
+        "background": "rgba(0, 0, 0, 0.04)",
+        "color": "rgb(15, 17, 21)",
+        "opacity": "1",
+        "svgColor": "rgb(15, 17, 21)"
+      },
+      "enabledSend": {
+        "disabled": false,
+        "background": "rgb(15, 17, 21)",
+        "color": "rgb(255, 255, 255)",
+        "opacity": "1",
+        "svgColor": "rgb(255, 255, 255)"
+      },
+      "enabledArrowContrast": 18.9,
+      "runtimeErrors": []
+    },
+    {
+      "appearance": {
+        "scheme": "dark",
+        "skin": "tockteam-skin-deep-current"
+      },
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/Original.md",
+      "navigation": [
+        {
+          "pane": "pane-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 328,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 360,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        },
+        {
+          "pane": "group-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 924,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 956,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        }
+      ],
+      "assistantBorder": "0px",
+      "disabledSend": {
+        "disabled": true,
+        "background": "rgba(143, 214, 235, 0.08)",
+        "color": "rgb(233, 248, 251)",
+        "opacity": "1",
+        "svgColor": "rgb(233, 248, 251)"
+      },
+      "enabledSend": {
+        "disabled": false,
+        "background": "rgb(73, 200, 235)",
+        "color": "rgb(7, 25, 35)",
+        "opacity": "1",
+        "svgColor": "rgb(7, 25, 35)"
+      },
+      "enabledArrowContrast": 9.16,
+      "runtimeErrors": []
+    },
+    {
+      "appearance": {
+        "scheme": "dark",
+        "skin": "tockteam-skin-jade-circuit"
+      },
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/Original.md",
+      "navigation": [
+        {
+          "pane": "pane-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 328,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 360,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        },
+        {
+          "pane": "group-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 924,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 956,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        }
+      ],
+      "assistantBorder": "0px",
+      "disabledSend": {
+        "disabled": true,
+        "background": "rgba(124, 236, 187, 0.08)",
+        "color": "rgb(233, 251, 243)",
+        "opacity": "1",
+        "svgColor": "rgb(233, 251, 243)"
+      },
+      "enabledSend": {
+        "disabled": false,
+        "background": "rgb(82, 214, 160)",
+        "color": "rgb(7, 26, 22)",
+        "opacity": "1",
+        "svgColor": "rgb(7, 26, 22)"
+      },
+      "enabledArrowContrast": 9.83,
+      "runtimeErrors": []
+    },
+    {
+      "appearance": {
+        "scheme": "light",
+        "skin": "tockteam-skin-porcelain"
+      },
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/Original.md",
+      "navigation": [
+        {
+          "pane": "pane-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 328,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 360,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        },
+        {
+          "pane": "group-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 924,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 956,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        }
+      ],
+      "assistantBorder": "0px",
+      "disabledSend": {
+        "disabled": true,
+        "background": "rgba(24, 70, 67, 0.07)",
+        "color": "rgb(24, 49, 47)",
+        "opacity": "1",
+        "svgColor": "rgb(24, 49, 47)"
+      },
+      "enabledSend": {
+        "disabled": false,
+        "background": "rgb(45, 119, 115)",
+        "color": "rgb(243, 247, 246)",
+        "opacity": "1",
+        "svgColor": "rgb(243, 247, 246)"
+      },
+      "enabledArrowContrast": 4.86,
+      "runtimeErrors": []
+    },
+    {
+      "appearance": {
+        "scheme": "dark",
+        "skin": "tockteam-skin-ember-dusk"
+      },
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/Original.md",
+      "navigation": [
+        {
+          "pane": "pane-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 328,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 360,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        },
+        {
+          "pane": "group-1",
+          "buttons": [
+            {
+              "label": "Go Back",
+              "x": 924,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            },
+            {
+              "label": "Go Forward",
+              "x": 956,
+              "y": 46,
+              "width": 28,
+              "height": 28
+            }
+          ]
+        }
+      ],
+      "assistantBorder": "0px",
+      "disabledSend": {
+        "disabled": true,
+        "background": "rgba(255, 183, 159, 0.08)",
+        "color": "rgb(255, 240, 234)",
+        "opacity": "1",
+        "svgColor": "rgb(255, 240, 234)"
+      },
+      "enabledSend": {
+        "disabled": false,
+        "background": "rgb(255, 146, 117)",
+        "color": "rgb(33, 22, 31)",
+        "opacity": "1",
+        "svgColor": "rgb(33, 22, 31)"
+      },
+      "enabledArrowContrast": 8.02,
+      "runtimeErrors": []
+    }
+  ],
+  "realUnfocusedBack": {
+    "before": [
+      "Original",
+      "This is a comparison note for tocktutor and obsidian"
+    ],
+    "after": [
+      "Original",
+      "Original"
+    ]
+  },
+  "screenshot": {
+    "name": "dark.png",
+    "pixels": [
+      3024,
+      1898
+    ],
+    "theme": "built-in dark, no skin",
+    "mode": "Live Preview",
+    "content": "Original.md, two note panes and assistant composer"
+  },
+  "stoppedRootPids": [
+    96975,
+    98469,
+    11512,
+    12012,
+    12450,
+    12871,
+    13361
+  ],
+  "remaining": []
+}
