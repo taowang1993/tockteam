@@ -5229,6 +5229,7 @@ function searchProvenanceLabel(provenance: NonNullable<VaultSearchMatch['provena
 
 function TreeEntries(props: {
   entries: readonly VaultTreeEntry[]
+  menuPath?: string | undefined
   onContextMenu?: ((path: string, anchor: NoteMenuAnchor) => void) | undefined
   onSelect(path: string): void
   path: string | null
@@ -5252,17 +5253,17 @@ function TreeEntries(props: {
           <span className="truncate">{fileName(entry.path)}</span>
         </summary>
         <ul className="my-0 mr-0 ml-[11px] list-none border-l border-[var(--tt-border)] py-0 pr-0 pl-1">
-          <TreeEntries entries={props.entries} onContextMenu={props.onContextMenu} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} revealPath={props.revealPath} />
+          <TreeEntries entries={props.entries} menuPath={props.menuPath} onContextMenu={props.onContextMenu} onSelect={props.onSelect} path={props.path} prefix={`${entry.path}/`} revealPath={props.revealPath} />
         </ul>
       </details>
     </li>
   ) : (
-    <li key={entry.path}>
+    <li key={entry.path} className="group/note relative" data-menu-open={props.menuPath === entry.path}>
       <Button unstyled
         aria-current={entry.path === props.path ? 'page' : undefined}
         aria-label={entry.path}
         data-tree-path={entry.path}
-        className="tocktutor-tree-row grid min-h-7 w-full grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-[7px] rounded border-0 bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit hover:bg-[var(--tt-selected)] aria-[current=page]:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)]"
+        className="tocktutor-tree-row grid min-h-7 w-full grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-[7px] rounded border-0 bg-transparent px-[5px] py-1 text-left text-[13px] font-medium text-inherit group-hover/note:bg-[var(--tt-selected)] group-focus-within/note:bg-[var(--tt-selected)] group-data-[menu-open=true]/note:bg-[var(--tt-selected)] aria-[current=page]:bg-[var(--tt-selected)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)]"
         onClick={event => { if (!event.ctrlKey) props.onSelect(entry.path) }}
         onContextMenu={event => {
           if (!props.onContextMenu) return
@@ -5282,6 +5283,16 @@ function TreeEntries(props: {
         <span className="truncate">{noteTitle(entry.path)}</span>
         {/\.(?:base|canvas)$/iu.test(entry.path) && <span aria-hidden="true" className="text-[10px] font-medium tracking-wide text-[var(--tt-muted)]">{entry.path.split('.').at(-1)?.toUpperCase()}</span>}
       </Button>
+      {props.onContextMenu && <Button unstyled type="button"
+        aria-label={`Note Actions for ${entry.path}`} aria-haspopup="menu" aria-expanded={props.menuPath === entry.path}
+        title="Note Actions"
+        className="tocktutor-tree-menu pointer-events-none absolute top-0.5 right-0.5 flex size-6 cursor-pointer items-center justify-center rounded border-0 bg-[var(--tt-selected)] p-0 text-inherit opacity-0 group-hover/note:pointer-events-auto group-hover/note:opacity-100 group-focus-within/note:pointer-events-auto group-focus-within/note:opacity-100 group-data-[menu-open=true]/note:pointer-events-auto group-data-[menu-open=true]/note:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tt-accent)] [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
+        onClick={event => {
+          event.stopPropagation()
+          const box = event.currentTarget.getBoundingClientRect()
+          props.onContextMenu?.(entry.path, { x: box.left, y: box.bottom, row: event.currentTarget })
+        }}
+      ><WorkbenchGlyph kind="more" /></Button>}
     </li>
   ))
 }
@@ -6270,7 +6281,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">{snapshot.message}</Alert>}
               {snapshot.phase === 'ready' && documents.length === 0 && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">No supported notes found.</p>}
               <ul className="tocktutor-tree m-0 list-none p-0">
-                <TreeEntries onContextMenu={props.paneController ? (path, anchor) => { if (snapshot.vault) setSidebarMenu({ target: { path, vault: snapshot.vault }, anchor }) } : undefined} entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} revealPath={revealPath} />
+                <TreeEntries menuPath={sidebarMenu?.target.path} onContextMenu={props.paneController ? (path, anchor) => { if (snapshot.vault) setSidebarMenu({ target: { path, vault: snapshot.vault }, anchor }) } : undefined} entries={visibleTreeEntries} onSelect={props.onSelect} path={snapshot.path} revealPath={revealPath} />
               </ul>
             </nav>}
           </div>

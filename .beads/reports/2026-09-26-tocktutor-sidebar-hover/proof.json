@@ -1,0 +1,474 @@
+{
+  "results": {
+    "dark": {
+      "state": {
+        "theme": "dark",
+        "htmlSkin": null,
+        "skin": null
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison note in Live Preview, note actions open",
+      "metrics": {
+        "row": {
+          "x": 45,
+          "y": 167.59375,
+          "width": 269,
+          "height": 28.296875,
+          "top": 167.59375,
+          "right": 314,
+          "bottom": 195.890625,
+          "left": 45
+        },
+        "button": {
+          "x": 288,
+          "y": 169.59375,
+          "width": 24,
+          "height": 24,
+          "top": 169.59375,
+          "right": 312,
+          "bottom": 193.59375,
+          "left": 288
+        },
+        "label": {
+          "x": 69,
+          "y": 171.59375,
+          "width": 233,
+          "height": 20.296875,
+          "top": 171.59375,
+          "right": 302,
+          "bottom": 191.890625,
+          "left": 69
+        },
+        "truncated": true,
+        "background": "color(srgb 0.237882 0.238431 0.23898)",
+        "rowBackground": "color(srgb 0.237882 0.238431 0.23898)",
+        "contrast": 10.394237434907328,
+        "hit": true
+      },
+      "checks": [
+        "hidden at rest",
+        "revealed on hover",
+        "button covers the long title edge",
+        "24px button blends into row",
+        "ellipsis contrast",
+        "no hover layout shift",
+        "existing 13 actions",
+        "menu does not navigate or lose draft",
+        "button remains visible while menu is open",
+        "Escape restores ellipsis focus",
+        "Tab reveals and focuses button",
+        "outside dismissal preserves draft",
+        "nested note uses same menu",
+        "selected row also opens menu",
+        "exact viewport",
+        "zero runtime errors"
+      ],
+      "errors": []
+    },
+    "light": {
+      "state": {
+        "theme": "light",
+        "htmlSkin": null,
+        "skin": null
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison note in Live Preview, note actions open",
+      "metrics": {
+        "row": {
+          "x": 45,
+          "y": 167.59375,
+          "width": 269,
+          "height": 28.296875,
+          "top": 167.59375,
+          "right": 314,
+          "bottom": 195.890625,
+          "left": 45
+        },
+        "button": {
+          "x": 288,
+          "y": 169.59375,
+          "width": 24,
+          "height": 24,
+          "top": 169.59375,
+          "right": 312,
+          "bottom": 193.59375,
+          "left": 288
+        },
+        "label": {
+          "x": 69,
+          "y": 171.59375,
+          "width": 233,
+          "height": 20.296875,
+          "top": 171.59375,
+          "right": 302,
+          "bottom": 191.890625,
+          "left": 69
+        },
+        "truncated": true,
+        "background": "color(srgb 0.868235 0.869333 0.871529)",
+        "rowBackground": "color(srgb 0.868235 0.869333 0.871529)",
+        "contrast": 14.017321675224476,
+        "hit": true
+      },
+      "checks": [
+        "hidden at rest",
+        "revealed on hover",
+        "button covers the long title edge",
+        "24px button blends into row",
+        "ellipsis contrast",
+        "no hover layout shift",
+        "existing 13 actions",
+        "menu does not navigate or lose draft",
+        "button remains visible while menu is open",
+        "Escape restores ellipsis focus",
+        "Tab reveals and focuses button",
+        "outside dismissal preserves draft",
+        "nested note uses same menu",
+        "selected row also opens menu",
+        "exact viewport",
+        "zero runtime errors"
+      ],
+      "errors": []
+    },
+    "deep-current": {
+      "state": {
+        "theme": "dark",
+        "htmlSkin": null,
+        "skin": "tockteam-skin-deep-current"
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison note in Live Preview, note actions open",
+      "metrics": {
+        "row": {
+          "x": 45,
+          "y": 167.59375,
+          "width": 269,
+          "height": 28.296875,
+          "top": 167.59375,
+          "right": 314,
+          "bottom": 195.890625,
+          "left": 45
+        },
+        "button": {
+          "x": 288,
+          "y": 169.59375,
+          "width": 24,
+          "height": 24,
+          "top": 169.59375,
+          "right": 312,
+          "bottom": 193.59375,
+          "left": 288
+        },
+        "label": {
+          "x": 69,
+          "y": 171.59375,
+          "width": 233,
+          "height": 20.296875,
+          "top": 171.59375,
+          "right": 302,
+          "bottom": 191.890625,
+          "left": 69
+        },
+        "truncated": true,
+        "background": "color(srgb 0.0771765 0.224471 0.290902)",
+        "rowBackground": "color(srgb 0.0771765 0.224471 0.290902)",
+        "contrast": 11.252082076631128,
+        "hit": true
+      },
+      "checks": [
+        "hidden at rest",
+        "revealed on hover",
+        "button covers the long title edge",
+        "24px button blends into row",
+        "ellipsis contrast",
+        "no hover layout shift",
+        "existing 13 actions",
+        "menu does not navigate or lose draft",
+        "button remains visible while menu is open",
+        "Escape restores ellipsis focus",
+        "Tab reveals and focuses button",
+        "outside dismissal preserves draft",
+        "nested note uses same menu",
+        "selected row also opens menu",
+        "exact viewport",
+        "zero runtime errors"
+      ],
+      "errors": []
+    },
+    "jade-circuit": {
+      "state": {
+        "theme": "dark",
+        "htmlSkin": null,
+        "skin": "tockteam-skin-jade-circuit"
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison note in Live Preview, note actions open",
+      "metrics": {
+        "row": {
+          "x": 45,
+          "y": 167.59375,
+          "width": 269,
+          "height": 28.296875,
+          "top": 167.59375,
+          "right": 314,
+          "bottom": 195.890625,
+          "left": 45
+        },
+        "button": {
+          "x": 288,
+          "y": 169.59375,
+          "width": 24,
+          "height": 24,
+          "top": 169.59375,
+          "right": 312,
+          "bottom": 193.59375,
+          "left": 288
+        },
+        "label": {
+          "x": 69,
+          "y": 171.59375,
+          "width": 233,
+          "height": 20.296875,
+          "top": 171.59375,
+          "right": 302,
+          "bottom": 191.890625,
+          "left": 69
+        },
+        "truncated": true,
+        "background": "color(srgb 0.0821176 0.238902 0.18902)",
+        "rowBackground": "color(srgb 0.0821176 0.238902 0.18902)",
+        "contrast": 11.22680910663432,
+        "hit": true
+      },
+      "checks": [
+        "hidden at rest",
+        "revealed on hover",
+        "button covers the long title edge",
+        "24px button blends into row",
+        "ellipsis contrast",
+        "no hover layout shift",
+        "existing 13 actions",
+        "menu does not navigate or lose draft",
+        "button remains visible while menu is open",
+        "Escape restores ellipsis focus",
+        "Tab reveals and focuses button",
+        "outside dismissal preserves draft",
+        "nested note uses same menu",
+        "selected row also opens menu",
+        "exact viewport",
+        "zero runtime errors"
+      ],
+      "errors": []
+    },
+    "porcelain": {
+      "state": {
+        "theme": "light",
+        "htmlSkin": null,
+        "skin": "tockteam-skin-porcelain"
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison note in Live Preview, note actions open",
+      "metrics": {
+        "row": {
+          "x": 45,
+          "y": 167.59375,
+          "width": 269,
+          "height": 28.296875,
+          "top": 167.59375,
+          "right": 314,
+          "bottom": 195.890625,
+          "left": 45
+        },
+        "button": {
+          "x": 288,
+          "y": 169.59375,
+          "width": 24,
+          "height": 24,
+          "top": 169.59375,
+          "right": 312,
+          "bottom": 193.59375,
+          "left": 288
+        },
+        "label": {
+          "x": 69,
+          "y": 171.59375,
+          "width": 233,
+          "height": 20.296875,
+          "top": 171.59375,
+          "right": 302,
+          "bottom": 191.890625,
+          "left": 69
+        },
+        "truncated": true,
+        "background": "color(srgb 0.861098 0.911843 0.906275)",
+        "rowBackground": "color(srgb 0.861098 0.911843 0.906275)",
+        "contrast": 11.092998967514358,
+        "hit": true
+      },
+      "checks": [
+        "hidden at rest",
+        "revealed on hover",
+        "button covers the long title edge",
+        "24px button blends into row",
+        "ellipsis contrast",
+        "no hover layout shift",
+        "existing 13 actions",
+        "menu does not navigate or lose draft",
+        "button remains visible while menu is open",
+        "Escape restores ellipsis focus",
+        "Tab reveals and focuses button",
+        "outside dismissal preserves draft",
+        "nested note uses same menu",
+        "selected row also opens menu",
+        "exact viewport",
+        "zero runtime errors"
+      ],
+      "errors": []
+    },
+    "ember-dusk": {
+      "state": {
+        "theme": "dark",
+        "htmlSkin": null,
+        "skin": "tockteam-skin-ember-dusk"
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "route": "/tocktutor/This%20is%20a%20comparison%20note%20for%20tocktutor%20and%20obsidian.md",
+      "content": "Comparison note in Live Preview, note actions open",
+      "metrics": {
+        "row": {
+          "x": 45,
+          "y": 167.59375,
+          "width": 269,
+          "height": 28.296875,
+          "top": 167.59375,
+          "right": 314,
+          "bottom": 195.890625,
+          "left": 45
+        },
+        "button": {
+          "x": 288,
+          "y": 169.59375,
+          "width": 24,
+          "height": 24,
+          "top": 169.59375,
+          "right": 312,
+          "bottom": 193.59375,
+          "left": 288
+        },
+        "label": {
+          "x": 69,
+          "y": 171.59375,
+          "width": 233,
+          "height": 20.296875,
+          "top": 171.59375,
+          "right": 302,
+          "bottom": 191.890625,
+          "left": 69
+        },
+        "truncated": true,
+        "background": "color(srgb 0.281647 0.171216 0.195765)",
+        "rowBackground": "color(srgb 0.281647 0.171216 0.195765)",
+        "contrast": 11.239923819287537,
+        "hit": true
+      },
+      "checks": [
+        "hidden at rest",
+        "revealed on hover",
+        "button covers the long title edge",
+        "24px button blends into row",
+        "ellipsis contrast",
+        "no hover layout shift",
+        "existing 13 actions",
+        "menu does not navigate or lose draft",
+        "button remains visible while menu is open",
+        "Escape restores ellipsis focus",
+        "Tab reveals and focuses button",
+        "outside dismissal preserves draft",
+        "nested note uses same menu",
+        "selected row also opens menu",
+        "exact viewport",
+        "zero runtime errors"
+      ],
+      "errors": []
+    }
+  },
+  "narrow": {
+    "width": "Resize Files Sidebar, 180 Pixels",
+    "row": {
+      "x": 45,
+      "y": 167.59375,
+      "width": 169,
+      "height": 28.296875
+    },
+    "button": {
+      "x": 188,
+      "y": 169.59375,
+      "width": 24,
+      "height": 24
+    },
+    "pass": true
+  },
+  "systemAppearance": "Opposite to app appearance in every run",
+  "reducedMotion": "reduce",
+  "runs": [
+    {
+      "id": "c2d10d52-ce73-43dd-8bf7-7fc098d1fb6c",
+      "rootPid": 82306,
+      "remaining": []
+    },
+    {
+      "id": "ead45c23-bd5b-4fb6-b2bf-b47f65bdd28e",
+      "rootPid": 85991,
+      "remaining": []
+    },
+    {
+      "id": "63b2e689-769b-4325-a5f0-86913a5f2979",
+      "rootPid": 86474,
+      "remaining": []
+    },
+    {
+      "id": "aa07ba25-ecf1-4d67-b8c0-ad4bea3f7725",
+      "rootPid": 87335,
+      "remaining": []
+    },
+    {
+      "id": "b650554d-796e-4072-8540-09c9569d6d7c",
+      "rootPid": 87835,
+      "remaining": []
+    },
+    {
+      "id": "77f20b0e-08ce-4d24-9ae3-fc9b746161c8",
+      "rootPid": 88345,
+      "remaining": []
+    }
+  ]
+}
