@@ -19,6 +19,8 @@ export interface TockTutorSettings {
     graphGroupBy: 'folder' | 'none';
     graphColorBy: 'folder' | 'none';
     journalFolder: string;
+    newNoteLocation: 'vault' | 'current' | 'folder';
+    newNoteFolder: string;
     pagePreview: boolean;
     recoveryIntervalMinutes: number;
     snapshotRetentionDays: number;

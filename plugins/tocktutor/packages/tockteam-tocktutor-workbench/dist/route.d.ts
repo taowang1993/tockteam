@@ -6,6 +6,7 @@ import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts';
 import type { WorkbenchQuickAnswerState, WorkbenchSearchIntelligenceRemote, WorkbenchSearchIntelligenceResult } from './search-intelligence.ts';
 import { type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx';
 import { type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts';
+import { type BaseNewNoteRequest } from './base-new-note-dialog.tsx';
 import type { BaseHydratedFile } from './base-query.ts';
 import type { CanvasChange } from './canvas-change.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult, type TockTutorNativeNoteActions, type TockTutorVaultActionsOwnerProps } from './native-actions.ts';
@@ -415,6 +416,12 @@ export declare class WorkbenchRouteController {
     convertActiveNote(): boolean;
     extractActiveSelection(): Promise<boolean>;
     createBase(folder?: string): Promise<boolean>;
+    createBaseNote(request: {
+        basePath: string;
+        name: string;
+        location: TockTutorSettings['newNoteLocation'];
+        folder: string;
+    }): Promise<boolean>;
     createBuiltinTemplateNote(name: keyof typeof BUILTIN_TEMPLATES): Promise<boolean>;
     insertCurrentDateTime(kind: 'date' | 'time', insertRichText?: (text: string) => boolean): boolean;
     prepareOrganization(): Promise<boolean>;
@@ -422,6 +429,7 @@ export declare class WorkbenchRouteController {
     applyOrganization(): Promise<boolean>;
     loadEmbeds(document?: RouteDocument | undefined): Promise<boolean>;
     hydrateBaseRows(basePath: string): Promise<boolean>;
+    updateBaseSource(expectedSource: string, nextSource: string): Promise<boolean>;
     applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean>;
     attachFiles(files: readonly File[]): Promise<boolean>;
     uploadImage(file: File): Promise<string>;
@@ -463,6 +471,8 @@ export interface TockTutorRouteViewProps {
     onApplyOrganization?(): void;
     onBack?(): void;
     onNewBase?(folder: string): void;
+    onBaseSourceChange?(previous: string, next: string): Promise<boolean>;
+    onBaseNewNote?(request: BaseNewNoteRequest): Promise<boolean>;
     onBaseCopy?(request: ExecutableBaseCopyRequest): void;
     onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> | boolean | void;
     onBaseExport?(request: ExecutableBaseExportRequest): void;

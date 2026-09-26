@@ -1878,6 +1878,65 @@ test('Base name collision retries only an explicit exists result and never overw
   controller.dispose()
 })
 
+test('Base naming stops after a stale collision rather than writing in a different pane', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  const pending = deferred<RemoteResult<WriteDocumentResult>>()
+  remote.createOverride = () => pending.promise
+  const writing = controller.createBase('Folder')
+  await controller.select('Second.md')
+  pending.resolve(await failure('exists', 'Already exists'))
+  assert.equal(await writing, false)
+  assert.equal(remote.calls.filter(call => call.method === 'createDocument').length, 1)
+  controller.dispose()
+})
+
+test('Base New creates a Markdown file in the chosen location and retains the Base table', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  await controller.select('Tasks.base')
+  assert.equal(await controller.createBaseNote({ basePath: 'Tasks.base', name: 'Created', location: 'vault', folder: 'Notes' }), true)
+  assert.equal(controller.getSnapshot().path, 'Tasks.base')
+  assert.equal(controller.getSnapshot().documentKind, 'base')
+  assert.ok(controller.getSnapshot().baseFiles?.some(file => file.path === 'Created.md'))
+  const created = remote.calls.filter(call => call.method === 'createDocument').map(call => call.parameters[0] as CreateDocumentRequest)
+  assert.deepEqual(created.map(request => [request.path, request.content]), [['Created.md', '']])
+  assert.equal(await controller.createBaseNote({ basePath: 'Tasks.base', name: 'Created', location: 'vault', folder: 'Notes' }), false)
+  assert.equal(remote.calls.filter(call => call.method === 'createDocument').length, 1)
+  controller.dispose()
+})
+
+test('Base New refuses unsafe folders and does not navigate after a delayed successful write', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  await controller.select('Tasks.base')
+  assert.equal(await controller.createBaseNote({ basePath: 'Tasks.base', name: 'Review', location: 'folder', folder: '../escape' }), false)
+  assert.equal(remote.calls.some(call => call.method === 'createDocument'), false)
+  const pending = deferred<RemoteResult<WriteDocumentResult>>()
+  remote.createOverride = () => pending.promise
+  const writing = controller.createBaseNote({ basePath: 'Tasks.base', name: 'Review', location: 'vault', folder: 'Notes' })
+  await controller.select('Second.md')
+  pending.resolve(await success({ digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: 'Review.md', revision: secondRevision, status: 'created' as const }))
+  assert.equal(await writing, true)
+  assert.equal(controller.getSnapshot().path, 'Second.md')
+  assert.equal(remote.calls.filter(call => call.method === 'createDocument').length, 1)
+  controller.dispose()
+})
+
+test('Base view changes save only the current revision and reject a stale editor', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor')
+  assert.equal(await controller.select('Tasks.base'), true)
+  const before = controller.getSnapshot().source
+  assert.equal(await controller.updateBaseSource(before, before.replace('name: Tasks', 'name: New View')), true)
+  assert.equal(controller.getSnapshot().saveStatus, 'saved')
+  assert.equal((remote.calls.find(call => call.method === 'saveDocument')?.parameters[0] as { content: string }).content.includes('name: New View'), true)
+  assert.equal(await controller.updateBaseSource(before, before.replace('name: Tasks', 'name: Stale')), false)
+  controller.dispose()
+})
+
 test('Canvas board and executable Base preserve bounded source identities', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

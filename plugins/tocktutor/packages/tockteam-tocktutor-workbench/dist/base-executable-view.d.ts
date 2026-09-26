@@ -26,6 +26,8 @@ export interface ExecutableBaseViewProps {
     onEdit?: (request: ExecutableBaseFrontmatterEditRequest) => ExecutableBaseEditResult;
     onExport?: (request: ExecutableBaseExportRequest) => void;
     onSearchChange?: (view: string, search: string) => void;
+    onSourceChange?: (previous: string, next: string) => Promise<boolean>;
+    onNewNote?: () => void;
     searches?: Readonly<Record<string, string | undefined>>;
     source: string;
 }

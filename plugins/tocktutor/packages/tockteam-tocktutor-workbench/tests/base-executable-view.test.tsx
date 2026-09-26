@@ -69,6 +69,65 @@ function ControlledBase(props: {
 }
 
 describe('ExecutableBaseView', () => {
+  it('offers the Base toolbar and persists a changed sort through the source owner', async () => {
+    const changes: string[] = []
+    render(<ExecutableBaseView files={files} source={source} onSourceChange={async (_, next) => { changes.push(next); return true }} onNewNote={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Sort' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Filter' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Properties' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'New' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Sort' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort Property' }), { target: { value: 'file.name' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort Direction' }), { target: { value: 'asc' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Sort' }))
+    await waitFor(() => expect(changes).toHaveLength(1))
+    expect(changes[0]).toContain('sort: ["file.name asc"]')
+  })
+
+  it('renames the selected view in Base source', async () => {
+    const changes: string[] = []
+    render(<ExecutableBaseView files={files} source={source} onSourceChange={async (_, next) => { changes.push(next); return true }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Rename View' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'View Name' }), { target: { value: 'Favorites' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save View Name' }))
+    await waitFor(() => expect(changes).toHaveLength(1))
+    expect(changes[0]).toContain('name: "Favorites"')
+  })
+
+  it('exposes a result-limit menu that saves the Base view setting', async () => {
+    const changes: string[] = []
+    render(<ExecutableBaseView files={files} source={source} onSourceChange={async (_, next) => { changes.push(next); return true }} />)
+    fireEvent.click(screen.getByRole('button', { name: '2 Results' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Result Limit' }), { target: { value: '25' } })
+    await waitFor(() => expect(changes).toHaveLength(1))
+    expect(changes[0]).toContain('limit: "25"')
+  })
+
+  it('saves a filter, visible property and new view in the Base file', async () => {
+    function EditableBase() {
+      const [baseSource, setBaseSource] = useState(source)
+      const [selected, setSelected] = useState('Ranked')
+      return <ExecutableBaseView source={baseSource} files={files} activeView={selected} onActiveViewChange={setSelected} onSourceChange={async (previous, next) => {
+        if (previous !== baseSource) return false
+        setBaseSource(next)
+        return true
+      }} />
+    }
+    render(<EditableBase />)
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter Value' }), { target: { value: 'Alpha' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Filter' }))
+    await waitFor(() => expect(screen.getByText('1 Result')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Properties' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'file.path' }))
+    await waitFor(() => expect(screen.getByRole('columnheader', { name: 'file.path' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Add View' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'View Name' }), { target: { value: 'Gallery' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'View Type' }), { target: { value: 'cards' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create View' }))
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Gallery — Cards' })).toBeTruthy())
+  })
+
   it('keeps current-view search controlled and renders table, list, cards, and map labels', () => {
     render(<ControlledBase />)
 

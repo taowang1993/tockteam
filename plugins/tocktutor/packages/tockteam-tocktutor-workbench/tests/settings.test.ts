@@ -46,6 +46,15 @@ test('loads bounded vault-scoped settings and fails malformed state to defaults'
   assert.equal(saveTockTutorSettings(storage, vault, { journalFolder: '../escape' }).journalFolder, 'Journals')
 })
 
+test('new Base notes remember a safe Obsidian-style default location per vault', () => {
+  const storage = new MemoryStorage()
+  assert.equal(loadTockTutorSettings(storage, vault).newNoteLocation, 'vault')
+  assert.equal(saveTockTutorSettings(storage, vault, { newNoteLocation: 'current', newNoteFolder: 'Projects' }).newNoteLocation, 'current')
+  assert.equal(saveTockTutorSettings(storage, vault, { newNoteLocation: 'folder' }).newNoteFolder, 'Projects')
+  assert.equal(saveTockTutorSettings(storage, vault, { newNoteFolder: '../escape' }).newNoteFolder, 'Notes')
+  assert.equal(loadTockTutorSettings(storage, `vault:${'b'.repeat(64)}`).newNoteLocation, 'vault')
+})
+
 test('persists bounded session state and collision-safe named workspaces per vault', () => {
   const storage = new MemoryStorage()
   let session = createWorkbenchSession('/tocktutor', { generation: 1, id: vault }, 'pane-1')

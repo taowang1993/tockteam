@@ -67,6 +67,9 @@ import { TOCKTUTOR_ASSISTANT_PANEL_SLOT } from './assistant-panel.ts'
 import type { WorkbenchQuickAnswerState, WorkbenchSearchIntelligenceRemote, WorkbenchSearchIntelligenceResult } from './search-intelligence.ts'
 import { ExecutableBaseView, type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx'
 import { executableBasePropertyIdentity, type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts'
+import { parseExecutableBase } from './base-parser.ts'
+import { newBaseNotePath } from './base-note.ts'
+import { BaseNewNoteDialog, type BaseNewNoteRequest } from './base-new-note-dialog.tsx'
 import type { BaseHydratedFile } from './base-query.ts'
 import { CanvasBoard } from './canvas-board.tsx'
 import type { CanvasChange } from './canvas-change.ts'
@@ -3818,6 +3821,7 @@ export class WorkbenchRouteController {
     const operation = this.operation
     const content = 'views:\n  - type: table\n    name: Table\n'
     for (let index = 1; index <= 100; index += 1) {
+      if (!sameVault(this.snapshot.vault, vault) || this.operation !== operation) return false
       const path = `${folder === '' ? '' : `${folder}/`}Untitled${index === 1 ? '' : ` ${String(index)}`}.base`
       try {
         const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content, expectedVault: vault, path }))
@@ -3829,13 +3833,43 @@ export class WorkbenchRouteController {
         await this.refreshTree(vault)
         return this.operation === operation && sameVault(this.snapshot.vault, vault) && await this.select(path)
       } catch (error) {
-        if (error instanceof RemoteCallError && error.code === 'exists') continue
+        if (error instanceof RemoteCallError && error.code === 'exists' && sameVault(this.snapshot.vault, vault) && this.operation === operation) continue
         if (sameVault(this.snapshot.vault, vault)) this.update({ message: `Could not confirm whether the Base was created. Refresh Files before retrying.` })
         return false
       }
     }
     this.update({ message: 'No available Base name was found.' })
     return false
+  }
+
+  async createBaseNote(request: { basePath: string; name: string; location: TockTutorSettings['newNoteLocation']; folder: string }): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (!vault || this.snapshot.path !== request.basePath || this.snapshot.documentKind !== 'base' || this.snapshot.phase !== 'ready') return false
+    const folders = this.snapshot.entries.filter(entry => entry.kind === 'directory').map(entry => entry.path)
+    const path = newBaseNotePath(request.basePath, request.name, request.location, request.folder, folders)
+    if (!path) { this.update({ message: 'Choose a valid note name and an existing folder.' }); return false }
+    if (this.snapshot.entries.some(entry => entry.path === path)) { this.update({ message: `${path} already exists.` }); return false }
+    if (this.snapshot.saveStatus !== 'saved' && !await this.save()) return false
+    const operation = this.operation
+    try {
+      const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content: '', expectedVault: vault, path }))
+      if (created.status !== 'created' || created.path !== path || created.generation !== vault.generation) return false
+      if (!sameVault(this.snapshot.vault, vault) || this.snapshot.path !== request.basePath || this.operation !== operation) {
+        if (sameVault(this.snapshot.vault, vault)) this.update({ message: `${path} created; your current page was left untouched.` })
+        return true
+      }
+      if (this.storage) this.update({ settings: saveTockTutorSettings(this.storage, vault.id, { newNoteLocation: request.location, newNoteFolder: request.folder }) })
+      await this.refreshTree(vault)
+      if (this.snapshot.path === request.basePath && sameVault(this.snapshot.vault, vault)) {
+        await this.hydrateBaseRows(request.basePath)
+        this.update({ message: `${path} created. It may be hidden by the current Base filters.` })
+      }
+      return true
+    } catch (error) {
+      if (sameVault(this.snapshot.vault, vault)) this.update({ message: error instanceof RemoteCallError && error.code === 'exists'
+        ? `${path} already exists.` : `Could not confirm whether ${path} was created. Refresh Files before retrying.` })
+      return false
+    }
   }
 
   async createBuiltinTemplateNote(name: keyof typeof BUILTIN_TEMPLATES): Promise<boolean> {
@@ -4008,6 +4042,15 @@ export class WorkbenchRouteController {
     } catch {
       return false
     } finally { if (document.baseAbort === abort) document.baseAbort = undefined }
+  }
+
+  async updateBaseSource(expectedSource: string, nextSource: string): Promise<boolean> {
+    const vault = this.snapshot.vault, path = this.snapshot.path, operation = this.operation
+    if (!vault || !path || this.snapshot.documentKind !== 'base' || this.snapshot.source !== expectedSource
+      || !boundedSource(nextSource) || parseExecutableBase(nextSource).status !== 'ready') return false
+    this.edit(nextSource)
+    if (!sameVault(this.snapshot.vault, vault) || this.snapshot.path !== path || this.operation !== operation) return false
+    return await this.save()
   }
 
   async applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> {
@@ -4439,6 +4482,8 @@ export interface TockTutorRouteViewProps {
   onApplyOrganization?(): void
   onBack?(): void
   onNewBase?(folder: string): void
+  onBaseSourceChange?(previous: string, next: string): Promise<boolean>
+  onBaseNewNote?(request: BaseNewNoteRequest): Promise<boolean>
   onBaseCopy?(request: ExecutableBaseCopyRequest): void
   onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> | boolean | void
   onBaseExport?(request: ExecutableBaseExportRequest): void
@@ -5558,6 +5603,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const visiblePalette = paletteView ?? snapshotPalette(snapshot)
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
   const [baseView, setBaseView] = useState<string | null>(null)
+  const [baseNoteOpen, setBaseNoteOpen] = useState(false)
   const [baseSearches, setBaseSearches] = useState<Record<string, string>>({})
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
@@ -5709,6 +5755,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   }
   useEffect(() => {
     setBaseView(null)
+    setBaseNoteOpen(false)
     setBaseSearches({})
     setRevealPath(null)
     setBookmarkDialog(null)
@@ -5905,6 +5952,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const sidebarTarget = sidebarDialog?.target
   const sidebarBookmarks = noteBookmarksForPath(snapshot.bookmarks ?? [], sidebarTarget?.path ?? null)
   const noteDialogs = <>
+    {baseNoteOpen && snapshot.documentKind === 'base' && snapshot.path && props.onBaseNewNote && <BaseNewNoteDialog
+      basePath={snapshot.path}
+      defaultFolder={snapshot.settings?.newNoteFolder ?? 'Notes'}
+      defaultLocation={snapshot.settings?.newNoteLocation ?? 'vault'}
+      folders={snapshot.entries.filter(entry => entry.kind === 'directory').map(entry => entry.path)}
+      onClose={() => setBaseNoteOpen(false)}
+      onCreate={props.onBaseNewNote}
+    />}
     {folderMenu && <DropdownMenu open modal={false} onOpenChange={open => { if (!open) setFolderMenu(null) }}>
       <DropdownMenuTrigger aria-hidden tabIndex={-1} className="pointer-events-none fixed size-0 border-0 p-0 opacity-0" style={{ left: folderMenu.anchor.x, top: folderMenu.anchor.y }} />
       <DropdownMenuContent unstyled portalled={false} aria-label="Folder Actions" className="min-w-40 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-1.5 text-foreground shadow-xl" sideOffset={0} collisionPadding={8} onCloseAutoFocus={event => { event.preventDefault(); if (folderMenu.anchor.row.isConnected) folderMenu.anchor.row.focus() }}>
@@ -6214,6 +6269,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 activeView={baseView}
                 files={snapshot.baseFiles ?? []}
                 onActiveViewChange={setBaseView}
+                {...(props.onBaseSourceChange === undefined ? {} : { onSourceChange: props.onBaseSourceChange })}
+                {...(props.onBaseNewNote === undefined ? {} : { onNewNote: () => setBaseNoteOpen(true) })}
                 onSearchChange={(view, search) => { setBaseSearches(current => ({ ...current, [view]: search })) }}
                 searches={baseSearches}
                 {...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy })}
@@ -6687,6 +6744,8 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onBack={() => { void controller.goBack() }}
         onBaseCopy={request => { void globalThis.navigator?.clipboard?.writeText(request.text) }}
         onBaseEdit={request => controller.applyBaseEdit(request)}
+        onBaseSourceChange={(previous, next) => controller.updateBaseSource(previous, next)}
+        onBaseNewNote={request => controller.createBaseNote(request)}
         onBaseExport={request => {
           const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }))
           const anchor = document.createElement('a')

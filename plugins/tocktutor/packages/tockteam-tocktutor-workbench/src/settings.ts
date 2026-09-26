@@ -27,6 +27,8 @@ export interface TockTutorSettings {
   graphGroupBy: 'folder' | 'none'
   graphColorBy: 'folder' | 'none'
   journalFolder: string
+  newNoteLocation: 'vault' | 'current' | 'folder'
+  newNoteFolder: string
   pagePreview: boolean
   recoveryIntervalMinutes: number
   snapshotRetentionDays: number
@@ -60,6 +62,8 @@ const DEFAULT_SETTINGS: TockTutorSettings = Object.freeze({
   graphGroupBy: 'none',
   graphColorBy: 'none',
   journalFolder: 'Journals',
+  newNoteLocation: 'vault',
+  newNoteFolder: 'Notes',
   pagePreview: true,
   recoveryIntervalMinutes: 5,
   snapshotRetentionDays: 7,
@@ -104,6 +108,8 @@ function normalizeSettings(value: unknown): TockTutorSettings {
     graphGroupBy: record.graphGroupBy === 'folder' ? 'folder' : 'none',
     graphColorBy: record.graphColorBy === 'folder' ? 'folder' : 'none',
     journalFolder: safeFolder(record.journalFolder, DEFAULT_SETTINGS.journalFolder),
+    newNoteLocation: record.newNoteLocation === 'current' || record.newNoteLocation === 'folder' ? record.newNoteLocation : 'vault',
+    newNoteFolder: safeFolder(record.newNoteFolder, DEFAULT_SETTINGS.newNoteFolder),
     pagePreview: record.pagePreview !== false,
     recoveryIntervalMinutes: typeof record.recoveryIntervalMinutes === 'number' && Number.isSafeInteger(record.recoveryIntervalMinutes) && record.recoveryIntervalMinutes >= 1 && record.recoveryIntervalMinutes <= 1_440 ? record.recoveryIntervalMinutes : DEFAULT_SETTINGS.recoveryIntervalMinutes,
     snapshotRetentionDays: typeof record.snapshotRetentionDays === 'number' && Number.isSafeInteger(record.snapshotRetentionDays) && record.snapshotRetentionDays >= 1 && record.snapshotRetentionDays <= 365 ? record.snapshotRetentionDays : DEFAULT_SETTINGS.snapshotRetentionDays,

@@ -27,7 +27,6 @@ import { classifyExternalEmbed } from "./external-embeds.js";
 import { collectEmbedTargets } from "./embeds.js";
 import { SlashMenu, slashMenuPlugin, slashKey } from "./live-preview-slash-menu.js";
 import { SlashLinkDialog } from "./slash-link-dialog.js";
-import { BlockHandle, block, configureBlockHandle } from "./live-preview-block-handle.js";
 const searchKey = new PluginKey('tocktutor-crepe-search');
 // Leading hashes + Space choose the level, even inside an existing heading.
 const headingInputRule = $inputRule(ctx => textblockTypeInputRule(/^(#{1,6}) $/, headingSchema.type(ctx), match => ({ level: match[1].length })));
@@ -80,7 +79,6 @@ export function LivePreviewEditorRuntime(props) {
     const lastRequest = useRef(null);
     const [ready, setReady] = useState(false);
     const [slashMenu, setSlashMenu] = useState(null);
-    const [blockHandle, setBlockHandle] = useState(null);
     const [error, setError] = useState('');
     const imageWaiters = useRef(new Set());
     const publishSearch = (view, error) => {
@@ -182,7 +180,7 @@ export function LivePreviewEditorRuntime(props) {
         instance.current = crepe;
         const serialize = doc => crepe.editor.action(ctx => `${splitLivePreviewSource(source.current).prefix}${ctx.get(serializerCtx)(doc)}`);
         const configured = crepe.editor.remove([...remarkInlineLinkPlugin, wrapInHeadingInputRule]);
-        crepe.editor.config(ctx => configureBlockHandle(ctx, setBlockHandle)).use(block).use(slashMenuPlugin(setSlashMenu, () => latest.current.slashLinks));
+        crepe.editor.use(slashMenuPlugin(setSlashMenu, () => latest.current.slashLinks));
         crepe.editor.config(configureObsidianContent).use(obsidianSyntax).use(obsidianInline).use(referenceDefinition).use(headingInputRule)
             .use($prose(() => new Plugin({
             key: searchKey,
@@ -510,6 +508,6 @@ export function LivePreviewEditorRuntime(props) {
                 props.insertTextRef.current = null;
         };
     }, [ready, props.commandRef, props.insertTextRef]);
-    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && (slashMenu.form ? _jsx(SlashLinkDialog, { action: slashMenu.action }) : _jsx(SlashMenu, { menu: slashMenu })), blockHandle && _jsx(BlockHandle, { handle: blockHandle })] });
+    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && (slashMenu.form ? _jsx(SlashLinkDialog, { action: slashMenu.action }) : _jsx(SlashMenu, { menu: slashMenu }))] });
 }
 //# sourceMappingURL=live-preview-editor-runtime.js.map

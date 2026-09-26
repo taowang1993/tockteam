@@ -1,0 +1,1 @@
+{"version":3,"file":"base-note.d.ts","sourceRoot":"","sources":["../src/base-note.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,iBAAiB,EAAE,MAAM,eAAe,CAAA;AAEtD,qFAAqF;AACrF,wBAAgB,eAAe,CAC7B,QAAQ,EAAE,MAAM,EAChB,IAAI,EAAE,MAAM,EACZ,QAAQ,EAAE,iBAAiB,CAAC,iBAAiB,CAAC,EAC9C,MAAM,EAAE,MAAM,EACd,OAAO,EAAE,SAAS,MAAM,EAAE,GACzB,MAAM,GAAG,IAAI,CAWf"}
