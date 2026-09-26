@@ -1,0 +1,163 @@
+{
+  "viewport": [
+    1512,
+    949
+  ],
+  "dpr": 2,
+  "png": [
+    3024,
+    1898
+  ],
+  "results": {
+    "dark": {
+      "theme": "dark",
+      "systemTheme": "light",
+      "skin": null,
+      "chrome": "rgb(30, 30, 30)",
+      "scrollTop": [
+        0,
+        164,
+        4
+      ],
+      "selectedRowVisible": true,
+      "groupHeadingVisible": true,
+      "contrast": {
+        "normal": 15.95286574315298,
+        "selected": 13.33617423071505,
+        "group": 15.95286574315298
+      },
+      "sidebar": {
+        "normalContrast": 15.95286574315298,
+        "selectedContrast": 11.5745859518911,
+        "items": 13,
+        "bounded": true
+      },
+      "errors": []
+    },
+    "light": {
+      "theme": "light",
+      "systemTheme": "dark",
+      "skin": null,
+      "chrome": "color(srgb 0.962353 0.962667 0.963294)",
+      "scrollTop": [
+        0,
+        164,
+        4
+      ],
+      "selectedRowVisible": true,
+      "groupHeadingVisible": true,
+      "contrast": {
+        "normal": 17.34354412890975,
+        "selected": 18.896452054380127,
+        "group": 17.34354412890975
+      },
+      "sidebar": {
+        "normalContrast": 17.34354412890975,
+        "selectedContrast": 18.896452054380127,
+        "items": 13,
+        "bounded": true
+      },
+      "errors": []
+    },
+    "deep-current": {
+      "theme": "dark",
+      "systemTheme": "light",
+      "skin": "tockteam-skin-deep-current",
+      "chrome": "rgb(7, 25, 35)",
+      "scrollTop": [
+        0,
+        164,
+        4
+      ],
+      "selectedRowVisible": true,
+      "groupHeadingVisible": true,
+      "contrast": {
+        "normal": 16.4495170055241,
+        "selected": 13.671475748124486,
+        "group": 16.4495170055241
+      },
+      "sidebar": {
+        "normalContrast": 16.4495170055241,
+        "selectedContrast": 12.001363841669917,
+        "items": 13,
+        "bounded": true
+      },
+      "errors": []
+    },
+    "jade-circuit": {
+      "theme": "dark",
+      "systemTheme": "light",
+      "skin": "tockteam-skin-jade-circuit",
+      "chrome": "rgb(7, 26, 22)",
+      "scrollTop": [
+        0,
+        164,
+        4
+      ],
+      "selectedRowVisible": true,
+      "groupHeadingVisible": true,
+      "contrast": {
+        "normal": 16.739293071487573,
+        "selected": 13.574103764639526,
+        "group": 16.739293071487573
+      },
+      "sidebar": {
+        "normalContrast": 16.739293071487573,
+        "selectedContrast": 11.794717553504489,
+        "items": 13,
+        "bounded": true
+      },
+      "errors": []
+    },
+    "porcelain": {
+      "theme": "light",
+      "systemTheme": "dark",
+      "skin": "tockteam-skin-porcelain",
+      "chrome": "color(srgb 0.918588 0.937569 0.93349)",
+      "scrollTop": [
+        0,
+        164,
+        4
+      ],
+      "selectedRowVisible": true,
+      "groupHeadingVisible": true,
+      "contrast": {
+        "normal": 11.900719026986428,
+        "selected": 12.390212981382447,
+        "group": 11.900719026986428
+      },
+      "sidebar": {
+        "normalContrast": 11.900719026986428,
+        "selectedContrast": 11.775479032844903,
+        "items": 13,
+        "bounded": true
+      },
+      "errors": []
+    },
+    "ember-dusk": {
+      "theme": "dark",
+      "systemTheme": "light",
+      "skin": "tockteam-skin-ember-dusk",
+      "chrome": "rgb(33, 22, 31)",
+      "scrollTop": [
+        0,
+        164,
+        4
+      ],
+      "selectedRowVisible": true,
+      "groupHeadingVisible": true,
+      "contrast": {
+        "normal": 15.76374508153132,
+        "selected": 13.44308095144471,
+        "group": 15.76374508153132
+      },
+      "sidebar": {
+        "normalContrast": 15.76374508153132,
+        "selectedContrast": 11.944896316758125,
+        "items": 13,
+        "bounded": true
+      },
+      "errors": []
+    }
+  }
+}
