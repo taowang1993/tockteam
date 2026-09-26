@@ -7,7 +7,7 @@ import { findWrapping } from '@milkdown/prose/transform'
 import { createTable } from '@milkdown/preset-gfm'
 import { $prose } from '@milkdown/utils'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@tockteam/ui/command'
-import { Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Text, Quote, List, ListOrdered, ListTodo, Minus, Code, Image, Table, Sigma, Link } from 'lucide-react'
+import { Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Text, Quote, List, ListOrdered, ListTodo, Minus, Code, Image, Table, Sigma, Link, FileSymlink, FilePlus } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useLayoutEffect } from 'react'
 
@@ -23,6 +23,8 @@ const commands = [
   { id: 'quote', label: 'Quote', icon: Quote, group: 'Basic Blocks' },
   { id: 'divider', label: 'Divider', icon: Minus, group: 'Basic Blocks' },
   { id: 'link', label: 'Link', aliases: 'url', icon: Link, group: 'Basic Blocks', form: true },
+  { id: 'note-link', label: 'Link to Note', aliases: 'page', icon: FileSymlink, group: 'Basic Blocks', form: true },
+  { id: 'new-note', label: 'New Note', aliases: 'new page', icon: FilePlus, group: 'Basic Blocks', form: true },
   { id: 'bullet', label: 'Bulleted List', icon: List, group: 'Lists' },
   { id: 'numbered', label: 'Numbered List', aliases: 'ordered', icon: ListOrdered, group: 'Lists' },
   { id: 'todo', label: 'Task List', icon: ListTodo, group: 'Lists' },
@@ -70,17 +72,18 @@ function transaction(state, invocation, id, ctx) {
   }
   return tr.setMeta(slashKey, null).scrollIntoView()
 }
-function entries(state, invocation, ctx) {
+function entries(state, invocation, ctx, context) {
   const query = state.doc.textBetween(invocation.from + Number(invocation.slash), invocation.to).trim().toLowerCase()
   return commands.filter(item => `${item.id} ${item.label} ${item.aliases ?? ''}`.toLowerCase().includes(query)
+    && (!['note-link', 'new-note'].includes(item.id) || context?.isCurrent())
     && (item.form ? state.selection.$from.parent.type.allowsMarkType(state.schema.marks.link) : transaction(state, invocation, item.id, ctx)))
 }
 
-function apply(view, id, ctx) {
+function apply(view, id, ctx, context) {
   const invocation = slashKey.getState(view.state)
-  if (view.isDestroyed || !invocation || !view.editable || !eligible(view.state) || !entries(view.state, invocation, ctx).some(item => item.id === id)) return
+  if (view.isDestroyed || !invocation || !view.editable || !eligible(view.state) || !entries(view.state, invocation, ctx, context).some(item => item.id === id)) return
   if (commands.find(item => item.id === id)?.form) {
-    view.dispatch(view.state.tr.setMeta(slashKey, { ...invocation, form: id }))
+    view.dispatch(view.state.tr.setMeta(slashKey, { ...invocation, form: id, context }))
     return
   }
   const tr = transaction(view.state, invocation, id, ctx)
@@ -90,7 +93,7 @@ function apply(view, id, ctx) {
   view.focus()
 }
 
-export function slashMenuPlugin(publish) {
+export function slashMenuPlugin(publish, getContext = () => undefined) {
   return $prose(ctx => new Plugin({
     key: slashKey,
     state: {
@@ -119,7 +122,7 @@ export function slashMenuPlugin(publish) {
       handleKeyDown(view, event) {
         const invocation = slashKey.getState(view.state)
         if (!invocation || invocation.form || event.isComposing || view.composing || event.keyCode === 229) return false
-        const items = entries(view.state, invocation, ctx)
+        const items = entries(view.state, invocation, ctx, getContext())
         const selected = Math.max(0, items.findIndex(item => item.id === invocation.selected))
         if (event.key === 'Escape' || event.key === 'Tab' || ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
           || (event.key === 'Enter' && (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey))) {
@@ -132,7 +135,7 @@ export function slashMenuPlugin(publish) {
           return true
         }
         if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
-          if (items[selected]) { apply(view, items[selected].id, ctx); return true }
+          if (items[selected]) { apply(view, items[selected].id, ctx, getContext()); return true }
           view.dispatch(view.state.tr.setMeta(slashKey, null))
         }
         return false
@@ -162,14 +165,18 @@ export function slashMenuPlugin(publish) {
         if (!element.contains(event.target) && slashKey.getState(view.state) && !slashKey.getState(view.state).form) view.dispatch(view.state.tr.setMeta(slashKey, null))
       }
       document.addEventListener('pointerdown', dismiss)
+      let pending = null
       const update = () => {
         const invocation = slashKey.getState(view.state)
         if (!invocation || !view.editable) { provider.hide(); clearARIA(); publish(null); return }
         if (invocation.form) {
           provider.hide(); clearARIA()
+          if (invocation.context && !invocation.context.isCurrent()) { view.dispatch(view.state.tr.setMeta(slashKey, null)); return }
+          if (pending?.invocation === invocation) { publish(pending.menu); return }
           let restore = false
-          const current = () => !view.isDestroyed && view.editable && slashKey.getState(view.state) === invocation
-          publish({ form: invocation.form, action: {
+          const current = () => !view.isDestroyed && view.editable && slashKey.getState(view.state) === invocation && (!invocation.context || invocation.context.isCurrent())
+          const menu = { form: invocation.form, action: {
+            kind: invocation.form, context: invocation.context, isCurrent: current,
             cancel() { if (current()) { restore = true; view.dispatch(view.state.tr.setMeta(slashKey, null)) } },
             restoreFocus() { if (restore && !view.isDestroyed && view.editable) view.focus() },
             insert(href, label) {
@@ -184,18 +191,20 @@ export function slashMenuPlugin(publish) {
               view.dispatch(closeHistory(view.state.tr))
               return true
             },
-          } })
+          } }
+          pending = { invocation, menu }
+          publish(menu)
           return
         }
         if (!view.hasFocus()) { provider.hide(); clearARIA(); publish(null); return }
-        const items = entries(view.state, invocation, ctx)
+        const items = entries(view.state, invocation, ctx, getContext())
         const selected = items.find(item => item.id === invocation.selected)?.id ?? items[0]?.id ?? ''
         publish({ element, view, provider, items, selected,
           select(id) {
             const current = slashKey.getState(view.state)
             if (current && current.selected !== id) view.dispatch(view.state.tr.setMeta(slashKey, { ...current, selected: id }))
           },
-          run: id => apply(view, id, ctx),
+          run: id => apply(view, id, ctx, getContext()),
         })
       }
       update()

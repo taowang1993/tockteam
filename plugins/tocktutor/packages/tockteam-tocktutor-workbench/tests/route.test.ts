@@ -877,6 +877,45 @@ test('saves an edited note before renaming every open pane reference and refresh
   controller.dispose()
 })
 
+test('slash creation keeps a new Markdown file when the originating note changes', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    controller.setMode('live-preview')
+    const context = controller.slashLinkContext()!
+    const gate = deferred<void>()
+    const create = remote.tocktutorWorkbench.createDocument
+    remote.tocktutorWorkbench.createDocument = async (...args) => { await gate.promise; return create(...args) }
+    const pending = context.resolve({ kind: 'new-note', path: 'Folder/New.md' }, new AbortController().signal)
+    controller.edit('Newer source')
+    gate.resolve()
+    const result = await pending
+    assert.equal(result.writtenPath, 'Folder/New.md')
+    assert.equal(result.href, './New.md')
+    context.reportUnlinked(result)
+    assert.match(controller.getSnapshot().message, /Folder\/New.md.*retained/)
+    assert.equal(controller.getSnapshot().source, 'Newer source')
+    assert.equal(remote.calls.filter(call => call.method === 'createDocument').length, 1)
+  } finally { await controller.dispose() }
+})
+
+test('slash note links resolve relative to the originating note and reject a stale source', async () => {
+  const remote = new FakeRemote(), controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor/Folder/Note.md')
+    controller.setMode('live-preview')
+    const context = controller.slashLinkContext()!
+    assert.equal(context.isCurrent(), true)
+    assert.deepEqual(await context.resolve({ kind: 'note', path: 'Second.md' }, new AbortController().signal), { href: '../Second.md', label: 'Second' })
+    controller.edit('Changed source')
+    assert.equal(context.isCurrent(), false)
+    await assert.rejects(context.resolve({ kind: 'note', path: 'Second.md' }, new AbortController().signal), /source note changed/)
+    assert.deepEqual(await controller.openInternalLink('../Second.md', 'markdown'), { fragment: null })
+    assert.equal(controller.getSnapshot().path, 'Second.md')
+    assert.equal(await controller.openInternalLink('../../escape.md', 'markdown'), null)
+  } finally { await controller.dispose() }
+})
+
 test('rename preserves edits made while the filesystem move is pending', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

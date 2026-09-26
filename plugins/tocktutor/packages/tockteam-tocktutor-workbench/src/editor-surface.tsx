@@ -23,7 +23,7 @@ export interface ReadingLinkResult {
 function handleRenderedClick(
   event: ReactMouseEvent<HTMLElement>,
   onOpenExternalUrl?: (url: string) => void,
-  onOpenInternalLink?: (target: string) => void | Promise<ReadingLinkResult | null>,
+  onOpenInternalLink?: (target: string, kind?: 'markdown') => void | Promise<ReadingLinkResult | null>,
 ): void | Promise<ReadingLinkResult | null> {
   const target = event.target instanceof Element ? event.target : null
   const url = target?.closest<HTMLElement>('[data-external-url]')?.dataset.externalUrl
@@ -37,7 +37,8 @@ function handleRenderedClick(
   if (internalTarget !== undefined) {
     event.preventDefault()
     event.stopPropagation()
-    return onOpenInternalLink?.(internalTarget)
+    return target?.closest<HTMLElement>('a.internal-link')?.dataset.linkKind === 'markdown'
+      ? onOpenInternalLink?.(internalTarget, 'markdown') : onOpenInternalLink?.(internalTarget)
   } else if (target?.closest('a') !== null) {
     event.preventDefault()
   }
@@ -199,7 +200,7 @@ export function RichReadingView(props: {
   embeds?: readonly ResolvedEmbedNode[] | undefined
   onAddProperty?: ((key: string) => boolean) | undefined
   onOpenExternalUrl?: ((url: string) => void) | undefined
-  onOpenInternalLink?: ((target: string) => void | Promise<ReadingLinkResult | null>) | undefined
+  onOpenInternalLink?: ((target: string, kind?: 'markdown') => void | Promise<ReadingLinkResult | null>) | undefined
   onSearchState?: ((state: EditorSearchState) => void) | undefined
   onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined
   onToggleTask(index: number): void
@@ -287,6 +288,7 @@ export function RichReadingView(props: {
 export function LivePreviewView(props: {
   commandRef?: LivePreviewEditorProps['commandRef']
   insertTextRef?: LivePreviewEditorProps['insertTextRef']
+  slashLinks?: LivePreviewEditorProps['slashLinks']
   onUploadImage?: LivePreviewEditorProps['onUploadImage']
   onOpenInternalLink?: LivePreviewEditorProps['onOpenInternalLink']
   documentKey: string
@@ -315,6 +317,7 @@ export function LivePreviewView(props: {
         content={props.source}
         {...(props.commandRef === undefined ? {} : { commandRef: props.commandRef })}
         {...(props.insertTextRef === undefined ? {} : { insertTextRef: props.insertTextRef })}
+        slashLinks={props.slashLinks}
         {...(props.onUploadImage === undefined ? {} : { onUploadImage: props.onUploadImage })}
         {...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink })}
         localEditRevision={props.localEditRevision}

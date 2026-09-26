@@ -24,7 +24,7 @@ import { InlineImageLoader, attachInlineImages } from './inline-images.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import { classifyExternalEmbed } from './external-embeds.ts'
 import { collectEmbedTargets } from './embeds.ts'
-import { SlashMenu, slashMenuPlugin } from './live-preview-slash-menu.tsx'
+import { SlashMenu, slashMenuPlugin, slashKey } from './live-preview-slash-menu.tsx'
 import { SlashLinkDialog } from './slash-link-dialog.tsx'
 import { BlockHandle, block, configureBlockHandle } from './live-preview-block-handle.tsx'
 
@@ -164,7 +164,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     instance.current = crepe
     const serialize = doc => crepe.editor.action(ctx => `${splitLivePreviewSource(source.current).prefix}${ctx.get(serializerCtx)(doc)}`)
     const configured = crepe.editor.remove([...remarkInlineLinkPlugin, wrapInHeadingInputRule])
-    crepe.editor.config(ctx => configureBlockHandle(ctx, setBlockHandle)).use(block).use(slashMenuPlugin(setSlashMenu))
+    crepe.editor.config(ctx => configureBlockHandle(ctx, setBlockHandle)).use(block).use(slashMenuPlugin(setSlashMenu, () => latest.current.slashLinks))
     crepe.editor.config(configureObsidianContent).use(obsidianSyntax).use(obsidianInline).use(referenceDefinition).use(headingInputRule)
       .use($prose(() => new Plugin({
         key: searchKey,
@@ -239,7 +239,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
               const url = link.getAttribute('data-target') ?? link.getAttribute('href') ?? ''
               const publicLink = classifyExternalEmbed(url)
               if (publicLink) latest.current.onOpenExternalUrl?.(publicLink.viewerUrl)
-              else if (!/^[a-z][a-z\d+.-]*:/iu.test(url) && !url.startsWith('//')) latest.current.onOpenInternalLink?.(url)
+              else if (!/^[a-z][a-z\d+.-]*:/iu.test(url) && !url.startsWith('//')) latest.current.onOpenInternalLink?.(url, link.hasAttribute('data-target') && link.dataset.linkKind !== 'markdown' ? undefined : 'markdown')
               return true
             },
           },
@@ -328,6 +328,11 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     element.addEventListener('keydown', activate)
     return () => { observer.disconnect(); element.removeEventListener('keydown', activate) }
   }, [ready])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (view && slashKey.getState(view.state)?.form) view.dispatch(view.state.tr)
+  }, [props.slashLinks])
 
   useEffect(() => {
     for (const finish of imageWaiters.current) finish()

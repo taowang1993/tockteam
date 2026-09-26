@@ -109,6 +109,7 @@ import { previewNoteMerge, type NoteMergePreview, type PreparedNoteMerge } from 
 import { SidebarNoteMenu, type NoteMenuAnchor, type SidebarNoteAction } from './sidebar-note-menu.tsx'
 import { NoteMergeReview, MergeRecoveryDialog } from './merge-review.tsx'
 import { appendAttachmentMarkdown, attachmentTargetPath } from './attachments.ts'
+import { markdownLinkHref, resolveMarkdownLink, SlashWriteUncertainError, type SlashLinkContext } from './markdown-links.ts'
 import { collectEmbedTargets, resolveEmbedGraph, type EmbedTarget } from './embeds.ts'
 import {
   createNamedWorkspace,
@@ -1624,11 +1625,62 @@ export class WorkbenchRouteController {
     return mode === 'note' ? true : await this.loadGraph('local')
   }
 
-  async openInternalLink(target: string): Promise<ReadingLinkResult | null> {
+  slashLinkContext(pane = this.snapshot.focusedPaneId): SlashLinkContext | undefined {
+    const { vault, path, source, revision, mode } = this.snapshot
+    if (!vault || !path || pane !== this.snapshot.focusedPaneId || mode !== 'live-preview' || this.snapshot.documentKind !== 'markdown' || this.snapshot.documentUnavailable) return undefined
+    const lifetime = this.paneLifetimeFor(pane), operation = this.operation
+    const isCurrent = (): boolean => !this.disposed && sameVault(this.snapshot.vault, vault) && this.snapshot.path === path
+      && this.snapshot.focusedPaneId === pane && this.paneLifetimeFor(pane) === lifetime && this.operation === operation
+      && this.snapshot.source === source && this.snapshot.revision === revision && this.snapshot.mode === mode && !this.snapshot.documentUnavailable
+    return {
+      sourcePath: path, entries: this.snapshot.entries, isCurrent,
+      reportUnlinked: result => {
+        if (result.writtenPath && !this.disposed) this.update({ message: `${result.writtenPath} retained in its vault; the source was left untouched. Use an existing-file link to insert it.` })
+      },
+      resolve: async (request, signal) => {
+        if (!isCurrent() || signal.aborted) throw new Error('The source note changed. Reopen the command.')
+        if (request.kind === 'new-note') {
+          const href = markdownLinkHref(path, request.path)
+          const folder = request.path.split('/').slice(0, -1).join('/')
+          if (!/\.md$/iu.test(request.path) || request.path.split('/').at(-1)!.length > 255
+            || (folder && !this.snapshot.entries.some(entry => entry.kind === 'directory' && entry.path === folder))) throw new Error('Choose an existing folder and a valid Markdown filename.')
+          if (this.snapshot.entries.some(entry => entry.path.toLocaleLowerCase() === request.path.toLocaleLowerCase())) throw new Error('A file with that name already exists.')
+          try {
+            // Once sent, retain the receipt even if the form closes; cancellation cannot undo a filesystem write.
+            const created = remoteValue(await this.remote.tocktutorWorkbench.createDocument({ content: '', expectedVault: vault, path: request.path }))
+            if (created.status !== 'created' || created.path !== request.path || created.generation !== vault.generation) throw new Error('Invalid creation receipt.')
+            await this.refreshTree(vault, true)
+            return { href, label: noteTitle(created.path), writtenPath: created.path }
+          } catch (error) {
+            await this.refreshTree(vault, true)
+            if (error instanceof RemoteCallError && error.code === 'exists') throw new Error('A file with that name already exists.')
+            const uncertain = new SlashWriteUncertainError(request.path)
+            if (!this.disposed) this.update({ message: uncertain.message })
+            throw uncertain
+          }
+        }
+        const opened = remoteValue(await this.remote.tocktutorWorkbench.openDocument(request.path, vault, signal))
+        if (!isCurrent() || signal.aborted) throw new Error('The source note changed. Reopen the command.')
+        if (opened.path !== request.path || opened.generation !== vault.generation || !/\.(?:md|markdown)$/iu.test(request.path)) throw new Error('That note is unavailable.')
+        return { href: markdownLinkHref(path, opened.path), label: noteTitle(opened.path) }
+      },
+    }
+  }
+
+  async openInternalLink(target: string, kind?: 'markdown'): Promise<ReadingLinkResult | null> {
     const vault = this.snapshot.vault
     const path = this.snapshot.path
     if (vault === null || path === null || this.snapshot.documentKind !== 'markdown'
       || target.length === 0 || target.length > 4_096 || /[\u0000-\u001f\u007f]/u.test(target)) return null
+    if (kind === 'markdown') {
+      const resolved = resolveMarkdownLink(path, target)
+      if (!resolved) return null
+      const entry = this.snapshot.entries.find(entry => entry.path === resolved.path)
+      if (entry?.kind === 'attachment') return await this.previewAttachment(resolved.path) ? { fragment: resolved.fragment } : null
+      if (entry?.kind !== 'document' || !/\.(?:md|markdown)$/iu.test(resolved.path) || !await this.select(resolved.path)) return null
+      this.setMode('reading')
+      return { fragment: resolved.fragment }
+    }
     let links = this.snapshot.links
     if (links === null || links === undefined || links.path !== path || links.generation !== vault.generation) {
       if (!await this.loadRelationships()) return null
@@ -4371,7 +4423,7 @@ export interface TockTutorRouteViewProps {
   onOpenBookmark?(id: string): void
   onOpenCommandPalette?(): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
-  onOpenInternalLink?(target: string): void | Promise<ReadingLinkResult | null>
+  onOpenInternalLink?(target: string, kind?: 'markdown'): void | Promise<ReadingLinkResult | null>
   onOpenRecovery?(): void
   onOpenSmartView?(kind: 'recent' | 'tasks' | 'journals' | 'favorites' | 'collections' | 'tags'): void
   onOpenExternalUrl?(url: string): void
@@ -6090,7 +6142,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 commandRef={liveCommandRef}
                 insertTextRef={liveInsertTextRef}
                 {...(props.onUploadImage === undefined ? {} : { onUploadImage: props.onUploadImage })}
-                onOpenInternalLink={target => { void props.onOpenInternalLink?.(target) }}
+                slashLinks={props.paneController?.slashLinkContext(snapshot.focusedPaneId)}
+                onOpenInternalLink={(target, kind) => { void props.onOpenInternalLink?.(target, kind) }}
                 localEditRevision={snapshot.localEditRevision}
                 embeds={snapshot.embeds}
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
@@ -6627,7 +6680,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
         onOpenExternalUrl={url => { setExternalUrl(url) }}
         onOpenGraphNode={(path, mode) => controller.openGraphNode(path, mode)}
-        onOpenInternalLink={target => controller.openInternalLink(target)}
+        onOpenInternalLink={(target, kind) => controller.openInternalLink(target, kind)}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true, null) }}
         onOpenSearch={() => { controller.openSearch(snapshot.searchQuery) }}
         onOpenSidebarSearch={() => { controller.openSidebarSearch() }}

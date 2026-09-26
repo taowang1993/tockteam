@@ -43,6 +43,63 @@ it('inserts a web link at the invocation with one-step undo and no surrounding l
   expect(view.state.doc.firstChild.textContent).toBe('BeforeA [link] after')
 })
 
+it('chooses an exact note path and inserts the resolved relative Markdown link', async () => {
+  const resolve = vi.fn(async () => ({ href: '../Notes/A%20%231.md', label: 'A #1' }))
+  const slashLinks = { sourcePath: 'Drafts/Source.md', entries: [{ kind: 'document', path: 'Notes/A #1.md' }, { kind: 'document', path: 'Other/A #1.md' }], isCurrent: () => true, resolve }
+  const { view, onChange } = await editor('Before after\n', { slashLinks })
+  type(view, '/link to note', 7)
+  fireEvent.click(await screen.findByRole('option', { name: 'Link to Note', exact: true }))
+  fireEvent.change(screen.getByLabelText('Search Notes'), { target: { value: 'A #1' } })
+  fireEvent.click(screen.getByRole('option', { name: 'Notes/A #1.md', exact: true }))
+  fireEvent.click(screen.getByRole('button', { name: 'Insert Link' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(resolve.mock.calls[0]?.[0]).toEqual({ kind: 'note', path: 'Notes/A #1.md' })
+  expect(onChange.mock.lastCall?.[0]).toBe('Before[A #1](../Notes/A%20%231.md) after\n')
+})
+
+it('creates one note, retains a successful write for insertion retry, and never deletes it on undo', async () => {
+  const resolve = vi.fn(async () => ({ href: './New.md', label: 'New', writtenPath: 'Folder/New.md' }))
+  const reportUnlinked = vi.fn()
+  const slashLinks = { sourcePath: 'Folder/Source.md', entries: [{ kind: 'directory', path: 'Folder' }], isCurrent: () => true, resolve, reportUnlinked }
+  const { view, onChange } = await editor('Text\n', { slashLinks })
+  type(view, '/new note', 5)
+  fireEvent.click(await screen.findByRole('option', { name: 'New Note', exact: true }))
+  fireEvent.change(screen.getByLabelText('Note Name'), { target: { value: 'New' } })
+  const originalPlugins = view.state.plugins
+  act(() => view.updateState(view.state.reconfigure({ plugins: [...originalPlugins, new Plugin({ filterTransaction: tr => !tr.docChanged })] })))
+  fireEvent.click(screen.getByRole('button', { name: 'Create and Link' }))
+  await screen.findByRole('alert')
+  expect(reportUnlinked).toHaveBeenCalledTimes(1)
+  expect(view.state.doc.firstChild.textContent).toBe('Text/new note')
+  act(() => view.updateState(view.state.reconfigure({ plugins: originalPlugins })))
+  fireEvent.click(screen.getByRole('button', { name: 'Insert Link' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(resolve).toHaveBeenCalledTimes(1)
+  expect(onChange.mock.lastCall?.[0]).toBe('Text[New](./New.md)\n')
+  act(() => { undo(view.state, view.dispatch) })
+  expect(view.state.doc.firstChild.textContent).toBe('Text/new note')
+  expect(resolve).toHaveBeenCalledTimes(1)
+})
+
+it('reports a created file after cancellation instead of inserting it or sending another write', async () => {
+  let finish: (result: any) => void = () => {}
+  const resolve = vi.fn(() => new Promise<any>(next => { finish = next }))
+  const reportUnlinked = vi.fn()
+  const slashLinks = { sourcePath: 'Source.md', entries: [], isCurrent: () => true, resolve, reportUnlinked }
+  const { view } = await editor('Text\n', { slashLinks })
+  type(view, '/new note', 5)
+  fireEvent.click(await screen.findByRole('option', { name: 'New Note', exact: true }))
+  fireEvent.change(screen.getByLabelText('Note Name'), { target: { value: 'New' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create and Link' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Create and Link' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  const result = { href: './New.md', label: 'New', writtenPath: 'New.md' }
+  await act(async () => { finish(result); await Promise.resolve() })
+  expect(resolve).toHaveBeenCalledTimes(1)
+  expect(reportUnlinked).toHaveBeenCalledWith(result)
+  expect(view.state.doc.firstChild.textContent).toBe('Text/new note')
+})
+
 it('keeps invalid link drafts and cancels without changing the document', async () => {
   const { view } = await editor('Text\n')
   type(view, '/url', 5)
