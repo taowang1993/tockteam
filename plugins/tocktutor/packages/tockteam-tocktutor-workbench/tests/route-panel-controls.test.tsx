@@ -843,6 +843,27 @@ describe('TockTutor titlebar panel controls', () => {
     expect(onCloseTab).toHaveBeenCalledWith('main', 'First.md')
   })
 
+  it('shows history controls in an unfocused split and targets that pane before navigating', async () => {
+    const events: string[] = []
+    const other = { ...snapshot, focusedPaneId: 'right', path: 'Right.md', phase: 'ready' as const, canGoBack: true, canGoForward: true }
+    const root = { ...other, focusedPaneId: 'main', path: 'Left.md', layout: { axis: 'horizontal' as const, ratio: .5, children: [{ groupId: 'main' }, { groupId: 'right' }] as [ { groupId: string }, { groupId: string } ] }, panes: [ { activePath: 'Left.md', id: 'main', tabs: [] }, { activePath: 'Right.md', id: 'right', tabs: [] } ] }
+    const controller = {
+      getSnapshot: () => root,
+      focusPane: async (id: string) => { events.push(`focus:${id}`); return true },
+      goBack: async () => { events.push('back'); return true },
+      goForward: async () => { events.push('forward'); return true },
+      paneLifetimeFor: () => 1,
+      getPaneSnapshot: (id: string) => id === 'right' ? other : root,
+      bindPaneEdit: () => () => true,
+    } as unknown as import('../src/route.tsx').WorkbenchRouteController
+    render(<TockTutorRouteView snapshot={root} paneController={controller} />)
+    const history = within(document.querySelector('[data-pane-id="right"]') as HTMLElement).getByRole('navigation', { name: 'Note History' })
+    fireEvent.click(within(history).getByRole('button', { name: 'Go Back' }))
+    await waitFor(() => expect(events).toEqual(['focus:right', 'back']))
+    fireEvent.click(within(history).getByRole('button', { name: 'Go Forward' }))
+    await waitFor(() => expect(events).toEqual(['focus:right', 'back', 'focus:right', 'forward']))
+  })
+
   it('filters and executes searchable command controls', async () => {
     const onCloseCommandPalette = vi.fn()
     const onOpenSearch = vi.fn()

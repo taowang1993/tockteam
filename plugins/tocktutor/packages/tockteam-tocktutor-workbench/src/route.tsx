@@ -5474,7 +5474,12 @@ function boundPaneProps(props: TockTutorRouteViewProps, id: string): TockTutorRo
     const callback = props[name]
     if (callback) Object.assign(bound, { [name]: (...args: never[]) => owns() ? (callback as (...args: never[]) => unknown)(...args) : false })
   }
-  return { ...bound, onEdit: controller.bindPaneEdit(id), onSplitPane: (owner, axis) => { if (owns()) void controller.splitPane(owner, axis) } }
+  const navigateHistory = (direction: 'goBack' | 'goForward'): void => {
+    void controller.focusPane(id, undefined, () => controller.paneLifetimeFor(id) === lifetime).then(focused => {
+      if (focused && controller.paneLifetimeFor(id) === lifetime) void controller[direction]()
+    })
+  }
+  return { ...bound, onBack: () => navigateHistory('goBack'), onForward: () => navigateHistory('goForward'), onEdit: controller.bindPaneEdit(id), onSplitPane: (owner, axis) => { if (owns()) void controller.splitPane(owner, axis) } }
 }
 
 /** Semantic, authority-free view for the route state machine. */
@@ -5919,10 +5924,10 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
 </>
   const editor = (<section aria-label="Note Editor" className={`tocktutor-editor relative grid h-full min-h-0 min-w-0 ${noteSearchMode === null ? 'grid-rows-[40px_minmax(0,1fr)]' : 'grid-rows-[40px_auto_minmax(0,1fr)]'} overflow-hidden bg-[var(--tt-panel)]`} id={props.paneOnly ? `tocktutor-note-editor-${snapshot.focusedPaneId}` : 'tocktutor-note-editor'} role="tabpanel">
           <header className="tocktutor-editor-header relative flex min-w-0 items-center justify-center px-2.5">
-            {(!props.paneOnly || props.paneController?.getSnapshot().focusedPaneId === snapshot.focusedPaneId) && <nav aria-label="Note History" className="tocktutor-history absolute left-2 flex items-center gap-1">
+            <nav aria-label="Note History" className="tocktutor-history absolute left-2 flex items-center gap-1">
               <Button unstyled aria-label="Go Back" className="size-7 border-0 bg-transparent p-1.5 text-[var(--tt-muted)] disabled:opacity-35 focus-visible:outline-2 focus-visible:outline-[var(--tt-accent)]" disabled={snapshot.canGoBack !== true} onClick={props.onBack} type="button"><WorkbenchGlyph kind="back" /></Button>
               <Button unstyled aria-label="Go Forward" className="size-7 border-0 bg-transparent p-1.5 text-[var(--tt-muted)] disabled:opacity-35 focus-visible:outline-2 focus-visible:outline-[var(--tt-accent)]" disabled={snapshot.canGoForward !== true} onClick={props.onForward} type="button"><WorkbenchGlyph kind="forward" /></Button>
-            </nav>}
+            </nav>
             <h2 className="m-0 max-w-[calc(100%-152px)] truncate text-[13px] font-medium text-[var(--tt-muted)]">{noteTitle(snapshot.path)}</h2>
             <div className="tocktutor-editor-actions absolute right-2.5 flex items-center gap-1 [&>button]:inline-flex [&>button]:h-7 [&>button]:w-[26px] [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)]">
               {snapshot.documentKind === 'markdown' ? (
@@ -6381,7 +6386,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               type="button"
             />
           )}
-          <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden border-l border-[color-mix(in_srgb,var(--tt-text)_8%,var(--tt-border)_92%)] transition-colors duration-140 ease-[cubic-bezier(.16,1,.3,1)]">{props.assistantPanel}</div>
+          <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden">{props.assistantPanel}</div>
         </aside>
         <WorkbenchUtilities {...props} snapshot={panel === 'recovery' ? props.paneController?.getRecoverySnapshot() ?? snapshot : snapshot} onInsertCurrentDateTime={kind => { props.onInsertCurrentDateTime?.(kind, snapshot.mode === 'live-preview' ? liveInsertTextRef.current ?? undefined : undefined) }} onClose={() => { if (panel === 'recovery') void props.paneController?.setRecoveryOpen(false); setPanel(null) }} onOpenGraphNode={(path, mode) => {
           const result = props.onOpenGraphNode?.(path, mode)

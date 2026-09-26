@@ -221,7 +221,10 @@ describe('TockTutorAssistantPanel', () => {
     expect(composer.value).toBe('> Chosen line\n> Second line\n\n')
     expect(turnCalls).toHaveLength(0)
     expect(composer.className).toContain('focus-visible:outline-none')
-    expect(screen.getByRole('button', { name: 'Send' }).className).toContain('text-primary-foreground')
+    const sendButton = screen.getByRole('button', { name: 'Send' })
+    expect(sendButton.className).toContain('text-[var(--tta-bg)]')
+    expect(sendButton.className).toContain('disabled:text-[var(--tta-text)]')
+    expect(sendButton.className).not.toContain('disabled:opacity-50')
     fireEvent.click(screen.getByRole('button', { name: 'Summarize the Current Note' }))
     expect(composer.value).toBe('Summarize the current note.')
 
