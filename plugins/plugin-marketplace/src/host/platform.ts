@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { requestGuardedSystem } from '../../../shared/guarded-system.ts'
 import {
   constants,
   accessSync,
@@ -135,6 +136,17 @@ async function runCommand(
   args: readonly string[],
   options: CommandOptions = {},
 ): Promise<{ stderr: string; stdout: string }> {
+  if (command === '/usr/bin/sandbox-exec' && args[0] === '-p' && args.length >= 3) {
+    const guarded = await requestGuardedSystem({
+      action: 'sandbox', policy: args[1]!, executable: args[2]!, args: args.slice(3),
+      cwd: options.cwd ?? process.cwd(), env: options.env ?? process.env,
+      timeoutMs: options.timeoutMs ?? 120_000, maxBuffer: MAX_OUTPUT_BYTES,
+    })
+    if (guarded !== undefined) {
+      if (guarded.code !== 0 || guarded.signal !== null) throw commandError(command, args, guarded.stderr, guarded.stdout)
+      return guarded
+    }
+  }
   return await new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,

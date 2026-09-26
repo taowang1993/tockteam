@@ -2,6 +2,7 @@ import { execFile as execFileCallback } from 'node:child_process'
 import { lstat, readdir, realpath, rm } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
 import { promisify } from 'node:util'
+import { readSystemProcesses } from '../plugins/shared/guarded-system.ts'
 
 const execFile = promisify(execFileCallback)
 const PREFIX = 'tockteam-trusted-raycast-'
@@ -36,8 +37,8 @@ async function assertNoProcessReferences(path: string): Promise<void> {
     openOutput = result.stdout ?? ''
   }
   if (openOutput.trim() !== '') throw new Error('Post-baseline trusted workspace has open files or process references')
-  const processes = await execFile('/bin/ps', ['-Aeww', '-o', 'pid=,command='], { maxBuffer: 8 * 1024 * 1024, timeout: 15_000 })
-  if (processes.stdout.includes(path)) throw new Error('Post-baseline trusted workspace appears in a process cwd, environment, or argv')
+  const processes = await readSystemProcesses()
+  if (processes.includes(path)) throw new Error('Post-baseline trusted workspace appears in a process cwd, environment, or argv')
 }
 
 /** Remove only unambiguous workspaces created after the captured baseline. */

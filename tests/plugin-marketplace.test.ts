@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { requestGuardedSystem } from '../plugins/shared/guarded-system.ts'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, win32 } from 'node:path'
@@ -630,7 +631,7 @@ test('preview sandbox denies host data and optional network access', {
   skip: process.platform !== 'darwin' || !existsSync('/usr/bin/sandbox-exec')
     ? 'requires macOS Seatbelt'
     : false,
-}, () => {
+}, async () => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-preview-policy-'))
   const outside = mkdtempSync('/private/tmp/tockteam-preview-secret-')
   const secret = join(outside, 'secret.txt')
@@ -648,10 +649,17 @@ test('preview sandbox denies host data and optional network access', {
       readRoots: [dirname(dirname(process.execPath))],
     })
     assert.doesNotMatch(policy, /allow network/u)
-    const result = spawnSync('/usr/bin/sandbox-exec', [
-      '-p', policy, process.execPath, script,
-    ], { encoding: 'utf8' })
-    assert.equal(result.status, 0, result.stderr)
+    const guarded = await requestGuardedSystem({
+      action: 'sandbox', policy, executable: process.execPath, args: [script],
+      cwd: root, env: process.env, timeoutMs: 5000, maxBuffer: 1024 * 1024,
+    })
+    if (guarded !== undefined) assert.equal(guarded.code, 0, guarded.stderr)
+    else {
+      const result = spawnSync('/usr/bin/sandbox-exec', [
+        '-p', policy, process.execPath, script,
+      ], { encoding: 'utf8' })
+      assert.equal(result.status, 0, result.stderr)
+    }
     assert.equal(readFileSync(join(root, 'denied'), 'utf8'), 'denied')
   } finally {
     rmSync(root, { recursive: true, force: true })

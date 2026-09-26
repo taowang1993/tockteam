@@ -1,9 +1,7 @@
-import { execFile as execFileCallback, type ChildProcess } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
-import { promisify } from 'node:util'
+import { readSystemProcesses } from '../plugins/shared/guarded-system.ts'
 import { LAUNCHER_FOCUS_PROOF_CHANNEL, type LauncherFocusProofMessage } from '../src/launcher-focus-proof.ts'
-
-const execFile = promisify(execFileCallback)
 
 export interface FocusProofChild {
   readonly connected: boolean
@@ -33,8 +31,8 @@ function parseMessage(value: unknown): LauncherFocusProofMessage {
 }
 
 export async function readFocusProofProcessSnapshot(): Promise<readonly ProofProcessRow[]> {
-  const result = await execFile('/bin/ps', ['-Aeww', '-o', 'pid=,ppid=,pgid=,command='], { timeout: 5000, maxBuffer: 8 * 1024 * 1024 })
-  return Object.freeze(result.stdout.trim().split(/\n/u).filter(Boolean).map(line => {
+  const output = await readSystemProcesses()
+  return Object.freeze(output.trim().split(/\n/u).filter(Boolean).map(line => {
     const match = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(.+)$/u)
     if (!match) throw new Error('Could not parse the proof process snapshot')
     return Object.freeze({ command: match[4]!, pgid: Number(match[3]), pid: Number(match[1]), ppid: Number(match[2]) })
