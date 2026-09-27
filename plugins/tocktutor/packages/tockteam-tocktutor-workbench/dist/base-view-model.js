@@ -50,7 +50,7 @@ function modelRows(document, view, query) {
                 column,
                 editable: editableProperty(column, value),
                 inputType: editableProperty(column, value) ? inputType(value) : null,
-                label: document.properties[column] ?? column,
+                label: document.properties[column] ?? (column === 'file.name' ? 'File Name' : column),
                 text: notesBaseValueText(value),
                 value,
             });
@@ -78,7 +78,7 @@ export function createBaseViewModel(document, files, selectedView, search = '', 
     const unsupported = [...query.unsupported, ...summary.unsupported];
     const searchedQuery = { rows: searchedRows, summaries: summary.summaries, unsupported };
     return {
-        columns: Object.freeze(columns.map(key => Object.freeze({ key, label: document.properties[key] ?? key }))),
+        columns: Object.freeze(columns.map(key => Object.freeze({ key, label: document.properties[key] ?? (key === 'file.name' ? 'File Name' : key) }))),
         kind: viewKind(view),
         rows: Object.freeze(modelRows(document, view, searchedQuery).map(row => Object.freeze(row))),
         search,

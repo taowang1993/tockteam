@@ -109,6 +109,10 @@ test('parses and executes the bounded filter, sort, limit, formula, summary, and
   assert.equal(model.status, 'ready')
   if (model.status !== 'ready') return
   assert.equal(model.kind, 'table')
+  assert.deepEqual(model.columns.map(column => [column.key, column.label]), [
+    ['file.name', 'File Name'], ['note.status', 'Status'], ['formula.doubled', 'formula.doubled'],
+  ])
+  assert.equal(model.rows[0]?.cells[0]?.label, 'File Name')
   assert.deepEqual(model.rows.map(row => row.path), ['Alpha.md'])
   assert.deepEqual(model.summaries.map(summary => summary.value), [2, 2])
 })
@@ -194,8 +198,8 @@ test('serializes exactly visible rows as spreadsheet-safe TSV, CSV, and cell ran
   if (parsed.status !== 'ready') return
   const model = createBaseViewModel(parsed, files, 'Ranked', 'alpha')
 
-  assert.equal(executableBaseViewTsv(model), "file.name\tStatus\tformula.doubled\nAlpha\t'=ready\t4")
-  assert.equal(executableBaseViewCsv(model), "file.name,Status,formula.doubled\r\nAlpha,'=ready,4")
+  assert.equal(executableBaseViewTsv(model), "File Name\tStatus\tformula.doubled\nAlpha\t'=ready\t4")
+  assert.equal(executableBaseViewCsv(model), "File Name,Status,formula.doubled\r\nAlpha,'=ready,4")
   assert.equal(executableBaseCellRangeTsv([['=formula', 'line\nbreak'], ['plain', '"quote"']]), "'=formula\t\"line\nbreak\"\nplain\t\"\"\"quote\"\"\"")
   assert.equal(executableBaseCsvFilename('../ Unsafe: Ranked *'), 'Unsafe-Ranked.csv')
 })

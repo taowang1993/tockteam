@@ -1,0 +1,36 @@
+{
+  "surface": "TockTutor Base View, Active Search and File Name",
+  "vault": "isolated 18-file copy of the user's active TockTutor Sandbox; the live vault was not modified",
+  "userAction": "Open the existing TockTutor Sandbox folder as a vault in Obsidian; no Obsidian app automation or vault configuration was performed",
+  "route": "/tocktutor/Untitled.base",
+  "content": "17 Results from the sandbox Base",
+  "viewportCss": [1512, 949],
+  "deviceScaleFactor": 2,
+  "screenshotPixels": [3024, 1898],
+  "screenshots": ["base-search-active-dark.png", "base-search-active-light.png"],
+  "canonicalDark": {"rootColorScheme": "dark", "skin": null, "searchTextAndIcon": "rgb(166, 138, 249)", "inactiveSearchText": "rgb(249, 250, 251)", "fileNameHeader": "File Name", "runtimeErrors": []},
+  "light": {"rootColorScheme": "light", "skin": null, "searchTextAndIcon": "rgb(112, 93, 207)", "fileNameHeader": "File Name", "runtimeErrors": []},
+  "skins": [
+    {"name": "Deep Current", "scheme": "dark", "searchTextAndIcon": "rgb(166, 138, 249)", "fileNameHeader": "File Name", "runtimeErrors": []},
+    {"name": "Jade Circuit", "scheme": "dark", "searchTextAndIcon": "rgb(166, 138, 249)", "fileNameHeader": "File Name", "runtimeErrors": []},
+    {"name": "Porcelain", "scheme": "light", "searchTextAndIcon": "rgb(112, 93, 207)", "fileNameHeader": "File Name", "runtimeErrors": []},
+    {"name": "Ember Dusk", "scheme": "dark", "searchTextAndIcon": "rgb(166, 138, 249)", "fileNameHeader": "File Name", "runtimeErrors": []}
+  ],
+  "checks": {
+    "activeSearchColor": "computed icon and text match the existing --dsw-specific-markdown-accent, which is Obsidian purple in built-in dark/light",
+    "accessibility": "aria-expanded=true when Find is open; File Name exposed as a columnheader",
+    "modelKey": "file.name remains the internal query key; only the visible label and exported headings change",
+    "darkTextContrastAgainstCanvas": "6.62:1",
+    "lightTextContrastAgainstWhite": "5.05:1",
+    "failingComponentCheckBeforeFix": "2 failed, 19 passed (Search active and File Name)",
+    "failingRenderedCheckBeforePurpleTokenFix": "active Search inherited white --tt-accent",
+    "focusedComponentCheckAfterFix": "21 passed",
+    "baseModelCheckAfterFix": "11 passed",
+    "fullComponentCheckAfterFix": "679 passed, 29 files",
+    "nestedTypecheckBuildManifest": "passed",
+    "rootBuildAndStage": "passed",
+    "rootTests": "1502 passed; 17 skipped; 0 failed",
+    "nestedTests": "209 passed; 1 environment-blocked: /bin/ps spawn EPERM"
+  },
+  "cleanup": {"guardedRootPids": [92995, 95968, 96946, 97765, 98582, 99376, 364], "remaining": []}
+}

@@ -82,6 +82,7 @@ describe('ExecutableBaseView', () => {
     render(<EditableBase />)
     const count = screen.getByRole('button', { name: '2 Results' })
     expect(count.className).toContain('bg-transparent')
+    expect(screen.getByRole('columnheader', { name: 'File Name' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
     expect(screen.getByRole('dialog').className).toContain('w-64')
     const row = screen.getByRole('option', { name: 'Ranked' })
@@ -169,6 +170,7 @@ describe('ExecutableBaseView', () => {
     const search = screen.getByRole('button', { name: 'Search', exact: true })
     expect(screen.queryByRole('search', { name: 'Find in Base' })).toBeNull()
     fireEvent.click(search)
+    expect(search.className).toContain('text-[var(--dsw-specific-markdown-accent)]!')
     expect(search.className).toContain('hover:bg-[var(--tockteam-shell-chrome,var(--tt-panel))]!')
     const strip = screen.getByRole('search', { name: 'Find in Base' })
     expect(strip.className).toContain('w-full')
@@ -179,6 +181,7 @@ describe('ExecutableBaseView', () => {
     expect(screen.queryByText('Beta')).toBeNull()
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(screen.queryByRole('search', { name: 'Find in Base' })).toBeNull()
+    expect(search.className).not.toContain('text-[var(--dsw-specific-markdown-accent)]!')
     expect(screen.getByText('2 Results')).toBeTruthy()
     await waitFor(() => expect(document.activeElement).toBe(search))
   })
@@ -361,12 +364,12 @@ describe('ExecutableBaseView', () => {
 
     expect(onCopy).toHaveBeenCalledWith({
       kind: 'results',
-      text: "file.name\tStatus\tformula.doubled\nAlpha\t'=ready\t4",
+      text: "File Name\tStatus\tformula.doubled\nAlpha\t'=ready\t4",
       view: 'Ranked',
     })
     expect(onExport).toHaveBeenCalledWith({
       filename: 'Ranked.csv',
-      text: "file.name,Status,formula.doubled\r\nAlpha,'=ready,4",
+      text: "File Name,Status,formula.doubled\r\nAlpha,'=ready,4",
       view: 'Ranked',
     })
     expect(screen.getByText('sum(note.score):')).toBeTruthy()
