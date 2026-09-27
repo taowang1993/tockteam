@@ -40,7 +40,7 @@ test('Desktop shows workspace then recognizes a saved model key without revealin
     assert.equal(dialog.querySelector('h2')?.textContent, 'Choose a Workspace')
     button(dom.window.document, 'Continue').click()
     await tick()
-    assert.equal(dialog.querySelector('h2')?.textContent, 'Set Up a Model')
+    assert.equal(dialog.querySelector('h2')?.textContent, 'Add a Model')
     assert.match(dialog.textContent ?? '', /already connected/u)
     assert.equal(dialog.querySelector('input[type=password]'), null, 'a stored key must stay hidden')
     button(dom.window.document, 'Finish Setup').click()
@@ -82,9 +82,14 @@ test('Desktop can choose a folder, save a missing model key, and finish only aft
     await tick()
     assert.deepEqual(opened, ['/tmp/example-workspace'])
     const dialog = dom.window.document.querySelector('dialog')!
-    assert.equal(dialog.querySelector('h2')?.textContent, 'Set Up a Model')
+    assert.equal(dialog.querySelector('h2')?.textContent, 'Add a Model')
     const input = dialog.querySelector('input[type=password]') as HTMLInputElement | null
     assert.ok(input, 'the missing key can be entered')
+    const keyLink = dialog.querySelector('a[href="https://openrouter.ai/settings/keys"]') as HTMLAnchorElement | null
+    assert.ok(keyLink, 'the official OpenRouter key page is linked')
+    assert.equal(keyLink.textContent?.trim(), 'https://openrouter.ai/settings/keys')
+    assert.equal(keyLink.target, '_blank', 'the link must not replace the Desktop workbench')
+    assert.equal(keyLink.relList.contains('noopener'), true)
     assert.equal(button(dom.window.document, 'Save and Finish').disabled, true)
     input.value = 'bad key'
     input.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
