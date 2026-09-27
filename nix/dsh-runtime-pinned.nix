@@ -115,6 +115,7 @@ stdenv.mkDerivation rec {
     node ${../scripts/settings-boundary.mjs} "$PWD"
     node ${../scripts/settings-title-case.mjs} "$PWD"
     node ${../scripts/models-settings-default.mjs} "$PWD"
+    node ${../scripts/model-selection-search.mjs} "$PWD"
     node ${../scripts/note-vault-event-forwarding.mjs} "$PWD"
 
     runHook postBuild

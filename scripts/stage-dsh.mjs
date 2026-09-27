@@ -36,6 +36,7 @@ import { resolveNodeDistributionPlatform } from '../src/node-platform.ts'
 import { restoreSettingsBoundary } from './settings-boundary.mjs'
 import { applySettingsTitleCase } from './settings-title-case.mjs'
 import { prioritizeOpenRouterModelsSettings } from './models-settings-default.mjs'
+import { addModelSelectionSearch } from './model-selection-search.mjs'
 import { applyNoteVaultEventForwarding } from './note-vault-event-forwarding.mjs'
 import { adaptTuiRendererPackage } from './tui-upstream-adapter.mjs'
 import { verifyTockTutorBuildManifest } from './tocktutor-build-manifest.mjs'
@@ -1011,6 +1012,7 @@ if (process.argv.includes('--quick')
   console.log('Refreshing staged desktop bundles')
   applySettingsTitleCase(runtime)
   prioritizeOpenRouterModelsSettings(runtime)
+  addModelSelectionSearch(runtime)
   applyNoteVaultEventForwarding(runtime)
   installDesktopPackages({ desktopOnly: true })
   console.log(`Refreshed staged DSH runtime: ${runtime}`)
@@ -1075,6 +1077,7 @@ if (npmRelease) {
 restoreSettingsBoundary(runtime)
 applySettingsTitleCase(runtime)
 prioritizeOpenRouterModelsSettings(runtime)
+addModelSelectionSearch(runtime)
 applyNoteVaultEventForwarding(runtime)
 console.log('Installing desktop packages')
 installDesktopPackages()
