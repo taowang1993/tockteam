@@ -7,7 +7,7 @@ const { JSDOM } = createRequire(new URL('../plugins/tocktutor/packages/tockteam-
 const tick = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0))
 
 function button(document: Document, label: string): HTMLButtonElement {
-  const found = [...document.querySelectorAll<HTMLButtonElement>('dialog button')].find(item => item.textContent?.trim() === label)
+  const found = [...document.querySelectorAll<HTMLButtonElement>('dialog button')].find(item => item.getAttribute('aria-label') === label || item.textContent?.trim() === label)
   assert.ok(found, `button ${label} is visible`)
   return found
 }
@@ -36,6 +36,7 @@ test('Desktop shows workspace then recognizes a saved model key without revealin
     await tick()
     const dialog = dom.window.document.querySelector('dialog')!
     assert.equal(dialog.open, true)
+    assert.ok(dialog.classList.contains('bg-background'), 'setup uses the application theme background, not the lighter popover layer')
     assert.equal(dialog.querySelector('h2')?.textContent, 'Choose a Workspace')
     button(dom.window.document, 'Continue').click()
     await tick()

@@ -1,3 +1,4 @@
+import { X, createElement } from 'lucide'
 import type { DesktopBridge } from './contracts.ts'
 
 type CredentialInfo = Readonly<{ configured: boolean; writable: boolean }>
@@ -15,14 +16,15 @@ type SetupOptions = Readonly<{
 }>
 
 const KEY_REF = 'OPENROUTER_API_KEY'
-const primary = 'h-9 cursor-pointer rounded-lg border-0 bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-50'
-const secondary = 'h-9 cursor-pointer rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-50'
-const quiet = 'h-9 cursor-pointer rounded-lg border-0 bg-transparent px-2 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-50'
+const primary = 'h-9 cursor-pointer rounded-full border-0 bg-foreground px-5 text-sm font-medium text-background hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-50'
+const secondary = 'h-9 cursor-pointer rounded-full border border-border bg-transparent px-4 text-sm font-medium text-foreground hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-50'
+const quiet = 'h-9 cursor-pointer rounded-full border-0 bg-transparent px-2 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-50'
+const option = 'w-full cursor-pointer rounded-xl border border-border bg-surface px-5 py-4 text-left text-foreground hover:border-border-strong hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-50'
 
 /** Desktop-only setup; DSH still owns model credentials, sessions, and workspaces. */
 export function installDesktopOnboarding({ bridge, credentials, openPaths }: SetupOptions): () => void {
   const dialog = document.createElement('dialog')
-  dialog.className = 'box-border w-[min(560px,calc(100%-32px))] max-h-[calc(100dvh-64px)] overflow-y-auto rounded-xl border border-border bg-popover p-0 text-popover-foreground shadow-xl backdrop:bg-black/55 [-webkit-app-region:no-drag]'
+  dialog.className = 'box-border w-[min(800px,calc(100%-48px))] max-h-[calc(100dvh-64px)] overflow-y-auto rounded-2xl border border-border bg-background p-0 text-foreground shadow-2xl backdrop:bg-[rgba(0,0,0,0.85)] [-webkit-app-region:no-drag]'
   dialog.setAttribute('aria-labelledby', 'tockteam-onboarding-title')
   dialog.setAttribute('aria-describedby', 'tockteam-onboarding-description')
   dialog.dataset.tockteamOnboarding = 'true'
@@ -69,36 +71,52 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
   const render = (): void => {
     const workspace = step === 'workspace'
     dialog.innerHTML = `
-      <div class="flex flex-col gap-5 p-6 sm:p-7">
-        <header class="flex flex-col gap-2">
+      <div class="box-border flex min-h-[520px] flex-col gap-6 p-8 sm:p-9">
+        <header class="relative flex flex-col gap-2 pr-10">
           <p class="m-0 text-xs font-medium tracking-wide text-subtle-foreground">Step ${workspace ? '1' : '2'} of 2</p>
-          <h2 id="tockteam-onboarding-title" tabindex="-1" class="m-0 text-xl font-semibold text-foreground">${workspace ? 'Choose a Workspace' : 'Set Up a Model'}</h2>
-          <p id="tockteam-onboarding-description" class="m-0 text-sm leading-6 text-muted-foreground">${workspace
-            ? 'Use your current workspace, or choose a different folder for your first session.'
-            : 'TockTeam uses OpenRouter and the openrouter/free model by default.'}</p>
+          <button id="tockteam-onboarding-close" type="button" aria-label="Close Setup" class="absolute -right-1 -top-1 flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-muted-foreground hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"></button>
+          <h2 id="tockteam-onboarding-title" tabindex="-1" class="m-0 text-[22px] font-semibold leading-[1.2] tracking-tight text-foreground outline-none">${workspace ? 'Choose a Workspace' : 'Set Up a Model'}</h2>
+          <p id="tockteam-onboarding-description" class="m-0 max-w-[65ch] text-sm leading-6 text-muted-foreground">${workspace
+            ? 'Keep the folder you are using, or choose a different one for your first session.'
+            : 'Connect OpenRouter to start with a free model. You can change models later in Settings → Models.'}</p>
         </header>
         ${workspace ? `
-          <div class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
-            <p class="m-0 text-sm font-medium text-foreground">Current Workspace</p>
-            <p class="m-0 text-sm leading-6 text-muted-foreground">You can change workspaces at any time after setup.</p>
-            <button id="tockteam-onboarding-choose" type="button" class="${secondary} self-start">Choose Folder</button>
-          </div>
-          <div class="flex items-center justify-between gap-3">
-            <button id="tockteam-onboarding-skip" type="button" class="${quiet}">Skip Setup</button>
-            <button id="tockteam-onboarding-next" type="button" class="${primary}">Continue</button>
-          </div>
-        ` : `
-          <div id="tockteam-onboarding-model" class="flex flex-col gap-3"></div>
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <button id="tockteam-onboarding-back" type="button" class="${quiet}">Back</button>
-            <div class="flex flex-wrap items-center gap-2">
-              <button id="tockteam-onboarding-later" type="button" class="${quiet}">Set Up Later</button>
-              <button id="tockteam-onboarding-finish" type="button" class="${primary}">Finish Setup</button>
+          <div class="flex flex-1 flex-col gap-3 pt-1">
+            <div class="flex min-w-0 items-center justify-between gap-4 rounded-xl border border-border-strong bg-surface px-5 py-4">
+              <div class="min-w-0">
+                <p class="m-0 text-sm font-medium text-foreground">Current Workspace</p>
+                <p class="m-0 mt-1 text-xs leading-5 text-muted-foreground">Continue in the folder already open in TockTeam.</p>
+              </div>
+              <span class="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">Selected</span>
             </div>
+            <button id="tockteam-onboarding-choose" type="button" aria-label="Choose Folder" class="${option}">
+              <span class="block text-sm font-medium">Choose Folder</span>
+              <span class="mt-1 block text-xs leading-5 text-muted-foreground">Pick another folder for your first session.</span>
+            </button>
           </div>
-        `}
+        ` : `<div id="tockteam-onboarding-model" class="flex flex-1 flex-col gap-3 pt-1"></div>`}
         <p id="tockteam-onboarding-error" role="alert" hidden class="m-0 text-sm text-destructive"></p>
+        <footer class="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
+          <div class="flex items-center gap-4">
+            <span aria-hidden="true" class="flex items-center gap-1.5">
+              <span class="size-1.5 rounded-full ${workspace ? 'bg-foreground' : 'bg-muted-foreground/40'}"></span>
+              <span class="size-1.5 rounded-full ${workspace ? 'bg-muted-foreground/40' : 'bg-foreground'}"></span>
+            </span>
+            ${workspace ? `<button id="tockteam-onboarding-skip" type="button" class="${quiet}">Skip Setup</button>` : `<button id="tockteam-onboarding-later" type="button" class="${quiet}">Set Up Later</button>`}
+          </div>
+          <div class="flex items-center gap-2">
+            ${workspace ? '' : `<button id="tockteam-onboarding-back" type="button" class="${quiet}">Back</button>`}
+            <button id="${workspace ? 'tockteam-onboarding-next' : 'tockteam-onboarding-finish'}" type="button" class="${primary}">${workspace ? 'Continue' : 'Finish Setup'}</button>
+          </div>
+        </footer>
       </div>`
+    const close = element<HTMLButtonElement>('#tockteam-onboarding-close')
+    const icon = createElement(X) as SVGSVGElement
+    icon.setAttribute('width', '18')
+    icon.setAttribute('height', '18')
+    icon.setAttribute('aria-hidden', 'true')
+    close.append(icon)
+    close.addEventListener('click', () => { if (!busy) dialog.close() })
     if (workspace) {
       element<HTMLButtonElement>('#tockteam-onboarding-skip').addEventListener('click', () => { void finish() })
       element<HTMLButtonElement>('#tockteam-onboarding-next').addEventListener('click', () => {
@@ -131,10 +149,10 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
     const later = element<HTMLButtonElement>('#tockteam-onboarding-later')
     const save = element<HTMLButtonElement>('#tockteam-onboarding-finish')
     if (credential === 'loading') {
-      body.innerHTML = '<p role="status" class="m-0 text-sm text-muted-foreground">Checking your model connection…</p>'
+      body.innerHTML = '<div class="rounded-xl border border-border bg-surface px-5 py-5"><p role="status" class="m-0 text-sm text-muted-foreground">Checking your model connection…</p></div>'
       save.disabled = true
     } else if (credential === 'error') {
-      body.innerHTML = '<p role="status" class="m-0 text-sm text-muted-foreground">Could not check your model connection. Try again or set it up later in Settings → Models.</p>'
+      body.innerHTML = '<div class="rounded-xl border border-border bg-surface px-5 py-5"><p role="status" class="m-0 text-sm text-muted-foreground">Could not check your model connection. Try again or set it up later in Settings → Models.</p></div>'
       save.disabled = true
       const retry = document.createElement('button')
       retry.type = 'button'
@@ -143,13 +161,13 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
       retry.addEventListener('click', () => { void loadCredential() })
       body.append(retry)
     } else if (credential.configured) {
-      body.innerHTML = '<p role="status" class="m-0 text-sm leading-6 text-foreground">OpenRouter is already connected. Your saved API key stays private and unchanged.</p>'
+      body.innerHTML = '<div class="rounded-xl border border-border bg-surface px-5 py-5"><div class="flex items-center justify-between gap-3"><p class="m-0 text-sm font-medium text-foreground">OpenRouter</p><span class="text-xs font-medium text-success">Connected</span></div><p role="status" class="m-0 mt-2 text-sm leading-6 text-muted-foreground">OpenRouter is already connected. Your saved API key stays private and unchanged.</p></div>'
       later.hidden = true
     } else if (!credential.writable) {
-      body.innerHTML = '<p role="status" class="m-0 text-sm leading-6 text-muted-foreground">This key cannot be changed here. You can set up a model in Settings → Models later.</p>'
+      body.innerHTML = '<div class="rounded-xl border border-border bg-surface px-5 py-5"><p class="m-0 text-sm font-medium text-foreground">OpenRouter</p><p role="status" class="m-0 mt-2 text-sm leading-6 text-muted-foreground">This key cannot be changed here. You can set up a model in Settings → Models later.</p></div>'
       save.disabled = true
     } else {
-      body.innerHTML = '<label for="tockteam-onboarding-key" class="text-sm font-medium text-foreground">OpenRouter API Key</label><input id="tockteam-onboarding-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="4096" placeholder="Enter your API key" class="box-border h-9 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><p class="m-0 text-xs leading-5 text-muted-foreground">Your key is saved by TockTeam and can be changed later in Settings → Models.</p>'
+      body.innerHTML = '<div class="flex flex-col gap-3 rounded-xl border border-border bg-surface px-5 py-5"><p class="m-0 text-sm font-medium text-foreground">OpenRouter</p><label for="tockteam-onboarding-key" class="text-sm font-medium text-foreground">OpenRouter API Key</label><input id="tockteam-onboarding-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="4096" aria-describedby="tockteam-onboarding-key-help tockteam-onboarding-error" placeholder="Enter your API key" class="box-border h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><p id="tockteam-onboarding-key-help" class="m-0 text-xs leading-5 text-muted-foreground">Your key is saved by TockTeam and can be changed later in Settings → Models.</p></div>'
       const input = element<HTMLInputElement>('#tockteam-onboarding-key')
       input.value = draft
       save.textContent = 'Save and Finish'
@@ -218,7 +236,8 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
   }
   dialog.addEventListener('cancel', cancel)
   void bridge.onboarding.status().then(done => {
-    if (disposed || done) return
+    if (disposed) return
+    if (done) { dialog.remove(); return }
     render()
     dialog.showModal()
     focusTitle()
