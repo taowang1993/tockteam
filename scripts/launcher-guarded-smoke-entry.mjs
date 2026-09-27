@@ -21,6 +21,14 @@ export function installBoundedLauncherSmoke(electron) {
   const GuardedWindow = electron.BrowserWindow
   let workbench
   let launcher
+  // An earlier ESM import can cache the original guarded constructor. Reject
+  // its top-level Launcher before it can become a full-display window.
+  electron.app?.on('browser-window-created', (_event, window) => {
+    if (window.getTitle() !== 'TockLauncher') return
+    if (workbench && !workbench.isDestroyed() && window.getParentWindow() === workbench) return
+    window.destroy()
+    throw new Error('Guarded Launcher smoke rejected an unparented Launcher window')
+  })
   Object.defineProperty(electron, 'BrowserWindow', { configurable: true, enumerable: true, value: new Proxy(GuardedWindow, {
     construct(Target, args) {
       const options = args[0] ?? {}

@@ -21,12 +21,14 @@ class GuardedWindow extends EventEmitter {
 
   destroy(): void { this.destroyed = true }
   getBounds(): { width: number; height: number } { return this.bounds }
+  getParentWindow(): GuardedWindow | null { return this.options.parent as GuardedWindow ?? null }
+  getTitle(): string { return String(this.options.title ?? '') }
   hide(): void { this.visible = false }
   isDestroyed(): boolean { return this.destroyed }
   isVisible(): boolean { return this.visible }
 }
 
-type FakeElectron = { BrowserWindow: typeof GuardedWindow }
+type FakeElectron = { BrowserWindow: typeof GuardedWindow; app?: EventEmitter }
 const { installBoundedLauncherSmoke, restoreGuardedExecFilePromisify } = createRequire(import.meta.url)('../scripts/launcher-guarded-smoke-entry.mjs') as {
   installBoundedLauncherSmoke: (electron: FakeElectron) => void
   restoreGuardedExecFilePromisify: (childProcess: object) => void
@@ -64,6 +66,19 @@ test('guarded Launcher smoke destroys a popup if native bounds unexpectedly fill
   new electron.BrowserWindow({ title: 'TockTeam', width: 1280, height: 840 })
   assert.throws(() => new electron.BrowserWindow({ title: 'TockLauncher', width: 750, height: 475 }), /native popup bounds/u)
   assert.equal(created[1]?.destroyed, true)
+})
+
+test('guarded Launcher smoke destroys a top-level popup if an early Electron import bypasses its constructor hook', () => {
+  const app = new EventEmitter()
+  const electron: FakeElectron = { BrowserWindow: GuardedWindow, app }
+  installBoundedLauncherSmoke(electron)
+  const workbench = new electron.BrowserWindow({ title: 'TockTeam', width: 1280, height: 840 })
+  const popup = new electron.BrowserWindow({ title: 'TockLauncher', width: 750, height: 475 })
+  assert.doesNotThrow(() => app.emit('browser-window-created', {}, popup))
+  assert.equal(popup.getParentWindow(), workbench)
+  const escaped = new GuardedWindow({ title: 'TockLauncher', width: 1366, height: 994 })
+  assert.throws(() => app.emit('browser-window-created', {}, escaped), /unparented Launcher window/u)
+  assert.equal(escaped.destroyed, true)
 })
 
 test('guarded Launcher smoke preserves the native execFile promise result without bypassing its wrapper', async () => {
