@@ -1,0 +1,8 @@
+{
+  "reference": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-clipboard-5aa42128-0523-43cb-a4a3-45ab61e47012.png",
+  "screenshot": "row-height-dark.png",
+  "geometry": {"cssViewport": [1512, 949], "deviceScaleFactor": 2, "pngPixels": [3024, 1898], "route": "/tocktutor/Untitled.base", "theme": "dark", "skin": null, "configurePanelWidth": 288, "layoutTriggerWidth": 270, "rowHeightTriggerWidth": 270, "rowHeightMenuWidth": 270},
+  "behavior": {"nativeSelectAbsent": true, "shortOptionChecked": true, "mediumSavedThenShortRestored": true, "arrowDownAndEnterSelectedMedium": true, "escapeRestoredRowHeightFocusWithoutClosingConfigureView": true},
+  "runtimeErrors": [],
+  "processCleanup": {"rootPid": 29852, "remaining": []}
+}

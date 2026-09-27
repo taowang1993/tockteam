@@ -11,6 +11,7 @@ import { ArrowDownUp, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpD
 import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@tockteam/ui/command'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@tockteam/ui/dropdown-menu'
 import { Field, FieldLabel } from '@tockteam/ui/field'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
@@ -74,6 +75,7 @@ function readableKind(kind: string): string {
 }
 
 const layoutIcons = { table: Table2, cards: LayoutGrid, list: List, map: MapPin }
+const configureChoiceClass = 'box-border flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-2 text-left text-sm text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
 
 function SummaryList(props: { model: Extract<ExecutableBaseViewModel, { status: 'ready' }> }): ReactNode {
   if (props.model.summaries.length === 0) return null
@@ -450,7 +452,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
                   <FieldLabel id="base-configure-layout-label" htmlFor="base-configure-layout">Layout</FieldLabel>
                   <Popover open={layoutPickerOpen} onOpenChange={setLayoutPickerOpen}>
                     <PopoverTrigger asChild>
-                      <Button unstyled id="base-configure-layout" type="button" aria-labelledby="base-configure-layout-label base-configure-layout-value" disabled={!props.onSourceChange || saving} className="box-border flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-2 text-left text-sm text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+                      <Button unstyled id="base-configure-layout" type="button" aria-labelledby="base-configure-layout-label base-configure-layout-value" disabled={!props.onSourceChange || saving} className={configureChoiceClass}>
                         <LayoutIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                         <span id="base-configure-layout-value" className="min-w-0 flex-1 truncate">{readableKind(configured.type)}</span>
                         <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -474,7 +476,24 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
                     </PopoverContent>
                   </Popover>
                 </Field>
-                {configured.type === 'table' && <Field className="gap-1"><FieldLabel htmlFor="base-configure-row-height">Row Height</FieldLabel><NativeSelect id="base-configure-row-height" className="w-full" disabled={!props.onSourceChange || saving} value={configured.rowHeight} onChange={event => { void commit(setBaseViewField(props.source, configured.name, 'rowHeight', event.currentTarget.value)) }}>{(['short', 'medium', 'tall'] as const).map(height => <NativeSelectOption key={height} value={height}>{readableKind(height)}</NativeSelectOption>)}</NativeSelect></Field>}
+                {configured.type === 'table' && (
+                  <Field className="gap-1">
+                    <FieldLabel id="base-configure-row-height-label" htmlFor="base-configure-row-height">Row Height</FieldLabel>
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button unstyled id="base-configure-row-height" type="button" aria-labelledby="base-configure-row-height-label base-configure-row-height-value" disabled={!props.onSourceChange || saving} className={configureChoiceClass}>
+                          <span id="base-configure-row-height-value" className="min-w-0 flex-1 truncate">{readableKind(configured.rowHeight)}</span>
+                          <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent unstyled align="start" sideOffset={2} className="z-[1003] box-border w-[var(--radix-dropdown-menu-trigger-width)] rounded-lg border border-border bg-surface p-1 text-sm text-foreground shadow-lg">
+                        <DropdownMenuRadioGroup value={configured.rowHeight} onValueChange={height => { if (height !== configured.rowHeight) void commit(setBaseViewField(props.source, configured.name, 'rowHeight', height)) }}>
+                          {(['short', 'medium', 'tall'] as const).map(height => <DropdownMenuRadioItem key={height} value={height} className="box-border flex h-8 w-full cursor-pointer items-center rounded-md px-2 text-sm text-foreground data-[highlighted]:bg-[var(--dsw-alias-interactive-bg-hover)] data-[state=checked]:bg-[var(--dsw-alias-interactive-bg-hover)]">{readableKind(height)}</DropdownMenuRadioItem>)}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </Field>
+                )}
                 {authoringError && <p role="alert" className="m-0 text-xs text-destructive">{authoringError}</p>}
               </div>
             ) : showAddView ? (
