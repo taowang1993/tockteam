@@ -269,7 +269,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   }
 
   const decorate = (item: LauncherInternalResultItem): LauncherInternalResultItem => {
-    if (item.sourceExtension === 'WebSearch' && item.id === CONTEXTUAL_BROWSER_RESULT_ID) return item
+    if (item.sourceExtension === 'TockTeam' && item.id === CONTEXTUAL_BROWSER_RESULT_ID) return item
     const favoriteAction = favorites.has(item.id)
       ? coreAction(
         LAUNCHER_CORE_ACTION_HANDLERS.removeFavorite,

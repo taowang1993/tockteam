@@ -50,7 +50,7 @@ export type LauncherNetworkOptions = Readonly<{
 }>
 
 type NetworkAction = Readonly<{
-  extensionId: LauncherNetworkExtensionId
+  extensionId: LauncherNetworkExtensionId | 'TockTeam'
   kind: 'browser' | 'copy' | 'url'
   generation: number
   value: string
@@ -343,7 +343,7 @@ function action(handlerKey: string, argument: string, description: string, hide 
   return Object.freeze({ argument, description, handlerKey, hideWindowAfterInvocation: hide, requiresConfirmation: false })
 }
 
-function actionKey(extensionId: LauncherNetworkExtensionId, kind: NetworkAction['kind'], value: string): string {
+function actionKey(extensionId: NetworkAction['extensionId'], kind: NetworkAction['kind'], value: string): string {
   return `${extensionId}\u0000${kind}\u0000${value}`
 }
 
@@ -752,17 +752,18 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
       }
       const isDeepL = searchTerm.startsWith(LAUNCHER_DEEPL_QUERY_PREFIX)
       const isWeb = searchTerm.startsWith(LAUNCHER_WEB_SEARCH_QUERY_PREFIX)
-      if (ids.has('WebSearch') && !isDeepL && !isWeb) {
-        const url = typedBrowserUrl(searchTerm)
-        if (url !== undefined) {
-          const value = url.toString()
-          const name = launcherFixedText('Open in Browser', options.getLocale?.())
-          nextActions.set(actionKey('WebSearch', 'browser', value), Object.freeze({ extensionId: 'WebSearch', generation, kind: 'browser', query: searchTerm, settingsDigest: settingsDigest('WebSearch'), value }))
-          before.push(Object.freeze({
-            defaultAction: action(HANDLERS.openBrowser, value, name),
-            description: url.host, id: 'web-search:open-in-browser', imageKey: 'web-search', name, sourceExtension: 'WebSearch',
-          }))
-        } else if (setting(options, 'WebSearch', 'showInstantSearchResult', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.showInstantSearchResult) && searchTerm.trim()) {
+      const url = typedBrowserUrl(searchTerm)
+      if (url !== undefined) {
+        const value = url.toString()
+        const name = launcherFixedText('Open in Browser', options.getLocale?.())
+        nextActions.set(actionKey('TockTeam', 'browser', value), Object.freeze({ extensionId: 'TockTeam', generation, kind: 'browser', query: searchTerm, settingsDigest: '', value }))
+        before.push(Object.freeze({
+          defaultAction: action(HANDLERS.openBrowser, value, name),
+          description: url.host, id: 'web-search:open-in-browser', imageKey: 'web-search', name, sourceExtension: 'TockTeam',
+        }))
+      }
+      if (ids.has('WebSearch') && !isDeepL && !isWeb && url === undefined) {
+        if (setting(options, 'WebSearch', 'showInstantSearchResult', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.showInstantSearchResult) && searchTerm.trim()) {
           const web = currentWebSettings(options)
           try {
             const digest = settingsDigest('WebSearch')
@@ -815,9 +816,10 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
 
   const executeAction = async (record: LauncherActionRecord): Promise<boolean> => {
     if (closed) throw new Error('TockLauncher network provider is closed')
-    if (!LAUNCHER_NETWORK_EXTENSION_IDS.includes(record.sourceExtension as LauncherNetworkExtensionId)) return false
-    const extensionId = record.sourceExtension as LauncherNetworkExtensionId
-    if (!enabled().has(extensionId)) throw new Error('Network extension is disabled')
+    const isDirectBrowser = record.sourceExtension === 'TockTeam' && record.handlerKey === HANDLERS.openBrowser
+    if (!isDirectBrowser && !LAUNCHER_NETWORK_EXTENSION_IDS.includes(record.sourceExtension as LauncherNetworkExtensionId)) return false
+    const extensionId = record.sourceExtension as NetworkAction['extensionId']
+    if (extensionId !== 'TockTeam' && !enabled().has(extensionId)) throw new Error('Network extension is disabled')
     const controller = new AbortController()
     activeControllers.add(controller)
     try {
@@ -832,7 +834,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
       const entry = currentActions.get(mapKey)
       if (entry === undefined || entry.extensionId !== extensionId || entry.generation !== queryGeneration) throw new Error('Network action is not from the current main-owned result set')
       if (record.handlerKey === HANDLERS.copy) {
-        if (entry.kind !== 'copy' || entry.value !== record.argument || settingsDigest(extensionId) !== entry.settingsDigest) throw new Error('Network copy action is stale')
+        if (extensionId === 'TockTeam' || entry.kind !== 'copy' || entry.value !== record.argument || settingsDigest(extensionId) !== entry.settingsDigest) throw new Error('Network copy action is stale')
         if (currentActions.get(mapKey) !== entry || entry.generation !== queryGeneration || controller.signal.aborted) throw new Error('Network copy action is stale')
         await track(Promise.resolve(options.copyText(entry.value, controller.signal)))
         if (controller.signal.aborted || closed) throw new Error('Network copy action is stale')
@@ -842,7 +844,7 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
       if (entry.value !== record.argument || entry.query === undefined) throw new Error('Network URL action is invalid')
       const current = (): boolean => currentActions.get(mapKey) === entry && entry.generation === queryGeneration && !closed && !controller.signal.aborted
       if (entry.kind === 'browser') {
-        if (extensionId !== 'WebSearch' || settingsDigest('WebSearch') !== entry.settingsDigest) throw new Error('Browser action is stale')
+        if (extensionId !== 'TockTeam') throw new Error('Browser action is stale')
         const url = typedBrowserUrl(entry.query)
         if (url?.toString() !== entry.value || !current()) throw new Error('Browser action is stale')
         await track(Promise.resolve(options.openExternal(entry.value, controller.signal)))

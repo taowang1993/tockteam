@@ -113,7 +113,7 @@ test('typed search does not repeat an indexed File Search action as an instant s
 
 test('a one-off browser address cannot be pinned, hidden, or saved in usage history', async () => {
   const persisted: string[] = []
-  const browser = { ...item('web-search:open-in-browser', 'Open in Browser'), sourceExtension: 'WebSearch' }
+  const browser = { ...item('web-search:open-in-browser', 'Open in Browser'), sourceExtension: 'TockTeam' }
   const core = createLauncherCoreSearch({
     loadIndexedItems: async () => [],
     searchInstant: async () => ({ before: [browser], after: [] }),

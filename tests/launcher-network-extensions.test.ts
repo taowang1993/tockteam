@@ -142,8 +142,9 @@ test('a complete typed HTTP(S) address opens in the selected browser without web
   let fetches = 0
   let resolutions = 0
   let instantSearchEnabled = false
+  let webSearchEnabled = false
   const provider = createLauncherNetworkExtensions({
-    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    copyText: () => undefined, enabledExtensionIds: () => webSearchEnabled ? ['WebSearch'] : [],
     fetch: async () => { fetches += 1; throw new Error('Direct browser navigation must not fetch') },
     getSetting: <T>(key: string, fallback: T): T => key === 'extension[WebSearch].showInstantSearchResult' ? instantSearchEnabled as T : fallback,
     openExternal: url => { opened.push(url) },
@@ -158,6 +159,7 @@ test('a complete typed HTTP(S) address opens in the selected browser without web
     ] as const) {
       const result = await provider.searchInstant(query)
       assert.deepEqual(result.before.map(item => item.name), ['Open in Browser'])
+      assert.equal(result.before[0]?.sourceExtension, 'TockTeam')
       assert.deepEqual(result.after, [])
       const published = actions.publish({ items: result.before, owner })
       assert.equal(published.items[0]?.description, host)
@@ -166,6 +168,7 @@ test('a complete typed HTTP(S) address opens in the selected browser without web
       await actions.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
       assert.equal(opened.at(-1), expected)
       instantSearchEnabled = true
+      webSearchEnabled = true
     }
     assert.equal(fetches, 0)
     assert.equal(resolutions, 0)
@@ -188,7 +191,7 @@ test('direct browser result uses the current launcher language without changing 
   } finally { await provider.close() }
 })
 
-test('direct browser result rejects partial, credentialed, and non-HTTP(S) input and respects Web Search enablement', async () => {
+test('direct browser result rejects partial, credentialed, and non-HTTP(S) input even with Web Search off', async () => {
   let enabled = true
   const provider = createLauncherNetworkExtensions({
     copyText: () => undefined, enabledExtensionIds: () => enabled ? ['WebSearch'] : [],
@@ -203,7 +206,7 @@ test('direct browser result rejects partial, credentialed, and non-HTTP(S) input
       assert.deepEqual(result.after, [], input)
     }
     enabled = false
-    assert.deepEqual((await provider.searchInstant('https://example.com/')).before, [])
+    assert.equal((await provider.searchInstant('https://example.com/')).before[0]?.name, 'Open in Browser')
   } finally { await provider.close() }
 })
 
