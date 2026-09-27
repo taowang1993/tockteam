@@ -33,6 +33,11 @@ const CHANGES = [
   ['onboardingDescription: "Configure the official DeepSeek provider to start building."', 'onboardingDescription: "Configure OpenRouter to start building."', 1],
   ['onboardingDescription: "配置 DeepSeek 官方模型，即可开始使用。"', 'onboardingDescription: "配置 OpenRouter 模型，即可开始使用。"', 1],
   [
+    '\t\t\tctx.slots.inject("settings.onboarding", () => ctx.slots.register({\n\t\t\t\tname: "settings.onboarding",\n\t\t\t\tid: "welcome-notice",',
+    '\t\t\tif (window.dshDesktop === void 0) ctx.slots.inject("settings.onboarding", () => ctx.slots.register({\n\t\t\t\tname: "settings.onboarding",\n\t\t\t\tid: "welcome-notice",',
+    1,
+  ],
+  [
     'children: t("intro")\n\t\t\t\t\t}),\n\t\t\t\t\t!state.writable',
     'children: t("intro")\n\t\t\t\t\t}),\n\t\t\t\t\t(0, react_jsx_runtime.jsx)("p", {\n\t\t\t\t\t\tclassName: ModelsSection_module_css_default["intro"],\n\t\t\t\t\t\tchildren: t("defaultModelNotice")\n\t\t\t\t\t}),\n\t\t\t\t\t!state.writable',
     1,
