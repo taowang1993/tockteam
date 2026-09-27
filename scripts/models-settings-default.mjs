@@ -12,6 +12,7 @@ const PREVIOUS_STAGED_SHA256 = new Set([
   'eea643a18add1c5f913e495aaaf1c2ade09dabc9b31a019bb96bbaa2b2d9955e',
   'c726e22891b8589ec2ba8597069a0c0945b40405f00d462f66550673f7185fb8',
   '56cf3f48f01b9d725d78b47f07076e8a05658a9861bb38177b9a8ff5edacef87',
+  '2998f14676b330da0be1f4899ad59f1ceecd123a64d4a31ea09f1b335d792493',
 ])
 const DEEPSEEK_ROUTE = 'candidate.entry.provider === "deepseek-official" && candidate.entry.settingsNs === "llm-deepseek" && candidate.entry.settingsPath.length === 0'
 const OPENROUTER_ROUTE = 'candidate.entry.provider === "openrouter" && candidate.entry.settingsNs === "llm-pi-ai" && candidate.entry.settingsPath.join("/") === "providers/openrouter"'
@@ -37,6 +38,16 @@ const CHANGES = [
     1,
   ],
   [
+    'modelsEmpty: "No models will be shown in the selector. Unlisted IDs can still be sent directly."',
+    'modelsEmpty: "No custom models are listed here. Add a model to customize this catalog."',
+    1,
+  ],
+  [
+    'modelsEmpty: "模型选择器中将不显示任何模型；目录外 ID 仍可直接发送。"',
+    'modelsEmpty: "此处未列出自定义模型。添加模型即可自定义此目录。"',
+    1,
+  ],
+  [
     'intro: "Enter your API keys to use models from the following providers.",\n\t\t\tedit: "Edit",',
     'intro: "Enter your API keys to use models from the following providers.",\n\t\t\tdefaultModelNotice: "New setups default to OpenRouter · openrouter/free. You do not need a Model ID or display name unless you customize the catalog; saved choices take precedence.",\n\t\t\tedit: "Edit",',
     1,
@@ -44,6 +55,11 @@ const CHANGES = [
   [
     'intro: "填入各提供方的 API 密钥即可使用其模型。",\n\t\t\tedit: "编辑",',
     'intro: "填入各提供方的 API 密钥即可使用其模型。",\n\t\t\tdefaultModelNotice: "新安装默认使用 OpenRouter · openrouter/free。除非自定义模型目录，否则无需填写模型 ID 或显示名称；已保存的模型选择优先。",\n\t\t\tedit: "编辑",',
+    1,
+  ],
+  [
+    '\t\t\t\t\tmodels.length === 0 ? (0, react_jsx_runtime.jsx)("p", {',
+    '\t\t\t\t\tmodels.length === 0 && props.overridden !== true && probe.provider === "openrouter" ? (0, react_jsx_runtime.jsxs)("div", {\n\t\t\t\t\t\tclassName: ModelsSection_module_css_default["modelEntry"],\n\t\t\t\t\t\tchildren: [(0, react_jsx_runtime.jsx)("span", {\n\t\t\t\t\t\t\tclassName: ModelsSection_module_css_default["modelCatalogMeta"],\n\t\t\t\t\t\t\tchildren: t("defaultModelLabel")\n\t\t\t\t\t\t}), " · ", (0, react_jsx_runtime.jsx)("code", {\n\t\t\t\t\t\t\tclassName: ModelsSection_module_css_default["candidateId"],\n\t\t\t\t\t\t\tchildren: "openrouter/free"\n\t\t\t\t\t\t})]\n\t\t\t\t\t}) : models.length === 0 ? (0, react_jsx_runtime.jsx)("p", {',
     1,
   ],
   [
@@ -162,12 +178,12 @@ const CHANGES = [
   ],
   [
     'keyInput: "API key",\n\t\t\tkeyPlaceholder: "Enter your API key",',
-    'keyInput: "API key",\n\t\t\tsavedKeyInput: "Saved API Key",\n\t\t\tshowNewKey: "Show New API Key",\n\t\t\thideNewKey: "Hide New API Key",\n\t\t\tshowSavedKey: "Show Saved API Key",\n\t\t\thideSavedKey: "Hide Saved API Key",\n\t\t\tsavedKeyPrivate: "Saved keys can be shown only in Desktop. Enter a new key to replace it.",\n\t\t\tsavedKeyUnavailable: "This key was not saved here. Enter a new key to replace it.",\n\t\t\tkeyPlaceholder: "Enter your API key",',
+    'keyInput: "API key",\n\t\t\tsavedKeyInput: "Saved API Key",\n\t\t\tdefaultModelLabel: "New Setup Default",\n\t\t\tshowNewKey: "Show New API Key",\n\t\t\thideNewKey: "Hide New API Key",\n\t\t\tshowSavedKey: "Show Saved API Key",\n\t\t\thideSavedKey: "Hide Saved API Key",\n\t\t\tsavedKeyPrivate: "Saved keys can be shown only in Desktop. Enter a new key to replace it.",\n\t\t\tsavedKeyUnavailable: "This key was not saved here. Enter a new key to replace it.",\n\t\t\tkeyPlaceholder: "Enter your API key",',
     1,
   ],
   [
     'keyInput: "API 密钥",\n\t\t\tkeyPlaceholder: "输入 API 密钥",',
-    'keyInput: "API 密钥",\n\t\t\tsavedKeyInput: "已保存的 API 密钥",\n\t\t\tshowNewKey: "显示新 API 密钥",\n\t\t\thideNewKey: "隐藏新 API 密钥",\n\t\t\tshowSavedKey: "显示已保存的 API 密钥",\n\t\t\thideSavedKey: "隐藏已保存的 API 密钥",\n\t\t\tsavedKeyPrivate: "只有桌面版可以显示已保存的密钥。输入新密钥可替换。",\n\t\t\tsavedKeyUnavailable: "此密钥未保存在这里。输入新密钥可替换。",\n\t\t\tkeyPlaceholder: "输入 API 密钥",',
+    'keyInput: "API 密钥",\n\t\t\tsavedKeyInput: "已保存的 API 密钥",\n\t\t\tdefaultModelLabel: "新安装默认模型",\n\t\t\tshowNewKey: "显示新 API 密钥",\n\t\t\thideNewKey: "隐藏新 API 密钥",\n\t\t\tshowSavedKey: "显示已保存的 API 密钥",\n\t\t\thideSavedKey: "隐藏已保存的 API 密钥",\n\t\t\tsavedKeyPrivate: "只有桌面版可以显示已保存的密钥。输入新密钥可替换。",\n\t\t\tsavedKeyUnavailable: "此密钥未保存在这里。输入新密钥可替换。",\n\t\t\tkeyPlaceholder: "输入 API 密钥",',
     1,
   ],
 ]

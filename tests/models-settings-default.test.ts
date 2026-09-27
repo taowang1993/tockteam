@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
+import { Script } from 'node:vm'
 import { prioritizeOpenRouterModelsSettings } from '../scripts/models-settings-default.mjs'
 
 const repository = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -43,6 +44,20 @@ test('fresh Models settings foreground OpenRouter and request its key without lo
     assert.equal(readFileSync(join(installed, 'lib', 'client.js'), 'utf8'), original)
     prioritizeOpenRouterModelsSettings(root)
     assert.equal(readFileSync(client, 'utf8'), adapted)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('OpenRouter shows its built-in default in Models without creating a custom catalog entry', () => {
+  const { root, client } = fixture()
+  try {
+    prioritizeOpenRouterModelsSettings(root)
+    const adapted = readFileSync(client, 'utf8')
+    assert.match(adapted, /models\.length === 0 && props\.overridden !== true && probe\.provider === "openrouter"/u)
+    assert.match(adapted, /children: "openrouter\/free"/u)
+    assert.match(adapted, /children: t\("defaultModelLabel"\)/u)
+    assert.match(adapted, /modelsEmpty: "No custom models are listed here\./u)
+    new Script(adapted)
+    assert.equal(readFileSync(join(installed, 'lib', 'client.js'), 'utf8'), original)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
