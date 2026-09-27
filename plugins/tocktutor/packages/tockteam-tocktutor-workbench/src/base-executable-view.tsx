@@ -7,7 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
-import { ArrowDownUp, ChevronLeft, ChevronRight, ChevronsUpDown, LayoutGrid, List, ListFilter, ListTree, MapPin, Plus, Search, Table2, X } from 'lucide-react'
+import { ArrowDownUp, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, LayoutGrid, List, ListFilter, ListTree, MapPin, Plus, Search, Table2, X } from 'lucide-react'
 import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@tockteam/ui/command'
@@ -72,6 +72,8 @@ function cellKey(view: string, path: string, column: number): string {
 function readableKind(kind: string): string {
   return kind === 'map-label' ? 'Map Labels' : `${kind.slice(0, 1).toUpperCase()}${kind.slice(1)}`
 }
+
+const layoutIcons = { table: Table2, cards: LayoutGrid, list: List, map: MapPin }
 
 function SummaryList(props: { model: Extract<ExecutableBaseViewModel, { status: 'ready' }> }): ReactNode {
   if (props.model.summaries.length === 0) return null
@@ -372,6 +374,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
   const [viewQuery, setViewQuery] = useState('')
   const [showAddView, setShowAddView] = useState(false)
   const [configuringView, setConfiguringView] = useState<string | null>(null)
+  const [layoutPickerOpen, setLayoutPickerOpen] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
   const findRef = useRef<HTMLInputElement>(null)
   const searchTriggerRef = useRef<HTMLButtonElement>(null)
@@ -422,10 +425,11 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
   }
   const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-3 text-foreground shadow-lg'
   const ViewIcon = { table: Table2, list: List, cards: LayoutGrid, 'map-label': MapPin }[model.kind]
+  const LayoutIcon = layoutIcons[configured?.type ?? 'table']
   return (
     <section aria-label="Executable Base" className="flex min-h-0 flex-col overflow-auto p-4">
       <header aria-label="Base View Controls" role="toolbar" className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border pb-2">
-        <Popover open={viewPickerOpen} onOpenChange={open => { setViewPickerOpen(open); if (!open) { setViewQuery(''); setShowAddView(false); setConfiguringView(null) } }}>
+        <Popover open={viewPickerOpen} onOpenChange={open => { setViewPickerOpen(open); if (!open) { setViewQuery(''); setShowAddView(false); setConfiguringView(null); setLayoutPickerOpen(false) } }}>
           <PopoverTrigger asChild>
             <Button unstyled ref={viewTriggerRef} id="tocktutor-base-view" type="button" aria-label="Base View" className="box-border flex h-7 max-w-36 shrink-0 cursor-pointer items-center gap-1 rounded-md border-0 bg-transparent px-2 text-sm text-foreground hover:bg-muted outline-none focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]">
               <ViewIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -442,8 +446,35 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
                   <Button unstyled type="button" aria-label="Close Configure View" className="flex size-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring" onPointerDown={event => event.preventDefault()} onClick={() => { setViewPickerOpen(false); setConfiguringView(null); saveConfiguredName(); viewTriggerRef.current?.focus() }}><X aria-hidden="true" className="size-4" /></Button>
                 </div>
                 <Input unstyled aria-label="View Name" className="box-border h-8 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={!props.onSourceChange || saving} value={renameName} onChange={event => setRenameName(event.currentTarget.value)} onBlur={saveConfiguredName} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur() }} />
-                <Field className="gap-1"><FieldLabel htmlFor="base-configure-layout">Layout</FieldLabel><NativeSelect id="base-configure-layout" disabled={!props.onSourceChange || saving} value={configured.type} onChange={event => { void commit(setBaseViewField(props.source, configured.name, 'type', event.currentTarget.value)) }}>{(['table', 'list', 'cards', 'map'] as const).map(kind => <NativeSelectOption key={kind} value={kind}>{readableKind(kind)}</NativeSelectOption>)}</NativeSelect></Field>
-                {configured.type === 'table' && <Field className="gap-1"><FieldLabel htmlFor="base-configure-row-height">Row Height</FieldLabel><NativeSelect id="base-configure-row-height" disabled={!props.onSourceChange || saving} value={configured.rowHeight} onChange={event => { void commit(setBaseViewField(props.source, configured.name, 'rowHeight', event.currentTarget.value)) }}>{(['short', 'medium', 'tall'] as const).map(height => <NativeSelectOption key={height} value={height}>{readableKind(height)}</NativeSelectOption>)}</NativeSelect></Field>}
+                <Field className="gap-1">
+                  <FieldLabel id="base-configure-layout-label" htmlFor="base-configure-layout">Layout</FieldLabel>
+                  <Popover open={layoutPickerOpen} onOpenChange={setLayoutPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button unstyled id="base-configure-layout" type="button" aria-labelledby="base-configure-layout-label base-configure-layout-value" disabled={!props.onSourceChange || saving} className="box-border flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-2 text-left text-sm text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+                        <LayoutIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                        <span id="base-configure-layout-value" className="min-w-0 flex-1 truncate">{readableKind(configured.type)}</span>
+                        <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent unstyled align="start" sideOffset={2} className="z-[1003] box-border w-[var(--radix-popover-trigger-width)] rounded-lg border border-border bg-surface p-1 text-sm text-foreground shadow-lg outline-none">
+                      <Command unstyled className="flex min-h-0 flex-col" label="Search Layouts">
+                        <div className="flex h-8 items-center gap-1 border-b border-border px-2">
+                          <Search aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+                          <CommandInput unstyled placeholder="Search..." className="h-7 min-w-0 flex-1 border-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" />
+                        </div>
+                        <CommandList className="max-h-56"><CommandEmpty className="py-2 text-center text-xs text-muted-foreground">No layouts found.</CommandEmpty>
+                          <CommandGroup unstyled className="box-border w-full py-1">
+                            {(['table', 'cards', 'list', 'map'] as const).map(kind => {
+                              const Icon = layoutIcons[kind]
+                              return <CommandItem unstyled key={kind} value={readableKind(kind)} className="box-border flex h-8 w-full min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-foreground outline-none data-[current=true]:bg-[var(--dsw-alias-interactive-bg-hover)] data-[selected=true]:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" data-current={kind === configured.type ? 'true' : undefined} aria-current={kind === configured.type ? 'true' : undefined} onSelect={() => { setLayoutPickerOpen(false); if (kind !== configured.type) void commit(setBaseViewField(props.source, configured.name, 'type', kind)) }}><Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1 truncate">{readableKind(kind)}</span>{kind === configured.type && <Check aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />}</CommandItem>
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </Field>
+                {configured.type === 'table' && <Field className="gap-1"><FieldLabel htmlFor="base-configure-row-height">Row Height</FieldLabel><NativeSelect id="base-configure-row-height" className="w-full" disabled={!props.onSourceChange || saving} value={configured.rowHeight} onChange={event => { void commit(setBaseViewField(props.source, configured.name, 'rowHeight', event.currentTarget.value)) }}>{(['short', 'medium', 'tall'] as const).map(height => <NativeSelectOption key={height} value={height}>{readableKind(height)}</NativeSelectOption>)}</NativeSelect></Field>}
                 {authoringError && <p role="alert" className="m-0 text-xs text-destructive">{authoringError}</p>}
               </div>
             ) : showAddView ? (

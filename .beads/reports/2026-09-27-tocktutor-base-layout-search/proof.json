@@ -1,0 +1,8 @@
+{
+  "reference": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-clipboard-92e516ad-9d3d-4513-857d-eaaf9dc95c06.png",
+  "screenshot": "layout-picker-dark.png",
+  "geometry": {"cssViewport": [1512, 949], "deviceScaleFactor": 2, "pngPixels": [3024, 1898], "route": "/tocktutor/Untitled.base", "theme": "dark", "skin": null, "configurePanelWidth": 288, "layoutTriggerWidth": 270, "layoutMenuWidth": 270, "rowHeightWidth": 270, "searchFocused": true},
+  "behavior": {"searchFilteredToCards": true, "escapePreservedConfigureView": true, "escapeRestoredLayoutFocus": true, "cardsSavedToBaseSource": true, "tableRestored": true, "selectedOptionAnnounced": true},
+  "runtimeErrors": [],
+  "processCleanup": {"rootPids": [1111, 2297], "remaining": []}
+}
