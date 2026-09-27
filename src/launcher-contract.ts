@@ -12,6 +12,10 @@ import type {
 
 export const LAUNCHER_FILE_SEARCH_QUERY_PREFIX = 'tockteam:file-search:'
 
+export function launcherFileSearchFilenameTerm(searchTerm: string): string {
+  return searchTerm.replace(/[^\p{L}\p{N}]/gu, '') || searchTerm
+}
+
 export const LAUNCHER_IPC_CHANNELS = Object.freeze({
   cancelAction: 'launcher:cancel-action',
   invokeAction: 'launcher:invoke-action',

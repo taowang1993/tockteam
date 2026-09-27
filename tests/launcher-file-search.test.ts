@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX } from '../src/launcher-contract.ts'
-import { createLauncherFileSearchExtensions, type LauncherFileSearchScanners } from '../src/launcher-file-search.ts'
+import { createLauncherFileSearchExtensions, launcherFileSearchQuery, type LauncherFileSearchScanners } from '../src/launcher-file-search.ts'
 import type { LauncherActionRecord, LauncherInternalResultItem } from '../src/launcher-actions.ts'
 
 function record(item: LauncherInternalResultItem, action = item.defaultAction): LauncherActionRecord {
@@ -19,6 +19,36 @@ function settings<T>(key: string, fallback: T): T {
   if (key === 'extension[SimpleFileSearch].folders') return [{ id: 'docs', path: '/home/max/docs', recursive: true, excludeHiddenFiles: true, searchFor: 'filesAndFolders' }] as T
   return fallback
 }
+
+test('calculator file lookup ignores math symbols while ordinary terms stay literal', () => {
+  assert.equal(launcherFileSearchQuery('5+10', true), `${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}510`)
+  assert.equal(launcherFileSearchQuery('2 × 3', true), `${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}23`)
+  assert.equal(launcherFileSearchQuery('5+10', false), '5+10')
+})
+
+test('calculator filename lookup reaches enabled native file search without changing the disabled state', async () => {
+  let enabled = true
+  let queries = 0
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => enabled ? ['FileSearch'] : [], getSetting: settings,
+    homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async ({ searchTerm }) => {
+        queries += 1
+        assert.equal(searchTerm, '510')
+        return [{ path: '/home/max/510.svg', type: 'file', identity: { dev: '1', ino: '2' } }]
+      },
+      scanSimpleFolder: async () => [], validatePath: async () => true,
+    },
+  })
+  try {
+    assert.deepEqual((await provider.searchInstant(launcherFileSearchQuery('5+10', true))).after.map(item => item.name), ['510.svg'])
+    enabled = false
+    assert.deepEqual((await provider.searchInstant(launcherFileSearchQuery('5+10', true))).after, [])
+    assert.equal(queries, 1)
+  } finally { await provider.close() }
+})
 
 test('file providers isolate Linux FileSearch while preserving Simple FileSearch and opaque actions', async () => {
   const effects = { openPath: (_target: string) => undefined, revealPath: (_target: string) => undefined }

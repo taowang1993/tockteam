@@ -128,7 +128,7 @@ import {
 import { resolveMacOSApplicationIconPath } from './launcher-application-icons.ts'
 import { createLauncherDiscoveryExtensions } from './launcher-discovery-extensions.ts'
 import { createLauncherDiscoveryScanners, launcherNodeSqliteAvailable } from './launcher-discovery-scanners.ts'
-import { createLauncherFileSearchExtensions } from './launcher-file-search.ts'
+import { createLauncherFileSearchExtensions, launcherFileSearchQuery } from './launcher-file-search.ts'
 import { createLauncherFileSearchScanners } from './launcher-file-search-scanners.ts'
 import { createLauncherNetworkExtensions } from './launcher-network-extensions.ts'
 import { createLauncherOsExtensions } from './launcher-os-extensions.ts'
@@ -180,7 +180,7 @@ import { createLauncherLocalExtensions, resolveLauncherEnabledExtensionIds } fro
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
-import { LAUNCHER_COMPOSITION, LAUNCHER_FILE_SEARCH_QUERY_PREFIX, LAUNCHER_HIDE_WINDOW_ON_DEFAULT, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
+import { LAUNCHER_COMPOSITION, LAUNCHER_HIDE_WINDOW_ON_DEFAULT, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
 import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
 import {
   executeTockTeamDestination,
@@ -2437,7 +2437,7 @@ function initializeLauncher(): void {
       const localResults = await local.searchInstant(searchTerm)
       const calculation = localResults.after.some(item => item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult')
       const [discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
-        discovery.searchInstant(searchTerm), fileSearch.searchInstant(calculation ? `${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}${searchTerm}` : searchTerm), network.searchInstant(searchTerm), terminal.searchInstant(searchTerm),
+        discovery.searchInstant(searchTerm), fileSearch.searchInstant(launcherFileSearchQuery(searchTerm, calculation)), network.searchInstant(searchTerm), terminal.searchInstant(searchTerm),
       ])
       return Object.freeze({
         after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after, ...networkResults.after, ...terminalResults.after]),

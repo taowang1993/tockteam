@@ -88,6 +88,18 @@ test('a calculator answer leads matching files but hides unrelated matches and c
   } finally { await core.close() }
 })
 
+test('calculation also matches indexed filenames without the math symbols', async () => {
+  const calculator = { ...item('calculator:instantResult', '15'), sourceExtension: 'Calculator' }
+  const file = { ...item('simple-file-search:510', '510.svg'), sourceExtension: 'SimpleFileSearch' }
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => [file],
+    searchInstant: async () => ({ before: [], after: [calculator] }),
+  })
+  try {
+    assert.deepEqual((await core.search('5+10', { ...options, maxSearchResultItems: 5 })).after.map(entry => entry.id), [calculator.id, file.id])
+  } finally { await core.close() }
+})
+
 test('calculator remains available when file search finds no matches', async () => {
   const calculator = { ...item('calculator:instantResult', '13'), sourceExtension: 'Calculator' }
   const core = createLauncherCoreSearch({

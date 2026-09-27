@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
-import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX, type LauncherLocale } from './launcher-contract.ts'
+import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX, launcherFileSearchFilenameTerm, type LauncherLocale } from './launcher-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
 import type {
   LauncherFileSearchEntry,
@@ -52,6 +52,11 @@ type FileSearchInstantResult = Readonly<{
   before: readonly LauncherInternalResultItem[]
   lastError?: string
 }>
+
+export function launcherFileSearchQuery(searchTerm: string, calculation: boolean): string {
+  if (!calculation) return searchTerm
+  return `${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}${launcherFileSearchFilenameTerm(searchTerm)}`
+}
 
 function fileSearchInvocation(name: string): LauncherInternalResultItem {
   return Object.freeze({

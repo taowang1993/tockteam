@@ -130,7 +130,7 @@ test('calculator uses the typed expression and main-owned answer in an accessibl
   assert.match(launcherSource, /renderGroup\('files', copy\.files, section\.items\.slice\(1\), start \+ 1\)/u)
   assert.match(launcherSource, /providerStatuses\.hidden = calculatorActive\(\) \|\|/u)
   assert.match(launcherSource, /const error = calculatorActive\(\) \? undefined : response\.status\.lastError/u)
-  assert.match(mainSource, /fileSearch\.searchInstant\(calculation \? `\$\{LAUNCHER_FILE_SEARCH_QUERY_PREFIX\}\$\{searchTerm\}` : searchTerm\)/u)
+  assert.match(mainSource, /fileSearch\.searchInstant\(launcherFileSearchQuery\(searchTerm, calculation\)\)/u)
 })
 
 test('root command UI uses one shared Raycast-like visual recipe', () => {

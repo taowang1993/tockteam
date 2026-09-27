@@ -1,5 +1,6 @@
 import Fuse from 'fuse.js'
 import fuzzysort from 'fuzzysort'
+import { launcherFileSearchFilenameTerm } from './launcher-contract.ts'
 import {
   LAUNCHER_MAX_RESULT_ITEMS,
   type LauncherActionRecord,
@@ -350,11 +351,15 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
 
     const calculation = instantAfter.find(item => item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult' && !excluded.has(item.id))
+    const filenameTerm = launcherFileSearchFilenameTerm(trimmedSearchTerm)
+    const indexedFiles = calculation !== undefined && filenameTerm !== trimmedSearchTerm
+      ? searchIndexedItems(available.filter(item => item.sourceExtension === 'SimpleFileSearch'), filenameTerm, searchOptions, ranking, favorites, now())
+      : []
     let beforeItems = calculation === undefined ? favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS) : []
     const seen = new Set(beforeItems.map(item => item.id))
     let afterItems: readonly LauncherInternalResultItem[] = (calculation === undefined
       ? [...instantBefore, ...ordinaryItems, ...instantAfter]
-      : [calculation, ...[...instantAfter, ...filtered].filter(item =>
+      : [calculation, ...[...instantAfter, ...filtered, ...indexedFiles].filter(item =>
         (item.sourceExtension === 'FileSearch' && item.id.startsWith('file-search-result:'))
         || (item.sourceExtension === 'SimpleFileSearch' && item.id.startsWith('simple-file-search:')))])
       .filter(({ id }) => {
