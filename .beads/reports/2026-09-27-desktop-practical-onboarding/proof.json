@@ -89,7 +89,7 @@
     "pnpm run typecheck",
     "pnpm run build",
     "node scripts/stage-dsh.mjs --quick",
-    "pnpm test (1502 passed, 17 skipped, 0 failed)"
+    "pnpm test (1503 passed, 17 skipped, 0 failed)"
   ],
   "fixture": "Only the isolated completion marker was reset between the fresh and configured runs to simulate a returning profile receiving this new onboarding. The synthetic credential store remained byte-for-byte identical."
 }

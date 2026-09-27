@@ -152,3 +152,38 @@ test('a refused model-key write keeps setup open and retains the draft for retry
     Object.assign(globalThis, { document: originalDocument })
   }
 })
+
+test('skipping workspace setup completes once without saving a model key', async () => {
+  const dom = new JSDOM('<!doctype html><body></body>')
+  const originalDocument = globalThis.document
+  Object.assign(globalThis, { document: dom.window.document })
+  dom.window.HTMLDialogElement.prototype.showModal = function () { this.open = true }
+  dom.window.HTMLDialogElement.prototype.close = function () { this.open = false }
+  let completed = 0
+  let keyWrites = 0
+  let dispose: (() => void) | undefined
+  try {
+    dispose = installDesktopOnboarding({
+      bridge: {
+        onboarding: { status: async () => false, complete: async () => { completed++ } },
+        chooseWorkspace: async () => [],
+      },
+      credentials: {
+        describe: async () => ({ ok: true as const, value: { OPENROUTER_API_KEY: { configured: false, writable: true } } }),
+        set: async () => { keyWrites++; return { ok: true as const, value: undefined } },
+      },
+      openPaths: async () => {},
+    })
+    await tick()
+    const dialog = dom.window.document.querySelector('dialog')!
+    button(dom.window.document, 'Skip Setup').click()
+    await tick()
+    assert.equal(completed, 1)
+    assert.equal(keyWrites, 0)
+    assert.equal(dialog.open, false)
+  } finally {
+    dispose?.()
+    dom.window.close()
+    Object.assign(globalThis, { document: originalDocument })
+  }
+})
