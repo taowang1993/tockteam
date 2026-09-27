@@ -1946,6 +1946,7 @@ function initializeLauncher(): void {
       ? await launcherNetworkFixtureFetch(url, init)
       : await net.fetch(url, init) as unknown as Response,
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    getLocale: () => launcherLocale,
     onProviderError: (extensionId, error) => {
       appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error.name}`)
     },

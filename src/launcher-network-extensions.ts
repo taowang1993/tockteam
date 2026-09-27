@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
 import { parseLauncherBrowserHttpUrl } from './launcher-custom-browser-contract.ts'
+import type { LauncherLocale } from './launcher-contract.ts'
+import { launcherFixedText } from './launcher-i18n.ts'
 import {
   LAUNCHER_DEEPL_QUERY_PREFIX,
   LAUNCHER_NETWORK_EXTENSION_DEFAULTS,
@@ -40,6 +42,7 @@ export type LauncherNetworkOptions = Readonly<{
   enabledExtensionIds: () => readonly string[]
   fetch: LauncherNetworkFetch
   getSetting: <T>(key: string, fallback: T) => T
+  getLocale?: () => LauncherLocale
   onProviderError?: (extensionId: LauncherNetworkExtensionId, error: Error) => void
   openExternal: (url: string, signal: AbortSignal) => Promise<void> | void
   requestTimeoutMs?: number
@@ -753,10 +756,11 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         const url = typedBrowserUrl(searchTerm)
         if (url !== undefined) {
           const value = url.toString()
+          const name = launcherFixedText('Open in Browser', options.getLocale?.())
           nextActions.set(actionKey('WebSearch', 'browser', value), Object.freeze({ extensionId: 'WebSearch', generation, kind: 'browser', query: searchTerm, settingsDigest: settingsDigest('WebSearch'), value }))
           before.push(Object.freeze({
-            defaultAction: action(HANDLERS.openBrowser, value, 'Open in Browser'),
-            description: url.host, id: 'web-search:open-in-browser', imageKey: 'web-search', name: 'Open in Browser', sourceExtension: 'WebSearch',
+            defaultAction: action(HANDLERS.openBrowser, value, name),
+            description: url.host, id: 'web-search:open-in-browser', imageKey: 'web-search', name, sourceExtension: 'WebSearch',
           }))
         } else if (setting(options, 'WebSearch', 'showInstantSearchResult', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.showInstantSearchResult) && searchTerm.trim()) {
           const web = currentWebSettings(options)

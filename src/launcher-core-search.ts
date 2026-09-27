@@ -14,6 +14,8 @@ import {
   type LauncherRankingEntry,
 } from './launcher-ranking.ts'
 
+const CONTEXTUAL_BROWSER_RESULT_ID = 'web-search:open-in-browser'
+
 export const LAUNCHER_CORE_ACTION_HANDLERS = Object.freeze({
   addFavorite: 'launcher-add-favorite',
   exclude: 'launcher-exclude-result',
@@ -267,6 +269,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   }
 
   const decorate = (item: LauncherInternalResultItem): LauncherInternalResultItem => {
+    if (item.sourceExtension === 'WebSearch' && item.id === CONTEXTUAL_BROWSER_RESULT_ID) return item
     const favoriteAction = favorites.has(item.id)
       ? coreAction(
         LAUNCHER_CORE_ACTION_HANDLERS.removeFavorite,
@@ -443,6 +446,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   }
 
   const recordUsage = async (itemId: string): Promise<void> => {
+    if (itemId === CONTEXTUAL_BROWSER_RESULT_ID) return
     const timestamp = now()
     ranking = recordLauncherUsage(ranking, itemId, timestamp)
     try {

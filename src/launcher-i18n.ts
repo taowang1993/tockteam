@@ -526,6 +526,7 @@ const FIXED_ZH: Readonly<Record<string, string>> = Object.freeze({
   'Open File': '打开文件',
   'Open Terminal': '打开终端',
   'Open URL': '打开 URL',
+  'Open in Browser': '在浏览器中打开',
   'Save Workflow': '保存工作流',
   'Search term': '搜索词',
   'Settings Files': '设置文件',

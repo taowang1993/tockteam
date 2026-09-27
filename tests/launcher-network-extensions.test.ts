@@ -141,10 +141,11 @@ test('a complete typed HTTP(S) address opens in the selected browser without web
   const opened: string[] = []
   let fetches = 0
   let resolutions = 0
+  let instantSearchEnabled = false
   const provider = createLauncherNetworkExtensions({
     copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
     fetch: async () => { fetches += 1; throw new Error('Direct browser navigation must not fetch') },
-    getSetting: <T>(key: string, fallback: T): T => key === 'extension[WebSearch].showInstantSearchResult' ? false as T : fallback,
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[WebSearch].showInstantSearchResult' ? instantSearchEnabled as T : fallback,
     openExternal: url => { opened.push(url) },
     resolveAddresses: async () => { resolutions += 1; throw new Error('Direct browser navigation must not resolve') },
   })
@@ -154,7 +155,7 @@ test('a complete typed HTTP(S) address opens in the selected browser without web
     for (const [query, expected, host] of [
       ['https://example.com/path?x=1#note', 'https://example.com/path?x=1#note', 'example.com'],
       ['http://127.0.0.1:4321/dev', 'http://127.0.0.1:4321/dev', '127.0.0.1:4321'],
-    ]) {
+    ] as const) {
       const result = await provider.searchInstant(query)
       assert.deepEqual(result.before.map(item => item.name), ['Open in Browser'])
       assert.deepEqual(result.after, [])
@@ -164,10 +165,27 @@ test('a complete typed HTTP(S) address opens in the selected browser without web
       assert.equal('argument' in published.items[0]!.defaultAction, false)
       await actions.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
       assert.equal(opened.at(-1), expected)
+      instantSearchEnabled = true
     }
     assert.equal(fetches, 0)
     assert.equal(resolutions, 0)
   } finally { actions.clear(); await provider.close() }
+})
+
+test('direct browser result uses the current launcher language without changing its destination', async () => {
+  const opened: string[] = []
+  const provider = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'], fetch: async () => { throw new Error('Unexpected fetch') },
+    getLocale: () => 'zh-CN', getSetting: settings, openExternal: url => { opened.push(url) }, resolveAddresses: publicResolver,
+  })
+  try {
+    const item = (await provider.searchInstant('https://example.com/')).before[0]
+    assert.equal(item?.name, '在浏览器中打开')
+    assert.equal(item?.defaultAction.description, '在浏览器中打开')
+    assert.ok(item)
+    await provider.executeAction(record(item))
+    assert.deepEqual(opened, ['https://example.com/'])
+  } finally { await provider.close() }
 })
 
 test('direct browser result rejects partial, credentialed, and non-HTTP(S) input and respects Web Search enablement', async () => {

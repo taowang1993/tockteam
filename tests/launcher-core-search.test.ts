@@ -111,6 +111,23 @@ test('typed search does not repeat an indexed File Search action as an instant s
   }
 })
 
+test('a one-off browser address cannot be pinned, hidden, or saved in usage history', async () => {
+  const persisted: string[] = []
+  const browser = { ...item('web-search:open-in-browser', 'Open in Browser'), sourceExtension: 'WebSearch' }
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => [],
+    searchInstant: async () => ({ before: [browser], after: [] }),
+    persistUsage: async id => { persisted.push(id) },
+  })
+  try {
+    const result = await core.search('https://example.com/', options)
+    assert.deepEqual(result.after.map(entry => entry.name), ['Open in Browser'])
+    assert.deepEqual(result.after[0]?.additionalActions, undefined)
+    await core.recordUsage(browser.id)
+    assert.deepEqual(persisted, [])
+  } finally { await core.close() }
+})
+
 test('core exclusions suppress instant results in both provider positions', async () => {
   const core = createLauncherCoreSearch({
     initialExcludedItemIds: ['hidden-before', 'hidden-after'],
