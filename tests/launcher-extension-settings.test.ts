@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { LAUNCHER_COMPOSITION } from '../src/launcher-contract.ts'
 import { TRUSTED_RAYCAST_EXTENSION_IDS } from '../src/trusted-raycast-descriptors.ts'
 import { LAUNCHER_SETTINGS_CATALOG } from '../src/launcher-setting-catalog.ts'
-import { launcherExtensionPages, isLauncherExtensionId, launcherExtensionSupported, findLauncherExtensionPages, launcherExtensionSettingOwner, launcherSettingsPlatform } from '../src/launcher-extension-settings.ts'
+import { launcherExtensionPages, isLauncherExtensionId, launcherExtensionSupported, launcherProviderAlerts, findLauncherExtensionPages, launcherExtensionSettingOwner, launcherSettingsPlatform } from '../src/launcher-extension-settings.ts'
 
 test('every admitted extension has one settings destination, including no-options providers', () => {
   assert.deepEqual(launcherExtensionPages.map(page => page.id).sort(), [...LAUNCHER_COMPOSITION.extensionIds, ...TRUSTED_RAYCAST_EXTENSION_IDS].sort())
@@ -42,6 +42,18 @@ test('sidebar shows only installed extensions and platform-supported built-in to
     assert.equal(pages.some(page => page.id === 'WindowsControlPanel'), platform === 'Windows')
   }
   assert.equal(launcherExtensionPages.length, 27, 'hidden destinations and their saved settings remain registered')
+})
+
+test('launcher warnings ignore other-platform tools but keep real local failures', () => {
+  const statuses = [
+    { extensionId: 'WindowsControlPanel', state: 'unsupported' },
+    { extensionId: 'FileSearch', state: 'unavailable' },
+    { extensionId: 'Calculator', state: 'ready' },
+    { extensionId: 'UeliCommand', state: 'disabled' },
+  ] as const
+  assert.deepEqual(launcherProviderAlerts(statuses, 'macOS').map(status => status.extensionId), ['FileSearch'])
+  assert.deepEqual(launcherProviderAlerts([{ extensionId: 'WindowsControlPanel', state: 'unavailable' }], 'Windows').map(status => status.extensionId), ['WindowsControlPanel'])
+  assert.deepEqual(launcherProviderAlerts([{ extensionId: 'WindowsControlPanel', state: 'ready' }], 'Windows'), [])
 })
 
 test('inert settings choices match the admitted artifact and pinned data bytes', () => {

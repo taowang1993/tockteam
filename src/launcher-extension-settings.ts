@@ -1,4 +1,4 @@
-import { LAUNCHER_COMPOSITION } from './launcher-contract.ts'
+import { LAUNCHER_COMPOSITION, type LauncherProviderStatus, type LauncherSurfacePlatform } from './launcher-contract.ts'
 import { LAUNCHER_SETTINGS_CATALOG } from './launcher-setting-catalog.ts'
 import { TRUSTED_RAYCAST_EXTENSION_IDS, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 
@@ -68,4 +68,10 @@ export function launcherExtensionSupported(id: string, platform: 'Linux' | 'macO
   if ((TRUSTED_RAYCAST_EXTENSION_IDS as readonly string[]).includes(id)) return platform === 'macOS'
   if (id === 'WindowsControlPanel') return platform === 'Windows'
   return platform !== 'Linux' || !['AppearanceSwitcher', 'BrowserBookmarks', 'FileSearch', 'SystemSettings', 'TerminalLauncher'].includes(id)
+}
+
+/** Other-platform tools are not failures of the current launcher. */
+export function launcherProviderAlerts(statuses: readonly LauncherProviderStatus[], platform: LauncherSurfacePlatform): readonly LauncherProviderStatus[] {
+  return statuses.filter(status => launcherExtensionSupported(status.extensionId, platform)
+    && status.state !== 'ready' && status.state !== 'disabled')
 }

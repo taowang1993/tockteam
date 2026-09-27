@@ -170,8 +170,9 @@ test('launcher menus expose normalized shortcuts and focusable empty history', (
   assert.match(launcherSource, /historyOpen = false[\s\S]{0,160}historyPanel\.hidden = true/u)
 })
 
-test('disabled providers do not crowd a visible provider failure', () => {
-  assert.match(launcherSource, /filter\(provider => provider\.state !== 'ready' && provider\.state !== 'disabled'\)/u)
+test('status row shows only relevant failures and collapses when empty', () => {
+  assert.match(launcherSource, /launcherProviderAlerts\(surfaceSettings\.providerStatuses, surfacePlatform\)/u)
+  assert.match(launcherSource, /providerStatuses\.hidden = calculatorActive\(\) \|\| providerStatuses\.textContent\.length === 0/u)
 })
 
 test('document pointer dismissal preserves tool menu pointer activation', () => {

@@ -1,4 +1,4 @@
-import { isLauncherExtensionId } from './launcher-extension-settings.ts'
+import { isLauncherExtensionId, launcherProviderAlerts } from './launcher-extension-settings.ts'
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
 import { createTrustedRaycastFirstUseView, createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
 import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
@@ -310,7 +310,10 @@ async function bootstrap(): Promise<void> {
   const calculatorActive = (): boolean => currentItems[0]?.sourceExtension === 'Calculator'
     && currentItems[0]?.id === 'calculator:instantResult'
   const syncProviderStatuses = (): void => {
-    providerStatuses.hidden = calculatorActive() || surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
+    providerStatuses.textContent = launcherProviderAlerts(surfaceSettings.providerStatuses, surfacePlatform)
+      .map(provider => `${provider.extensionId}: ${messages().providerState(provider.state)}`)
+      .join(' · ')
+    providerStatuses.hidden = calculatorActive() || providerStatuses.textContent.length === 0
   }
   const syncScrollBehavior = (): void => {
     // The media rule owns CSS scrolling; programmatic scrolling uses the effective behavior below.
@@ -341,10 +344,6 @@ async function bootstrap(): Promise<void> {
       else button.append(document.createTextNode(label))
     }
     setButtonLabel(historyToggle, copy.history)
-    providerStatuses.textContent = surfaceSettings.providerStatuses
-      .filter(provider => provider.state !== 'ready' && provider.state !== 'disabled')
-      .map(provider => `${provider.extensionId}: ${messages().providerState(provider.state)}`)
-      .join(' · ')
     syncProviderStatuses()
   }
   applySurfaceSettings()
