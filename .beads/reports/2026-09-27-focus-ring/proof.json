@@ -1,0 +1,25 @@
+{
+  "surface": "TockTutor Configure View / View Name",
+  "route": "/tocktutor/Untitled.base",
+  "viewportCss": [1512, 949],
+  "deviceScaleFactor": 2,
+  "screenshotPixels": [3024, 1898],
+  "screenshots": {"builtInDark": "focus-dark.png", "builtInLight": "focus-light.png"},
+  "focus": {"selector": "textbox[aria-label='View Name']", "focusVisible": true, "shadowWidthCssPx": 2, "darkRing": "color-mix(in srgb, #f9fafb 78%, #151517)", "lightRing": "color-mix(in srgb, #0f1115 78%, #fff)"},
+  "appearance": [
+    {"mode": "dark", "skin": null, "errors": []},
+    {"mode": "light", "skin": null, "errors": []},
+    {"mode": "dark", "skin": "tockteam-skin-deep-current", "errors": []},
+    {"mode": "dark", "skin": "tockteam-skin-jade-circuit", "errors": []},
+    {"mode": "light", "skin": "tockteam-skin-porcelain", "errors": []},
+    {"mode": "dark", "skin": "tockteam-skin-ember-dusk", "errors": []}
+  ],
+  "skinContrastRatioAgainstCanvasBeforeAfter": {
+    "Deep Current": [9.16, 6.06],
+    "Jade Circuit": [9.83, 6.45],
+    "Porcelain": [4.86, 3.24],
+    "Ember Dusk": [8.02, 5.37]
+  },
+  "verification": {"sharedUiAndTailwindTests": "12 passed", "baseUiTests": "20 passed", "nestedTypecheck": "passed", "rootTypecheck": "passed", "rootTests": "1486 passed, 17 skipped, 0 failed", "nestedBuildAndManifest": "passed", "rootBuildAndQuickStage": "passed"},
+  "cleanup": {"rootPids": [58594, 59391, 60216, 60937, 61644, 62358], "remaining": []}
+}

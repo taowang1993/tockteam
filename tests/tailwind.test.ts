@@ -92,10 +92,10 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
 
 test('shared browser controls use a quieter two-pixel keyboard focus ring', async () => {
   const css = await buildTailwindCss()
-  assert.match(css, /\.focus-visible\\:ring-ring:focus-visible\{--tw-ring-color:color-mix\(in srgb, var\(--dsw-alias-brand-primary\) 70%, var\(--dsw-alias-bg-base\)\)\}/u)
+  assert.match(css, /\.focus-visible\\:ring-ring:focus-visible\{--tw-ring-color:color-mix\(in srgb, var\(--dsw-alias-brand-primary\) 78%, var\(--dsw-alias-bg-base\)\)\}/u)
   assert.match(css, /\.focus-visible\\:ring-2:focus-visible\{[^}]*calc\(2px \+ var\(--tw-ring-offset-width\)\)/u)
   const theme = readFileSync(join(root, 'plugins/skins/src/client/tailwind.css'), 'utf8')
-  assert.match(theme, /--color-ring: color-mix\(in srgb, var\(--dsw-alias-brand-primary\) 70%, var\(--dsw-alias-bg-base\)\)/u)
+  assert.match(theme, /--color-ring: color-mix\(in srgb, var\(--dsw-alias-brand-primary\) 78%, var\(--dsw-alias-bg-base\)\)/u)
   for (const name of ['accordion', 'badge', 'button', 'checkbox', 'input', 'native-select', 'slider', 'switch', 'textarea', 'toggle']) {
     const source = readFileSync(join(root, `plugins/ui/src/${name}.tsx`), 'utf8')
     assert.doesNotMatch(source, /focus-visible:ring-3/u, `${name} keeps a visible but not oversized focus ring`)
