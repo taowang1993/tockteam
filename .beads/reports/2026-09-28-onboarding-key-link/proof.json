@@ -1,0 +1,96 @@
+{
+  "product": "TockTeam Desktop",
+  "date": "2026-09-28",
+  "profile": "isolated test profile with a synthetic model key; no user profile or credentials accessed",
+  "runtime": "Electron 42 on the extended display, mock Keychain, HOME unchanged; pinned DSH 0.1.2-rc.1",
+  "screenshots": [
+    {
+      "file": "model-missing.png",
+      "heading": "Add a Model",
+      "route": "http://127.0.0.1:51693/tockcoder",
+      "cssViewport": [
+        1512,
+        949
+      ],
+      "deviceScaleFactor": 2,
+      "pngPixels": [
+        3024,
+        1898
+      ],
+      "colorScheme": "dark",
+      "skinId": null,
+      "modalBackground": "rgb(21, 21, 23)",
+      "themeBase": "rgb(21, 21, 23)",
+      "backdrop": "rgba(0, 0, 0, 0.85)",
+      "keyFieldVisible": true,
+      "savedKeyMessageVisible": false,
+      "link": {
+        "url": "https://openrouter.ai/settings/keys",
+        "text": "https://openrouter.ai/settings/keys",
+        "target": "_blank",
+        "rel": "noopener noreferrer",
+        "visible": true,
+        "color": "rgb(249, 250, 251)",
+        "background": "rgb(30, 30, 30)",
+        "contrast": 15.95
+      }
+    },
+    {
+      "file": "model-configured.png",
+      "heading": "Add a Model",
+      "route": "http://127.0.0.1:51725/tockcoder",
+      "cssViewport": [
+        1512,
+        949
+      ],
+      "deviceScaleFactor": 2,
+      "pngPixels": [
+        3024,
+        1898
+      ],
+      "colorScheme": "dark",
+      "skinId": null,
+      "modalBackground": "rgb(21, 21, 23)",
+      "themeBase": "rgb(21, 21, 23)",
+      "backdrop": "rgba(0, 0, 0, 0.85)",
+      "keyFieldVisible": false,
+      "savedKeyMessageVisible": true,
+      "link": null
+    }
+  ],
+  "checks": {
+    "officialKeyPage": "https://openrouter.ai/settings/keys (HTTP 200 after official redirect)",
+    "linkKeyboardFocusable": true,
+    "targetAndNoopenerVerified": true,
+    "externalBrowserNotLaunchedDuringVerification": true,
+    "syntheticSavedKeyByteForByteUnchangedOnReturningLaunch": true,
+    "privateCompletionMarkerPersisted": true,
+    "rendererErrors": [],
+    "namedSkinLinkContrastFromSemanticTokens": { "Deep Current": 15.00, "Jade Circuit": 15.22, "Porcelain": 13.28, "Ember Dusk": 14.72 },
+    "stoppedProcessTrees": [
+      {
+        "phase": "discarded intermediate capture",
+        "rootPid": 46249,
+        "remaining": []
+      },
+      {
+        "phase": "final missing-key capture",
+        "rootPid": 50103,
+        "remaining": []
+      },
+      {
+        "phase": "final configured-key capture",
+        "rootPid": 50797,
+        "remaining": []
+      }
+    ],
+    "commands": [
+      "node --test tests/desktop-onboarding-client.test.ts",
+      "pnpm run typecheck",
+      "pnpm run build",
+      "node scripts/stage-dsh.mjs --quick",
+      "pnpm test (1504 passed, 17 skipped, 0 failed)"
+    ]
+  },
+  "fixture": "The isolated completion marker alone was removed between captures to simulate a returning profile; the synthetic credential store was never rewritten."
+}
