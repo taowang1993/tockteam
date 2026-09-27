@@ -62,26 +62,40 @@ test('core search matches both engines, instant ordering, empty ordering, limits
   }
 })
 
-test('a calculator answer replaces unrelated matches while ordinary queries keep their results and diagnostics', async () => {
+test('a calculator answer leads matching files but hides unrelated matches and commands', async () => {
   const calculator = { ...item('calculator:instantResult', '13'), sourceExtension: 'Calculator' }
-  const fileSearch = { ...item('file-search:open', 'Search Files'), sourceExtension: 'FileSearch' }
-  const pinned = item('math-note', '5+8 notes')
+  const file = { ...item('file-search-result:report', '5+8-report.md'), sourceExtension: 'FileSearch' }
+  const fileSearch = { ...item('file-search:invoke', 'Search Files'), sourceExtension: 'FileSearch' }
+  const pinned = { ...item('simple-file-search:notes', '5+8 notes'), sourceExtension: 'SimpleFileSearch' }
+  const unrelated = { ...item('bookmark:math', '5+8 Bookmark'), sourceExtension: 'BrowserBookmarks' }
   const core = createLauncherCoreSearch({
     initialFavoriteItemIds: [pinned.id],
-    loadIndexedItems: async () => [pinned],
-    searchInstant: async term => ({ before: [fileSearch], after: term === '5+8' ? [calculator] : [], lastError: 'File Search unavailable' }),
+    loadIndexedItems: async () => [pinned, unrelated],
+    searchInstant: async term => ({ before: [fileSearch], after: term === '5+8' ? [calculator, file] : [], lastError: 'File Search unavailable' }),
   })
   try {
-    const result = await core.search('5+8', options)
+    const result = await core.search('5+8', { ...options, maxSearchResultItems: 5 })
     assert.deepEqual(result.before.map(entry => entry.id), [])
-    assert.deepEqual(result.after.map(entry => entry.id), ['calculator:instantResult'])
+    assert.deepEqual(result.after.map(entry => entry.id), ['calculator:instantResult', 'file-search-result:report', 'simple-file-search:notes'])
     assert.deepEqual(result.sections.map(section => section.id), ['results'])
-    assert.deepEqual(result.sections[0]?.items.map(entry => entry.id), ['calculator:instantResult'])
+    assert.deepEqual(result.sections[0]?.items.map(entry => entry.id), result.after.map(entry => entry.id))
     assert.equal(result.status.lastError, 'File Search unavailable')
+    assert.deepEqual((await core.search('5+8', options)).after.map(entry => entry.id), ['calculator:instantResult'])
     const ordinary = await core.search('notes', options)
-    assert.deepEqual(ordinary.before.map(entry => entry.id), ['math-note'])
-    assert.deepEqual(ordinary.after.map(entry => entry.id), ['file-search:open'])
+    assert.deepEqual(ordinary.before.map(entry => entry.id), [pinned.id])
+    assert.deepEqual(ordinary.after.map(entry => entry.id), [fileSearch.id])
     assert.equal(ordinary.status.lastError, 'File Search unavailable')
+  } finally { await core.close() }
+})
+
+test('calculator remains available when file search finds no matches', async () => {
+  const calculator = { ...item('calculator:instantResult', '13'), sourceExtension: 'Calculator' }
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => [],
+    searchInstant: async () => ({ before: [], after: [calculator] }),
+  })
+  try {
+    assert.deepEqual((await core.search('5+8', options)).sections[0]?.items.map(entry => entry.id), [calculator.id])
   } finally { await core.close() }
 })
 

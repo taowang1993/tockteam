@@ -65,6 +65,7 @@ type LauncherMessages = Readonly<{
   calculator: string
   copyAnswer: string
   equals: string
+  files: string
   fileSearchUnavailable: string
   indexed: (count: number) => string
   invokeFailed: (action: string) => string
@@ -97,6 +98,7 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     calculator: 'Calculator',
     copyAnswer: 'Copy Answer',
     equals: 'equals',
+    files: 'Files',
     fileSearchUnavailable: 'Local extension settings are unavailable.',
     history: 'History',
     indexed: (count: number) => `${count} indexed destinations`,
@@ -127,6 +129,7 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     calculator: '计算器',
     copyAnswer: '复制答案',
     equals: '等于',
+    files: '文件',
     fileSearchUnavailable: '本地扩展设置不可用。',
     history: '历史',
     indexed: (count: number) => `${count} 个已索引目标`,
@@ -304,11 +307,10 @@ async function bootstrap(): Promise<void> {
   let history: string[] = surfaceSettings.historyEnabled ? [...surfaceSettings.history] : []
   const surfacePlatform: LauncherSurfacePlatform = isMac ? 'macOS' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'Linux'
   const messages = (): typeof LAUNCHER_MESSAGES.en => surfaceSettings.locale === 'zh-CN' ? LAUNCHER_MESSAGES.zh : LAUNCHER_MESSAGES.en
-  const calculatorOnly = (): boolean => currentItems.length === 1
-    && currentItems[0]?.sourceExtension === 'Calculator'
+  const calculatorActive = (): boolean => currentItems[0]?.sourceExtension === 'Calculator'
     && currentItems[0]?.id === 'calculator:instantResult'
   const syncProviderStatuses = (): void => {
-    providerStatuses.hidden = calculatorOnly() || surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
+    providerStatuses.hidden = calculatorActive() || surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
   }
   const syncScrollBehavior = (): void => {
     // The media rule owns CSS scrolling; programmatic scrolling uses the effective behavior below.
@@ -999,7 +1001,7 @@ async function bootstrap(): Promise<void> {
               : copy.results
       if (section.id === 'results' && section.items[0]?.sourceExtension === 'Calculator' && section.items[0]?.id === 'calculator:instantResult') {
         renderGroup('calculator', copy.calculator, section.items.slice(0, 1), start)
-        renderGroup('results', name, section.items.slice(1), start + 1)
+        renderGroup('files', copy.files, section.items.slice(1), start + 1)
       } else renderGroup(section.id, name, section.items, start)
       start += section.items.length
     }
@@ -1026,7 +1028,7 @@ async function bootstrap(): Promise<void> {
       displayedTerm = term
       search.setAttribute('aria-expanded', String(currentItems.length > 0))
       renderResults()
-      const error = calculatorOnly() ? undefined : response.status.lastError
+      const error = calculatorActive() ? undefined : response.status.lastError
       setStatus(error ?? (currentItems.length === 0
         ? messages().noResults
         : messages().indexed(response.status.indexedItemCount)), error ? 'error' : 'ready')

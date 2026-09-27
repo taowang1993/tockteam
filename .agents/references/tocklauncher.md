@@ -109,7 +109,7 @@ TockTeam Electron Main
 3. `LauncherLifecycleController.sync()` applies lifecycle settings. The global shortcut is `Option+Space` on macOS and `Alt+Space` on Windows/Linux.
 4. The workbench is created first. The overlay is created lazily from the shortcut or workbench title-bar button and then reused.
 5. Composition is bundled into the renderer as a constant. The renderer reads sanitized surface settings and sends a bounded query/options payload over typed IPC; main uses its own persisted search settings, not renderer-selected engine authority.
-6. Main combines indexed results, instant results, and the two TockTeam destinations. Empty queries publish bounded `Pinned`, `Recent`, `Commands`, and `Applications` sections. Typed queries retain the ordinary `Results` ordering except a successful calculation publishes only its answer; the renderer shows it in a `Calculator` section and selects it by default so Enter copies the answer. Unrelated provider diagnostics are hidden while that answer is shown, but remain available for ordinary searches and in Settings. The search and publication layers are latest-request-wins.
+6. Main combines indexed results, instant results, and the two TockTeam destinations. Empty queries publish bounded `Pinned`, `Recent`, `Commands`, and `Applications` sections. Typed queries retain the ordinary `Results` ordering except a successful calculation publishes the selected answer followed by matching files under `Calculator` and `Files`; Enter copies the answer. The existing bounded File Search provider supplies live matches when enabled, while configured Simple File Search roots contribute indexed matches. Unrelated provider diagnostics stay hidden for calculations but remain available for ordinary searches and in Settings. The search and publication layers are latest-request-wins.
 7. `LauncherActionStore` publishes a new result-set ID and opaque action IDs for the current launcher `webContents` owner.
 8. Invocation validates and consumes one action ID before dispatching the finite provider effect. Only successful default completions update the main-owned usage ranking; Electron main alone applies `hideWindowAfterInvocation`.
 9. Provider invalidation, window clearing, navigation, settings changes, and teardown revoke stale actions and abort owned work.
@@ -129,7 +129,7 @@ TockTeam Electron Main
 
 The renderer provides:
 
-- one semantic search combobox and grouped `Pinned`, `Recent`, `Commands`, and `Applications` options for an empty query, with typed `Results` except when only a calculator answer is shown;
+- one semantic search combobox and grouped `Pinned`, `Recent`, `Commands`, and `Applications` options for an empty query, with typed `Results` except when a calculation shows `Calculator` and optional `Files` groups;
 - Enter, arrows, Home/End, Ctrl/Cmd+number, Ctrl/Cmd+K, Ctrl/Cmd+F, Ctrl/Cmd+Delete, history, and layered Escape behavior;
 - keyboard-navigable additional-action, file-search, and network-tool menus; a root capture guard preserves IME composition defaults before any nested keyboard handler;
 - reopening after hiding disposes the revoked trusted-command view and returns to fresh root results rather than resuming a dead child;

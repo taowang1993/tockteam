@@ -180,7 +180,7 @@ import { createLauncherLocalExtensions, resolveLauncherEnabledExtensionIds } fro
 import { LAUNCHER_LOCAL_EXTENSION_DEFAULTS, LAUNCHER_LOCAL_EXTENSION_IDS } from './launcher-local-extension-config.ts'
 import type { LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
-import { LAUNCHER_COMPOSITION, LAUNCHER_HIDE_WINDOW_ON_DEFAULT, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
+import { LAUNCHER_COMPOSITION, LAUNCHER_FILE_SEARCH_QUERY_PREFIX, LAUNCHER_HIDE_WINDOW_ON_DEFAULT, normalizeLauncherLocale, type LauncherLocale, type LauncherProviderStatus } from './launcher-contract.ts'
 import { registerLauncherIpcHandlers } from './launcher-ipc.ts'
 import {
   executeTockTeamDestination,
@@ -2434,8 +2434,10 @@ function initializeLauncher(): void {
       return [...result.before, ...result.after, ...trustedRaycastCatalog(trustedRaycastChannel.active, trustedRaycastTrust?.status() ?? { digest: '', digestApproved: false, enabled: false, installed: false }, trustedRaycastKaomojiTrust?.status(), trustedRaycastCanIUseTrust?.status(), trustedRaycastCatalogAvailability()), ...await local.loadIndexedItems(), ...await discovery.loadIndexedItems(signal, preserveSignal), ...await fileSearch.loadIndexedItems(signal, preserveSignal), ...await network.loadIndexedItems(signal, preserveSignal), ...await os.loadIndexedItems(signal, preserveSignal), ...await terminal.loadIndexedItems(signal, preserveSignal), ...await workflow.loadIndexedItems(signal, preserveSignal)]
     },
     searchInstant: async searchTerm => {
-      const [localResults, discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
-        local.searchInstant(searchTerm), discovery.searchInstant(searchTerm), fileSearch.searchInstant(searchTerm), network.searchInstant(searchTerm), terminal.searchInstant(searchTerm),
+      const localResults = await local.searchInstant(searchTerm)
+      const calculation = localResults.after.some(item => item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult')
+      const [discoveryResults, fileResults, networkResults, terminalResults] = await Promise.all([
+        discovery.searchInstant(searchTerm), fileSearch.searchInstant(calculation ? `${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}${searchTerm}` : searchTerm), network.searchInstant(searchTerm), terminal.searchInstant(searchTerm),
       ])
       return Object.freeze({
         after: Object.freeze([...localResults.after, ...discoveryResults.after, ...fileResults.after, ...networkResults.after, ...terminalResults.after]),

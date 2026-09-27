@@ -15,6 +15,7 @@ import {
 import { launcherSettingDisposition } from '../src/launcher-settings-model.ts'
 
 const launcherSource = readFileSync(new URL('../src/launcher.ts', import.meta.url), 'utf8')
+const mainSource = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const launcherHtml = readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf8')
 const launcherStyles = readFileSync(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
 
@@ -125,8 +126,11 @@ test('calculator uses the typed expression and main-owned answer in an accessibl
   assert.match(launcherSource, /answer\.textContent = item\.name/u)
   assert.match(launcherSource, /item\.sourceExtension === 'Calculator'[^\n]*item\.id === 'calculator:instantResult'/u)
   assert.match(launcherSource, /item\.sourceExtension === 'Calculator' \? messages\(\)\.copyAnswer : messages\(\)\.openCommand/u)
-  assert.match(launcherSource, /providerStatuses\.hidden = calculatorOnly\(\) \|\|/u)
-  assert.match(launcherSource, /const error = calculatorOnly\(\) \? undefined : response\.status\.lastError/u)
+  assert.match(launcherSource, /files: 'Files'/u)
+  assert.match(launcherSource, /renderGroup\('files', copy\.files, section\.items\.slice\(1\), start \+ 1\)/u)
+  assert.match(launcherSource, /providerStatuses\.hidden = calculatorActive\(\) \|\|/u)
+  assert.match(launcherSource, /const error = calculatorActive\(\) \? undefined : response\.status\.lastError/u)
+  assert.match(mainSource, /fileSearch\.searchInstant\(calculation \? `\$\{LAUNCHER_FILE_SEARCH_QUERY_PREFIX\}\$\{searchTerm\}` : searchTerm\)/u)
 })
 
 test('root command UI uses one shared Raycast-like visual recipe', () => {
