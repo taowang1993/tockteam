@@ -10,6 +10,7 @@ test('Desktop-only credential reveal passes the trusted main frame and validates
   const handler = main.match(/ipcMain\.handle\('desktop:models:reveal-saved-key'[\s\S]*?\n  \}\)/u)?.[0]
   assert.ok(handler, 'main registers the Desktop-only handler')
   assert.match(handler, /assertTrustedMainIpc\(event\)/u)
+  assert.match(handler, /pathname !== '\/settings'/u, 'reveal only from Models Settings')
   assert.match(handler, /assertNoLauncherIpcArguments\(extra\)/u)
   assert.match(handler, /readSavedDesktopModelKey\(desktopInfo\(\)\.dshHome, raw, parseCredentialsDocument\)/u)
   assert.match(main, /dsh-credentials-local.*lib.*index\.js/u, 'uses the pinned DSH document parser')

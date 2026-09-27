@@ -74,6 +74,7 @@ test('saved key stays masked until explicitly revealed in Desktop; Web keeps the
       ['window.dshDesktop?.revealSavedModelKey', 'Desktop-only reveal capability'],
       ['setSavedKey(stored)', 'saved key becomes visible only after explicit reveal'],
       ['readOnly: savedKey !== void 0', 'revealed key cannot be edited or resaved accidentally'],
+      ['spellCheck: false', 'a revealed key is never spellchecked'],
       ['setSavedKey(void 0)', 'eye hides the saved value again'],
       ['if (keyDraft.length > 0) { setShowKeyDraft((shown) => !shown); return; }', 'typed replacement still toggles'],
       ['if (event.target.value.length === 0) setShowKeyDraft(false);', 'clearing the draft hides it again'],

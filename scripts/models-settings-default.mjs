@@ -8,7 +8,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const NAME = '@deepseek-ai/dsh-client-ui-settings-models'
 const VERSION = '0.1.2-rc.1'
 const ORIGINAL_SHA256 = '7acf9736edeea519c63791e946a135f5cc854c95c299fd9864e82074fce587e5'
-const PREVIOUS_STAGED_SHA256 = 'eea643a18add1c5f913e495aaaf1c2ade09dabc9b31a019bb96bbaa2b2d9955e'
+const PREVIOUS_STAGED_SHA256 = new Set([
+  'eea643a18add1c5f913e495aaaf1c2ade09dabc9b31a019bb96bbaa2b2d9955e',
+  'c726e22891b8589ec2ba8597069a0c0945b40405f00d462f66550673f7185fb8',
+])
 const DEEPSEEK_ROUTE = 'candidate.entry.provider === "deepseek-official" && candidate.entry.settingsNs === "llm-deepseek" && candidate.entry.settingsPath.length === 0'
 const OPENROUTER_ROUTE = 'candidate.entry.provider === "openrouter" && candidate.entry.settingsNs === "llm-pi-ai" && candidate.entry.settingsPath.join("/") === "providers/openrouter"'
 const CHANGES = [
@@ -80,6 +83,8 @@ const CHANGES = [
 								className: ModelsSection_module_css_default["input"],
 								type: savedKey !== void 0 || showKeyDraft ? "text" : "password",
 								autoComplete: "off",
+								autoCapitalize: "none",
+								spellCheck: false,
 								value: savedKey ?? keyDraft,
 								readOnly: savedKey !== void 0,
 								placeholder: keyPlaceholder,
@@ -167,7 +172,7 @@ function pristineClientForPreviousStage() {
 function adapt(source) {
   // Quick staging may retain the exact previous TockTeam adaptation. Rebuild it
   // from the hash-verified installed original rather than guessing how to undo it.
-  if (createHash('sha256').update(source).digest('hex') === PREVIOUS_STAGED_SHA256) source = pristineClientForPreviousStage()
+  if (PREVIOUS_STAGED_SHA256.has(createHash('sha256').update(source).digest('hex'))) source = pristineClientForPreviousStage()
   let normalized = source
   for (const [before, after, expected] of CHANGES) {
     const original = count(normalized, before)

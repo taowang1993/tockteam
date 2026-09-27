@@ -4057,6 +4057,9 @@ function installIpc(): void {
   })
   ipcMain.handle('desktop:models:reveal-saved-key', async (event, raw: unknown, ...extra: unknown[]) => {
     assertTrustedMainIpc(event)
+    if (event.senderFrame === null || new URL(event.senderFrame.url).pathname !== '/settings') {
+      throw new Error('Models key reveal requires Settings')
+    }
     assertNoLauncherIpcArguments(extra)
     const modulePath = join(runtimePaths().runtimeRoot, 'node_modules', '@deepseek-ai', 'dsh-credentials-local', 'lib', 'index.js')
     const { parseCredentialsDocument } = await import(pathToFileURL(modulePath).href) as {
