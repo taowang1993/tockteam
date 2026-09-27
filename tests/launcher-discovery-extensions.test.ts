@@ -114,7 +114,7 @@ test('VS Code retains all local recents while bounding identity concurrency', as
   } finally { await provider.close() }
 })
 
-test('application icon failures keep Application Search available with fallback icons', async () => {
+test('application icon fallback does not report Application Search as failed', async () => {
   const reported: string[] = []
   const provider = createLauncherDiscoveryExtensions({
     ...baseOptions,
@@ -125,7 +125,7 @@ test('application icon failures keep Application Search available with fallback 
   const indexed = await provider.loadIndexedItems(new AbortController().signal)
   assert.equal(indexed.some(item => item.sourceExtension === 'ApplicationSearch' && item.imageUrl === undefined), true)
   assert.equal(provider.getProviderErrors().has('ApplicationSearch'), false)
-  assert.equal(reported.some(message => message.startsWith('ApplicationSearch:missing bundle icon')), true)
+  assert.deepEqual(reported, [])
 })
 
 test('bounds application icon mapping by the scan deadline', async () => {

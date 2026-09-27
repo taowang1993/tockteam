@@ -15,6 +15,20 @@ function item(id: string, name: string): LauncherInternalResultItem {
 
 const options = { fuzziness: 0.5, maxSearchResultItems: 1, searchEngineId: 'fuzzysort' as const }
 
+test('concurrent first searches share one scan without returning stale results', async () => {
+  let scans = 0
+  let release!: (items: readonly LauncherInternalResultItem[]) => void
+  const loaded = new Promise<readonly LauncherInternalResultItem[]>(resolve => { release = resolve })
+  const core = createLauncherCoreSearch({ loadIndexedItems: async () => { scans += 1; return await loaded } })
+  const stale = core.search('', options)
+  const latest = core.search('Calendar', options)
+  assert.equal(scans, 1)
+  release([item('calendar', 'Calendar')])
+  await assert.rejects(stale, /superseded/u)
+  assert.deepEqual((await latest).after.map(result => result.id), ['calendar'])
+  await core.close()
+})
+
 test('core search matches both engines, instant ordering, empty ordering, limits, favorites, and exclusions', async () => {
   for (const searchEngineId of ['fuzzysort', 'Fuse.js'] as const) {
     const core = createLauncherCoreSearch({

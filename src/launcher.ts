@@ -542,7 +542,7 @@ async function bootstrap(): Promise<void> {
       history = current.historyEnabled ? [...current.history] : []
       applySurfaceSettings()
       renderHistory()
-      if (search.value === focusedSearchValue && currentItems.length === 0) void renderSearch(search.value)
+      if (search.value === focusedSearchValue && currentItems.length === 0 && document.documentElement.dataset.launcherReady === 'true') void renderSearch(search.value)
     }).catch(() => { renderHistory() })
     renderDetails()
     restoreSearchFocus()
@@ -1005,7 +1005,6 @@ async function bootstrap(): Promise<void> {
 
   launcherThemeRerender = () => {
     if (trustedView !== undefined) { trustedView.refreshTheme(); return }
-    if (activeLocalTool === undefined && !invokingWorkflow) void renderSearch(search.value)
   }
   historyToggle.addEventListener('click', () => {
     if (invokingWorkflow || !surfaceSettings.historyEnabled) return

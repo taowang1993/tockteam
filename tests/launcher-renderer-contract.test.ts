@@ -87,8 +87,12 @@ test('reopening clears a revoked trusted command instead of focusing its stale v
   assert.doesNotMatch(focus, /trustedView\.focus/u)
 })
 
-test('theme changes refresh an active trusted view without rerunning root search', () => {
+test('startup theme and focus updates do not duplicate the first search', () => {
   assert.match(launcherSource, /if \(trustedView !== undefined\) \{ trustedView\.refreshTheme\(\); return \}/u)
+  const theme = launcherSource.slice(launcherSource.indexOf('launcherThemeRerender = () => {'), launcherSource.indexOf("historyToggle.addEventListener('click'"))
+  assert.doesNotMatch(theme, /renderSearch\(/u)
+  const focus = launcherSource.slice(launcherSource.indexOf('focusSearchHandler = ():', launcherSource.indexOf('async function bootstrap')), launcherSource.indexOf('const rememberSearch ='))
+  assert.match(focus, /currentItems\.length === 0 && document\.documentElement\.dataset\.launcherReady === 'true'/u)
   const close = launcherSource.slice(launcherSource.indexOf('const closeLocalTool ='), launcherSource.indexOf('const hideLauncherControls ='))
   assert.match(close, /trustedView\.dispose\(\);\s*trustedView = undefined\b/u)
   const ready = launcherSource.slice(launcherSource.indexOf("if (message.type === 'ready')"), launcherSource.indexOf('trustedView?.update(message)'))

@@ -432,7 +432,6 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
     const mappingDeadline = Date.now() + scanTimeoutMs
     let applicationIconCalls = 0
     const indexed: LauncherInternalResultItem[] = []
-    const reportIconError = (() => { let reported = false; return (error: Error) => { if (!reported) { reported = true; options.onProviderError?.('ApplicationSearch', error) } } })()
     const mapEntry = async (
       entry: LauncherDiscoveryEntry,
       map: Set<string>,
@@ -464,7 +463,6 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
           }
         } catch (error) {
           if (signal.aborted) throw error
-          reportIconError(error instanceof Error ? error : new Error('Application icon extraction failed'))
         }
         const reveal = isAbsolute(entry.path)
           ? action(HANDLERS.reveal, 'Show in file explorer', { kind: 'path', path: entry.path }, { keyboardShortcut: options.platform === 'macOS' ? 'Cmd+O' : 'Ctrl+O' })

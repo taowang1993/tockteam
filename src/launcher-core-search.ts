@@ -189,6 +189,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
   let lastError: string | undefined
   let latestSearchToken: object | undefined
   let activeRescan: Readonly<{ controller: AbortController; token: object }> | undefined
+  let initialSearchRescan: Promise<LauncherCoreStatus> | undefined
   let rescanStatus: LauncherCoreStatus['rescanStatus'] = 'idle'
   const excluded = new Set<string>(options.initialExcludedItemIds ?? [])
   const favorites = new Set<string>()
@@ -305,7 +306,9 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     const searchToken = Object.freeze({})
     latestSearchToken = searchToken
     if (!indexLoaded) {
-      await rescan()
+      const pending = initialSearchRescan ??= rescan()
+      try { await pending }
+      finally { if (initialSearchRescan === pending) initialSearchRescan = undefined }
       if (!indexLoaded || latestSearchToken !== searchToken) throw new Error('TockLauncher search was superseded')
     }
 
