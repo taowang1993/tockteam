@@ -1,6 +1,7 @@
 /** Browser face for the native TockTeam Desktop bridge. */
 
 import type { DesktopBridge, DesktopCommand } from './contracts.ts'
+import { installDesktopOnboarding, type DesktopOnboardingCredentials } from './desktop-onboarding.ts'
 import { localeTag, type LocaleService } from '../plugins/shared/i18n.ts'
 import type { LauncherExtensionId } from './launcher-extension-settings.ts'
 import { apply as applyLauncherSettings, inject as launcherSettingsInject } from './launcher-settings.tsx'
@@ -72,6 +73,7 @@ interface ThemeService {
 interface ClientContext {
   effect(effect: () => (() => Promise<void> | void) | void, label?: string): void
   get(name: string): unknown
+  remote: { credentials: DesktopOnboardingCredentials }
   on(event: 'theme/change', listener: (snapshot: ThemeSnapshot) => void): () => void
   reflect: {
     provide(name: string, value: unknown, options?: unknown): (() => Promise<void> | void) | void
@@ -85,7 +87,7 @@ declare global {
 }
 
 /** Wait for the DSH services used by native menu commands. */
-export const inject = ['workspaces', 'uiWorkspace', 'desktopPanels', 'pinnedSummary', 'theme', ...launcherSettingsInject]
+export const inject = ['workspaces', 'uiWorkspace', 'desktopPanels', 'pinnedSummary', 'theme', 'remote', 'remote.credentials', ...launcherSettingsInject]
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
@@ -407,6 +409,11 @@ export function apply(ctx: ClientContext): void {
       await removeShell?.()
     }
   }, 'tockteam-desktop: reflected client services')
+  ctx.effect(() => installDesktopOnboarding({
+    bridge,
+    credentials: ctx.remote.credentials,
+    openPaths: paths => openPaths(workspaces, uiWorkspace, paths),
+  }), 'tockteam-desktop: practical onboarding')
   ctx.effect(() => {
     const removeDesktopChrome = installDesktopChrome()
     const removeBranding = installBranding()

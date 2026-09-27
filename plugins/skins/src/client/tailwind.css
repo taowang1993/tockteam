@@ -5,6 +5,7 @@
 @import '../../../tocktutor/packages/tockteam-tocktutor-workbench/node_modules/@milkdown/crepe/lib/theme/common/style.css';
 
 @source '../../../../src/client.ts';
+@source '../../../../src/desktop-onboarding.ts';
 @source '../../../../src/launcher.html';
 @source '../../../../src/launcher.ts';
 @source '../../../../src/launcher-settings.tsx';
