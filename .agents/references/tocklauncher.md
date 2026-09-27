@@ -2,12 +2,12 @@
 audience: agent
 canonical: .agents/references/tocklauncher.md
 owner: TockTeam
-last_reviewed: 2026-09-26
+last_reviewed: 2026-09-27
 ---
 
 # TockLauncher
 
-_Last reviewed: 2026-09-26_
+_Last reviewed: 2026-09-27_
 
 TockLauncher is TockTeam Desktop's native keystroke launcher. It selectively ports the reviewed Ueli `v9.29.0` behavior while keeping the Electron lifecycle, renderer, persistence, security boundary, platform effects, and product routing under TockTeam ownership.
 
@@ -35,6 +35,14 @@ The pin in `LAUNCHER_COMPOSITION`, the package lock, `scripts/ueli/desktop-relea
 ### Opening-Screen Ranking Provenance
 
 The bounded opening-screen ranking and section-order behavior were reviewed against SuperCmd at commit `2da7b9e5dec0199a972a59cece402c85f729d5d7` (`/Users/taowang/research/launcher/SuperCmd`). TockTeam reimplements only that small ranking reference locally; it does not ship SuperCmd source or runtime code. Arbitrary Raycast extensions, runtime installation, stores, and manifests remain explicitly unsupported. The only exceptions are the three build-pinned compatibility artifacts described below.
+
+### Tinycast Behavior Review
+
+The [Tinycast research snapshot](/Users/taowang/research/launcher/tinycast.md) covers `6fc6aa1b909ca24e3cd25e35c078a7c808ca34a9` (2026-09-27, AGPL-3.0). TockLauncher independently adapted three behaviors: a typed query can open File Search prefilled when enabled; macOS apps match English and Chinese bundle-name aliases without changing their visible names or IDs; and local launch history breaks equally relevant typed-search ties. No Tinycast source or runtime is bundled. TockLauncher already has bounded on-demand file search, inline calculator and color results, favorites, search history, and a typed web-search fallback.
+
+One further small candidate is a direct **Open in Browser** result for an explicit HTTP(S) URL typed into the launcher. Today an unbookmarked URL becomes web-search text when instant Web Search is enabled; a registered bookmark or user-authored Workflow can open a URL, but neither handles a fresh pasted address. If implemented, validate the complete input as one HTTP(S) URL, mint an owner-bound opaque Host action, and reuse the existing browser-selection policy. Do not add renderer-selected browser IPC, Host-side fetching, or an unrestricted URL scheme.
+
+Do **not** copy Tinycast's automatic full application scan on every palette opening into the current `show()` path: TockLauncher's macOS discovery includes bounded native and localization work, and a full rescan revokes provider actions. If installed apps prove stale during a long-running Desktop session, first measure that case and consider a coalesced, nonblocking, application-only refresh. Do not port its JavaScriptCore extension host/store or AI/MCP loop: they would duplicate trusted-code and DSH authority. Clipboard history and external-window management add privacy and Accessibility scope without a demonstrated launcher need; TockTutor already owns notes. Tinycast's floating `NSPanel` is not an Electron window recipe.
 
 ## Deliberate TockTeam Scope
 
