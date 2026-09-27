@@ -137,6 +137,75 @@ test('network provider uses fixed custom URL and web search shapes', async () =>
   assert.equal(result.after.length, 3)
 })
 
+test('a complete typed HTTP(S) address opens in the selected browser without web search or Host fetching', async () => {
+  const opened: string[] = []
+  let fetches = 0
+  let resolutions = 0
+  const provider = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => { fetches += 1; throw new Error('Direct browser navigation must not fetch') },
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[WebSearch].showInstantSearchResult' ? false as T : fallback,
+    openExternal: url => { opened.push(url) },
+    resolveAddresses: async () => { resolutions += 1; throw new Error('Direct browser navigation must not resolve') },
+  })
+  const owner = { role: 'launcher' as const, webContentsId: 1 }
+  const actions = new LauncherActionStore({ execute: async entry => { await provider.executeAction(entry) } })
+  try {
+    for (const [query, expected, host] of [
+      ['https://example.com/path?x=1#note', 'https://example.com/path?x=1#note', 'example.com'],
+      ['http://127.0.0.1:4321/dev', 'http://127.0.0.1:4321/dev', '127.0.0.1:4321'],
+    ]) {
+      const result = await provider.searchInstant(query)
+      assert.deepEqual(result.before.map(item => item.name), ['Open in Browser'])
+      assert.deepEqual(result.after, [])
+      const published = actions.publish({ items: result.before, owner })
+      assert.equal(published.items[0]?.description, host)
+      assert.equal(published.items[0]?.imageKey, 'web-search')
+      assert.equal('argument' in published.items[0]!.defaultAction, false)
+      await actions.invoke({ actionId: published.items[0]!.defaultAction.actionId, owner })
+      assert.equal(opened.at(-1), expected)
+    }
+    assert.equal(fetches, 0)
+    assert.equal(resolutions, 0)
+  } finally { actions.clear(); await provider.close() }
+})
+
+test('direct browser result rejects partial, credentialed, and non-HTTP(S) input and respects Web Search enablement', async () => {
+  let enabled = true
+  const provider = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => enabled ? ['WebSearch'] : [],
+    fetch: async () => { throw new Error('Unexpected fetch') },
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[WebSearch].showInstantSearchResult' ? false as T : fallback,
+    openExternal: () => { throw new Error('Unexpected navigation') }, resolveAddresses: publicResolver,
+  })
+  try {
+    for (const input of ['example.com', 'https://', 'https:example.com', 'file:///tmp/note', 'javascript:alert(1)', 'https://user:pass@example.com/', 'https://example.com/a b', 'https://example.com@evil.test/']) {
+      const result = await provider.searchInstant(input)
+      assert.deepEqual(result.before, [], input)
+      assert.deepEqual(result.after, [], input)
+    }
+    enabled = false
+    assert.deepEqual((await provider.searchInstant('https://example.com/')).before, [])
+  } finally { await provider.close() }
+})
+
+test('direct browser action rejects tampering and a superseded query', async () => {
+  const opened: string[] = []
+  const provider = createLauncherNetworkExtensions({
+    copyText: () => undefined, enabledExtensionIds: () => ['WebSearch'],
+    fetch: async () => { throw new Error('Unexpected fetch') },
+    getSetting: settings, openExternal: url => { opened.push(url) }, resolveAddresses: publicResolver,
+  })
+  try {
+    const item = (await provider.searchInstant('https://example.com/')).before[0]
+    assert.ok(item)
+    await assert.rejects(provider.executeAction({ ...record(item), argument: 'https://evil.test/' }), /current main-owned result set|stale/u)
+    await provider.searchInstant('https://example.com/other')
+    await assert.rejects(provider.executeAction(record(item)), /current main-owned result set|stale/u)
+    assert.deepEqual(opened, [])
+  } finally { await provider.close() }
+})
+
 test('maximum-length instant web searches publish bounded labels without truncating the query', async () => {
   const opened: string[] = []
   const provider = createLauncherNetworkExtensions({

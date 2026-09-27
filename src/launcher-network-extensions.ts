@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
+import { parseLauncherBrowserHttpUrl } from './launcher-custom-browser-contract.ts'
 import {
   LAUNCHER_DEEPL_QUERY_PREFIX,
   LAUNCHER_NETWORK_EXTENSION_DEFAULTS,
@@ -47,7 +48,7 @@ export type LauncherNetworkOptions = Readonly<{
 
 type NetworkAction = Readonly<{
   extensionId: LauncherNetworkExtensionId
-  kind: 'copy' | 'url'
+  kind: 'browser' | 'copy' | 'url'
   generation: number
   value: string
   query?: string
@@ -75,6 +76,7 @@ const HANDLERS = Object.freeze({
   copy: 'copy-network-result',
   invoke: 'open-network-extension',
   open: 'open-network-url',
+  openBrowser: 'open-browser-url',
 })
 const SOURCE_LANGUAGES = new Set([
   'Auto', 'BG', 'CS', 'DA', 'DE', 'EL', 'EN', 'ES', 'ET', 'FI', 'FR', 'HU', 'ID', 'IT', 'JA', 'KO',
@@ -348,6 +350,11 @@ function stableDigest(value: unknown): string {
 
 function secretFingerprint(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex')
+}
+
+function typedBrowserUrl(value: string): URL | undefined {
+  if (!/^https?:\/\//iu.test(value) || /[\s\\]/u.test(value)) return undefined
+  try { return new URL(parseLauncherBrowserHttpUrl(value)) } catch { return undefined }
 }
 
 function webSearchUrl(engine: 'DuckDuckGo' | 'Google', term: string, locale: string): URL {
@@ -742,16 +749,26 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
       }
       const isDeepL = searchTerm.startsWith(LAUNCHER_DEEPL_QUERY_PREFIX)
       const isWeb = searchTerm.startsWith(LAUNCHER_WEB_SEARCH_QUERY_PREFIX)
-      if (ids.has('WebSearch') && !isDeepL && !isWeb && setting(options, 'WebSearch', 'showInstantSearchResult', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.showInstantSearchResult) && searchTerm.trim()) {
-        const web = currentWebSettings(options)
-        try {
-          const digest = settingsDigest('WebSearch')
-          const term = searchTerm.trim()
-          after.push(mapWebResult('WebSearch', `Search "${term}"`, web.engine, `Search ${web.engine}`, webSearchUrl(web.engine, term, web.locale), term, web.engine, web.locale, nextActions, generation, digest, `search-${web.engine}`))
-          clearError('WebSearch')
-        } catch (reason) {
-          report('WebSearch', reason)
-          queryError = providerErrorStatus('WebSearch')
+      if (ids.has('WebSearch') && !isDeepL && !isWeb) {
+        const url = typedBrowserUrl(searchTerm)
+        if (url !== undefined) {
+          const value = url.toString()
+          nextActions.set(actionKey('WebSearch', 'browser', value), Object.freeze({ extensionId: 'WebSearch', generation, kind: 'browser', query: searchTerm, settingsDigest: settingsDigest('WebSearch'), value }))
+          before.push(Object.freeze({
+            defaultAction: action(HANDLERS.openBrowser, value, 'Open in Browser'),
+            description: url.host, id: 'web-search:open-in-browser', imageKey: 'web-search', name: 'Open in Browser', sourceExtension: 'WebSearch',
+          }))
+        } else if (setting(options, 'WebSearch', 'showInstantSearchResult', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.showInstantSearchResult) && searchTerm.trim()) {
+          const web = currentWebSettings(options)
+          try {
+            const digest = settingsDigest('WebSearch')
+            const term = searchTerm.trim()
+            after.push(mapWebResult('WebSearch', `Search "${term}"`, web.engine, `Search ${web.engine}`, webSearchUrl(web.engine, term, web.locale), term, web.engine, web.locale, nextActions, generation, digest, `search-${web.engine}`))
+            clearError('WebSearch')
+          } catch (reason) {
+            report('WebSearch', reason)
+            queryError = providerErrorStatus('WebSearch')
+          }
         }
       }
       if (isDeepL || isWeb) {
@@ -805,8 +822,8 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         if ((extensionId !== 'DeeplTranslator' && extensionId !== 'WebSearch') || record.argument !== extensionId) throw new Error('Invalid network extension invocation')
         return true
       }
-      if (record.handlerKey !== HANDLERS.copy && record.handlerKey !== HANDLERS.open) throw new Error('Invalid network extension action')
-      const kind = record.handlerKey === HANDLERS.copy ? 'copy' : 'url'
+      if (record.handlerKey !== HANDLERS.copy && record.handlerKey !== HANDLERS.open && record.handlerKey !== HANDLERS.openBrowser) throw new Error('Invalid network extension action')
+      const kind = record.handlerKey === HANDLERS.copy ? 'copy' : record.handlerKey === HANDLERS.openBrowser ? 'browser' : 'url'
       const mapKey = actionKey(extensionId, kind, record.argument)
       const entry = currentActions.get(mapKey)
       if (entry === undefined || entry.extensionId !== extensionId || entry.generation !== queryGeneration) throw new Error('Network action is not from the current main-owned result set')
@@ -818,8 +835,17 @@ export function createLauncherNetworkExtensions(options: LauncherNetworkOptions)
         return true
       }
       if (!await waitForRawOperations()) throw rawOperationBusyError()
-      if (entry.kind !== 'url' || entry.value !== record.argument || entry.query === undefined) throw new Error('Network URL action is invalid')
+      if (entry.value !== record.argument || entry.query === undefined) throw new Error('Network URL action is invalid')
       const current = (): boolean => currentActions.get(mapKey) === entry && entry.generation === queryGeneration && !closed && !controller.signal.aborted
+      if (entry.kind === 'browser') {
+        if (extensionId !== 'WebSearch' || settingsDigest('WebSearch') !== entry.settingsDigest) throw new Error('Browser action is stale')
+        const url = typedBrowserUrl(entry.query)
+        if (url?.toString() !== entry.value || !current()) throw new Error('Browser action is stale')
+        await track(Promise.resolve(options.openExternal(entry.value, controller.signal)))
+        if (!current()) throw new Error('Browser action is stale')
+        return true
+      }
+      if (entry.kind !== 'url') throw new Error('Network URL action is invalid')
       let url: URL
       if (extensionId === 'CustomWebSearch') {
         const engine = customEngines(options).find(value => value.id === entry.customEngineId)
