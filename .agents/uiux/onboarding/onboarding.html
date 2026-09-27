@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TockTeam Desktop Onboarding Preview</title>
+  <title>TockTeam Desktop Onboarding</title>
   <link rel="icon" href="data:,">
   <style>
     :root { color-scheme: dark; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #111214; color: #f0f1f3; }
@@ -16,7 +16,8 @@
     a { color: inherit; }
     a:focus-visible { outline: 2px solid #a6c8ff; outline-offset: 3px; }
     .details { margin-bottom: 0; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
-    figure { margin: 0; border: 1px solid #30333a; background: #181a1d; }
+    main { display: grid; gap: 24px; }
+    figure { margin: 0; overflow: hidden; border: 1px solid #30333a; border-radius: 12px; background: #181a1d; }
     figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 14px 16px; border-bottom: 1px solid #30333a; }
     h2 { margin: 0; font-size: 15px; font-weight: 600; }
     figcaption span { color: #a6aab2; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -27,16 +28,24 @@
 </head>
 <body>
   <header>
-    <h1>First-Run Onboarding</h1>
-    <p>One setup screen: add an OpenRouter API key or configure it later. This is a real Desktop capture from a clean test profile, not a working form. Your saved key and settings are untouched. Click the image to inspect it at full resolution.</p>
+    <h1>Desktop Setup</h1>
+    <p>Two practical steps: choose a workspace, then set up a model. A returning profile sees its saved key as connected without displaying or replacing it. These are real Desktop captures from an isolated test profile; your settings were not changed. Click any image to view it at full resolution.</p>
     <p class="details">1512 × 949 CSS Pixels · 2× Scale · 3024 × 1898 PNG · Built-In Dark Theme · No Active Skin</p>
   </header>
   <main>
     <figure>
-      <figcaption><h2>API Key Setup</h2><span>New, Empty Profile · September 27, 2026</span></figcaption>
-      <a class="screenshot" href="../../../.beads/reports/2026-09-27-tockteam-desktop-api-key-setup.png"><img src="../../../.beads/reports/2026-09-27-tockteam-desktop-api-key-setup.png" width="3024" height="1898" alt="TockTeam Desktop with the Add an API key to get started dialog. The API key field is empty; Configure later is available and Save and continue is disabled."></a>
+      <figcaption><h2>01 · Choose a Workspace</h2><span>Step 1 of 2 · September 27, 2026</span></figcaption>
+      <a class="screenshot" href="../../../.beads/reports/2026-09-27-desktop-practical-onboarding/workspace.png"><img src="../../../.beads/reports/2026-09-27-desktop-practical-onboarding/workspace.png" width="3024" height="1898" alt="Dark TockTeam Desktop setup dialog on the workspace step. The current workspace is selected, with Choose Folder, Skip Setup, and Continue available."></a>
+    </figure>
+    <figure>
+      <figcaption><h2>02 · Model Already Connected</h2><span>Step 2 of 2 · Returning Profile</span></figcaption>
+      <a class="screenshot" href="../../../.beads/reports/2026-09-27-desktop-practical-onboarding/model-configured.png"><img src="../../../.beads/reports/2026-09-27-desktop-practical-onboarding/model-configured.png" width="3024" height="1898" alt="Dark model setup dialog showing OpenRouter Connected and explaining that the saved API key remains private and unchanged. No key field is shown; Finish Setup is available."></a>
+    </figure>
+    <figure>
+      <figcaption><h2>02 · Add a Model Key</h2><span>Step 2 of 2 · New Profile</span></figcaption>
+      <a class="screenshot" href="../../../.beads/reports/2026-09-27-desktop-practical-onboarding/model-missing.png"><img src="../../../.beads/reports/2026-09-27-desktop-practical-onboarding/model-missing.png" width="3024" height="1898" alt="Dark model setup dialog with an empty OpenRouter API Key field, Set Up Later, and a disabled Save and Finish action."></a>
     </figure>
   </main>
-  <footer><p>The Internal Testing Notice is absent on Desktop. This prompt appears for a new, empty chat without a working model key; a returning profile with a saved key skips it. <a href="../../../.beads/reports/2026-09-27-tockteam-desktop-api-key-setup.proof.json">Capture proof</a>.</p></footer>
+  <footer><p>Setup appears once on the next Desktop launch, even with a saved key. Finishing or explicitly skipping setup prevents another prompt after restart. <a href="../../../.beads/reports/2026-09-27-desktop-practical-onboarding/proof.json">Capture proof</a>.</p></footer>
 </body>
 </html>

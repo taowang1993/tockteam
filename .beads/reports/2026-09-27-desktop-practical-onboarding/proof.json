@@ -1,0 +1,95 @@
+{
+  "product": "TockTeam Desktop",
+  "profile": "isolated synthetic test profile; no user credentials were read, removed, or changed",
+  "profileRoot": "/tmp/tockteam-onboarding-final.H5i33C",
+  "runtime": "Electron 42 with pinned DSH 0.1.2-rc.1 on an extended display; mock Keychain; HOME unchanged",
+  "screenshotGeometry": {
+    "css": [
+      1512,
+      949
+    ],
+    "deviceScaleFactor": 2,
+    "png": [
+      3024,
+      1898
+    ]
+  },
+  "screenshots": [
+    {
+      "file": "workspace.png",
+      "step": "workspace",
+      "route": "http://127.0.0.1:61881/tockcoder",
+      "colorScheme": "dark",
+      "skinId": null,
+      "modalBackground": "rgb(21, 21, 23)",
+      "themeBase": "rgb(21, 21, 23)",
+      "backdrop": "rgba(0, 0, 0, 0.85)",
+      "keyFieldVisible": false,
+      "savedKeyMessageVisible": false
+    },
+    {
+      "file": "model-missing.png",
+      "step": "missing-model-key",
+      "route": "http://127.0.0.1:61881/tockcoder",
+      "colorScheme": "dark",
+      "skinId": null,
+      "modalBackground": "rgb(21, 21, 23)",
+      "themeBase": "rgb(21, 21, 23)",
+      "backdrop": "rgba(0, 0, 0, 0.85)",
+      "keyFieldVisible": true,
+      "savedKeyMessageVisible": false
+    },
+    {
+      "file": "model-configured.png",
+      "step": "configured-model-key",
+      "route": "http://127.0.0.1:61915/tockcoder",
+      "colorScheme": "dark",
+      "skinId": null,
+      "modalBackground": "rgb(21, 21, 23)",
+      "themeBase": "rgb(21, 21, 23)",
+      "backdrop": "rgba(0, 0, 0, 0.85)",
+      "keyFieldVisible": false,
+      "savedKeyMessageVisible": true
+    }
+  ],
+  "verified": {
+    "initialWorkspaceThenModel": true,
+    "isolatedSyntheticKeySaved": true,
+    "existingSyntheticKeyRecognizedWithoutDisplayOrRewriting": true,
+    "privateCompletionMarkerWritten": true,
+    "noDialogAfterCompletedRelaunch": true,
+    "rendererErrors": [],
+    "fullProcessTreesStopped": [
+      {
+        "phase": "fresh",
+        "rootPid": 7132,
+        "remaining": []
+      },
+      {
+        "phase": "configured",
+        "rootPid": 7854,
+        "remaining": []
+      },
+      {
+        "phase": "repeat",
+        "rootPid": 8540,
+        "remaining": []
+      }
+    ]
+  },
+  "additionalAppearanceChecks": [
+    { "theme": "Built-In Light", "skinId": null, "rootPid": 12237, "baseAndModal": "rgb(255, 255, 255)", "titleContrast": 18.9, "bodyContrast": 5.8, "actionContrast": 18.9, "rendererErrors": [], "remainingProcesses": [] },
+    { "theme": "Porcelain", "skinId": "tockteam-skin-porcelain", "rootPid": 12896, "baseAndModal": "rgb(243, 247, 246)", "titleContrast": 12.8, "bodyContrast": 6.64, "actionContrast": 12.8, "rendererErrors": [], "remainingProcesses": [] },
+    { "theme": "Deep Current", "skinId": "tockteam-skin-deep-current", "rootPid": 13522, "baseAndModal": "rgb(7, 25, 35)", "titleContrast": 16.45, "bodyContrast": 12.21, "actionContrast": 16.45, "rendererErrors": [], "remainingProcesses": [] },
+    { "theme": "Jade Circuit", "skinId": "tockteam-skin-jade-circuit", "rootPid": 14150, "baseAndModal": "rgb(7, 26, 22)", "titleContrast": 16.74, "bodyContrast": 12.24, "actionContrast": 16.74, "rendererErrors": [], "remainingProcesses": [] },
+    { "theme": "Ember Dusk", "skinId": "tockteam-skin-ember-dusk", "rootPid": 14780, "baseAndModal": "rgb(33, 22, 31)", "titleContrast": 15.76, "bodyContrast": 10.53, "actionContrast": 15.76, "rendererErrors": [], "remainingProcesses": [] }
+  ],
+  "checks": [
+    "node --test tests/desktop-onboarding-client.test.ts tests/desktop-onboarding-state.test.ts tests/desktop-onboarding-bridge.test.ts tests/models-settings-default.test.ts",
+    "pnpm run typecheck",
+    "pnpm run build",
+    "node scripts/stage-dsh.mjs --quick",
+    "pnpm test (1502 passed, 17 skipped, 0 failed)"
+  ],
+  "fixture": "Only the isolated completion marker was reset between the fresh and configured runs to simulate a returning profile receiving this new onboarding. The synthetic credential store remained byte-for-byte identical."
+}
