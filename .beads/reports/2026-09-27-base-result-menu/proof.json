@@ -1,0 +1,39 @@
+{
+  "surface": "TockTutor Base Results Limit Menu",
+  "route": "/tocktutor/Untitled.base",
+  "viewportCss": [1512, 949],
+  "deviceScaleFactor": 2,
+  "screenshotPixels": [3024, 1898],
+  "screenshots": {
+    "canonicalDark": "result-limit-dark.png",
+    "builtInLight": "result-limit-light.png"
+  },
+  "appearance": [
+    {"scheme": "dark", "skin": null, "tableAndResultsRgb": "rgb(44, 44, 46)", "errors": []},
+    {"scheme": "light", "skin": null, "tableAndResultsRgb": "rgb(255, 255, 255)", "textContrast": 18.9, "errors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-deep-current", "tableAndResultsRgb": "rgb(15, 42, 57)", "textContrast": 13.67, "errors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-jade-circuit", "tableAndResultsRgb": "rgb(16, 46, 38)", "textContrast": 13.57, "errors": []},
+    {"scheme": "light", "skin": "tockteam-skin-porcelain", "tableAndResultsRgb": "rgb(237, 244, 242)", "textContrast": 12.39, "errors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-ember-dusk", "tableAndResultsRgb": "rgb(52, 33, 48)", "textContrast": 13.44, "errors": []}
+  ],
+  "canonicalDarkChecks": {
+    "rootColorScheme": "dark",
+    "htmlSkinPresent": false,
+    "bodySkinPresent": false,
+    "resultCount": "45 Results",
+    "tableMenuBackground": "rgb(44, 44, 46)",
+    "resultMenuBackground": "rgb(44, 44, 46)",
+    "escapeClosed": true,
+    "escapeRestoredTriggerFocus": true,
+    "outsideClickClosed": true,
+    "runtimeErrors": []
+  },
+  "verification": {
+    "componentTest": "20 passed; red test observed missing bg-surface-muted",
+    "tocktutorTypecheckBuildManifest": "passed",
+    "rootTypecheckBuildQuickStage": "passed",
+    "rootTests": "1486 passed, 17 skipped, 0 failed",
+    "nestedTests": "209 passed, 1 environment-blocked: search-index-host-death.test.ts /bin/ps spawn EPERM"
+  },
+  "cleanup": {"rootPids": [72377, 73288, 73985, 74660, 75326, 75987], "remaining": []}
+}
