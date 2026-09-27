@@ -62,6 +62,20 @@ test('core search matches both engines, instant ordering, empty ordering, limits
   }
 })
 
+test('a calculator answer leads typed results ahead of other instant suggestions', async () => {
+  const calculator = { ...item('calculator:instantResult', '15'), sourceExtension: 'Calculator' }
+  const fileSearch = { ...item('file-search:open', 'Search Files for “5+10”'), sourceExtension: 'FileSearch' }
+  const core = createLauncherCoreSearch({
+    loadIndexedItems: async () => [],
+    searchInstant: async () => ({ before: [fileSearch], after: [calculator] }),
+  })
+  try {
+    const result = await core.search('5+10', options)
+    assert.deepEqual(result.after.map(entry => entry.id), ['calculator:instantResult', 'file-search:open'])
+    assert.deepEqual(result.sections[0]?.items.map(entry => entry.id), ['calculator:instantResult', 'file-search:open'])
+  } finally { await core.close() }
+})
+
 test('both search engines find macOS app aliases while keeping exact displayed names first', async () => {
   for (const searchEngineId of ['fuzzysort', 'Fuse.js'] as const) {
     const core = createLauncherCoreSearch({

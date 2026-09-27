@@ -109,7 +109,7 @@ TockTeam Electron Main
 3. `LauncherLifecycleController.sync()` applies lifecycle settings. The global shortcut is `Option+Space` on macOS and `Alt+Space` on Windows/Linux.
 4. The workbench is created first. The overlay is created lazily from the shortcut or workbench title-bar button and then reused.
 5. Composition is bundled into the renderer as a constant. The renderer reads sanitized surface settings and sends a bounded query/options payload over typed IPC; main uses its own persisted search settings, not renderer-selected engine authority.
-6. Main combines indexed results, instant results, and the two TockTeam destinations. Empty queries publish bounded `Pinned`, `Recent`, `Commands`, and `Applications` sections; typed queries retain the ordinary `Results` ordering. The search and publication layers are latest-request-wins.
+6. Main combines indexed results, instant results, and the two TockTeam destinations. Empty queries publish bounded `Pinned`, `Recent`, `Commands`, and `Applications` sections. Typed queries retain the ordinary `Results` ordering except calculator answers lead in a separate `Calculator` section; the renderer selects a new calculation by default so Enter copies its answer. The search and publication layers are latest-request-wins.
 7. `LauncherActionStore` publishes a new result-set ID and opaque action IDs for the current launcher `webContents` owner.
 8. Invocation validates and consumes one action ID before dispatching the finite provider effect. Only successful default completions update the main-owned usage ranking; Electron main alone applies `hideWindowAfterInvocation`.
 9. Provider invalidation, window clearing, navigation, settings changes, and teardown revoke stale actions and abort owned work.

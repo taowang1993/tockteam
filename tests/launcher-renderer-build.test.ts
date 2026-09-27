@@ -178,7 +178,7 @@ test('launcher renderer uses the compact Tockbot composition', () => {
   }
   assert.match(html, /id="launcher-details"[^>]+class="[^"]*ml-auto/u)
   assert.match(launcher, /openCommand: 'Open Command'/u)
-  assert.match(launcher, /openText\.textContent = messages\(\)\.openCommand/u)
+  assert.match(launcher, /openText\.textContent = item\.sourceExtension === 'Calculator' \? messages\(\)\.copyAnswer : messages\(\)\.openCommand/u)
   assert.match(launcher, /row\.className = 'launcher-command-footer-actions'/u)
   assert.match(tailwind, /@utility launcher-command-footer-actions/u)
   assert.doesNotMatch(launcher, /RefreshCw|\brescan\.|event\.key === 'F5'/u)
@@ -220,7 +220,7 @@ test('launcher renderer uses shared types, Lucide icons, visible selection, and 
   assert.match(launcher, /from 'lucide'/u)
   assert.match(launcher, /from '\.\/launcher-preload-bridge\.ts'/u)
   assert.doesNotMatch(html, /⌕/u)
-  assert.match(launcher, /button\.className = 'launcher-command-row'/u)
+  assert.match(launcher, /button\.className = calculator \? 'launcher-command-row min-h-28 border-border bg-surface-muted px-5 py-4' : 'launcher-command-row'/u)
   assert.match(tailwind, /@utility launcher-command-row[\s\S]+&\[aria-selected='true'\]/u)
   assert.doesNotMatch(smoke, /className\.includes\('aria-selected:'\)/u)
   assert.match(smoke, /getComputedStyle\(selected\)\.backgroundColor/u)

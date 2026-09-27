@@ -17,6 +17,7 @@ import type { LauncherPublicAction, LauncherPublicResultItem } from './launcher-
 import {
   LAUNCHER_HIDE_WINDOW_ON_DEFAULT,
   launcherEffectiveScrollBehavior,
+  launcherSelectedResultId,
   launcherShortcutAriaLabel,
   launcherShortcutMatches,
   type LauncherSearchSection,
@@ -61,6 +62,9 @@ type LauncherMessages = Readonly<{
   canceling: string
   canceled: string
   cancelWorkflow: string
+  calculator: string
+  copyAnswer: string
+  equals: string
   fileSearchUnavailable: string
   indexed: (count: number) => string
   invokeFailed: (action: string) => string
@@ -90,6 +94,9 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     canceling: 'Canceling workflow…',
     canceled: 'Workflow canceled.',
     cancelWorkflow: 'Cancel workflow',
+    calculator: 'Calculator',
+    copyAnswer: 'Copy Answer',
+    equals: 'equals',
     fileSearchUnavailable: 'Local extension settings are unavailable.',
     history: 'History',
     indexed: (count: number) => `${count} indexed destinations`,
@@ -117,6 +124,9 @@ const LAUNCHER_MESSAGES: Readonly<Record<'en' | 'zh', LauncherMessages>> = Objec
     canceling: '正在取消工作流…',
     canceled: '工作流已取消。',
     cancelWorkflow: '取消工作流',
+    calculator: '计算器',
+    copyAnswer: '复制答案',
+    equals: '等于',
     fileSearchUnavailable: '本地扩展设置不可用。',
     history: '历史',
     indexed: (count: number) => `${count} 个已索引目标`,
@@ -241,6 +251,7 @@ async function bootstrap(): Promise<void> {
   )
   let revision = 0
   let selectedItemId = ''
+  let displayedTerm = ''
   let currentItems: LauncherPublicResultItem[] = []
   let currentSections: LauncherSearchSection[] = []
   let currentResultSetId = ''
@@ -762,7 +773,7 @@ async function bootstrap(): Promise<void> {
     const openShortcut = actionAriaShortcut(item.defaultAction, true)
     if (openShortcut !== undefined) open.setAttribute('aria-keyshortcuts', openShortcut)
     const openText = document.createElement('span')
-    openText.textContent = messages().openCommand
+    openText.textContent = item.sourceExtension === 'Calculator' ? messages().copyAnswer : messages().openCommand
     open.append(openText, createLauncherShortcut('Enter'))
     open.addEventListener('click', () => {
       if (workflowInteractionBlocked()) return
@@ -893,35 +904,53 @@ async function bootstrap(): Promise<void> {
       const listItem = document.createElement('li')
       listItem.setAttribute('role', 'presentation')
       const button = document.createElement('button')
-      button.className = 'launcher-command-row'
+      const calculator = item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult'
+      button.className = calculator ? 'launcher-command-row min-h-28 border-border bg-surface-muted px-5 py-4' : 'launcher-command-row'
+      if (calculator) button.dataset.testid = 'tocklauncher-calculator-result'
       button.type = 'button'
       button.disabled = workflowInteractionBlocked()
       button.id = `launcher-result-${encodeURIComponent(item.id)}`
       button.dataset.resultId = item.id
-      button.title = item.name
+      button.title = calculator ? `${displayedTerm} = ${item.name}` : item.name
       button.setAttribute('role', 'option')
       button.setAttribute('aria-selected', String(item.id === selectedItemId))
       button.tabIndex = -1
       const resultIndex = start + index
       if (resultIndex < 9) button.setAttribute('aria-keyshortcuts', `${modifier}+${resultIndex + 1}`)
       const compact = surfaceSettings.searchResultLayout === 'compact'
-      const copy = document.createElement('span')
-      copy.className = compact ? 'flex min-w-0 flex-1 items-baseline gap-2' : 'min-w-0 flex-1'
-      const nameElement = document.createElement('strong')
-      nameElement.className = compact ? 'min-w-0 max-w-[42%] shrink-0 truncate text-[13px] font-medium tracking-[0.004em]' : 'block truncate text-sm font-medium'
-      nameElement.textContent = item.name
-      const description = document.createElement('span')
-      description.className = compact ? 'min-w-0 flex-1 truncate text-xs font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
-      description.textContent = item.description
-      copy.append(nameElement, description)
-      if (!compact && item.details !== undefined) {
-        const itemDetails = document.createElement('span')
-        itemDetails.className = 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
-        itemDetails.textContent = item.details
-        copy.append(itemDetails)
+      if (calculator) {
+        const equation = document.createElement('span')
+        equation.className = 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3'
+        const expression = document.createElement('span')
+        expression.className = 'min-w-0 truncate text-center text-[22px] font-semibold tabular-nums'
+        expression.textContent = displayedTerm
+        const equals = document.createElement('span')
+        equals.className = 'sr-only'
+        equals.textContent = messages().equals
+        const answer = document.createElement('strong')
+        answer.className = 'min-w-0 truncate text-center text-[26px] font-semibold tabular-nums'
+        answer.textContent = item.name
+        equation.append(expression, icon(ArrowRight), equals, answer)
+        button.append(equation)
+      } else {
+        const copy = document.createElement('span')
+        copy.className = compact ? 'flex min-w-0 flex-1 items-baseline gap-2' : 'min-w-0 flex-1'
+        const nameElement = document.createElement('strong')
+        nameElement.className = compact ? 'min-w-0 max-w-[42%] shrink-0 truncate text-[13px] font-medium tracking-[0.004em]' : 'block truncate text-sm font-medium'
+        nameElement.textContent = item.name
+        const description = document.createElement('span')
+        description.className = compact ? 'min-w-0 flex-1 truncate text-xs font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
+        description.textContent = item.description
+        copy.append(nameElement, description)
+        if (!compact && item.details !== undefined) {
+          const itemDetails = document.createElement('span')
+          itemDetails.className = 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
+          itemDetails.textContent = item.details
+          copy.append(itemDetails)
+        }
+        button.append(createResultMarker(item), copy)
       }
-      button.append(createResultMarker(item), copy)
-      if (resultIndex < 9) {
+      if (!calculator && resultIndex < 9) {
         const shortcut = createLauncherShortcut(`${isMac ? 'Cmd' : 'Ctrl'}+${resultIndex + 1}`)
         shortcut.classList.add('launcher-result-shortcut', 'ml-auto')
         button.append(shortcut)
@@ -961,7 +990,10 @@ async function bootstrap(): Promise<void> {
             : section.id === 'applications'
               ? copy.applications
               : copy.results
-      renderGroup(section.id, name, section.items, start)
+      if (section.id === 'results' && section.items[0]?.sourceExtension === 'Calculator' && section.items[0]?.id === 'calculator:instantResult') {
+        renderGroup('calculator', copy.calculator, section.items.slice(0, 1), start)
+        renderGroup('results', name, section.items.slice(1), start + 1)
+      } else renderGroup(section.id, name, section.items, start)
       start += section.items.length
     }
     updateSelection()
@@ -982,7 +1014,8 @@ async function bootstrap(): Promise<void> {
       currentSections = [...response.sections]
       currentItems = currentSections.flatMap(section => section.items)
       currentResultSetId = response.resultSetId
-      selectedItemId = currentItems.some(item => item.id === previous) ? previous : currentItems[0]?.id ?? ''
+      selectedItemId = launcherSelectedResultId(currentItems, previous, term !== displayedTerm)
+      displayedTerm = term
       search.setAttribute('aria-expanded', String(currentItems.length > 0))
       renderResults()
       const error = response.status.lastError

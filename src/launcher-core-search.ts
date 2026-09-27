@@ -351,7 +351,8 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
 
     let beforeItems = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS)
     const seen = new Set(beforeItems.map(item => item.id))
-    let afterItems: readonly LauncherInternalResultItem[] = [...instantBefore, ...ordinaryItems, ...instantAfter]
+    const calculation = instantAfter.filter(item => item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult')
+    let afterItems: readonly LauncherInternalResultItem[] = [...calculation, ...instantBefore, ...ordinaryItems, ...instantAfter.filter(item => !calculation.includes(item))]
       .filter(({ id }) => {
         if (excluded.has(id) || seen.has(id)) return false
         seen.add(id)

@@ -259,6 +259,18 @@ export function launcherEffectiveScrollBehavior(behavior: LauncherScrollBehavior
   return reducedMotion ? 'instant' : behavior
 }
 
+export function launcherSelectedResultId(
+  items: readonly Pick<LauncherPublicResultItem, 'id' | 'sourceExtension'>[],
+  previousId: string,
+  queryChanged: boolean,
+): string {
+  if (queryChanged) {
+    const calculation = items.find(item => item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult')
+    if (calculation) return calculation.id
+  }
+  return items.find(item => item.id === previousId)?.id ?? items[0]?.id ?? ''
+}
+
 export function parseLauncherSearchArgs(value: unknown): Readonly<{
   searchTerm: string
 } & LauncherSearchOptions> {

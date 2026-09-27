@@ -7,6 +7,7 @@ import {
   launcherShortcutAriaLabel,
   launcherShortcutLabel,
   launcherEffectiveScrollBehavior,
+  launcherSelectedResultId,
   normalizeLauncherLocale,
   parseLauncherSurfaceSettings,
   type LauncherSurfaceSettings,
@@ -107,6 +108,25 @@ test('programmatic launcher scrolling is instant when reduced motion is active',
   assert.equal(launcherEffectiveScrollBehavior('smooth', false), 'smooth')
 })
 
+test('new calculations select their copy result without stealing later keyboard selection', () => {
+  const items = [
+    { id: 'calculator:instantResult', sourceExtension: 'Calculator' },
+    { id: 'file-search:open', sourceExtension: 'FileSearch' },
+  ]
+  assert.equal(launcherSelectedResultId(items, 'file-search:open', true), 'calculator:instantResult')
+  assert.equal(launcherSelectedResultId(items, 'file-search:open', false), 'file-search:open')
+  assert.equal(launcherSelectedResultId(items.slice(1), 'calculator:instantResult', true), 'file-search:open')
+  assert.equal(launcherSelectedResultId([], 'file-search:open', true), '')
+})
+
+test('calculator uses the typed expression and main-owned answer in an accessible card', () => {
+  assert.match(launcherSource, /button\.dataset\.testid = 'tocklauncher-calculator-result'/u)
+  assert.match(launcherSource, /expression\.textContent = displayedTerm/u)
+  assert.match(launcherSource, /answer\.textContent = item\.name/u)
+  assert.match(launcherSource, /item\.sourceExtension === 'Calculator'[^\n]*item\.id === 'calculator:instantResult'/u)
+  assert.match(launcherSource, /item\.sourceExtension === 'Calculator' \? messages\(\)\.copyAnswer : messages\(\)\.openCommand/u)
+})
+
 test('root command UI uses one shared Raycast-like visual recipe', () => {
   for (const name of ['surface', 'header', 'search', 'list', 'footer', 'footer-identity', 'menu']) {
     assert.match(launcherHtml, new RegExp(`launcher-command-${name}`, 'u'))
@@ -159,7 +179,7 @@ test('action-menu activation closes the history menu', () => {
 })
 
 test('long result and action labels retain an inspection affordance', () => {
-  assert.match(launcherSource, /button\.title = item\.name/u)
+  assert.match(launcherSource, /button\.title = calculator \? `\$\{displayedTerm\} = \$\{item\.name\}` : item\.name/u)
   assert.match(launcherSource, /actionButton\.title = action\.description/u)
 })
 
