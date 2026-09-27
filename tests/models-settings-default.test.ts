@@ -70,7 +70,7 @@ test('saved key stays masked until explicitly revealed in Desktop; Web keeps the
       ['keyStored: "••••••••"', 'masked saved-key placeholder'],
       ['const [showKeyDraft, setShowKeyDraft] = (0, react.useState)(false);', 'visibility starts hidden'],
       ['type: savedKey !== void 0 || showKeyDraft ? "text" : "password"', 'password field reveals only on click'],
-      ['disabled: disabled || keyLocked || keyDraft.length === 0 && (keyState?.configured !== true || !canRevealSaved)', 'Web requires a typed key'],
+      ['disabled: disabled || keyLocked || revealBusy || keyDraft.length === 0 && (keyState?.configured !== true || !canRevealSaved)', 'Web requires a typed key and pending Desktop reads cannot repeat'],
       ['window.dshDesktop?.revealSavedModelKey', 'Desktop-only reveal capability'],
       ['setSavedKey(stored)', 'saved key becomes visible only after explicit reveal'],
       ['readOnly: savedKey !== void 0', 'revealed key cannot be edited or resaved accidentally'],
@@ -83,6 +83,16 @@ test('saved key stays masked until explicitly revealed in Desktop; Web keeps the
       ['M2.062 12.348', 'Lucide Eye icon'],
       ['M10.733 5.076', 'Lucide EyeOff icon'],
     ] as const) assert.ok(adapted.includes(fragment), behavior)
+    const eyeStart = adapted.indexOf('if (savedKey !== void 0) { setSavedKey(void 0); return; }')
+    assert.notEqual(eyeStart, -1)
+    const eyeEnd = adapted.indexOf('children: (0, react_jsx_runtime.jsx)("svg"', eyeStart)
+    assert.ok(eyeEnd > eyeStart)
+    const eyeClick = adapted.slice(eyeStart, eyeEnd)
+    assert.doesNotMatch(eyeClick, /setBusy\(/u, 'revealing a key must not dim Cancel and Apply or relabel Apply')
+    assert.match(eyeClick, /setRevealBusy\(true\)/u, 'only the eye enters a pending state')
+    assert.match(eyeClick, /setRevealBusy\(false\)/u, 'the eye exits its pending state')
+    assert.match(adapted, /readOnly: savedKey !== void 0 \|\| revealBusy/u, 'the key cannot be changed during the read')
+    assert.match(adapted, /const apply = async \(\) => \{\s+setBusy\(true\)/u, 'a real save still disables the form')
     assert.doesNotMatch(adapted, /remote\.credentials\.resolve/u)
     assert.equal(readFileSync(join(installed, 'lib', 'client.js'), 'utf8'), original)
   } finally { rmSync(root, { recursive: true, force: true }) }

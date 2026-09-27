@@ -11,6 +11,7 @@ const ORIGINAL_SHA256 = '7acf9736edeea519c63791e946a135f5cc854c95c299fd9864e8207
 const PREVIOUS_STAGED_SHA256 = new Set([
   'eea643a18add1c5f913e495aaaf1c2ade09dabc9b31a019bb96bbaa2b2d9955e',
   'c726e22891b8589ec2ba8597069a0c0945b40405f00d462f66550673f7185fb8',
+  '56cf3f48f01b9d725d78b47f07076e8a05658a9861bb38177b9a8ff5edacef87',
 ])
 const DEEPSEEK_ROUTE = 'candidate.entry.provider === "deepseek-official" && candidate.entry.settingsNs === "llm-deepseek" && candidate.entry.settingsPath.length === 0'
 const OPENROUTER_ROUTE = 'candidate.entry.provider === "openrouter" && candidate.entry.settingsNs === "llm-pi-ai" && candidate.entry.settingsPath.join("/") === "providers/openrouter"'
@@ -47,7 +48,7 @@ const CHANGES = [
   ],
   [
     'const [keyDraft, setKeyDraft] = (0, react.useState)("");\n\t\t\tconst [keyState, setKeyState]',
-    'const [keyDraft, setKeyDraft] = (0, react.useState)("");\n\t\t\tconst [showKeyDraft, setShowKeyDraft] = (0, react.useState)(false);\n\t\t\tconst [savedKey, setSavedKey] = (0, react.useState)(void 0);\n\t\t\tconst [keyState, setKeyState]',
+    'const [keyDraft, setKeyDraft] = (0, react.useState)("");\n\t\t\tconst [showKeyDraft, setShowKeyDraft] = (0, react.useState)(false);\n\t\t\tconst [savedKey, setSavedKey] = (0, react.useState)(void 0);\n\t\t\tconst [revealBusy, setRevealBusy] = (0, react.useState)(false);\n\t\t\tconst [keyState, setKeyState]',
     1,
   ],
   [
@@ -86,7 +87,7 @@ const CHANGES = [
 								autoCapitalize: "none",
 								spellCheck: false,
 								value: savedKey ?? keyDraft,
-								readOnly: savedKey !== void 0,
+								readOnly: savedKey !== void 0 || revealBusy,
 								placeholder: keyPlaceholder,
 								"aria-label": savedKey !== void 0 ? t("savedKeyInput") : t("keyInput"),
 								"aria-invalid": shownKeyFailure !== void 0,
@@ -103,12 +104,12 @@ const CHANGES = [
 								"aria-label": savedKey !== void 0 ? t("hideSavedKey") : keyDraft.length > 0 ? showKeyDraft ? t("hideNewKey") : t("showNewKey") : canRevealSaved && keyState?.configured === true ? t("showSavedKey") : t("showNewKey"),
 								"aria-description": keyDraft.length === 0 && keyState?.configured === true && !canRevealSaved ? t("savedKeyPrivate") : void 0,
 								title: keyDraft.length === 0 && keyState?.configured === true && !canRevealSaved ? t("savedKeyPrivate") : void 0,
-								disabled: disabled || keyLocked || keyDraft.length === 0 && (keyState?.configured !== true || !canRevealSaved),
+								disabled: disabled || keyLocked || revealBusy || keyDraft.length === 0 && (keyState?.configured !== true || !canRevealSaved),
 								onClick: async () => {
 									if (savedKey !== void 0) { setSavedKey(void 0); return; }
 									if (keyDraft.length > 0) { setShowKeyDraft((shown) => !shown); return; }
 									if (!canRevealSaved || keyState?.configured !== true) return;
-									setBusy(true);
+									setRevealBusy(true);
 									setFailure(void 0);
 									try {
 										const stored = await window.dshDesktop.revealSavedModelKey(keyRef);
@@ -116,7 +117,7 @@ const CHANGES = [
 										else setSavedKey(stored);
 									} catch {
 										setFailure(t("savedKeyUnavailable"));
-									} finally { setBusy(false); }
+									} finally { setRevealBusy(false); }
 								},
 								children: (0, react_jsx_runtime.jsx)("svg", {
 									width: 16,
