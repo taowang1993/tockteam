@@ -31,6 +31,99 @@ const CHANGES = [
     'const keyPlaceholder = keyLocked ? t("keyEnvLocked") : keyState?.configured === true && props.credentialRequired !== true ? t("keyStored") : props.credentialRequired === true ? t("keyPlaceholder") : family === "pi-ai" ? t("keyPlaceholderNative") : t("keyPlaceholder");',
     1,
   ],
+  [
+    '.zGbnIq_addModelButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.zGbnIq_input{',
+    '.zGbnIq_addModelButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.zGbnIq_keyField{position:relative}.zGbnIq_keyField .zGbnIq_input{padding-right:42px}.zGbnIq_keyVisibility{position:absolute;top:2px;right:4px}.zGbnIq_input{',
+    1,
+  ],
+  [
+    '"iconButtonDanger": "zGbnIq_iconButtonDanger",\n\t\t\t"input": "zGbnIq_input",',
+    '"iconButtonDanger": "zGbnIq_iconButtonDanger",\n\t\t\t"keyField": "zGbnIq_keyField",\n\t\t\t"keyVisibility": "zGbnIq_keyVisibility",\n\t\t\t"input": "zGbnIq_input",',
+    1,
+  ],
+  [
+    'const [keyDraft, setKeyDraft] = (0, react.useState)("");\n\t\t\tconst [keyState, setKeyState]',
+    'const [keyDraft, setKeyDraft] = (0, react.useState)("");\n\t\t\tconst [showKeyDraft, setShowKeyDraft] = (0, react.useState)(false);\n\t\t\tconst [keyState, setKeyState]',
+    1,
+  ],
+  // Lucide Eye and EyeOff v0.473.0 shapes; inline SVG avoids a new DSH browser module.
+  [
+    String.raw`(0, react_jsx_runtime.jsx)("input", {
+							className: ModelsSection_module_css_default["input"],
+							type: "password",
+							autoComplete: "off",
+							value: keyDraft,
+							placeholder: keyPlaceholder,
+							"aria-label": t("keyInput"),
+							"aria-invalid": shownKeyFailure !== void 0,
+							required: props.credentialRequired === true,
+							autoFocus: props.autoFocusCredential === true,
+							disabled: disabled || keyLocked,
+							onChange: (event) => {
+								setKeyDraft(event.target.value);
+							}
+						}),`,
+    String.raw`(0, react_jsx_runtime.jsxs)("div", {
+							className: ModelsSection_module_css_default["keyField"],
+							children: [(0, react_jsx_runtime.jsx)("input", {
+								className: ModelsSection_module_css_default["input"],
+								type: showKeyDraft ? "text" : "password",
+								autoComplete: "off",
+								value: keyDraft,
+								placeholder: keyPlaceholder,
+								"aria-label": t("keyInput"),
+								"aria-invalid": shownKeyFailure !== void 0,
+								required: props.credentialRequired === true,
+								autoFocus: props.autoFocusCredential === true,
+								disabled: disabled || keyLocked,
+								onChange: (event) => {
+									setKeyDraft(event.target.value);
+									if (event.target.value.length === 0) setShowKeyDraft(false);
+								}
+							}), (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: ModelsSection_module_css_default["iconButton"] + " " + ModelsSection_module_css_default["keyVisibility"],
+								"aria-label": showKeyDraft ? t("hideNewKey") : t("showNewKey"),
+								"aria-description": keyDraft.length === 0 && keyState?.configured === true ? t("savedKeyPrivate") : void 0,
+								title: keyDraft.length === 0 && keyState?.configured === true ? t("savedKeyPrivate") : void 0,
+								disabled: disabled || keyLocked || keyDraft.length === 0,
+								onClick: () => setShowKeyDraft((shown) => !shown),
+								children: (0, react_jsx_runtime.jsx)("svg", {
+									width: 16,
+									height: 16,
+									viewBox: "0 0 24 24",
+									fill: "none",
+									stroke: "currentColor",
+									strokeWidth: 2,
+									strokeLinecap: "round",
+									strokeLinejoin: "round",
+									"aria-hidden": true,
+									children: showKeyDraft ? [(0, react_jsx_runtime.jsx)("path", { d: "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" }), (0, react_jsx_runtime.jsx)("path", { d: "M14.084 14.158a3 3 0 0 1-4.242-4.242" }), (0, react_jsx_runtime.jsx)("path", { d: "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" }), (0, react_jsx_runtime.jsx)("path", { d: "m2 2 20 20" })] : [(0, react_jsx_runtime.jsx)("path", { d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" }), (0, react_jsx_runtime.jsx)("circle", { cx: "12", cy: "12", r: "3" })]
+								})
+							})]
+						}),`,
+    1,
+  ],
+  [
+    'keyStored: "Configured — enter a new value to replace",\n\t\t\tkeyEnvLocked: "Provided by the launch environment (read-only)"',
+    'keyStored: "••••••••",\n\t\t\tkeyEnvLocked: "Provided by the launch environment (read-only)"',
+    1,
+  ],
+  [
+    'keyStored: "已配置——输入新值可替换",\n\t\t\tkeyEnvLocked: "由启动环境提供（只读）"',
+    'keyStored: "••••••••",\n\t\t\tkeyEnvLocked: "由启动环境提供（只读）"',
+    1,
+  ],
+  [
+    'keyInput: "API key",\n\t\t\tkeyPlaceholder: "Enter your API key",',
+    'keyInput: "API key",\n\t\t\tshowNewKey: "Show New API Key",\n\t\t\thideNewKey: "Hide New API Key",\n\t\t\tsavedKeyPrivate: "Saved keys cannot be shown. Enter a new key to replace it.",\n\t\t\tkeyPlaceholder: "Enter your API key",',
+    1,
+  ],
+  [
+    'keyInput: "API 密钥",\n\t\t\tkeyPlaceholder: "输入 API 密钥",',
+    'keyInput: "API 密钥",\n\t\t\tshowNewKey: "显示新 API 密钥",\n\t\t\thideNewKey: "隐藏新 API 密钥",\n\t\t\tsavedKeyPrivate: "已保存的密钥不可查看。输入新密钥可替换。",\n\t\t\tkeyPlaceholder: "输入 API 密钥",',
+    1,
+  ],
 ]
 
 function count(source, fragment) { return source.split(fragment).length - 1 }

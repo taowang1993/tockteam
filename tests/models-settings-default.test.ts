@@ -61,6 +61,27 @@ test('a changed pinned client or an alias outside the staged runtime fails witho
   } finally { rmSync(other.root, { recursive: true, force: true }) }
 })
 
+test('saved key stays masked and only a typed replacement can be shown or hidden', () => {
+  const { root, client } = fixture()
+  try {
+    prioritizeOpenRouterModelsSettings(root)
+    const adapted = readFileSync(client, 'utf8')
+    for (const [fragment, behavior] of [
+      ['keyStored: "••••••••"', 'masked saved-key placeholder'],
+      ['const [showKeyDraft, setShowKeyDraft] = (0, react.useState)(false);', 'visibility starts hidden'],
+      ['type: showKeyDraft ? "text" : "password"', 'native password input toggle'],
+      ['disabled: disabled || keyLocked || keyDraft.length === 0', 'no eye action without a typed key'],
+      ['onClick: () => setShowKeyDraft((shown) => !shown)', 'toggle the typed key'],
+      ['if (event.target.value.length === 0) setShowKeyDraft(false);', 'clearing the draft hides it again'],
+      ['"aria-label": showKeyDraft ? t("hideNewKey") : t("showNewKey")', 'accessible toggle label'],
+      ['M2.062 12.348', 'Lucide Eye icon'],
+      ['M10.733 5.076', 'Lucide EyeOff icon'],
+    ] as const) assert.ok(adapted.includes(fragment), behavior)
+    assert.doesNotMatch(adapted, /remote\.credentials\.resolve/u)
+    assert.equal(readFileSync(join(installed, 'lib', 'client.js'), 'utf8'), original)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
 test('breaks a staged hardlink without modifying its original source', () => {
   const { root, client } = fixture()
   try {
