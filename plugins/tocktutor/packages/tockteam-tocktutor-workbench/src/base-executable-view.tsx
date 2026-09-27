@@ -10,6 +10,7 @@ import {
 import { ArrowDownUp, ChevronsUpDown, LayoutGrid, List, ListFilter, ListTree, MapPin, Plus, Search, Table2 } from 'lucide-react'
 import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@tockteam/ui/command'
 import { Field, FieldLabel } from '@tockteam/ui/field'
 import { Input } from '@tockteam/ui/input'
 import { Label } from '@tockteam/ui/label'
@@ -367,6 +368,9 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
   const [filterValue, setFilterValue] = useState('')
   const [filterOperator, setFilterOperator] = useState('==')
   const [viewName, setViewName] = useState('')
+  const [viewPickerOpen, setViewPickerOpen] = useState(false)
+  const [viewQuery, setViewQuery] = useState('')
+  const [showAddView, setShowAddView] = useState(false)
   const [renameName, setRenameName] = useState('')
   const [viewType, setViewType] = useState<'table' | 'list' | 'cards' | 'map'>('table')
   const [authoringError, setAuthoringError] = useState('')
@@ -388,31 +392,56 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
     ...model.columns.map(column => column.key),
     ...props.files.flatMap(file => parseFrontmatterProperties(file.source).map(property => `note.${property.key}`)),
   ])].filter(key => /^[\w.-]+$/u.test(key)).slice(0, 256), [model.columns, props.files])
-  const commit = async (next: string | null): Promise<void> => {
-    if (next === null || props.onSourceChange === undefined) { setAuthoringError('This Base change is unavailable. Open Base Source to edit it.'); return }
+  const commit = async (next: string | null): Promise<boolean> => {
+    if (next === null || props.onSourceChange === undefined) { setAuthoringError('This Base change is unavailable. Open Base Source to edit it.'); return false }
     try {
-      if (!await props.onSourceChange(props.source, next)) { setAuthoringError('The Base changed before it could be saved. Review its source and retry.'); return }
+      if (!await props.onSourceChange(props.source, next)) { setAuthoringError('The Base changed before it could be saved. Review its source and retry.'); return false }
       setAuthoringError('')
-    } catch { setAuthoringError('The Base could not be saved. Review its source before retrying.') }
+      return true
+    } catch { setAuthoringError('The Base could not be saved. Review its source before retrying.'); return false }
   }
   const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-3 text-foreground shadow-lg'
   const ViewIcon = { table: Table2, list: List, cards: LayoutGrid, 'map-label': MapPin }[model.kind]
   return (
     <section aria-label="Executable Base" className="flex min-h-0 flex-col gap-3 overflow-auto p-4">
       <header aria-label="Base View Controls" role="toolbar" className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border pb-2">
-        <div className="relative flex h-7 max-w-36 shrink-0 items-center rounded-md hover:bg-muted">
-          <ViewIcon aria-hidden="true" className="pointer-events-none absolute left-2 size-4 text-muted-foreground" />
-          <NativeSelect unstyled
-            id="tocktutor-base-view"
-            aria-label="Base View"
-            className="box-border h-7 min-w-24 max-w-36 cursor-pointer appearance-none [field-sizing:content] rounded-md border-0 bg-transparent py-1 pl-7 pr-6 text-sm text-foreground outline-none focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]"
-            value={model.view.name}
-            onChange={event => props.onActiveViewChange?.(event.currentTarget.value)}
-          >
-            {model.views.map(view => <NativeSelectOption key={view.name} value={view.name}>{view.name === readableKind(view.kind) ? view.name : `${view.name} — ${readableKind(view.kind)}`}</NativeSelectOption>)}
-          </NativeSelect>
-          <ChevronsUpDown aria-hidden="true" className="pointer-events-none absolute right-1 size-3.5 text-muted-foreground" />
-        </div>
+        <Popover open={viewPickerOpen} onOpenChange={open => { setViewPickerOpen(open); if (!open) { setViewQuery(''); setShowAddView(false) } }}>
+          <PopoverTrigger asChild>
+            <Button unstyled id="tocktutor-base-view" type="button" aria-label="Base View" className="box-border flex h-7 max-w-36 shrink-0 cursor-pointer items-center gap-1 rounded-md border-0 bg-transparent px-2 text-sm text-foreground hover:bg-muted outline-none focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]">
+              <ViewIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">{model.view.name}</span>
+              <ChevronsUpDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent unstyled align="start" sideOffset={2} className={`z-[1002] flex flex-col gap-0 rounded-lg border border-border bg-[var(--dsw-alias-bg-layer-2)] p-1 text-sm text-foreground shadow-lg outline-none ${showAddView ? 'w-64' : 'w-48'}`}>
+            {showAddView ? (
+              <div className="p-2">
+                <Field className="gap-1"><FieldLabel htmlFor="base-new-view-name">View Name</FieldLabel><Input id="base-new-view-name" value={viewName} onChange={event => setViewName(event.currentTarget.value)} /></Field>
+                <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-new-view-kind">View Type</FieldLabel><NativeSelect id="base-new-view-kind" value={viewType} onChange={event => setViewType(event.currentTarget.value as typeof viewType)}>{(['table', 'list', 'cards', 'map'] as const).map(kind => <NativeSelectOption key={kind} value={kind}>{readableKind(kind)}</NativeSelectOption>)}</NativeSelect></Field>
+                <div className="mt-3 flex gap-1"><Button disabled={!props.onSourceChange} type="button" onClick={() => { void commit(appendBaseView(props.source, viewType, viewName)).then(saved => { if (saved) setShowAddView(false) }) }}>Create View</Button><Button variant="ghost" type="button" onClick={() => setShowAddView(false)}>Cancel</Button></div>
+              </div>
+            ) : (
+              <>
+                <Command unstyled className="flex min-h-0 flex-col" label="Search Views">
+                  <div className="flex h-8 items-center gap-1 border-b border-border px-2">
+                    <Search aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+                    <CommandInput unstyled placeholder="Search..." value={viewQuery} onValueChange={setViewQuery} className="h-7 min-w-0 flex-1 border-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" />
+                  </div>
+                  <CommandList className="max-h-56">
+                    <CommandEmpty className="py-2 text-center text-xs text-muted-foreground">No views found.</CommandEmpty>
+                    <CommandGroup unstyled className="p-1">
+                      {model.views.map(view => {
+                        const Icon = { table: Table2, list: List, cards: LayoutGrid, 'map-label': MapPin }[view.kind]
+                        return <CommandItem unstyled key={view.name} value={view.name} aria-current={view.name === model.view.name ? 'true' : undefined} className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none data-[current=true]:bg-[var(--dsw-alias-interactive-bg-hover)] data-[selected=true]:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" data-current={view.name === model.view.name ? 'true' : undefined} onSelect={() => { props.onActiveViewChange?.(view.name); setViewPickerOpen(false); setViewQuery('') }}><Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /><span className="truncate">{view.name}</span></CommandItem>
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+                <Button unstyled type="button" className="flex h-8 w-full cursor-pointer items-center gap-2 border-0 border-t border-border bg-transparent px-2 text-sm text-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" onClick={() => { setViewQuery(''); setShowAddView(true) }}><Plus aria-hidden="true" className="size-4" />Add View</Button>
+              </>
+            )}
+          </PopoverContent>
+        </Popover>
         <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button" aria-live="polite" className="tabular-nums text-muted-foreground">{resultCount(model.rows.length)}</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-result-limit">Result Limit</FieldLabel><NativeSelect id="base-result-limit" value={String(model.view.limit ?? 'all')} disabled={!props.onSourceChange} onChange={event => { void commit(setBaseViewField(props.source, model.view.name, 'limit', event.currentTarget.value === 'all' ? '' : event.currentTarget.value)) }}>
             {['all', '25', '50', '100', '500', '2000'].map(value => <NativeSelectOption key={value} value={value}>{value === 'all' ? 'All Results' : value}</NativeSelectOption>)}
@@ -421,11 +450,6 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
         <details className="relative shrink-0" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus() } }}>
           <summary aria-label="More Base Actions" className="flex size-7 cursor-pointer list-none items-center justify-center rounded-md text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"><Plus aria-hidden="true" className="size-4" /></summary>
           <div className="absolute top-full left-0 z-[1002] flex w-max max-w-[calc(100vw-3rem)] flex-wrap gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
-            <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button">Add View</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
-              <Field className="gap-1"><FieldLabel htmlFor="base-new-view-name">View Name</FieldLabel><Input id="base-new-view-name" value={viewName} onChange={event => setViewName(event.currentTarget.value)} /></Field>
-              <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-new-view-kind">View Type</FieldLabel><NativeSelect id="base-new-view-kind" value={viewType} onChange={event => setViewType(event.currentTarget.value as typeof viewType)}>{(['table', 'list', 'cards', 'map'] as const).map(kind => <NativeSelectOption key={kind} value={kind}>{readableKind(kind)}</NativeSelectOption>)}</NativeSelect></Field>
-              <Button className="mt-3" disabled={!props.onSourceChange} type="button" onClick={() => { void commit(appendBaseView(props.source, viewType, viewName)) }}>Create View</Button>
-            </PopoverContent></Popover>
             <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button" onClick={() => setRenameName(model.view.name)}>Rename View</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
               <Field className="gap-1"><FieldLabel htmlFor="base-rename-view-name">View Name</FieldLabel><Input id="base-rename-view-name" value={renameName} onChange={event => setRenameName(event.currentTarget.value)} /></Field>
               <Button className="mt-3" disabled={!props.onSourceChange || renameName === model.view.name} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'name', renameName)) }}>Save View Name</Button>

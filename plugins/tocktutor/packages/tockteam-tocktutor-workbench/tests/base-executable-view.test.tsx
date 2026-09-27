@@ -69,24 +69,34 @@ function ControlledBase(props: {
 }
 
 describe('ExecutableBaseView', () => {
-  it('keeps unboxed View and Search controls in one toolbar with visible keyboard focus', () => {
+  it('opens an unboxed, searchable view menu with Add View and keyboard focus', async () => {
     render(<ControlledBase />)
     const toolbar = screen.getByRole('toolbar', { name: 'Base View Controls' })
     for (const name of ['2 Results', 'Sort', 'Filter', 'Properties']) expect(within(toolbar).getByRole('button', { name })).toBeTruthy()
-    const view = within(toolbar).getByRole('combobox', { name: 'Base View' })
+    const view = within(toolbar).getByRole('button', { name: 'Base View' })
     const search = within(toolbar).getByRole('searchbox', { name: 'Search Ranked' })
     for (const control of [view, search]) {
       expect(control.className).toContain('border-0')
       expect(control.className).toContain('bg-transparent')
       expect(control.className).toContain('focus-visible:shadow-')
     }
-    expect(view.className).toContain('appearance-none')
-    expect(view.className).toContain('[field-sizing:content]')
-    const more = within(toolbar).getByLabelText('More Base Actions') as HTMLElement
-    expect((more.closest('details') as HTMLDetailsElement).open).toBe(false)
-    fireEvent.click(more)
-    expect((more.closest('details') as HTMLDetailsElement).open).toBe(true)
+    view.focus()
+    fireEvent.click(view)
+    expect(screen.getByRole('combobox', { name: 'Search Views' })).toBeTruthy()
+    const panel = screen.getByRole('dialog')
+    expect(panel.className).toContain('w-48')
+    expect(panel.className).not.toContain('w-72')
+    expect(screen.getByRole('option', { name: 'Ranked' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add View' })).toBeTruthy()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search Views' }), { target: { value: 'Places' } })
+    expect(screen.queryByRole('option', { name: 'Tasks' })).toBeNull()
+    expect(screen.getByRole('option', { name: 'Places' })).toBeTruthy()
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Search Views' }), { key: 'Escape' })
+    expect(screen.queryByRole('combobox', { name: 'Search Views' })).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(view))
+    const more = within(toolbar).getByLabelText('More Base Actions') as HTMLElement
+    fireEvent.click(more)
+    expect(screen.getByRole('button', { name: 'Rename View' })).toBeTruthy()
     fireEvent.keyDown(more, { key: 'Escape' })
     expect((more.closest('details') as HTMLDetailsElement).open).toBe(false)
   })
@@ -144,12 +154,12 @@ describe('ExecutableBaseView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Properties' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'file.path' }))
     await waitFor(() => expect(screen.getByRole('columnheader', { name: 'file.path' })).toBeTruthy())
-    fireEvent.click(screen.getByLabelText('More Base Actions'))
+    fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add View' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'View Name' }), { target: { value: 'Gallery' } })
     fireEvent.change(screen.getByRole('combobox', { name: 'View Type' }), { target: { value: 'cards' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create View' }))
-    await waitFor(() => expect(screen.getByRole('option', { name: 'Gallery — Cards' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Gallery' })).toBeTruthy())
   })
 
   it('keeps current-view search controlled and renders table, list, cards, and map labels', () => {
@@ -160,18 +170,17 @@ describe('ExecutableBaseView', () => {
     expect(screen.getByText('1 Result')).toBeTruthy()
     expect(screen.queryByText('Beta')).toBeNull()
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Base View' }), { target: { value: 'Tasks' } })
-    expect(screen.getByRole('list', { name: 'Tasks Results' })).toBeTruthy()
-    expect(screen.getByText('2 Results')).toBeTruthy()
-
-    fireEvent.change(screen.getByRole('combobox', { name: 'Base View' }), { target: { value: 'Cards' } })
-    expect(screen.getByRole('list', { name: 'Cards Results' })).toBeTruthy()
-
-    fireEvent.change(screen.getByRole('combobox', { name: 'Base View' }), { target: { value: 'Places' } })
-    expect(screen.getByRole('list', { name: 'Places Map Labels' })).toBeTruthy()
-    expect(screen.getByText('51.5, -0.1')).toBeTruthy()
-
-    fireEvent.change(screen.getByRole('combobox', { name: 'Base View' }), { target: { value: 'Ranked' } })
+    for (const name of ['Tasks', 'Cards', 'Places', 'Ranked']) {
+      fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
+      fireEvent.click(screen.getByRole('option', { name }))
+      if (name === 'Tasks') expect(screen.getByRole('list', { name: 'Tasks Results' })).toBeTruthy()
+      if (name === 'Cards') expect(screen.getByRole('list', { name: 'Cards Results' })).toBeTruthy()
+      if (name === 'Places') {
+        expect(screen.getByRole('list', { name: 'Places Map Labels' })).toBeTruthy()
+        expect(screen.getByText('51.5, -0.1')).toBeTruthy()
+      }
+    }
+    expect(screen.getByText('1 Result')).toBeTruthy()
     expect((screen.getByRole('searchbox', { name: 'Search Ranked' }) as HTMLInputElement).value).toBe('alpha')
   })
 

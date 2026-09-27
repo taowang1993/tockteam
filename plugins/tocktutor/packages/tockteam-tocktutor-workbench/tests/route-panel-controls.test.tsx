@@ -534,7 +534,8 @@ describe('TockTutor titlebar panel controls', () => {
     })
 
     expect(screen.getByRole('grid', { name: 'Ranked Results' })).toBeTruthy()
-    fireEvent.change(screen.getByRole('combobox', { name: 'Base View' }), { target: { value: 'Drafts' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Drafts' }))
     expect(screen.getByRole('list', { name: 'Drafts Results' })).toBeTruthy()
     expect(screen.getByText('1 Result')).toBeTruthy()
   })

@@ -1327,15 +1327,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/base-executable-view.d.ts.map",
-      "sha256": "9e5765eddd6b3bb50fa976e9ff6980573035210a36b47ac408edfa89158f7d94"
+      "sha256": "ec338074746827cc0872ea65d9dfe310b4a3b2e939389666b4cb616e58a21b47"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/base-executable-view.js",
-      "sha256": "0457173ba5230cdf9ec6d9bbab39b808dae1d0bb55d6e788bb8987ef6ca155ca"
+      "sha256": "d02028d5f0197bb63a0bc406aab42707d089634249e63aad9005444917c1a530"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/base-executable-view.js.map",
-      "sha256": "6dbc1f0db94cb518d02df19977121c2bea6555ccf50c64fca456bf94720895df"
+      "sha256": "fccb20f1cf38bc4c23594a4c39ec526a183a927eb36cf7d001734bcfc760d8ba"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/base-new-note-dialog.d.ts",
@@ -1667,11 +1667,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "3f5663caf7184f38e4044412ebcd2e109840457df45115c4e6358191a9d34789"
+      "sha256": "becfcc96989461dfb581ef707a37537bcd4bcf3d1b53cba29c05735b13b4f209"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "e90b9ff9f9c57fdc93500e26ce434ede8ce9cbe8c48e7a707ffbc61a6ff3d43c"
+      "sha256": "e10570501ff7c6a357b460a25b0ea7eeeccd5efa590b02c93853a10a7503e424"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -2891,7 +2891,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/base-executable-view.tsx",
-      "sha256": "842763fa02606bdde2fb2a68942fc05ce7dc1d028e16d1d934d63053eeace470"
+      "sha256": "933435cb1e004dd427e80cd55ed0dc5d12887b581f01fa79219c41832eb9f40c"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/base-new-note-dialog.tsx",
@@ -3335,7 +3335,7 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "404e789244136bb447869ea92c33ebd74ce66e02f1c23222861dae0e7b18f45c"
+      "sha256": "bac08fcac37a35a21a79ecb3cd22b981e8bace1936675fd1befa7f88bab9550f"
     },
     {
       "path": "pnpm-workspace.yaml",
