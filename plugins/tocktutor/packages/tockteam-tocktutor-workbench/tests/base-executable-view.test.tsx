@@ -206,11 +206,7 @@ describe('ExecutableBaseView', () => {
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Search Views' }), { key: 'Escape' })
     expect(screen.queryByRole('combobox', { name: 'Search Views' })).toBeNull()
     await waitFor(() => expect(document.activeElement).toBe(view))
-    const more = within(toolbar).getByLabelText('More Base Actions') as HTMLElement
-    fireEvent.click(more)
-    expect(screen.getByRole('button', { name: 'Rename View' })).toBeTruthy()
-    fireEvent.keyDown(more, { key: 'Escape' })
-    expect((more.closest('details') as HTMLDetailsElement).open).toBe(false)
+    expect(within(toolbar).queryByLabelText('More Base Actions')).toBeNull()
   })
 
   it('offers the Base toolbar and persists a changed sort through the source owner', async () => {
@@ -231,24 +227,54 @@ describe('ExecutableBaseView', () => {
   it('renames the selected view in Base source', async () => {
     const changes: string[] = []
     render(<ExecutableBaseView files={files} source={source} onSourceChange={async (_, next) => { changes.push(next); return true }} />)
-    fireEvent.click(screen.getByLabelText('More Base Actions'))
-    fireEvent.click(screen.getByRole('button', { name: 'Rename View' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Ranked' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'View Name' }), { target: { value: 'Favorites' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save View Name' }))
+    fireEvent.blur(screen.getByRole('textbox', { name: 'View Name' }))
     await waitFor(() => expect(changes).toHaveLength(1))
     expect(changes[0]).toContain('name: "Favorites"')
   })
 
-  it('exposes a result-limit menu that saves the Base view setting', async () => {
-    const changes: string[] = []
-    render(<ExecutableBaseView files={files} source={source} onSourceChange={async (_, next) => { changes.push(next); return true }} />)
-    fireEvent.click(screen.getByRole('button', { name: '2 Results' }))
+  it('uses an Obsidian-style results menu to set and clear a valid number, without a native picker', async () => {
+    function EditableBase() {
+      const [baseSource, setBaseSource] = useState(source)
+      return <ExecutableBaseView files={files} source={baseSource} onSourceChange={async (_, next) => { setBaseSource(next); return true }} />
+    }
+    render(<EditableBase />)
+    const trigger = screen.getByRole('button', { name: '2 Results' })
+    fireEvent.click(trigger)
     const menu = screen.getByRole('dialog')
     expect(menu.className).toContain('bg-surface-muted')
     expect(menu.className).not.toContain('bg-popover')
-    fireEvent.change(screen.getByRole('combobox', { name: 'Result Limit' }), { target: { value: '25' } })
-    await waitFor(() => expect(changes).toHaveLength(1))
-    expect(changes[0]).toContain('limit: "25"')
+    expect(menu.className).toContain('w-56')
+    expect(within(menu).queryByRole('combobox')).toBeNull()
+    const limit = within(menu).getByRole('spinbutton', { name: 'Limit Number of Results' }) as HTMLInputElement
+    expect(limit.placeholder).toBe('e.g. 10')
+    expect(limit.value).toBe('')
+    for (const invalid of ['0', '2001', '3.5']) {
+      fireEvent.change(limit, { target: { value: invalid } })
+      fireEvent.submit(limit.closest('form')!)
+      expect(screen.getByRole('dialog')).toBeTruthy()
+    }
+    fireEvent.change(limit, { target: { value: '1' } })
+    fireEvent.submit(limit.closest('form')!)
+    await waitFor(() => expect(screen.getByRole('button', { name: '1 Result' })).toBeTruthy())
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '1 Result' }))
+    expect((screen.getByRole('spinbutton', { name: 'Limit Number of Results' }) as HTMLInputElement).value).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Show All' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '2 Results' })).toBeTruthy())
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('keeps the result limit menu open with an error when a source write fails', async () => {
+    render(<ExecutableBaseView files={files} source={source} onSourceChange={async () => false} />)
+    fireEvent.click(screen.getByRole('button', { name: '2 Results' }))
+    const limit = screen.getByRole('spinbutton', { name: 'Limit Number of Results' })
+    fireEvent.change(limit, { target: { value: '25' } })
+    fireEvent.submit(limit.closest('form')!)
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('changed before it could be saved'))
+    expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
   it('saves a filter, visible property and new view in the Base file', async () => {
@@ -307,9 +333,13 @@ describe('ExecutableBaseView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Search' }))
     fireEvent.change(screen.getByRole('searchbox', { name: 'Find in Base' }), { target: { value: 'alpha' } })
-    fireEvent.click(screen.getByLabelText('More Base Actions'))
-    fireEvent.click(screen.getByRole('button', { name: 'Copy Visible Results' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Export Visible CSV' }))
+    fireEvent.click(screen.getByRole('button', { name: '1 Result' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy to Clipboard' }))
+    fireEvent.click(screen.getByRole('button', { name: '1 Result' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV…' }))
+    expect(screen.queryByLabelText('More Base Actions')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Copy Visible Results' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Export Visible CSV' })).toBeNull()
 
     expect(onCopy).toHaveBeenCalledWith({
       kind: 'results',
