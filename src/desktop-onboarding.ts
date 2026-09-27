@@ -77,21 +77,14 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
           <button id="tockteam-onboarding-close" type="button" aria-label="Close Setup" class="absolute -right-1 -top-1 flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-muted-foreground hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"></button>
           <h2 id="tockteam-onboarding-title" tabindex="-1" class="m-0 text-[22px] font-semibold leading-[1.2] tracking-tight text-foreground outline-none">${workspace ? 'Choose a Workspace' : 'Add a Model'}</h2>
           <p id="tockteam-onboarding-description" class="m-0 max-w-[65ch] text-sm leading-6 text-muted-foreground">${workspace
-            ? 'Keep the folder you are using, or choose a different one for your first session.'
+            ? 'Choose a folder for your first session, or continue and choose one later.'
             : 'Connect OpenRouter to start with a free model. You can change models later in Settings → Models.'}</p>
         </header>
         ${workspace ? `
           <div class="flex flex-1 flex-col gap-3 pt-1">
-            <div class="flex min-w-0 items-center justify-between gap-4 rounded-xl border border-border-strong bg-surface px-5 py-4">
-              <div class="min-w-0">
-                <p class="m-0 text-sm font-medium text-foreground">Current Workspace</p>
-                <p class="m-0 mt-1 text-xs leading-5 text-muted-foreground">Continue in the folder already open in TockTeam.</p>
-              </div>
-              <span class="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">Selected</span>
-            </div>
             <button id="tockteam-onboarding-choose" type="button" aria-label="Choose Folder" class="${option}">
               <span class="block text-sm font-medium">Choose Folder</span>
-              <span class="mt-1 block text-xs leading-5 text-muted-foreground">Pick another folder for your first session.</span>
+              <span class="mt-1 block text-xs leading-5 text-muted-foreground">Pick a folder for your first session.</span>
             </button>
           </div>
         ` : `<div id="tockteam-onboarding-model" class="flex flex-1 flex-col gap-3 pt-1"></div>`}

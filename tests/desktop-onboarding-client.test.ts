@@ -20,6 +20,7 @@ test('Desktop shows workspace then recognizes a saved model key without revealin
   dom.window.HTMLDialogElement.prototype.close = function () { this.open = false }
   let completed = 0
   let keyWrites = 0
+  let opened = 0
   let dispose: (() => void) | undefined
   try {
     dispose = installDesktopOnboarding({
@@ -31,15 +32,19 @@ test('Desktop shows workspace then recognizes a saved model key without revealin
         describe: async () => ({ ok: true as const, value: { OPENROUTER_API_KEY: { configured: true, writable: true } } }),
         set: async () => { keyWrites++; return { ok: true as const, value: undefined } },
       },
-      openPaths: async () => {},
+      openPaths: async () => { opened++ },
     })
     await tick()
     const dialog = dom.window.document.querySelector('dialog')!
     assert.equal(dialog.open, true)
     assert.ok(dialog.classList.contains('bg-background'), 'setup uses the application theme background, not the lighter popover layer')
     assert.equal(dialog.querySelector('h2')?.textContent, 'Choose a Workspace')
+    assert.doesNotMatch(dialog.textContent ?? '', /Current Workspace|Selected/u, 'no previous folder is assumed')
+    assert.match(dialog.textContent ?? '', /continue and choose one later\./u)
+    button(dom.window.document, 'Choose Folder')
     button(dom.window.document, 'Continue').click()
     await tick()
+    assert.equal(opened, 0, 'continuing without a folder must not create one')
     assert.equal(dialog.querySelector('h2')?.textContent, 'Add a Model')
     assert.match(dialog.textContent ?? '', /already connected/u)
     assert.equal(dialog.querySelector('input[type=password]'), null, 'a stored key must stay hidden')
